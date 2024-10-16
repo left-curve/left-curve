@@ -77,3 +77,9 @@ export {
   type UseStorageOptions,
   useStorage,
 } from "./hooks/useStorage";
+
+export {
+  type UseSigningClientParameters,
+  type UseSigningClientReturnType,
+  useSigningClient,
+} from "./hooks/useSigningClient";

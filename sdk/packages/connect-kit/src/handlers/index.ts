@@ -35,3 +35,13 @@ export {
   getBalancesQueryOptions,
   getBalancesQueryKey,
 } from "./getBalances";
+
+export {
+  type GetConnectorClientData,
+  type GetConnectorClientFnData,
+  type GetConnectorClientQueryKey,
+  type GetConnectorClientOptions,
+  type GetConnectorClientErrorType,
+  getConnectorClientQueryOptions,
+  getConnectorClientQueryKey,
+} from "./getConnectorClient";

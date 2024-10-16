@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  font-family: 'ABCDiatypeRounded';
+}
+
 .header {
   background: linear-gradient(90deg, #D88E96, #C4B7BA);
   --mask:

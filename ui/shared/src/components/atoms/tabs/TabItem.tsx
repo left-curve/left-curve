@@ -18,6 +18,10 @@ interface Props<T extends object = object> extends Omit<ItemProps<T>, "children"
   titleValue?: string;
   /** Whether the tab should be disabled. */
   isDisabled?: boolean;
+  classNames?: {
+    container?: string;
+    selected?: string;
+  };
 }
 
 export type TabItemProps<T extends object = object> = Props<T>;

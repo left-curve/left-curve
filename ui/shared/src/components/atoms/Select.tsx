@@ -13,17 +13,30 @@ import { ListBox } from "./Listbox";
 
 export { Item } from "@react-stately/collections";
 
-export interface SelectProps<T extends object>
+export interface SelectProps<T extends object = object>
   extends AriaSelectProps<T>,
     VariantProps<typeof selectVariants> {
   selectorIcon?: React.ReactNode;
   endContent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
   error?: string;
+  classNames?: {
+    base?: string;
+    listboxWrapper?: string;
+    listbox?: string;
+    value?: string;
+    selectorIcon?: string;
+    trigger?: string;
+  };
 }
 
 export function Select<T extends object>(props: SelectProps<T>) {
-  const { selectorIcon: Icon = <ArrowSelectorIcon />, placeholder, color = "default" } = props;
+  const {
+    selectorIcon: Icon = <ArrowSelectorIcon />,
+    placeholder,
+    color = "default",
+    classNames,
+  } = props;
   const state = useSelectState(props);
 
   const ref = useRef(null);
@@ -38,7 +51,7 @@ export function Select<T extends object>(props: SelectProps<T>) {
   const { base, listboxWrapper, listbox, value, selectorIcon, trigger } = selectVariants({ color });
 
   const renderIndicator = cloneElement(Icon as ReactElement, {
-    className: `${selectorIcon()}  ${state.isOpen ? "rotate-180" : ""}`,
+    className: `${selectorIcon({ className: classNames?.selectorIcon })}  ${state.isOpen ? "rotate-180" : ""}`,
   });
 
   const renderSelectedItem = useMemo(() => {
@@ -48,18 +61,29 @@ export function Select<T extends object>(props: SelectProps<T>) {
 
   const renderPopover = useMemo(
     () => (
-      <div className={listboxWrapper({ isOpen: state.isOpen })}>
-        <ListBox {...menuProps} state={state} className={listbox()} color={color} />
+      <div
+        className={listboxWrapper({ isOpen: state.isOpen, className: classNames?.listboxWrapper })}
+      >
+        <ListBox
+          {...menuProps}
+          state={state}
+          className={listbox({ className: classNames?.listbox })}
+          color={color}
+        />
       </div>
     ),
-    [state.isOpen, state, menuProps, color, listboxWrapper, listbox],
+    [state.isOpen, state, menuProps, color, listboxWrapper, listbox, classNames],
   );
 
   return (
-    <div className={base({ isOpen: state.isOpen })}>
+    <div className={base({ isOpen: state.isOpen, className: classNames?.base })}>
       <HiddenSelect state={state} triggerRef={ref} label={props.label} name={props.name} />
-      <button {...mergeProps(buttonProps, focusProps)} ref={ref} className={trigger()}>
-        <span {...valueProps} className={value()}>
+      <button
+        {...mergeProps(buttonProps, focusProps)}
+        ref={ref}
+        className={trigger({ className: classNames?.trigger })}
+      >
+        <span {...valueProps} className={value({ className: classNames?.value })}>
           {renderSelectedItem}
         </span>
         {renderIndicator}
@@ -83,18 +107,19 @@ const selectVariants = tv({
   variants: {
     color: {
       default: {},
+      white: {},
     },
     size: {
       sm: {},
       md: {
         base: "rounded-xl",
-        trigger: "h-12 min-h-12 rounded-xl",
+        trigger: "min-h-12 rounded-xl",
         value: "text-base",
         listboxWrapper: "top-12 rounded-b-xl",
       },
       lg: {
         base: "rounded-2xl",
-        trigger: "h-14 min-h-14 rounded-2xl",
+        trigger: "min-h-14 rounded-2xl",
         value: "text-base",
         listboxWrapper: "top-14 rounded-b-2xl",
       },
@@ -102,7 +127,7 @@ const selectVariants = tv({
     isOpen: {
       true: {
         base: "rounded-t-xl rounded-b-none",
-        listboxWrapper: "h-fit  z-30 py-4",
+        listboxWrapper: "h-fit z-30 py-4",
       },
     },
   },
@@ -123,6 +148,20 @@ const selectVariants = tv({
       color: "default",
       class: {
         base: "hover:bg-surface-rose-300",
+      },
+    },
+    {
+      color: "white",
+      class: {
+        base: "bg-surface-off-white-200 text-typography-black-200 hover:bg-surface-yellow-100",
+        listboxWrapper: "bg-surface-off-white-200",
+      },
+    },
+    {
+      isOpen: true,
+      color: "white",
+      class: {
+        base: "hover:bg-surface-off-white-200",
       },
     },
   ],

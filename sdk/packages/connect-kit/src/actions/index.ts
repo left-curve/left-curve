@@ -81,3 +81,10 @@ export {
   type WatchPublicClientReturnType,
   watchPublicClient,
 } from "./watchPublicClient";
+
+export {
+  type GetConnectorClientParameters,
+  type GetConnectorClientReturnType,
+  type GetConnectorClientErrorType,
+  getConnectorClient,
+} from "./getConnectorClient";

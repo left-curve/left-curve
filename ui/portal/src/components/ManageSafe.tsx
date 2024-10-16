@@ -1,4 +1,3 @@
-import { useAccount } from "@leftcurve/react";
 import {
   AccountInfo,
   SafeMembersTable,
@@ -7,6 +6,7 @@ import {
   Tab,
   Tabs,
 } from "@dango/shared";
+import { useAccount } from "@leftcurve/react";
 
 import type { AccountType } from "@leftcurve/types";
 
@@ -16,8 +16,7 @@ export const ManageSafe: React.FC = () => {
   return (
     <Tabs
       key="manage-safe-tabs"
-      className="min-h-full w-full flex-1"
-      classNames={{ tabsContainer: "mb-10", contentContainer: "min-h-[60vh]" }}
+      classNames={{ container: "min-h-full w-full flex-1", tabsWrapper: "mb-10" }}
     >
       <Tab key="assets" title="Assets">
         <div className="flex flex-col gap-4 justify-center items-center">

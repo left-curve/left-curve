@@ -7,7 +7,7 @@ export const AppLayout: React.FC = () => {
   const { status } = useAccount();
 
   return (
-    <div className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center pt-[166px] md:pt-[110px]">
+    <div className="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center">
       {status === "connected" ? (
         <img
           src="/images/background.png"

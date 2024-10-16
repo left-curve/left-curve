@@ -65,7 +65,8 @@
     "@react-aria/overlays": "^3.23.2",
     "@react-aria/select": "^3.14.9",
     "@react-aria/tabs": "^3.9.5",
-    "@react-aria/utils": "^3.25.2",
+    "@react-aria/utils": "^3.25.3",
+    "@react-stately/utils": "^3.10.4",
     "@react-stately/collections": "^3.10.9",
     "@react-stately/list": "^3.10.8",
     "@react-stately/overlays": "^3.6.10",
@@ -74,6 +75,7 @@
     "@react-types/shared": "^3.24.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.21",
+    "qr-code-styling": "^1.7.2",
     "react-use": "^17.5.1",
     "tailwind-variants": "^0.2.1"
   },

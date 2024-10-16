@@ -1,5 +1,5 @@
-import { requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
+import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
+import { decodeUtf8, encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
 import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
@@ -91,27 +91,35 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature(signDoc) {
-        const { typedData, ...txMessage } = signDoc;
-        const bytes = sha256(serialize(txMessage));
+      async requestSignature({ messages, chainId, sequence }) {
+        const bytes = sha256(serialize({ messages, chainId, sequence }));
 
-        const { signature, webauthn, credentialId } = await requestWebAuthnSignature({
+        const {
+          webauthn,
+          credentialId,
+          signature: asnSignature,
+        } = await requestWebAuthnSignature({
           challenge: bytes,
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
 
-        const passkeyCredential = encodeUtf8(
-          JSON.stringify({
-            signature,
-            webauthn,
-          }),
-        );
+        const signature = parseAsn1Signature(asnSignature);
 
-        const credential = { passkey: encodeBase64(passkeyCredential) };
+        const { authenticatorData, clientDataJSON } = webauthn;
+        const { origin, crossOrigin } = JSON.parse(decodeUtf8(clientDataJSON));
+
+        const passkey = {
+          origin,
+          cross_origin: crossOrigin,
+          sig: encodeBase64(signature),
+          authenticator_data: encodeBase64(authenticatorData),
+        };
+
+        const credential = { passkey };
         const keyHash = createKeyHash({ credentialId });
 
-        return { credential, keyHash, signDoc };
+        return { credential, keyHash, signDoc: { messages, chainId, sequence } };
       },
       onConnect({ chainId, username }) {
         _username = username;
