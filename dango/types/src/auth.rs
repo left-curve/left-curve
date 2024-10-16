@@ -55,8 +55,7 @@ pub struct Metadata {
 #[grug::derive(Serde)]
 pub struct PasskeySignature {
     pub authenticator_data: Binary,
-    pub origin: String,
-    pub cross_origin: bool,
+    pub client_data: Binary,
     pub sig: ByteArray<64>,
 }
 
@@ -69,5 +68,6 @@ pub struct ClientData {
     // Should be the `SignDoc` in base64 `URL_SAFE_NO_PAD` encoding.
     pub challenge: String,
     pub origin: String,
+    #[serde(rename = "crossOrigin")]
     pub cross_origin: bool,
 }

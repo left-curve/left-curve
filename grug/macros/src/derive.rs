@@ -90,7 +90,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::grug::__private::serde")]
+            #[serde(rename_all = "snake_case", crate = "::grug::__private::serde")]
         },
         (true, true) => quote! {
             #[::grug::__private::serde_with::skip_serializing_none]
@@ -104,7 +104,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                 ::std::cmp::PartialEq,
                 ::std::cmp::Eq,
             )]
-            #[serde(deny_unknown_fields, rename_all = "snake_case", crate = "::grug::__private::serde")]
+            #[serde(rename_all = "snake_case", crate = "::grug::__private::serde")]
             #[borsh(crate = "::grug::__private::borsh")]
         },
         (false, false) => quote! {
