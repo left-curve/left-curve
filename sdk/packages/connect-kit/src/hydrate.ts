@@ -1,4 +1,4 @@
-import type { Config, State } from "@leftcurve/types";
+import { type Config, ConnectionStatus, type State } from "@leftcurve/types";
 import { reconnect } from "./actions";
 
 type HydrateParameters = {
@@ -16,7 +16,7 @@ export function hydrate(config: Config, parameters: HydrateParameters) {
         ? initialState.chainId
         : config.chains[0].id,
       connections: reconnectOnMount ? initialState.connections : new Map(),
-      status: reconnectOnMount ? "reconnecting" : "disconnected",
+      status: reconnectOnMount ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
     });
 
   return {
@@ -33,7 +33,7 @@ export function hydrate(config: Config, parameters: HydrateParameters) {
           ...x,
           connections: new Map(),
           connectors: new Map(),
-          status: "disconnected",
+          status: ConnectionStatus.Disconnected,
         }));
     },
   };
