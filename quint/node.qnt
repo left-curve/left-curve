@@ -80,7 +80,15 @@ run hash_InternalTest = {
 
     val left_leaf_hash = hashLeafNode(left_leaf)
     val right_leaf_hash = hashLeafNode(right_leaf)
-    
+// visual representation of hashed leaf node    
+//                              *
+//                              | [0]
+//                              Hash
+//                      /[0,0]   |[0,1]   \ [0,2]
+//  Raw(LeafNodeIdentifier)     Hash      Hash
+//                       [0,1,0]/           / [0,2,0]
+//            Raw([left_child_key])    Raw([left_child_value])
+
     val expected_left_hash =  Map([0] -> Hash,
                             [0, 0] -> Raw(LeafNodeIdentifier),
                             [0, 1] -> Hash, 
@@ -101,7 +109,23 @@ run hash_InternalTest = {
         right_child: Some({version: 0, hash: right_leaf_hash})
     }    
     val hashed_internal_node = hash(Internal(internal_node))
-
+// visual representation of hashed internal node    
+//                                                          *
+//                                                          | [0]
+//                                                        Hash
+//                            /                             |                                      \
+//                           /                              |                                       \
+//                          /                               |                                        \
+//                         /                                |                                         \
+//                        /                                 |                                          \
+//                       /                                  |                                           \
+//                      /[0,0]                              |[0,1]                                       \ [0,2]
+//  Raw(InternalNodeIdentifier)                           Hash                                           Hash
+//                                       [0,1,0]/    [0,1,1]|   [0,1,2]\              [0,2,0] /    [0,2,1]|   [0,2,2]\
+//                          Raw(LeafNodeIdentifier)       Hash       Hash      Raw(LeafNodeIdentifier)   Hash       Hash
+//                                              [0,1,1,0]/           / [0,1,2,0]                [0,2,1,0]/           / [0,2,2,0]
+//                                  Raw([left_child_key])   Raw([left_child_value])     Raw([right_child_key])   Raw([righ_child_value])
+    
     val expected_internal_node_hash =  Map([0] -> Hash,
                             [0,0] -> Raw(InternalNodeIdentifier),
                             [0, 1] -> Hash,
