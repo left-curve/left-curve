@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coins, Empty, ReplyOn},
+    grug_types::{Addr, Coins, Empty, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
@@ -165,6 +165,7 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             None,
             Coins::default(),
         )
+        .should_succeed()
         .address;
 
     (suite, accounts, replier_addr)
