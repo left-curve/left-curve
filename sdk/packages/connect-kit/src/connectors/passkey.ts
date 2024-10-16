@@ -1,5 +1,5 @@
 import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
-import { decodeUtf8, encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
+import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
 import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector";
@@ -107,12 +107,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const signature = parseAsn1Signature(asnSignature);
 
         const { authenticatorData, clientDataJSON } = webauthn;
-        const { origin, crossOrigin } = JSON.parse(decodeUtf8(clientDataJSON));
 
         const passkey = {
-          origin,
-          cross_origin: crossOrigin,
           sig: encodeBase64(signature),
+          client_data: encodeBase64(clientDataJSON),
           authenticator_data: encodeBase64(authenticatorData),
         };
 

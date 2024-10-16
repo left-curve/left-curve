@@ -22,8 +22,7 @@ export type Credential =
   | { ethWallet: Base64 };
 
 export type PasskeyCredential = {
-  origin: string;
-  cross_origin: boolean;
   sig: Base64;
+  client_data: Base64;
   authenticator_data: Base64;
 };
