@@ -1,16 +1,17 @@
-import type {
-  AnyCoin,
-  Chain,
-  Client,
-  Config,
-  Connector,
-  ConnectorEventMap,
-  CreateConfigParameters,
-  CreateConnectorFn,
-  EventData,
-  State,
-  StoreApi,
-  Transport,
+import {
+  type AnyCoin,
+  type Chain,
+  type Client,
+  type Config,
+  ConnectionStatus,
+  type Connector,
+  type ConnectorEventMap,
+  type CreateConfigParameters,
+  type CreateConnectorFn,
+  type EventData,
+  type State,
+  type StoreApi,
+  type Transport,
 } from "@leftcurve/types";
 
 import { createEmitter } from "./createEmitter";
@@ -123,7 +124,7 @@ export function createConfig<
       chainId: chains.getState()[0].id,
       connections: new Map(),
       connectors: new Map(),
-      status: "disconnected",
+      status: ConnectionStatus.Disconnected,
     };
   }
 
@@ -226,7 +227,7 @@ export function createConfig<
         }),
         chainId: data.chainId,
         connectors: new Map(x.connectors).set(data.chainId, data.uid),
-        status: "connected",
+        status: ConnectionStatus.Connected,
       };
     });
   }
@@ -257,7 +258,7 @@ export function createConfig<
           ...x,
           connections: new Map(),
           chainIdToConnection: new Map(),
-          status: "disconnected",
+          status: ConnectionStatus.Disconnected,
         };
       }
 

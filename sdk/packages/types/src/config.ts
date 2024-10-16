@@ -5,11 +5,20 @@ import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./c
 import type { Storage } from "./storage";
 import type { Transport } from "./transports";
 
+export const ConnectionStatus = {
+  Connected: "connected",
+  Connecting: "connecting",
+  Disconnected: "disconnected",
+  Reconnecting: "reconnecting",
+} as const;
+
+export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
+
 export type State<chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]]> = {
   chainId: chains[number]["id"];
   connections: Map<ConnectorUId, Connection>;
   connectors: Map<chains[number]["id"], ConnectorUId>;
-  status: "connected" | "connecting" | "disconnected" | "reconnecting";
+  status: ConnectionStatusType;
 };
 
 export type Config<

@@ -1,6 +1,7 @@
 import { useAccount } from "@leftcurve/react";
 import { Navigate, Outlet } from "react-router-dom";
 
+import { ConnectionStatus } from "@leftcurve/types";
 import { Header } from "./Header";
 
 export const AppLayout: React.FC = () => {
@@ -8,7 +9,7 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center">
-      {status === "connected" ? (
+      {status === ConnectionStatus.Connected ? (
         <img
           src="/images/background.png"
           alt="bg-image"
@@ -17,7 +18,7 @@ export const AppLayout: React.FC = () => {
       ) : null}
       <Header />
       <main className="flex flex-1 w-full">
-        {status === "connected" ? <Outlet /> : <Navigate to="/auth/login" />}
+        {status === ConnectionStatus.Connected ? <Outlet /> : <Navigate to="/auth/login" />}
       </main>
     </div>
   );
