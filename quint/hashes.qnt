@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 /// A symbolic specification of a string that is suitable for reasoning about
 /// strings and hashes (such as SHA256). The exact hash function is irrelevant.
 /// The only assumption is that a hash is irreversible.
@@ -33,6 +35,8 @@
 ///     [ 1 ] -> Raw[ 5, 6 ])
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
+/// Josef Widder, Informal Systems, 2024
+
 module hashes {
   /// A sequence of bytes is simply a list of integers
   type Bytes_t = List[int]
@@ -142,6 +146,8 @@ module hashes {
   }
 
   // prepend the hash with the length marker
+  // TODO: it seems that this is specific to a usecase rather than being general for hashes
+  //       ... especially with the magic 32
   pure def termHashWithLen(term: Term_t): Term_t = {
     raw([ 32 ]).termConcat(termHash(term))
   }
@@ -160,3 +166,4 @@ module hashes {
     }
   }
 }
+
