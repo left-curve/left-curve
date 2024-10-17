@@ -2,6 +2,7 @@
 
 module node {
     import hashes.* from "./hashes"
+
 type Option[a] = 
     | None
     | Some(a)
@@ -17,8 +18,12 @@ type InternalNode = {
 }
 
 type LeafNode = {
-    key_hash: Term_t,
-    value_hash: Term_t,
+        // In the implementation it is a hash of a key but in the
+        // Radix tree it is just used as a key, so we use a list
+        // of bit and
+        // we treat it here just as bytes    
+    key_hash: Bytes_t, 
+    value_hash: Bytes_t,
 }
 
 type Node = 
@@ -41,8 +46,8 @@ val l = {
 }
 pure def hashLeafNode(l: LeafNode): Term_t =
     termHash(   LeafNodeHashPrefix
-                .termConcat(l.key_hash)
-                .termConcat(l.value_hash))
+                .termConcat(raw(l.key_hash))
+                .termConcat(raw(l.value_hash)))
 
 pure def hashOfChild(oc: Option[Child]) : Term_t =
     match oc {
@@ -67,15 +72,15 @@ run hash_InternalTest = {
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
-        key_hash: termHash(raw([left_child_key])),
-        value_hash:  termHash(raw([left_child_value]))
+        key_hash: [left_child_key],
+        value_hash:  [left_child_value]
     }
 
     nondet right_child_key = 0.to(16).oneOf()
     nondet right_child_value = 0.to(16).oneOf()
     val right_leaf = {
-        key_hash: termHash(raw([right_child_key])),
-        value_hash:  termHash(raw([right_child_value]))
+        key_hash: [right_child_key],
+        value_hash: [right_child_value]
     }
 
     val left_leaf_hash = hashLeafNode(left_leaf)
@@ -148,8 +153,8 @@ run hash_LeafTest = {
     nondet key = 0.to(16).oneOf()
     nondet value = 0.to(16).oneOf()
     val l = {
-        key_hash: termHash(raw([key])),
-        value_hash:  termHash(raw([value]))
+        key_hash: [key],
+        value_hash:  [value]
     }
     val result = hash(Leaf(l))
 
@@ -166,8 +171,8 @@ run LeafHashTest = {
     nondet key = 0.to(16).oneOf()
     nondet value = 0.to(16).oneOf()
     val l = {
-        key_hash: termHash(raw([key])),
-        value_hash:  termHash(raw([value]))
+        key_hash: [key],
+        value_hash: [value]
     }
     val result = hashLeafNode(l)
     val expected =  Map([0] -> Hash,
@@ -184,15 +189,15 @@ run InternalHashTest = {
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
-        key_hash: termHash(raw([left_child_key])),
-        value_hash:  termHash(raw([left_child_value]))
+        key_hash: [left_child_key],
+        value_hash:  [left_child_value]
     }
 
     nondet right_child_key = 0.to(16).oneOf()
     nondet right_child_value = 0.to(16).oneOf()
     val right_leaf = {
-        key_hash: termHash(raw([right_child_key])),
-        value_hash:  termHash(raw([right_child_value]))
+        key_hash: [right_child_key],
+        value_hash: [right_child_value]
     }
 
     val left_leaf_hash = hashLeafNode(left_leaf)
@@ -241,8 +246,8 @@ run LeafCheckIsLeafTest = {
     nondet key = 0.to(16).oneOf()
     nondet value = 0.to(16).oneOf()
     val l = {
-        key_hash: termHash(raw([key])),
-        value_hash:  termHash(raw([value]))
+        key_hash: [key],
+        value_hash:  [value]
     }
     assert(is_leaf(Leaf(l)) == true)
 }
@@ -251,15 +256,15 @@ run InternalNodeCheckIsLeafTest = {
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
-        key_hash: termHash(raw([left_child_key])),
-        value_hash:  termHash(raw([left_child_value]))
+        key_hash: [left_child_key],
+        value_hash:  [left_child_value]
     }
 
     nondet right_child_key = 0.to(16).oneOf()
     nondet right_child_value = 0.to(16).oneOf()
     val right_leaf = {
-        key_hash: termHash(raw([right_child_key])),
-        value_hash:  termHash(raw([right_child_value]))
+        key_hash: [right_child_key],
+        value_hash:  [right_child_value]
     }
 
     val left_leaf_hash = hashLeafNode(left_leaf)
@@ -276,8 +281,8 @@ run IncompleteInternalNodeCheckIsLeafTest = {
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()
     val left_leaf = {
-        key_hash: termHash(raw([left_child_key])),
-        value_hash:  termHash(raw([left_child_value]))
+        key_hash: [left_child_key],
+        value_hash: [left_child_value]
     }
     val left_leaf_hash = hashLeafNode(left_leaf)
 
