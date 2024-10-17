@@ -82,10 +82,8 @@ fn sends(c: &mut Criterion) {
                         );
 
                         // Sign the transaction.
-                        let msg = Message::Transfer {
-                            to: receiver,
-                            coins: Coins::one("uusdc", 123).unwrap(),
-                        };
+                        let msg =
+                            Message::transfer(receiver, Coins::one("uusdc", 123).unwrap()).unwrap();
 
                         let (data, credential) = accounts
                             .owner

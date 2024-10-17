@@ -17,21 +17,28 @@ impl Response {
         Self::default()
     }
 
-    pub fn add_message(mut self, msg: Message) -> Self {
+    pub fn add_message<M>(mut self, msg: M) -> Self
+    where
+        M: Into<Message>,
+    {
         self.submsgs.push(SubMessage::reply_never(msg));
         self
     }
 
-    pub fn may_add_message(mut self, maybe_msg: Option<Message>) -> Self {
+    pub fn may_add_message<M>(mut self, maybe_msg: Option<M>) -> Self
+    where
+        M: Into<Message>,
+    {
         if let Some(msg) = maybe_msg {
             self.submsgs.push(SubMessage::reply_never(msg));
         }
         self
     }
 
-    pub fn add_messages<M>(mut self, msgs: M) -> Self
+    pub fn add_messages<M, I>(mut self, msgs: I) -> Self
     where
-        M: IntoIterator<Item = Message>,
+        M: Into<Message>,
+        I: IntoIterator<Item = M>,
     {
         self.submsgs
             .extend(msgs.into_iter().map(SubMessage::reply_never));
@@ -186,39 +193,45 @@ pub struct SubMessage {
 }
 
 impl SubMessage {
-    pub fn reply_never(msg: Message) -> Self {
+    pub fn reply_never<M>(msg: M) -> Self
+    where
+        M: Into<Message>,
+    {
         Self {
-            msg,
+            msg: msg.into(),
             reply_on: ReplyOn::Never,
         }
     }
 
-    pub fn reply_always<P>(msg: Message, payload: &P) -> StdResult<Self>
+    pub fn reply_always<M, P>(msg: M, payload: &P) -> StdResult<Self>
     where
+        M: Into<Message>,
         P: Serialize,
     {
         Ok(Self {
-            msg,
+            msg: msg.into(),
             reply_on: ReplyOn::Always(payload.to_json_value()?),
         })
     }
 
-    pub fn reply_on_success<P>(msg: Message, payload: &P) -> StdResult<Self>
+    pub fn reply_on_success<M, P>(msg: M, payload: &P) -> StdResult<Self>
     where
+        M: Into<Message>,
         P: Serialize,
     {
         Ok(Self {
-            msg,
+            msg: msg.into(),
             reply_on: ReplyOn::Success(payload.to_json_value()?),
         })
     }
 
-    pub fn reply_on_error<P>(msg: Message, payload: &P) -> StdResult<Self>
+    pub fn reply_on_error<M, P>(msg: M, payload: &P) -> StdResult<Self>
     where
+        M: Into<Message>,
         P: Serialize,
     {
         Ok(Self {
-            msg,
+            msg: msg.into(),
             reply_on: ReplyOn::Error(payload.to_json_value()?),
         })
     }

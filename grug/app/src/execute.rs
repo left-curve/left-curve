@@ -7,11 +7,10 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Label, Op, Storage,
-        SubMsgResult, Tx, TxOutcome,
+        Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Context, ContractInfo, Event,
+        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        MsgMigrate, MsgTransfer, MsgUpload, Op, Storage, SubMsgResult, Tx, TxOutcome,
     },
-    std::collections::BTreeMap,
 };
 
 // ---------------------------------- config -----------------------------------
@@ -20,10 +19,9 @@ pub fn do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    updates: ConfigUpdates,
-    app_updates: BTreeMap<String, Op<Json>>,
+    msg: MsgConfigure,
 ) -> AppResult<Vec<Event>> {
-    match _do_configure(storage, block, sender, updates, app_updates) {
+    match _do_configure(storage, block, sender, msg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -43,8 +41,7 @@ fn _do_configure(
     storage: &mut dyn Storage,
     block: BlockInfo,
     sender: Addr,
-    updates: ConfigUpdates,
-    app_updates: BTreeMap<String, Op<Json>>,
+    msg: MsgConfigure,
 ) -> AppResult<Event> {
     let mut cfg = CONFIG.load(storage)?;
 
@@ -56,19 +53,19 @@ fn _do_configure(
         });
     }
 
-    if let Some(new_owner) = updates.owner {
+    if let Some(new_owner) = msg.updates.owner {
         cfg.owner = new_owner;
     }
 
-    if let Some(new_bank) = updates.bank {
+    if let Some(new_bank) = msg.updates.bank {
         cfg.bank = new_bank;
     }
 
-    if let Some(new_taxman) = updates.taxman {
+    if let Some(new_taxman) = msg.updates.taxman {
         cfg.taxman = new_taxman;
     }
 
-    if let Some(new_cronjobs) = updates.cronjobs {
+    if let Some(new_cronjobs) = msg.updates.cronjobs {
         // If the list of cronjobs has been changed, we have to delete the
         // existing scheduled ones and reschedule.
         if new_cronjobs != cfg.cronjobs {
@@ -82,7 +79,7 @@ fn _do_configure(
         cfg.cronjobs = new_cronjobs;
     }
 
-    if let Some(new_permissions) = updates.permissions {
+    if let Some(new_permissions) = msg.updates.permissions {
         cfg.permissions = new_permissions;
     }
 
@@ -90,7 +87,7 @@ fn _do_configure(
     CONFIG.save(storage, &cfg)?;
 
     // Update app configs
-    for (key, op) in app_updates {
+    for (key, op) in msg.app_updates {
         if let Op::Insert(value) = op {
             APP_CONFIGS.save(storage, &key, &value)?;
         } else {
@@ -107,9 +104,9 @@ pub fn do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     uploader: Addr,
-    code: &Binary,
+    msg: MsgUpload,
 ) -> AppResult<Vec<Event>> {
-    match _do_upload(storage, gas_tracker, uploader, code) {
+    match _do_upload(storage, gas_tracker, uploader, msg) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
@@ -130,7 +127,7 @@ fn _do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     uploader: Addr,
-    code: &Binary,
+    msg: MsgUpload,
 ) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
     let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
@@ -140,13 +137,13 @@ fn _do_upload(
     }
 
     // Make sure that the same code isn't already uploaded
-    let code_hash = code.hash256();
+    let code_hash = msg.code.hash256();
 
     if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(storage, gas_tracker, code_hash, code)?;
+    CODES.save_with_gas(storage, gas_tracker, code_hash, &msg.code)?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", code_hash),
@@ -162,10 +159,9 @@ pub fn do_transfer<VM>(
     gas_tracker: GasTracker,
     msg_depth: usize,
     block: BlockInfo,
-    from: Addr,
-    to: Addr,
-    coins: Coins,
-    receive: bool,
+    sender: Addr,
+    msg: MsgTransfer,
+    do_receive: bool,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -177,17 +173,16 @@ where
         gas_tracker,
         msg_depth,
         block,
-        from,
-        to,
-        coins.clone(),
-        receive,
+        sender,
+        msg.clone(),
+        do_receive,
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(
-                from = from.to_string(),
-                to = to.to_string(),
-                coins = coins.to_string(),
+                from = sender.to_string(),
+                to = msg.to.to_string(),
+                coins = msg.coins.to_string(),
                 "Transferred coins"
             );
 
@@ -208,9 +203,8 @@ fn _do_transfer<VM>(
     gas_tracker: GasTracker,
     msg_depth: usize,
     block: BlockInfo,
-    from: Addr,
-    to: Addr,
-    coins: Coins,
+    sender: Addr,
+    msg: MsgTransfer,
     // Whether to call the receipient account's `receive` entry point following
     // the transfer, to inform it that the transfer has happened.
     // - `true` when handling `Message::Transfer`
@@ -234,7 +228,11 @@ where
         mode: None,
     };
 
-    let msg = BankMsg { from, to, coins };
+    let msg = BankMsg {
+        from: sender,
+        to: msg.to,
+        coins: msg.coins,
+    };
 
     let mut events = call_in_1_out_1_handle_response(
         vm.clone(),
@@ -309,31 +307,13 @@ pub fn do_instantiate<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    code_hash: Hash256,
-    msg: &Json,
-    salt: &[u8],
-    label: Option<Label>,
-    admin: Option<Addr>,
-    funds: Coins,
+    msg: MsgInstantiate,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_instantiate(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        block,
-        sender,
-        code_hash,
-        msg,
-        salt,
-        label,
-        admin,
-        funds,
-    ) {
+    match _do_instantiate(vm, storage, gas_tracker, msg_depth, block, sender, msg) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(address = _address.to_string(), "Instantiated contract");
@@ -356,12 +336,7 @@ pub fn _do_instantiate<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    code_hash: Hash256,
-    msg: &Json,
-    salt: &[u8],
-    label: Option<Label>,
-    admin: Option<Addr>,
-    funds: Coins,
+    msg: MsgInstantiate,
 ) -> AppResult<(Vec<Event>, Addr)>
 where
     VM: Vm + Clone,
@@ -378,7 +353,7 @@ where
 
     // Compute the contract address, and make sure there isn't already a
     // contract of the same address.
-    let address = Addr::derive(sender, code_hash, salt);
+    let address = Addr::derive(sender, msg.code_hash, &msg.salt);
 
     if CONTRACTS.has(&storage, address) {
         return Err(AppError::AccountExists { address });
@@ -386,9 +361,9 @@ where
 
     // Save the contract info
     let contract = ContractInfo {
-        code_hash,
-        label: label.map(Inner::into_inner),
-        admin,
+        code_hash: msg.code_hash,
+        label: msg.label.map(Inner::into_inner),
+        admin: msg.admin,
     };
 
     CONTRACTS.save(&mut storage, address, &contract)?;
@@ -396,7 +371,7 @@ where
     // Make the fund transfer
     let mut events = vec![];
 
-    if !funds.is_empty() {
+    if !msg.funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
@@ -404,8 +379,10 @@ where
             msg_depth,
             block,
             sender,
-            address,
-            funds.clone(),
+            MsgTransfer {
+                to: address,
+                coins: msg.funds.clone(),
+            },
             false,
         )?);
     }
@@ -416,7 +393,7 @@ where
         block,
         contract: address,
         sender: Some(sender),
-        funds: Some(funds),
+        funds: Some(msg.funds),
         mode: None,
     };
 
@@ -430,7 +407,7 @@ where
         "instantiate",
         contract.code_hash,
         &ctx,
-        msg,
+        &msg.msg,
     )?);
 
     Ok((events, ctx.contract))
@@ -445,9 +422,7 @@ pub fn do_execute<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    contract: Addr,
-    msg: &Json,
-    funds: Coins,
+    msg: MsgExecute,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -460,13 +435,11 @@ where
         msg_depth,
         block,
         sender,
-        contract,
-        msg,
-        funds,
+        msg.clone(),
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            tracing::info!(contract = contract.to_string(), "Executed contract");
+            tracing::info!(contract = msg.contract.to_string(), "Executed contract");
 
             Ok(events)
         },
@@ -486,21 +459,19 @@ fn _do_execute<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    contract: Addr,
-    msg: &Json,
-    funds: Coins,
+    msg: MsgExecute,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
+    let code_hash = CONTRACTS.load(&storage, msg.contract)?.code_hash;
 
     // Make the fund transfer
     let mut events = vec![];
 
-    if !funds.is_empty() {
+    if !msg.funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
             storage.clone(),
@@ -508,8 +479,10 @@ where
             msg_depth,
             block,
             sender,
-            contract,
-            funds.clone(),
+            MsgTransfer {
+                to: msg.contract,
+                coins: msg.funds.clone(),
+            },
             false,
         )?);
     }
@@ -518,9 +491,9 @@ where
     let ctx = Context {
         chain_id,
         block,
-        contract,
+        contract: msg.contract,
         sender: Some(sender),
-        funds: Some(funds),
+        funds: Some(msg.funds),
         mode: None,
     };
 
@@ -534,7 +507,7 @@ where
         "execute",
         code_hash,
         &ctx,
-        msg,
+        &msg.msg,
     )?);
 
     Ok(events)
@@ -549,9 +522,7 @@ pub fn do_migrate<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    contract: Addr,
-    new_code_hash: Hash256,
-    msg: &Json,
+    msg: MsgMigrate,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
@@ -564,13 +535,11 @@ where
         msg_depth,
         block,
         sender,
-        contract,
-        new_code_hash,
-        msg,
+        msg.clone(),
     ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
-            tracing::info!(contract = contract.to_string(), "Migrated contract");
+            tracing::info!(contract = msg.contract.to_string(), "Migrated contract");
 
             Ok(events)
         },
@@ -590,16 +559,14 @@ fn _do_migrate<VM>(
     msg_depth: usize,
     block: BlockInfo,
     sender: Addr,
-    contract: Addr,
-    new_code_hash: Hash256,
-    msg: &Json,
+    msg: MsgMigrate,
 ) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let mut contract_info = CONTRACTS.load(&storage, contract)?;
+    let mut contract_info = CONTRACTS.load(&storage, msg.contract)?;
 
     // Only the account's admin can migrate it
     let Some(admin) = &contract_info.admin else {
@@ -614,14 +581,14 @@ where
     }
 
     // Update account info and save
-    contract_info.code_hash = new_code_hash;
+    contract_info.code_hash = msg.new_code_hash;
 
-    CONTRACTS.save(&mut storage, contract, &contract_info)?;
+    CONTRACTS.save(&mut storage, msg.contract, &contract_info)?;
 
     let ctx = Context {
         chain_id,
         block,
-        contract,
+        contract: msg.contract,
         sender: Some(sender),
         funds: None,
         mode: None,
@@ -637,7 +604,7 @@ where
         "migrate",
         contract_info.code_hash,
         &ctx,
-        msg,
+        &msg.msg,
     )
 }
 

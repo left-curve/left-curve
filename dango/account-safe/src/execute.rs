@@ -12,7 +12,8 @@ use {
         config::ACCOUNT_FACTORY_KEY,
     },
     grug::{
-        Addr, AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MutableCtx, Response, StdResult, Tx,
+        Addr, AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
+        StdResult, Tx,
     },
 };
 
@@ -39,7 +40,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // username must match the transaction signer's username.
     for msg in &tx.msgs {
         match msg {
-            Message::Execute { contract, msg, .. } if contract == ctx.contract => {
+            Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 if let ExecuteMsg::Vote { voter, .. } = msg.clone().deserialize_json()? {
                     ensure!(
                         voter == metadata.username,
