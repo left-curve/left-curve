@@ -1,4 +1,6 @@
-module tree{
+// -*- mode: Bluespec; -*-
+
+module tree {
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import node.* from "./node"

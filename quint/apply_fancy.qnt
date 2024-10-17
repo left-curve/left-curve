@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module apply_fancy {
   import hashes.* from "./hashes"
   import tree.* from "./tree"
