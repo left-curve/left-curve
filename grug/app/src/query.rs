@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        call_in_1_out_1, AppError, AppResult, GasTracker, MeteredMap, MeteredStorage,
+        StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins, Config, Context,
@@ -11,10 +11,6 @@ use {
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
-
-pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Config> {
-    CONFIG.load_with_gas(storage, gas_tracker)
-}
 
 pub fn query_app_config(
     storage: &dyn Storage,
@@ -41,6 +37,7 @@ pub fn query_app_configs(
 
 pub fn query_balance<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -54,6 +51,7 @@ where
 {
     _query_bank(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -65,6 +63,7 @@ where
 
 pub fn query_balances<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -79,6 +78,7 @@ where
 {
     _query_bank(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -94,6 +94,7 @@ where
 
 pub fn query_supply<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -106,6 +107,7 @@ where
 {
     _query_bank(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -117,6 +119,7 @@ where
 
 pub fn query_supplies<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -130,6 +133,7 @@ where
 {
     _query_bank(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -141,6 +145,7 @@ where
 
 fn _query_bank<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -152,7 +157,6 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let cfg = CONFIG.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
@@ -166,6 +170,7 @@ where
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -241,6 +246,7 @@ pub fn query_wasm_raw(
 
 pub fn query_wasm_smart<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -266,6 +272,7 @@ where
 
     call_in_1_out_1::<_, _, GenericResult<Json>>(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,

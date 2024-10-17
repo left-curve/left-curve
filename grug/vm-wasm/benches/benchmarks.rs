@@ -4,8 +4,8 @@ use {
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
-        Addr, BlockInfo, BorshSerExt, Context, GenericResult, Hash, JsonSerExt, MockStorage,
-        Timestamp,
+        Addr, BlockInfo, BorshSerExt, Config, Context, GenericResult, Hash, JsonSerExt,
+        MockStorage, Timestamp,
     },
     grug_vm_wasm::WasmVm,
     std::time::Duration,
@@ -49,6 +49,7 @@ fn looping(c: &mut Criterion) {
 
                         let querier = QuerierProvider::new(
                             vm.clone(),
+                            Config::mock(),
                             storage.clone(),
                             gas_tracker.clone(),
                             MOCK_BLOCK,
