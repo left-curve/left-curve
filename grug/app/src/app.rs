@@ -815,78 +815,56 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Config {} => {
-            let res = query_config(&storage, gas_tracker)?;
+        Query::Config(req) => {
+            let res = query_config(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Config(res))
         },
-        Query::AppConfig { key } => {
-            let res = query_app_config(&storage, gas_tracker, &key)?;
+        Query::AppConfig(req) => {
+            let res = query_app_config(&storage, gas_tracker, req)?;
             Ok(QueryResponse::AppConfig(res))
         },
-        Query::AppConfigs { start_after, limit } => {
-            let res = query_app_configs(&storage, gas_tracker, start_after, limit)?;
+        Query::AppConfigs(req) => {
+            let res = query_app_configs(&storage, gas_tracker, req)?;
             Ok(QueryResponse::AppConfigs(res))
         },
-        Query::Balance { address, denom } => {
-            let res = query_balance(vm, storage, gas_tracker, query_depth, block, address, denom)?;
+        Query::Balance(req) => {
+            let res = query_balance(vm, storage, gas_tracker, query_depth, block, req)?;
             Ok(QueryResponse::Balance(res))
         },
-        Query::Balances {
-            address,
-            start_after,
-            limit,
-        } => {
-            let res = query_balances(
-                vm,
-                storage,
-                gas_tracker,
-                query_depth,
-                block,
-                address,
-                start_after,
-                limit,
-            )?;
+        Query::Balances(req) => {
+            let res = query_balances(vm, storage, gas_tracker, query_depth, block, req)?;
             Ok(QueryResponse::Balances(res))
         },
-        Query::Supply { denom } => {
-            let res = query_supply(vm, storage, gas_tracker, query_depth, block, denom)?;
+        Query::Supply(req) => {
+            let res = query_supply(vm, storage, gas_tracker, query_depth, block, req)?;
             Ok(QueryResponse::Supply(res))
         },
-        Query::Supplies { start_after, limit } => {
-            let res = query_supplies(
-                vm,
-                storage,
-                gas_tracker,
-                query_depth,
-                block,
-                start_after,
-                limit,
-            )?;
+        Query::Supplies(req) => {
+            let res = query_supplies(vm, storage, gas_tracker, query_depth, block, req)?;
             Ok(QueryResponse::Supplies(res))
         },
-        Query::Code { hash } => {
-            let res = query_code(&storage, gas_tracker, hash)?;
+        Query::Code(req) => {
+            let res = query_code(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Code(res))
         },
-        Query::Codes { start_after, limit } => {
-            let res = query_codes(&storage, gas_tracker, start_after, limit)?;
+        Query::Codes(req) => {
+            let res = query_codes(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Codes(res))
         },
-        Query::Contract { address } => {
-            let res = query_contract(&storage, gas_tracker, address)?;
+        Query::Contract(req) => {
+            let res = query_contract(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Contract(res))
         },
-        Query::Contracts { start_after, limit } => {
-            let res = query_contracts(&storage, gas_tracker, start_after, limit)?;
+        Query::Contracts(req) => {
+            let res = query_contracts(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Contracts(res))
         },
-        Query::WasmRaw { contract, key } => {
-            let res = query_wasm_raw(storage, gas_tracker, contract, key)?;
+        Query::WasmRaw(req) => {
+            let res = query_wasm_raw(storage, gas_tracker, req)?;
             Ok(QueryResponse::WasmRaw(res))
         },
-        Query::WasmSmart { contract, msg } => {
-            let res =
-                query_wasm_smart(vm, storage, gas_tracker, query_depth, block, contract, msg)?;
+        Query::WasmSmart(req) => {
+            let res = query_wasm_smart(vm, storage, gas_tracker, query_depth, block, req)?;
             Ok(QueryResponse::WasmSmart(res))
         },
         Query::Multi(reqs) => {

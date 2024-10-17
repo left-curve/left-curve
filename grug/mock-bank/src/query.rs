@@ -1,52 +1,48 @@
 use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug_math::{NumberConst, Uint128},
-    grug_types::{Addr, Bound, Coin, Coins, Denom, Order, StdResult, Storage},
+    grug_types::{
+        Addr, Bound, Coin, Coins, Denom, Order, QueryBalanceRequest, QueryBalancesRequest,
+        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Storage,
+    },
     std::collections::BTreeMap,
 };
 
 pub const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn query_balance(storage: &dyn Storage, address: Addr, denom: Denom) -> StdResult<Coin> {
-    let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (address, &denom))?;
+pub fn query_balance(storage: &dyn Storage, req: QueryBalanceRequest) -> StdResult<Coin> {
+    let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (req.address, &req.denom))?;
+
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_amount.unwrap_or(Uint128::ZERO),
     })
 }
 
-pub fn query_balances(
-    storage: &dyn Storage,
-    address: Addr,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+pub fn query_balances(storage: &dyn Storage, req: QueryBalancesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES_BY_ADDR
-        .prefix(address)
+        .prefix(req.address)
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<BTreeMap<_, _>>>()?
         .try_into()
 }
 
-pub fn query_supply(storage: &dyn Storage, denom: Denom) -> StdResult<Coin> {
-    let maybe_supply = SUPPLIES.may_load(storage, &denom)?;
+pub fn query_supply(storage: &dyn Storage, req: QuerySupplyRequest) -> StdResult<Coin> {
+    let maybe_supply = SUPPLIES.may_load(storage, &req.denom)?;
+
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_supply.unwrap_or(Uint128::ZERO),
     })
 }
 
-pub fn query_supplies(
-    storage: &dyn Storage,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+pub fn query_supplies(storage: &dyn Storage, req: QuerySuppliesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     SUPPLIES
         .range(storage, start, None, Order::Ascending)

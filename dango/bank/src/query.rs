@@ -2,8 +2,9 @@ use {
     crate::{BALANCES, NAMESPACE_OWNERS, SUPPLIES},
     dango_types::bank::QueryMsg,
     grug::{
-        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
-        JsonSerExt, NumberConst, Order, Part, StdResult, Uint128,
+        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Json, JsonSerExt,
+        NumberConst, Order, Part, QueryBalanceRequest, QueryBalancesRequest, QuerySuppliesRequest,
+        QuerySupplyRequest, StdResult, Storage, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -45,74 +46,53 @@ fn query_namespaces(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQuery::Balance { address, denom } => {
-            let res = query_balance(ctx, address, denom)?;
-            Ok(BankQueryResponse::Balance(res))
+        BankQuery::Balance(req) => query_balance(ctx.storage, req).map(BankQueryResponse::Balance),
+        BankQuery::Balances(req) => {
+            query_balances(ctx.storage, req).map(BankQueryResponse::Balances)
         },
-        BankQuery::Balances {
-            address,
-            start_after,
-            limit,
-        } => {
-            let res = query_balances(ctx, address, start_after, limit)?;
-            Ok(BankQueryResponse::Balances(res))
-        },
-        BankQuery::Supply { denom } => {
-            let res = query_supply(ctx, denom)?;
-            Ok(BankQueryResponse::Supply(res))
-        },
-        BankQuery::Supplies { start_after, limit } => {
-            let res = query_supplies(ctx, start_after, limit)?;
-            Ok(BankQueryResponse::Supplies(res))
+        BankQuery::Supply(req) => query_supply(ctx.storage, req).map(BankQueryResponse::Supply),
+        BankQuery::Supplies(req) => {
+            query_supplies(ctx.storage, req).map(BankQueryResponse::Supplies)
         },
     }
 }
 
-fn query_balance(ctx: ImmutableCtx, address: Addr, denom: Denom) -> StdResult<Coin> {
-    let maybe_amount = BALANCES.may_load(ctx.storage, (&address, &denom))?;
+pub fn query_balance(storage: &dyn Storage, req: QueryBalanceRequest) -> StdResult<Coin> {
+    let maybe_amount = BALANCES.may_load(storage, (&req.address, &req.denom))?;
 
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_amount.unwrap_or(Uint128::ZERO),
     })
 }
 
-fn query_balances(
-    ctx: ImmutableCtx,
-    address: Addr,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+pub fn query_balances(storage: &dyn Storage, req: QueryBalancesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES
-        .prefix(&address)
-        .range(ctx.storage, start, None, Order::Ascending)
+        .prefix(&req.address)
+        .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<BTreeMap<_, _>>>()?
         .try_into()
 }
 
-fn query_supply(ctx: ImmutableCtx, denom: Denom) -> StdResult<Coin> {
-    let maybe_supply = SUPPLIES.may_load(ctx.storage, &denom)?;
+pub fn query_supply(storage: &dyn Storage, req: QuerySupplyRequest) -> StdResult<Coin> {
+    let maybe_supply = SUPPLIES.may_load(storage, &req.denom)?;
 
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_supply.unwrap_or(Uint128::ZERO),
     })
 }
 
-fn query_supplies(
-    ctx: ImmutableCtx,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+pub fn query_supplies(storage: &dyn Storage, req: QuerySuppliesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     SUPPLIES
-        .range(ctx.storage, start, None, Order::Ascending)
+        .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<BTreeMap<_, _>>>()?
         .try_into()

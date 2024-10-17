@@ -1,5 +1,8 @@
 use {
-    crate::{Addr, Coin, Coins, Denom},
+    crate::{
+        Addr, Coin, Coins, QueryBalanceRequest, QueryBalancesRequest, QuerySuppliesRequest,
+        QuerySupplyRequest,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
     serde::{Deserialize, Serialize},
@@ -21,22 +24,10 @@ pub struct BankMsg {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BankQuery {
-    Balance {
-        address: Addr,
-        denom: Denom,
-    },
-    Balances {
-        address: Addr,
-        start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
-    Supply {
-        denom: Denom,
-    },
-    Supplies {
-        start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
+    Balance(QueryBalanceRequest),
+    Balances(QueryBalancesRequest),
+    Supply(QuerySupplyRequest),
+    Supplies(QuerySuppliesRequest),
 }
 
 /// The query response that the bank contract must return during the `bank_query`

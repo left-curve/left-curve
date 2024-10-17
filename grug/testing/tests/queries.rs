@@ -14,13 +14,8 @@ mod query_maker {
     pub fn instantiate(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
         // Attempt to make a multi query.
         let [res1, res2] = ctx.querier.query_multi([
-            Query::Balance {
-                address: ctx.contract,
-                denom: Denom::from_str("uusdc").unwrap(),
-            },
-            Query::Supply {
-                denom: Denom::from_str("uusdc").unwrap(),
-            },
+            Query::balance(ctx.contract, Denom::from_str("uusdc")?),
+            Query::supply(Denom::from_str("uusdc")?),
         ])?;
 
         assert!(res1.as_balance().amount.is_zero());

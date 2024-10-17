@@ -89,17 +89,17 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
 #[rustfmt::skip]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQuery::Balance { address, denom } => {
-            query_balance(ctx.storage, address, denom).map(BankQueryResponse::Balance)
+        BankQuery::Balance(req) => {
+            query_balance(ctx.storage, req).map(BankQueryResponse::Balance)
         },
-        BankQuery::Balances { address, start_after, limit } => {
-            query_balances(ctx.storage, address, start_after, limit).map(BankQueryResponse::Balances)
+        BankQuery::Balances(req) => {
+            query_balances(ctx.storage, req).map(BankQueryResponse::Balances)
         },
-        BankQuery::Supply { denom } => {
-            query_supply(ctx.storage, denom).map(BankQueryResponse::Supply)
+        BankQuery::Supply(req) => {
+            query_supply(ctx.storage, req).map(BankQueryResponse::Supply)
         },
-        BankQuery::Supplies { start_after, limit } => {
-            query_supplies(ctx.storage, start_after, limit).map(BankQueryResponse::Supplies)
+        BankQuery::Supplies(req) => {
+            query_supplies(ctx.storage, req).map(BankQueryResponse::Supplies)
         },
     }
 }
