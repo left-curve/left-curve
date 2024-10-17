@@ -8,7 +8,6 @@ use {
 
 mod replier {
     use {
-        borsh::{BorshDeserialize, BorshSerialize},
         grug_storage::Set,
         grug_types::{
             Coins, Empty, GenericResult, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx,
@@ -18,44 +17,26 @@ mod replier {
         serde::{Deserialize, Serialize},
     };
 
-    #[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize)]
     pub enum ReplyMsg {
-        Fail(ExecuteMsg),
         Ok(ExecuteMsg),
+        Fail(ExecuteMsg),
     }
 
-    #[derive(Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+    #[derive(Serialize, Deserialize)]
     pub enum ExecuteMsg {
-        Ok {
-            deep: String,
-        },
-        Fail {
-            err: String,
-        },
+        /// Insert the given string into storage. Should be successful.
+        Ok { deep: String },
+        /// Intentionally fail with the given error message.
+        Fail { err: String },
+        /// Insert the given string into storage; then, call self with the given
+        /// execute message.
         Perform {
             deep: String,
+            // Must be boxed due to being a recursive type.
             next: Box<ExecuteMsg>,
             reply_on: ReplyOn,
         },
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub enum QueryMsg {
-        Data(QueryDataRequest),
-    }
-
-    impl From<QueryDataRequest> for QueryMsg {
-        fn from(msg: QueryDataRequest) -> Self {
-            Self::Data(msg)
-        }
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct QueryDataRequest {}
-
-    impl QueryRequest for QueryDataRequest {
-        type Message = QueryMsg;
-        type Response = Vec<String>;
     }
 
     impl ExecuteMsg {
@@ -85,6 +66,24 @@ mod replier {
         }
     }
 
+    #[derive(Serialize, Deserialize)]
+    pub enum QueryMsg {
+        Data {},
+    }
+
+    pub struct QueryDataRequest {}
+
+    impl QueryRequest for QueryDataRequest {
+        type Message = QueryMsg;
+        type Response = Vec<String>;
+    }
+
+    impl From<QueryDataRequest> for QueryMsg {
+        fn from(_req: QueryDataRequest) -> Self {
+            Self::Data {}
+        }
+    }
+
     pub const DEEPTHS: Set<String> = Set::new("s");
 
     pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
@@ -93,9 +92,14 @@ mod replier {
 
     pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
         match msg {
-            ExecuteMsg::Fail { err } => Err(StdError::host(err)),
+            ExecuteMsg::Fail { err } => {
+                // We don't have a generic error as in CosmWasm, so use host
+                // error to mock it.
+                Err(StdError::host(err))
+            },
             ExecuteMsg::Ok { deep } => {
                 DEEPTHS.insert(ctx.storage, deep)?;
+
                 Ok(Response::new())
             },
             ExecuteMsg::Perform {
@@ -104,19 +108,24 @@ mod replier {
                 reply_on,
             } => {
                 DEEPTHS.insert(ctx.storage, deep)?;
+
                 Ok(Response::new().add_submessage(SubMessage {
-                    msg: Message::execute(ctx.contract, &*next, Coins::default())?,
+                    msg: Message::execute(ctx.contract, &*next, Coins::new())?,
                     reply_on,
                 }))
             },
         }
     }
 
-    pub fn query(ctx: ImmutableCtx, _msg: Empty) -> StdResult<Json> {
-        DEEPTHS
-            .range(ctx.storage, None, None, Order::Ascending)
-            .collect::<StdResult<Vec<String>>>()?
-            .to_json_value()
+    pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+        match msg {
+            QueryMsg::Data {} => {
+                let res = DEEPTHS
+                    .range(ctx.storage, None, None, Order::Ascending)
+                    .collect::<StdResult<Vec<_>>>()?;
+                res.to_json_value()
+            },
+        }
     }
 
     pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
@@ -135,7 +144,7 @@ mod replier {
                 block: ctx.block,
                 contract: ctx.contract,
                 sender: ctx.contract,
-                funds: Coins::default(),
+                funds: Coins::new(),
             },
             msg,
         )
@@ -178,9 +187,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::ok("2"),
         ReplyOn::always(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap()
     ),
     ["1", "2", "1.1"];
     "reply_always_1pe_2pe_reply_1.1ok"
@@ -191,9 +201,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::always(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap()
     ),
     ["1", "1.1"];
     "reply_always_1pe_2fail_reply_1.1ok"
@@ -204,9 +215,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::ok("2"),
         ReplyOn::always(
             &ReplyMsg::Ok(
-                ExecuteMsg::fail("reply deep 1 fail")
-            )
-        ).unwrap()
+                ExecuteMsg::fail("reply deep 1 fail"),
+            ),
+        )
+        .unwrap()
     ),
     [];
     "reply_always_1pe_2ok_reply_1.1fail"
@@ -225,9 +237,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ),
         ReplyOn::always(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap()
     ),
     ["1", "1.1"];
     "reply_always_1pe_2pe_3pe_4fail_1reply_1.1ok"
@@ -247,8 +260,9 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
                     ExecuteMsg::ok("2.1"),
                     ReplyOn::Never,
                 ),
-            )
-        ).unwrap()
+            ),
+        )
+        .unwrap(),
     ),
     ["1", "1.1", "2.1"];
     "reply_always_1pe_2pe_3f_1reply_1.1pe_2.1ok"
@@ -265,9 +279,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             ),
             ReplyOn::always(
                 &ReplyMsg::Fail(
-                    ExecuteMsg::ok("3.2")
-                )
-            ).unwrap()
+                    ExecuteMsg::ok("3.2"),
+                ),
+            )
+            .unwrap(),
         ),
         ReplyOn::always(
             &ReplyMsg::Ok(
@@ -276,8 +291,9 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
                     ExecuteMsg::ok("2.1"),
                     ReplyOn::Never,
                 ),
-            )
-        ).unwrap()
+            ),
+        )
+        .unwrap(),
     ),
     ["1", "2", "3.2", "1.1", "2.1"];
     "reply_always_1pe_2pe_3_pe_4f_2reply_3.2ok_1reply_1.1pe_2.1ok"
@@ -294,9 +310,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
             ),
             ReplyOn::always(
                 &ReplyMsg::Fail(
-                    ExecuteMsg::fail("reply deep 2 fail")
-                )
-            ).unwrap()
+                    ExecuteMsg::fail("reply deep 2 fail"),
+                ),
+            )
+            .unwrap(),
         ),
         ReplyOn::always(
             &ReplyMsg::Fail(
@@ -306,7 +323,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
                     ReplyOn::Never,
                 ),
             )
-        ).unwrap()
+        )
+        .unwrap(),
     ),
     ["1", "1.1", "2.1"];
     "reply_always_1pe_2pe_3pe_4fail_2reply_3.2fail_1reply_1.1pe_2.1ok"
@@ -318,9 +336,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::ok("2"),
         ReplyOn::success(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap(),
     ),
     ["1", "2", "1.1"];
     "reply_success_1pe_2ok_reply_1.1ok"
@@ -331,9 +350,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::ok("2"),
         ReplyOn::success(
             &ReplyMsg::Ok(
-                ExecuteMsg::fail("reply deep 1 fail")
-            )
-        ).unwrap()
+                ExecuteMsg::fail("reply deep 1 fail"),
+            ),
+        )
+        .unwrap(),
     ),
     [];
     "reply_success_1pe_2ok_reply_1.1fail"
@@ -344,9 +364,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::success(
             &ReplyMsg::Ok(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap(),
     ),
     [];
     "reply_success_1pe_2fail_reply_1.1ok"
@@ -358,9 +379,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
             &ReplyMsg::Fail(
-                ExecuteMsg::ok("1.1")
-            )
-        ).unwrap()
+                ExecuteMsg::ok("1.1"),
+            ),
+        )
+        .unwrap(),
     ),
     ["1", "1.1"];
     "reply_error_1pe_2fail_reply_1.1ok"
@@ -371,9 +393,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::fail("execute deep 2 fail"),
         ReplyOn::error(
             &ReplyMsg::Fail(
-                ExecuteMsg::fail("reply deep 1 fail")
-            )
-        ).unwrap()
+                ExecuteMsg::fail("reply deep 1 fail"),
+            ),
+        )
+        .unwrap(),
     ),
     [];
     "reply_error_1pe_2fail_reply_1.1fail"
@@ -384,9 +407,10 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         ExecuteMsg::ok("2"),
         ReplyOn::error(
             &ReplyMsg::Ok(
-                ExecuteMsg::fail("reply deep 1 fail")
-            )
-        ).unwrap()
+                ExecuteMsg::fail("reply deep 1 fail"),
+            ),
+        )
+        .unwrap(),
     ),
     ["1", "2"];
     "reply_error_1pe_2ok_reply_1.1fail"
@@ -398,9 +422,7 @@ fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S]) {
 
     data.sort();
 
-    let deepths: Vec<String> = suite
+    suite
         .query_wasm_smart(replier_addr, QueryDataRequest {})
-        .unwrap();
-
-    assert_eq!(deepths, data);
+        .should_succeed_and_equal(data);
 }
