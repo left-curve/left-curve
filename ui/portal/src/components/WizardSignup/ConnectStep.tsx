@@ -12,7 +12,7 @@ import {
 } from "@leftcurve/crypto";
 import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
 import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
-import { getNavigatorOS, getRootDomain, sleep } from "@leftcurve/utils";
+import { getNavigatorOS, getRootDomain, wait } from "@leftcurve/utils";
 
 import { DangoButton, Select, SelectItem } from "@dango/shared";
 
@@ -110,8 +110,8 @@ export const ConnectStep: React.FC = () => {
         if (!response.ok) throw new Error("error: failed to send funds");
 
         await client.registerUser({ key, keyHash, username });
-        // TODO: Do pooling instead of sleep to check account creation
-        await sleep(1000);
+        // TODO: Do pooling instead of wait to check account creation
+        await wait(1000);
         await connector.connect({ username, chainId: config.chains[0].id });
       } catch (err) {
         console.log(err);

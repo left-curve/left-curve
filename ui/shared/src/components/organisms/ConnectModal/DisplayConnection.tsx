@@ -2,7 +2,7 @@
 
 import { useChainId } from "@leftcurve/react";
 import type { Connector, Username } from "@leftcurve/types";
-import { sleep } from "@leftcurve/utils";
+import { wait } from "@leftcurve/utils";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { BackArrowIcon, Button, WalletIcon } from "~/components";
@@ -29,7 +29,7 @@ export const DisplayConnection: React.FC = () => {
     try {
       setError(null);
       setIsLoading(true);
-      await sleep(1000);
+      await wait(1000);
       await connector.connect({ username, chainId });
       done();
     } catch (error) {
