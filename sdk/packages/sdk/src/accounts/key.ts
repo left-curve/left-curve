@@ -36,8 +36,9 @@ export function createKeyHash(parameters: CreateKeyHashParameters): KeyHash {
   if (!pubKey) throw new Error("no public key or credential ID provided");
 
   const compressedKey = (() => {
-    if (pubKey.length === 33) return pubKey;
-
+    if (keyAlgo === KeyAlgo.Ed25519) {
+      return pubKey;
+    }
     if (keyAlgo === KeyAlgo.Secp256k1) {
       return secp256k1CompressPubKey(pubKey, true);
     }
