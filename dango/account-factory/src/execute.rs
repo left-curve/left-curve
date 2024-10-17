@@ -15,7 +15,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
-        MutableCtx, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Order, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -56,7 +56,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn authenticate(ctx: AuthCtx, mut tx: Tx) -> anyhow::Result<AuthResponse> {
     let mut msgs = tx.msgs.iter();
 
-    let (Some(Message::Execute { contract, msg, .. }), None) = (msgs.next(), msgs.next()) else {
+    let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
+        (msgs.next(), msgs.next())
+    else {
         bail!("transaction must contain exactly one message");
     };
 

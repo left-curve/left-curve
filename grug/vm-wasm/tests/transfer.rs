@@ -36,22 +36,10 @@ fn transfers() {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     let outcome = suite.send_messages_with_gas(&mut accounts["sender"], 2_500_000, vec![
-        Message::Transfer {
-            to,
-            coins: Coins::one(DENOM.clone(), 10).unwrap(),
-        },
-        Message::Transfer {
-            to,
-            coins: Coins::one(DENOM.clone(), 15).unwrap(),
-        },
-        Message::Transfer {
-            to,
-            coins: Coins::one(DENOM.clone(), 20).unwrap(),
-        },
-        Message::Transfer {
-            to,
-            coins: Coins::one(DENOM.clone(), 25).unwrap(),
-        },
+        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+        Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
+        Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
+        Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
     ]);
 
     outcome.clone().should_succeed();
@@ -107,11 +95,11 @@ fn transfers_with_insufficient_gas_limit() {
     // a host function call (in which case, a `VmError::OutOfGas`). We can only
     // say that the error has to be one of the two. Therefore, we simply ensure
     // the error message contains the word "gas".
-    let outcome =
-        suite.send_message_with_gas(&mut accounts["sender"], 100_000, Message::Transfer {
-            to,
-            coins: Coins::one(DENOM.clone(), 10).unwrap(),
-        });
+    let outcome = suite.send_message_with_gas(
+        &mut accounts["sender"],
+        100_000,
+        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+    );
 
     outcome.clone().should_fail();
 
