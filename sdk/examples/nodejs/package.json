@@ -7,7 +7,7 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
-    "@types/node": "^20"
+    "@types/node": "catalog:"
   },
   "dependencies": {
     "@leftcurve/crypto": "workspace:^",

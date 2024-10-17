@@ -55,7 +55,7 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
-    "vitest": "^2.0.5"
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@leftcurve/crypto": "workspace:^",

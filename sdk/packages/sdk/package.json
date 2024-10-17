@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
-    "vitest": "^2.0.5"
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@leftcurve/crypto": "workspace:^",
