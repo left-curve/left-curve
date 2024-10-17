@@ -1,7 +1,8 @@
-import { ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
+import { ethHashMessage, secp256k1RecoverPubKey } from "@leftcurve/crypto";
 import { encodeBase64, encodeHex, serialize } from "@leftcurve/encoding";
 import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
+import { KeyAlgo } from "@leftcurve/types";
 import { composeAndHashTypedData } from "@leftcurve/utils";
 import { createConnector } from "./createConnector";
 
@@ -59,9 +60,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             params: [challenge, controllerAddress],
           });
 
-          const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
+          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
-          const keyHash = createKeyHash({ pubKey });
+          const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
           const keys = await getKeysByUsername(client, { username });
 
           if (!keys[keyHash]) throw new Error("Not authorized");
@@ -94,9 +95,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           params: [challenge, controllerAddress],
         });
 
-        const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
+        const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
-        return createKeyHash({ pubKey });
+        return createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
       },
       async getProvider() {
         const provider = _provider_();
@@ -138,7 +139,8 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const credential = { ethWallet: encodeBase64(ethWalletCredential) };
 
         const keyHash = createKeyHash({
-          pubKey: await recoverPublicKey(hashTypedData.substring(2), signature, true),
+          pubKey: await secp256k1RecoverPubKey(hashTypedData.substring(2), signature, true),
+          keyAlgo: KeyAlgo.Secp256k1,
         });
 
         return { credential, keyHash, signDoc };

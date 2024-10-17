@@ -75,6 +75,7 @@ export type {
 export type {
   Key,
   KeyHash,
+  KeyAlgoType,
 } from "./key";
 
 export type {
@@ -251,7 +252,7 @@ export {
 } from "./cometbft";
 
 export { AccountType } from "./account";
-export { KeyTag } from "./key";
+export { KeyTag, KeyAlgo } from "./key";
 export { Vote } from "./safe";
 
 export { ConnectorTypes, ConnectorIdType } from "./connector";

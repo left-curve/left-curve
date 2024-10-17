@@ -6,6 +6,7 @@ import { createConnector } from "./createConnector";
 
 import type { UserClient } from "@leftcurve/sdk/clients";
 import { ConnectorSigner } from "@leftcurve/sdk/signers";
+import { KeyAlgo } from "@leftcurve/types";
 import { getRootDomain } from "@leftcurve/utils";
 
 import type { AccountTypes, Address, Transport } from "@leftcurve/types";
@@ -41,7 +42,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
             userVerification: "preferred",
           });
 
-          const keyHash = createKeyHash({ credentialId });
+          const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
           const keys = await getKeysByUsername(client, { username });
 
           if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
@@ -71,7 +72,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
-        return createKeyHash({ credentialId });
+        return createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
       },
       async getAccounts() {
         const client = await this.getClient();
@@ -115,7 +116,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         };
 
         const credential = { passkey };
-        const keyHash = createKeyHash({ credentialId });
+        const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
 
         return { credential, keyHash, signDoc: { messages, chainId, sequence } };
       },
