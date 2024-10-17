@@ -11,20 +11,20 @@
   },
   "dependencies": {
     "@dango/shared": "workspace:^",
-    "framer-motion": "^11.11.7",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "tailwindcss": "^3.4.13"
+    "framer-motion": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tailwindcss": "catalog:"
   },
   "devDependencies": {
     "@astrojs/react": "^3.6.2",
     "@astrojs/tailwind": "^5.1.1",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@astrojs/check": "^0.9.4",
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
     "astro": "^4.15.12",
-    "typescript": "^5.6.3"
+    "typescript": "catalog:"
   }
 }

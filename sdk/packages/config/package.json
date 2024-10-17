@@ -7,7 +7,7 @@
   ],
   "devDependencies": {
     "tailwind-scrollbar": "^3.1.0",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7",
     "unocss": "^0.63.3"
   }

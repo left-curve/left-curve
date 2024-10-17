@@ -37,12 +37,12 @@
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
-    "@tanstack/react-query": ">=5.45.1",
-    "@types/node": "^20",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@tanstack/react-query": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@types/use-sync-external-store": "^0.0.6",
-    "react": "^18"
+    "react": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-query": ">=5.0.0",

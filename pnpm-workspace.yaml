@@ -3,3 +3,36 @@ packages:
   - "sdk/examples/*"
   - "sdk/workers/*"
   - "ui/*"
+
+catalog:
+  "typescript": "^5.6.3"
+  # CF Workers
+  "wrangler": "^3.60.3"
+  "@cloudflare/workers-types": "^4.20241004.0"
+  # Tooling
+  "@rsbuild/core": "^1.0.9"
+  "@rsbuild/plugin-react": "^1.0.3"
+  "react-refresh": "^0.14.2"
+  "vite": "^5.4.7"
+  "@vitejs/plugin-react-swc": "^3.5.0"
+  "vite-tsconfig-paths": "^5.0.1"
+  "vitest": "^2.0.5"
+  "next": "14.2.5"
+  # UI
+  "react": "^18.3.1"
+  "react-dom": "^18.3.1"
+  "@tanstack/react-query": "^5.59.0"
+  "react-hook-form": "^7.53.0"
+  "react-router-dom": "^6.26.2"
+  # Animations
+  "framer-motion": "^11.11.7"
+  # CSS
+  "tailwindcss": "^3.4.13"
+  "autoprefixer": "^10.4.20"
+  "postcss": "^8"
+  "@unocss/postcss": "^0.63.3"
+  "@unocss/reset": "^0.63.3"
+  # Types
+  "@types/react": "^18.3.1"
+  "@types/react-dom": "^18.3.1"
+  "@types/node": "^20"

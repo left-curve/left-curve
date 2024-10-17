@@ -36,7 +36,6 @@
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "vitest": "^2.0.5"
+    "@leftcurve/config": "workspace:^"
   }
 }
