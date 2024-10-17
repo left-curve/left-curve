@@ -270,8 +270,8 @@ mod tests {
         crate::{ContractBuilder, RustVm},
         grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
-            Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
-            Storage, Timestamp,
+            Addr, Binary, BlockInfo, BorshSerExt, Coins, Config, Context, Hash, JsonSerExt,
+            MockStorage, Storage, Timestamp,
         },
         test_case::test_case,
     };
@@ -327,8 +327,13 @@ mod tests {
 
         let gas_tracker = GasTracker::new_limitless();
 
-        let querier_provider =
-            QuerierProvider::new(vm.clone(), Box::new(db.clone()), gas_tracker.clone(), block);
+        let querier_provider = QuerierProvider::new(
+            vm.clone(),
+            Config::mock(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            block,
+        );
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 

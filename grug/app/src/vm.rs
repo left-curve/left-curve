@@ -5,8 +5,8 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, BlockInfo, BorshDeExt, BorshSerExt, Context, Event, GenericResult, Hash256, Response,
-        Storage,
+        Addr, BlockInfo, BorshDeExt, BorshSerExt, Config, Context, Event, GenericResult, Hash256,
+        Response, Storage,
     },
 };
 
@@ -14,6 +14,7 @@ use {
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -30,6 +31,7 @@ where
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -50,6 +52,7 @@ where
 /// and returns one output.
 pub fn call_in_1_out_1<VM, P, R>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -68,6 +71,7 @@ where
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -91,6 +95,7 @@ where
 /// and returns one output.
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -111,6 +116,7 @@ where
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
+        cfg,
         storage,
         gas_tracker,
         query_depth,
@@ -136,6 +142,7 @@ where
 /// events emitted.
 pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -151,6 +158,7 @@ where
 {
     let response = call_in_0_out_1::<_, GenericResult<Response>>(
         vm.clone(),
+        cfg.clone(),
         storage.clone(),
         gas_tracker.clone(),
         query_depth,
@@ -165,7 +173,16 @@ where
         msg,
     })?;
 
-    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
+    handle_response(
+        vm,
+        cfg,
+        storage,
+        gas_tracker,
+        msg_depth,
+        name,
+        ctx,
+        response,
+    )
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -173,6 +190,7 @@ where
 /// emitted.
 pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -190,6 +208,7 @@ where
 {
     let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
         vm.clone(),
+        cfg.clone(),
         storage.clone(),
         gas_tracker.clone(),
         query_depth,
@@ -205,7 +224,16 @@ where
         msg,
     })?;
 
-    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
+    handle_response(
+        vm,
+        cfg,
+        storage,
+        gas_tracker,
+        msg_depth,
+        name,
+        ctx,
+        response,
+    )
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -213,6 +241,7 @@ where
 /// emitted.
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -232,6 +261,7 @@ where
 {
     let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
         vm.clone(),
+        cfg.clone(),
         storage.clone(),
         gas_tracker.clone(),
         query_depth,
@@ -248,11 +278,21 @@ where
         msg,
     })?;
 
-    handle_response(vm, storage, gas_tracker, msg_depth, name, ctx, response)
+    handle_response(
+        vm,
+        cfg,
+        storage,
+        gas_tracker,
+        msg_depth,
+        name,
+        ctx,
+        response,
+    )
 }
 
 fn create_vm_instance<VM>(
     mut vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -269,7 +309,8 @@ where
     let code = CODES.load(&storage, code_hash)?;
 
     // Create the providers
-    let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
+    let querier =
+        QuerierProvider::new(vm.clone(), cfg, storage.clone(), gas_tracker.clone(), block);
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(vm.build_instance(
@@ -285,6 +326,7 @@ where
 
 pub(crate) fn handle_response<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -305,6 +347,7 @@ where
     let mut events = vec![event];
     events.extend(handle_submessages(
         vm,
+        cfg,
         storage,
         ctx.block,
         gas_tracker,

@@ -4,16 +4,16 @@ use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
-        query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
-        query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_app_configs, query_balance, query_balances, query_code, query_codes, query_contract,
+        query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_smart, AppError,
+        AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS, CHAIN_ID, CONFIG,
+        LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenericResultExt,
-        GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse,
-        StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Config, Duration, Event,
+        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query,
+        QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -89,8 +89,8 @@ where
         }
 
         // Schedule cronjobs.
-        for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
+        for (contract, interval) in &genesis_state.config.cronjobs {
+            schedule_cronjob(&mut buffer, *contract, block.timestamp, *interval)?;
         }
 
         // Loop through genesis messages and execute each one.
@@ -104,6 +104,7 @@ where
 
             process_msg(
                 self.vm.clone(),
+                &genesis_state.config,
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
                 0,
@@ -140,11 +141,12 @@ where
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let cfg = CONFIG.load(&buffer)?;
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        let cfg = CONFIG.load(&buffer)?;
+        // let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // Make sure the new block height is exactly the last finalized height
@@ -189,6 +191,7 @@ where
 
             let result = do_cron_execute(
                 self.vm.clone(),
+                &cfg,
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
                 block,
@@ -213,6 +216,7 @@ where
 
             tx_outcomes.push(process_tx(
                 self.vm.clone(),
+                &cfg,
                 buffer.clone(),
                 block,
                 tx,
@@ -269,12 +273,14 @@ where
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let cfg = CONFIG.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
         let mut events = vec![];
 
         match do_withhold_fee(
             self.vm.clone(),
+            &cfg,
             Box::new(buffer.clone()),
             GasTracker::new_limitless(),
             block,
@@ -291,6 +297,7 @@ where
 
         match do_authenticate(
             self.vm.clone(),
+            &cfg,
             Box::new(buffer),
             gas_tracker.clone(),
             block,
@@ -347,6 +354,7 @@ where
         // Use the state storage at the given version to perform the query.
         let storage = self.db.state_storage(version)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+        let cfg = CONFIG.load(&storage)?;
 
         // The gas limit for serving this query.
         // This is set as an off-chain, per-node parameter.
@@ -354,6 +362,7 @@ where
 
         process_query(
             self.vm.clone(),
+            cfg,
             Box::new(storage),
             gas_tracker,
             0,
@@ -401,6 +410,7 @@ where
         let buffer = Buffer::new(self.db.state_storage(None)?, None);
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+        let cfg = CONFIG.load(&buffer)?;
 
         // We can't "prove" a gas simulation
         if prove {
@@ -427,6 +437,7 @@ where
         // consumed, and, if it was successful, what events were emitted.
         Ok(process_tx(
             self.vm.clone(),
+            &cfg,
             buffer,
             block,
             tx,
@@ -498,7 +509,14 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<S, VM>(
+    vm: VM,
+    cfg: &Config,
+    storage: S,
+    block: BlockInfo,
+    tx: Tx,
+    mode: AuthMode,
+) -> TxOutcome
 where
     S: Storage + Clone + 'static,
     VM: Vm + Clone,
@@ -528,6 +546,7 @@ where
     // If this fails, we abort the tx and return, discard all state changes.
     match do_withhold_fee(
         vm.clone(),
+        cfg,
         Box::new(buffer1.clone()),
         GasTracker::new_limitless(),
         block,
@@ -557,6 +576,7 @@ where
     // `buffer1`), discard the events, and jump to `finalize_fee`.
     let request_backrun = match do_authenticate(
         vm.clone(),
+        cfg,
         Box::new(buffer2.clone()),
         gas_tracker.clone(),
         block,
@@ -572,6 +592,7 @@ where
             drop(buffer2);
             return process_finalize_fee(
                 vm,
+                cfg,
                 buffer1,
                 gas_tracker,
                 block,
@@ -593,6 +614,7 @@ where
     // in `buffer1`), discard the events, and jump to `finalize_fee`.
     match process_msgs_then_backrun(
         vm.clone(),
+        cfg,
         buffer2.clone(),
         gas_tracker.clone(),
         block,
@@ -608,6 +630,7 @@ where
             drop(buffer2);
             return process_finalize_fee(
                 vm,
+                cfg,
                 buffer1,
                 gas_tracker,
                 block,
@@ -630,12 +653,23 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, buffer1, gas_tracker, block, tx, mode, events, Ok(()))
+    process_finalize_fee(
+        vm,
+        cfg,
+        buffer1,
+        gas_tracker,
+        block,
+        tx,
+        mode,
+        events,
+        Ok(()),
+    )
 }
 
 #[inline]
 fn process_msgs_then_backrun<S, VM>(
     vm: VM,
+    cfg: &Config,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -656,6 +690,7 @@ where
 
         msg_events.extend(process_msg(
             vm.clone(),
+            cfg,
             Box::new(buffer.clone()),
             gas_tracker.clone(),
             0,
@@ -668,6 +703,7 @@ where
     if request_backrun {
         msg_events.extend(do_backrun(
             vm.clone(),
+            cfg,
             Box::new(buffer),
             gas_tracker,
             block,
@@ -681,6 +717,7 @@ where
 
 fn process_finalize_fee<S, VM>(
     vm: VM,
+    cfg: &Config,
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -698,6 +735,7 @@ where
 
     match do_finalize_fee(
         vm,
+        cfg,
         Box::new(buffer.clone()),
         GasTracker::new_limitless(),
         block,
@@ -720,6 +758,7 @@ where
 
 pub fn process_msg<VM>(
     vm: VM,
+    cfg: &Config,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -738,6 +777,7 @@ where
         } => do_configure(&mut storage, block, sender, updates, app_updates),
         Message::Transfer { to, coins } => do_transfer(
             vm,
+            cfg,
             storage,
             gas_tracker,
             msg_depth,
@@ -747,7 +787,7 @@ where
             coins,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, gas_tracker, sender, &code),
+        Message::Upload { code } => do_upload(cfg, &mut storage, gas_tracker, sender, &code),
         Message::Instantiate {
             code_hash,
             msg,
@@ -757,6 +797,7 @@ where
             funds,
         } => do_instantiate(
             vm,
+            cfg,
             storage,
             gas_tracker,
             msg_depth,
@@ -775,6 +816,7 @@ where
             funds,
         } => do_execute(
             vm,
+            cfg,
             storage,
             gas_tracker,
             msg_depth,
@@ -790,6 +832,7 @@ where
             msg,
         } => do_migrate(
             vm,
+            cfg,
             storage,
             gas_tracker,
             msg_depth,
@@ -804,6 +847,7 @@ where
 
 pub fn process_query<VM>(
     vm: VM,
+    cfg: Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     query_depth: usize,
@@ -815,10 +859,7 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Config {} => {
-            let res = query_config(&storage, gas_tracker)?;
-            Ok(QueryResponse::Config(res))
-        },
+        Query::Config {} => Ok(QueryResponse::Config(cfg.clone())),
         Query::AppConfig { key } => {
             let res = query_app_config(&storage, gas_tracker, &key)?;
             Ok(QueryResponse::AppConfig(res))
@@ -828,7 +869,16 @@ where
             Ok(QueryResponse::AppConfigs(res))
         },
         Query::Balance { address, denom } => {
-            let res = query_balance(vm, storage, gas_tracker, query_depth, block, address, denom)?;
+            let res = query_balance(
+                vm,
+                cfg,
+                storage,
+                gas_tracker,
+                query_depth,
+                block,
+                address,
+                denom,
+            )?;
             Ok(QueryResponse::Balance(res))
         },
         Query::Balances {
@@ -838,6 +888,7 @@ where
         } => {
             let res = query_balances(
                 vm,
+                cfg,
                 storage,
                 gas_tracker,
                 query_depth,
@@ -849,12 +900,13 @@ where
             Ok(QueryResponse::Balances(res))
         },
         Query::Supply { denom } => {
-            let res = query_supply(vm, storage, gas_tracker, query_depth, block, denom)?;
+            let res = query_supply(vm, cfg, storage, gas_tracker, query_depth, block, denom)?;
             Ok(QueryResponse::Supply(res))
         },
         Query::Supplies { start_after, limit } => {
             let res = query_supplies(
                 vm,
+                cfg,
                 storage,
                 gas_tracker,
                 query_depth,
@@ -885,8 +937,16 @@ where
             Ok(QueryResponse::WasmRaw(res))
         },
         Query::WasmSmart { contract, msg } => {
-            let res =
-                query_wasm_smart(vm, storage, gas_tracker, query_depth, block, contract, msg)?;
+            let res = query_wasm_smart(
+                vm,
+                cfg,
+                storage,
+                gas_tracker,
+                query_depth,
+                block,
+                contract,
+                msg,
+            )?;
             Ok(QueryResponse::WasmSmart(res))
         },
         Query::Multi(reqs) => {
@@ -895,6 +955,7 @@ where
                 .map(|req| {
                     process_query(
                         vm.clone(),
+                        cfg.clone(),
                         storage.clone(),
                         gas_tracker.clone(),
                         query_depth,

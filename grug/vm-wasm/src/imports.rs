@@ -417,7 +417,7 @@ mod tests {
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS},
         grug_crypto::{Identity256, Identity512},
         grug_types::{
-            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
+            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, Config, GenericResult,
             Hash256, MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
         },
         rand::rngs::OsRng,
@@ -535,6 +535,7 @@ mod tests {
 
             let querier_provider = QuerierProvider::new(
                 WasmVm::new(0),
+                Config::mock(),
                 Box::new(storage.clone()),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
