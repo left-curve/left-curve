@@ -5,7 +5,11 @@ import { useWizard } from "@dango/shared";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@leftcurve/react";
 import { useMutation } from "@tanstack/react-query";
 
-import { createWebAuthnCredential, ethHashMessage, recoverPublicKey } from "@leftcurve/crypto";
+import {
+  createWebAuthnCredential,
+  ethHashMessage,
+  secp256k1RecoverPubKey,
+} from "@leftcurve/crypto";
 import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
 import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
 import { getNavigatorOS, getRootDomain, sleep } from "@leftcurve/utils";
@@ -18,6 +22,7 @@ import {
   ConnectionStatus,
   type EIP1193Provider,
   type Key,
+  KeyAlgo,
 } from "@leftcurve/types";
 
 export const ConnectStep: React.FC = () => {
@@ -64,7 +69,7 @@ export const ConnectStep: React.FC = () => {
 
             const publicKey = await getPublicKey();
             const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash({ credentialId: id });
+            const keyHash = createKeyHash({ credentialId: id, keyAlgo: KeyAlgo.Secp256r1 });
 
             return { key, keyHash };
           }
@@ -80,10 +85,10 @@ export const ConnectStep: React.FC = () => {
               params: [challenge, controllerAddress],
             });
 
-            const pubKey = await recoverPublicKey(ethHashMessage(challenge), signature, true);
+            const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
             const key: Key = { secp256k1: encodeBase64(pubKey) };
-            const keyHash = createKeyHash({ pubKey });
+            const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
 
             return { key, keyHash };
           }

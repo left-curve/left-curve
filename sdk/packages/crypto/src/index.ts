@@ -15,10 +15,12 @@ export {
 } from "./ripemd";
 
 export {
-  recoverPublicKey,
-  compressPubKey,
-  verifySignature,
   Secp256k1,
+  secp256k1RecoverPubKey,
+  secp256k1CompressPubKey,
+  secp256k1VerifySignature,
+  Ed25519,
+  ed25519VerifySignature,
   type KeyPair,
 } from "./keys";
 

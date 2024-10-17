@@ -13,7 +13,7 @@ import type { KeyPair } from "./keypair";
  * @param compressed - Whether to return the public key in compressed form.
  * @returns The public key that signed the message hash.
  */
-export async function recoverPublicKey(
+export async function secp256k1RecoverPubKey(
   hash: Hex | Uint8Array,
   _signature_: Hex | Uint8Array | Signature,
   compressed = false,
@@ -47,7 +47,7 @@ export async function recoverPublicKey(
  * @param compress - True to compress the public key, false to uncompress it.
  * @returns The compressed or uncompressed public key.
  */
-export function compressPubKey(pubKey: Uint8Array, compress: boolean): Uint8Array {
+export function secp256k1CompressPubKey(pubKey: Uint8Array, compress: boolean): Uint8Array {
   if (compress && pubKey.length === 33) return pubKey;
   if (!compress && pubKey.length === 65) return pubKey;
   return secp256k1.ProjectivePoint.fromHex(pubKey).toRawBytes(compress);
@@ -60,7 +60,7 @@ export function compressPubKey(pubKey: Uint8Array, compress: boolean): Uint8Arra
  * @param publicKey - The public key to verify the signature with.
  * @returns True if the signature is valid, false otherwise.
  */
-export function verifySignature(
+export function secp256k1VerifySignature(
   messageHash: Uint8Array,
   signature: Uint8Array,
   publicKey: Uint8Array,
@@ -143,6 +143,6 @@ export class Secp256k1 implements KeyPair {
    * @returns True if the signature is valid, false otherwise.
    */
   verifySignature(messageHash: Uint8Array, signature: Uint8Array): boolean {
-    return verifySignature(messageHash, signature, this.getPublicKey());
+    return secp256k1VerifySignature(messageHash, signature, this.getPublicKey());
   }
 }
