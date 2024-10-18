@@ -28,8 +28,11 @@ impl<'a> QuerierWrapper<'a> {
         Self { inner }
     }
 
-    pub fn query(&self, req: Query) -> StdResult<QueryResponse> {
-        self.inner.query_chain(req)
+    pub fn query<Q>(&self, req: Q) -> StdResult<QueryResponse>
+    where
+        Q: Into<Query>,
+    {
+        self.inner.query_chain(req.into())
     }
 
     pub fn query_config(&self) -> StdResult<Config> {
