@@ -67,6 +67,21 @@ pub struct Config {
     pub permissions: Permissions,
 }
 
+impl Config {
+    pub fn mock() -> Self {
+        Self {
+            owner: Addr::mock(1),
+            bank: Addr::mock(2),
+            taxman: Addr::mock(3),
+            cronjobs: BTreeMap::new(),
+            permissions: Permissions {
+                upload: Permission::Everybody,
+                instantiate: Permission::Everybody,
+            },
+        }
+    }
+}
+
 /// Set of updates to be made to the config.
 ///
 /// A field being `Some` means it is to be updated to be the given value;
@@ -78,7 +93,6 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigUpdates {
     pub owner: Option<Addr>,
-    pub bank: Option<Addr>,
     pub taxman: Option<Addr>,
     pub cronjobs: Option<BTreeMap<Addr, Duration>>,
     pub permissions: Option<Permissions>,

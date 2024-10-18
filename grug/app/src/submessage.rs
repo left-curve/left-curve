@@ -1,6 +1,6 @@
 use {
     crate::{do_reply, process_msg, AppError, AppResult, Buffer, GasTracker, Shared, Vm},
-    grug_types::{Addr, BlockInfo, Event, GenericResult, ReplyOn, Storage, SubMessage},
+    grug_types::{Addr, BlockInfo, Config, Event, GenericResult, ReplyOn, Storage, SubMessage},
 };
 
 /// Maximum number of chained submessages.
@@ -18,6 +18,7 @@ const MAX_MESSAGE_DEPTH: usize = 30;
 /// account that emitted the submessages, not the transaction's sender.
 pub fn handle_submessages<VM>(
     vm: VM,
+    cfg: &Config,
     // This function takes a boxed store instead of using a generic like others.
     //
     // This is because this function is recursive: every layer of recursion, it
@@ -62,6 +63,7 @@ where
         let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg(
             vm.clone(),
+            cfg,
             Box::new(buffer.clone()),
             gas_tracker.clone(),
             msg_depth + 1, // important: increase message depth
@@ -78,6 +80,7 @@ where
                 events.extend(submsg_events.clone());
                 events.extend(do_reply(
                     vm.clone(),
+                    cfg,
                     storage.clone(),
                     gas_tracker.clone(),
                     msg_depth + 1, // important: increase message depth
@@ -92,6 +95,7 @@ where
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
                 events.extend(do_reply(
                     vm.clone(),
+                    cfg,
                     storage.clone(),
                     gas_tracker.clone(),
                     msg_depth + 1, // important: increase message depth

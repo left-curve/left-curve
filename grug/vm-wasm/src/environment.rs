@@ -281,7 +281,9 @@ mod test {
     use {
         crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
         grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
-        grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
+        grug_types::{
+            BlockInfo, Config, Hash256, MockStorage, Order, StdError, Storage, Timestamp,
+        },
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -335,6 +337,7 @@ mod test {
 
             let querier_provider = QuerierProvider::new(
                 WasmVm::new(0),
+                Config::mock(),
                 Box::new(storage),
                 gas_tracker.clone(),
                 MOCK_BLOCK,

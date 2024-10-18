@@ -2,13 +2,13 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
-        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES,
-        CONFIG, CONTRACTS, NEXT_CRONJOBS,
+        AppError, AppResult, GasTracker, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG,
+        CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, ConfigUpdates, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Label, Op, Storage,
+        Addr, AuthMode, AuthResponse, BankMsg, Binary, BlockInfo, Coins, Config, ConfigUpdates,
+        Context, ContractInfo, Event, GenericResult, Hash256, HashExt, Json, Label, Op, Storage,
         SubMsgResult, Tx, TxOutcome,
     },
     std::collections::BTreeMap,
@@ -60,10 +60,6 @@ fn _do_configure(
         cfg.owner = new_owner;
     }
 
-    if let Some(new_bank) = updates.bank {
-        cfg.bank = new_bank;
-    }
-
     if let Some(new_taxman) = updates.taxman {
         cfg.taxman = new_taxman;
     }
@@ -104,12 +100,13 @@ fn _do_configure(
 // ---------------------------------- upload -----------------------------------
 
 pub fn do_upload(
+    cfg: &Config,
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     uploader: Addr,
     code: &Binary,
 ) -> AppResult<Vec<Event>> {
-    match _do_upload(storage, gas_tracker, uploader, code) {
+    match _do_upload(cfg, storage, gas_tracker, uploader, code) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
@@ -127,13 +124,13 @@ pub fn do_upload(
 
 // Return the hash of the code that is stored, for logging purpose.
 fn _do_upload(
+    cfg: &Config,
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     uploader: Addr,
     code: &Binary,
 ) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
-    let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
 
     if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
@@ -158,6 +155,7 @@ fn _do_upload(
 
 pub fn do_transfer<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -173,6 +171,7 @@ where
 {
     match _do_transfer(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -204,6 +203,7 @@ where
 
 fn _do_transfer<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -222,7 +222,6 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let cfg = CONFIG.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
@@ -238,6 +237,7 @@ where
 
     let mut events = call_in_1_out_1_handle_response(
         vm.clone(),
+        cfg,
         storage.clone(),
         gas_tracker.clone(),
         msg_depth,
@@ -252,6 +252,7 @@ where
     if do_receive {
         events.extend(_do_receive(
             vm,
+            cfg,
             storage,
             gas_tracker,
             msg_depth,
@@ -265,6 +266,7 @@ where
 
 fn _do_receive<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -289,6 +291,7 @@ where
 
     call_in_0_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -304,6 +307,7 @@ where
 
 pub fn do_instantiate<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -322,6 +326,7 @@ where
 {
     match _do_instantiate(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -351,6 +356,7 @@ where
 
 pub fn _do_instantiate<VM>(
     vm: VM,
+    cfg: &Config,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -370,8 +376,6 @@ where
     let chain_id = CHAIN_ID.load(&storage)?;
 
     // Make sure the user has the permission to instantiate contracts
-    let cfg = CONFIG.load(&storage)?;
-
     if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
         return Err(AppError::Unauthorized);
     }
@@ -399,6 +403,7 @@ where
     if !funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
+            cfg,
             storage.clone(),
             gas_tracker.clone(),
             msg_depth,
@@ -422,6 +427,7 @@ where
 
     events.extend(call_in_1_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -440,6 +446,7 @@ where
 
 pub fn do_execute<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -455,6 +462,7 @@ where
 {
     match _do_execute(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -481,6 +489,7 @@ where
 
 fn _do_execute<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -503,6 +512,7 @@ where
     if !funds.is_empty() {
         events.extend(_do_transfer(
             vm.clone(),
+            cfg,
             storage.clone(),
             gas_tracker.clone(),
             msg_depth,
@@ -526,6 +536,7 @@ where
 
     events.extend(call_in_1_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -544,6 +555,7 @@ where
 
 pub fn do_migrate<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -559,6 +571,7 @@ where
 {
     match _do_migrate(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -585,6 +598,7 @@ where
 
 fn _do_migrate<VM>(
     vm: VM,
+    cfg: &Config,
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -629,6 +643,7 @@ where
 
     call_in_1_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -645,6 +660,7 @@ where
 
 pub fn do_reply<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -659,6 +675,7 @@ where
 {
     match _do_reply(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -684,6 +701,7 @@ where
 
 fn _do_reply<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     msg_depth: usize,
@@ -710,6 +728,7 @@ where
 
     call_in_2_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         msg_depth,
@@ -727,6 +746,7 @@ where
 
 pub fn do_authenticate<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -752,6 +772,7 @@ where
     let result = || -> AppResult<_> {
         let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
             vm.clone(),
+            cfg.clone(),
             storage.clone(),
             gas_tracker.clone(),
             0,
@@ -769,6 +790,7 @@ where
 
         let events = handle_response(
             vm,
+            cfg,
             storage,
             gas_tracker,
             0,
@@ -800,6 +822,7 @@ where
 
 pub fn do_backrun<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -824,6 +847,7 @@ where
 
     match call_in_1_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         0,
@@ -853,6 +877,7 @@ where
 
 pub fn do_withhold_fee<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -865,7 +890,6 @@ where
 {
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
-        let cfg = CONFIG.load(&storage)?;
         let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
@@ -879,6 +903,7 @@ where
 
         call_in_1_out_1_handle_response(
             vm,
+            cfg,
             storage,
             gas_tracker,
             0,
@@ -909,6 +934,7 @@ where
 
 pub fn do_finalize_fee<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -922,7 +948,7 @@ where
 {
     let result = (|| {
         let chain_id = CHAIN_ID.load(&storage)?;
-        let cfg = CONFIG.load(&storage)?;
+        // let cfg = CONFIG.load(&storage)?;
         let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
@@ -936,6 +962,7 @@ where
 
         call_in_2_out_1_handle_response(
             vm,
+            cfg,
             storage,
             gas_tracker,
             0,
@@ -971,6 +998,7 @@ where
 
 pub fn do_cron_execute<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -980,7 +1008,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_cron_execute(vm, storage, gas_tracker, block, contract) {
+    match _do_cron_execute(vm, cfg, storage, gas_tracker, block, contract) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
@@ -1002,6 +1030,7 @@ where
 
 fn _do_cron_execute<VM>(
     vm: VM,
+    cfg: &Config,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
@@ -1024,6 +1053,7 @@ where
 
     call_in_0_out_1_handle_response(
         vm,
+        cfg,
         storage,
         gas_tracker,
         0,
