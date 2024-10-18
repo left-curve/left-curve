@@ -19,6 +19,7 @@ module tree {
 
   type BitArray = List[int]
   type Version = int
+  //TODO: rename key_hash to key_hash_prefix
   type NodeId = {version: Version, key_hash: BitArray}
   type OrphanId = {
       orphaned_since_version: Version,
@@ -40,9 +41,17 @@ module tree {
       pure val orphan = { orphaned_since_version: orphaned_since_version, version: version, key_hash: key_hash }
       { ...tree, orphans: tree.orphans.union(Set(orphan)) }
   }
+  pure def isNodeOrphaned(nodeId: NodeId, orphans: Set[OrphanId]) : bool = {
+    orphans.exists(el => (el.version == nodeId.version and el.key_hash == nodeId.key_hash))
+  }
+  pure def prune(tree: Tree, up_to_version: Version) : Tree =  {
+      val orphans_to_be_removed = tree.orphans.filter(orphan => orphan.orphaned_since_version <= up_to_version)
+      val prunned_orphans = tree.orphans.filter(orphan => orphan.orphaned_since_version > up_to_version)
 
-  pure def prune(orphans: Set[OrphanId], up_to_version: Version) : Set[OrphanId] =  {
-      orphans.filter(orphan => orphan.orphaned_since_version > up_to_version)
+      val keys_of_non_orphanes = tree.nodes.keys().filter(nodeId => isNodeOrphaned(nodeId, orphans_to_be_removed) == false)
+      val updated_nodes = keys_of_non_orphanes.mapBy( x => tree.nodes.get(x) )
+
+      {nodes: updated_nodes, orphans: prunned_orphans}
   }
 
   var tree : Tree
