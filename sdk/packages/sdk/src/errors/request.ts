@@ -1,4 +1,3 @@
-import { serializeJson } from "@leftcurve/encoding";
 import { BaseError } from "./base";
 
 export type HttpRequestErrorType = HttpRequestError & {
@@ -31,7 +30,7 @@ export class HttpRequestError extends BaseError {
       metaMessages: [
         status && `Status: ${status}`,
         `URL: ${url}`,
-        body && `Request body: ${serializeJson(body)}`,
+        body && `Request body: ${JSON.stringify(body)}`,
       ].filter(Boolean) as string[],
       name: "HttpRequestError",
     });

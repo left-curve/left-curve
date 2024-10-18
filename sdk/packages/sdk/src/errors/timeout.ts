@@ -1,4 +1,3 @@
-import { serializeJson } from "@leftcurve/encoding";
 import { BaseError } from "./base";
 
 export type TimeoutErrorType = TimeoutError & {
@@ -15,7 +14,7 @@ export class TimeoutError extends BaseError {
   }) {
     super("The request took too long to respond.", {
       details: "The request timed out.",
-      metaMessages: [`URL: ${url}`, `Request body: ${serializeJson(body)}`],
+      metaMessages: [`URL: ${url}`, `Request body: ${JSON.stringify(body)}`],
       name: "TimeoutError",
     });
   }

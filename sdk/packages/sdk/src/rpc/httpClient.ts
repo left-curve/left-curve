@@ -1,4 +1,3 @@
-import { serializeJson } from "@leftcurve/encoding";
 import type { HttpRpcClientOptions, RpcClient } from "@leftcurve/types";
 import { withTimeout } from "@leftcurve/utils";
 import { HttpRequestError } from "~/errors/request";
@@ -41,14 +40,14 @@ export function httpRpc(url: string, options: HttpRpcClientOptions = {}): RpcCli
             const init: RequestInit = {
               ...fetchOptions,
               body: Array.isArray(body)
-                ? serializeJson(
+                ? JSON.stringify(
                     body.map((body) => ({
                       ...body,
                       jsonrpc: "2.0",
                       id: body.id ?? idHandler.take(),
                     })),
                   )
-                : serializeJson({
+                : JSON.stringify({
                     ...body,
                     jsonrpc: "2.0",
                     id: body.id ?? idHandler.take(),
@@ -90,7 +89,7 @@ export function httpRpc(url: string, options: HttpRpcClientOptions = {}): RpcCli
         if (!response.ok) {
           throw new HttpRequestError({
             body,
-            details: serializeJson(data.error) || response.statusText,
+            details: JSON.stringify(data.error) || response.statusText,
             headers: response.headers,
             status: response.status,
             url,

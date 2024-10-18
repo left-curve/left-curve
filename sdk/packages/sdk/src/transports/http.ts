@@ -30,8 +30,6 @@ export type HttpTransportConfig = {
   batch?: boolean | JsonRpcBatchOptions;
   /** The name of the transport. */
   name?: string;
-  /** The headers of the transport. */
-  headers?: Record<string, string | string[]>;
   /** The key of the transport. */
   key?: string;
   /** The timeout (in ms) for the HTTP request. Default: 10_000 */

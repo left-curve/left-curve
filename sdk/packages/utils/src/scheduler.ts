@@ -58,10 +58,11 @@ export function createBatchScheduler<parameters, returnType extends readonly unk
 
     fn(args as parameters[])
       .then((data) => {
-        if (sort && Array.isArray(data)) data.sort(sort);
+        const isArray = Array.isArray(data);
+        if (isArray && sort) data.sort(sort);
         for (let i = 0; i < scheduler.length; i++) {
           const { pendingPromise } = scheduler[i];
-          pendingPromise.resolve?.([data[i], data]);
+          pendingPromise.resolve?.(isArray ? [data[i], data] : [data, data]);
         }
       })
       .catch((err) => {
