@@ -30,29 +30,29 @@ pub trait QueryRequest: Sized {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {
-    /// The chain's global configuration.
+    /// Query the chain's global configuration.
     Config(QueryConfigRequest),
-    /// A single application-specific configuration.
+    /// Query a single application-specific configuration.
     AppConfig(QueryAppConfigRequest),
     /// Enumerate all application-specific configurations.
     AppConfigs(QueryAppConfigsRequest),
-    /// An account's balance in a single denom.
+    /// Query an account's balance in a single denom.
     Balance(QueryBalanceRequest),
     /// Enumerate an account's balances in all denoms.
     Balances(QueryBalancesRequest),
-    /// A token's total supply.
+    /// Query a token's total supply.
     Supply(QuerySupplyRequest),
     /// Enumerate all token's total supplies.
     Supplies(QuerySuppliesRequest),
-    /// A single Wasm byte code.
+    /// Query a single Wasm byte code.
     Code(QueryCodeRequest),
     /// Enumerate all Wasm byte codes.
     Codes(QueryCodesRequest),
-    /// Metadata of a single contract.
+    /// Query the metadata of a single contract.
     Contract(QueryContractRequest),
     /// Enumerate metadata of all contracts.
     Contracts(QueryContractsRequest),
-    /// A raw key-value pair in a contract's internal state.
+    /// Query a raw key-value pair in a contract's internal state.
     WasmRaw(QueryWasmRawRequest),
     /// Call the contract's query entry point with the given message.
     WasmSmart(QueryWasmSmartRequest),
