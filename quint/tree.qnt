@@ -17,7 +17,10 @@ module tree {
       | Insert(Bytes_t)
       | Delete
 
-  type OperationOnBytes = { bytes: Bytes_t, op: Operation }
+  // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
+  type OperationOnKey = { key_hash: BitArray, op: Operation }
+  // For types like -> batch: Vec<(Hash256, Hash256)>
+  type KeyWithValue = { key_hash: BitArray, value_hash: Bytes_t }
 
   type BitArray = List[int]
   type Version = int
