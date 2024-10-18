@@ -220,13 +220,8 @@ pub struct QueryWasmSmartRequest {
     pub msg: Json,
 }
 
-macro_rules! impl_query_request {
+macro_rules! impl_into_query {
     ($variant:ident => $req:ty => $res:ty) => {
-        impl QueryRequest for $req {
-            type Message = Query;
-            type Response = $res;
-        }
-
         impl From<$req> for Query {
             #[inline]
             fn from(req: $req) -> Self {
@@ -236,12 +231,12 @@ macro_rules! impl_query_request {
     };
     ($($variant:ident => $req:ty => $resp:ty),+ $(,)?) => {
         $(
-            impl_query_request!($variant => $req => $resp);
+            impl_into_query!($variant => $req => $resp);
         )+
     };
 }
 
-impl_query_request! {
+impl_into_query! {
     Config     => QueryConfigRequest     => Config,
     AppConfig  => QueryAppConfigRequest  => Json,
     AppConfigs => QueryAppConfigsRequest => BTreeMap<String, Json>,
