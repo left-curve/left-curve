@@ -732,73 +732,27 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure {
-            updates,
-            app_updates,
-        } => do_configure(&mut storage, block, sender, updates, app_updates),
-        Message::Transfer { to, coins } => do_transfer(
+        Message::Configure(msg) => do_configure(&mut storage, block, sender, msg),
+        Message::Transfer(msg) => do_transfer(
             vm,
             storage,
             gas_tracker,
             msg_depth,
             block,
             sender,
-            to,
-            coins,
+            msg,
             true,
         ),
-        Message::Upload { code } => do_upload(&mut storage, gas_tracker, sender, &code),
-        Message::Instantiate {
-            code_hash,
-            msg,
-            salt,
-            label,
-            admin,
-            funds,
-        } => do_instantiate(
-            vm,
-            storage,
-            gas_tracker,
-            msg_depth,
-            block,
-            sender,
-            code_hash,
-            &msg,
-            &salt,
-            label,
-            admin,
-            funds,
-        ),
-        Message::Execute {
-            contract,
-            msg,
-            funds,
-        } => do_execute(
-            vm,
-            storage,
-            gas_tracker,
-            msg_depth,
-            block,
-            sender,
-            contract,
-            &msg,
-            funds,
-        ),
-        Message::Migrate {
-            contract,
-            new_code_hash,
-            msg,
-        } => do_migrate(
-            vm,
-            storage,
-            gas_tracker,
-            msg_depth,
-            block,
-            contract,
-            sender,
-            new_code_hash,
-            &msg,
-        ),
+        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, sender, msg),
+        Message::Instantiate(msg) => {
+            do_instantiate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
+        },
+        Message::Execute(msg) => {
+            do_execute(vm, storage, gas_tracker, msg_depth, block, sender, msg)
+        },
+        Message::Migrate(msg) => {
+            do_migrate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
+        },
     }
 }
 
