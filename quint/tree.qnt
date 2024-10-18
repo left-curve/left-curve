@@ -29,6 +29,7 @@ module tree {
       key_hash: BitArray
   }
 
+
   type Tree = {
       nodes : NodeId -> Node,
       orphans: Set[OrphanId]

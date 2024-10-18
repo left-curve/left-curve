@@ -3,11 +3,42 @@ module invariants {
 import tree.* from "./tree" 
 import basicSpells.* from "./spells/basicSpells"
 
+val keylength = 4
+
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
 /// E.g., if a node has path [1,0,0,1] then there must be a node with path [1,0,0]
+// TODO: I think this is wrong. The point is the first node that is added doesn't have any
+// inner node parent. Inner nodes are generated from common prefixes
 pure def everyNodesParentIsInTheTree(t: Tree): bool =
     val paths = t.nodes.keys().map(nId => nId.key_hash)
     paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
+
+pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
+    val indList = range(1, keylength + 1)
+    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
+                                    b.key_hash.slice(0, x) 
+                                else s )
+
+pure def allLeafs(t: Tree) : Set[LeafNode] =
+    val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
+    allNodes.fold(Set(), (s,x) => match x {
+                            | Internal(_) => s
+                            | Leaf(x) => s.union(Set(x))
+    })
+
+pure def existsNode(t: Tree, b: Bytes_t): bool =
+    t.nodes.keys().filter(nId => nId.key_hash == b).size() > 0
+
+pure def nodeAtCommonPrefix(t: Tree) : bool =
+    t.allLeafs().forall(a =>
+        t.allLeafs().forall(b =>
+            (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a,b))   
+    ))
+
+
+// TODO NodeId -> Node is a bijection
+
+
 
 /// For the same path there are not multiple version stored within the nodes
 pure def oneNodePerPath(t: Tree): bool =
