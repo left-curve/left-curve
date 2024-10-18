@@ -9,7 +9,7 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, JsonSerExt, Message, QueryRequest, ResultExt,
+        Addr, Binary, Coins, Denom, GenericResult, Message, QueryRequest, ResultExt,
         VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
@@ -60,13 +60,16 @@ fn infinite_loop() {
     let (mut suite, mut accounts, tester) = setup_test();
 
     suite
-        .send_message_with_gas(&mut accounts["sender"], 1_000_000, Message::Execute {
-            contract: tester,
-            msg: grug_tester::ExecuteMsg::InfiniteLoop {}
-                .to_json_value()
-                .unwrap(),
-            funds: Coins::new(),
-        })
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            1_000_000,
+            Message::execute(
+                tester,
+                &grug_tester::ExecuteMsg::InfiniteLoop {},
+                Coins::new(),
+            )
+            .unwrap(),
+        )
         .should_fail_with_error("out of gas");
 }
 
@@ -96,16 +99,19 @@ fn immutable_state() {
     // This tests how the VM handles state mutability while serving the
     // `FinalizeBlock` ABCI request.
     suite
-        .send_message_with_gas(&mut accounts["sender"], 1_000_000, Message::Execute {
-            contract: tester,
-            msg: grug_tester::ExecuteMsg::ForceWriteOnQuery {
-                key: "larry".to_string(),
-                value: "engineer".to_string(),
-            }
-            .to_json_value()
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            1_000_000,
+            Message::execute(
+                tester,
+                &grug_tester::ExecuteMsg::ForceWriteOnQuery {
+                    key: "larry".to_string(),
+                    value: "engineer".to_string(),
+                },
+                Coins::new(),
+            )
             .unwrap(),
-            funds: Coins::new(),
-        })
+        )
         .should_fail_with_error(VmError::ImmutableState);
 }
 
