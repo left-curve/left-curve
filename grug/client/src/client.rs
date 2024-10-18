@@ -172,7 +172,7 @@ impl Client {
 
     /// Query the chain-level configuration.
     pub async fn query_config(&self, height: Option<u64>) -> anyhow::Result<Config> {
-        self.query_app(&Query::Config {}, height)
+        self.query_app(&Query::config(), height)
             .await
             .map(|res| res.as_config())
     }
@@ -184,7 +184,7 @@ impl Client {
         denom: Denom,
         height: Option<u64>,
     ) -> anyhow::Result<Coin> {
-        self.query_app(&Query::Balance { address, denom }, height)
+        self.query_app(&Query::balance(address, denom), height)
             .await
             .map(|res| res.as_balance())
     }
@@ -197,21 +197,14 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        self.query_app(
-            &Query::Balances {
-                address,
-                start_after,
-                limit,
-            },
-            height,
-        )
-        .await
-        .map(|res| res.as_balances())
+        self.query_app(&Query::balances(address, start_after, limit), height)
+            .await
+            .map(|res| res.as_balances())
     }
 
     /// Query a token's total supply.
     pub async fn query_supply(&self, denom: Denom, height: Option<u64>) -> anyhow::Result<Coin> {
-        self.query_app(&Query::Supply { denom }, height)
+        self.query_app(&Query::supply(denom), height)
             .await
             .map(|res| res.as_supply())
     }
@@ -223,14 +216,14 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<Coins> {
-        self.query_app(&Query::Supplies { start_after, limit }, height)
+        self.query_app(&Query::supplies(start_after, limit), height)
             .await
             .map(|res| res.as_supplies())
     }
 
     /// Query a single Wasm byte code by hash.
     pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
-        self.query_app(&Query::Code { hash }, height)
+        self.query_app(&Query::code(hash), height)
             .await
             .map(|res| res.as_code())
     }
@@ -242,7 +235,7 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
-        self.query_app(&Query::Codes { start_after, limit }, height)
+        self.query_app(&Query::codes(start_after, limit), height)
             .await
             .map(|res| res.as_codes())
     }
@@ -253,7 +246,7 @@ impl Client {
         address: Addr,
         height: Option<u64>,
     ) -> anyhow::Result<ContractInfo> {
-        self.query_app(&Query::Contract { address }, height)
+        self.query_app(&Query::contract(address), height)
             .await
             .map(|res| res.as_contract())
     }
@@ -265,7 +258,7 @@ impl Client {
         limit: Option<u32>,
         height: Option<u64>,
     ) -> anyhow::Result<BTreeMap<Addr, ContractInfo>> {
-        self.query_app(&Query::Contracts { start_after, limit }, height)
+        self.query_app(&Query::contracts(start_after, limit), height)
             .await
             .map(|res| res.as_contracts())
     }
@@ -280,15 +273,9 @@ impl Client {
     where
         B: Into<Binary>,
     {
-        self.query_app(
-            &Query::WasmRaw {
-                contract,
-                key: key.into(),
-            },
-            height,
-        )
-        .await
-        .map(|res| res.as_wasm_raw())
+        self.query_app(&Query::wasm_raw(contract, key), height)
+            .await
+            .map(|res| res.as_wasm_raw())
     }
 
     /// Call the contract's query entry point with the given message.
@@ -302,17 +289,11 @@ impl Client {
         M: Serialize,
         R: DeserializeOwned,
     {
-        self.query_app(
-            &Query::WasmSmart {
-                contract,
-                msg: msg.to_json_value()?,
-            },
-            height,
-        )
-        .await?
-        .as_wasm_smart()
-        .deserialize_json()
-        .map_err(Into::into)
+        self.query_app(&Query::wasm_smart(contract, msg)?, height)
+            .await?
+            .as_wasm_smart()
+            .deserialize_json()
+            .map_err(Into::into)
     }
 
     /// Simulate the gas usage of a transaction.

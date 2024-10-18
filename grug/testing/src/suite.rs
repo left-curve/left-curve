@@ -5,8 +5,8 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, Message, Op,
+        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
         TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
@@ -584,32 +584,19 @@ where
 
     pub fn query_config(&self) -> AppResult<Config> {
         self.app
-            .do_query_app(Query::Config {}, 0, false)
+            .do_query_app(Query::config(), 0, false)
             .map(|val| val.as_config())
     }
 
     pub fn query_app_config(&self, key: &str) -> AppResult<Json> {
         self.app
-            .do_query_app(
-                Query::AppConfig {
-                    key: key.to_string(),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::app_config(key), 0, false)
             .map(|res| res.as_app_config())
     }
 
     pub fn query_app_configs(&self) -> AppResult<BTreeMap<String, Json>> {
         self.app
-            .do_query_app(
-                Query::AppConfigs {
-                    start_after: None,
-                    limit: Some(u32::MAX),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::app_configs(None, Some(u32::MAX)), 0, false)
             .map(|res| res.as_app_configs())
     }
 
@@ -620,10 +607,7 @@ where
     {
         self.app
             .do_query_app(
-                Query::Balance {
-                    address: account.address(),
-                    denom: denom.try_into().unwrap(),
-                },
+                Query::balance(account.address(), denom.try_into().unwrap()),
                 0, // zero means to use the latest height
                 false,
             )
@@ -633,11 +617,7 @@ where
     pub fn query_balances(&self, account: &dyn Addressable) -> AppResult<Coins> {
         self.app
             .do_query_app(
-                Query::Balances {
-                    address: account.address(),
-                    start_after: None,
-                    limit: Some(u32::MAX),
-                },
+                Query::balances(account.address(), None, Some(u32::MAX)),
                 0, // zero means to use the latest height
                 false,
             )
@@ -650,70 +630,37 @@ where
         D::Error: Debug,
     {
         self.app
-            .do_query_app(
-                Query::Supply {
-                    denom: denom.try_into().unwrap(),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::supply(denom.try_into().unwrap()), 0, false)
             .map(|res| res.as_supply().amount)
     }
 
     pub fn query_supplies(&self) -> AppResult<Coins> {
         self.app
-            .do_query_app(
-                Query::Supplies {
-                    start_after: None,
-                    limit: Some(u32::MAX),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::supplies(None, Some(u32::MAX)), 0, false)
             .map(|res| res.as_supplies())
     }
 
     pub fn query_code(&self, hash: Hash256) -> AppResult<Binary> {
         self.app
-            .do_query_app(Query::Code { hash }, 0, false)
+            .do_query_app(Query::code(hash), 0, false)
             .map(|res| res.as_code())
     }
 
     pub fn query_codes(&self) -> AppResult<BTreeMap<Hash256, Binary>> {
         self.app
-            .do_query_app(
-                Query::Codes {
-                    start_after: None,
-                    limit: Some(u32::MAX),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::codes(None, Some(u32::MAX)), 0, false)
             .map(|res| res.as_codes())
     }
 
     pub fn query_contract(&self, contract: &dyn Addressable) -> AppResult<ContractInfo> {
         self.app
-            .do_query_app(
-                Query::Contract {
-                    address: contract.address(),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::contract(contract.address()), 0, false)
             .map(|res| res.as_contract())
     }
 
     pub fn query_contracts(&self) -> AppResult<BTreeMap<Addr, ContractInfo>> {
         self.app
-            .do_query_app(
-                Query::Contracts {
-                    start_after: None,
-                    limit: Some(u32::MAX),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::contracts(None, Some(u32::MAX)), 0, false)
             .map(|res| res.as_contracts())
     }
 
@@ -722,14 +669,7 @@ where
         B: Into<Binary>,
     {
         self.app
-            .do_query_app(
-                Query::WasmRaw {
-                    contract,
-                    key: key.into(),
-                },
-                0,
-                false,
-            )
+            .do_query_app(Query::wasm_raw(contract, key), 0, false)
             .map(|res| res.as_wasm_raw())
     }
 
@@ -740,17 +680,9 @@ where
         R::Response: DeserializeOwned + Debug,
     {
         let msg = R::Message::from(req);
-        let msg_raw = msg.to_json_value()?;
 
         self.app
-            .do_query_app(
-                Query::WasmSmart {
-                    contract,
-                    msg: msg_raw,
-                },
-                0, // zero means to use the latest height
-                false,
-            )
+            .do_query_app(Query::wasm_smart(contract, &msg)?, 0, false)
             .map(|res| res.as_wasm_smart().deserialize_json().unwrap())
     }
 }

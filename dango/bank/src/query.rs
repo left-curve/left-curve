@@ -2,8 +2,9 @@ use {
     crate::{BALANCES, NAMESPACE_OWNERS, SUPPLIES},
     dango_types::bank::QueryMsg,
     grug::{
-        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
-        JsonSerExt, NumberConst, Order, Part, StdResult, Uint128,
+        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Json, JsonSerExt,
+        NumberConst, Order, Part, QueryBalanceRequest, QueryBalancesRequest, QuerySuppliesRequest,
+        QuerySupplyRequest, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -45,71 +46,58 @@ fn query_namespaces(
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_query(ctx: ImmutableCtx, msg: BankQuery) -> StdResult<BankQueryResponse> {
     match msg {
-        BankQuery::Balance { address, denom } => {
-            let res = query_balance(ctx, address, denom)?;
+        BankQuery::Balance(req) => {
+            let res = query_balance(ctx, req)?;
             Ok(BankQueryResponse::Balance(res))
         },
-        BankQuery::Balances {
-            address,
-            start_after,
-            limit,
-        } => {
-            let res = query_balances(ctx, address, start_after, limit)?;
+        BankQuery::Balances(req) => {
+            let res = query_balances(ctx, req)?;
             Ok(BankQueryResponse::Balances(res))
         },
-        BankQuery::Supply { denom } => {
-            let res = query_supply(ctx, denom)?;
+        BankQuery::Supply(req) => {
+            let res = query_supply(ctx, req)?;
             Ok(BankQueryResponse::Supply(res))
         },
-        BankQuery::Supplies { start_after, limit } => {
-            let res = query_supplies(ctx, start_after, limit)?;
+        BankQuery::Supplies(req) => {
+            let res = query_supplies(ctx, req)?;
             Ok(BankQueryResponse::Supplies(res))
         },
     }
 }
 
-fn query_balance(ctx: ImmutableCtx, address: Addr, denom: Denom) -> StdResult<Coin> {
-    let maybe_amount = BALANCES.may_load(ctx.storage, (&address, &denom))?;
+fn query_balance(ctx: ImmutableCtx, req: QueryBalanceRequest) -> StdResult<Coin> {
+    let maybe_amount = BALANCES.may_load(ctx.storage, (&req.address, &req.denom))?;
 
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_amount.unwrap_or(Uint128::ZERO),
     })
 }
 
-fn query_balances(
-    ctx: ImmutableCtx,
-    address: Addr,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+fn query_balances(ctx: ImmutableCtx, req: QueryBalancesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     BALANCES
-        .prefix(&address)
+        .prefix(&req.address)
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .collect::<StdResult<BTreeMap<_, _>>>()?
         .try_into()
 }
 
-fn query_supply(ctx: ImmutableCtx, denom: Denom) -> StdResult<Coin> {
-    let maybe_supply = SUPPLIES.may_load(ctx.storage, &denom)?;
+fn query_supply(ctx: ImmutableCtx, req: QuerySupplyRequest) -> StdResult<Coin> {
+    let maybe_supply = SUPPLIES.may_load(ctx.storage, &req.denom)?;
 
     Ok(Coin {
-        denom,
+        denom: req.denom,
         amount: maybe_supply.unwrap_or(Uint128::ZERO),
     })
 }
 
-fn query_supplies(
-    ctx: ImmutableCtx,
-    start_after: Option<Denom>,
-    limit: Option<u32>,
-) -> StdResult<Coins> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+fn query_supplies(ctx: ImmutableCtx, req: QuerySuppliesRequest) -> StdResult<Coins> {
+    let start = req.start_after.as_ref().map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     SUPPLIES
         .range(ctx.storage, start, None, Order::Ascending)

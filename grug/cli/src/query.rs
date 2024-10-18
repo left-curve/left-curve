@@ -3,7 +3,9 @@ use {
     colored_json::ToColoredJson,
     grug_client::Client,
     grug_jmt::Proof,
-    grug_types::{Addr, Binary, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query},
+    grug_types::{
+        Addr, Binary, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query, QueryWasmSmartRequest,
+    },
     serde::Serialize,
     std::str::FromStr,
 };
@@ -138,12 +140,12 @@ impl QueryCmd {
                 let res = client.query_block_result(height).await?;
                 return print_json_pretty(res);
             },
-            SubCmd::Config => Query::Config {},
-            SubCmd::AppConfig { key } => Query::AppConfig { key },
-            SubCmd::AppConfigs { start_after, limit } => Query::AppConfigs { start_after, limit },
+            SubCmd::Config => Query::config(),
+            SubCmd::AppConfig { key } => Query::app_config(key),
+            SubCmd::AppConfigs { start_after, limit } => Query::app_configs(start_after, limit),
             SubCmd::Balance { address, denom } => {
                 let denom = Denom::try_from(denom)?;
-                Query::Balance { address, denom }
+                Query::balance(address, denom)
             },
             SubCmd::Balances {
                 address,
@@ -151,33 +153,29 @@ impl QueryCmd {
                 limit,
             } => {
                 let start_after = start_after.map(Denom::try_from).transpose()?;
-                Query::Balances {
-                    address,
-                    start_after,
-                    limit,
-                }
+                Query::balances(address, start_after, limit)
             },
             SubCmd::Supply { denom } => {
                 let denom = Denom::try_from(denom)?;
-                Query::Supply { denom }
+                Query::supply(denom)
             },
             SubCmd::Supplies { start_after, limit } => {
                 let start_after = start_after.map(Denom::try_from).transpose()?;
-                Query::Supplies { start_after, limit }
+                Query::supplies(start_after, limit)
             },
-            SubCmd::Code { hash } => Query::Code { hash },
-            SubCmd::Codes { start_after, limit } => Query::Codes { start_after, limit },
-            SubCmd::Contract { address } => Query::Contract { address },
-            SubCmd::Contracts { start_after, limit } => Query::Contracts { start_after, limit },
+            SubCmd::Code { hash } => Query::code(hash),
+            SubCmd::Codes { start_after, limit } => Query::codes(start_after, limit),
+            SubCmd::Contract { address } => Query::contract(address),
+            SubCmd::Contracts { start_after, limit } => Query::contracts(start_after, limit),
             SubCmd::WasmRaw { contract, key_hex } => {
                 // We interpret the input raw key as Hex encoded
                 let key = Binary::from(hex::decode(key_hex)?);
-                Query::WasmRaw { contract, key }
+                Query::wasm_raw(contract, key)
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
                 let msg = msg.deserialize_json()?;
-                Query::WasmSmart { contract, msg }
+                Query::WasmSmart(QueryWasmSmartRequest { contract, msg })
             },
             SubCmd::Store { key_hex, prove } => {
                 return query_store(&client, key_hex, self.height, prove).await;

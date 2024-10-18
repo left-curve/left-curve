@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt, JsonSerExt,
-        Query, QueryRequest, QueryResponse, StdResult,
+        Addr, Binary, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt, Query,
+        QueryRequest, QueryResponse, StdResult,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -34,7 +34,7 @@ impl<'a> QuerierWrapper<'a> {
 
     pub fn query_config(&self) -> StdResult<Config> {
         self.inner
-            .query_chain(Query::Config {})
+            .query_chain(Query::config())
             .map(|res| res.as_config())
     }
 
@@ -44,7 +44,7 @@ impl<'a> QuerierWrapper<'a> {
         T: DeserializeOwned,
     {
         self.inner
-            .query_chain(Query::AppConfig { key: key.into() })
+            .query_chain(Query::app_config(key))
             .and_then(|res| res.as_app_config().deserialize_json())
     }
 
@@ -54,13 +54,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<String, Json>> {
         self.inner
-            .query_chain(Query::AppConfigs { start_after, limit })
+            .query_chain(Query::app_configs(start_after, limit))
             .map(|res| res.as_app_configs())
     }
 
     pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
         self.inner
-            .query_chain(Query::Balance { address, denom })
+            .query_chain(Query::balance(address, denom))
             .map(|res| res.as_balance().amount)
     }
 
@@ -71,17 +71,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner
-            .query_chain(Query::Balances {
-                address,
-                start_after,
-                limit,
-            })
+            .query_chain(Query::balances(address, start_after, limit))
             .map(|res| res.as_balances())
     }
 
     pub fn query_supply(&self, denom: Denom) -> StdResult<Uint128> {
         self.inner
-            .query_chain(Query::Supply { denom })
+            .query_chain(Query::supply(denom))
             .map(|res| res.as_supply().amount)
     }
 
@@ -91,13 +87,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<Coins> {
         self.inner
-            .query_chain(Query::Supplies { start_after, limit })
+            .query_chain(Query::supplies(start_after, limit))
             .map(|res| res.as_supplies())
     }
 
     pub fn query_code(&self, hash: Hash256) -> StdResult<Binary> {
         self.inner
-            .query_chain(Query::Code { hash })
+            .query_chain(Query::code(hash))
             .map(|res| res.as_code())
     }
 
@@ -107,13 +103,13 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Hash256, Binary>> {
         self.inner
-            .query_chain(Query::Codes { start_after, limit })
+            .query_chain(Query::codes(start_after, limit))
             .map(|res| res.as_codes())
     }
 
     pub fn query_contract(&self, address: Addr) -> StdResult<ContractInfo> {
         self.inner
-            .query_chain(Query::Contract { address })
+            .query_chain(Query::contract(address))
             .map(|res| res.as_contract())
     }
 
@@ -123,7 +119,7 @@ impl<'a> QuerierWrapper<'a> {
         limit: Option<u32>,
     ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
         self.inner
-            .query_chain(Query::Contracts { start_after, limit })
+            .query_chain(Query::contracts(start_after, limit))
             .map(|res| res.as_contracts())
     }
 
@@ -132,10 +128,7 @@ impl<'a> QuerierWrapper<'a> {
         B: Into<Binary>,
     {
         self.inner
-            .query_chain(Query::WasmRaw {
-                contract,
-                key: key.into(),
-            })
+            .query_chain(Query::wasm_raw(contract, key))
             .map(|res| res.as_wasm_raw())
     }
 
@@ -148,10 +141,7 @@ impl<'a> QuerierWrapper<'a> {
         let msg = R::Message::from(req);
 
         self.inner
-            .query_chain(Query::WasmSmart {
-                contract,
-                msg: msg.to_json_value()?,
-            })
+            .query_chain(Query::wasm_smart(contract, &msg)?)
             .and_then(|res| res.as_wasm_smart().deserialize_json())
     }
 

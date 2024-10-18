@@ -885,9 +885,7 @@ mod tests {
 
         // Use AppConfig query as example
         // We don't want to test the query itself, just the query_chain function
-        let request = Query::AppConfig {
-            key: key.to_string(),
-        };
+        let request = Query::app_config(key);
 
         APP_CONFIGS
             .save(
