@@ -3,10 +3,7 @@
 module tree {
 
 import hashes.* from "./hashes"
-
-type Option[a] = 
-    | None
-    | Some(a)
+import basicSpells.* from "./spells/basicSpells"
 
 type Index = int
 val IndexRange = 0.to(15)
