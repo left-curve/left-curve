@@ -4,7 +4,9 @@ module tree {
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import node.* from "./node"
+  export node.*
   import hashes.* from "./hashes"
+  export hashes.*
 
   type Outcome =
       | Unchanged(Option[Node])
