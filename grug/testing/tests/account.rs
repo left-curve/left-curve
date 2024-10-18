@@ -52,6 +52,7 @@ fn check_tx_and_finalize() {
 
     // The tx with sequence 0 should fails check_tx.
     assert_eq!(txs.len(), 3);
+
     assert_eq!(
         txs[0]
             .credential

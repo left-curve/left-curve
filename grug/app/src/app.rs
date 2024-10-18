@@ -254,13 +254,12 @@ where
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
-        let gas_tracker = GasTracker::new_limited(tx.gas_limit);
         let mut events = vec![];
 
-        let ctx = AppCtx::new_boxed(
+        let mut ctx = AppCtx::new_boxed(
             self.vm.clone(),
             Box::new(buffer),
-            GasTracker::new_limited(tx.gas_limit),
+            GasTracker::new_limitless(),
             block,
         );
 
@@ -269,20 +268,22 @@ where
                 events.extend(new_events);
             },
             Err(err) => {
-                return Ok(new_outcome(gas_tracker, Err(err)));
+                return Ok(new_outcome(ctx.gas_tracker, Err(err)));
             },
         }
 
-        match do_authenticate(ctx, &tx, AuthMode::Check) {
+        ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
+
+        match do_authenticate(ctx.clone(), &tx, AuthMode::Check) {
             Ok((new_events, _)) => {
                 events.extend(new_events);
             },
             Err(err) => {
-                return Ok(new_outcome(gas_tracker, Err(err)));
+                return Ok(new_outcome(ctx.gas_tracker, Err(err)));
             },
         }
 
-        Ok(new_outcome(gas_tracker, Ok(events)))
+        Ok(new_outcome(ctx.gas_tracker, Ok(events)))
     }
 
     // Returns (last_block_height, last_block_app_hash).
@@ -486,7 +487,6 @@ where
 
     // Create the gas tracker, with the limit being the gas limit requested by
     // the transaction.
-    ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -507,6 +507,8 @@ where
             return new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), Err(err));
         },
     }
+
+    ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // Call the sender account's `authenticate` function.
     //
@@ -531,7 +533,7 @@ where
             Err(err) => {
                 drop(buffer2);
                 return process_finalize_fee(
-                    ctx.with_buffer_storage(buffer1.clone()),
+                    ctx.with_buffer_storage(buffer1),
                     tx,
                     mode,
                     events,
@@ -612,7 +614,7 @@ where
 }
 
 fn process_finalize_fee<S, VM>(
-    ctx: AppCtx<VM, Shared<Buffer<S>>>,
+    mut ctx: AppCtx<VM, Shared<Buffer<S>>>,
     tx: Tx,
     mode: AuthMode,
     mut events: Vec<Event>,
@@ -625,21 +627,20 @@ where
 {
     let outcome_so_far = new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), result.clone());
 
-    match do_finalize_fee(
-        ctx.clone_with_storage(Box::new(ctx.storage.clone())),
-        &tx,
-        &outcome_so_far,
-        mode,
-    ) {
+    let used_gt = ctx.gas_tracker.clone();
+
+    ctx.gas_tracker = GasTracker::new_limitless();
+
+    match do_finalize_fee(ctx.box_me(), &tx, &outcome_so_far, mode) {
         Ok(new_events) => {
             events.extend(new_events);
             ctx.storage.disassemble().consume();
-            new_tx_outcome(ctx.gas_tracker, events, result)
+            new_tx_outcome(used_gt, events, result)
         },
         Err(err) => {
             events.clear();
             drop(ctx.storage);
-            new_tx_outcome(ctx.gas_tracker, Vec::new(), Err(err))
+            new_tx_outcome(used_gt, Vec::new(), Err(err))
         },
     }
 }
