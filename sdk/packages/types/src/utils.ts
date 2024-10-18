@@ -73,3 +73,5 @@ export type Range<
     : result extends []
       ? Range<start, stop, [], [...padding, 0]>
       : Range<start, stop, [...result, current], padding>;
+
+export type MaybePromise<T> = T | Promise<T>;

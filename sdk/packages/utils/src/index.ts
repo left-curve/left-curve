@@ -41,5 +41,11 @@ export {
   formatAddress,
 } from "./formatters";
 
+export {
+  wait,
+  withRetry,
+  withTimeout,
+} from "./promises";
+
+export { createBatchScheduler } from "./scheduler";
 export { uid } from "./uid";
-export { sleep } from "./promises";

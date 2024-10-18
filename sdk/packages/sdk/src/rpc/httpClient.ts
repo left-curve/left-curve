@@ -1,92 +1,111 @@
-import type {
-  Json,
-  JsonRpcBatchOptions,
-  JsonRpcRequest,
-  JsonRpcSuccessResponse,
-  RpcClient,
-} from "@leftcurve/types";
+import type { HttpRpcClientOptions, RpcClient } from "@leftcurve/types";
+import { withTimeout } from "@leftcurve/utils";
+import { HttpRequestError } from "~/errors/request";
+import { TimeoutError } from "~/errors/timeout";
 
-export function httpRpc(
-  endpoint: string,
-  headers: Record<string, string | string[]> = {},
-  batchOptions?: JsonRpcBatchOptions,
-): RpcClient {
-  const queue: {
-    request: JsonRpcRequest;
-    resolve: (a: JsonRpcSuccessResponse<unknown>) => void;
-    reject: (a: Error) => void;
-  }[] = [];
-
-  const useBach = batchOptions !== undefined;
-
-  let timer: ReturnType<typeof setInterval> | undefined;
-
-  const flush = async () => {
-    if (batchOptions === undefined) return;
-    const batch = queue.splice(0, batchOptions.maxSize);
-
-    if (batch.length === 0 && timer) {
-      clearInterval(timer);
-      timer = undefined;
-      return;
-    }
-
-    try {
-      const requests = batch.map((item) => item.request);
-      const requestMap = new Map(batch.map((item) => [item.request.id, item]));
-
-      const responses = await handleRequest(requests);
-      const responsesArray = Array.isArray(responses) ? responses : [responses];
-
-      for (const response of responsesArray) {
-        const request = requestMap.get(response.id);
-        if (!request) continue;
-        if ("error" in response) {
-          request.reject(response.error);
-        } else {
-          request.resolve(response);
-        }
-      }
-    } catch (err) {
-      for (const item of batch) {
-        item.reject(err instanceof Error ? err : new Error("RPC Client: something went wrong"));
-      }
-    }
-  };
-
-  const handleRequest = async (request: JsonRpcRequest | JsonRpcRequest[]) => {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(request),
-    });
-    return await response.json();
-  };
-
+function createIdStore() {
   return {
-    request: async (method: string, params: Json) => {
-      const request: JsonRpcRequest = {
-        id: Date.now(),
-        jsonrpc: "2.0",
-        method,
-        params,
+    current: 0,
+    take() {
+      return this.current++;
+    },
+    reset() {
+      this.current = 0;
+    },
+  };
+}
+
+export const idHandler = /*#__PURE__*/ createIdStore();
+
+export function httpRpc(url: string, options: HttpRpcClientOptions = {}): RpcClient {
+  return {
+    async request(params) {
+      const {
+        body,
+        onRequest = options.onRequest,
+        onResponse = options.onResponse,
+        timeout = options.timeout ?? 10_000,
+      } = params;
+
+      const fetchOptions = {
+        ...(options.fetchOptions ?? {}),
+        ...(params.fetchOptions ?? {}),
       };
 
-      if (!useBach) return await handleRequest(request);
+      const { headers, method, signal: signal_ } = fetchOptions;
 
-      const promise = new Promise<JsonRpcSuccessResponse<unknown>>((resolve, reject) => {
-        queue.push({ request, resolve, reject });
-        if (queue.length && timer) {
-          flush();
-        } else if (!timer) {
-          timer = setInterval(flush, batchOptions.maxWait);
+      try {
+        const response = await withTimeout(
+          async ({ signal }) => {
+            const init: RequestInit = {
+              ...fetchOptions,
+              body: Array.isArray(body)
+                ? JSON.stringify(
+                    body.map((body) => ({
+                      ...body,
+                      jsonrpc: "2.0",
+                      id: body.id ?? idHandler.take(),
+                    })),
+                  )
+                : JSON.stringify({
+                    ...body,
+                    jsonrpc: "2.0",
+                    id: body.id ?? idHandler.take(),
+                  }),
+              headers: {
+                "Content-Type": "application/json",
+                ...headers,
+              },
+              method: method || "POST",
+              signal: signal_ || (timeout > 0 ? signal : null),
+            };
+            const request = new Request(url, init);
+            const args = (await onRequest?.(request, init)) ?? { ...init, url };
+            const response = await fetch(args.url ?? url, args);
+            return response;
+          },
+          {
+            errorInstance: new TimeoutError({ body: body, url }),
+            timeout,
+            signal: true,
+          },
+        );
+
+        if (onResponse) await onResponse(response);
+
+        let data: any;
+        if (response.headers.get("Content-Type")?.startsWith("application/json"))
+          data = await response.json();
+        else {
+          data = await response.text();
+          try {
+            data = JSON.parse(data || "{}");
+          } catch (err) {
+            if (response.ok) throw err;
+            data = { error: data };
+          }
         }
-      });
 
-      return await promise;
+        if (!response.ok) {
+          throw new HttpRequestError({
+            body,
+            details: JSON.stringify(data.error) || response.statusText,
+            headers: response.headers,
+            status: response.status,
+            url,
+          });
+        }
+
+        return data;
+      } catch (err) {
+        if (err instanceof HttpRequestError) throw err;
+        if (err instanceof TimeoutError) throw err;
+        throw new HttpRequestError({
+          body,
+          cause: err as Error,
+          url,
+        });
+      }
     },
   };
 }

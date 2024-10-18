@@ -178,6 +178,7 @@ export type {
   RemoveUndefined,
   StrictOmit,
   UnionStrictOmit,
+  MaybePromise,
 } from "./utils";
 
 export type {
@@ -209,6 +210,11 @@ export type {
   RpcRequestOptions,
   DerivedRpcSchema,
 } from "./rpc";
+
+export type {
+  HttpRequestParameters,
+  HttpRpcClientOptions,
+} from "./http";
 
 export {
   AbciQueryResponse,
