@@ -115,156 +115,155 @@ impl MockQuerier {
 impl Querier for MockQuerier {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         match req {
-            Query::Config {} => {
+            Query::Config(_req) => {
                 let cfg = self
                     .config
                     .clone()
                     .expect("[MockQuerier]: config is not set");
                 Ok(QueryResponse::Config(cfg))
             },
-            Query::AppConfig { key } => {
+            Query::AppConfig(req) => {
                 let value = self
                     .app_configs
-                    .get(&key)
+                    .get(&req.key)
                     .cloned()
-                    .ok_or_else(|| StdError::data_not_found::<Json>(key.as_bytes()))?;
+                    .ok_or_else(|| StdError::data_not_found::<Json>(req.key.as_bytes()))?;
                 Ok(QueryResponse::AppConfig(value))
             },
-            Query::AppConfigs { start_after, limit } => {
+            Query::AppConfigs(req) => {
                 // Using the `BTreeMap::range` method is more efficient, but for
                 // testing purpose this is good enough.
                 let entries = self
                     .app_configs
                     .iter()
                     .filter(|(k, _)| {
-                        if let Some(lower_bound) = &start_after {
+                        if let Some(lower_bound) = &req.start_after {
                             *k > lower_bound
                         } else {
                             true
                         }
                     })
-                    .take(limit.unwrap_or(u32::MAX) as usize)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (k.clone(), v.clone()))
                     .collect();
                 Ok(QueryResponse::AppConfigs(entries))
             },
-            Query::Balance { address, denom } => {
+            Query::Balance(req) => {
                 let amount = self
                     .balances
-                    .get(&address)
-                    .and_then(|amounts| amounts.get(&denom))
+                    .get(&req.address)
+                    .and_then(|amounts| amounts.get(&req.denom))
                     .cloned()
                     .unwrap_or(Uint128::ZERO);
-                Ok(QueryResponse::Balance(Coin { denom, amount }))
+                Coin::new(req.denom, amount).map(QueryResponse::Balance)
             },
-            Query::Balances {
-                address,
-                start_after,
-                limit,
-            } => {
+            Query::Balances(req) => {
                 let coins = self
                     .balances
-                    .get(&address)
+                    .get(&req.address)
                     .cloned()
                     .unwrap_or_default()
                     .into_iter()
                     .filter(|(denom, _)| {
-                        if let Some(lower_bound) = &start_after {
+                        if let Some(lower_bound) = &req.start_after {
                             denom > lower_bound
                         } else {
                             true
                         }
                     })
-                    .take(limit.unwrap_or(u32::MAX) as usize)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .collect::<BTreeMap<_, _>>()
                     .try_into()?;
                 Ok(QueryResponse::Balances(coins))
             },
-            Query::Supply { denom } => {
-                let amount = self.supplies.get(&denom).cloned().unwrap_or(Uint128::ZERO);
-                Ok(QueryResponse::Supply(Coin { denom, amount }))
+            Query::Supply(req) => {
+                let amount = self
+                    .supplies
+                    .get(&req.denom)
+                    .cloned()
+                    .unwrap_or(Uint128::ZERO);
+                Coin::new(req.denom, amount).map(QueryResponse::Balance)
             },
-            Query::Supplies { start_after, limit } => {
+            Query::Supplies(req) => {
                 let coins = self
                     .supplies
                     .iter()
                     .filter(|(denom, _)| {
-                        if let Some(lower_bound) = &start_after {
+                        if let Some(lower_bound) = &req.start_after {
                             *denom > lower_bound
                         } else {
                             true
                         }
                     })
-                    .take(limit.unwrap_or(u32::MAX) as usize)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (k.clone(), *v))
                     .collect::<BTreeMap<_, _>>()
                     .try_into()?;
                 Ok(QueryResponse::Supplies(coins))
             },
-            Query::Code { hash } => {
+            Query::Code(req) => {
                 let code = self
                     .codes
-                    .get(&hash)
+                    .get(&req.hash)
                     .cloned()
-                    .ok_or_else(|| StdError::data_not_found::<Binary>(hash.as_ref()))?;
+                    .ok_or_else(|| StdError::data_not_found::<Binary>(req.hash.as_ref()))?;
                 Ok(QueryResponse::Code(code))
             },
-            Query::Codes { start_after, limit } => {
+            Query::Codes(req) => {
                 let codes = self
                     .codes
                     .iter()
                     .filter(|(hash, _)| {
-                        if let Some(lower_bound) = &start_after {
+                        if let Some(lower_bound) = &req.start_after {
                             *hash > lower_bound
                         } else {
                             true
                         }
                     })
-                    .take(limit.unwrap_or(u32::MAX) as usize)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (*k, v.clone()))
                     .collect();
                 Ok(QueryResponse::Codes(codes))
             },
-            Query::Contract { address } => {
-                let contract =
-                    self.contracts.get(&address).cloned().ok_or_else(|| {
-                        StdError::data_not_found::<ContractInfo>(address.as_ref())
-                    })?;
+            Query::Contract(req) => {
+                let contract = self.contracts.get(&req.address).cloned().ok_or_else(|| {
+                    StdError::data_not_found::<ContractInfo>(req.address.as_ref())
+                })?;
                 Ok(QueryResponse::Contract(contract))
             },
-            Query::Contracts { start_after, limit } => {
+            Query::Contracts(req) => {
                 let contracts = self
                     .contracts
                     .iter()
                     .filter(|(address, _)| {
-                        if let Some(lower_bound) = &start_after {
+                        if let Some(lower_bound) = &req.start_after {
                             *address > lower_bound
                         } else {
                             true
                         }
                     })
-                    .take(limit.unwrap_or(u32::MAX) as usize)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (*k, v.clone()))
                     .collect();
                 Ok(QueryResponse::Contracts(contracts))
             },
-            Query::WasmRaw { contract, key } => {
+            Query::WasmRaw(req) => {
                 let maybe_value = self
                     .raw_query_handler
-                    .get_storage(contract)
-                    .and_then(|storage| storage.read(&key).map(Binary::from));
+                    .get_storage(req.contract)
+                    .and_then(|storage| storage.read(&req.key).map(Binary::from));
                 Ok(QueryResponse::WasmRaw(maybe_value))
             },
-            Query::WasmSmart { contract, msg } => {
+            Query::WasmSmart(req) => {
                 let handler = self
                     .smart_query_handler
                     .as_ref()
                     .expect("[MockQuerier]: smart query handler not set");
-                let response = handler(contract, msg).map_err(StdError::host)?;
+                let response = handler(req.contract, req.msg).map_err(StdError::host)?;
                 Ok(QueryResponse::WasmSmart(response))
             },
-            Query::Multi(requests) => {
-                let responses = requests
+            Query::Multi(reqs) => {
+                let responses = reqs
                     .into_iter()
                     .map(|req| self.query_chain(req))
                     .collect::<StdResult<Vec<_>>>()?;

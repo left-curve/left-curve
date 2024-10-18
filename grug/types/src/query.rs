@@ -30,94 +30,227 @@ pub trait QueryRequest: Sized {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {
-    /// The chain's global configuration.
-    /// Returns: `Config`
-    Config {},
-    /// A single application-specific configuration.
-    /// Returns: `Json`
-    AppConfig { key: String },
+    /// Query the chain's global configuration.
+    Config(QueryConfigRequest),
+    /// Query a single application-specific configuration.
+    AppConfig(QueryAppConfigRequest),
     /// Enumerate all application-specific configurations.
-    /// Returns: `BTreeMap<String, Json>`
-    AppConfigs {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-    /// An account's balance in a single denom.
-    /// Returns: `Coin`
-    Balance { address: Addr, denom: Denom },
+    AppConfigs(QueryAppConfigsRequest),
+    /// Query an account's balance in a single denom.
+    Balance(QueryBalanceRequest),
     /// Enumerate an account's balances in all denoms.
-    /// Returns: `Coins`
-    Balances {
-        address: Addr,
-        start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
-    /// A token's total supply.
-    /// Returns: `Coin`
-    Supply { denom: Denom },
+    Balances(QueryBalancesRequest),
+    /// Query a token's total supply.
+    Supply(QuerySupplyRequest),
     /// Enumerate all token's total supplies.
-    /// Returns: `Coins`
-    Supplies {
-        start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
-    /// A single Wasm byte code.
-    /// Returns: `Binary`
-    Code { hash: Hash256 },
+    Supplies(QuerySuppliesRequest),
+    /// Query a single Wasm byte code.
+    Code(QueryCodeRequest),
     /// Enumerate all Wasm byte codes.
-    ///
-    /// Returns: `BTreeMap<Hash256, Binary>`
-    Codes {
-        start_after: Option<Hash256>,
-        limit: Option<u32>,
-    },
-    /// Metadata of a single contract.
-    /// Returns: `ContractInfo`
-    Contract { address: Addr },
+    Codes(QueryCodesRequest),
+    /// Query the metadata of a single contract.
+    Contract(QueryContractRequest),
     /// Enumerate metadata of all contracts.
-    /// Returns: `BTreeMap<Addr, ContractInfo>`
-    Contracts {
-        start_after: Option<Addr>,
-        limit: Option<u32>,
-    },
-    /// A raw key-value pair in a contract's internal state.
-    /// Returns: `Option<Binary>`
-    WasmRaw { contract: Addr, key: Binary },
+    Contracts(QueryContractsRequest),
+    /// Query a raw key-value pair in a contract's internal state.
+    WasmRaw(QueryWasmRawRequest),
     /// Call the contract's query entry point with the given message.
-    /// Returns: `Json`
-    WasmSmart { contract: Addr, msg: Json },
+    WasmSmart(QueryWasmSmartRequest),
     /// Perform multiple queries at once.
-    /// Returns: `Vec<QueryResponse>`.
     Multi(Vec<Query>),
 }
 
 impl Query {
+    pub fn config() -> Self {
+        QueryConfigRequest {}.into()
+    }
+
+    pub fn app_config<T>(key: T) -> Self
+    where
+        T: Into<String>,
+    {
+        QueryAppConfigRequest { key: key.into() }.into()
+    }
+
+    pub fn app_configs(start_after: Option<String>, limit: Option<u32>) -> Self {
+        QueryAppConfigsRequest { start_after, limit }.into()
+    }
+
+    pub fn balance(address: Addr, denom: Denom) -> Self {
+        QueryBalanceRequest { address, denom }.into()
+    }
+
+    pub fn balances(address: Addr, start_after: Option<Denom>, limit: Option<u32>) -> Self {
+        QueryBalancesRequest {
+            address,
+            start_after,
+            limit,
+        }
+        .into()
+    }
+
+    pub fn supply(denom: Denom) -> Self {
+        QuerySupplyRequest { denom }.into()
+    }
+
+    pub fn supplies(start_after: Option<Denom>, limit: Option<u32>) -> Self {
+        QuerySuppliesRequest { start_after, limit }.into()
+    }
+
+    pub fn code(hash: Hash256) -> Self {
+        QueryCodeRequest { hash }.into()
+    }
+
+    pub fn codes(start_after: Option<Hash256>, limit: Option<u32>) -> Self {
+        QueryCodesRequest { start_after, limit }.into()
+    }
+
+    pub fn contract(address: Addr) -> Self {
+        QueryContractRequest { address }.into()
+    }
+
+    pub fn contracts(start_after: Option<Addr>, limit: Option<u32>) -> Self {
+        QueryContractsRequest { start_after, limit }.into()
+    }
+
     pub fn wasm_raw<B>(contract: Addr, key: B) -> Self
     where
         B: Into<Binary>,
     {
-        Query::WasmRaw {
+        QueryWasmRawRequest {
             contract,
             key: key.into(),
         }
+        .into()
     }
 
     pub fn wasm_smart<M>(contract: Addr, msg: &M) -> StdResult<Self>
     where
         M: Serialize,
     {
-        Ok(Query::WasmSmart {
+        Ok(QueryWasmSmartRequest {
             contract,
             msg: msg.to_json_value()?,
-        })
+        }
+        .into())
     }
 
-    pub fn multi<I>(queries: I) -> Self
+    pub fn multi<Q, I>(queries: I) -> Self
     where
-        I: IntoIterator<Item = Query>,
+        Q: Into<Query>,
+        I: IntoIterator<Item = Q>,
     {
-        Query::Multi(queries.into_iter().collect())
+        Query::Multi(queries.into_iter().map(|req| req.into()).collect())
     }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryConfigRequest {}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryAppConfigRequest {
+    pub key: String,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryAppConfigsRequest {
+    pub start_after: Option<String>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryBalanceRequest {
+    pub address: Addr,
+    pub denom: Denom,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryBalancesRequest {
+    pub address: Addr,
+    pub start_after: Option<Denom>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QuerySupplyRequest {
+    pub denom: Denom,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QuerySuppliesRequest {
+    pub start_after: Option<Denom>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryCodeRequest {
+    pub hash: Hash256,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryCodesRequest {
+    pub start_after: Option<Hash256>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryContractRequest {
+    pub address: Addr,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryContractsRequest {
+    pub start_after: Option<Addr>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryWasmRawRequest {
+    pub contract: Addr,
+    pub key: Binary,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryWasmSmartRequest {
+    pub contract: Addr,
+    pub msg: Json,
+}
+
+macro_rules! impl_into_query {
+    ($variant:ident => $req:ty => $res:ty) => {
+        impl From<$req> for Query {
+            #[inline]
+            fn from(req: $req) -> Self {
+                Query::$variant(req)
+            }
+        }
+    };
+    ($($variant:ident => $req:ty => $resp:ty),+ $(,)?) => {
+        $(
+            impl_into_query!($variant => $req => $resp);
+        )+
+    };
+}
+
+impl_into_query! {
+    Config     => QueryConfigRequest     => Config,
+    AppConfig  => QueryAppConfigRequest  => Json,
+    AppConfigs => QueryAppConfigsRequest => BTreeMap<String, Json>,
+    Balance    => QueryBalanceRequest    => Coin,
+    Balances   => QueryBalancesRequest   => Coins,
+    Supply     => QuerySupplyRequest     => Coin,
+    Supplies   => QuerySuppliesRequest   => Coins,
+    Code       => QueryCodeRequest       => Binary,
+    Codes      => QueryCodesRequest      => BTreeMap<Hash256, Binary>,
+    Contract   => QueryContractRequest   => ContractInfo,
+    Contracts  => QueryContractsRequest  => BTreeMap<Addr, ContractInfo>,
+    WasmRaw    => QueryWasmRawRequest    => Option<Binary>,
+    WasmSmart  => QueryWasmSmartRequest  => Json,
+    Multi      => Vec<Query>             => Vec<QueryResponse>,
 }
 
 // --------------------------------- response ----------------------------------
