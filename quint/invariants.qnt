@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module invariants {
 
 import tree.* from "./tree" 
