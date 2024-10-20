@@ -72,9 +72,21 @@ fn main() {
         .members
         .expect("workspace does not contain any member")
         .into_iter()
+        .flat_map(|member| {
+            // The member can be a path to a specific folder (e.g. `grug/tester`)
+            // or a whildcard (e.g. `dango/*`). For the latter case, we need to
+            // expand the wildcard, and filter off results that aren't directories.
+            glob(&member).unwrap().filter_map(|path| {
+                if path.as_ref().unwrap().is_dir() {
+                    Some(path)
+                } else {
+                    None
+                }
+            })
+        })
         .filter_map(|path| {
             // Read the member's `Cargo.toml` file.
-            let file = fs::read_to_string(format!("{path}/Cargo.toml")).unwrap();
+            let file = fs::read_to_string(path.unwrap().join("Cargo.toml")).unwrap();
             let cargo_toml = toml::from_str::<CargoToml>(&file).unwrap();
 
             // We only build the crate if it is a cdylib.
