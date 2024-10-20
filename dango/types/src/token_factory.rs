@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Coin, Denom, Uint128},
+    grug::{Addr, Coin, Denom, NonZero, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -9,7 +9,10 @@ pub const NAMESPACE: &str = "factory";
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub denom_creation_fee: Coin,
+    /// A one time, flat fee for creating a denom.
+    ///
+    /// It's optional, but if provided, must be non-zero.
+    pub denom_creation_fee: Option<NonZero<Coin>>,
 }
 
 #[grug::derive(Serde)]
@@ -46,7 +49,7 @@ pub enum ExecuteMsg {
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the denom creation fee.
-    #[returns(Coin)]
+    #[returns(Option<Coin>)]
     DenomCreationFee {},
     /// Query a denom's admin address.
     #[returns(Addr)]

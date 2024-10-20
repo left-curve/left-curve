@@ -8,17 +8,14 @@ use {
         config::ACCOUNT_FACTORY_KEY,
         token_factory::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Part, Response, Uint128},
+    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    ensure!(
-        msg.denom_creation_fee.amount.is_non_zero(),
-        "denom creation fee can't be zero"
-    );
-
-    DENOM_CREATION_FEE.save(ctx.storage, &msg.denom_creation_fee)?;
+    if let Some(fee) = msg.denom_creation_fee {
+        DENOM_CREATION_FEE.save(ctx.storage, &fee.into_inner())?;
+    }
 
     Ok(Response::new())
 }
@@ -74,10 +71,8 @@ fn create(
     // Ensure the sender has paid the correct amount of fee.
     // Note: the logic here assumes the expected fee isn't zero, which we make
     // sure of during instantiation.
-    {
-        let expect = DENOM_CREATION_FEE.load(ctx.storage)?;
+    if let Some(expect) = DENOM_CREATION_FEE.may_load(ctx.storage)? {
         let actual = ctx.funds.into_one_coin()?;
-
         ensure!(
             actual == expect,
             "incorrect denom creation fee! expecting {expect}, got {actual}"

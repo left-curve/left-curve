@@ -80,7 +80,7 @@ pub fn build_genesis<T, D>(
     fee_recipient: &Username,
     fee_denom: D,
     fee_rate: Udec128,
-    denom_creation_fee: Uint128,
+    denom_creation_fee: Option<Uint128>,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -160,12 +160,13 @@ where
     )?;
 
     // Instantiate the token factory contract.
+    let denom_creation_fee = denom_creation_fee
+        .map(|amount| Coin::new(fee_denom.clone(), amount).and_then(NonZero::new))
+        .transpose()?;
     let token_factory = instantiate(
         &mut msgs,
         token_factory_code_hash,
-        &token_factory::InstantiateMsg {
-            denom_creation_fee: Coin::new(fee_denom.clone(), denom_creation_fee)?,
-        },
+        &token_factory::InstantiateMsg { denom_creation_fee },
         "dango/token_factory",
         "dango/token_factory",
     )?;
