@@ -86,7 +86,7 @@ fn create(
     {
         let cfg = CONFIG.load(ctx.storage)?;
 
-        if let Some(fee) = cfg.denom_creation_fee {
+        if let Some(fee) = cfg.token_creation_fee {
             let expect = fee.into_inner();
             let actual = ctx.funds.into_one_coin()?;
 

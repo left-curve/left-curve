@@ -12,7 +12,7 @@ pub struct Config {
     /// A one time, flat fee for creating a denom.
     ///
     /// It's optional, but if provided, must be non-zero.
-    pub denom_creation_fee: Option<NonZero<Coin>>,
+    pub token_creation_fee: Option<NonZero<Coin>>,
 }
 
 #[grug::derive(Serde)]
