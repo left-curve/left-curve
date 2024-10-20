@@ -1,40 +1,6 @@
 [workspace]
 resolver = "2"
-members  = [
-  "dango/account-factory",
-  "dango/account-safe",
-  "dango/account-spot",
-  "dango/amm",
-  "dango/auth",
-  "dango/bank",
-  "dango/genesis",
-  "dango/ibc-transfer",
-  "dango/taxman",
-  "dango/testing",
-  "dango/token-factory",
-  "dango/types",
-  "grug/app",
-  "grug/bob-the-builder",
-  "grug/cli",
-  "grug/client",
-  "grug/crypto",
-  "grug/db-disk",
-  "grug/db-memory",
-  "grug/ffi",
-  "grug/jellyfish-merkle",
-  "grug/macros",
-  "grug/math",
-  "grug/mock-account",
-  "grug/mock-bank",
-  "grug/mock-taxman",
-  "grug/std",
-  "grug/storage",
-  "grug/tester",
-  "grug/testing",
-  "grug/types",
-  "grug/vm-rust",
-  "grug/vm-wasm",
-]
+members  = ["dango/*", "grug/*"]
 
 [workspace.package]
 version       = "0.0.0"
