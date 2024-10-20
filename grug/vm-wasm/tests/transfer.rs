@@ -69,7 +69,7 @@ fn transfers() {
             limit: None,
         })
         .should_succeed_and_equal(BTreeMap::from([
-            (accounts["owner"].address, fee),
+            (suite.query_config().unwrap().taxman, fee),
             (accounts["sender"].address, sender_balance_after),
             (accounts["receiver"].address, Uint128::new(70)),
         ]));
