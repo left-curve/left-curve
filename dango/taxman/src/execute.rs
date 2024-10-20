@@ -23,6 +23,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateConfig { new_cfg } => update_config(ctx, new_cfg),
+        ExecuteMsg::Pay { payer } => pay(ctx, payer),
     }
 }
 
@@ -37,6 +38,12 @@ fn update_config(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
 
     CONFIG.save(ctx.storage, &new_cfg)?;
 
+    Ok(Response::new())
+}
+
+fn pay(_ctx: MutableCtx, _payer: Addr) -> anyhow::Result<Response> {
+    // For now, nothing to do.
+    // In the future, we will implement affiliate fees.
     Ok(Response::new())
 }
 
@@ -60,7 +67,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // If the withhold amount is non-zero, we force transfer this amount from
-    // the sender to the fee recipient.
+    // the sender to taxman.
     //
     // If the sender doesn't have enough fund to cover the maximum amount of fee
     // the tx may incur, this submessage fails, causing the tx to be rejected
@@ -74,7 +81,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             cfg.bank,
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
-                to: fee_cfg.fee_recipient,
+                to: ctx.contract,
                 denom: fee_cfg.fee_denom,
                 amount: withhold_amount,
             },
@@ -115,17 +122,9 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
     let refund_msg = if refund_amount.is_non_zero() {
-        let cfg = ctx.querier.query_config()?;
-
-        Some(Message::execute(
-            cfg.bank,
-            &bank::ExecuteMsg::ForceTransfer {
-                from: fee_cfg.fee_recipient,
-                to: tx.sender,
-                denom: fee_cfg.fee_denom,
-                amount: refund_amount,
-            },
-            Coins::new(),
+        Some(Message::transfer(
+            tx.sender,
+            Coins::one(fee_cfg.fee_denom, refund_amount)?,
         )?)
     } else {
         None

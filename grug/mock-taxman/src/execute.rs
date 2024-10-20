@@ -73,7 +73,6 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
 }
 
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
@@ -95,19 +94,6 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     // The difference between the two amounts is to be refunded to the user.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
-    // If the charge amount if non-zero, we send the fee to the chain's owner.
-    //
-    // This is just a demo. In practice, it probably makes more sense to have a
-    // fee distributor contract that distribute to stakers so something like that.
-    let charge_msg = if charge_amount.is_non_zero() {
-        Some(Message::transfer(
-            cfg.owner,
-            Coins::one(fee_cfg.fee_denom.clone(), charge_amount)?,
-        )?)
-    } else {
-        None
-    };
-
     let refund_msg = if refund_amount.is_non_zero() {
         Some(Message::transfer(
             tx.sender,
@@ -118,7 +104,6 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     };
 
     Ok(Response::new()
-        .may_add_message(charge_msg)
         .may_add_message(refund_msg)
         .add_attribute("gas_limit", tx.gas_limit)
         .add_attribute("gas_used", outcome.gas_used)

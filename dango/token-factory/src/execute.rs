@@ -6,6 +6,7 @@ use {
         account_factory::Username,
         bank,
         config::ACCOUNT_FACTORY_KEY,
+        taxman,
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
     grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
@@ -81,12 +82,11 @@ fn create(
     };
 
     // Ensure the sender has paid the correct amount of fee.
-    // Note: the logic here assumes the expected fee isn't zero, which we make
-    // sure of during instantiation.
-    {
-        let cfg = CONFIG.load(ctx.storage)?;
+    // If there's a non-zero fee, forward it to the taxman.
+    let fee_msg = {
+        let factory_cfg = CONFIG.load(ctx.storage)?;
 
-        if let Some(fee) = cfg.token_creation_fee {
+        if let Some(fee) = factory_cfg.token_creation_fee {
             let expect = fee.into_inner();
             let actual = ctx.funds.into_one_coin()?;
 
@@ -94,8 +94,18 @@ fn create(
                 actual == expect,
                 "incorrect denom creation fee! expecting {expect}, got {actual}"
             );
+
+            let cfg = ctx.querier.query_config()?;
+
+            Some(Message::execute(
+                cfg.taxman,
+                &taxman::ExecuteMsg::Pay { payer: ctx.sender },
+                actual,
+            )?)
+        } else {
+            None
         }
-    }
+    };
 
     // Ensure the denom hasn't already been created.
     {
@@ -118,7 +128,7 @@ fn create(
         ADMINS.save(ctx.storage, &denom, &admin)?;
     }
 
-    Ok(Response::new())
+    Ok(Response::new().may_add_message(fee_msg))
 }
 
 fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Result<Response> {

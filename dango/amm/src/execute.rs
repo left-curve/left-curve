@@ -6,10 +6,11 @@ use {
             ConcentratedPool, ExecuteMsg, InstantiateMsg, Pool, PoolId, PoolParams, XykPool,
             MINIMUM_LIQUIDITY, NAMESPACE, SUB_NAMESPACE_POOL,
         },
-        bank,
+        bank, taxman,
     },
     grug::{
-        Coins, Denom, Inner, Message, MutableCtx, Number, Response, StdResult, Uint128, UniqueVec,
+        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Response, StdResult, Uint128,
+        UniqueVec,
     },
 };
 
@@ -84,7 +85,7 @@ fn create_pool(ctx: MutableCtx, params: PoolParams) -> anyhow::Result<Response> 
 
     // 1. Mint self the withheld liquidity tokens.
     // 2. Mint the creator the remaining liquidity tokens.
-    // 3. Forward the pool creation fee to fee collector.
+    // 3. Forward the pool creation fee to taxman.
     Ok(Response::new()
         .add_message(Message::execute(
             cfg.bank,
@@ -104,8 +105,9 @@ fn create_pool(ctx: MutableCtx, params: PoolParams) -> anyhow::Result<Response> 
             },
             Coins::new(),
         )?)
-        .add_message(Message::transfer(
-            amm_cfg.fee_recipient,
+        .add_message(Message::execute(
+            cfg.taxman,
+            &taxman::ExecuteMsg::Pay { payer: ctx.sender },
             amm_cfg.pool_creation_fee.into_inner(),
         )?))
 }
@@ -115,7 +117,7 @@ fn swap(
     route: UniqueVec<PoolId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
-    let cfg = CONFIG.load(ctx.storage)?;
+    let amm_cfg = CONFIG.load(ctx.storage)?;
     let input = ctx.funds.into_one_coin()?;
     let mut pools = route
         .inner()
@@ -124,7 +126,7 @@ fn swap(
         .collect::<StdResult<Vec<_>>>()?;
 
     // Perform the swap in each pool.
-    let outcome = perform_swap(&cfg, input, pools.iter_mut())?;
+    let outcome = perform_swap(&amm_cfg, input, pools.iter_mut())?;
 
     if let Some(minimum_output) = minimum_output {
         ensure!(
@@ -140,11 +142,29 @@ fn swap(
         POOLS.save(ctx.storage, *pool_id, &pool)?;
     }
 
-    // 1. Transfer the protocol fee to the fee collector.
-    // 2. Transfer the remaining output to the trader.
+    // 1. Transfer the post-fee output to the trader (if it's non-zero).
+    let output_msg = if outcome.output.is_non_zero() {
+        Some(Message::transfer(ctx.sender, outcome.output)?)
+    } else {
+        None
+    };
+
+    // Transfer the protocol fee to taxman (if it's non-zero).
+    let fee_msg = if outcome.protocol_fee.is_non_zero() {
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.taxman,
+            &taxman::ExecuteMsg::Pay { payer: ctx.sender },
+            outcome.protocol_fee,
+        )?)
+    } else {
+        None
+    };
+
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, outcome.output)?)
-        .add_message(Message::transfer(cfg.fee_recipient, outcome.protocol_fee)?))
+        .may_add_message(output_msg)
+        .may_add_message(fee_msg))
 }
 
 fn provide_liquidity(
