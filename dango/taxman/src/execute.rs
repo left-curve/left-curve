@@ -22,12 +22,12 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::UpdateConfig { new_cfg } => update_config(ctx, new_cfg),
+        ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Pay { payer } => pay(ctx, payer),
     }
 }
 
-fn update_config(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
+fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     // Only the chain's owner can update fee config.

@@ -15,7 +15,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Update the fee configurations.
     /// Can only be called by the chain's owner.
-    UpdateConfig { new_cfg: Config },
+    Configure { new_cfg: Config },
     /// Forward protocol fee to the taxman.
     Pay { payer: Addr },
 }
