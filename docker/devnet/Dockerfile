@@ -1,4 +1,4 @@
-FROM leftcurve/optimizer:0.1.0 AS optimizer
+FROM leftcurve/optimizer:0.1.1 AS optimizer
 
 FROM rust:1.81.0-alpine
 
