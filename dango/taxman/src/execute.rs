@@ -121,10 +121,20 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     // refund the difference.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
+    // Use ForceTransfer instead of Transfer so that we don't need to invoke the
+    // sender's `receive` method (unnecessary).
     let refund_msg = if refund_amount.is_non_zero() {
-        Some(Message::transfer(
-            tx.sender,
-            Coins::one(fee_cfg.fee_denom, refund_amount)?,
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.bank,
+            &bank::ExecuteMsg::ForceTransfer {
+                from: ctx.contract,
+                to: tx.sender,
+                denom: fee_cfg.fee_denom,
+                amount: refund_amount,
+            },
+            Coins::new(),
         )?)
     } else {
         None
