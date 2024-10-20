@@ -37,8 +37,7 @@ fmt:
 
 # Update wasm artifacts used in tests
 testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/ && \
-  cp -v artifacts/dango_*.wasm dango/testing/testdata
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
 
 # --------------------------------- Optimizer ----------------------------------
 
