@@ -86,11 +86,11 @@ fn safe() {
     );
 
     // Derive the Safe's address.
-    // We have 3 genesis users + 3 members, so the Safe's index should be 6.
+    // We have 2 genesis users + 3 members, so the Safe's index should be 5.
     let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 6 }.into_bytes().as_slice(),
+        Salt { index: 5 }.into_bytes().as_slice(),
     );
     let mut safe = Safe::new(safe_address);
 
@@ -100,12 +100,12 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 6,
+            index: 5,
             params: AccountParams::Safe(params.clone()),
         });
 
     // The account should be been registered under each member's username.
-    for (member, index) in [(&member1, 3), (&member2, 4), (&member3, 5)] {
+    for (member, index) in [(&member1, 2), (&member2, 3), (&member3, 4)] {
         suite
             .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
                 username: member.username.clone(),
@@ -120,7 +120,7 @@ fn safe() {
                     }),
                 },
                 safe.address() => Account {
-                    index: 6,
+                    index: 5,
                     params: AccountParams::Safe(params.clone()),
                 },
             });
@@ -264,7 +264,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 6,
+            index: 5,
             params: AccountParams::Safe(params),
         });
 
