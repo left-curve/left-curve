@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, DENOM_ADMINS},
+    crate::{ADMINS, CONFIG},
     dango_types::token_factory::{Config, QueryMsg},
     grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
 };
@@ -29,7 +29,7 @@ fn query_config(storage: &dyn Storage) -> StdResult<Config> {
 }
 
 fn query_admin(storage: &dyn Storage, denom: Denom) -> StdResult<Addr> {
-    DENOM_ADMINS.load(storage, &denom)
+    ADMINS.load(storage, &denom)
 }
 
 fn query_admins(
@@ -40,7 +40,7 @@ fn query_admins(
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    DENOM_ADMINS
+    ADMINS
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect()

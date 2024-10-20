@@ -5,4 +5,4 @@ use {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const DENOM_ADMINS: Map<&Denom, Addr> = Map::new("denom");
+pub const ADMINS: Map<&Denom, Addr> = Map::new("admin");

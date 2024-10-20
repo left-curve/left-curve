@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, DENOM_ADMINS},
+    crate::{ADMINS, CONFIG},
     anyhow::{bail, ensure},
     dango_account_factory::ACCOUNTS_BY_USER,
     dango_types::{
@@ -111,11 +111,11 @@ fn create(
         let admin = admin.unwrap_or(ctx.sender);
 
         ensure!(
-            !DENOM_ADMINS.has(ctx.storage, &denom),
+            !ADMINS.has(ctx.storage, &denom),
             "denom `{denom}` already exists"
         );
 
-        DENOM_ADMINS.save(ctx.storage, &denom, &admin)?;
+        ADMINS.save(ctx.storage, &denom, &admin)?;
     }
 
     Ok(Response::new())
@@ -123,7 +123,7 @@ fn create(
 
 fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Result<Response> {
     ensure!(
-        ctx.sender == DENOM_ADMINS.load(ctx.storage, &denom)?,
+        ctx.sender == ADMINS.load(ctx.storage, &denom)?,
         "sender isn't the admin of denom `{denom}`"
     );
 
@@ -138,7 +138,7 @@ fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Res
 
 fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint128) -> anyhow::Result<Response> {
     ensure!(
-        ctx.sender == DENOM_ADMINS.load(ctx.storage, &denom)?,
+        ctx.sender == ADMINS.load(ctx.storage, &denom)?,
         "sender isn't the admin of denom `{denom}`"
     );
 
