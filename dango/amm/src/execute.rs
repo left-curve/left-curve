@@ -142,14 +142,14 @@ fn swap(
         POOLS.save(ctx.storage, *pool_id, &pool)?;
     }
 
-    // 1. Transfer the post-fee output to the trader (if it's non-zero).
+    // Transfer the post-fee output, if non-zero, to the trader.
     let output_msg = if outcome.output.is_non_zero() {
         Some(Message::transfer(ctx.sender, outcome.output)?)
     } else {
         None
     };
 
-    // Transfer the protocol fee to taxman (if it's non-zero).
+    // Transfer the protocol fee, if non-zero, to taxman.
     let fee_msg = if outcome.protocol_fee.is_non_zero() {
         let cfg = ctx.querier.query_config()?;
 
