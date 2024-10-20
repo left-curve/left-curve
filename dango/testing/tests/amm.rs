@@ -127,9 +127,9 @@ fn amm() {
             LP_2.clone() => Uint128::new(197_210_388_916),
         }));
 
-    // Check the fee collector has received the pool creation fees.
+    // Check the taxman has received the pool creation fees.
     suite
-        .query_balance(&accounts.fee_recipient, USDC.clone())
+        .query_balance(&contracts.taxman, USDC.clone())
         .should_succeed_and_equal(Uint128::new(20_000_000));
 
     // -------------------------- Liquidity provision --------------------------
@@ -272,15 +272,17 @@ fn amm() {
     // --------------------------------- Swap ----------------------------------
 
     // Swap USDC for OSMO.
-    suite.execute(
-        &mut accounts.owner,
-        contracts.amm,
-        &ExecuteMsg::Swap {
-            route: UniqueVec::new_unchecked(vec![2, 1]),
-            minimum_output: None,
-        },
-        Coin::new(USDC.clone(), Uint128::new(100_000_000)).unwrap(),
-    );
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.amm,
+            &ExecuteMsg::Swap {
+                route: UniqueVec::new_unchecked(vec![2, 1]),
+                minimum_output: None,
+            },
+            Coin::new(USDC.clone(), Uint128::new(100_000_000)).unwrap(),
+        )
+        .should_succeed();
 
     // Check the trader has received the correct amount of OSMO.
     //
@@ -308,9 +310,9 @@ fn amm() {
         .query_balance(&accounts.owner, OSMO.clone())
         .should_succeed_and_equal(Uint128::new(1_149_188_712));
 
-    // Check that fee collector has received the protocol fee.
+    // Check that taxman has received the protocol fee.
     suite
-        .query_balance(&accounts.fee_recipient, OSMO.clone())
+        .query_balance(&contracts.taxman, OSMO.clone())
         .should_succeed_and_equal(Uint128::new(1_150_340));
 
     // The pool states should have been updated.
@@ -366,12 +368,14 @@ fn amm() {
     // ------------------------- Liquidity withdrawal --------------------------
 
     // The liquidity provider withdraws around 1/3 of their ATOM-OSMO liquidity.
-    suite.execute(
-        &mut accounts.relayer,
-        contracts.amm,
-        &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
-        Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
-    );
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.amm,
+            &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
+            Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
+        )
+        .should_succeed();
 
     // Check LPer has received the correct amount of ATOM and OSMO.
     //

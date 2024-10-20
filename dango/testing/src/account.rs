@@ -16,7 +16,6 @@ use {
 
 pub struct Accounts {
     pub owner: TestAccount,
-    pub fee_recipient: TestAccount,
     pub relayer: TestAccount,
 }
 

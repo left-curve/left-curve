@@ -1,5 +1,4 @@
 use {
-    anyhow::anyhow,
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt, Username},
         amm::{self, FeeRate},
@@ -26,9 +25,7 @@ pub struct Contracts {
     pub account_factory: Addr,
     pub amm: Addr,
     pub bank: Addr,
-    pub fee_recipient: Addr,
     pub ibc_transfer: Addr,
-    pub owner: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
 }
@@ -77,7 +74,6 @@ pub fn build_genesis<T, D>(
     codes: Codes<T>,
     genesis_users: GenesisUsers,
     owner: &Username,
-    fee_recipient: &Username,
     fee_denom: D,
     fee_rate: Udec128,
     token_creation_fee: Option<Uint128>,
@@ -140,16 +136,6 @@ where
         })
         .collect::<StdResult<BTreeMap<_, _>>>()?;
 
-    // Find the owner and fee recipient addresses.
-    let owner = addresses
-        .get(owner)
-        .cloned()
-        .ok_or_else(|| anyhow!("can't find address for username `{owner}`"))?;
-    let fee_recipient = addresses
-        .get(fee_recipient)
-        .cloned()
-        .ok_or_else(|| anyhow!("can't find address for username `{fee_recipient}`"))?;
-
     // Instantiate the IBC transfer contract.
     let ibc_transfer = instantiate(
         &mut msgs,
@@ -179,7 +165,6 @@ where
         amm_code_hash,
         &amm::InstantiateMsg {
             config: amm::Config {
-                fee_recipient,
                 protocol_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(10)), // 0.1%
                 pool_creation_fee: NonZero::new_unchecked(Coin::new(
                     fee_denom.clone(),
@@ -231,7 +216,6 @@ where
         taxman_code_hash,
         &taxman::InstantiateMsg {
             config: taxman::Config {
-                fee_recipient,
                 fee_denom,
                 fee_rate,
             },
@@ -244,9 +228,7 @@ where
         account_factory,
         amm,
         bank,
-        fee_recipient,
         ibc_transfer,
-        owner,
         taxman,
         token_factory,
     };
@@ -257,7 +239,7 @@ where
     };
 
     let config = Config {
-        owner,
+        owner: addresses.get(owner).cloned().unwrap(),
         bank,
         taxman,
         cronjobs: BTreeMap::new(),

@@ -27,7 +27,6 @@ where
     AppError: From<DB::Error> + From<VM::Error>,
 {
     let owner = TestAccount::new_random("owner");
-    let fee_recipient = TestAccount::new_random("fee_recipient");
     let relayer = TestAccount::new_random("relayer");
 
     let (genesis_state, contracts, addresses) = build_genesis(
@@ -37,11 +36,6 @@ where
                 key: owner.key,
                 key_hash: owner.key_hash,
                 balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
-            },
-            fee_recipient.username.clone() => GenesisUser {
-                key: fee_recipient.key,
-                key_hash: fee_recipient.key_hash,
-                balances: Coins::new(),
             },
             relayer.username.clone() => GenesisUser {
                 key: relayer.key,
@@ -56,7 +50,6 @@ where
             },
         },
         &owner.username,
-        &fee_recipient.username,
         "uusdc",
         Udec128::ZERO,
         Some(Uint128::new(10_000_000)),
@@ -79,7 +72,6 @@ where
 
     let accounts = Accounts {
         owner: owner.set_address(&addresses),
-        fee_recipient: fee_recipient.set_address(&addresses),
         relayer: relayer.set_address(&addresses),
     };
 

@@ -60,9 +60,6 @@ fn main() {
         codes,
         users,
         &Username::from_str("owner").unwrap(),
-        // TODO: Use owner as fee recipient for now. This should be replaced
-        // with a contract.
-        &Username::from_str("owner").unwrap(),
         "uusdc",
         Udec128::new_percent(25),       // 0.25 uusdc per gas unit
         Some(Uint128::new(10_000_000)), // 10 USDC
