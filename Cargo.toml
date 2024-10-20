@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members  = ["dango/*", "grug/*"]
+members = ["dango/*", "grug/*"]
 
 [workspace.package]
 version       = "0.0.0"
