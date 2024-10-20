@@ -166,7 +166,9 @@ where
     let token_factory = instantiate(
         &mut msgs,
         token_factory_code_hash,
-        &token_factory::InstantiateMsg { denom_creation_fee },
+        &token_factory::InstantiateMsg {
+            config: token_factory::Config { denom_creation_fee },
+        },
         "dango/token_factory",
         "dango/token_factory",
     )?;

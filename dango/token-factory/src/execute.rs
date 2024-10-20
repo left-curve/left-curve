@@ -1,23 +1,19 @@
 use {
-    crate::{DENOM_ADMINS, DENOM_CREATION_FEE},
+    crate::{CONFIG, DENOM_ADMINS},
     anyhow::{bail, ensure},
     dango_account_factory::ACCOUNTS_BY_USER,
     dango_types::{
         account_factory::Username,
         bank,
         config::ACCOUNT_FACTORY_KEY,
-        token_factory::{ExecuteMsg, InstantiateMsg, NAMESPACE},
+        token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{
-        Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, NonZero, Part, Response, Uint128,
-    },
+    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    if let Some(fee) = msg.denom_creation_fee {
-        DENOM_CREATION_FEE.save(ctx.storage, &fee.into_inner())?;
-    }
+    CONFIG.save(ctx.storage, &msg.config)?;
 
     Ok(Response::new())
 }
@@ -25,9 +21,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::UpdateDenomCreationFee {
-            new_denom_creation_fee,
-        } => update_denom_creation_fee(ctx, new_denom_creation_fee),
+        ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Create {
             username,
             subdenom,
@@ -42,10 +36,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn update_denom_creation_fee(
-    ctx: MutableCtx,
-    new_denom_creation_fee: Option<NonZero<Coin>>,
-) -> anyhow::Result<Response> {
+fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     ensure!(
@@ -53,11 +44,7 @@ fn update_denom_creation_fee(
         "only the chain owner can update denom creation fee"
     );
 
-    if let Some(fee) = new_denom_creation_fee {
-        DENOM_CREATION_FEE.save(ctx.storage, &fee.into_inner())?;
-    } else {
-        DENOM_CREATION_FEE.remove(ctx.storage);
-    }
+    CONFIG.save(ctx.storage, &new_cfg)?;
 
     Ok(Response::new())
 }
@@ -96,12 +83,18 @@ fn create(
     // Ensure the sender has paid the correct amount of fee.
     // Note: the logic here assumes the expected fee isn't zero, which we make
     // sure of during instantiation.
-    if let Some(expect) = DENOM_CREATION_FEE.may_load(ctx.storage)? {
-        let actual = ctx.funds.into_one_coin()?;
-        ensure!(
-            actual == expect,
-            "incorrect denom creation fee! expecting {expect}, got {actual}"
-        );
+    {
+        let cfg = CONFIG.load(ctx.storage)?;
+
+        if let Some(fee) = cfg.denom_creation_fee {
+            let expect = fee.into_inner();
+            let actual = ctx.funds.into_one_coin()?;
+
+            ensure!(
+                actual == expect,
+                "incorrect denom creation fee! expecting {expect}, got {actual}"
+            );
+        }
     }
 
     // Ensure the denom hasn't already been created.
