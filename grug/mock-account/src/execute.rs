@@ -118,10 +118,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             .secp256k1_verify(&hash, &credential.signature, &public_key)?;
     }
 
-    Ok(AuthResponse::new()
-        .add_attribute("method", "authenticate")
-        .add_attribute("sequence", sequence)
-        // This account implementation doesn't make use of the transaction
-        // backrunning feature, so we do not request a backrun.
-        .request_backrun(false))
+    // This account implementation doesn't make use of the transaction
+    // backrunning feature, so we do not request a backrun.
+    Ok(AuthResponse::new().request_backrun(false))
 }
