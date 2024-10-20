@@ -22,7 +22,7 @@
 sdk/docs
 
 # UI
-*.astro
+**/.astro
 *storybook.log
 **/storybook-static
 
