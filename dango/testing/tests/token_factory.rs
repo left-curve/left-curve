@@ -15,41 +15,6 @@ fn token_factory() {
 
     // ---------------------------- Token creation -----------------------------
 
-    // Attempt to create a denom without sending fee. Should fail.
-    // For simplicity, we just use the "owner" account throughout this test.
-    suite
-        .send_message(
-            &mut accounts.owner,
-            Message::execute(
-                contracts.token_factory,
-                &ExecuteMsg::Create {
-                    username: Some(owner_username.clone()),
-                    subdenom: SUBDENOM.clone(),
-                    admin: None,
-                },
-                Coins::new(), // wrong!
-            )
-            .unwrap(),
-        )
-        .should_fail_with_error("invalid payment: expecting 1 coins, found 0");
-
-    // Attempt to create a denom with more fee than needed. Should fail.
-    suite
-        .send_message(
-            &mut accounts.owner,
-            Message::execute(
-                contracts.token_factory,
-                &ExecuteMsg::Create {
-                    subdenom: SUBDENOM.clone(),
-                    username: Some(owner_username.clone()),
-                    admin: None,
-                },
-                Coins::one("uusdc", 20_000_000).unwrap(), // wrong!
-            )
-            .unwrap(),
-        )
-        .should_fail_with_error("incorrect denom creation fee!");
-
     // Attempt to create a denom for another username. Should fail.
     suite
         .send_message(
@@ -61,7 +26,7 @@ fn token_factory() {
                     username: Some(accounts.fee_recipient.username.clone()), // wrong!
                     admin: None,
                 },
-                Coins::one("uusdc", 10_000_000).unwrap(),
+                Coins::new(),
             )
             .unwrap(),
         )
@@ -76,7 +41,7 @@ fn token_factory() {
             username: Some(owner_username.clone()),
             admin: None,
         },
-        Coins::one("uusdc", 10_000_000).unwrap(),
+        Coins::new(),
     );
 
     // Attempt to create the same denom again. Should fail.
@@ -90,7 +55,7 @@ fn token_factory() {
                     username: Some(owner_username.clone()),
                     admin: None,
                 },
-                Coins::one("uusdc", 10_000_000).unwrap(),
+                Coins::new(),
             )
             .unwrap(),
         )

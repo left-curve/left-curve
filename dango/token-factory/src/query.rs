@@ -1,7 +1,7 @@
 use {
-    crate::{DENOM_ADMINS, DENOM_CREATION_FEE},
+    crate::DENOM_ADMINS,
     dango_types::token_factory::QueryMsg,
-    grug::{Addr, Bound, Coin, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
+    grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -9,10 +9,6 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::DenomCreationFee {} => {
-            let res = query_denom_creation_fee(ctx.storage)?;
-            res.to_json_value()
-        },
         QueryMsg::Admin { denom } => {
             let res = query_admin(ctx.storage, denom)?;
             res.to_json_value()
@@ -22,10 +18,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
     }
-}
-
-fn query_denom_creation_fee(storage: &dyn Storage) -> StdResult<Coin> {
-    DENOM_CREATION_FEE.load(storage)
 }
 
 fn query_admin(storage: &dyn Storage, denom: Denom) -> StdResult<Addr> {

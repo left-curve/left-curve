@@ -1,7 +1,7 @@
 use {
     dango_genesis::{build_genesis, read_wasm_files, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
-    grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128},
+    grug::{btree_map, Coin, Coins, HashExt, Json, JsonDeExt, JsonSerExt, Udec128},
     hex_literal::hex,
     home::home_dir,
     std::{env, fs, path::PathBuf, str::FromStr},
@@ -65,7 +65,6 @@ fn main() {
         &Username::from_str("owner").unwrap(),
         "uusdc",
         Udec128::new_percent(25), // 0.25 uusdc per gas unit
-        Uint128::new(10_000_000), // 10 USDC
     )
     .unwrap();
 

@@ -3,8 +3,7 @@ use {
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
         btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        NumberConst, TestSuite, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -59,7 +58,6 @@ where
         &fee_recipient.username,
         "uusdc",
         Udec128::ZERO,
-        Uint128::new(10_000_000),
     )
     .unwrap();
 

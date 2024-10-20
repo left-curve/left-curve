@@ -1,16 +1,13 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Coin, Denom, Uint128},
+    grug::{Addr, Denom, Empty, Uint128},
     std::collections::BTreeMap,
 };
 
 /// The namespace that token factory uses.
 pub const NAMESPACE: &str = "factory";
 
-#[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub denom_creation_fee: Coin,
-}
+pub type InstantiateMsg = Empty;
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
@@ -45,9 +42,6 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the denom creation fee.
-    #[returns(Coin)]
-    DenomCreationFee {},
     /// Query a denom's admin address.
     #[returns(Addr)]
     Admin { denom: Denom },

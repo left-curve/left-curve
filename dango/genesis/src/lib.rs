@@ -11,7 +11,7 @@ use {
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, GenesisState, Hash160,
         Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, StdResult,
-        Udec128, Uint128, GENESIS_SENDER,
+        Udec128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
@@ -80,7 +80,6 @@ pub fn build_genesis<T, D>(
     fee_recipient: &Username,
     fee_denom: D,
     fee_rate: Udec128,
-    denom_creation_fee: Uint128,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -163,9 +162,7 @@ where
     let token_factory = instantiate(
         &mut msgs,
         token_factory_code_hash,
-        &token_factory::InstantiateMsg {
-            denom_creation_fee: Coin::new(fee_denom.clone(), denom_creation_fee)?,
-        },
+        &token_factory::InstantiateMsg {},
         "dango/token_factory",
         "dango/token_factory",
     )?;

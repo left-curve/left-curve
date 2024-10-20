@@ -1,5 +1,5 @@
 use {
-    crate::{DENOM_ADMINS, DENOM_CREATION_FEE},
+    crate::DENOM_ADMINS,
     anyhow::{bail, ensure},
     dango_account_factory::ACCOUNTS_BY_USER,
     dango_types::{
@@ -8,18 +8,11 @@ use {
         config::ACCOUNT_FACTORY_KEY,
         token_factory::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{Addr, Coins, Denom, Inner, IsZero, Message, MutableCtx, Part, Response, Uint128},
+    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    ensure!(
-        msg.denom_creation_fee.amount.is_non_zero(),
-        "denom creation fee can't be zero"
-    );
-
-    DENOM_CREATION_FEE.save(ctx.storage, &msg.denom_creation_fee)?;
-
+pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
@@ -70,19 +63,6 @@ fn create(
     } else {
         ctx.sender.to_string()
     };
-
-    // Ensure the sender has paid the correct amount of fee.
-    // Note: the logic here assumes the expected fee isn't zero, which we make
-    // sure of during instantiation.
-    {
-        let expect = DENOM_CREATION_FEE.load(ctx.storage)?;
-        let actual = ctx.funds.into_one_coin()?;
-
-        ensure!(
-            actual == expect,
-            "incorrect denom creation fee! expecting {expect}, got {actual}"
-        );
-    }
 
     // Ensure the denom hasn't already been created.
     {
