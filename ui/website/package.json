@@ -11,19 +11,17 @@
   },
   "dependencies": {
     "@dango/shared": "workspace:^",
-    "framer-motion": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "catalog:"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
+    "tailwindcss": "catalog:",
     "@astrojs/react": "^3.6.2",
     "@astrojs/tailwind": "^5.1.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@astrojs/check": "^0.9.4",
     "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
     "astro": "^4.15.12",
     "typescript": "catalog:"
   }
