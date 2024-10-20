@@ -17,6 +17,12 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Set the denom creation fee to a new value.
+    /// Can only be called by the chain owner.
+    UpdateDenomCreationFee {
+        // `None` means to remove the fee.
+        new_denom_creation_fee: Option<NonZero<Coin>>,
+    },
     /// Create a new token with the given sub-denomination, and appoint an admin
     /// who can mint or burn this token.
     ///

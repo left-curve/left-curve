@@ -8,7 +8,9 @@ use {
         config::ACCOUNT_FACTORY_KEY,
         token_factory::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
+    grug::{
+        Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, NonZero, Part, Response, Uint128,
+    },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -23,6 +25,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
+        ExecuteMsg::UpdateDenomCreationFee {
+            new_denom_creation_fee,
+        } => update_denom_creation_fee(ctx, new_denom_creation_fee),
         ExecuteMsg::Create {
             username,
             subdenom,
@@ -35,6 +40,26 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
         } => burn(ctx, denom, from, amount),
     }
+}
+
+fn update_denom_creation_fee(
+    ctx: MutableCtx,
+    new_denom_creation_fee: Option<NonZero<Coin>>,
+) -> anyhow::Result<Response> {
+    let cfg = ctx.querier.query_config()?;
+
+    ensure!(
+        ctx.sender == cfg.owner,
+        "only the chain owner can update denom creation fee"
+    );
+
+    if let Some(fee) = new_denom_creation_fee {
+        DENOM_CREATION_FEE.save(ctx.storage, &fee.into_inner())?;
+    } else {
+        DENOM_CREATION_FEE.remove(ctx.storage);
+    }
+
+    Ok(Response::new())
 }
 
 fn create(
