@@ -76,7 +76,7 @@ fn main() {
             // The member can be a path to a specific folder (e.g. `grug/tester`)
             // or a whildcard (e.g. `dango/*`). For the latter case, we need to
             // expand the wildcard, and filter off results that aren't directories.
-            glob(&member).unwrap().into_iter().filter_map(|path| {
+            glob(&member).unwrap().filter_map(|path| {
                 if path.as_ref().unwrap().is_dir() {
                     Some(path)
                 } else {
