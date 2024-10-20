@@ -28,7 +28,6 @@ pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Respon
 }
 
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    let cfg = ctx.querier.query_config()?;
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
@@ -52,6 +51,8 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // attacker from spamming txs into the mempool when he doesn't have enough
     // coins.
     let withhold_msg = if withhold_amount.is_non_zero() {
+        let cfg = ctx.querier.query_config()?;
+
         Some(Message::execute(
             cfg.bank,
             &grug_mock_bank::ExecuteMsg::ForceTransfer {
@@ -95,9 +96,17 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
     let refund_msg = if refund_amount.is_non_zero() {
-        Some(Message::transfer(
-            tx.sender,
-            Coins::one(fee_cfg.fee_denom, refund_amount)?,
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.bank,
+            &grug_mock_bank::ExecuteMsg::ForceTransfer {
+                from: ctx.contract,
+                to: tx.sender,
+                denom: fee_cfg.fee_denom,
+                amount: refund_amount,
+            },
+            Coins::new(),
         )?)
     } else {
         None
