@@ -59,7 +59,7 @@ where
         &fee_recipient.username,
         "uusdc",
         Udec128::ZERO,
-        Uint128::new(10_000_000),
+        Some(Uint128::new(10_000_000)),
     )
     .unwrap();
 

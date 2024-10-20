@@ -64,8 +64,8 @@ fn main() {
         // with a contract.
         &Username::from_str("owner").unwrap(),
         "uusdc",
-        Udec128::new_percent(25), // 0.25 uusdc per gas unit
-        Uint128::new(10_000_000), // 10 USDC
+        Udec128::new_percent(25),       // 0.25 uusdc per gas unit
+        Some(Uint128::new(10_000_000)), // 10 USDC
     )
     .unwrap();
 

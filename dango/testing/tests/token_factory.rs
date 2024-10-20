@@ -1,6 +1,6 @@
 use {
     dango_testing::setup_test,
-    dango_types::token_factory::{ExecuteMsg, NAMESPACE},
+    dango_types::token_factory::{Config, ExecuteMsg, NAMESPACE},
     grug::{Addressable, Coins, Denom, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
@@ -197,4 +197,34 @@ fn token_factory() {
     suite
         .query_balance(&accounts.fee_recipient, denom)
         .should_succeed_and_equal(Uint128::new(10_000));
+
+    // ------------------------ Zero denom creation fee ------------------------
+
+    // Set denom creation fee to zero.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Configure {
+                new_cfg: Config {
+                    token_creation_fee: None,
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Attempt to create a denom without sending fee. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Create {
+                username: Some(owner_username.clone()),
+                subdenom: Denom::from_str("hello").unwrap(),
+                admin: None,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 }

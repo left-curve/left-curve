@@ -1,19 +1,30 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Coin, Denom, Uint128},
+    grug::{Addr, Coin, Denom, NonZero, Uint128},
     std::collections::BTreeMap,
 };
 
 /// The namespace that token factory uses.
 pub const NAMESPACE: &str = "factory";
 
+#[grug::derive(Serde, Borsh)]
+pub struct Config {
+    /// A one time, flat fee for creating a denom.
+    ///
+    /// It's optional, but if provided, must be non-zero.
+    pub token_creation_fee: Option<NonZero<Coin>>,
+}
+
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub denom_creation_fee: Coin,
+    pub config: Config,
 }
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Update the configurations.
+    /// Can only be called by the chain owner.
+    Configure { new_cfg: Config },
     /// Create a new token with the given sub-denomination, and appoint an admin
     /// who can mint or burn this token.
     ///
@@ -45,9 +56,9 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the denom creation fee.
-    #[returns(Coin)]
-    DenomCreationFee {},
+    /// Query the token factory's configurations.
+    #[returns(Config)]
+    Config {},
     /// Query a denom's admin address.
     #[returns(Addr)]
     Admin { denom: Denom },
