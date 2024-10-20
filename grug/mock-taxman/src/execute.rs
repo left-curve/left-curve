@@ -13,7 +13,7 @@ pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<R
     Ok(Response::new())
 }
 
-pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
+pub fn configure(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     // Only the chain's owner can update fee config.

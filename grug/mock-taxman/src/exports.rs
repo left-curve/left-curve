@@ -1,5 +1,5 @@
 use {
-    crate::{initialize_config, query_config, update_config, ExecuteMsg, InstantiateMsg, QueryMsg},
+    crate::{configure, initialize_config, query_config, ExecuteMsg, InstantiateMsg, QueryMsg},
     grug_types::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 
@@ -39,7 +39,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::UpdateConfig { new_cfg } => update_config(ctx, &new_cfg),
+        ExecuteMsg::Configure { new_cfg } => configure(ctx, &new_cfg),
     }
 }
 
