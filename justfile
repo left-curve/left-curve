@@ -37,13 +37,12 @@ fmt:
 
 # Update wasm artifacts used in tests
 testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/ && \
-  cp -v artifacts/dango_*.wasm dango/testing/testdata
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
 
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/optimizer"
-OPTIMIZER_VERSION := "0.1.0"
+OPTIMIZER_VERSION := "0.1.1"
 
 # Build and publish optimizer Docker image
 docker-build-optimizer:

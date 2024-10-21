@@ -13,7 +13,7 @@ pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<R
     Ok(Response::new())
 }
 
-pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
+pub fn configure(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     // Only the chain's owner can update fee config.
@@ -28,7 +28,6 @@ pub fn update_config(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Respon
 }
 
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-    let cfg = ctx.querier.query_config()?;
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
@@ -52,6 +51,8 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // attacker from spamming txs into the mempool when he doesn't have enough
     // coins.
     let withhold_msg = if withhold_amount.is_non_zero() {
+        let cfg = ctx.querier.query_config()?;
+
         Some(Message::execute(
             cfg.bank,
             &grug_mock_bank::ExecuteMsg::ForceTransfer {
@@ -66,14 +67,10 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         None
     };
 
-    Ok(Response::new()
-        .may_add_message(withhold_msg)
-        .add_attribute("gas_limit", tx.gas_limit)
-        .add_attribute("withhold_amount", withhold_amount))
+    Ok(Response::new().may_add_message(withhold_msg))
 }
 
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
     let fee_cfg = CONFIG.load(ctx.storage)?;
 
     // In simulation mode, don't do anything.
@@ -95,34 +92,22 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     // The difference between the two amounts is to be refunded to the user.
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
-    // If the charge amount if non-zero, we send the fee to the chain's owner.
-    //
-    // This is just a demo. In practice, it probably makes more sense to have a
-    // fee distributor contract that distribute to stakers so something like that.
-    let charge_msg = if charge_amount.is_non_zero() {
-        Some(Message::transfer(
-            cfg.owner,
-            Coins::one(fee_cfg.fee_denom.clone(), charge_amount)?,
-        )?)
-    } else {
-        None
-    };
-
     let refund_msg = if refund_amount.is_non_zero() {
-        Some(Message::transfer(
-            tx.sender,
-            Coins::one(fee_cfg.fee_denom, refund_amount)?,
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.bank,
+            &grug_mock_bank::ExecuteMsg::ForceTransfer {
+                from: ctx.contract,
+                to: tx.sender,
+                denom: fee_cfg.fee_denom,
+                amount: refund_amount,
+            },
+            Coins::new(),
         )?)
     } else {
         None
     };
 
-    Ok(Response::new()
-        .may_add_message(charge_msg)
-        .may_add_message(refund_msg)
-        .add_attribute("gas_limit", tx.gas_limit)
-        .add_attribute("gas_used", outcome.gas_used)
-        .add_attribute("withheld_amount", withheld_amount)
-        .add_attribute("charge_amount", charge_amount)
-        .add_attribute("refund_amount", refund_amount))
+    Ok(Response::new().may_add_message(refund_msg))
 }

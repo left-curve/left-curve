@@ -57,11 +57,7 @@ pub fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow:
     increase_supply(ctx.storage, &denom, amount)?;
     increase_balance(ctx.storage, to, &denom, amount)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "mint")
-        .add_attribute("to", to)
-        .add_attribute("denom", denom)
-        .add_attribute("amount", amount))
+    Ok(Response::new())
 }
 
 /// Burn tokens of specified denom and amount from an account.
@@ -79,11 +75,7 @@ pub fn burn(
     decrease_supply(ctx.storage, &denom, amount)?;
     decrease_balance(ctx.storage, from, &denom, amount)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "burn")
-        .add_attribute("from", from)
-        .add_attribute("denom", denom)
-        .add_attribute("amount", amount))
+    Ok(Response::new())
 }
 
 pub fn force_transfer(
@@ -104,12 +96,7 @@ pub fn force_transfer(
     decrease_balance(ctx.storage, from, &denom, amount)?;
     increase_balance(ctx.storage, to, &denom, amount)?;
 
-    Ok(Response::new()
-        .add_attribute("method", "force_transfer")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("denom", denom)
-        .add_attribute("amount", amount))
+    Ok(Response::new())
 }
 
 /// Transfer tokens from one account to another.
@@ -124,11 +111,7 @@ pub fn transfer(
         increase_balance(storage, to, coin.denom, *coin.amount)?;
     }
 
-    Ok(Response::new()
-        .add_attribute("method", "transfer")
-        .add_attribute("from", from)
-        .add_attribute("to", to)
-        .add_attribute("coins", coins))
+    Ok(Response::new())
 }
 
 /// Increase the total supply of a token by the given amount.
@@ -174,6 +157,7 @@ fn increase_balance(
         let balance = balance.unwrap_or_default().checked_add(amount)?;
         Ok(Some(balance))
     };
+
     BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
     BALANCES_BY_DENOM.update(storage, (denom, address), action)
 }
@@ -195,6 +179,7 @@ fn decrease_balance(
             Ok(Some(balance))
         }
     };
+
     BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
     BALANCES_BY_DENOM.update(storage, (denom, address), action)
 }

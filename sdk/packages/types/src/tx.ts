@@ -20,14 +20,14 @@ export type Tx = {
 export type UnsignedTx = Pick<Tx, "sender" | "msgs">;
 
 export type Message =
-  | { configure: MsgUpdateConfig }
+  | { configure: MsgConfigure }
   | { transfer: MsgTransfer }
   | { upload: MsgStoreCode }
   | { instantiate: MsgInstantiate }
   | { execute: MsgExecute }
   | { migrate: MsgMigrate };
 
-export type MsgUpdateConfig = {
+export type MsgConfigure = {
   updates: ConfigUpdate;
   appUpdates: Record<string, Json>;
 };

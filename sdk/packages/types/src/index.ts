@@ -34,7 +34,7 @@ export type {
   MsgMigrate,
   MsgStoreCode,
   MsgTransfer,
-  MsgUpdateConfig,
+  MsgConfigure,
   Tx,
   TxParameters,
   UnsignedTx,

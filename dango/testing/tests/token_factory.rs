@@ -1,6 +1,6 @@
 use {
     dango_testing::setup_test,
-    dango_types::token_factory::{ExecuteMsg, NAMESPACE},
+    dango_types::token_factory::{Config, ExecuteMsg, NAMESPACE},
     grug::{Addressable, Coins, Denom, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
@@ -58,7 +58,7 @@ fn token_factory() {
                 contracts.token_factory,
                 &ExecuteMsg::Create {
                     subdenom: SUBDENOM.clone(),
-                    username: Some(accounts.fee_recipient.username.clone()), // wrong!
+                    username: Some(accounts.relayer.username.clone()), // wrong!
                     admin: None,
                 },
                 Coins::one("uusdc", 10_000_000).unwrap(),
@@ -96,6 +96,11 @@ fn token_factory() {
         )
         .should_fail_with_error("already exists");
 
+    // Taxman should have received the token creation fee.
+    suite
+        .query_balance(&contracts.taxman, "uusdc")
+        .should_succeed_and_equal(Uint128::new(10_000_000));
+
     // ----------------------------- Token minting -----------------------------
 
     // The full denom that should have been just created.
@@ -114,7 +119,7 @@ fn token_factory() {
                 contracts.token_factory,
                 &ExecuteMsg::Mint {
                     denom: denom.clone(),
-                    to: accounts.fee_recipient.address(),
+                    to: accounts.owner.address(),
                     amount: Uint128::new(12_345),
                 },
                 Coins::new(),
@@ -136,7 +141,7 @@ fn token_factory() {
                         "uosmo".to_string(), // wrong!
                     ])
                     .unwrap(),
-                    to: accounts.fee_recipient.address(),
+                    to: accounts.relayer.address(),
                     amount: Uint128::new(12_345),
                 },
                 Coins::new(),
@@ -151,7 +156,7 @@ fn token_factory() {
         contracts.token_factory,
         &ExecuteMsg::Mint {
             denom: denom.clone(),
-            to: accounts.fee_recipient.address(),
+            to: accounts.relayer.address(),
             amount: Uint128::new(12_345),
         },
         Coins::new(),
@@ -159,7 +164,7 @@ fn token_factory() {
 
     // The recipient's balance should have been updated.
     suite
-        .query_balance(&accounts.fee_recipient, denom.clone())
+        .query_balance(&accounts.relayer, denom.clone())
         .should_succeed_and_equal(Uint128::new(12_345));
 
     // ----------------------------- Token burning -----------------------------
@@ -172,7 +177,7 @@ fn token_factory() {
                 contracts.token_factory,
                 &ExecuteMsg::Burn {
                     denom: denom.clone(),
-                    from: accounts.fee_recipient.address(),
+                    from: accounts.relayer.address(),
                     amount: Uint128::new(88_888),
                 },
                 Coins::new(),
@@ -187,7 +192,7 @@ fn token_factory() {
         contracts.token_factory,
         &ExecuteMsg::Burn {
             denom: denom.clone(),
-            from: accounts.fee_recipient.address(),
+            from: accounts.relayer.address(),
             amount: Uint128::new(2_345),
         },
         Coins::new(),
@@ -195,6 +200,36 @@ fn token_factory() {
 
     // The recipient's balance should have been updated.
     suite
-        .query_balance(&accounts.fee_recipient, denom)
+        .query_balance(&accounts.relayer, denom)
         .should_succeed_and_equal(Uint128::new(10_000));
+
+    // ------------------------ Zero denom creation fee ------------------------
+
+    // Set denom creation fee to zero.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Configure {
+                new_cfg: Config {
+                    token_creation_fee: None,
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Attempt to create a denom without sending fee. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Create {
+                username: Some(owner_username.clone()),
+                subdenom: Denom::from_str("hello").unwrap(),
+                admin: None,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 }

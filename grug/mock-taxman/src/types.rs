@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields, rename = "snake_case")]
 pub enum ExecuteMsg {
-    UpdateConfig { new_cfg: Config },
+    Configure { new_cfg: Config },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

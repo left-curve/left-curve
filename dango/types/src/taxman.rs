@@ -2,7 +2,6 @@ use grug::{Addr, Denom, Udec128};
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
-    pub fee_recipient: Addr,
     pub fee_denom: Denom,
     pub fee_rate: Udec128,
 }
@@ -16,7 +15,9 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Update the fee configurations.
     /// Can only be called by the chain's owner.
-    UpdateConfig { new_cfg: Config },
+    Configure { new_cfg: Config },
+    /// Forward protocol fee to the taxman.
+    Pay { payer: Addr },
 }
 
 #[grug::derive(Serde, QueryRequest)]
