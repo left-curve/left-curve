@@ -5,7 +5,7 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
-        mock_ibc_transfer, taxman, token_factory,
+        lending_pool, mock_ibc_transfer, taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
@@ -28,6 +28,7 @@ pub struct Contracts {
     pub ibc_transfer: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
+    pub lending_pool: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -40,6 +41,7 @@ pub struct Codes<T> {
     pub ibc_transfer: T,
     pub taxman: T,
     pub token_factory: T,
+    pub lending_pool: T,
 }
 
 pub struct GenesisUser {
@@ -57,7 +59,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
-
+    let lending_pool = fs::read(artifacts_dir.join("dango_lending_pool.wasm"))?;
     Ok(Codes {
         account_factory,
         account_spot,
@@ -67,6 +69,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         ibc_transfer,
         taxman,
         token_factory,
+        lending_pool,
     })
 }
 
@@ -97,7 +100,7 @@ where
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
-
+    let lending_pool_code_hash = upload(&mut msgs, codes.lending_pool);
     // Instantiate account factory.
     let keys = genesis_users
         .values()
@@ -177,6 +180,17 @@ where
         "dango/amm",
     )?;
 
+    // Instantiate the lending pool contract.
+    let lending_pool = instantiate(
+        &mut msgs,
+        lending_pool_code_hash,
+        &lending_pool::InstantiateMsg {
+            whitelisted_denoms: vec![fee_denom.clone()],
+        },
+        "dango/lending_pool",
+        "dango/lending_pool",
+    )?;
+
     // Create the `balances` map needed for instantiating bank.
     let balances = genesis_users
         .into_iter()
@@ -197,6 +211,7 @@ where
         Part::from_str(amm::NAMESPACE)? => amm,
         Part::from_str(token_factory::NAMESPACE)? => token_factory,
         Part::from_str(mock_ibc_transfer::NAMESPACE)? => ibc_transfer,
+        Part::from_str(lending_pool::NAMESPACE)? => lending_pool,
     };
 
     // Instantiate the bank contract.
@@ -232,6 +247,7 @@ where
         ibc_transfer,
         taxman,
         token_factory,
+        lending_pool,
     };
 
     let permissions = Permissions {
