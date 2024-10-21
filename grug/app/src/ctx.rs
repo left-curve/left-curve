@@ -3,9 +3,10 @@ use {
     grug_types::{BlockInfo, Storage, Undefined},
 };
 
+/// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
 #[derive(Clone)]
 pub struct AppCtx<VM = Undefined<()>, S = Box<dyn Storage>> {
-    pub vm: VM,
+    vm: VM,
     pub storage: S,
     pub block: BlockInfo,
     pub gas_tracker: GasTracker,
@@ -15,6 +16,9 @@ impl<VM> AppCtx<VM>
 where
     VM: Vm,
 {
+    /// Constructor method where `S` can be any type that implements `Storage`
+    ///
+    /// This is needed to have `Shared<Buffer>` as storage in order to dismount or commit the buffer
     pub fn new<S>(vm: VM, storage: S, gas_tracker: GasTracker, block: BlockInfo) -> AppCtx<VM, S> {
         AppCtx {
             storage,
@@ -24,6 +28,7 @@ where
         }
     }
 
+    /// Constructor method where `S` is a `Box<dyn Storage>`
     pub fn new_boxed(
         vm: VM,
         storage: Box<dyn Storage>,
@@ -42,6 +47,7 @@ where
         &self.vm
     }
 
+    /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined<()>>`
     pub fn downcast(&self) -> AppCtx<Undefined<()>> {
         AppCtx {
             storage: self.storage.clone(),
@@ -56,7 +62,11 @@ impl<VM, S> AppCtx<VM, S>
 where
     VM: Vm + Clone,
 {
-    pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1> {
+    /// Clone the `AppCtx` replacing the storage with a generic `Storage`
+    pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1>
+    where
+        S1: Storage,
+    {
         AppCtx {
             storage,
             block: self.block,
@@ -70,7 +80,8 @@ impl<VM> AppCtx<VM, Box<dyn Storage>>
 where
     VM: Vm + Clone,
 {
-    pub fn with_buffer_storage<S1>(
+    /// Clone the `AppCtx` that is using a `Box<dyn Storage>` replacing it with a new `Shared<Buffer<S>>`
+    pub fn clone_with_buffer_storage<S1>(
         &self,
         storage: Shared<Buffer<S1>>,
     ) -> AppCtx<VM, Shared<Buffer<S1>>> {
@@ -88,7 +99,8 @@ where
     VM: Vm + Clone,
     S: Storage + Clone + 'static,
 {
-    pub fn box_me(&self) -> AppCtx<VM, Box<dyn Storage>> {
+    /// Clone the `AppCtx` boxing the inner `storage`
+    pub fn clone_boxing_storage(&self) -> AppCtx<VM, Box<dyn Storage>> {
         AppCtx {
             storage: Box::new(self.storage.clone()),
             block: self.block,

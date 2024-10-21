@@ -207,7 +207,7 @@ where
 }
 
 fn create_vm_instance<VM>(
-    mut ctx: AppCtx<VM>,
+    ctx: AppCtx<VM>,
     query_depth: usize,
     state_mutable: bool,
     contract: Addr,
@@ -222,9 +222,9 @@ where
 
     // Create the providers
     let querier = QuerierProvider::new(ctx.clone());
-    let storage = StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &contract]);
+    let storage = StorageProvider::new(ctx.storage.clone(), &[CONTRACT_NAMESPACE, &contract]);
 
-    Ok(ctx.vm.build_instance(
+    Ok(ctx.vm().clone().build_instance(
         &code,
         code_hash,
         storage,

@@ -107,7 +107,7 @@ where
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
 
-            process_msg(ctx.box_me(), 0, GENESIS_SENDER, msg)?;
+            process_msg(ctx.clone_boxing_storage(), 0, GENESIS_SENDER, msg)?;
         }
 
         // Persist the state changes to disk
@@ -183,7 +183,7 @@ where
                 "Attempting to perform cronjob"
             );
 
-            let result = do_cron_execute(ctx.box_me(), contract);
+            let result = do_cron_execute(ctx.clone_boxing_storage(), contract);
 
             cron_outcomes.push(new_outcome(ctx.gas_tracker.clone(), result));
 
@@ -201,7 +201,7 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_outcomes.push(process_tx(ctx.box_me(), tx, AuthMode::Finalize));
+            tx_outcomes.push(process_tx(ctx.clone_boxing_storage(), tx, AuthMode::Finalize));
         }
 
         // Save the last committed block.
@@ -537,7 +537,7 @@ where
             Err(err) => {
                 drop(buffer2);
                 return process_finalize_fee(
-                    ctx.with_buffer_storage(buffer1),
+                    ctx.clone_with_buffer_storage(buffer1),
                     tx,
                     mode,
                     events,
@@ -567,7 +567,7 @@ where
         Err(err) => {
             drop(buffer2);
             return process_finalize_fee(
-                ctx.with_buffer_storage(buffer1),
+                ctx.clone_with_buffer_storage(buffer1),
                 tx,
                 mode,
                 events,
@@ -587,7 +587,7 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(ctx.with_buffer_storage(buffer1), tx, mode, events, Ok(()))
+    process_finalize_fee(ctx.clone_with_buffer_storage(buffer1), tx, mode, events, Ok(()))
 }
 
 #[inline]
@@ -636,7 +636,7 @@ where
 
     ctx.gas_tracker = GasTracker::new_limitless();
 
-    match do_finalize_fee(ctx.box_me(), &tx, &outcome_so_far, mode) {
+    match do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode) {
         Ok(new_events) => {
             events.extend(new_events);
             ctx.storage.disassemble().consume();
