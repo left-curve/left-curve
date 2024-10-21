@@ -201,7 +201,11 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_outcomes.push(process_tx(ctx.clone_boxing_storage(), tx, AuthMode::Finalize));
+            tx_outcomes.push(process_tx(
+                ctx.clone_boxing_storage(),
+                tx,
+                AuthMode::Finalize,
+            ));
         }
 
         // Save the last committed block.
@@ -587,7 +591,13 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(ctx.clone_with_buffer_storage(buffer1), tx, mode, events, Ok(()))
+    process_finalize_fee(
+        ctx.clone_with_buffer_storage(buffer1),
+        tx,
+        mode,
+        events,
+        Ok(()),
+    )
 }
 
 #[inline]
