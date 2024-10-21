@@ -137,6 +137,36 @@ run PruneFunctionTests = {
     Prune1Test.then(Prune2Test).then(Prune3Test)
 }
 
+run CommonPrefixTest1 = {
+    val testTree : Tree=  { orphans: Set(),nodes: Map(
+        makeNodeId(0, [0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0,0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0,1]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,1]) -> Internal({left_child: None, right_child: None}), 
+                    makeNodeId(0, [0,1,0]) -> Internal({left_child: None, right_child: None}),
+        makeNodeId(0, [1]) -> Internal({left_child: None, right_child: None})
+    )}
+    val keyValue = {key_hash : [0,1,1,0], value_hash:[1]}
+    val longestPrefixNode = getKeyWithLongestOverlappingPrefix(testTree, keyValue)
+    assert({key_hash : [0,1], version:0} == longestPrefixNode)
+  }
+run CommonPrefixTest2 = {
+    val testTree : Tree=  { orphans: Set(),nodes: Map(
+        makeNodeId(0, [0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0,0]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,0,1]) -> Internal({left_child: None, right_child: None}),
+            makeNodeId(0, [0,1]) -> Internal({left_child: None, right_child: None}), 
+                    makeNodeId(0, [0,1,0]) -> Internal({left_child: None, right_child: None}),
+                    makeNodeId(0, [0,1,1]) -> Internal({left_child: None, right_child: None}),
+        makeNodeId(0, [1]) -> Internal({left_child: None, right_child: None})
+    )}
+    val keyValue = {key_hash : [0,1,1,0], value_hash:[1]}
+    val longestPrefixNode = getKeyWithLongestOverlappingPrefix(testTree, keyValue)
+    assert({key_hash : [0,1,1], version:0} == longestPrefixNode)
+}
+
 // type Tree = int -> int //to do
 
 // type Operation

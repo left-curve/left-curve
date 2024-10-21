@@ -7,6 +7,10 @@ module tree {
   export node.*
   import hashes.* from "./hashes"
   export hashes.*
+	import utils.* from"./utils"
+	export utils.*
+	
+	pure val MAX_HASH_LENGTH = 4
 
   type Outcome =
       | Unchanged(Option[Node])
@@ -17,7 +21,10 @@ module tree {
       | Insert(Bytes_t)
       | Delete
 
-  type OperationOnBytes = { bytes: Bytes_t, op: Operation }
+  // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
+  type OperationOnKey = { key_hash: BitArray, op: Operation }
+  // For types like -> batch: Vec<(Hash256, Hash256)>
+  type KeyWithValue = { key_hash: BitArray, value_hash: Bytes_t }
 
   type BitArray = List[int]
   type Version = int
@@ -56,12 +63,46 @@ module tree {
 
       {nodes: updated_nodes, orphans: prunned_orphans}
   }
+	pure def getKeyWithLongestOverlappingPrefix(tree: Tree, keyValue: KeyWithValue) : NodeId = {
+    // get all prefix combination from keyValue.key_hash
+    // e.g. 
+    //    key = [0, 1, 1, 0]
+    //    prefixCombos = [], [0], [0,1], [0,1,1], [0,1,1,0]
+    val prefixCombos : Set[List[int]] = 0.to(MAX_HASH_LENGTH).map(i => keyValue.key_hash.slice(0,i))
+    // get all keys that are contained in the prefix combinations
+    // e.g. 
+    //  First example: 
+    //    prefix combinations = [], [0], [0,1], [0,1,1], [0,1,1,0]
+    //    keys in tree: [0], [1]
+    //    keys that contain some prefix = [0]
+    //  Second example: 
+    //    prefix combinations = [], [0], [0,1], [0,1,1], [0,1,1,0]
+    //    keys in tree: [0], [1], [0,0], [0,1], [0,0,0], [0,1,1]
+    //    keys that contain some prefix = [0], [0,1], [0,1,1]
+    val prefixComboContainingKeys  = tree.nodes.keys().filter( key => prefixCombos.contains(key.key_hash))
+    // get longest prefix that overlaps with the key
+    // e.g. 
+    //    keys that contain some prefix = [0], [0,1], [0,1,1]
+    //    longestOverlappingPrefix = 3
+    val longestOverlappingPrefix = prefixComboContainingKeys.fold(0, (maxLen, y) => if (y.key_hash.length() > maxLen ) { y.key_hash.length()} else {maxLen})
+    // find prefix whose size is equal to longest overlap between prefix and key
+    // e.g. 
+    //    longestOverlappingPrefix = 3
+    //    keys that contain some prefix = [0], [0,1], [0,1,1]
+    //    perfectPrefixOverlapCombo = [0,1,1]
+    val perfectPrefixOverlapCombo = prefixComboContainingKeys.filter(key => key.key_hash.length() == longestOverlappingPrefix)
+    // since perfectPrefixOverlapCombo is a set, this line pops that perfect element from perfectPrefixOverlapCombo
+    // e.g.
+    //  perfectPrefixOverlapCombo = Set({version: 0, [0,1,1]})
+    //  out = {version: 0, [0,1,1]}
+    perfectPrefixOverlapCombo.getOnlyElement()
+  }
 
-  var tree : Tree
+  var tree: Tree
 
   action init =
     tree' = {
         orphans: Set(),
-        nodes: Map(),
-    }
+        nodes: Map(makeNodeId(0, ROOT_BITS) -> Internal({left_child: None, right_child: None}))
+  }
 }
