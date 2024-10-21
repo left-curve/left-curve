@@ -1,10 +1,10 @@
 use {
-    crate::{Buffer, GLimitLess, GLimited, GUnbound, GasTracker, Shared},
+    crate::{Buffer, GasModeLimitLess, GasModeLimited, GasModeUndefined, GasTracker, Shared},
     grug_types::{BlockInfo, Storage, Undefined},
 };
 
 /// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
-pub struct AppCtx<VM = Undefined<()>, G = GUnbound, S = Box<dyn Storage>> {
+pub struct AppCtx<VM = Undefined<()>, G = GasModeUndefined, S = Box<dyn Storage>> {
     vm: VM,
     pub storage: S,
     pub block: BlockInfo,
@@ -20,7 +20,7 @@ where
         Self {
             vm: self.vm.clone(),
             storage: self.storage.clone(),
-            block: self.block.clone(),
+            block: self.block,
             gas_tracker: self.gas_tracker.clone(),
         }
     }
@@ -144,8 +144,8 @@ impl<VM, G, S> AppCtx<VM, G, S> {
     }
 }
 
-impl<VM, S> AppCtx<VM, GLimitLess, S> {
-    pub fn unbound(self) -> AppCtx<VM, GUnbound, S> {
+impl<VM, S> AppCtx<VM, GasModeLimitLess, S> {
+    pub fn unbound(self) -> AppCtx<VM, GasModeUndefined, S> {
         AppCtx {
             storage: self.storage,
             block: self.block,
@@ -155,8 +155,8 @@ impl<VM, S> AppCtx<VM, GLimitLess, S> {
     }
 }
 
-impl<VM, S> AppCtx<VM, GLimited, S> {
-    pub fn unbound(self) -> AppCtx<VM, GUnbound, S> {
+impl<VM, S> AppCtx<VM, GasModeLimited, S> {
+    pub fn unbound(self) -> AppCtx<VM, GasModeUndefined, S> {
         AppCtx {
             storage: self.storage,
             block: self.block,

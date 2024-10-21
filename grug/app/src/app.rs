@@ -1,4 +1,4 @@
-use crate::{AppCtx, GLimitLess, GLimited};
+use crate::{AppCtx, GasModeLimitLess, GasModeLimited};
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
 
@@ -482,7 +482,7 @@ where
     }
 }
 
-fn process_tx<VM>(ctx: AppCtx<VM, GLimitLess>, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<VM>(ctx: AppCtx<VM, GasModeLimitLess>, tx: Tx, mode: AuthMode) -> TxOutcome
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -607,7 +607,7 @@ where
 
 #[inline]
 fn process_msgs_then_backrun<VM>(
-    ctx: AppCtx<VM, GLimited>,
+    ctx: AppCtx<VM, GasModeLimited>,
     tx: &Tx,
     mode: AuthMode,
     request_backrun: bool,
@@ -638,7 +638,7 @@ where
 }
 
 fn process_finalize_fee<S, VM>(
-    ctx: AppCtx<VM, GLimited, Shared<Buffer<S>>>,
+    ctx: AppCtx<VM, GasModeLimited, Shared<Buffer<S>>>,
     tx: Tx,
     mode: AuthMode,
     mut events: Vec<Event>,
@@ -807,7 +807,7 @@ fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcom
 }
 
 fn new_tx_outcome(
-    gas_tracker: GasTracker<GLimited>,
+    gas_tracker: GasTracker<GasModeLimited>,
     events: Vec<Event>,
     result: AppResult<()>,
 ) -> TxOutcome {

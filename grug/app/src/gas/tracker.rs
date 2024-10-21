@@ -4,47 +4,64 @@ use {
     std::fmt::{self, Display},
 };
 
+struct GasTrackerInner {
+    // `None` means there is no gas limit. This is the case during genesis, and
+    // for begin/end blockers.
+    limit: Option<u64>,
+    used: u64,
+}
 /// Tracks gas consumption; throws error if gas limit is exceeded.
 #[non_exhaustive]
-pub struct GasTracker<T = GUnbound> {
-    inner: Shared<T>,
+pub struct GasTracker<T = GasModeUndefined> {
+    inner: Shared<GasTrackerInner>,
+    phantom: std::marker::PhantomData<T>,
 }
 
 impl<T> Clone for GasTracker<T> {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
 impl GasTracker {
     /// Create a new gas tracker, with or without a gas limit.
-    pub fn new(maybe_limit: Option<u64>) -> GasTracker<GUnbound> {
+    pub fn new(maybe_limit: Option<u64>) -> GasTracker<GasModeUndefined> {
         GasTracker {
-            inner: Shared::new(GUnbound {
+            inner: Shared::new(GasTrackerInner {
                 limit: maybe_limit,
                 used: 0,
             }),
+            phantom: std::marker::PhantomData,
         }
     }
 
     /// Create a new gas tracker without a gas limit.
-    pub fn new_limitless() -> GasTracker<GLimitLess> {
+    pub fn new_limitless() -> GasTracker<GasModeLimitLess> {
         GasTracker {
-            inner: Shared::new(GLimitLess { used: 0 }),
+            inner: Shared::new(GasTrackerInner {
+                limit: None,
+                used: 0,
+            }),
+            phantom: std::marker::PhantomData,
         }
     }
 
     /// Create a new gas tracker with the given gas limit.
-    pub fn new_limited(limit: u64) -> GasTracker<GLimited> {
+    pub fn new_limited(limit: u64) -> GasTracker<GasModeLimited> {
         GasTracker {
-            inner: Shared::new(GLimited { limit, used: 0 }),
+            inner: Shared::new(GasTrackerInner {
+                limit: Some(limit),
+                used: 0,
+            }),
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl GasTracker<GUnbound> {
+impl GasTracker<GasModeUndefined> {
     /// Return the gas limit. `None` if there isn't a limit.
     ///
     /// Panics if lock is poisoned.
@@ -100,7 +117,7 @@ impl GasTracker<GUnbound> {
     }
 }
 
-impl GasTracker<GLimitLess> {
+impl GasTracker<GasModeLimitLess> {
     /// Return the amount of gas already used.
     ///
     /// Panics if lock is poisoned.
@@ -108,43 +125,31 @@ impl GasTracker<GLimitLess> {
         self.inner.read_access().used
     }
 
-    /// Consume the given amount of gas.
-    ///
-    /// Panics if lock is poisoned.
-    pub fn consumed(&self, consumed: u64) {
-        self.inner.write_with(|mut inner| {
-            inner.used += consumed;
-        });
-    }
-
-    pub fn unbound(self) -> GasTracker<GUnbound> {
+    pub fn unbound(self) -> GasTracker<GasModeUndefined> {
         GasTracker {
-            inner: Shared::new(GUnbound {
-                limit: None,
-                used: self.inner.read_access().used,
-            }),
+            inner: self.inner,
+            phantom: std::marker::PhantomData,
         }
     }
 }
 
-impl GasTracker<GLimited> {
+impl GasTracker<GasModeLimited> {
     pub fn limit(&self) -> u64 {
-        self.inner.read_access().limit
+        self.inner.read_access().limit.unwrap()
     }
 
     pub fn used(&self) -> u64 {
         self.inner.read_access().used
     }
 
-    pub fn unbound(self) -> GasTracker<GUnbound> {
+    pub fn unbound(self) -> GasTracker<GasModeUndefined> {
         GasTracker {
-            inner: Shared::new(GUnbound {
-                limit: Some(self.inner.read_access().limit),
-                used: self.inner.read_access().used,
-            }),
+            inner: self.inner,
+            phantom: std::marker::PhantomData,
         }
     }
 }
+
 impl Display for GasTracker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.read_with(|inner| {
@@ -157,18 +162,8 @@ impl Display for GasTracker {
     }
 }
 
-pub struct GLimitLess {
-    pub used: u64,
-}
+pub struct GasModeLimitLess {}
 
-pub struct GLimited {
-    pub limit: u64,
-    pub used: u64,
-}
+pub struct GasModeLimited {}
 
-pub struct GUnbound {
-    pub limit: Option<u64>,
-    pub used: u64,
-}
-
-pub trait GasTrackerMode {}
+pub struct GasModeUndefined {}

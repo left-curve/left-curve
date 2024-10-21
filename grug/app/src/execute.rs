@@ -2,8 +2,8 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, GLimitLess, GLimited, MeteredItem, MeteredMap, Vm, APP_CONFIGS,
-        CHAIN_ID, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
+        AppError, AppResult, GasModeLimitLess, GasModeLimited, MeteredItem, MeteredMap, Vm,
+        APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
@@ -554,7 +554,7 @@ where
 // ------------------------------- authenticate --------------------------------
 
 pub fn do_authenticate<VM>(
-    app_ctx: AppCtx<VM, GLimited>,
+    app_ctx: AppCtx<VM, GasModeLimited>,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<(Vec<Event>, bool)>
@@ -616,7 +616,7 @@ where
 // ---------------------------------- backrun ----------------------------------
 
 pub fn do_backrun<VM>(
-    app_ctx: AppCtx<VM, GLimited>,
+    app_ctx: AppCtx<VM, GasModeLimited>,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<Vec<Event>>
@@ -664,7 +664,7 @@ where
 // ---------------------------------- taxman -----------------------------------
 
 pub fn do_withhold_fee<VM>(
-    app_ctx: AppCtx<VM, GLimitLess>,
+    app_ctx: AppCtx<VM, GasModeLimitLess>,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<Vec<Event>>
@@ -715,7 +715,7 @@ where
 }
 
 pub fn do_finalize_fee<VM>(
-    app_ctx: AppCtx<VM, GLimitLess>,
+    app_ctx: AppCtx<VM, GasModeLimitLess>,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -771,7 +771,10 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM, GLimitLess>, contract: Addr) -> AppResult<Vec<Event>>
+pub fn do_cron_execute<VM>(
+    ctx: AppCtx<VM, GasModeLimitLess>,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -796,7 +799,10 @@ where
     }
 }
 
-fn _do_cron_execute<VM>(app_ctx: AppCtx<VM, GLimitLess>, contract: Addr) -> AppResult<Vec<Event>>
+fn _do_cron_execute<VM>(
+    app_ctx: AppCtx<VM, GasModeLimitLess>,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
