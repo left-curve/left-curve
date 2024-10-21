@@ -2,8 +2,8 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG,
-        CONTRACTS, NEXT_CRONJOBS,
+        AppError, AppResult, GLimitLess, GLimited, MeteredItem, MeteredMap, Vm, APP_CONFIGS,
+        CHAIN_ID, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
@@ -554,7 +554,7 @@ where
 // ------------------------------- authenticate --------------------------------
 
 pub fn do_authenticate<VM>(
-    app_ctx: AppCtx<VM>,
+    app_ctx: AppCtx<VM, GLimited>,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<(Vec<Event>, bool)>
@@ -573,6 +573,8 @@ where
         funds: None,
         mode: Some(mode),
     };
+
+    let app_ctx = app_ctx.unbound();
 
     let result = || -> AppResult<_> {
         let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
@@ -613,7 +615,11 @@ where
 
 // ---------------------------------- backrun ----------------------------------
 
-pub fn do_backrun<VM>(app_ctx: AppCtx<VM>, tx: &Tx, mode: AuthMode) -> AppResult<Vec<Event>>
+pub fn do_backrun<VM>(
+    app_ctx: AppCtx<VM, GLimited>,
+    tx: &Tx,
+    mode: AuthMode,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -630,7 +636,16 @@ where
         mode: Some(mode),
     };
 
-    match call_in_1_out_1_handle_response(app_ctx, 0, 0, true, "backrun", code_hash, &ctx, tx) {
+    match call_in_1_out_1_handle_response(
+        app_ctx.unbound(),
+        0,
+        0,
+        true,
+        "backrun",
+        code_hash,
+        &ctx,
+        tx,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(sender = tx.sender.to_string(), "Backran transaction");
@@ -648,7 +663,11 @@ where
 
 // ---------------------------------- taxman -----------------------------------
 
-pub fn do_withhold_fee<VM>(app_ctx: AppCtx<VM>, tx: &Tx, mode: AuthMode) -> AppResult<Vec<Event>>
+pub fn do_withhold_fee<VM>(
+    app_ctx: AppCtx<VM, GLimitLess>,
+    tx: &Tx,
+    mode: AuthMode,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -668,7 +687,7 @@ where
         };
 
         call_in_1_out_1_handle_response(
-            app_ctx,
+            app_ctx.unbound(),
             0,
             0,
             true,
@@ -696,7 +715,7 @@ where
 }
 
 pub fn do_finalize_fee<VM>(
-    app_ctx: AppCtx<VM>,
+    app_ctx: AppCtx<VM, GLimitLess>,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -720,7 +739,7 @@ where
         };
 
         call_in_2_out_1_handle_response(
-            app_ctx,
+            app_ctx.unbound(),
             0,
             0,
             true,
@@ -752,7 +771,7 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+pub fn do_cron_execute<VM>(ctx: AppCtx<VM, GLimitLess>, contract: Addr) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -777,7 +796,7 @@ where
     }
 }
 
-fn _do_cron_execute<VM>(app_ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+fn _do_cron_execute<VM>(app_ctx: AppCtx<VM, GLimitLess>, contract: Addr) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -793,5 +812,13 @@ where
         mode: None,
     };
 
-    call_in_0_out_1_handle_response(app_ctx, 0, 0, true, "cron_execute", code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        app_ctx.unbound(),
+        0,
+        0,
+        true,
+        "cron_execute",
+        code_hash,
+        &ctx,
+    )
 }

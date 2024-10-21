@@ -301,9 +301,9 @@ mod test {
 
     fn setup_test(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
         let (gas_checkpoint, gas_tracker) = if let Some(max_gas) = max_gas {
-            (max_gas, GasTracker::new_limited(max_gas))
+            (max_gas, GasTracker::new_limited(max_gas).unbound())
         } else {
-            (u64::MAX, GasTracker::new_limitless())
+            (u64::MAX, GasTracker::new_limitless().unbound())
         };
 
         // Compile the contract; create Wasmer store and instance.

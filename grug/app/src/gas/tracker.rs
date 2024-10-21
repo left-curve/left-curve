@@ -4,24 +4,25 @@ use {
     std::fmt::{self, Display},
 };
 
-struct GasTrackerInner {
-    // `None` means there is no gas limit. This is the case during genesis, and
-    // for begin/end blockers.
-    limit: Option<u64>,
-    used: u64,
+/// Tracks gas consumption; throws error if gas limit is exceeded.
+#[non_exhaustive]
+pub struct GasTracker<T = GUnbound> {
+    inner: Shared<T>,
 }
 
-/// Tracks gas consumption; throws error if gas limit is exceeded.
-#[derive(Clone)]
-pub struct GasTracker {
-    inner: Shared<GasTrackerInner>,
+impl<T> Clone for GasTracker<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl GasTracker {
     /// Create a new gas tracker, with or without a gas limit.
-    pub fn new(maybe_limit: Option<u64>) -> Self {
-        Self {
-            inner: Shared::new(GasTrackerInner {
+    pub fn new(maybe_limit: Option<u64>) -> GasTracker<GUnbound> {
+        GasTracker {
+            inner: Shared::new(GUnbound {
                 limit: maybe_limit,
                 used: 0,
             }),
@@ -29,25 +30,21 @@ impl GasTracker {
     }
 
     /// Create a new gas tracker without a gas limit.
-    pub fn new_limitless() -> Self {
-        Self {
-            inner: Shared::new(GasTrackerInner {
-                limit: None,
-                used: 0,
-            }),
+    pub fn new_limitless() -> GasTracker<GLimitLess> {
+        GasTracker {
+            inner: Shared::new(GLimitLess { used: 0 }),
         }
     }
 
     /// Create a new gas tracker with the given gas limit.
-    pub fn new_limited(limit: u64) -> Self {
-        Self {
-            inner: Shared::new(GasTrackerInner {
-                limit: Some(limit),
-                used: 0,
-            }),
+    pub fn new_limited(limit: u64) -> GasTracker<GLimited> {
+        GasTracker {
+            inner: Shared::new(GLimited { limit, used: 0 }),
         }
     }
+}
 
+impl GasTracker<GUnbound> {
     /// Return the gas limit. `None` if there isn't a limit.
     ///
     /// Panics if lock is poisoned.
@@ -103,6 +100,51 @@ impl GasTracker {
     }
 }
 
+impl GasTracker<GLimitLess> {
+    /// Return the amount of gas already used.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn used(&self) -> u64 {
+        self.inner.read_access().used
+    }
+
+    /// Consume the given amount of gas.
+    ///
+    /// Panics if lock is poisoned.
+    pub fn consumed(&self, consumed: u64) {
+        self.inner.write_with(|mut inner| {
+            inner.used += consumed;
+        });
+    }
+
+    pub fn unbound(self) -> GasTracker<GUnbound> {
+        GasTracker {
+            inner: Shared::new(GUnbound {
+                limit: None,
+                used: self.inner.read_access().used,
+            }),
+        }
+    }
+}
+
+impl GasTracker<GLimited> {
+    pub fn limit(&self) -> u64 {
+        self.inner.read_access().limit
+    }
+
+    pub fn used(&self) -> u64 {
+        self.inner.read_access().used
+    }
+
+    pub fn unbound(self) -> GasTracker<GUnbound> {
+        GasTracker {
+            inner: Shared::new(GUnbound {
+                limit: Some(self.inner.read_access().limit),
+                used: self.inner.read_access().used,
+            }),
+        }
+    }
+}
 impl Display for GasTracker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.read_with(|inner| {
@@ -114,3 +156,19 @@ impl Display for GasTracker {
         })
     }
 }
+
+pub struct GLimitLess {
+    pub used: u64,
+}
+
+pub struct GLimited {
+    pub limit: u64,
+    pub used: u64,
+}
+
+pub struct GUnbound {
+    pub limit: Option<u64>,
+    pub used: u64,
+}
+
+pub trait GasTrackerMode {}
