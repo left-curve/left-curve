@@ -8,8 +8,11 @@ module apply_fancy {
   import commonSpells.* from "./spells/commonSpells"
   import rareSpells.* from "./spells/rareSpells"
 
+  /// The return type of apply_* functions, as some of them modify the tree
+  type ApplyResult = { outcome: Outcome, tree: Tree }
+
   // for emulating recursion
-  type Memo = (Version, Version, BitArray) -> Outcome
+  type Memo = (Version, Version, BitArray) -> ApplyResult
   pure val MAX_HEIGHT = 4
 
   pure def apply_fancy(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]) : Tree = {
@@ -33,13 +36,14 @@ module apply_fancy {
     })
 
     // match full_memo.get((new_version, old_version, ROOT_BITS)) {
-    match tree.apply_at(full_memo, new_version, old_version, ROOT_BITS, batch) {
-      | Updated(new_root_node) => { ...tree_1, nodes: tree_1.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node) }
-      | _ => tree_1
+    pure val apply_result = tree_1.apply_at(full_memo, new_version, old_version, ROOT_BITS, batch)
+    match apply_result.outcome {
+      | Updated(new_root_node) => { ...apply_result.tree, nodes: apply_result.tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node) }
+      | _ => apply_result.tree
     }
   }
 
-  pure def apply_at(tree: Tree, memo: Memo, new_version: Version, old_version: Version, bits: BitArray, batch: Set[OperationOnKey]): Outcome = {
+  pure def apply_at(tree: Tree, memo: Memo, new_version: Version, old_version: Version, bits: BitArray, batch: Set[OperationOnKey]): ApplyResult = {
     if (tree.nodes.has({ version: old_version, key_hash: bits })) {
       match tree.nodes.get({ version: old_version, key_hash: bits }) {
         | Leaf(leaf_node) => tree.apply_at_leaf(new_version, bits, leaf_node, batch)
@@ -51,19 +55,19 @@ module apply_fancy {
     }
   }
 
-  pure def apply_at_internal(tree: Tree, memo: Memo, new_version: Version, bits: BitArray, internal_node: InternalNode, batch: Set[OperationOnKey]): Outcome = {
+  pure def apply_at_internal(tree: Tree, memo: Memo, new_version: Version, bits: BitArray, internal_node: InternalNode, batch: Set[OperationOnKey]): ApplyResult = {
     // TODO
-    Deleted
+    { outcome: Deleted, tree: tree }
   }
 
-  pure def apply_at_child(tree: Tree, memo: Memo, new_version: Version, child_bits: BitArray, child: Option[Child], batch: Set[OperationOnKey]): Outcome = {
+  pure def apply_at_child(tree: Tree, memo: Memo, new_version: Version, child_bits: BitArray, child: Option[Child], batch: Set[OperationOnKey]): ApplyResult = {
     // TODO
-    Deleted
+    { outcome: Deleted, tree: tree }
   }
 
-  pure def apply_at_leaf(tree: Tree, new_version: Version, bits: BitArray, leaf_node: LeafNode, batch: Set[OperationOnKey]): Outcome = {
+  pure def apply_at_leaf(tree: Tree, new_version: Version, bits: BitArray, leaf_node: LeafNode, batch: Set[OperationOnKey]): ApplyResult = {
     // TODO
-    Deleted
+    { outcome: Deleted, tree: tree }
   }
 
   pure def prepare_batch_for_subtree(batch: Set[OperationOnKey], existing_leaf: Option[LeafNode]): (Set[KeyWithValue], Option[OperationOnKey]) = {
@@ -94,12 +98,12 @@ module apply_fancy {
     })
   }
 
-  pure def create_subtree(tree: Tree, version: Version, bits: BitArray, batch: Set[KeyWithValue], existing_leaf: Option[LeafNode]): Outcome = {
+  pure def create_subtree(tree: Tree, version: Version, bits: BitArray, batch: Set[KeyWithValue], existing_leaf: Option[LeafNode]): ApplyResult = {
     pure val max_height_in_batch = batch.fold(0, (max_height, kv) => {
       max(max_height, kv.key_hash.length())
     })
     pure val bits_to_compute = Set(0,1).allListsUpTo(max_height_in_batch).toList((a, b) => intCompare(a.length(), b.length()))
-    pure val subtrees = bits_to_compute.foldr(Map(), (bits_now, subtrees) => {
+    pure val result = bits_to_compute.foldr({ subtrees: Map(), tree: tree }, (bits_now, acc) => {
       // pure val bits_now = q::debug("bits", if (bits.length() > q::debug("i", i)) bits.slice(0, i) else bits)
       pure val batch_now = batch.filter(kv => bits_now.prefix_of(kv.key_hash))
 
@@ -111,33 +115,40 @@ module apply_fancy {
         None
       }
 
-      pure val result = if (batch_now.size() == 0 and existing_leaf_now == None) {
+      pure val is_future_iteration = batch_now.forall(kv => kv.key_hash.length() > bits_now.length())
+
+      pure val result = if ((batch_now.size() == 0 and existing_leaf_now == None) or is_future_iteration) {
         // early return
-        Unchanged(None)
+        (Unchanged(None), acc.tree)
       } else {
         pure val new_node = if (batch_now.size() == 0) {
           // existing_leaf is Some for sure, since we didn't return early
           Leaf(existing_leaf_now.unwrap())
-        } else if (batch.size() == 1) {
+        } else if (batch_now.size() == 1 and existing_leaf_now == None) {
           Leaf(batch_now.getOnlyElement())
         } else {
-          pure val left_outcome = subtrees.getOrElse(bits_now.append(0), Unchanged(None)) // what about the leaf? - we might be able to figure out in which call it appears while precomputing.
-          pure val right_outcome = subtrees.getOrElse(bits_now.append(1), Unchanged(None))
+          pure val left_outcome = acc.subtrees.getOrElse(bits_now.append(0), Unchanged(None)) // what about the leaf? - we might be able to figure out in which call it appears while precomputing.
+          pure val right_outcome = acc.subtrees.getOrElse(bits_now.append(1), Unchanged(None))
           Internal({
             left_child: into_child(version, left_outcome),
             right_child: into_child(version, right_outcome),
           })
         }
 
-        Updated(new_node)
+        // TODO: I probably will need to emulate going down the recursion tree to update the tree itself
+        (Updated(new_node), acc.tree.add_node(version, bits_now, new_node))
       }
 
-      subtrees.put(bits_now, result)
+      { subtrees: acc.subtrees.put(bits_now, result._1), tree: result._2 }
     })
 
-    subtrees.get(bits)
+    { outcome: result.subtrees.get(bits), tree: result.tree }
   }
 
+  /// Corresponding save_node, under a different name so it doesn't suggest mutability
+  pure def add_node(tree: Tree, version: Version, bits: BitArray, node: Node): Tree = {
+    { ...tree, nodes: tree.nodes.put({ version: version, key_hash: bits }, node) }
+  }
 
   pure def into_child(version: Version, outcome: Outcome): Option[Child] = {
     match outcome {
@@ -155,6 +166,7 @@ module apply_fancy {
     assert(
       apply_fancy(empty_tree, 0, 1, Set({ key_hash: [0, 1, 1], op: Insert([1, 1, 1, 1]) }))
       == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })), orphans: Set() }
+      // Is this the correct expectation? No internal nodes?
     )
 
   run multipleOpsOnEmptyTreeTest =
