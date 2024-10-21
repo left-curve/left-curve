@@ -935,6 +935,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-lending-pool"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-auth",
+ "dango-types",
+ "grug",
+ "grug-storage",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -955,6 +966,7 @@ dependencies = [
  "dango-bank",
  "dango-genesis",
  "dango-ibc-transfer",
+ "dango-lending-pool",
  "dango-taxman",
  "dango-token-factory",
  "dango-types",
