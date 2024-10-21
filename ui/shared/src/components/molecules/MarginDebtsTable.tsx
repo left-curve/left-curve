@@ -11,7 +11,10 @@ export const MarginDebtsTable: React.FC = () => {
           <p>Assets</p>
           <p className="w-full text-end">Borrowed</p>
         </div>
-        <BorrowAssetCard borrowed={{ amount: "1000", denom: "uusdc" }} />
+        <BorrowAssetCard
+          borrowed={{ amount: "1000", denom: "uusdc" }}
+          deposited={{ denom: "uusdc", amount: "10000" }}
+        />
       </div>
     </div>
   );

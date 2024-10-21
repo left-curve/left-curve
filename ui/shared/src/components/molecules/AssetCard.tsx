@@ -1,7 +1,7 @@
 import { useConfig, usePrices } from "@leftcurve/react";
-import { formatNumber } from "@leftcurve/utils";
+import { formatNumber, formatUnits } from "@leftcurve/utils";
 
-import type { Coin, Language } from "@leftcurve/types";
+import type { Coin } from "@leftcurve/types";
 
 interface Props {
   coin: Coin;
@@ -10,11 +10,10 @@ interface Props {
 export const AssetCard: React.FC<Props> = ({ coin }) => {
   const { coins, state } = useConfig();
   const coinInfo = coins[state.chainId][coin.denom];
-
-  const language = navigator.language as Language;
+  const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
   const { getPrice } = usePrices();
-  const price = getPrice(coin.amount, coin.denom, { format: true });
+  const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
     <div className="bg-white px-4 py-2 rounded-3xl grid grid-cols-[1fr_100px_100px] items-center border border-white/50">
@@ -29,7 +28,9 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
           <p>{coinInfo.name}</p>
         </div>
       </div>
-      <div className="min-w-[3rem]">{formatNumber(coin.amount, { language })}</div>
+      <div className="min-w-[3rem]">
+        {formatNumber(humanAmount, { language: navigator.language })}
+      </div>
       <div className="min-w-[3rem] text-end">{price}</div>
     </div>
   );

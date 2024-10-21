@@ -5,7 +5,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
-import { formatAddress } from "@leftcurve/utils";
+import { truncateAddress } from "@leftcurve/utils";
 import { twMerge } from "~/utils";
 
 import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "~/components";
@@ -55,7 +55,7 @@ export const MenuConnections: React.FC = () => {
                 </div>
                 <div className="flex flex-col">
                   <p className="uppercase font-extrabold">{connector.name}</p>
-                  <p className="text-md">{formatAddress(account.address)}</p>
+                  <p className="text-md">{truncateAddress(account.address)}</p>
                 </div>
               </div>
               <Button color="green" variant="dark" size="icon" className="p-1 h-8 w-8 rounded-lg">
