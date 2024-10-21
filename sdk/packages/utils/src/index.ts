@@ -39,6 +39,8 @@ export {
   formatCurrency,
   type NumberFormatterOptions,
   formatNumber,
+  formatUnits,
+  parseUnits,
 } from "./formatters";
 
 export {
