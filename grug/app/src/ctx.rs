@@ -45,7 +45,7 @@ where
     pub fn downcast(&self) -> AppCtx<Undefined<()>> {
         AppCtx {
             storage: self.storage.clone(),
-            block: self.block.clone(),
+            block: self.block,
             gas_tracker: self.gas_tracker.clone(),
             vm: Undefined::default(),
         }
@@ -59,7 +59,7 @@ where
     pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1> {
         AppCtx {
             storage,
-            block: self.block.clone(),
+            block: self.block,
             gas_tracker: self.gas_tracker.clone(),
             vm: self.vm.clone(),
         }
@@ -76,7 +76,7 @@ where
     ) -> AppCtx<VM, Shared<Buffer<S1>>> {
         AppCtx {
             storage,
-            block: self.block.clone(),
+            block: self.block,
             gas_tracker: self.gas_tracker.clone(),
             vm: self.vm.clone(),
         }
@@ -91,7 +91,7 @@ where
     pub fn box_me(&self) -> AppCtx<VM, Box<dyn Storage>> {
         AppCtx {
             storage: Box::new(self.storage.clone()),
-            block: self.block.clone(),
+            block: self.block,
             gas_tracker: self.gas_tracker.clone(),
             vm: self.vm.clone(),
         }

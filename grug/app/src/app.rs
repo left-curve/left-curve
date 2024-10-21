@@ -504,7 +504,11 @@ where
             events.extend(new_events);
         },
         Err(err) => {
-            return new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), Err(err));
+            return new_tx_outcome(
+                GasTracker::new_limited(tx.gas_limit),
+                events.clone(),
+                Err(err),
+            );
         },
     }
 
@@ -627,6 +631,7 @@ where
 {
     let outcome_so_far = new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), result.clone());
 
+    // backup gas tracker
     let used_gt = ctx.gas_tracker.clone();
 
     ctx.gas_tracker = GasTracker::new_limitless();
