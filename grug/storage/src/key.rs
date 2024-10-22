@@ -307,11 +307,17 @@ impl PrimaryKey for CodeStatus {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (a_raw, b_raw) = split_first_key(Self::KEY_ELEMS, bytes);
+        let (s_raw, p_raw) = split_first_key(Self::KEY_ELEMS, bytes);
 
-        let p = u64::from_be_bytes(b_raw.try_into().unwrap());
+        let p = u64::from_slice(&p_raw)?;
 
-        match CodeStatusType::try_from(*a_raw.first().unwrap())? {
+        match CodeStatusType::try_from(*s_raw.first().ok_or(StdError::deserialize::<
+            CodeStatusType,
+            _,
+        >(
+            "key",
+            format!("invalid serialized format: {s_raw:?}"),
+        ))?)? {
             CodeStatusType::Orphan => Ok(CodeStatus::Orphan { since: p }),
             CodeStatusType::Amount => Ok(CodeStatus::Amount { amount: p }),
         }
