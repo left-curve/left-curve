@@ -206,11 +206,7 @@ where
         gas_tracker: GasTracker,
         key: K,
     ) -> StdResult<T> {
-        let data_raw = self.path(key).as_path().load_raw(storage)?;
-
-        gas_tracker.consume(GAS_COSTS.db_read.cost(data_raw.len()), "db_read/found")?;
-
-        C::decode(&data_raw)
+        self.primary.load_with_gas(storage, gas_tracker, key)
     }
 
     fn has_with_gas(
@@ -219,16 +215,7 @@ where
         gas_tracker: GasTracker,
         key: K,
     ) -> StdResult<bool> {
-        match self.path(key).as_path().may_load_raw(storage) {
-            Some(data) => {
-                gas_tracker.consume(GAS_COSTS.db_read.cost(data.len()), "db_read/found")?;
-                Ok(true)
-            },
-            None => {
-                gas_tracker.consume(GAS_COSTS.db_read.cost(0), "db_read/not_found")?;
-                Ok(false)
-            },
-        }
+        self.primary.has_with_gas(storage, gas_tracker, key)
     }
 
     fn range_with_gas<'b>(
@@ -242,20 +229,8 @@ where
     where
         T: 'b,
     {
-        // Gas cost for creating an iterator.
-        gas_tracker.consume(GAS_COSTS.db_scan, "db_scan")?;
-
-        let iter = self
-            .range_raw(storage, min, max, order)
-            .metered(gas_tracker)
-            .map(|record| {
-                let (k_raw, v_raw) = record?;
-                let k = K::from_slice(&k_raw)?;
-                let v = C::decode(&v_raw)?;
-                Ok((k, v))
-            });
-
-        Ok(Box::new(iter))
+        self.primary
+            .range_with_gas(storage, gas_tracker, min, max, order)
     }
 
     fn save_with_gas(
@@ -265,20 +240,9 @@ where
         key: K,
         value: &T,
     ) -> StdResult<()> {
-        let data_raw = C::encode(value)?;
-        let path = self.path(key);
-
-        let gas_cost = GAS_COSTS
-            .db_write
-            .cost(data_raw.len() + path.as_path().storage_key().len());
-
-        // Charge gas before writing the data, such that if run out of gas,
-        // the data isn't written.
-        gas_tracker.consume(gas_cost, "db_write")?;
-
-        path.as_path().save_raw(storage, &data_raw);
-
-        Ok(())
+        // TODO: this implementation doesn't account for gas cost of writing to
+        // the index set.
+        self.primary.save_with_gas(storage, gas_tracker, key, value)
     }
 }
 

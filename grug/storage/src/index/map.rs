@@ -17,7 +17,7 @@ pub struct IndexedMap<'a, K, T, I, C = Borsh>
 where
     C: Codec<T>,
 {
-    primary: Map<'a, K, T, C>,
+    pub primary: Map<'a, K, T, C>,
     /// This is meant to be read directly to get the proper types, like:
     /// `map.idx.owner.items(...)`.
     pub idx: I,
@@ -33,6 +33,14 @@ where
             primary: Map::new(pk_namespace),
             idx: indexes,
         }
+    }
+
+    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+        self.primary.path_raw(key_raw)
+    }
+
+    pub fn path(&self, key: K) -> PathBuf<T, C> {
+        self.primary.path(key)
     }
 
     pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
@@ -83,12 +91,6 @@ where
 
     pub fn take(&self, storage: &mut dyn Storage, key: K) -> StdResult<T> {
         self.primary.take(storage, key)
-    }
-
-    pub fn path(&self, key: K) -> PathBuf<T, C> {
-        let mut raw_keys = key.raw_keys();
-        let last_raw_key = raw_keys.pop();
-        PathBuf::new(self.primary.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
     // -------------------- iteration methods (full bound) ---------------------
