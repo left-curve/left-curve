@@ -617,6 +617,15 @@ where
         CODES.save(&mut storage, old_code_hash, &old_code)?;
     }
 
+    let mut new_code = CODES.load(&storage, msg.new_code_hash)?;
+
+    match &mut new_code.status {
+        CodeStatus::Orphan { .. } => new_code.status = CodeStatus::Usage { usage: 1 },
+        CodeStatus::Usage { usage: amount } => *amount += 1,
+    }
+
+    CODES.save(&mut storage, msg.new_code_hash, &new_code)?;
+
     let ctx = Context {
         chain_id,
         block,
