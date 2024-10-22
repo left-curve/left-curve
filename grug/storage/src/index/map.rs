@@ -280,20 +280,64 @@ where
     I: IndexList<K, T>,
     C: Codec<T>,
 {
-    pub fn update<A, Err>(
+    pub fn may_update<F, E>(&'a self, storage: &mut dyn Storage, key: K, action: F) -> Result<T, E>
+    where
+        F: FnOnce(Option<T>) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        let old_data = self.may_load(storage, key.clone())?;
+        let new_data = action(old_data.clone())?;
+
+        self.replace(storage, key, Some(&new_data), old_data.as_ref())?;
+
+        Ok(new_data)
+    }
+
+    pub fn update<F, E>(&'a self, storage: &mut dyn Storage, key: K, action: F) -> Result<T, E>
+    where
+        F: FnOnce(T) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        let old_data = self.load(storage, key.clone())?;
+        let new_data = action(old_data.clone())?;
+
+        self.replace(storage, key, Some(&new_data), Some(&old_data))?;
+
+        Ok(new_data)
+    }
+
+    pub fn may_modify<F, E>(
         &'a self,
         storage: &mut dyn Storage,
         key: K,
-        action: A,
-    ) -> Result<Option<T>, Err>
+        action: F,
+    ) -> Result<Option<T>, E>
     where
-        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
-        Err: From<StdError>,
+        F: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
         let old_data = self.may_load(storage, key.clone())?;
         let new_data = action(old_data.clone())?;
 
         self.replace(storage, key, new_data.as_ref(), old_data.as_ref())?;
+
+        Ok(new_data)
+    }
+
+    pub fn modify<F, E>(
+        &'a self,
+        storage: &mut dyn Storage,
+        key: K,
+        action: F,
+    ) -> Result<Option<T>, E>
+    where
+        F: FnOnce(T) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        let old_data = self.load(storage, key.clone())?;
+        let new_data = action(old_data.clone())?;
+
+        self.replace(storage, key, new_data.as_ref(), Some(&old_data))?;
 
         Ok(new_data)
     }
@@ -1174,7 +1218,7 @@ mod cosmwasm_tests {
         DATA.remove(&mut storage, pks[1]).unwrap();
 
         // change john to mary
-        DATA.update(&mut storage, pks[2], |d| -> StdResult<_> {
+        DATA.may_modify(&mut storage, pks[2], |d| -> StdResult<_> {
             let mut x = d.unwrap();
             assert_eq!(&x.name, "John");
             x.name = "Mary".to_string();
