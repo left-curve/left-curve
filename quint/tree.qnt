@@ -43,7 +43,7 @@ module tree {
   pure def makeNodeId(v: Version, kh: BitArray) : NodeId = 
     {version: v, key_hash: kh}
 
-  pure def mark_node_as_orphaned(tree: Tree, orphaned_since_version: Version, version: Version, key_hash: BitArray) : Tree = {
+  pure def mark_node_as_orphaned(tree: Tree, orphaned_since_version: Version, version: Version, key_hash: BitArray): Tree = {
       pure val orphan = {   orphaned_since_version: orphaned_since_version, 
                             version: version, 
                             key_hash: key_hash }
