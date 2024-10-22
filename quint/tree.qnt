@@ -52,7 +52,7 @@ module tree {
     { ...tree, orphans: tree.orphans.union(Set(orphan)) }
   }
 
-  pure def isNodeOrphaned(nodeId: NodeId, orphans: Set[OrphanId]) : bool = {
+  pure def isNodeOrphaned(nodeId: NodeId, orphans: Set[OrphanId]): bool = {
     orphans.exists(el => (el.version == nodeId.version and el.key_hash == nodeId.key_hash))
   }
 
