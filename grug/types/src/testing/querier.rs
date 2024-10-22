@@ -272,6 +272,7 @@ impl Querier for MockQuerier {
                         );
                     })
                     .scan(req.min.as_deref(), req.max.as_deref(), req.order)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (Binary::from_inner(k), Binary::from_inner(v)))
                     .collect();
                 Ok(QueryResponse::WasmScan(records))
