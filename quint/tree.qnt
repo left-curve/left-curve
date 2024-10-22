@@ -37,23 +37,32 @@ module tree {
 
   pure val ROOT_BITS: BitArray = []
 
-  pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId = { orphaned_since_version: osv, version: v, key_hash: kh}
-  pure def makeNodeId(v: Version, kh: BitArray) : NodeId = {version: v, key_hash: kh}
+  pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId = 
+    {orphaned_since_version: osv, version: v, key_hash: kh}
+
+  pure def makeNodeId(v: Version, kh: BitArray) : NodeId = 
+    {version: v, key_hash: kh}
 
   pure def mark_node_as_orphaned(tree: Tree, orphaned_since_version: Version, version: Version, key_hash: BitArray) : Tree = {
-      pure val orphan = { orphaned_since_version: orphaned_since_version, version: version, key_hash: key_hash }
+      pure val orphan = {   orphaned_since_version: orphaned_since_version, 
+                            version: version, 
+                            key_hash: key_hash }
       { ...tree, orphans: tree.orphans.union(Set(orphan)) }
   }
+
   pure def isNodeOrphaned(nodeId: NodeId, orphans: Set[OrphanId]) : bool = {
     orphans.exists(el => (el.version == nodeId.version and el.key_hash == nodeId.key_hash))
   }
+
   pure def prune(tree: Tree, up_to_version: Version) : Tree =  {
-      val orphans_to_be_removed = tree.orphans.filter(orphan => orphan.orphaned_since_version <= up_to_version)
-      val prunned_orphans = tree.orphans.filter(orphan => orphan.orphaned_since_version > up_to_version)
+      val orphans_to_be_removed = tree.orphans.filter(orphan => 
+            orphan.orphaned_since_version <= up_to_version)
+      val prunned_orphans = tree.orphans.filter(orphan => 
+            orphan.orphaned_since_version > up_to_version)
 
-      val keys_of_non_orphanes = tree.nodes.keys().filter(nodeId => isNodeOrphaned(nodeId, orphans_to_be_removed) == false)
+      val keys_of_non_orphanes = tree.nodes.keys().filter(nodeId => 
+            not(isNodeOrphaned(nodeId, orphans_to_be_removed)))
       val updated_nodes = keys_of_non_orphanes.mapBy( x => tree.nodes.get(x) )
-
       {nodes: updated_nodes, orphans: prunned_orphans}
   }
 
