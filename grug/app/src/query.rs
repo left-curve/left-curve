@@ -240,6 +240,8 @@ pub fn query_wasm_scan(
     gas_tracker: GasTracker,
     req: QueryWasmScanRequest,
 ) -> StdResult<BTreeMap<Binary, Binary>> {
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
     StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
         .scan_with_gas(
             gas_tracker,
@@ -247,6 +249,7 @@ pub fn query_wasm_scan(
             req.max.as_deref(),
             req.order,
         )?
+        .take(limit as usize)
         .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
         .collect()
 }

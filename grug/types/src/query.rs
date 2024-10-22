@@ -131,6 +131,7 @@ impl Query {
         contract: Addr,
         min: Option<Bound<Binary>>,
         max: Option<Bound<Binary>>,
+        limit: Option<u32>,
         order: Order,
     ) -> Self {
         let min = min.map(|min| match min {
@@ -147,6 +148,7 @@ impl Query {
             contract,
             min,
             max,
+            limit,
             order,
         }
         .into()
@@ -247,6 +249,7 @@ pub struct QueryWasmScanRequest {
     pub contract: Addr,
     pub min: Option<Binary>, // inclusive
     pub max: Option<Binary>, // exclusive
+    pub limit: Option<u32>,
     pub order: Order,
 }
 
