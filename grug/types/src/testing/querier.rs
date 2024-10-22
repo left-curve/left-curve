@@ -1,9 +1,8 @@
 use {
     crate::{
         Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult, Hash256,
-        HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError, StdResult,
-
-        Storage,
+        HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError,
+        StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
