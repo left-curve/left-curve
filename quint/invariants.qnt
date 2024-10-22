@@ -110,6 +110,7 @@ pure def nodeAtCommonPrefix(t: Tree) : bool =
             (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a,b))   
     ))
 
+
 pure def rightChild(t: Tree, nId: NodeId): NodeId =
     // TODO: versions
     {version: 0, key_hash: nId.key_hash.append(1)}
@@ -118,7 +119,9 @@ pure def leftChild(t: Tree, nId: NodeId): NodeId =
     // TODO: versions
     {version: 0, key_hash: nId.key_hash.append(0)}   
 
-pure def hashInv(t: Tree): bool = 
+
+
+pure def hashInv(t: Tree, version: int): bool = 
     t.nodes.keys().forall(nID => match t.nodes.get(nID) {
                                 | Leaf(_) => true
                                 | Internal(n) => and {
@@ -134,7 +137,7 @@ pure def hashInv(t: Tree): bool =
     })    
 
 
-// TODO NodeId -> Node is a bijection
+// TODO NodeId -> Node is a bijection: perhaps not with versions
 
 
 
