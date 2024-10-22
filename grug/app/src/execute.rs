@@ -103,10 +103,11 @@ fn _do_configure(
 pub fn do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     uploader: Addr,
     msg: MsgUpload,
 ) -> AppResult<Vec<Event>> {
-    match _do_upload(storage, gas_tracker, uploader, msg) {
+    match _do_upload(storage, gas_tracker, block, uploader, msg) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
@@ -126,6 +127,7 @@ pub fn do_upload(
 fn _do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
+    block: BlockInfo,
     uploader: Addr,
     msg: MsgUpload,
 ) -> AppResult<(Event, Hash256)> {
@@ -145,7 +147,9 @@ fn _do_upload(
 
     CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
         code: msg.code,
-        status: CodeStatus::Orphan { since: 0 },
+        status: CodeStatus::Orphan {
+            since: block.height,
+        },
     })?;
 
     Ok((
@@ -599,7 +603,7 @@ where
 
     CONTRACTS.save(&mut storage, msg.contract, &contract_info)?;
 
-    let mut old_code = CODES.load(&mut storage, old_code_hash)?;
+    let mut old_code = CODES.load(&storage, old_code_hash)?;
 
     if let CodeStatus::Amount { amount } = &mut old_code.status {
         *amount -= 1;

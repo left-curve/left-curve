@@ -85,12 +85,7 @@ mod tests {
             .idx
             .status
             .sub_prefix(CodeStatusType::Orphan)
-            .range(
-                &mut storage,
-                Some(bound),
-                None,
-                grug_types::Order::Ascending,
-            )
+            .range(&storage, Some(bound), None, grug_types::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
 
@@ -105,12 +100,7 @@ mod tests {
             .idx
             .status
             .sub_prefix(CodeStatusType::Orphan)
-            .range(
-                &mut storage,
-                Some(bound),
-                None,
-                grug_types::Order::Ascending,
-            )
+            .range(&storage, Some(bound), None, grug_types::Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
 

@@ -743,7 +743,7 @@ where
             msg,
             true,
         ),
-        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, sender, msg),
+        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, block, sender, msg),
         Message::Instantiate(msg) => {
             do_instantiate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
         },

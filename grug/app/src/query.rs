@@ -4,7 +4,12 @@ use {
         StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config, Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest, QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest, QueryConfigRequest, QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest, QueryWasmSmartRequest, StdResult, Storage
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
+        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
+        QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
+        QueryCodesRequest, QueryConfigRequest, QueryContractRequest, QueryContractsRequest,
+        QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest, QueryWasmSmartRequest,
+        StdResult, Storage,
     },
     std::collections::BTreeMap,
 };

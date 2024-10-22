@@ -1,6 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonSerExt, StdResult
+        Addr, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonSerExt,
+        StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,

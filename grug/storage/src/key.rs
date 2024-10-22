@@ -309,7 +309,7 @@ impl PrimaryKey for CodeStatus {
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         let (s_raw, p_raw) = split_first_key(Self::KEY_ELEMS, bytes);
 
-        let p = u64::from_slice(&p_raw)?;
+        let p = u64::from_slice(p_raw)?;
 
         match CodeStatusType::try_from(*s_raw.first().ok_or(StdError::deserialize::<
             CodeStatusType,
