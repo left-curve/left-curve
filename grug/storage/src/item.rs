@@ -145,7 +145,7 @@ mod test {
         // Save a new data using `update`.
         {
             let output = CONFIG
-                .update(&mut storage, |c| -> StdResult<_> {
+                .may_modify(&mut storage, |c| -> StdResult<_> {
                     assert!(c.is_none());
 
                     Ok(Some(Config {
@@ -161,7 +161,7 @@ mod test {
         // Update the existing data using `update`.
         {
             let output = CONFIG
-                .update(&mut storage, |mut c| -> StdResult<_> {
+                .may_modify(&mut storage, |mut c| -> StdResult<_> {
                     c.as_mut().unwrap().max_tokens *= 2;
 
                     Ok(c)
@@ -180,7 +180,7 @@ mod test {
         // Remove the existing data using `update`.
         {
             let output = CONFIG
-                .update(&mut storage, |_| -> StdResult<_> { Ok(None) })
+                .may_modify(&mut storage, |_| -> StdResult<_> { Ok(None) })
                 .unwrap();
 
             assert_eq!(output, None);
@@ -202,7 +202,7 @@ mod test {
         let mut old_max_tokens = 0;
 
         CONFIG
-            .update(&mut storage, |mut c| -> StdResult<_> {
+            .may_modify(&mut storage, |mut c| -> StdResult<_> {
                 old_max_tokens = c.as_ref().unwrap().max_tokens;
 
                 c.as_mut().unwrap().max_tokens *= 2;
@@ -225,7 +225,7 @@ mod test {
 
         CONFIG.save(&mut storage, &cfg).unwrap();
 
-        let res = CONFIG.update(&mut storage, |_| {
+        let res = CONFIG.may_modify(&mut storage, |_| {
             // Intentionally cause an error.
             Uint128::ONE.checked_div(Uint128::ZERO)?;
 
@@ -259,7 +259,7 @@ mod test {
 
         CONFIG.save(&mut storage, &cfg).unwrap();
 
-        let res = CONFIG.update(&mut storage, |mut c| {
+        let res = CONFIG.may_modify(&mut storage, |mut c| {
             // This should emit the custom error.
             if c.as_ref().unwrap().max_tokens > 20 {
                 return Err(MyError::Foo);
