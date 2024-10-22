@@ -103,7 +103,7 @@ module apply_fancy {
       max(max_height, kv.key_hash.length())
     })
     pure val bits_to_compute = Set(0,1).allListsUpTo(max_height_in_batch).toList((a, b) => intCompare(a.length(), b.length()))
-    pure val result = bits_to_compute.foldr({ subtrees: Map(), tree: tree }, (bits_now, acc) => {
+    pure val full_memo = bits_to_compute.foldr(Map(), (bits_now, memo) => {
       // pure val bits_now = q::debug("bits", if (bits.length() > q::debug("i", i)) bits.slice(0, i) else bits)
       pure val batch_now = batch.filter(kv => bits_now.prefix_of(kv.key_hash))
 
@@ -115,34 +115,41 @@ module apply_fancy {
         None
       }
 
-      pure val is_future_iteration = batch_now.forall(kv => kv.key_hash.length() > bits_now.length())
+      pure val is_future_iteration = false // batch_now.forall(kv => kv.key_hash.length() > bits_now.length())
 
       pure val result = if ((batch_now.size() == 0 and existing_leaf_now == None) or is_future_iteration) {
         // early return
-        (Unchanged(None), acc.tree)
+        { outcome: Unchanged(None), nodes_to_add: Set() }
       } else {
-        pure val new_node = if (batch_now.size() == 0) {
+        if (batch_now.size() == 0) {
           // existing_leaf is Some for sure, since we didn't return early
-          Leaf(existing_leaf_now.unwrap())
+          pure val node = Leaf(existing_leaf_now.unwrap())
+          { outcome: Updated(node), nodes_to_add: Set(({version: version, key_hash: bits_now}, node)) }
         } else if (batch_now.size() == 1 and existing_leaf_now == None) {
-          Leaf(batch_now.getOnlyElement())
+          pure val node = Leaf(batch_now.getOnlyElement())
+          { outcome: Updated(node), nodes_to_add: Set(({version: version, key_hash: bits_now}, node)) }
         } else {
-          pure val left_outcome = acc.subtrees.getOrElse(bits_now.append(0), Unchanged(None)) // what about the leaf? - we might be able to figure out in which call it appears while precomputing.
-          pure val right_outcome = acc.subtrees.getOrElse(bits_now.append(1), Unchanged(None))
-          Internal({
-            left_child: into_child(version, left_outcome),
-            right_child: into_child(version, right_outcome),
+          pure val left = memo.get(bits_now.append(0)) // what about the leaf? - we might be able to figure out in which call it appears while precomputing.
+          pure val right = memo.get(bits_now.append(1))
+          pure val node = Internal({
+            left_child: into_child(version, left.outcome),
+            right_child: into_child(version, right.outcome),
           })
+          pure val nodes_to_add = left.nodes_to_add.union(right.nodes_to_add).union(Set(({version: version, key_hash: bits_now}, node)))
+          { outcome: Updated(node), nodes_to_add: nodes_to_add }
         }
-
-        // TODO: I probably will need to emulate going down the recursion tree to update the tree itself
-        (Updated(new_node), acc.tree.add_node(version, bits_now, new_node))
       }
 
-      { subtrees: acc.subtrees.put(bits_now, result._1), tree: result._2 }
+      memo.put(bits_now, result)
     })
 
-    { outcome: result.subtrees.get(bits), tree: result.tree }
+    create_subtree_with_memo(full_memo, tree, version, bits, batch, existing_leaf)
+  }
+
+  pure def create_subtree_with_memo(memo: BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }, tree: Tree, version: Version, bits: BitArray, batch: Set[KeyWithValue], existing_leaf: Option[LeafNode]): ApplyResult = {
+    pure val result = memo.get(bits)
+    pure val new_nodes = result.nodes_to_add.fold(tree.nodes, (acc, i) => acc.put(i._1, i._2))
+    { outcome: result.outcome, tree: {...tree, nodes: new_nodes } }
   }
 
   /// Corresponding save_node, under a different name so it doesn't suggest mutability
@@ -166,7 +173,7 @@ module apply_fancy {
     assert(
       apply_fancy(empty_tree, 0, 1, Set({ key_hash: [0, 1, 1], op: Insert([1, 1, 1, 1]) }))
       == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })), orphans: Set() }
-      // Is this the correct expectation? No internal nodes?
+      // Is this the correct expectation? No internal nodes? -> yes, from the rust tests, this should be a leaf on the root
     )
 
   run multipleOpsOnEmptyTreeTest =
