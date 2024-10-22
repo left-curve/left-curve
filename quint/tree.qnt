@@ -59,12 +59,4 @@ module tree {
 
       {nodes: updated_nodes, orphans: prunned_orphans}
   }
-
-  var tree : Tree
-
-  action init =
-    tree' = {
-        orphans: Set(),
-        nodes: Map(),
-    }
 }
