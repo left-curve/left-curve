@@ -1,12 +1,12 @@
 use {
     dango_testing::setup_test,
-    dango_types::lending_pool::{self, NAMESPACE},
+    dango_types::lending_pool::{self, QueryWhitelistedDenomsRequest, NAMESPACE},
     grug::{Addressable, Coins, Denom, Message, MsgTransfer, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
     test_case::test_case,
 };
 
-static _ATOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uatom").unwrap());
+static ATOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uatom").unwrap());
 static _OSMO: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uosmo").unwrap());
 static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
 
@@ -23,6 +23,138 @@ fn cant_transfer_to_lending_pool() {
             }),
         )
         .should_fail_with_error("Can't send tokens to this contract");
+}
+
+#[test]
+fn only_owner_can_whitelist_denoms() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Try to whitelist a denom from non-owner, should fail
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_fail_with_error("Only the owner can whitelist denoms");
+
+    // Whitelist a denom from owner, should succeed
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test]
+fn only_owner_can_delist_denoms() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Try to delist a denom from non-owner, should fail
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_fail_with_error("Only the owner can delist denoms");
+
+    // Delist a denom from owner, should succeed
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test]
+fn whitelist_denom_works() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Ensure USDC is already in the whitelist
+    suite
+        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and_equal(vec![USDC.clone()]);
+
+    // Try to whitelist a denom that is already in the whitelist, should fail
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_fail_with_error("Denom already whitelisted");
+
+    // Whitelist ATOM from owner, should succeed
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure ATOM is now in the whitelist
+    suite
+        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and_equal(vec![USDC.clone(), ATOM.clone()]);
+}
+
+#[test]
+fn delist_denom_works() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Ensure USDC is already in the whitelist
+    suite
+        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and_equal(vec![USDC.clone()]);
+
+    // Delist denom not in the whitelist, should fail
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::DelistDenom(ATOM.clone()),
+            Coins::new(),
+        )
+        .should_fail_with_error("Denom not whitelisted");
+
+    // Delist USDC from owner, should succeed
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure USDC is no longer in the whitelist
+    suite
+        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and_equal(vec![]);
 }
 
 #[test]

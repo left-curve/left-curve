@@ -41,9 +41,49 @@ pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
+        ExecuteMsg::WhitelistDenom(denom) => whitelist_denom(ctx, denom),
+        ExecuteMsg::DelistDenom(denom) => delist_denom(ctx, denom),
         ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
     }
+}
+
+pub fn whitelist_denom(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
+    // Ensure only chain owner can whitelist denoms
+    ensure!(
+        ctx.sender == ctx.querier.query_config()?.owner,
+        "Only the owner can whitelist denoms"
+    );
+
+    // Ensure the denom is not already in the whitelist
+    ensure!(
+        !WHITELISTED_DENOMS.has(ctx.storage, denom.clone()),
+        "Denom already whitelisted"
+    );
+
+    // Insert the denom into the whitelist
+    WHITELISTED_DENOMS.insert(ctx.storage, denom)?;
+
+    Ok(Response::new())
+}
+
+pub fn delist_denom(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
+    // Ensure only chain owner can delist denoms
+    ensure!(
+        ctx.sender == ctx.querier.query_config()?.owner,
+        "Only the owner can delist denoms"
+    );
+
+    // Ensure the denom is in the whitelist
+    ensure!(
+        WHITELISTED_DENOMS.has(ctx.storage, denom.clone()),
+        "Denom not whitelisted"
+    );
+
+    // Remove the denom from the whitelist
+    WHITELISTED_DENOMS.remove(ctx.storage, denom);
+
+    Ok(Response::new())
 }
 
 /// Ensures that the sender's account is not a margin account.
