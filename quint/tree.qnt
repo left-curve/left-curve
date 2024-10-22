@@ -56,7 +56,7 @@ module tree {
     orphans.exists(el => (el.version == nodeId.version and el.key_hash == nodeId.key_hash))
   }
 
-  pure def prune(tree: Tree, up_to_version: Version) : Tree =  {
+  pure def prune(tree: Tree, up_to_version: Version): Tree =  {
       val orphans_to_be_removed = tree.orphans.filter(orphan => 
             orphan.orphaned_since_version <= up_to_version)
       val prunned_orphans = tree.orphans.filter(orphan => 
