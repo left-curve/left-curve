@@ -9,7 +9,7 @@ use {
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Code, CodeStatus, Context, ContractInfo,
         Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
-        MsgMigrate, MsgTransfer, MsgUpload, Op, Storage, SubMsgResult, Tx, TxOutcome,
+        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -362,28 +362,32 @@ where
     // contract of the same address.
     let address = Addr::derive(sender, msg.code_hash, &msg.salt);
 
-    if CONTRACTS.has(&storage, address) {
-        return Err(AppError::AccountExists { address });
-    }
-
     // Save the contract info
-    let contract = ContractInfo {
-        code_hash: msg.code_hash,
-        label: msg.label.map(Inner::into_inner),
-        admin: msg.admin,
-    };
+    let contract = CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
+        if maybe_contract.is_some() {
+            return Err(AppError::AccountExists { address });
+        }
 
-    CONTRACTS.save(&mut storage, address, &contract)?;
+        Ok(ContractInfo {
+            code_hash: msg.code_hash,
+            label: msg.label.map(Inner::into_inner),
+            admin: msg.admin,
+        })
+    })?;
 
     // Increment the code's usage.
-    let mut code = CODES.load(&storage, msg.code_hash)?;
+    CODES.update(&mut storage, msg.code_hash, |mut code| -> StdResult<_> {
+        match &mut code.status {
+            CodeStatus::Orphaned { .. } => {
+                code.status = CodeStatus::InUse { usage: 1 };
+            },
+            CodeStatus::InUse { usage } => {
+                *usage += 1;
+            },
+        }
 
-    match &mut code.status {
-        CodeStatus::Orphaned { .. } => code.status = CodeStatus::InUse { usage: 1 },
-        CodeStatus::InUse { usage } => *usage += 1,
-    }
-
-    CODES.save(&mut storage, msg.code_hash, &code)?;
+        Ok(code)
+    })?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -583,50 +587,61 @@ where
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;
-    let mut contract_info = CONTRACTS.load(&storage, msg.contract)?;
+    let mut old_code_hash = None;
 
-    // Only the account's admin can migrate it
-    let Some(admin) = &contract_info.admin else {
-        return Err(AppError::AdminNotSet);
-    };
+    // Update the contract info.
+    let contract_info = CONTRACTS.update(&mut storage, msg.contract, |mut info| {
+        old_code_hash = Some(info.code_hash);
 
-    if sender != admin {
-        return Err(AppError::NotAdmin {
-            sender,
-            admin: contract_info.admin.unwrap(),
-        });
-    }
-
-    let old_code_hash = contract_info.code_hash;
-
-    // Update account info and save
-    contract_info.code_hash = msg.new_code_hash;
-
-    CONTRACTS.save(&mut storage, msg.contract, &contract_info)?;
-
-    let mut old_code = CODES.load(&storage, old_code_hash)?;
-
-    // Reduce the code's usage count.
-    if let CodeStatus::InUse { usage: amount } = &mut old_code.status {
-        *amount -= 1;
-
-        if amount == &0 {
-            old_code.status = CodeStatus::Orphaned {
-                since: block.timestamp,
-            };
+        // Ensure the sender is the admin of the contract.
+        if Some(sender) != info.admin {
+            return Err(AppError::Unauthorized);
         }
 
-        CODES.save(&mut storage, old_code_hash, &old_code)?;
-    }
+        info.code_hash = msg.new_code_hash;
 
-    let mut new_code = CODES.load(&storage, msg.new_code_hash)?;
+        Ok(info)
+    })?;
 
-    match &mut new_code.status {
-        CodeStatus::Orphaned { .. } => new_code.status = CodeStatus::InUse { usage: 1 },
-        CodeStatus::InUse { usage: amount } => *amount += 1,
-    }
+    // Reduce usage count of the old code.
+    CODES.update(
+        &mut storage,
+        old_code_hash.unwrap(),
+        |mut code| -> StdResult<_> {
+            match &mut code.status {
+                CodeStatus::InUse { usage } => {
+                    if *usage == 1 {
+                        code.status = CodeStatus::Orphaned {
+                            since: block.timestamp,
+                        };
+                    } else {
+                        *usage -= 1;
+                    }
+                },
+                _ => unreachable!(),
+            }
 
-    CODES.save(&mut storage, msg.new_code_hash, &new_code)?;
+            Ok(code)
+        },
+    )?;
+
+    // Increase usage count of the new code.
+    CODES.update(
+        &mut storage,
+        msg.new_code_hash,
+        |mut code| -> StdResult<_> {
+            match &mut code.status {
+                CodeStatus::Orphaned { .. } => {
+                    code.status = CodeStatus::InUse { usage: 1 };
+                },
+                CodeStatus::InUse { usage } => {
+                    *usage += 1;
+                },
+            }
+
+            Ok(code)
+        },
+    )?;
 
     let ctx = Context {
         chain_id,

@@ -158,21 +158,27 @@ where
 
         // Remove orphaned codes (those that are not used by any contract) that
         // have been orphaned longer than the maximum age.
-        for hash in CODES
-            .idx
-            .status
-            .prefix_keys(
-                &buffer,
-                None,
-                Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
-                    since: block.timestamp - cfg.max_orphan_age,
-                })),
-                Order::Ascending,
-            )
-            .map(|res| res.map(|(_status, hash)| hash))
-            .collect::<StdResult<Vec<_>>>()?
+        if let Some(since) = block
+            .timestamp
+            .into_nanos()
+            .checked_sub(cfg.max_orphan_age.into_nanos())
         {
-            CODES.remove(&mut buffer, hash)?;
+            for hash in CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &buffer,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
+                        since: Duration::from_nanos(since),
+                    })),
+                    Order::Ascending,
+                )
+                .map(|res| res.map(|(_status, hash)| hash))
+                .collect::<StdResult<Vec<_>>>()?
+            {
+                CODES.remove(&mut buffer, hash)?;
+            }
         }
 
         // Find all cronjobs that should be performed. That is, ones that the
