@@ -19,14 +19,14 @@ module apply_fancy {
   /* Pre-computations to emulate recursion */
 
   pure def pre_compute_apply_at(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
-    range(1, tree.nodes.keys().max_height() + 2).foldr(Map(), (i, memo) => {
-      pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == MAX_HEIGHT - i)
+    range(0, tree.nodes.keys().max_height() + 1).foldr(Map(), (i, memo) => {
+      pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == i)
 
       node_ids_at_this_height.fold(memo, (memo, node_id) => {
         pure val memo_key = (new_version, old_version, node_id.key_hash)
         // TODO: it might make sense to also store the parts of the batch relevant to this subtree and then compare to
         // the one being applied in the recursive emulation
-        pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch)
+        pure val memo_value = tree.apply_at(memo, new_version, old_version, q::debug("node key hash", node_id.key_hash), batch)
         memo.put(memo_key, memo_value)
       })
     })
@@ -40,7 +40,7 @@ module apply_fancy {
         tree
       }
 
-    pure val memo = pre_compute_apply_at(tree, old_version, new_version, batch)
+    pure val memo = pre_compute_apply_at(tree_1, old_version, new_version, batch)
     pure val apply_result = tree_1.apply_at(memo, new_version, old_version, ROOT_BITS, batch)
 
     match apply_result.outcome {
@@ -71,16 +71,161 @@ module apply_fancy {
     }
   }
 
-  pure def apply_at_internal(tree: Tree, memo: ApplyAtMemo, new_version: Version, bits: BitArray, internal_node: InternalNode,
-                             batch: Set[OperationOnKey]): ApplyResult = {
-    // TODO
-    { outcome: Deleted, tree: tree }
+  pure def apply_at_internal(
+    tree: Tree,
+    memo: ApplyAtMemo,
+    new_version: Version,
+    bits: BitArray,
+    internal_node: InternalNode,
+    batch: Set[OperationOnKey]
+  ): ApplyResult = {
+    // Split the batch into two, one for left child, one for right.
+    pure val partitioned_batch = q::debug("apply_at_internal", partition_batch(batch, q::debug("internal bits", bits)))
+    pure val batch_for_left = partitioned_batch._1
+    pure val batch_for_right = partitioned_batch._2
+
+    // Apply the left batch at left child
+    pure val left_bits = bits.append(0)
+    pure val left_result = tree.apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
+    pure val left_outcome = left_result.outcome
+
+    // Apply the right batch at right child
+    pure val right_bits = bits.append(1)
+    pure val right_result = left_result.tree.apply_at_child(memo, new_version, right_bits, internal_node.right_child, batch_for_right)
+    pure val right_outcome = right_result.outcome
+
+    // If the left child exists and have been updated or deleted, then the
+    // old one needs to be marked as orphaned.
+    pure val tree_1 = if (left_outcome.is_updated_or_deleted() and internal_node.left_child != None) {
+      right_result.tree.mark_node_as_orphaned(new_version, internal_node.left_child.unwrap().version, left_bits)
+    } else right_result.tree
+
+    // If the right child exists and have been updated or deleted, then the
+    // old one needs to be marked as orphaned.
+    pure val tree_2 = if (right_outcome.is_updated_or_deleted() and internal_node.right_child != None) {
+      tree_1.mark_node_as_orphaned(new_version, internal_node.right_child.unwrap().version, right_bits)
+    } else tree_1
+
+    if (left_outcome.is_unchanged() and right_outcome.is_unchanged()) {
+      // Neither children is changed. This node is unchanged as well.
+      { outcome: Unchanged(None), tree: tree_2 }
+
+    } else if ((left_outcome == Deleted or left_outcome == Unchanged(None) and (right_outcome == Deleted or right_outcome == Unchanged(None)))) {
+      // Both children are deleted or never existed. Delete this node as well.
+      { outcome: Deleted, tree: tree_2 } // TODO: merge trees
+
+    } else if (left_outcome.updated_to_leaf() and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
+      // Left child is a leaf, right child is deleted.
+      // Delete the current internal node and move left child up.
+      // The child needs to marked as orphaned.
+      { outcome: left_outcome, tree: tree_2 }
+
+    } else if (left_outcome.unchanged_leaf() and right_outcome == Deleted) {
+      // Mark left child as orphaned
+      match left_outcome {
+        | Unchanged(left) => {
+          pure val tree_3 = tree_2.mark_node_as_orphaned(
+            new_version,
+            internal_node.left_child.unwrap().version,
+            left_bits
+          )
+          { outcome: Updated(left.unwrap()), tree: tree_3 }
+        }
+        | _ => { outcome: left_outcome, tree: tree_2 } // impossible
+      }
+    } else if ((left_outcome == Deleted or left_outcome == Unchanged(None)) and right_outcome.updated_to_leaf()) {
+      // Left child is deleted, right child is a leaf.
+      // Delete the current internal node and move right child up.
+      // The child needs to marked as orphaned.
+      { outcome: right_outcome, tree: tree_2 }
+
+    } else if (left_outcome == Deleted and right_outcome.unchanged_leaf()) {
+      // Mark right child as orphaned
+      match right_outcome {
+        | Unchanged(right) => {
+          pure val tree_3 = tree_2.mark_node_as_orphaned(
+            new_version,
+            internal_node.right_child.unwrap().version,
+            right_bits
+          )
+          { outcome: Updated(right.unwrap()), tree: tree_3 }
+        }
+        | _ => { outcome: right_outcome, tree: tree_2 } // impossible
+      }
+    } else {
+      // At least one child is updated and the path can't be collapsed.
+      // Update the currenct node and return
+
+      pure val new_left_child_and_tree = match left_outcome {
+        | Updated(node) => {
+          child: Some({ version: new_version, hash: node.hash() }),
+          tree: tree_2.add_node(new_version, left_bits, node)
+        }
+        | Deleted => {
+          child: None,
+          tree: tree_2
+        }
+        | Unchanged(_) => {
+          child: internal_node.left_child,
+          tree: tree_2
+        }
+      }
+
+      pure val new_right_child_and_tree = match right_outcome {
+        | Updated(node) => {
+          child: Some({ version: new_version, hash: node.hash() }),
+          tree: new_left_child_and_tree.tree.add_node(new_version, right_bits, node)
+        }
+        | Deleted => {
+          child: None,
+          tree: new_left_child_and_tree.tree
+        }
+        | Unchanged(_) => {
+          child: internal_node.right_child,
+          tree: new_left_child_and_tree.tree
+        }
+      }
+
+      pure val new_internal_node = Internal({
+        left_child: new_left_child_and_tree.child,
+        right_child: new_right_child_and_tree.child
+      })
+
+      { outcome: Updated(new_internal_node), tree: new_right_child_and_tree.tree }
+    }
   }
 
-  pure def apply_at_child(tree: Tree, memo: ApplyAtMemo, new_version: Version, child_bits: BitArray, child: Option[Child],
-                          batch: Set[OperationOnKey]): ApplyResult = {
-    // TODO
-    { outcome: Deleted, tree: tree }
+  pure def apply_at_child(
+    tree: Tree,
+    memo: ApplyAtMemo,
+    new_version: Version,
+    child_bits: BitArray,
+    child: Option[Child],
+    batch: Set[OperationOnKey]
+  ): ApplyResult = {
+    if (batch == Set()) {
+      match child {
+        // Child doesn't exist, and there is no op to apply.
+        | None => { outcome: Unchanged(None), tree: tree }
+        // Child exists, but there is no op to apply.
+        | Some(child) => {
+          pure val child_node = tree.nodes.get({ version: child.version, key_hash: child_bits })
+          { outcome: Unchanged(Some(child_node)), tree: tree }
+        }
+      }
+    } else {
+      match child {
+        // Child doesn't exist, but there are ops to apply.
+        | None => {
+          pure val batchAndOp = prepare_batch_for_subtree(batch, None)
+          tree.create_subtree(new_version, child_bits, batchAndOp._1, None)
+        }
+        // Child exists, and there are ops to apply.
+        | Some(child) => {
+          q::debug("memo", memo).get((new_version, child.version, q::debug("bits", child_bits)))
+        }
+      }
+    }
   }
 
   pure def apply_at_leaf(
@@ -90,7 +235,7 @@ module apply_fancy {
     leaf_node: LeafNode,
     batch: Set[OperationOnKey]
   ): ApplyResult = {
-    pure val batchAndOp = prepare_batch_for_subtree(batch, Some(leaf_node))
+    pure val batchAndOp = q::debug("apply_at_leaf", prepare_batch_for_subtree(batch, Some(leaf_node)))
     pure val batch = batchAndOp._1
     pure val operation = batchAndOp._2
 
@@ -239,6 +384,22 @@ module apply_fancy {
     values_with_key_hash.fold(0, (max_height, key) => max(max_height, key.key_hash.length()))
   }
 
+  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
+    batch.fold((Set(), Set()), (acc, op) => {
+      // 0 = left, 1 = right
+      if (op.key_hash[bits.length()] == 0) {
+        (acc._1.union(Set(op)), acc._2)
+      } else {
+        (acc._1, acc._2.union(Set(op)))
+      }
+    })
+  }
+
+  /// Corresponding save_node, under a different name so it doesn't suggest mutability
+  pure def add_node(tree: Tree, version: Version, bits: BitArray, node: Node): Tree = {
+    { ...tree, nodes: tree.nodes.put({ version: version, key_hash: bits }, node) }
+  }
+
   pure def into_child(version: Version, outcome: Outcome): Option[Child] = {
     match outcome {
       | Updated(node) => Some({
@@ -250,6 +411,45 @@ module apply_fancy {
     }
   }
 
+  pure def is_updated_or_deleted(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(_) => true
+      | Deleted => true
+      | _ => false
+    }
+  }
+
+  pure def is_unchanged(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(_) => true
+      | _ => false
+    }
+  }
+
+  pure def unchanged_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(optional) => match optional {
+        | Some(node) => match node {
+          | Leaf(_) => true
+          | _ => false
+        }
+        | _ => false
+      }
+      | _ => false
+    }
+  }
+
+  pure def updated_to_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(node) => match node {
+        | Leaf(_) => true
+        | _ => false
+      }
+      | _ => false
+    }
+  }
+
+  /* TESTING */
   pure val empty_tree = { nodes: Map(), orphans: Set() }
 
   run singleInsertOnEmptyTreeTest =
@@ -349,28 +549,44 @@ module apply_fancy {
       { key_hash: [0, 1, 1, 1], op: Insert([1, 1, 0, 0]) }  // L
   ))
 
-  // run collapsingPathTest = {
-  //   pure val ops = Set(
-  //     { key_hash: [0, 1, 0, 0], op: Delete }, // r
-  //     { key_hash: [0, 1, 1, 0], op: Delete }  // m
-  //   )
+  run collapsingPathTest = {
+    pure val ops = Set(
+      { key_hash: [0, 1, 0, 0], op: Delete }, // r
+      { key_hash: [0, 1, 1, 0], op: Delete }  // m
+    )
 
-  //   pure val expected_left = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
-  //   pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
-  //   pure val expected_root = Internal({
-  //     left_child: Some({ version: 1, hash: expected_left.hash() }),
-  //     right_child: Some({ version: 1, hash: expected_right.hash() })
-  //   })
+    pure val result = apply_fancy(test_case_tree, 0, 1, ops)
 
-  //   assert(
-  //     apply_fancy(empty_tree, 0, 1, ops)
-  //     == { nodes: Map(
-  //          { key_hash: [], version: 1 } -> expected_root,
-  //          { key_hash: [0], version: 1 } -> expected_left,
-  //          { key_hash: [1], version: 1 } -> expected_right
-  //        ), orphans: Set() }
-  //   )
-  // }
+    pure val expected_left = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
+    pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
+
+    // Version of root doesn't change according to rust test
+    pure val expected_root = Internal({
+      left_child: Some({ version: 0, hash: expected_left.hash() }),
+      right_child: Some({ version: 0, hash: expected_right.hash() })
+    })
+
+    // FIXME: somehow we are keeping r instead of L
+    // and L is also not being marked as orphan
+    all {
+      assert(
+        result.nodes == test_case_tree.nodes
+          .put({ key_hash: [], version: 1 }, expected_root)
+          .put({ key_hash: [0], version: 1 }, expected_left)
+          // We actually don't need this one because it stayed the same
+          // .put({ key_hash: [1], version: 1 }), expected_right)
+      ),
+      assert(result.orphans.map(o => o.key_hash) == Set(
+        [],
+        [0],
+        [0, 1],
+        [0, 1, 0],
+        [0, 1, 1],
+        [0, 1, 1, 0],
+        [0, 1, 1, 1]
+      ))
+    }
+  }
 
   // HACKS: these should be added to Quint soon
 
