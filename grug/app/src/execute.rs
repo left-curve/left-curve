@@ -592,10 +592,26 @@ where
         });
     }
 
+    let old_code_hash = contract_info.code_hash;
+
     // Update account info and save
     contract_info.code_hash = msg.new_code_hash;
 
     CONTRACTS.save(&mut storage, msg.contract, &contract_info)?;
+
+    let mut old_code = CODES.load(&mut storage, old_code_hash)?;
+
+    if let CodeStatus::Amount { amount } = &mut old_code.status {
+        *amount -= 1;
+
+        if amount == &0 {
+            old_code.status = CodeStatus::Orphan {
+                since: block.height,
+            };
+        }
+
+        CODES.save(&mut storage, old_code_hash, &old_code)?;
+    }
 
     let ctx = Context {
         chain_id,
