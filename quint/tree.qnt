@@ -57,10 +57,12 @@ module tree {
   }
 
   pure def prune(tree: Tree, up_to_version: Version): Tree =  {
-      val orphans_to_be_removed = tree.orphans.filter(orphan => 
-            orphan.orphaned_since_version <= up_to_version)
-      val prunned_orphans = tree.orphans.filter(orphan => 
-            orphan.orphaned_since_version > up_to_version)
+    pure val orphans_to_be_removed = tree.orphans.filter(orphan => 
+      orphan.orphaned_since_version <= up_to_version
+    )
+    pure val prunned_orphans = tree.orphans.filter(orphan => 
+      orphan.orphaned_since_version > up_to_version
+    )
 
       val keys_of_non_orphanes = tree.nodes.keys().filter(nodeId => 
             not(isNodeOrphaned(nodeId, orphans_to_be_removed)))
