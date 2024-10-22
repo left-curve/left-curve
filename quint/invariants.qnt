@@ -83,6 +83,24 @@ pure def allLeafs(t: Tree) : Set[LeafNode] =
                             | Leaf(x) => s.union(Set(x))
     })
 
+pure def isInternal(n: Node) : bool =
+    match n {
+        | Internal(_) => true
+        | Leaf(_) => false
+    }
+
+pure def isLeaf(n) = (not(isInternal(n)))
+
+pure def allInternalwithPrefix(t: Tree) : NodeId -> Node =
+    val leafPrefixes = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+    leafPrefixes.mapBy(p => t.nodes.get(p))
+
+pure def allLeafswithPrefix(t: Tree) : NodeId -> Node =
+    val leafPrefixes = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    leafPrefixes.mapBy(p => t.nodes.get(p))
+
+
+
 pure def existsNode(t: Tree, b: Bytes_t): bool =
     t.nodes.keys().filter(nId => nId.key_hash == b).size() > 0
 
@@ -91,6 +109,29 @@ pure def nodeAtCommonPrefix(t: Tree) : bool =
         t.allLeafs().forall(b =>
             (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a,b))   
     ))
+
+pure def rightChild(t: Tree, nId: NodeId): NodeId =
+    // TODO: versions
+    {version: 0, key_hash: nId.key_hash.append(1)}
+
+pure def leftChild(t: Tree, nId: NodeId): NodeId =
+    // TODO: versions
+    {version: 0, key_hash: nId.key_hash.append(0)}   
+
+pure def hashInv(t: Tree): bool = 
+    t.nodes.keys().forall(nID => match t.nodes.get(nID) {
+                                | Leaf(_) => true
+                                | Internal(n) => and {
+                                    match n.left_child {
+                                        | None => true
+                                        | Some(c) => c.hash == hash(t.nodes.get(leftChild(t, nID)))
+                                    },
+                                    match n.right_child {
+                                        | None => true
+                                        | Some(c) => c.hash == hash(t.nodes.get(rightChild(t, nID)))
+                                    }
+                                }
+    })    
 
 
 // TODO NodeId -> Node is a bijection
