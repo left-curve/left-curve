@@ -6,20 +6,25 @@ import tree.* from "./tree"
 import basicSpells.* from "./spells/basicSpells"
 
 val keylength = 4
+val maxVersion = 10
 
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
 /// E.g., if a node has path [1,0,0,1] then there must be a node with path [1,0,0]
-// TODO: I think this is wrong. The point is the first node that is added doesn't have any
-// inner node parent. Inner nodes are generated from common prefixes
+// TODO: figure out versions. I gett we need a parent with a version >= my version
 pure def everyNodesParentIsInTheTree(t: Tree): bool =
-    val paths = t.nodes.keys().map(nId => nId.key_hash)
-    paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
+  val nodePrefixes = t.nodes.keys()
+  val paths = nodePrefixes.map(p => p.key_hash)
+  paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
+
+def everyNodesParentIsInTheTreeInv = everyNodesParentIsInTheTree(tree)
 
 pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
-    val indList = range(1, keylength + 1)
-    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
-                                    b.key_hash.slice(0, x) 
-                                else s )
+  val indList = range(1, keylength + 1)
+  indList.foldl([], (s, x) => 
+    if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
+      b.key_hash.slice(0, x) 
+    else s )
+
 
 pure def listCommonPrefix(a: BitArray, b: BitArray) : BitArray =
     []
@@ -92,12 +97,12 @@ pure def isInternal(n: Node) : bool =
 pure def isLeaf(n) = (not(isInternal(n)))
 
 pure def allInternalwithPrefix(t: Tree) : NodeId -> Node =
-    val leafPrefixes = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
-    leafPrefixes.mapBy(p => t.nodes.get(p))
+    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+    leafNodeIds.mapBy(p => t.nodes.get(p))
 
 pure def allLeafswithPrefix(t: Tree) : NodeId -> Node =
-    val leafPrefixes = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
-    leafPrefixes.mapBy(p => t.nodes.get(p))
+    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    internalNodeIds.mapBy(p => t.nodes.get(p))
 
 
 
@@ -121,7 +126,7 @@ pure def leftChild(t: Tree, nId: NodeId): NodeId =
 
 
 
-pure def hashInv(t: Tree, version: int): bool = 
+pure def properlyHashed(t: Tree, version: int): bool = 
     t.nodes.keys().forall(nID => match t.nodes.get(nID) {
                                 | Leaf(_) => true
                                 | Internal(n) => and {
@@ -136,10 +141,29 @@ pure def hashInv(t: Tree, version: int): bool =
                                 }
     })    
 
+/// All hashes stored in the tree are actually the hashes of the subtree
+def hashInv = 
+    0.to(maxVersion).forall(i => properlyHashed(tree, i))
 
 // TODO NodeId -> Node is a bijection: perhaps not with versions
 
+pure def isPrefix(short: BitArray, long: BitArray): bool =
+    if (short.length() > long.length())
+        false
+    else
+        short == long.slice(0, short.length() - 1)
 
+// TODO: there is no internal node that has a leaf node as its prefix
+pure def noInternalChild(t: Tree): bool =
+    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
+    val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
+    not(leafPrefixes.exists(lp => 
+            internalPrefixes.exists(ip
+                => isPrefix(lp, ip))))
+
+def noInternalChildInv = noInternalChild(tree)
 
 /// For the same path there are not multiple version stored within the nodes
 pure def oneNodePerPath(t: Tree): bool =
@@ -156,11 +180,15 @@ pure def allInternalNodesHaveChildren(t: Tree): bool =
         | Leaf(_) => true
     })
 
+def allInternalNodesHaveChildrenInv = allInternalNodesHaveChildren(tree)
+
 pure def getNodeFromPath(t: Tree, b: BitArray): Node =
     val key = t.nodes.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
     t.nodes.get(key)
 
+
 /// If a node has one child, the child is an internal node
+// TODO: I think Leftcurve doesn't have this property
 pure def density(t: Tree): bool =
     t.nodes.keys().forall(nId => match t.nodes.get(nId) {
         | Internal(n) => 
