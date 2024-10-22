@@ -1,7 +1,7 @@
 use {
     crate::{
         extend_one_byte, Addr, Binary, Bound, Coin, Coins, Config, ContractInfo, Denom, Hash256,
-        Json, JsonSerExt, Order, StdResult,
+        Json, JsonSerExt, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
@@ -132,7 +132,6 @@ impl Query {
         min: Option<Bound<Binary>>,
         max: Option<Bound<Binary>>,
         limit: Option<u32>,
-        order: Order,
     ) -> Self {
         let min = min.map(|min| match min {
             Bound::Inclusive(min) => min,
@@ -149,7 +148,6 @@ impl Query {
             min,
             max,
             limit,
-            order,
         }
         .into()
     }
@@ -250,7 +248,6 @@ pub struct QueryWasmScanRequest {
     pub min: Option<Binary>, // inclusive
     pub max: Option<Binary>, // exclusive
     pub limit: Option<u32>,
-    pub order: Order,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

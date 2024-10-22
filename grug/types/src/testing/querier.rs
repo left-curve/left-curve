@@ -1,7 +1,8 @@
 use {
     crate::{
         Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
-        JsonSerExt, MockStorage, Querier, Query, QueryResponse, StdError, StdResult, Storage,
+        JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError, StdResult,
+        Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
@@ -259,7 +260,7 @@ impl Querier for MockQuerier {
                 let records = self
                     .raw_query_handler
                     .get_storage(req.contract)
-                    .scan(req.min.as_deref(), req.max.as_deref(), req.order)
+                    .scan(req.min.as_deref(), req.max.as_deref(), Order::Ascending)
                     .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (Binary::from_inner(k), Binary::from_inner(v)))
                     .collect();

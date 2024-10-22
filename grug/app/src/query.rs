@@ -247,7 +247,8 @@ pub fn query_wasm_scan(
             gas_tracker,
             req.min.as_deref(),
             req.max.as_deref(),
-            req.order,
+            // Order doesn't matter, as we're collecting results into a BTreeMap.
+            Order::Ascending,
         )?
         .take(limit as usize)
         .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
