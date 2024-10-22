@@ -83,10 +83,54 @@ module apply_fancy {
     { outcome: Deleted, tree: tree }
   }
 
-  pure def apply_at_leaf(tree: Tree, new_version: Version, bits: BitArray, leaf_node: LeafNode,
-                         batch: Set[OperationOnKey]): ApplyResult = {
-    // TODO
-    { outcome: Deleted, tree: tree }
+  pure def apply_at_leaf(
+    tree: Tree,
+    new_version: Version,
+    bits: BitArray,
+    leaf_node: LeafNode,
+    batch: Set[OperationOnKey]
+  ): ApplyResult = {
+    pure val batchAndOp = prepare_batch_for_subtree(batch, Some(leaf_node))
+    pure val batch = batchAndOp._1
+    pure val operation = batchAndOp._2
+
+    if (batch == Set()) {
+      pure val outcome = match operation {
+        | Some(op) => {
+          match op.op {
+            | Insert(value_hash) => {
+              if (value_hash == leaf_node.value_hash) {
+                Unchanged(Some(Leaf(leaf_node)))
+              } else {
+                pure val updated_leaf_node = { ...leaf_node, value_hash: value_hash }
+                Updated(Leaf(updated_leaf_node))
+              }
+            }
+            | Delete => Deleted
+          }
+        }
+        | None => Unchanged(Some(Leaf(leaf_node)))
+      }
+
+      { outcome: outcome, tree: tree }
+    } else {
+      match operation {
+        | Some(op) => {
+          match op.op {
+            | Insert(value_hash) => {
+                pure val updated_leaf_node = { ...leaf_node, value_hash: value_hash }
+                tree.create_subtree(new_version, bits, batch, Some(updated_leaf_node))
+            }
+            | Delete => {
+              tree.create_subtree(new_version, bits, batch, None)
+            }
+          }
+        }
+        | None => {
+          tree.create_subtree(new_version, bits, batch, Some(leaf_node))
+        }
+      }
+    }
   }
 
   pure def prepare_batch_for_subtree(
@@ -206,8 +250,9 @@ module apply_fancy {
     }
   }
 
+  pure val empty_tree = { nodes: Map(), orphans: Set() }
+
   run singleInsertOnEmptyTreeTest =
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
     assert(
       apply_fancy(empty_tree, 0, 1, Set({ key_hash: [0, 1, 1], op: Insert([1, 1, 1, 1]) }))
       == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })),
@@ -215,7 +260,6 @@ module apply_fancy {
     )
 
   run twoInsertsOnEmptyTreeTest =
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
     pure val ops = Set(
       { key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }, // a
       { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) } // r
@@ -237,7 +281,6 @@ module apply_fancy {
     )
 
   run twoInsertsWihSharedPrefixOnEmptyTreeTest =
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
     pure val ops = Set(
       { key_hash: [0, 1, 1, 0], op: Insert([1, 1, 1, 1]) }, // m
       { key_hash: [0, 1, 1, 1], op: Insert([1, 1, 1, 0]) } // L
@@ -273,6 +316,61 @@ module apply_fancy {
            { key_hash: [0, 1, 1, 1], version: 1 } -> expected_leaf_2
          ), orphans: Set() }
     )
+
+  run singleInsertOnLeafTest =
+    // At first, we fave a tree with only "L"
+    pure val tree_with_leaf = apply_fancy(empty_tree, 0, 0, Set({ key_hash: [0, 1, 1, 1], op: Insert([1, 1, 0, 0]) }))
+
+    // Then we insert "a"
+    pure val result = apply_fancy(tree_with_leaf, 0, 1, Set({ key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }))
+
+    pure val expected_left = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
+    pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
+    pure val expected_root = Internal({
+      left_child: Some({ version: 1, hash: expected_left.hash() }),
+      right_child: Some({ version: 1, hash: expected_right.hash() })
+    })
+
+    assert(
+      result == { nodes: Map(
+           // Old leaf is still here under version 0
+           { key_hash: [], version: 0 } -> Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }),
+           // New tree under version 1
+           { key_hash: [], version: 1 } -> expected_root,
+           { key_hash: [0], version: 1 } -> expected_left,
+           { key_hash: [1], version: 1 } -> expected_right
+         ), orphans: Set({ key_hash: [], orphaned_since_version: 1, version: 0 }) }
+    )
+
+  pure val test_case_tree = apply_fancy(empty_tree, 0, 0, Set(
+      { key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }, // a
+      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) }, // r
+      { key_hash: [0, 1, 1, 0], op: Insert([1, 1, 0, 1]) }, // m
+      { key_hash: [0, 1, 1, 1], op: Insert([1, 1, 0, 0]) }  // L
+  ))
+
+  // run collapsingPathTest = {
+  //   pure val ops = Set(
+  //     { key_hash: [0, 1, 0, 0], op: Delete }, // r
+  //     { key_hash: [0, 1, 1, 0], op: Delete }  // m
+  //   )
+
+  //   pure val expected_left = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
+  //   pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
+  //   pure val expected_root = Internal({
+  //     left_child: Some({ version: 1, hash: expected_left.hash() }),
+  //     right_child: Some({ version: 1, hash: expected_right.hash() })
+  //   })
+
+  //   assert(
+  //     apply_fancy(empty_tree, 0, 1, ops)
+  //     == { nodes: Map(
+  //          { key_hash: [], version: 1 } -> expected_root,
+  //          { key_hash: [0], version: 1 } -> expected_left,
+  //          { key_hash: [1], version: 1 } -> expected_right
+  //        ), orphans: Set() }
+  //   )
+  // }
 
   // HACKS: these should be added to Quint soon
 
