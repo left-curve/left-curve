@@ -17,14 +17,14 @@ pub struct Code {
 #[serde(rename_all = "snake_case")]
 pub enum CodeStatus {
     Orphan { since: u64 },
-    Amount { amount: u64 },
+    Usage { usage: u64 },
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum CodeStatusType {
     Orphan,
-    Amount,
+    Usage,
 }
 
 impl TryFrom<u8> for CodeStatusType {
@@ -33,7 +33,7 @@ impl TryFrom<u8> for CodeStatusType {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(CodeStatusType::Orphan),
-            1 => Ok(CodeStatusType::Amount),
+            1 => Ok(CodeStatusType::Usage),
             _ => Err(StdError::deserialize::<CodeStatusType, _>(
                 "From<u8>",
                 format!("Invalid u8: {value}"),

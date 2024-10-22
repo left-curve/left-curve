@@ -297,9 +297,9 @@ impl PrimaryKey for CodeStatus {
                     Cow::Owned(since.to_be_bytes().to_vec()),
                 ]
             },
-            CodeStatus::Amount { amount } => {
+            CodeStatus::Usage { usage: amount } => {
                 vec![
-                    Cow::Owned(vec![CodeStatusType::Amount as u8]),
+                    Cow::Owned(vec![CodeStatusType::Usage as u8]),
                     Cow::Owned(amount.to_be_bytes().to_vec()),
                 ]
             },
@@ -319,7 +319,7 @@ impl PrimaryKey for CodeStatus {
             format!("invalid serialized format: {s_raw:?}"),
         ))?)? {
             CodeStatusType::Orphan => Ok(CodeStatus::Orphan { since: p }),
-            CodeStatusType::Amount => Ok(CodeStatus::Amount { amount: p }),
+            CodeStatusType::Usage => Ok(CodeStatus::Usage { usage: p }),
         }
     }
 }

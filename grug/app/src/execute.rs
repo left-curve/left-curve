@@ -378,8 +378,8 @@ where
     let mut code = CODES.load(&storage, msg.code_hash)?;
 
     match &mut code.status {
-        CodeStatus::Orphan { .. } => code.status = CodeStatus::Amount { amount: 1 },
-        CodeStatus::Amount { amount } => *amount += 1,
+        CodeStatus::Orphan { .. } => code.status = CodeStatus::Usage { usage: 1 },
+        CodeStatus::Usage { usage: amount } => *amount += 1,
     }
 
     CODES.save(&mut storage, msg.code_hash, &code)?;
@@ -605,7 +605,7 @@ where
 
     let mut old_code = CODES.load(&storage, old_code_hash)?;
 
-    if let CodeStatus::Amount { amount } = &mut old_code.status {
+    if let CodeStatus::Usage { usage: amount } = &mut old_code.status {
         *amount -= 1;
 
         if amount == &0 {
