@@ -251,12 +251,6 @@ impl Querier for MockQuerier {
                 let maybe_value = self
                     .raw_query_handler
                     .get_storage(req.contract)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "[MockQuerier]: raw query handler not set for {}",
-                            req.contract
-                        );
-                    })
                     .read(&req.key)
                     .map(Binary::from_inner);
                 Ok(QueryResponse::WasmRaw(maybe_value))
@@ -265,12 +259,6 @@ impl Querier for MockQuerier {
                 let records = self
                     .raw_query_handler
                     .get_storage(req.contract)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "[MockQuerier]: raw query handler not set for {}",
-                            req.contract
-                        );
-                    })
                     .scan(req.min.as_deref(), req.max.as_deref(), req.order)
                     .take(req.limit.unwrap_or(u32::MAX) as usize)
                     .map(|(k, v)| (Binary::from_inner(k), Binary::from_inner(v)))
@@ -304,8 +292,10 @@ struct MockRawQueryHandler {
 }
 
 impl MockRawQueryHandler {
-    pub fn get_storage(&self, address: Addr) -> Option<&MockStorage> {
-        self.storages.get(&address)
+    pub fn get_storage(&self, address: Addr) -> &MockStorage {
+        self.storages.get(&address).unwrap_or_else(|| {
+            panic!("[MockQuerier]: raw query handler not set for {address}");
+        })
     }
 
     pub fn get_storage_mut(&mut self, address: Addr) -> &mut MockStorage {
