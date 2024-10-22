@@ -44,10 +44,12 @@ module tree {
     {version: v, key_hash: kh}
 
   pure def mark_node_as_orphaned(tree: Tree, orphaned_since_version: Version, version: Version, key_hash: BitArray): Tree = {
-      pure val orphan = {   orphaned_since_version: orphaned_since_version, 
-                            version: version, 
-                            key_hash: key_hash }
-      { ...tree, orphans: tree.orphans.union(Set(orphan)) }
+    pure val orphan = {
+      orphaned_since_version: orphaned_since_version, 
+      version: version, 
+      key_hash: key_hash,
+    }
+    { ...tree, orphans: tree.orphans.union(Set(orphan)) }
   }
 
   pure def isNodeOrphaned(nodeId: NodeId, orphans: Set[OrphanId]) : bool = {
