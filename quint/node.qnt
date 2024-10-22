@@ -64,6 +64,4 @@ pure def hash(n: Node) : Term_t = {
     }
 }
 
-// TODO test more
-
 }

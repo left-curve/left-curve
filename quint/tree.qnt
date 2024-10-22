@@ -98,6 +98,61 @@ module tree {
     perfectPrefixOverlapCombo.getOnlyElement()
   }
 
+	pure def listCommonPrefix(a: BitArray, b: BitArray) : BitArray =
+			[]
+
+	pure def longestPrefixNode(s: Set[NodeId]) : NodeId =
+			{version: 0, key_hash: []}
+
+	pure def newInternal(a: LeafNode, b: LeafNode): InternalNode =
+			// TODO: hashes, etc.
+			{left_child: None, right_child: None}
+
+	pure def addLeafUnderInternal(i: InternalNode, l: LeafNode): InternalNode =
+			// TODO: hashes, etc.
+			// figure out whether l is left or right, and puts the hash(l) there
+					i
+	pure def newPrefix(l: LeafNode, parent: NodeId): NodeId = 
+			// prefix of leafNode key of lenght parent.key.length + 1 
+			// and proper version
+			parent
+
+	// forget empty tree
+	pure def insert(t: Tree, l: LeafNode): Tree = 
+			val nodeIdOnPath = t.nodes.keys().filter(prefix => listCommonPrefix(prefix.key_hash,l.key_hash).length() > 0)
+			val nodeId: NodeId = longestPrefixNode(nodeIdOnPath)
+			val nodeToChange = t.nodes.get(nodeId)
+			val replacement: InternalNode = match nodeToChange {
+					| Leaf(leaf) => newInternal(leaf, l)      
+					// 0011 -> LeafA
+					// Add leafB
+					// 0011 -> Internal
+					// 00111 -> A (or B)
+					// 00110 -> B (or A)
+					| Internal(internal) => addLeafUnderInternal(internal, l)
+					// 0011 -> Internal
+					// 00111 -> Leaf A
+					// 00110000 -> l
+					// Then
+					// 0011 -> replacement
+					// newPrefix(l, 0011) = 00110
+					// add 00110 -> l
+			}
+			// TODO: In Leaf case above, we need to
+			val newNodes = t.nodes
+													.put(nodeId, Internal(replacement))
+													.set(newPrefix(l,nodeId), Leaf(l))        
+			val newnew = match   nodeToChange {
+					| Leaf(leaf) => newNodes.set(newPrefix(leaf,nodeId), Leaf(leaf))  
+					| Internal(internal) => newNodes      
+			}   
+			// TODO: use nodeIdOnPath to iterate in descending length()
+			t.with("nodes", newNodes)
+			// TODO: add special cases of empty tree, and only one leaf
+			// TODO: delete function + update
+			// TODO: implement helper functions
+
+
   var tree: Tree
 
   action init =
