@@ -7,8 +7,8 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Context, ContractInfo, Event,
-        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Code, CodeStatus, Context, ContractInfo,
+        Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
         MsgMigrate, MsgTransfer, MsgUpload, Op, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
@@ -143,7 +143,10 @@ fn _do_upload(
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(storage, gas_tracker, code_hash, &msg.code)?;
+    CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
+        code: msg.code,
+        status: CodeStatus::Orphan { since: 0 },
+    })?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", code_hash),
@@ -367,6 +370,15 @@ where
     };
 
     CONTRACTS.save(&mut storage, address, &contract)?;
+
+    let mut code = CODES.load(&storage, msg.code_hash)?;
+
+    match &mut code.status {
+        CodeStatus::Orphan { .. } => code.status = CodeStatus::Amount { amount: 1 },
+        CodeStatus::Amount { amount } => *amount += 1,
+    }
+
+    CODES.save(&mut storage, msg.code_hash, &code)?;
 
     // Make the fund transfer
     let mut events = vec![];

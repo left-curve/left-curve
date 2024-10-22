@@ -273,7 +273,7 @@ where
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(vm.build_instance(
-        &code,
+        &code.code,
         code_hash,
         storage,
         state_mutable,

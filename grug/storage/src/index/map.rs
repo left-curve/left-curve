@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Codec, Map, Prefix, PrefixBound, PrimaryKey},
+    crate::{Borsh, Codec, Map, PathBuf, Prefix, PrefixBound, PrimaryKey},
     grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
 };
 
@@ -83,6 +83,12 @@ where
 
     pub fn take(&self, storage: &mut dyn Storage, key: K) -> StdResult<T> {
         self.primary.take(storage, key)
+    }
+
+    pub fn path(&self, key: K) -> PathBuf<T, C> {
+        let mut raw_keys = key.raw_keys();
+        let last_raw_key = raw_keys.pop();
+        PathBuf::new(self.primary.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
     // -------------------- iteration methods (full bound) ---------------------

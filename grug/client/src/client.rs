@@ -4,9 +4,7 @@ use {
     grug_jmt::Proof,
     grug_math::Inner,
     grug_types::{
-        Addr, AsyncSigner, Binary, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom,
-        GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query,
-        QueryResponse, StdError, Tx, TxOutcome, UnsignedTx,
+        Addr, AsyncSigner, Binary, Code, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query, QueryResponse, StdError, Tx, TxOutcome, UnsignedTx
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -222,7 +220,7 @@ impl Client {
     }
 
     /// Query a single Wasm byte code by hash.
-    pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Binary> {
+    pub async fn query_code(&self, hash: Hash256, height: Option<u64>) -> anyhow::Result<Code> {
         self.query_app(&Query::code(hash), height)
             .await
             .map(|res| res.as_code())
@@ -234,7 +232,7 @@ impl Client {
         start_after: Option<Hash256>,
         limit: Option<u32>,
         height: Option<u64>,
-    ) -> anyhow::Result<BTreeMap<Hash256, Binary>> {
+    ) -> anyhow::Result<BTreeMap<Hash256, Code>> {
         self.query_app(&Query::codes(start_after, limit), height)
             .await
             .map(|res| res.as_codes())

@@ -35,7 +35,7 @@ pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 /// A key in a contract's substore is prefixed by the word "wasm" + contract address.
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
 
-struct CodeIndexes<'a> {
+pub struct CodeIndexes<'a> {
     status: MultiIndex<'a, Hash256, CodeStatus, Code>,
 }
 
