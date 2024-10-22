@@ -7,7 +7,8 @@ use {
         Bytable, Dec, Inner, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
     },
     grug_types::{
-        nested_namespaces_with_key, Addr, Denom, Duration, Hash, Part, StdError, StdResult,
+        nested_namespaces_with_key, Addr, CodeStatus, CodeStatusType, Denom, Duration, Hash, Part,
+        StdError, StdResult,
     },
     std::{borrow::Cow, mem, str, vec},
 };
@@ -281,6 +282,42 @@ impl PrimaryKey for Duration {
     }
 }
 
+impl PrimaryKey for CodeStatus {
+    type Output = CodeStatus;
+    type Prefix = CodeStatusType;
+    type Suffix = u64;
+
+    const KEY_ELEMS: u8 = 2;
+
+    fn raw_keys(&self) -> Vec<std::borrow::Cow<[u8]>> {
+        match self {
+            CodeStatus::Orphan { since } => {
+                vec![
+                    Cow::Owned(vec![CodeStatusType::Orphan as u8]),
+                    Cow::Owned(since.to_be_bytes().to_vec()),
+                ]
+            },
+            CodeStatus::Amount { amount } => {
+                vec![
+                    Cow::Owned(vec![CodeStatusType::Amount as u8]),
+                    Cow::Owned(amount.to_be_bytes().to_vec()),
+                ]
+            },
+        }
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (a_raw, b_raw) = split_first_key(Self::KEY_ELEMS, bytes);
+
+        let p = u64::from_be_bytes(b_raw.try_into().unwrap());
+
+        match CodeStatusType::try_from(*a_raw.first().unwrap())? {
+            CodeStatusType::Orphan => Ok(CodeStatus::Orphan { since: p }),
+            CodeStatusType::Amount => Ok(CodeStatus::Amount { amount: p }),
+        }
+    }
+}
+
 impl<K> PrimaryKey for &K
 where
     K: PrimaryKey,
@@ -437,7 +474,7 @@ where
 /// ```
 ///
 /// is also returned.
-pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
+pub fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
     let mut index = 0;
     let mut first_key = Vec::new();
 
@@ -650,6 +687,18 @@ impl Prefixer for Denom {
 impl Prefixer for Duration {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
+    }
+}
+
+impl Prefixer for CodeStatusType {
+    fn raw_prefixes(&self) -> Vec<std::borrow::Cow<[u8]>> {
+        vec![Cow::Owned(vec![*self as u8])]
+    }
+}
+
+impl Prefixer for CodeStatus {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        self.raw_keys()
     }
 }
 

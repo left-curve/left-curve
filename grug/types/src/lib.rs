@@ -34,13 +34,14 @@ mod time;
 mod tx;
 mod unique_vec;
 mod utils;
+mod code;
 
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, coin::*,
     coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*, encoders::*,
     error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, length_bounded::*, lengthy::*,
     non_zero::*, query::*, response::*, result::*, serializers::*, signer::*, time::*, tx::*,
-    unique_vec::*, utils::*,
+    unique_vec::*, utils::*, code::*,
 };
 
 // ---------------------------------- testing ----------------------------------
