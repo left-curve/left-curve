@@ -138,3 +138,32 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
 
     Ok(Response::new().add_messages(msgs))
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+
+    use {
+        super::*,
+        grug::{MockContext, MockQuerier},
+    };
+
+    /// Address of the Lending Pool for use in the following tests.
+    const LENDING_POOL: Addr = Addr::mock(255);
+
+    #[test]
+    fn cant_transfer_to_lending_pool() {
+        let querier = MockQuerier::new();
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_contract(LENDING_POOL)
+            .with_sender(Addr::mock(123))
+            .with_funds(Coins::new());
+
+        let res = receive(ctx.as_mutable());
+        assert!(res.is_err_and(|err| err
+            .to_string()
+            .contains("Can't send tokens to this contract")));
+    }
+}
