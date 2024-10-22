@@ -53,6 +53,7 @@ where
         "uusdc",
         Udec128::ZERO,
         Some(Uint128::new(10_000_000)),
+        100_000,
     )
     .unwrap();
 

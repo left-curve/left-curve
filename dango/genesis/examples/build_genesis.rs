@@ -63,6 +63,7 @@ fn main() {
         "uusdc",
         Udec128::new_percent(25),       // 0.25 uusdc per gas unit
         Some(Uint128::new(10_000_000)), // 10 USDC
+        100_000,
     )
     .unwrap();
 

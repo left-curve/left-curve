@@ -1,6 +1,12 @@
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
 use {
+    crate::CODES,
+    grug_math::Inner,
+    grug_types::{Bound, CodeStatusType},
+};
+
+use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
@@ -154,6 +160,23 @@ where
                 expect: last_finalized_block.height + 1,
                 actual: block.height,
             });
+        }
+
+        // Remove expired orphans codes.
+        if let Some(max) = block.height.checked_sub(cfg.max_orphan_age.into_inner()) {
+            let max = Bound::Inclusive((max, Hash256::from_inner([8; 32])));
+
+            let to_delete = CODES
+                .idx
+                .status
+                .sub_prefix(CodeStatusType::Orphan)
+                .keys(&buffer, None, Some(max), Order::Ascending)
+                .map(|k| k.map(|(_, hash)| hash))
+                .collect::<StdResult<Vec<_>>>()?;
+
+            for hash in to_delete {
+                CODES.remove(&mut buffer, hash)?;
+            }
         }
 
         // Find all cronjobs that should be performed. That is, ones that the

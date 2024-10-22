@@ -77,6 +77,7 @@ pub fn build_genesis<T, D>(
     fee_denom: D,
     fee_rate: Udec128,
     token_creation_fee: Option<Uint128>,
+    max_orphan_age: u64,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -244,6 +245,7 @@ where
         taxman,
         cronjobs: BTreeMap::new(),
         permissions,
+        max_orphan_age: max_orphan_age.into(),
     };
 
     let app_configs = btree_map! {

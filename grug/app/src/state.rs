@@ -36,7 +36,7 @@ pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
 
 pub struct CodeIndexes<'a> {
-    status: MultiIndex<'a, Hash256, CodeStatus, Code>,
+    pub status: MultiIndex<'a, Hash256, CodeStatus, Code>,
 }
 
 impl IndexList<Hash256, Code> for CodeIndexes<'_> {
