@@ -17,12 +17,12 @@ pub struct Code {
 #[serde(rename_all = "snake_case")]
 pub enum CodeStatus {
     /// The code is not used by any contract.
-    Orphan {
+    Orphaned {
         /// The time since which the code has been orphaned.
         since: Timestamp,
     },
     /// The code is used by at least one contract.
-    Usage {
+    InUse {
         /// The number of contracts that use the code.
         usage: u32,
     },

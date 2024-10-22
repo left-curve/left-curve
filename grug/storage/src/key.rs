@@ -291,13 +291,13 @@ impl PrimaryKey for CodeStatus {
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         match self {
-            CodeStatus::Orphan { since } => {
+            CodeStatus::Orphaned { since } => {
                 vec![
                     Cow::Borrowed(&[0]),
                     Cow::Owned(since.into_nanos().to_be_bytes().to_vec()),
                 ]
             },
-            CodeStatus::Usage { usage } => {
+            CodeStatus::InUse { usage } => {
                 vec![
                     Cow::Borrowed(&[1]),
                     Cow::Owned(usage.to_be_bytes().to_vec()),
@@ -310,11 +310,11 @@ impl PrimaryKey for CodeStatus {
         match &bytes[..3] {
             [0, 1, 0] => {
                 let since = Duration::from_nanos(u128::from_be_bytes(bytes[3..].try_into()?));
-                Ok(CodeStatus::Orphan { since })
+                Ok(CodeStatus::Orphaned { since })
             },
             [0, 1, 1] => {
                 let usage = u32::from_be_bytes(bytes[3..].try_into()?);
-                Ok(CodeStatus::Usage { usage })
+                Ok(CodeStatus::InUse { usage })
             },
             tag => Err(StdError::deserialize::<Self::Output, _>(
                 "key",

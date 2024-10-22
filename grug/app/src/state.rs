@@ -65,7 +65,7 @@ mod tests {
         CODES
             .save(&mut storage, Hash256::from_inner([0; 32]), &Code {
                 code: Binary::from_inner(vec![0; 32]),
-                status: CodeStatus::Orphan {
+                status: CodeStatus::Orphaned {
                     since: Duration::from_seconds(100),
                 },
             })
@@ -74,7 +74,7 @@ mod tests {
         CODES
             .save(&mut storage, Hash256::from_inner([1; 32]), &Code {
                 code: Binary::from_inner(vec![1; 32]),
-                status: CodeStatus::Orphan {
+                status: CodeStatus::Orphaned {
                     since: Duration::from_seconds(20),
                 },
             })
@@ -83,14 +83,14 @@ mod tests {
         CODES
             .save(&mut storage, Hash256::from_inner([2; 32]), &Code {
                 code: Binary::from_inner(vec![2; 32]),
-                status: CodeStatus::Usage { usage: 12345 },
+                status: CodeStatus::InUse { usage: 12345 },
             })
             .unwrap();
 
         CODES
             .save(&mut storage, Hash256::from_inner([3; 32]), &Code {
                 code: Binary::from_inner(vec![3; 32]),
-                status: CodeStatus::Usage { usage: 88888 },
+                status: CodeStatus::InUse { usage: 88888 },
             })
             .unwrap();
 
@@ -106,24 +106,24 @@ mod tests {
             assert_eq!(res, [
                 // Orphaned nodes are ordered by orphan time.
                 (
-                    CodeStatus::Orphan {
+                    CodeStatus::Orphaned {
                         since: Timestamp::from_seconds(20),
                     },
                     Hash256::from_inner([1; 32]),
                 ),
                 (
-                    CodeStatus::Orphan {
+                    CodeStatus::Orphaned {
                         since: Timestamp::from_seconds(100),
                     },
                     Hash256::from_inner([0; 32]),
                 ),
                 // In-use nodes are ordered by usage count.
                 (
-                    CodeStatus::Usage { usage: 12345 },
+                    CodeStatus::InUse { usage: 12345 },
                     Hash256::from_inner([2; 32]),
                 ),
                 (
-                    CodeStatus::Usage { usage: 88888 },
+                    CodeStatus::InUse { usage: 88888 },
                     Hash256::from_inner([3; 32]),
                 )
             ]);
@@ -137,7 +137,7 @@ mod tests {
                 .prefix_keys(
                     &storage,
                     None,
-                    Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_seconds(100),
                     })),
                     grug_types::Order::Ascending,
@@ -147,13 +147,13 @@ mod tests {
 
             assert_eq!(res, [
                 (
-                    CodeStatus::Orphan {
+                    CodeStatus::Orphaned {
                         since: Timestamp::from_seconds(20),
                     },
                     Hash256::from_inner([1; 32]),
                 ),
                 (
-                    CodeStatus::Orphan {
+                    CodeStatus::Orphaned {
                         since: Timestamp::from_seconds(100),
                     },
                     Hash256::from_inner([0; 32]),
@@ -169,7 +169,7 @@ mod tests {
                 .prefix_keys(
                     &storage,
                     None,
-                    Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_seconds(30),
                     })),
                     grug_types::Order::Ascending,
@@ -178,7 +178,7 @@ mod tests {
                 .unwrap();
 
             assert_eq!(res, [(
-                CodeStatus::Orphan {
+                CodeStatus::Orphaned {
                     since: Timestamp::from_seconds(20),
                 },
                 Hash256::from_inner([1; 32]),

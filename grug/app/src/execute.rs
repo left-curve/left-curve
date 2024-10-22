@@ -147,7 +147,7 @@ fn _do_upload(
 
     CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
         code: msg.code,
-        status: CodeStatus::Orphan {
+        status: CodeStatus::Orphaned {
             since: block.timestamp,
         },
     })?;
@@ -375,11 +375,12 @@ where
 
     CONTRACTS.save(&mut storage, address, &contract)?;
 
+    // Increment the code's usage.
     let mut code = CODES.load(&storage, msg.code_hash)?;
 
     match &mut code.status {
-        CodeStatus::Orphan { .. } => code.status = CodeStatus::Usage { usage: 1 },
-        CodeStatus::Usage { usage: amount } => *amount += 1,
+        CodeStatus::Orphaned { .. } => code.status = CodeStatus::InUse { usage: 1 },
+        CodeStatus::InUse { usage } => *usage += 1,
     }
 
     CODES.save(&mut storage, msg.code_hash, &code)?;
@@ -605,11 +606,12 @@ where
 
     let mut old_code = CODES.load(&storage, old_code_hash)?;
 
-    if let CodeStatus::Usage { usage: amount } = &mut old_code.status {
+    // Reduce the code's usage count.
+    if let CodeStatus::InUse { usage: amount } = &mut old_code.status {
         *amount -= 1;
 
         if amount == &0 {
-            old_code.status = CodeStatus::Orphan {
+            old_code.status = CodeStatus::Orphaned {
                 since: block.timestamp,
             };
         }
@@ -620,8 +622,8 @@ where
     let mut new_code = CODES.load(&storage, msg.new_code_hash)?;
 
     match &mut new_code.status {
-        CodeStatus::Orphan { .. } => new_code.status = CodeStatus::Usage { usage: 1 },
-        CodeStatus::Usage { usage: amount } => *amount += 1,
+        CodeStatus::Orphaned { .. } => new_code.status = CodeStatus::InUse { usage: 1 },
+        CodeStatus::InUse { usage: amount } => *amount += 1,
     }
 
     CODES.save(&mut storage, msg.new_code_hash, &new_code)?;

@@ -164,7 +164,7 @@ where
             .prefix_keys(
                 &buffer,
                 None,
-                Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                     since: block.timestamp - cfg.max_orphan_age,
                 })),
                 Order::Ascending,
