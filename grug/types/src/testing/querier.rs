@@ -73,17 +73,14 @@ impl MockQuerier {
         Ok(self)
     }
 
-    pub fn with_code<T>(mut self, code: T) -> Self
+    pub fn with_code<T>(mut self, code: T, status: CodeStatus) -> Self
     where
         T: Into<Binary>,
     {
         let code = code.into();
         let code_hash = code.hash256();
 
-        self.codes.insert(code_hash, Code {
-            code,
-            status: CodeStatus::Orphan { since: 0 },
-        });
+        self.codes.insert(code_hash, Code { code, status });
         self
     }
 

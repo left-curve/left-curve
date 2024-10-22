@@ -7,8 +7,8 @@ use {
         Bytable, Dec, Inner, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
     },
     grug_types::{
-        nested_namespaces_with_key, Addr, CodeStatus, CodeStatusType, Denom, Duration, Hash, Part,
-        StdError, StdResult,
+        nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part, StdError,
+        StdResult,
     },
     std::{borrow::Cow, mem, str, vec},
 };
@@ -284,42 +284,42 @@ impl PrimaryKey for Duration {
 
 impl PrimaryKey for CodeStatus {
     type Output = CodeStatus;
-    type Prefix = CodeStatusType;
-    type Suffix = u64;
+    type Prefix = ();
+    type Suffix = ();
 
     const KEY_ELEMS: u8 = 2;
 
-    fn raw_keys(&self) -> Vec<std::borrow::Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
         match self {
             CodeStatus::Orphan { since } => {
                 vec![
-                    Cow::Owned(vec![CodeStatusType::Orphan as u8]),
-                    Cow::Owned(since.to_be_bytes().to_vec()),
+                    Cow::Borrowed(&[0]),
+                    Cow::Owned(since.into_nanos().to_be_bytes().to_vec()),
                 ]
             },
-            CodeStatus::Usage { usage: amount } => {
+            CodeStatus::Usage { usage } => {
                 vec![
-                    Cow::Owned(vec![CodeStatusType::Usage as u8]),
-                    Cow::Owned(amount.to_be_bytes().to_vec()),
+                    Cow::Borrowed(&[1]),
+                    Cow::Owned(usage.to_be_bytes().to_vec()),
                 ]
             },
         }
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (s_raw, p_raw) = split_first_key(Self::KEY_ELEMS, bytes);
-
-        let p = u64::from_slice(p_raw)?;
-
-        match CodeStatusType::try_from(*s_raw.first().ok_or(StdError::deserialize::<
-            CodeStatusType,
-            _,
-        >(
-            "key",
-            format!("invalid serialized format: {s_raw:?}"),
-        ))?)? {
-            CodeStatusType::Orphan => Ok(CodeStatus::Orphan { since: p }),
-            CodeStatusType::Usage => Ok(CodeStatus::Usage { usage: p }),
+        match &bytes[..3] {
+            [0, 1, 0] => {
+                let since = Duration::from_nanos(u128::from_be_bytes(bytes[3..].try_into()?));
+                Ok(CodeStatus::Orphan { since })
+            },
+            [0, 1, 1] => {
+                let usage = u32::from_be_bytes(bytes[3..].try_into()?);
+                Ok(CodeStatus::Usage { usage })
+            },
+            tag => Err(StdError::deserialize::<Self::Output, _>(
+                "key",
+                format!("unknown tag: {tag:?}"),
+            )),
         }
     }
 }
@@ -693,12 +693,6 @@ impl Prefixer for Denom {
 impl Prefixer for Duration {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
-    }
-}
-
-impl Prefixer for CodeStatusType {
-    fn raw_prefixes(&self) -> Vec<std::borrow::Cow<[u8]>> {
-        vec![Cow::Owned(vec![*self as u8])]
     }
 }
 

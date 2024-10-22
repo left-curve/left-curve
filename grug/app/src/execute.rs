@@ -148,7 +148,7 @@ fn _do_upload(
     CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
         code: msg.code,
         status: CodeStatus::Orphan {
-            since: block.height,
+            since: block.timestamp,
         },
     })?;
 
@@ -610,7 +610,7 @@ where
 
         if amount == &0 {
             old_code.status = CodeStatus::Orphan {
-                since: block.height,
+                since: block.timestamp,
             };
         }
 

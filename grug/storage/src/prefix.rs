@@ -254,7 +254,13 @@ where
     ) -> Box<dyn Iterator<Item = StdResult<K::Output>> + 'a> {
         let iter = self
             .prefix_keys_raw(storage, min, max, order)
-            .map(|key_raw| K::from_slice(&key_raw));
+            .map(|key_raw| {
+                println!(
+                    "attempting to deserialize {key_raw:?} into {}",
+                    std::any::type_name::<K>()
+                );
+                K::from_slice(&key_raw)
+            });
 
         Box::new(iter)
     }

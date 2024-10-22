@@ -1,5 +1,7 @@
 use {
-    crate::{split_first_key, Borsh, Codec, Index, Map, Prefix, Prefixer, PrimaryKey, Set},
+    crate::{
+        split_first_key, Borsh, Codec, Index, Map, Prefix, PrefixBound, Prefixer, PrimaryKey, Set,
+    },
     grug_types::{Bound, Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,
 };
@@ -166,6 +168,118 @@ where
         let iter = self
             .index_set
             .range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                C::decode(&v_raw)
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_range_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>, Vec<u8>)> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .index_set
+            .prefix_range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();
+                (ik_raw, pk_raw.to_vec(), v_raw)
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_range<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output, T)>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .index_set
+            .prefix_range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                let ik = IK::from_slice(&ik_raw)?;
+                let pk = PK::from_slice(pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok((ik, pk, v))
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_keys_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = (Vec<u8>, Vec<u8>)> + 'b> {
+        let iter = self
+            .index_set
+            .prefix_range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (ik_raw, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                (ik_raw, pk_raw.to_vec())
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_keys<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(IK::Output, PK::Output)>> + 'b> {
+        self.index_set.prefix_range(storage, min, max, order)
+    }
+
+    pub fn prefix_values_raw<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b> {
+        let iter = self
+            .index_set
+            .prefix_range_raw(storage, min, max, order)
+            .map(|ik_pk_raw| {
+                let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
+                self.primary_map.may_load_raw(storage, pk_raw).unwrap()
+            });
+
+        Box::new(iter)
+    }
+
+    pub fn prefix_values<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<(IK, PK)>>,
+        max: Option<PrefixBound<(IK, PK)>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b> {
+        let iter = self
+            .index_set
+            .prefix_range_raw(storage, min, max, order)
             .map(|ik_pk_raw| {
                 let (_, pk_raw) = split_first_key(IK::KEY_ELEMS, &ik_pk_raw);
                 let v_raw = self.primary_map.may_load_raw(storage, pk_raw).unwrap();

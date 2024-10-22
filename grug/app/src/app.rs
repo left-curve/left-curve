@@ -9,13 +9,11 @@ use {
         query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
         APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
-    grug_math::Inner,
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Bound, CodeStatusType, Duration,
-        Event, GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission,
-        Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx,
-        GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CodeStatus, Duration, Event,
+        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query,
+        QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -158,21 +156,23 @@ where
             });
         }
 
-        // Remove expired orphans codes.
-        if let Some(max) = block.height.checked_sub(cfg.max_orphan_age.into_inner()) {
-            let max = Bound::Inclusive((max, Hash256::from_inner([8; 32])));
-
-            let to_delete = CODES
-                .idx
-                .status
-                .sub_prefix(CodeStatusType::Orphan)
-                .keys(&buffer, None, Some(max), Order::Ascending)
-                .map(|k| k.map(|(_, hash)| hash))
-                .collect::<StdResult<Vec<_>>>()?;
-
-            for hash in to_delete {
-                CODES.remove(&mut buffer, hash)?;
-            }
+        // Remove orphaned codes (those that are not used by any contract) that
+        // have been orphaned longer than the maximum age.
+        for hash in CODES
+            .idx
+            .status
+            .prefix_keys(
+                &buffer,
+                None,
+                Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                    since: block.timestamp - cfg.max_orphan_age,
+                })),
+                Order::Ascending,
+            )
+            .map(|res| res.map(|(_status, hash)| hash))
+            .collect::<StdResult<Vec<_>>>()?
+        {
+            CODES.remove(&mut buffer, hash)?;
         }
 
         // Find all cronjobs that should be performed. That is, ones that the

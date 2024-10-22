@@ -25,7 +25,7 @@ pub const NEXT_CRONJOBS: Set<(Timestamp, Addr)> = Set::new("jobs");
 
 /// Wasm contract byte codes: code_hash => byte_code
 pub const CODES: IndexedMap<Hash256, Code, CodeIndexes> = IndexedMap::new("codes", CodeIndexes {
-    status: MultiIndex::new(|_, c| c.status, "codes", "codes_status"),
+    status: MultiIndex::new(|_, c| c.status, "codes", "codes__status"),
 });
 
 /// Contract metadata: address => contract_info
@@ -40,79 +40,149 @@ pub struct CodeIndexes<'a> {
 }
 
 impl IndexList<Hash256, Code> for CodeIndexes<'_> {
-    fn get_indexes(
-        &self,
-    ) -> Box<dyn Iterator<Item = &'_ dyn grug_storage::Index<Hash256, Code>> + '_> {
+    fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<Hash256, Code>> + '_> {
         let v: Vec<&dyn Index<Hash256, Code>> = vec![&self.status];
         Box::new(v.into_iter())
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
         crate::CODES,
-        grug_types::{Binary, Code, CodeStatus, CodeStatusType, Hash256, MockStorage, StdResult},
+        grug_storage::PrefixBound,
+        grug_types::{
+            Binary, Code, CodeStatus, Duration, Hash256, MockStorage, StdResult, Timestamp,
+        },
     };
 
     #[test]
     fn codes() {
         let mut storage = MockStorage::new();
+
         CODES
             .save(&mut storage, Hash256::from_inner([0; 32]), &Code {
                 code: Binary::from_inner(vec![0; 32]),
-                status: CodeStatus::Orphan { since: 100 },
+                status: CodeStatus::Orphan {
+                    since: Duration::from_seconds(100),
+                },
             })
             .unwrap();
 
         CODES
             .save(&mut storage, Hash256::from_inner([1; 32]), &Code {
                 code: Binary::from_inner(vec![1; 32]),
-                status: CodeStatus::Orphan { since: 20 },
+                status: CodeStatus::Orphan {
+                    since: Duration::from_seconds(20),
+                },
             })
             .unwrap();
 
         CODES
             .save(&mut storage, Hash256::from_inner([2; 32]), &Code {
                 code: Binary::from_inner(vec![2; 32]),
-                status: CodeStatus::Usage { usage: 2 },
+                status: CodeStatus::Usage { usage: 12345 },
             })
             .unwrap();
 
-        let bound = grug_types::Bound::Inclusive((100, Hash256::from_inner([0; 32])));
-
-        let res: Vec<_> = CODES
-            .idx
-            .status
-            .sub_prefix(CodeStatusType::Orphan)
-            .range(&storage, None, Some(bound), grug_types::Order::Ascending)
-            .collect::<StdResult<Vec<_>>>()
+        CODES
+            .save(&mut storage, Hash256::from_inner([3; 32]), &Code {
+                code: Binary::from_inner(vec![3; 32]),
+                status: CodeStatus::Usage { usage: 88888 },
+            })
             .unwrap();
 
-        assert_eq!(res, vec![
-            (Hash256::from_inner([1; 32]), Code {
-                code: Binary::from_inner(vec![1; 32]),
-                status: CodeStatus::Orphan { since: 20 },
-            }),
-            (Hash256::from_inner([0; 32]), Code {
-                code: Binary::from_inner(vec![0; 32]),
-                status: CodeStatus::Orphan { since: 100 },
-            }),
-        ]);
+        // Find _all_ codes, regardless of orphaned or in use.
+        {
+            let res = CODES
+                .idx
+                .status
+                .prefix_keys(&storage, None, None, grug_types::Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-        let bound = grug_types::Bound::Exclusive((30, Hash256::from_inner([0; 32])));
+            assert_eq!(res, [
+                // Orphaned nodes are ordered by orphan time.
+                (
+                    CodeStatus::Orphan {
+                        since: Timestamp::from_seconds(20),
+                    },
+                    Hash256::from_inner([1; 32]),
+                ),
+                (
+                    CodeStatus::Orphan {
+                        since: Timestamp::from_seconds(100),
+                    },
+                    Hash256::from_inner([0; 32]),
+                ),
+                // In-use nodes are ordered by usage count.
+                (
+                    CodeStatus::Usage { usage: 12345 },
+                    Hash256::from_inner([2; 32]),
+                ),
+                (
+                    CodeStatus::Usage { usage: 88888 },
+                    Hash256::from_inner([3; 32]),
+                )
+            ]);
+        }
 
-        let res: Vec<_> = CODES
-            .idx
-            .status
-            .sub_prefix(CodeStatusType::Orphan)
-            .range(&storage, None, Some(bound), grug_types::Order::Ascending)
-            .collect::<StdResult<Vec<_>>>()
-            .unwrap();
+        // Find all orphaned codes whose orphan time is earlier or equal to 100.
+        {
+            let res = CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &storage,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                        since: Duration::from_seconds(100),
+                    })),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
 
-        assert_eq!(res, vec![(Hash256::from_inner([1; 32]), Code {
-            code: Binary::from_inner(vec![1; 32]),
-            status: CodeStatus::Orphan { since: 20 },
-        })]);
+            assert_eq!(res, [
+                (
+                    CodeStatus::Orphan {
+                        since: Timestamp::from_seconds(20),
+                    },
+                    Hash256::from_inner([1; 32]),
+                ),
+                (
+                    CodeStatus::Orphan {
+                        since: Timestamp::from_seconds(100),
+                    },
+                    Hash256::from_inner([0; 32]),
+                ),
+            ]);
+        }
+
+        // Find all orphaned codes whose orphan time is earlier or equal to 30.
+        {
+            let res = CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &storage,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphan {
+                        since: Duration::from_seconds(30),
+                    })),
+                    grug_types::Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(res, [(
+                CodeStatus::Orphan {
+                    since: Timestamp::from_seconds(20),
+                },
+                Hash256::from_inner([1; 32]),
+            )]);
+        }
     }
 }

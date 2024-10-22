@@ -28,7 +28,7 @@ const DEFAULT_BANK_SALT: &str = "bank";
 const DEFAULT_TAXMAN_SALT: &str = "taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
 const DEFAULT_FEE_RATE: &str = "0";
-const DEFAULT_MAX_ORPHAN_AGE: u64 = u64::MAX;
+const DEFAULT_MAX_ORPHAN_AGE: Duration = Duration::from_seconds(7 * 24 * 60 * 60); // 7 days
 
 // If the user wishes to use a custom code for account, bank, or taxman, they
 // must provide both the binary code, as well as a function for creating the
@@ -67,7 +67,7 @@ pub struct TestBuilder<
     taxman_opt: CodeOption<Box<dyn FnOnce(Denom, Udec128) -> M3>>,
     fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
-    max_orphan_age: Option<u64>,
+    max_orphan_age: Option<Duration>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -170,7 +170,7 @@ where
         self
     }
 
-    pub fn set_max_orphan_age(mut self, max_orphan_age: u64) -> Self {
+    pub fn set_max_orphan_age(mut self, max_orphan_age: Duration) -> Self {
         self.max_orphan_age = Some(max_orphan_age);
         self
     }
@@ -583,7 +583,7 @@ where
                 upload: Permission::Everybody,
                 instantiate: Permission::Everybody,
             },
-            max_orphan_age: self.max_orphan_age.unwrap_or(DEFAULT_MAX_ORPHAN_AGE).into(),
+            max_orphan_age: self.max_orphan_age.unwrap_or(DEFAULT_MAX_ORPHAN_AGE),
         };
 
         let genesis_state = GenesisState {

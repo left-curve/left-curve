@@ -1,7 +1,6 @@
 use {
     crate::{Addr, Duration, Event, GenericResult, Hash256, Json, Message, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Uint64,
     hex_literal::hex,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -66,8 +65,10 @@ pub struct Config {
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.
     pub permissions: Permissions,
-    /// Maximum number of blocks that a code can be orphaned for.
-    pub max_orphan_age: Uint64,
+    /// Maximum age allowed for orphaned codes.
+    /// A code is deleted if it remains orphaned (not used by any contract) for
+    /// longer than this duration.
+    pub max_orphan_age: Duration,
 }
 
 /// Set of updates to be made to the config.
