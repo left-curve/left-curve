@@ -1,5 +1,9 @@
 module utils {
   import basicSpells.* from "./spells/basicSpells"
+  import node.* from "./node"
+  import hashes.* from "./hashes"
+  val keylength = 4
+
   pure def unwrap(value: Option[a]): a = {
     match value {
       | None => Map().get(value)
@@ -14,5 +18,9 @@ module utils {
       hack.get("value")
     }
   }
-
+  pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
+    val indList = range(1, keylength + 1)
+    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
+                                    b.key_hash.slice(0, x) 
+                                else s )
 }

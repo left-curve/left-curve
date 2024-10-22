@@ -98,56 +98,138 @@ module tree {
     perfectPrefixOverlapCombo.getOnlyElement()
   }
 
-	pure def listCommonPrefix(a: BitArray, b: BitArray) : BitArray =
-			[]
+	pure def listPrefixCombinations(new_key_hash: BitArray) : Set[BitArray]  =
+			 0.to(new_key_hash.length()).map(i => new_key_hash.slice(0,i))
 
 	pure def longestPrefixNode(s: Set[NodeId]) : NodeId =
-			{version: 0, key_hash: []}
+	    s.fold({version: 0 , key_hash: []}, (longestOverlappingPrefix, node) => 
+					if (node.key_hash.length() > longestOverlappingPrefix.key_hash.length() ) 
+						node
+					else 
+						longestOverlappingPrefix
+				)
 
-	pure def newInternal(a: LeafNode, b: LeafNode): InternalNode =
-			// TODO: hashes, etc.
-			{left_child: None, right_child: None}
-
-	pure def addLeafUnderInternal(i: InternalNode, l: LeafNode): InternalNode =
-			// TODO: hashes, etc.
-			// figure out whether l is left or right, and puts the hash(l) there
-					i
-	pure def newPrefix(l: LeafNode, parent: NodeId): NodeId = 
-			// prefix of leafNode key of lenght parent.key.length + 1 
-			// and proper version
-			parent
-
-	// forget empty tree
-	pure def insert(t: Tree, l: LeafNode): Tree = 
-			val nodeIdOnPath = t.nodes.keys().filter(prefix => listCommonPrefix(prefix.key_hash,l.key_hash).length() > 0)
-			val nodeId: NodeId = longestPrefixNode(nodeIdOnPath)
-			val nodeToChange = t.nodes.get(nodeId)
-			val replacement: InternalNode = match nodeToChange {
-					| Leaf(leaf) => newInternal(leaf, l)      
-					// 0011 -> LeafA
-					// Add leafB
-					// 0011 -> Internal
-					// 00111 -> A (or B)
-					// 00110 -> B (or A)
-					| Internal(internal) => addLeafUnderInternal(internal, l)
-					// 0011 -> Internal
-					// 00111 -> Leaf A
-					// 00110000 -> l
-					// Then
-					// 0011 -> replacement
-					// newPrefix(l, 0011) = 00110
-					// add 00110 -> l
+	pure def newInternalNode(existingLeaf: LeafNode, newLeaf: LeafNode): InternalNode =
+			// TODO: recompute parent hashes, etc.
+			// get common prefix between already existing leaf and new leaf
+			val internalNodePrefix = commonPrefix(existingLeaf, newLeaf)
+			//getting first bit that does not overlap between new leaf and existing leaf
+			// this dictates wether which leaf is going to be which
+			val firstNonOverlappingBitOfExistingLeaf = existingLeaf
+																									.key_hash
+																									.slice(
+																										internalNodePrefix.length(), 
+																										internalNodePrefix.length() + 1)
+			val newHash = {version: 0, hash: hashLeafNode(newLeaf)}
+			val existingHash = {version: 0, hash: hashLeafNode(existingLeaf)}
+			
+			if(firstNonOverlappingBitOfExistingLeaf.head() == 1){
+				// existing leaf should be right child
+				// new leaf is left child
+				{left_child: Some(newHash), right_child: Some(existingHash)}				
 			}
-			// TODO: In Leaf case above, we need to
-			val newNodes = t.nodes
-													.put(nodeId, Internal(replacement))
-													.set(newPrefix(l,nodeId), Leaf(l))        
-			val newnew = match   nodeToChange {
-					| Leaf(leaf) => newNodes.set(newPrefix(leaf,nodeId), Leaf(leaf))  
-					| Internal(internal) => newNodes      
-			}   
-			// TODO: use nodeIdOnPath to iterate in descending length()
-			t.with("nodes", newNodes)
+			else{
+				// existing leaf should be left child
+				// new leaf is right child
+				{left_child: Some(newHash), right_child: Some(existingHash)}
+			}
+
+	pure def addLeafUnderInternal(internalToGrowLeaf: InternalNode, internalNodesNodeId: NodeId, 
+																	newLeaf: LeafNode): InternalNode =
+			// TODO: recompute parent hashes, etc.
+			// figure out whether l is left or right, and puts the hash(l) there
+			val firstNonOverlappingBitOfNewLeaf = newLeaf
+																							.key_hash
+																							.slice(
+																								internalNodesNodeId.key_hash.length(), 
+																								internalNodesNodeId.key_hash.length() + 1)
+			if(firstNonOverlappingBitOfNewLeaf.head() == 1)
+				{...internalToGrowLeaf, right_child: Some({version: 0, hash: hashLeafNode(newLeaf)})}
+			else
+				{...internalToGrowLeaf, left_child: Some({version: 0, hash: hashLeafNode(newLeaf)})}
+
+	pure def newPrefix(parent: NodeId, l: LeafNode): NodeId = 
+			{version:0, key_hash: l.key_hash.slice(0,parent.key_hash.length()+1)}
+	
+	pure def getNodesOnPath(t: Tree, new_key_hash: Bytes_t) : Set[NodeId] = 
+		t.nodes.keys().filter( key => listPrefixCombinations(new_key_hash).contains(key.key_hash))
+	
+	pure def recomputeHashesOnPath(t: Tree, nodeIdsOnPath: Set[NodeId], newLeaf: LeafNode) : Tree = {
+		t
+	}
+	pure def leafHasNoOverlap(t: Tree, newLeaf: LeafNode) : bool = 
+		not(t.nodes.keys()
+				.contains({version: 0, 
+									key_hash: List(newLeaf.key_hash.head())
+									}))
+	// false
+		// if(getNodesOnPath(t, newLeaf.key_hash) == Set(makeNodeId(0,[]))) true else false
+	
+	// forget empty tree
+	pure def insert(t: Tree, newLeaf: LeafNode): Tree = 
+		if(t.nodes.keys().size() == 0){
+			val key_hash_prefix : Bytes_t = List(newLeaf.key_hash.head())
+			val n = makeNodeId(0, key_hash_prefix)
+			val updatedNodes = t.nodes.put(n,Leaf(newLeaf))
+			{...t, nodes: updatedNodes}
+		}else{
+			if(leafHasNoOverlap(t, newLeaf)){
+				if(newLeaf.key_hash.head() == 0) {
+					val existingLeaf = t.nodes.get({version:0, key_hash: [1]})
+					val internalNode : InternalNode = {
+															left_child: Some({ 
+																						version: 0,
+																						hash: hashLeafNode(newLeaf)}), 
+															right_child: Some({ 
+																						version: 0,
+																						hash: hash(existingLeaf)})}
+					val updatedNodes = t.nodes.put({version: 0, key_hash:[]}, Internal(internalNode))
+																		.put({version: 0, key_hash:[newLeaf.key_hash.head()]}, Leaf(newLeaf))
+					{...t, nodes: updatedNodes}			
+				}else{
+					val existingLeaf = t.nodes.get({version:0, key_hash: [0]})
+					val internalNode : InternalNode = {
+															left_child: Some({ 
+																						version: 0,
+																						hash: hash(existingLeaf)}), 
+															right_child: Some({ 
+																						version: 0,
+																						hash: hashLeafNode(newLeaf)})}
+
+
+
+					val updatedNodes = t.nodes.put({version: 0, key_hash:[]}, Internal(internalNode))
+																		.put({version: 0, key_hash:[newLeaf.key_hash.head()]}, Leaf(newLeaf))
+					{...t, nodes: updatedNodes}
+				}
+
+			}else{
+				val nodeIdsOnPath: Set[NodeId] = getNodesOnPath(t, newLeaf.key_hash)
+				val nodeId: NodeId = longestPrefixNode(nodeIdsOnPath)
+				val nodeToChange = t.nodes.get(nodeId)
+				val replacement: InternalNode = match nodeToChange {
+						| Leaf(leafToChange) => newInternalNode(leafToChange, newLeaf)
+						| Internal(internalToGrowLeaf) => addLeafUnderInternal(internalToGrowLeaf, nodeId, newLeaf)
+				}
+				// TODO: In Leaf case above, we need to
+				val updatedNodes = t.nodes
+														.set(nodeId, Internal(replacement))
+														.put(newPrefix(nodeId, newLeaf), Leaf(newLeaf))
+
+				val newUpdatedNodes = match nodeToChange {
+						| Leaf(leaf) => updatedNodes.put(newPrefix(nodeId,leaf), Leaf(leaf))  
+						| Internal(internal) => updatedNodes  
+				}
+				// TODO: recompute parent hashes; use nodeIdOnPath to iterate in descending length()
+				val newNodesWithRecomputedHashes = recomputeHashesOnPath(t, nodeIdsOnPath, newLeaf)
+
+				{...t, nodes: newUpdatedNodes}
+			}
+		}
+		
+		// if(leafHasNoOverlap(t, newLeaf)){}
+		// else{}
+			
 			// TODO: add special cases of empty tree, and only one leaf
 			// TODO: delete function + update
 			// TODO: implement helper functions
@@ -158,6 +240,6 @@ module tree {
   action init =
     tree' = {
         orphans: Set(),
-        nodes: Map(makeNodeId(0, ROOT_BITS) -> Internal({left_child: None, right_child: None}))
+        nodes: Map()
   }
 }

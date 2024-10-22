@@ -3,6 +3,8 @@
 module invariants {
 
 import tree.* from "./tree" 
+export tree.*
+
 import basicSpells.* from "./spells/basicSpells"
 
 val keylength = 4
