@@ -38,10 +38,10 @@ module tree {
   pure val ROOT_BITS: BitArray = []
 
   pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId = 
-    {orphaned_since_version: osv, version: v, key_hash: kh}
+    { orphaned_since_version: osv, version: v, key_hash: kh }
 
-  pure def makeNodeId(v: Version, kh: BitArray) : NodeId = 
-    {version: v, key_hash: kh}
+  pure def makeNodeId(v: Version, kh: BitArray): NodeId = 
+    { version: v, key_hash: kh }
 
   pure def mark_node_as_orphaned(tree: Tree, orphaned_since_version: Version, version: Version, key_hash: BitArray): Tree = {
     pure val orphan = {
@@ -68,7 +68,7 @@ module tree {
       not(isNodeOrphaned(nodeId, orphans_to_be_removed))
     )
     pure val updated_nodes = keys_of_non_orphanes.mapBy(x => tree.nodes.get(x))
-      {nodes: updated_nodes, orphans: prunned_orphans}
+    { nodes: updated_nodes, orphans: prunned_orphans }
   }
 
   var tree : Tree
