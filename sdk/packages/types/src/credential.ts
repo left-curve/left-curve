@@ -1,5 +1,5 @@
 import type { Username } from "./account";
-import type { Base64 } from "./encoding";
+import type { Base64, Hex, Json } from "./encoding";
 import type { KeyHash } from "./key";
 
 export type Metadata = {
@@ -19,10 +19,16 @@ export type Credential =
   /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
   | { passkey: PasskeyCredential }
   /** An EVM signature signed by a wallet, along with its typedata. */
-  | { ethWallet: Base64 };
+  | { eip712: Eip712Credential };
 
 export type PasskeyCredential = {
   sig: Base64;
   client_data: Base64;
   authenticator_data: Base64;
+};
+
+export type Eip712Credential = {
+  sig: Base64;
+  hash_data: Hex;
+  typed_data: Json;
 };

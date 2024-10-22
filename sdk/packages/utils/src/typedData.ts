@@ -1,5 +1,6 @@
 import type {
   Coins,
+  Hex,
   MessageTypedDataType,
   Power,
   TxMessageTypedDataType,
@@ -9,33 +10,15 @@ import type {
   Username,
 } from "@leftcurve/types";
 
-import {
-  hashTypedData as viemHashTypedData,
-  type HashTypedDataParameters as viemTypedData,
-} from "viem";
-
 /**
- * @description Composes and hashes the typed data.
+ * @description Encode the typed data.
  *
- * @param message The typed message.
- * @param typeData The typed data parameters.
- * @returns The hashed typed data.
+ * @param typedData The typed data to encode.
+ * @returns The encoded typed data.
  */
-export function composeAndHashTypedData(
-  message: TxMessageTypedDataType,
-  typeData?: Partial<TypedDataParameter<MessageTypedDataType>>,
-) {
-  return hashTypedData(composeTypedData(message, typeData));
-}
-
-/**
- * @description Hashes the typed data.
- *
- * @param typedData The typed data to hash.
- * @returns The hashed typed data.
- */
-export function hashTypedData(typedData: TypedData) {
-  return viemHashTypedData(typedData as viemTypedData);
+export async function encodeTypedData(typedData: TypedData): Promise<Hex> {
+  const { TypedDataEncoder } = await import("ethers");
+  return TypedDataEncoder.encode(typedData.domain, typedData.types, typedData.message);
 }
 
 /**

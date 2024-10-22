@@ -109,6 +109,8 @@ export type {
 export type {
   Credential,
   Metadata,
+  Eip712Credential,
+  PasskeyCredential,
 } from "./credential";
 
 export type {
