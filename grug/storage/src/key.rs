@@ -480,7 +480,7 @@ where
 /// ```
 ///
 /// is also returned.
-pub fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
+pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
     let mut index = 0;
     let mut first_key = Vec::new();
 
