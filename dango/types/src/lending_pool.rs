@@ -1,4 +1,4 @@
-use grug::{Addr, Denom};
+use grug::{Addr, Coins, Denom};
 
 /// The namespace that lending pool uses.
 pub const NAMESPACE: &str = "lending";
@@ -30,6 +30,13 @@ pub enum ExecuteMsg {
         /// sender's address will be used.
         recipient: Option<Addr>,
     },
+
+    /// Borrow coins from the lending pool. Can only be invoked by margin
+    /// accounts.
+    Borrow {
+        /// The coins to borrow.
+        coins: Coins,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -37,12 +44,30 @@ pub enum QueryMsg {
     /// Get the list of whitelisted denoms.
     #[returns(Vec<Denom>)]
     WhitelistedDenoms {
-        /// The maximum number of denoms to return, if not set, will attempt to
+        /// The maximum number of denoms to return. If not set, will attempt to
         /// return all denoms.
         limit: Option<u32>,
 
-        /// The denom to start paginating after, if not set, will start from the
+        /// The denom to start paginating after. If not set, will start from the
         /// first denom.
         start_after: Option<Denom>,
+    },
+
+    /// Get the debts of a margin account.
+    #[returns(Coins)]
+    Debts(Addr),
+
+    /// Paginate over all the lending pool's liabilities. Returns a Vec with
+    /// tuples of (Addr, Coins), where the Addr is the address of the account
+    /// that owes the debt and the Coins are the coins owed.
+    #[returns(Vec<(Addr, Coins)>)]
+    Liabilities {
+        /// The maximum number of entries to return. If not set, will attempt to
+        /// return all entries.
+        limit: Option<u32>,
+
+        /// The address to start paginating after. If not set, will start from
+        /// the first address.
+        start_after: Option<Addr>,
     },
 }

@@ -1,5 +1,5 @@
 use {
-    crate::state::WHITELISTED_DENOMS,
+    crate::{state::WHITELISTED_DENOMS, LIABILITIES},
     anyhow::{bail, ensure, Ok},
     dango_auth::authenticate_tx,
     dango_types::{
@@ -45,6 +45,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::DelistDenom(denom) => delist_denom(ctx, denom),
         ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
+        ExecuteMsg::Borrow { coins } => borrow(ctx, coins),
     }
 }
 
@@ -97,6 +98,21 @@ fn ensure_sender_account_is_not_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
             .params
             .is_margin(),
         "Margin accounts can't deposit or withdraw"
+    );
+    Ok(())
+}
+
+/// Ensures that the sender's account is a margin account.
+fn ensure_sender_account_is_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
+    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+    ensure!(
+        ctx.querier
+            .query_wasm_smart(account_factory, QueryAccountRequest {
+                address: ctx.sender,
+            })?
+            .params
+            .is_margin(),
+        "Only margin accounts can borrow and repay"
     );
     Ok(())
 }
@@ -177,6 +193,41 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
     msgs.push(Message::transfer(recipient, withdrawn)?);
 
     Ok(Response::new().add_messages(msgs))
+}
+
+pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
+    // Ensure sender is a margin account
+    ensure_sender_account_is_margin(&ctx)?;
+
+    // Ensure the coins are whitelisted and lending pool has enough liquidity
+    for coin in coins.clone().into_iter() {
+        ensure!(
+            WHITELISTED_DENOMS.has(ctx.storage, coin.denom.clone()),
+            "Invalid denom. Only whitelisted denoms can be borrowed."
+        );
+        let balance = ctx
+            .querier
+            .query_balance(ctx.contract, coin.denom.clone())?;
+        ensure!(
+            balance >= coin.amount,
+            format!(
+                "Not enough liquidity for {}. Max borrowable is {}",
+                coin.denom, balance
+            )
+        );
+    }
+
+    // Update the sender's liabilities
+    LIABILITIES.update(ctx.storage, ctx.sender, |debts| {
+        debts
+            .clone()
+            .unwrap_or_default()
+            .insert_many(coins.clone())?;
+        Ok(debts)
+    })?;
+
+    // Transfer the coins to the caller
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
 }
 
 // ----------------------------------- tests -----------------------------------
