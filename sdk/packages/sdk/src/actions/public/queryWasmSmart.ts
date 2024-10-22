@@ -1,4 +1,13 @@
-import type { Address, Chain, Client, Json, Signer, Transport } from "@leftcurve/types";
+import type {
+  Address,
+  Chain,
+  Client,
+  Json,
+  JsonValue,
+  Signer,
+  Transport,
+  WasmSmartResponse,
+} from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type QueryWasmSmartParameters = {
@@ -7,7 +16,7 @@ export type QueryWasmSmartParameters = {
   height?: number;
 };
 
-export type QueryWasmSmartReturnType<value extends any | undefined> = Promise<value>;
+export type QueryWasmSmartReturnType<T = JsonValue> = Promise<WasmSmartResponse<T>>;
 
 /**
  * Query a wasm smart contract.
@@ -18,7 +27,7 @@ export type QueryWasmSmartReturnType<value extends any | undefined> = Promise<va
  * @returns The response from the smart contract.
  */
 export async function queryWasmSmart<
-  value extends any | undefined = any | undefined,
+  value extends JsonValue = JsonValue,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer | undefined = undefined,
 >(
@@ -35,5 +44,5 @@ export async function queryWasmSmart<
     throw new Error(`expecting wasm smart response, got ${JSON.stringify(res)}`);
   }
 
-  return res.wasmSmart as unknown as value;
+  return res.wasmSmart as value;
 }

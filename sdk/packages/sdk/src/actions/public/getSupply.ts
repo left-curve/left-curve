@@ -1,12 +1,12 @@
-import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, Coin, Denom, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetSupplyParameters = {
-  denom: string;
+  denom: Denom;
   height?: number;
 };
 
-export type GetSupplyReturnType = Promise<number>;
+export type GetSupplyReturnType = Promise<Coin>;
 
 /**
  * Get the supply of a token.
@@ -25,6 +25,6 @@ export async function getSupply<chain extends Chain | undefined, signer extends 
   };
   const res = await queryApp<chain, signer>(client, { query, height });
 
-  if ("supply" in res) return Number.parseInt(res.supply.amount);
+  if ("supply" in res) return res.supply;
   throw new Error(`expecting supply response, got ${JSON.stringify(res)}`);
 }

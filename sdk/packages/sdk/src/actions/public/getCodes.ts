@@ -1,5 +1,4 @@
-import { decodeBase64 } from "@leftcurve/encoding";
-import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, CodesResponse, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetCodesParameters =
@@ -10,7 +9,7 @@ export type GetCodesParameters =
     }
   | undefined;
 
-export type GetCodesReturnType = Promise<Uint8Array[]>;
+export type GetCodesReturnType = Promise<CodesResponse>;
 
 /**
  * Get the codes.
@@ -29,6 +28,6 @@ export async function getCodes<chain extends Chain | undefined, signer extends S
     codes: { startAfter, limit },
   };
   const res = await queryApp<chain, signer>(client, { query, height });
-  if ("codes" in res) return res.codes.map(decodeBase64);
+  if ("codes" in res) return res.codes;
   throw new Error(`expecting codes response, got ${JSON.stringify(res)}`);
 }

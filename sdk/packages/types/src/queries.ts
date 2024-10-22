@@ -2,7 +2,7 @@ import type { Address } from "./address";
 import type { Coin, Coins, Denom } from "./coin";
 import type { Duration, Permission } from "./common";
 import type { Metadata } from "./credential";
-import type { Base64, Hex, Json } from "./encoding";
+import type { Base64, Hex, Json, JsonValue } from "./encoding";
 import type { Message } from "./tx";
 
 export type BlockInfo = {
@@ -140,9 +140,9 @@ export type CodeResponse = Base64;
 
 export type CodesResponse = Record<Hex, Base64>;
 
-export type AppConfigResponse = Json;
+export type AppConfigResponse<T = JsonValue> = T;
 
-export type AppConfigsResponse = Record<string, Json>;
+export type AppConfigsResponse = Json;
 
 export type AccountResponse = {
   address: Address;
@@ -152,7 +152,7 @@ export type AccountResponse = {
 
 export type WasmRawResponse = Base64 | undefined;
 
-export type WasmSmartResponse = Json;
+export type WasmSmartResponse<T = JsonValue> = T;
 
 export type ContractResponse = ContractInfo;
 
