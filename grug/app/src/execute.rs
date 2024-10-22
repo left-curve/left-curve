@@ -2,8 +2,8 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG,
-        CONTRACTS, NEXT_CRONJOBS,
+        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS,
+        NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
@@ -180,12 +180,11 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let cfg = CONFIG.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: cfg.bank,
         sender: None,
@@ -222,11 +221,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, msg.to)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: msg.to,
         sender: Some(msg.from),
@@ -275,8 +273,6 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
-
     // Make sure the user has the permission to instantiate contracts
     let cfg = CONFIG.load(&app_ctx.storage)?;
 
@@ -319,7 +315,7 @@ where
 
     // Call the contract's `instantiate` entry point
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: address,
         sender: Some(sender),
@@ -379,7 +375,6 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, msg.contract)?.code_hash;
 
     // Make the fund transfer
@@ -400,7 +395,7 @@ where
 
     // Call the contract's `execute` entry point
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: msg.contract,
         sender: Some(sender),
@@ -453,7 +448,6 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let mut contract_info = CONTRACTS.load(&app_ctx.storage, msg.contract)?;
 
     // Only the account's admin can migrate it
@@ -474,7 +468,7 @@ where
     CONTRACTS.save(&mut app_ctx.storage, msg.contract, &contract_info)?;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: msg.contract,
         sender: Some(sender),
@@ -534,11 +528,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, contract)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract,
         sender: None,
@@ -562,11 +555,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, tx.sender)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: tx.sender,
         sender: None,
@@ -618,11 +610,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, tx.sender)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: tx.sender,
         sender: None,
@@ -654,12 +645,11 @@ where
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
         let cfg = CONFIG.load(&app_ctx.storage)?;
         let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
 
         let ctx = Context {
-            chain_id,
+            chain_id: app_ctx.chain_id.clone(),
             block: app_ctx.block,
             contract: cfg.taxman,
             sender: None,
@@ -706,12 +696,11 @@ where
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
         let cfg = CONFIG.load(&app_ctx.storage)?;
         let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
 
         let ctx = Context {
-            chain_id,
+            chain_id: app_ctx.chain_id.clone(),
             block: app_ctx.block,
             contract: cfg.taxman,
             sender: None,
@@ -782,10 +771,9 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, contract)?.code_hash;
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract,
         sender: None,

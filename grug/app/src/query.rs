@@ -1,7 +1,7 @@
 use {
     crate::{
         call_in_1_out_1, AppCtx, AppError, AppResult, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        StorageProvider, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, Bound, Coin, Coins, Config, Context,
@@ -93,12 +93,11 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let cfg = CONFIG.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: cfg.bank,
         sender: None,
@@ -168,11 +167,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&app_ctx.storage)?;
     let code_hash = CONTRACTS.load(&app_ctx.storage, req.contract)?.code_hash;
 
     let ctx = Context {
-        chain_id,
+        chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: req.contract,
         sender: None,

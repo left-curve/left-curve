@@ -334,10 +334,11 @@ mod test {
             let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
 
             let querier_provider = QuerierProvider::new(AppCtx::new(
-                WasmVm::new(0),
-                Box::new(storage),
-                gas_tracker.clone(),
                 MOCK_BLOCK,
+                "dev-1",
+                gas_tracker.clone(),
+                Box::new(storage),
+                WasmVm::new(0),
             ));
 
             let mut env = Environment::new(

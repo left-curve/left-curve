@@ -48,10 +48,11 @@ fn looping(c: &mut Criterion) {
                         let gas_tracker = GasTracker::new_limitless();
 
                         let querier = QuerierProvider::new(AppCtx::new(
-                            vm.clone(),
-                            storage.clone(),
-                            gas_tracker.clone(),
                             MOCK_BLOCK,
+                            "dev-1",
+                            gas_tracker.clone(),
+                            storage.clone(),
+                            vm.clone(),
                         ));
                         let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
 

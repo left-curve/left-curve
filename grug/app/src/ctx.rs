@@ -6,43 +6,38 @@ use {
 /// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
 #[derive(Clone)]
 pub struct AppCtx<VM = Undefined<()>, S = Box<dyn Storage>> {
-    vm: VM,
-    pub storage: S,
     pub block: BlockInfo,
+    pub chain_id: String,
     pub gas_tracker: GasTracker,
+    pub storage: S,
+    vm: VM,
+}
+
+impl AppCtx {
+    pub fn new<VM, S, C>(
+        block: BlockInfo,
+        chain_id: C,
+        gas_tracker: GasTracker,
+        storage: S,
+        vm: VM,
+    ) -> AppCtx<VM, S>
+    where
+        C: Into<String>,
+    {
+        AppCtx {
+            block,
+            chain_id: chain_id.into(),
+            gas_tracker,
+            storage,
+            vm,
+        }
+    }
 }
 
 impl<VM> AppCtx<VM>
 where
     VM: Vm,
 {
-    /// Constructor method where `S` can be any type that implements `Storage`
-    ///
-    /// This is needed to have `Shared<Buffer>` as storage in order to dismount or commit the buffer
-    pub fn new<S>(vm: VM, storage: S, gas_tracker: GasTracker, block: BlockInfo) -> AppCtx<VM, S> {
-        AppCtx {
-            storage,
-            block,
-            gas_tracker,
-            vm,
-        }
-    }
-
-    /// Constructor method where `S` is a `Box<dyn Storage>`
-    pub fn new_boxed(
-        vm: VM,
-        storage: Box<dyn Storage>,
-        gas_tracker: GasTracker,
-        block: BlockInfo,
-    ) -> AppCtx<VM, Box<dyn Storage>> {
-        AppCtx {
-            storage,
-            block,
-            gas_tracker,
-            vm,
-        }
-    }
-
     pub fn vm(&self) -> &VM {
         &self.vm
     }
@@ -50,9 +45,10 @@ where
     /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined<()>>`
     pub fn downcast(&self) -> AppCtx<Undefined<()>> {
         AppCtx {
-            storage: self.storage.clone(),
             block: self.block,
+            chain_id: self.chain_id.clone(),
             gas_tracker: self.gas_tracker.clone(),
+            storage: self.storage.clone(),
             vm: Undefined::default(),
         }
     }
@@ -60,7 +56,7 @@ where
 
 impl<VM, S> AppCtx<VM, S>
 where
-    VM: Vm + Clone,
+    VM: Clone,
 {
     /// Clone the `AppCtx` replacing the storage with a generic `Storage`
     pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1>
@@ -68,9 +64,10 @@ where
         S1: Storage,
     {
         AppCtx {
-            storage,
             block: self.block,
+            chain_id: self.chain_id.clone(),
             gas_tracker: self.gas_tracker.clone(),
+            storage,
             vm: self.vm.clone(),
         }
     }
@@ -78,7 +75,7 @@ where
 
 impl<VM> AppCtx<VM, Box<dyn Storage>>
 where
-    VM: Vm + Clone,
+    VM: Clone,
 {
     /// Clone the `AppCtx` that is using a `Box<dyn Storage>` replacing it with a new `Shared<Buffer<S>>`
     pub fn clone_with_buffer_storage<S1>(
@@ -86,9 +83,10 @@ where
         storage: Shared<Buffer<S1>>,
     ) -> AppCtx<VM, Shared<Buffer<S1>>> {
         AppCtx {
-            storage,
             block: self.block,
+            chain_id: self.chain_id.clone(),
             gas_tracker: self.gas_tracker.clone(),
+            storage,
             vm: self.vm.clone(),
         }
     }
@@ -96,15 +94,16 @@ where
 
 impl<VM, S> AppCtx<VM, S>
 where
-    VM: Vm + Clone,
+    VM: Clone,
     S: Storage + Clone + 'static,
 {
     /// Clone the `AppCtx` boxing the inner `storage`
     pub fn clone_boxing_storage(&self) -> AppCtx<VM, Box<dyn Storage>> {
         AppCtx {
-            storage: Box::new(self.storage.clone()),
             block: self.block,
+            chain_id: self.chain_id.clone(),
             gas_tracker: self.gas_tracker.clone(),
+            storage: Box::new(self.storage.clone()),
             vm: self.vm.clone(),
         }
     }

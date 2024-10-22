@@ -328,10 +328,11 @@ mod tests {
         let gas_tracker = GasTracker::new_limitless();
 
         let querier_provider = QuerierProvider::new(AppCtx::new(
-            vm.clone(),
-            Box::new(db.clone()),
-            gas_tracker.clone(),
             block,
+            "dev-1".to_string(),
+            gas_tracker.clone(),
+            Box::new(db.clone()),
+            vm.clone(),
         ));
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
