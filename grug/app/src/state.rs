@@ -56,7 +56,7 @@ mod tests {
     };
 
     #[test]
-    fn asd() {
+    fn codes() {
         let mut storage = MockStorage::new();
         CODES
             .save(&mut storage, Hash256::from_inner([0; 32]), &Code {
@@ -94,6 +94,35 @@ mod tests {
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
 
-        println!("{:#?}", res);
+        assert_eq!(res, vec![(Hash256::from_inner([0; 32]), Code {
+            code: Binary::from_inner(vec![0; 32]),
+            status: CodeStatus::Orphan { since: 100 },
+        })]);
+
+        let bound = grug_types::Bound::Inclusive((15, Hash256::from_inner([0; 32])));
+
+        let res: Vec<_> = CODES
+            .idx
+            .status
+            .sub_prefix(CodeStatusType::Orphan)
+            .range(
+                &mut storage,
+                Some(bound),
+                None,
+                grug_types::Order::Ascending,
+            )
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+
+        assert_eq!(res, vec![
+            (Hash256::from_inner([1; 32]), Code {
+                code: Binary::from_inner(vec![1; 32]),
+                status: CodeStatus::Orphan { since: 20 },
+            }),
+            (Hash256::from_inner([0; 32]), Code {
+                code: Binary::from_inner(vec![0; 32]),
+                status: CodeStatus::Orphan { since: 100 },
+            }),
+        ]);
     }
 }
