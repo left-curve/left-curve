@@ -251,8 +251,30 @@ impl Querier for MockQuerier {
                 let maybe_value = self
                     .raw_query_handler
                     .get_storage(req.contract)
-                    .and_then(|storage| storage.read(&req.key).map(Binary::from));
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "[MockQuerier]: raw query handler not set for {}",
+                            req.contract
+                        );
+                    })
+                    .read(&req.key)
+                    .map(Binary::from_inner);
                 Ok(QueryResponse::WasmRaw(maybe_value))
+            },
+            Query::WasmScan(req) => {
+                let records = self
+                    .raw_query_handler
+                    .get_storage(req.contract)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "[MockQuerier]: raw query handler not set for {}",
+                            req.contract
+                        );
+                    })
+                    .scan(req.min.as_deref(), req.max.as_deref(), req.order)
+                    .map(|(k, v)| (Binary::from_inner(k), Binary::from_inner(v)))
+                    .collect();
+                Ok(QueryResponse::WasmScan(records))
             },
             Query::WasmSmart(req) => {
                 let handler = self

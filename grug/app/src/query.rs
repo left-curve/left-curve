@@ -8,8 +8,8 @@ use {
         ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
         QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
         QueryCodesRequest, QueryConfigRequest, QueryContractRequest, QueryContractsRequest,
-        QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest, QueryWasmSmartRequest,
-        StdResult, Storage,
+        QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest,
+        QueryWasmSmartRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -233,6 +233,22 @@ pub fn query_wasm_raw(
     StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
         .read_with_gas(gas_tracker, &req.key)
         .map(|maybe_value| maybe_value.map(Binary::from))
+}
+
+pub fn query_wasm_scan(
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    req: QueryWasmScanRequest,
+) -> StdResult<BTreeMap<Binary, Binary>> {
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
+        .scan_with_gas(
+            gas_tracker,
+            req.min.as_deref(),
+            req.max.as_deref(),
+            req.order,
+        )?
+        .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
+        .collect()
 }
 
 pub fn query_wasm_smart<VM>(

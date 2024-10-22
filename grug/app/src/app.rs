@@ -1,5 +1,7 @@
+use crate::query_wasm_scan;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -816,6 +818,10 @@ where
         Query::WasmRaw(req) => {
             let res = query_wasm_raw(storage, gas_tracker, req)?;
             Ok(QueryResponse::WasmRaw(res))
+        },
+        Query::WasmScan(req) => {
+            let res = query_wasm_scan(storage, gas_tracker, req)?;
+            Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
             let res = query_wasm_smart(vm, storage, gas_tracker, query_depth, block, req)?;
