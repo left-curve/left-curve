@@ -191,9 +191,7 @@ export type PublicActions<
   getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
   getContractsInfo: (args?: GetContractsInfoParameters) => GetContractsInfoReturnType;
   queryApp: (args: QueryAppParameters) => QueryAppReturnType;
-  queryWasmRaw: <value extends any | undefined>(
-    args: QueryWasmRawParameters,
-  ) => QueryWasmRawReturnType<value>;
+  queryWasmRaw: (args: QueryWasmRawParameters) => QueryWasmRawReturnType;
   queryWasmSmart: <value extends any | undefined>(
     args: QueryWasmSmartParameters,
   ) => QueryWasmSmartReturnType<value>;
