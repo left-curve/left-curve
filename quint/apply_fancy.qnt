@@ -115,9 +115,7 @@ module apply_fancy {
         None
       }
 
-      pure val is_future_iteration = false // batch_now.forall(kv => kv.key_hash.length() > bits_now.length())
-
-      pure val result = if ((batch_now.size() == 0 and existing_leaf_now == None) or is_future_iteration) {
+      pure val result = if (batch_now.size() == 0 and existing_leaf_now == None) {
         // early return
         { outcome: Unchanged(None), nodes_to_add: Set() }
       } else {
@@ -176,17 +174,64 @@ module apply_fancy {
       // Is this the correct expectation? No internal nodes? -> yes, from the rust tests, this should be a leaf on the root
     )
 
-  run multipleOpsOnEmptyTreeTest =
+  run twoInsertsOnEmptyTreeTest =
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     pure val ops = Set(
-      { key_hash: [0, 1, 1], op: Insert([1, 1, 1, 1]) },
-      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) },
-      { key_hash: [1, 1, 1, 1], op: Insert([1, 1, 0, 0]) },
-      { key_hash: [1, 1, 1, 0], op: Insert([1, 0, 0, 0]) }
+      { key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }, // a
+      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) } // r
     )
+
+    pure val expected_left = Leaf({ key_hash: [0, 1, 0, 0], value_hash: [1, 1, 1, 0] })
+    pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] })
+    pure val expected_root = Internal({
+      left_child: Some({ version: 1, hash: expected_left.hash() }),
+      right_child: Some({ version: 1, hash: expected_right.hash() })
+    })
     assert(
       apply_fancy(empty_tree, 0, 1, ops)
-      == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })), orphans: Set() }
+      == { nodes: Map(
+           { key_hash: [], version: 1 } -> expected_root,
+           { key_hash: [0], version: 1 } -> expected_left,
+           { key_hash: [1], version: 1 } -> expected_right
+         ), orphans: Set() }
+    )
+
+  run twoInsertsWihSharedPrefixOnEmptyTreeTest =
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    pure val ops = Set(
+      { key_hash: [0, 1, 1, 0], op: Insert([1, 1, 1, 1]) }, // m
+      { key_hash: [0, 1, 1, 1], op: Insert([1, 1, 1, 0]) } // L
+    )
+
+    pure val expected_leaf_1 = Leaf({ key_hash: [0, 1, 1, 0], value_hash: [1, 1, 1, 1] })
+    pure val expected_leaf_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 1 ,0] })
+    pure val internal_height_3 = Internal({
+      left_child: Some({ version: 1, hash: expected_leaf_1.hash() }),
+      right_child: Some({ version: 1, hash: expected_leaf_2.hash() })
+    })
+    pure val internal_height_2 = Internal({
+      left_child: None,
+      right_child: Some({ version: 1, hash: internal_height_3.hash() })
+    })
+    pure val internal_height_1 = Internal({
+      left_child: None,
+      right_child: Some({ version: 1, hash: internal_height_2.hash() })
+    })
+    pure val expected_root = Internal({
+      left_child: Some({ version: 1, hash: internal_height_1.hash() }),
+      right_child: None
+    })
+
+    assert(
+      apply_fancy(empty_tree, 0, 1, ops)
+      == { nodes: Map(
+           { key_hash: [], version: 1 } -> expected_root,
+           { key_hash: [0], version: 1 } -> internal_height_1,
+           { key_hash: [0, 1], version: 1 } -> internal_height_2,
+           { key_hash: [0, 1, 1], version: 1 } -> internal_height_3,
+           { key_hash: [0, 1, 1, 0], version: 1 } -> expected_leaf_1,
+           { key_hash: [0, 1, 1, 1], version: 1 } -> expected_leaf_2
+         ), orphans: Set() }
     )
 
   // HACKS: these should be added to Quint soon
