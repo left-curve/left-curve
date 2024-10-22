@@ -8,6 +8,14 @@ use {
 
 pub trait MeteredStorage {
     fn read_with_gas(&self, gas_tracker: GasTracker, key: &[u8]) -> StdResult<Option<Vec<u8>>>;
+
+    fn scan_with_gas<'a>(
+        &'a self,
+        gas_tracker: GasTracker,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>>;
 }
 
 impl<S> MeteredStorage for S
@@ -27,6 +35,19 @@ where
         }
 
         Ok(maybe_data)
+    }
+
+    fn scan_with_gas<'a>(
+        &'a self,
+        gas_tracker: GasTracker,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>> {
+        // Gas cost for creating an iterator.
+        gas_tracker.consume(GAS_COSTS.db_scan, "db_scan")?;
+
+        Ok(Box::new(self.scan(min, max, order).metered(gas_tracker)))
     }
 }
 

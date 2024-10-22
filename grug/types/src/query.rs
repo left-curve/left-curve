@@ -1,9 +1,10 @@
 use {
     crate::{
-        Addr, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonSerExt,
-        StdResult,
+        extend_one_byte, Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, Hash256,
+        Json, JsonSerExt, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -54,6 +55,8 @@ pub enum Query {
     Contracts(QueryContractsRequest),
     /// Query a raw key-value pair in a contract's internal state.
     WasmRaw(QueryWasmRawRequest),
+    /// Enumerate key-value pairs in a contract's internal state.
+    WasmScan(QueryWasmScanRequest),
     /// Call the contract's query entry point with the given message.
     WasmSmart(QueryWasmSmartRequest),
     /// Perform multiple queries at once.
@@ -120,6 +123,31 @@ impl Query {
         QueryWasmRawRequest {
             contract,
             key: key.into(),
+        }
+        .into()
+    }
+
+    pub fn wasm_scan(
+        contract: Addr,
+        min: Option<Bound<Binary>>,
+        max: Option<Bound<Binary>>,
+        limit: Option<u32>,
+    ) -> Self {
+        let min = min.map(|min| match min {
+            Bound::Inclusive(min) => min,
+            Bound::Exclusive(min) => extend_one_byte(min.into_inner()).into(),
+        });
+
+        let max = max.map(|max| match max {
+            Bound::Exclusive(max) => max,
+            Bound::Inclusive(max) => extend_one_byte(max.into_inner()).into(),
+        });
+
+        QueryWasmScanRequest {
+            contract,
+            min,
+            max,
+            limit,
         }
         .into()
     }
@@ -215,6 +243,14 @@ pub struct QueryWasmRawRequest {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryWasmScanRequest {
+    pub contract: Addr,
+    pub min: Option<Binary>, // inclusive
+    pub max: Option<Binary>, // exclusive
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QueryWasmSmartRequest {
     pub contract: Addr,
     pub msg: Json,
@@ -249,6 +285,7 @@ impl_into_query! {
     Contract   => QueryContractRequest   => ContractInfo,
     Contracts  => QueryContractsRequest  => BTreeMap<Addr, ContractInfo>,
     WasmRaw    => QueryWasmRawRequest    => Option<Binary>,
+    WasmScan   => QueryWasmScanRequest   => BTreeMap<Binary, Binary>,
     WasmSmart  => QueryWasmSmartRequest  => Json,
     Multi      => Vec<Query>             => Vec<QueryResponse>,
 }
@@ -270,6 +307,7 @@ pub enum QueryResponse {
     Contract(ContractInfo),
     Contracts(BTreeMap<Addr, ContractInfo>),
     WasmRaw(Option<Binary>),
+    WasmScan(BTreeMap<Binary, Binary>),
     WasmSmart(Json),
     Multi(Vec<QueryResponse>),
 }
@@ -306,6 +344,7 @@ impl QueryResponse {
         Contract   => ContractInfo,
         Contracts  => BTreeMap<Addr, ContractInfo>,
         WasmRaw    => Option<Binary>,
+        WasmScan   => BTreeMap<Binary, Binary>,
         WasmSmart  => Json,
         Multi      => Vec<QueryResponse>,
     }

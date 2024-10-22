@@ -4,7 +4,8 @@ use {
     grug_client::Client,
     grug_jmt::Proof,
     grug_types::{
-        Addr, Binary, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query, QueryWasmSmartRequest,
+        Addr, Binary, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query,
+        QueryWasmSmartRequest,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -101,7 +102,24 @@ enum SubCmd {
         /// Contract address
         contract: Addr,
         /// The raw key in hex encoding
-        key_hex: String,
+        key: String,
+    },
+    /// Enumerate key-value pairs in a contract's internal state.
+    WasmScan {
+        /// Contract address
+        contract: Addr,
+        /// Mimimum bound in hex encoding
+        min: Option<String>,
+        /// Maximum bound in hex encoding
+        max: Option<String>,
+        /// Maximum number of records to collect
+        limit: Option<u32>,
+        /// Use exclusive minimum bound
+        #[arg(long, default_value_t = false)]
+        min_exclusive: bool,
+        /// Use inclusive maximum bound
+        #[arg(long, default_value_t = false)]
+        max_inclusive: bool,
     },
     /// Call a contract's query entry point
     WasmSmart {
@@ -113,9 +131,9 @@ enum SubCmd {
     /// Query a raw key in the store
     Store {
         /// Key in hex encoding
-        key_hex: String,
+        key: String,
         /// Whether to request Merkle proof for raw store queries [default: false]
-        #[arg(long, global = true, default_value_t = false)]
+        #[arg(long, default_value_t = false)]
         prove: bool,
     },
 }
@@ -167,18 +185,48 @@ impl QueryCmd {
             SubCmd::Codes { start_after, limit } => Query::codes(start_after, limit),
             SubCmd::Contract { address } => Query::contract(address),
             SubCmd::Contracts { start_after, limit } => Query::contracts(start_after, limit),
-            SubCmd::WasmRaw { contract, key_hex } => {
+            SubCmd::WasmRaw { contract, key } => {
                 // We interpret the input raw key as Hex encoded
-                let key = Binary::from(hex::decode(key_hex)?);
+                let key = Binary::from(hex::decode(key)?);
                 Query::wasm_raw(contract, key)
+            },
+            SubCmd::WasmScan {
+                contract,
+                min,
+                max,
+                limit,
+                min_exclusive,
+                max_inclusive,
+            } => {
+                let min = min
+                    .map(|min| -> anyhow::Result<_> {
+                        let min = Binary::from_inner(hex::decode(min)?);
+                        if min_exclusive {
+                            Ok(Bound::Exclusive(min))
+                        } else {
+                            Ok(Bound::Inclusive(min))
+                        }
+                    })
+                    .transpose()?;
+                let max = max
+                    .map(|max| -> anyhow::Result<_> {
+                        let max = Binary::from_inner(hex::decode(max)?);
+                        if max_inclusive {
+                            Ok(Bound::Inclusive(max))
+                        } else {
+                            Ok(Bound::Exclusive(max))
+                        }
+                    })
+                    .transpose()?;
+                Query::wasm_scan(contract, min, max, limit)
             },
             SubCmd::WasmSmart { contract, msg } => {
                 // The input should be a JSON string, e.g. `{"config":{}}`
                 let msg = msg.deserialize_json()?;
                 Query::WasmSmart(QueryWasmSmartRequest { contract, msg })
             },
-            SubCmd::Store { key_hex, prove } => {
-                return query_store(&client, key_hex, self.height, prove).await;
+            SubCmd::Store { key, prove } => {
+                return query_store(&client, key, self.height, prove).await;
             },
         };
 
