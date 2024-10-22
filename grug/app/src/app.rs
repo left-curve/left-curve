@@ -89,6 +89,7 @@ where
 
         // Save the config and genesis block, so that they can be queried when
         // executing genesis messages.
+        CHAIN_ID.save(&mut ctx.storage, &chain_id)?;
         CONFIG.save(&mut ctx.storage, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut ctx.storage, &block)?;
 
