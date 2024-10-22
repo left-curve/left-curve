@@ -958,6 +958,7 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "criterion",
  "dango-account-factory",
  "dango-account-safe",
