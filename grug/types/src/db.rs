@@ -53,7 +53,10 @@ impl<V> Op<V> {
 }
 
 /// Describing iteration order.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Copy, Clone, PartialEq, Eq,
+)]
+#[borsh(use_discriminant = true)]
 pub enum Order {
     Ascending = 1,
     Descending = 2,

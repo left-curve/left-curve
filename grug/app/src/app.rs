@@ -6,8 +6,8 @@ use {
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
         query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
         query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        APP_CONFIGS, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -816,6 +816,10 @@ where
         Query::WasmRaw(req) => {
             let res = query_wasm_raw(storage, gas_tracker, req)?;
             Ok(QueryResponse::WasmRaw(res))
+        },
+        Query::WasmScan(req) => {
+            let res = query_wasm_scan(storage, gas_tracker, req)?;
+            Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
             let res = query_wasm_smart(vm, storage, gas_tracker, query_depth, block, req)?;

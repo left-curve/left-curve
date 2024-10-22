@@ -1,7 +1,8 @@
 use {
     crate::{
         Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
-        JsonSerExt, MockStorage, Querier, Query, QueryResponse, StdError, StdResult, Storage,
+        JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError, StdResult,
+        Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
@@ -251,8 +252,19 @@ impl Querier for MockQuerier {
                 let maybe_value = self
                     .raw_query_handler
                     .get_storage(req.contract)
-                    .and_then(|storage| storage.read(&req.key).map(Binary::from));
+                    .read(&req.key)
+                    .map(Binary::from_inner);
                 Ok(QueryResponse::WasmRaw(maybe_value))
+            },
+            Query::WasmScan(req) => {
+                let records = self
+                    .raw_query_handler
+                    .get_storage(req.contract)
+                    .scan(req.min.as_deref(), req.max.as_deref(), Order::Ascending)
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
+                    .map(|(k, v)| (Binary::from_inner(k), Binary::from_inner(v)))
+                    .collect();
+                Ok(QueryResponse::WasmScan(records))
             },
             Query::WasmSmart(req) => {
                 let handler = self
@@ -281,8 +293,10 @@ struct MockRawQueryHandler {
 }
 
 impl MockRawQueryHandler {
-    pub fn get_storage(&self, address: Addr) -> Option<&MockStorage> {
-        self.storages.get(&address)
+    pub fn get_storage(&self, address: Addr) -> &MockStorage {
+        self.storages.get(&address).unwrap_or_else(|| {
+            panic!("[MockQuerier]: raw query handler not set for {address}");
+        })
     }
 
     pub fn get_storage_mut(&mut self, address: Addr) -> &mut MockStorage {
