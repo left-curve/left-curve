@@ -144,12 +144,52 @@ where
         storage.remove(self.storage_key);
     }
 
-    pub fn update<A, Err>(&self, storage: &mut dyn Storage, action: A) -> Result<Option<T>, Err>
+    pub fn may_update<F, E>(&self, storage: &mut dyn Storage, action: F) -> Result<T, E>
     where
-        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
-        Err: From<StdError>,
+        F: FnOnce(Option<T>) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        let data = action(self.may_load(storage)?)?;
+
+        self.save(storage, &data)?;
+
+        Ok(data)
+    }
+
+    pub fn update<F, E>(&self, storage: &mut dyn Storage, action: F) -> Result<T, E>
+    where
+        F: FnOnce(T) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        let data = action(self.load(storage)?)?;
+
+        self.save(storage, &data)?;
+
+        Ok(data)
+    }
+
+    pub fn may_modify<F, E>(&self, storage: &mut dyn Storage, action: F) -> Result<Option<T>, E>
+    where
+        F: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
         let maybe_data = action(self.may_load(storage)?)?;
+
+        if let Some(data) = &maybe_data {
+            self.save(storage, data)?;
+        } else {
+            self.remove(storage);
+        }
+
+        Ok(maybe_data)
+    }
+
+    pub fn modify<F, E>(&self, storage: &mut dyn Storage, action: F) -> Result<Option<T>, E>
+    where
+        F: FnOnce(T) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        let maybe_data = action(self.load(storage)?)?;
 
         if let Some(data) = &maybe_data {
             self.save(storage, data)?;

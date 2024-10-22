@@ -129,14 +129,14 @@ fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
     // 1. If someone makes a depsoit twice, then we simply merge the deposits.
     // 2. We trust the IBC transfer contract is implemented correctly and won't
     // make empty deposits.
-    DEPOSITS.update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
+    DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
         if let Some(mut existing_deposit) = maybe_deposit {
             for coin in ctx.funds {
                 existing_deposit.insert(coin)?;
             }
-            Ok(Some(existing_deposit))
+            Ok(existing_deposit)
         } else {
-            Ok(Some(ctx.funds))
+            Ok(ctx.funds)
         }
     })?;
 
@@ -164,11 +164,11 @@ fn register_user(
 
     // Save the key.
     // If the key exists (already used by another account), they must match.
-    KEYS.update(ctx.storage, key_hash, |maybe_key| {
+    KEYS.may_update(ctx.storage, key_hash, |maybe_key| {
         if let Some(existing_key) = maybe_key {
             ensure!(key == existing_key, "reusing an existing key but mismatch");
         }
-        Ok(Some(key))
+        Ok(key)
     })?;
 
     Ok(Response::new().add_message(onboard_new_user(
@@ -311,9 +311,7 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
         ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
     }
 
-    ACCOUNTS.update(ctx.storage, ctx.sender, |maybe_account| {
-        let mut account = maybe_account.unwrap();
-
+    ACCOUNTS.update(ctx.storage, ctx.sender, |mut account| {
         match &mut account.params {
             AccountParams::Safe(params) => {
                 params.apply_updates(updates);
@@ -326,7 +324,7 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
             _ => bail!("account isn't a Safe"),
         }
 
-        Ok(Some(account))
+        Ok(account)
     })?;
 
     Ok(Response::new())

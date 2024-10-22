@@ -121,9 +121,14 @@ fn increase_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    SUPPLIES.update(storage, denom, |supply| {
+    SUPPLIES.may_modify(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_add(amount)?;
-        Ok(Some(supply))
+        // Only write to storage if the supply is non-zero.
+        if supply.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(supply))
+        }
     })
 }
 
@@ -134,7 +139,7 @@ fn decrease_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    SUPPLIES.update(storage, denom, |supply| {
+    SUPPLIES.may_modify(storage, denom, |supply| {
         let supply = supply.unwrap_or_default().checked_sub(amount)?;
         // If supply is reduced to zero, delete it, to save disk space.
         if supply.is_zero() {
@@ -155,11 +160,16 @@ fn increase_balance(
 ) -> StdResult<Option<Uint128>> {
     let action = |balance: Option<Uint128>| {
         let balance = balance.unwrap_or_default().checked_add(amount)?;
-        Ok(Some(balance))
+        // Only write to storage if the balance is non-zero.
+        if balance.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(balance))
+        }
     };
 
-    BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
-    BALANCES_BY_DENOM.update(storage, (denom, address), action)
+    BALANCES_BY_ADDR.may_modify(storage, (address, denom), action)?;
+    BALANCES_BY_DENOM.may_modify(storage, (denom, address), action)
 }
 
 /// Decrease an account's balance of a token by the given amount.
@@ -180,6 +190,6 @@ fn decrease_balance(
         }
     };
 
-    BALANCES_BY_ADDR.update(storage, (address, denom), action)?;
-    BALANCES_BY_DENOM.update(storage, (denom, address), action)
+    BALANCES_BY_ADDR.may_modify(storage, (address, denom), action)?;
+    BALANCES_BY_DENOM.may_modify(storage, (denom, address), action)
 }

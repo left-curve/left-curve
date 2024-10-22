@@ -67,14 +67,14 @@ fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Res
         "you don't have the right, O you don't have the right"
     );
 
-    NAMESPACE_OWNERS.update(ctx.storage, &namespace, |maybe_owner| {
+    NAMESPACE_OWNERS.may_update(ctx.storage, &namespace, |maybe_owner| {
         // TODO: for now, we don't support granting a namespace to multiple
         // owners or overwriting an existing owner.
         if let Some(existing_owner) = maybe_owner {
             bail!("namespace `{namespace}` already granted to `{existing_owner}`");
         }
 
-        Ok(Some(owner))
+        Ok(owner)
     })?;
 
     Ok(Response::new())
@@ -158,12 +158,14 @@ fn increase_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(amount.is_non_zero(), "increasing supply by zero");
-
-    SUPPLIES.update(storage, denom, |maybe_supply| {
+    SUPPLIES.may_modify(storage, denom, |maybe_supply| {
         let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_add(amount)?;
-
-        Ok(Some(supply))
+        // Only write to storage if the supply is non-zero.
+        if supply.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(supply))
+        }
     })
 }
 
@@ -172,11 +174,9 @@ fn decrease_supply(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(amount.is_non_zero(), "decreasing supply by zero");
-
-    SUPPLIES.update(storage, denom, |maybe_supply| {
+    SUPPLIES.may_modify(storage, denom, |maybe_supply| {
         let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
-
+        // If supply is reduced to zero, delete it, to save disk space.
         if supply.is_zero() {
             Ok(None)
         } else {
@@ -191,12 +191,14 @@ fn increase_balance(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(amount.is_non_zero(), "increasing balance by zero");
-
-    BALANCES.update(storage, (address, denom), |maybe_balance| {
+    BALANCES.may_modify(storage, (address, denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_add(amount)?;
-
-        Ok(Some(balance))
+        // Only write to storage if the balance is non-zero.
+        if balance.is_zero() {
+            Ok(None)
+        } else {
+            Ok(Some(balance))
+        }
     })
 }
 
@@ -206,11 +208,9 @@ fn decrease_balance(
     denom: &Denom,
     amount: Uint128,
 ) -> StdResult<Option<Uint128>> {
-    debug_assert!(amount.is_non_zero(), "decreasing balance by zero");
-
-    BALANCES.update(storage, (address, denom), |maybe_balance| {
+    BALANCES.may_modify(storage, (address, denom), |maybe_balance| {
         let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
-
+        // If balance is reduced to zero, delete it, to save disk space.
         if balance.is_zero() {
             Ok(None)
         } else {
