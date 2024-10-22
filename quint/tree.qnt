@@ -67,7 +67,7 @@ module tree {
     pure val keys_of_non_orphanes = tree.nodes.keys().filter(nodeId => 
       not(isNodeOrphaned(nodeId, orphans_to_be_removed))
     )
-      val updated_nodes = keys_of_non_orphanes.mapBy( x => tree.nodes.get(x) )
+    pure val updated_nodes = keys_of_non_orphanes.mapBy(x => tree.nodes.get(x))
       {nodes: updated_nodes, orphans: prunned_orphans}
   }
 
