@@ -680,9 +680,9 @@ mod tests {
                 .unwrap();
 
             assert_eq!(val, [
-                ("s_bar".to_string(), ((0, 1))),
-                ("s_bar".to_string(), ((0, 2))),
-                ("s_bar".to_string(), ((1, 1))),
+                ("s_bar".to_string(), (0, 1)),
+                ("s_bar".to_string(), (0, 2)),
+                ("s_bar".to_string(), (1, 1)),
             ]);
         }
 
