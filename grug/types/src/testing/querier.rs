@@ -1,8 +1,8 @@
 use {
     crate::{
-        Addr, Binary, Coin, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt, Json,
-        JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError, StdResult,
-        Storage,
+        Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult, Hash256,
+        HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError,
+        StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
@@ -22,7 +22,7 @@ pub struct MockQuerier {
     app_configs: BTreeMap<String, Json>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
     supplies: BTreeMap<Denom, Uint128>,
-    codes: BTreeMap<Hash256, Binary>,
+    codes: BTreeMap<Hash256, Code>,
     contracts: BTreeMap<Addr, ContractInfo>,
     raw_query_handler: MockRawQueryHandler,
     smart_query_handler: Option<SmartQueryHandler>,
@@ -73,14 +73,14 @@ impl MockQuerier {
         Ok(self)
     }
 
-    pub fn with_code<T>(mut self, code: T) -> Self
+    pub fn with_code<T>(mut self, code: T, status: CodeStatus) -> Self
     where
         T: Into<Binary>,
     {
         let code = code.into();
         let code_hash = code.hash256();
 
-        self.codes.insert(code_hash, code);
+        self.codes.insert(code_hash, Code { code, status });
         self
     }
 

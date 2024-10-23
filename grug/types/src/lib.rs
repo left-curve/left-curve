@@ -6,6 +6,7 @@ mod bound;
 mod builder;
 mod bytes;
 mod changeset;
+mod code;
 mod coin;
 mod coin_pair;
 mod coins;
@@ -36,11 +37,11 @@ mod unique_vec;
 mod utils;
 
 pub use {
-    address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, coin::*,
-    coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*, encoders::*,
-    error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, length_bounded::*, lengthy::*,
-    non_zero::*, query::*, response::*, result::*, serializers::*, signer::*, time::*, tx::*,
-    unique_vec::*, utils::*,
+    address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
+    coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
+    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, length_bounded::*,
+    lengthy::*, non_zero::*, query::*, response::*, result::*, serializers::*, signer::*, time::*,
+    tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

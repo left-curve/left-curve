@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Codec, Map, Prefix, PrefixBound, PrimaryKey},
+    crate::{Borsh, Codec, Map, PathBuf, Prefix, PrefixBound, PrimaryKey},
     grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
 };
 
@@ -17,7 +17,7 @@ pub struct IndexedMap<'a, K, T, I, C = Borsh>
 where
     C: Codec<T>,
 {
-    primary: Map<'a, K, T, C>,
+    pub primary: Map<'a, K, T, C>,
     /// This is meant to be read directly to get the proper types, like:
     /// `map.idx.owner.items(...)`.
     pub idx: I,
@@ -33,6 +33,14 @@ where
             primary: Map::new(pk_namespace),
             idx: indexes,
         }
+    }
+
+    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+        self.primary.path_raw(key_raw)
+    }
+
+    pub fn path(&self, key: K) -> PathBuf<T, C> {
+        self.primary.path(key)
     }
 
     pub fn prefix(&self, prefix: K::Prefix) -> Prefix<K::Suffix, T, C> {
@@ -348,9 +356,9 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{Index, IndexList, IndexedMap, MultiIndex, UniqueIndex},
+        crate::{Index, IndexList, IndexedMap, MultiIndex, PrefixBound, UniqueIndex},
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_types::{Bound, MockStorage, Order, StdResult},
+        grug_types::{BorshSerExt, Bound, MockStorage, Order, StdResult},
     };
 
     const FOOS: IndexedMap<(u64, u64), Foo, FooIndexes> = IndexedMap::new("foo", FooIndexes {
@@ -627,6 +635,113 @@ mod tests {
                 .unwrap();
 
             assert_eq!(val, [((0, 2), Foo::new("bar", "s_bar", 102)),]);
+        }
+    }
+
+    #[test]
+    fn multi_index_sub_prefix_tuple_works() {
+        let storage = setup_test();
+
+        // Given A, iterate (B, C, D) using prefix_range, without bounds only B.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .prefix_range(
+                    &storage,
+                    None,
+                    Some(PrefixBound::Inclusive("s_bar".to_string())),
+                    Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, [
+                ((0, 1), Foo::new("bar", "s_bar", 101)),
+                ((0, 2), Foo::new("bar", "s_bar", 102)),
+                ((1, 1), Foo::new("bar", "s_bar", 103)),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D) using prefix_keys, without bounds only B.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .prefix_keys(
+                    &storage,
+                    None,
+                    Some(PrefixBound::Inclusive("s_bar".to_string())),
+                    Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, [
+                ("s_bar".to_string(), (0, 1)),
+                ("s_bar".to_string(), (0, 2)),
+                ("s_bar".to_string(), (1, 1)),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D) usign prefix_values, without bounds only B.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .prefix_values(
+                    &storage,
+                    None,
+                    Some(PrefixBound::Inclusive("s_bar".to_string())),
+                    Order::Ascending,
+                )
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, [
+                Foo::new("bar", "s_bar", 101),
+                Foo::new("bar", "s_bar", 102),
+                Foo::new("bar", "s_bar", 103),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D) using values, without bounds only B.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .values(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, [
+                Foo::new("bar", "s_bar", 101),
+                Foo::new("bar", "s_bar", 102),
+                Foo::new("bar", "s_bar", 103),
+                Foo::new("bar", "s_fooes", 104),
+            ]);
+        }
+
+        // Given A, iterate (B, C, D) using values_raw, without bounds only B.
+        {
+            let val = FOOS
+                .idx
+                .name_surname
+                .sub_prefix("bar".to_string())
+                .values_raw(&storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()
+                .unwrap();
+
+            assert_eq!(val, [
+                Foo::new("bar", "s_bar", 101).to_borsh_vec().unwrap(),
+                Foo::new("bar", "s_bar", 102).to_borsh_vec().unwrap(),
+                Foo::new("bar", "s_bar", 103).to_borsh_vec().unwrap(),
+                Foo::new("bar", "s_fooes", 104).to_borsh_vec().unwrap(),
+            ]);
         }
     }
 }

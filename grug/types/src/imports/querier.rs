@@ -1,6 +1,6 @@
 use {
     crate::{
-        Addr, Binary, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt, Query,
+        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt, Query,
         QueryRequest, QueryResponse, StdResult,
     },
     grug_math::Uint128,
@@ -94,7 +94,7 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_supplies())
     }
 
-    pub fn query_code(&self, hash: Hash256) -> StdResult<Binary> {
+    pub fn query_code(&self, hash: Hash256) -> StdResult<Code> {
         self.inner
             .query_chain(Query::code(hash))
             .map(|res| res.as_code())
@@ -104,7 +104,7 @@ impl<'a> QuerierWrapper<'a> {
         &self,
         start_after: Option<Hash256>,
         limit: Option<u32>,
-    ) -> StdResult<BTreeMap<Hash256, Binary>> {
+    ) -> StdResult<BTreeMap<Hash256, Code>> {
         self.inner
             .query_chain(Query::codes(start_after, limit))
             .map(|res| res.as_codes())

@@ -7,13 +7,13 @@ use {
         query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
         query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
         query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
-        APP_CONFIGS, CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenericResultExt,
-        GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse,
-        StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CodeStatus, Duration, Event,
+        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query,
+        QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -154,6 +154,31 @@ where
                 expect: last_finalized_block.height + 1,
                 actual: block.height,
             });
+        }
+
+        // Remove orphaned codes (those that are not used by any contract) that
+        // have been orphaned longer than the maximum age.
+        if let Some(since) = block
+            .timestamp
+            .into_nanos()
+            .checked_sub(cfg.max_orphan_age.into_nanos())
+        {
+            for hash in CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &buffer,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
+                        since: Duration::from_nanos(since),
+                    })),
+                    Order::Ascending,
+                )
+                .map(|res| res.map(|(_status, hash)| hash))
+                .collect::<StdResult<Vec<_>>>()?
+            {
+                CODES.remove(&mut buffer, hash)?;
+            }
         }
 
         // Find all cronjobs that should be performed. That is, ones that the
@@ -743,7 +768,7 @@ where
             msg,
             true,
         ),
-        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, sender, msg),
+        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, block, sender, msg),
         Message::Instantiate(msg) => {
             do_instantiate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
         },

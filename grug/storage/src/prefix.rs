@@ -245,6 +245,19 @@ where
         Box::new(iter)
     }
 
+    pub(crate) fn prefix_keys_raw_no_trim<'a>(
+        &self,
+        storage: &'a dyn Storage,
+        min: Option<PrefixBound<K>>,
+        max: Option<PrefixBound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let (min, max) = range_prefix_bounds(&self.namespace, min, max);
+        let iter = storage.scan_keys(Some(&min), Some(&max), order);
+
+        Box::new(iter)
+    }
+
     pub fn prefix_keys<'a>(
         &self,
         storage: &'a dyn Storage,

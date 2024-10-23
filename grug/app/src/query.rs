@@ -4,8 +4,8 @@ use {
         StorageProvider, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Coin, Coins, Config, Context,
-        ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
+        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
         QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
         QueryCodesRequest, QueryConfigRequest, QueryContractRequest, QueryContractsRequest,
         QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest,
@@ -185,7 +185,7 @@ pub fn query_code(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     req: QueryCodeRequest,
-) -> StdResult<Binary> {
+) -> StdResult<Code> {
     CODES.load_with_gas(storage, gas_tracker, req.hash)
 }
 
@@ -193,7 +193,7 @@ pub fn query_codes(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
     req: QueryCodesRequest,
-) -> StdResult<BTreeMap<Hash256, Binary>> {
+) -> StdResult<BTreeMap<Hash256, Code>> {
     let start = req.start_after.map(Bound::Exclusive);
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 

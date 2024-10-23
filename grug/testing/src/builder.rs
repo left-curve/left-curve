@@ -28,6 +28,7 @@ const DEFAULT_BANK_SALT: &str = "bank";
 const DEFAULT_TAXMAN_SALT: &str = "taxman";
 const DEFAULT_FEE_DENOM: &str = "ugrug";
 const DEFAULT_FEE_RATE: &str = "0";
+const DEFAULT_MAX_ORPHAN_AGE: Duration = Duration::from_seconds(7 * 24 * 60 * 60); // 7 days
 
 // If the user wishes to use a custom code for account, bank, or taxman, they
 // must provide both the binary code, as well as a function for creating the
@@ -66,6 +67,7 @@ pub struct TestBuilder<
     taxman_opt: CodeOption<Box<dyn FnOnce(Denom, Udec128) -> M3>>,
     fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
+    max_orphan_age: Option<Duration>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -115,6 +117,7 @@ where
             balances: BTreeMap::new(),
             fee_denom: None,
             fee_rate: None,
+            max_orphan_age: None,
         }
     }
 }
@@ -164,6 +167,11 @@ where
         D::Error: Debug,
     {
         self.fee_denom = Some(fee_denom.try_into().unwrap());
+        self
+    }
+
+    pub fn set_max_orphan_age(mut self, max_orphan_age: Duration) -> Self {
+        self.max_orphan_age = Some(max_orphan_age);
         self
     }
 
@@ -247,6 +255,7 @@ where
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
         }
     }
 
@@ -309,6 +318,7 @@ where
             },
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
         }
     }
 
@@ -353,6 +363,7 @@ where
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
         }
     }
 }
@@ -425,6 +436,7 @@ where
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
         }
     }
 }
@@ -456,6 +468,7 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
             taxman_opt: self.taxman_opt,
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
         }
     }
 }
@@ -570,6 +583,7 @@ where
                 upload: Permission::Everybody,
                 instantiate: Permission::Everybody,
             },
+            max_orphan_age: self.max_orphan_age.unwrap_or(DEFAULT_MAX_ORPHAN_AGE),
         };
 
         let genesis_state = GenesisState {

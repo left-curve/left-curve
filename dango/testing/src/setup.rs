@@ -53,6 +53,7 @@ where
         "uusdc",
         Udec128::ZERO,
         Some(Uint128::new(10_000_000)),
+        Duration::from_seconds(7 * 24 * 60 * 60),
     )
     .unwrap();
 

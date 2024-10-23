@@ -8,9 +8,9 @@ use {
         mock_ibc_transfer, taxman, token_factory,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, GenesisState, Hash160,
-        Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions, StdResult,
-        Udec128, Uint128, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
+        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions,
+        StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
@@ -77,6 +77,7 @@ pub fn build_genesis<T, D>(
     fee_denom: D,
     fee_rate: Udec128,
     token_creation_fee: Option<Uint128>,
+    max_orphan_age: Duration,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
@@ -244,6 +245,7 @@ where
         taxman,
         cronjobs: BTreeMap::new(),
         permissions,
+        max_orphan_age,
     };
 
     let app_configs = btree_map! {
