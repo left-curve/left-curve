@@ -4,7 +4,7 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Coins, Config, ConfigUpdates,
+        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ConfigUpdates,
         ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, Message, Op,
         Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
         TxSuccess, UnsignedTx,
@@ -640,13 +640,13 @@ where
             .map(|res| res.as_supplies())
     }
 
-    pub fn query_code(&self, hash: Hash256) -> AppResult<Binary> {
+    pub fn query_code(&self, hash: Hash256) -> AppResult<Code> {
         self.app
             .do_query_app(Query::code(hash), 0, false)
             .map(|res| res.as_code())
     }
 
-    pub fn query_codes(&self) -> AppResult<BTreeMap<Hash256, Binary>> {
+    pub fn query_codes(&self) -> AppResult<BTreeMap<Hash256, Code>> {
         self.app
             .do_query_app(Query::codes(None, Some(u32::MAX)), 0, false)
             .map(|res| res.as_codes())

@@ -1,10 +1,8 @@
 "use client";
 
 import { useAccount, useBalances, useConfig } from "@leftcurve/react";
-import { formatNumber } from "@leftcurve/utils";
+import { formatNumber, formatUnits } from "@leftcurve/utils";
 import { Button } from "../atoms/Button";
-
-import type { Language } from "@leftcurve/types";
 
 interface Props {
   avatarUri?: string;
@@ -16,8 +14,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
   const { nativeCoin } = config.chains.find((chain) => chain.id === config.state.chainId)!;
 
   const { data: balances = {} } = useBalances({ address: account?.address });
-  const nativeCoinBalance = balances[nativeCoin.denom] || 0;
-  const language = navigator.language as Language;
+  const nativeCoinBalance = formatUnits(balances[nativeCoin.denom] || 0, nativeCoin.decimals);
 
   if (!account) return null;
 
@@ -45,7 +42,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
           <p className="uppercase text-sm font-bold tracking-[0.175rem]">BALANCE</p>
           <div className="flex gap-1 font-extrabold text-lg">
             <p className="text-sand-800/50">$</p>
-            <p>{formatNumber(nativeCoinBalance, { language })}</p>
+            <p>{formatNumber(nativeCoinBalance, { language: navigator.language! })}</p>
           </div>
         </div>
       </div>

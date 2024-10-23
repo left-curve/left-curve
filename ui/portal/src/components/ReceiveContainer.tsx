@@ -1,6 +1,6 @@
 import { GradientContainer, QRCode } from "@dango/shared";
 import { useAccount } from "@leftcurve/react";
-import { formatAddress } from "@leftcurve/utils";
+import { truncateAddress } from "@leftcurve/utils";
 
 export const ReceiveContainer: React.FC = () => {
   const { account } = useAccount();
@@ -16,7 +16,7 @@ export const ReceiveContainer: React.FC = () => {
         </p>
       </div>
       <div className="flex gap-4">
-        <p className="font-black text-lg">{formatAddress(account?.address!)}</p>
+        <p className="font-black text-lg">{truncateAddress(account?.address!)}</p>
         <p
           className="cursor-pointer"
           onClick={() => navigator.clipboard.writeText(account?.address!)}

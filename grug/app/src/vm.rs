@@ -225,7 +225,7 @@ where
     let storage = StorageProvider::new(ctx.storage.clone(), &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(ctx.vm().clone().build_instance(
-        &code,
+        &code.code,
         code_hash,
         storage,
         state_mutable,

@@ -7,6 +7,7 @@ export {
   camelToSnake,
   snakeToCamel,
   capitalize,
+  truncateAddress,
 } from "./strings";
 
 export {
@@ -38,7 +39,8 @@ export {
   formatCurrency,
   type NumberFormatterOptions,
   formatNumber,
-  formatAddress,
+  formatUnits,
+  parseUnits,
 } from "./formatters";
 
 export {

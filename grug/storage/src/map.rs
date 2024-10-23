@@ -35,19 +35,16 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    #[doc(hidden)]
     pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
         PathBuf::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
     }
 
-    #[doc(hidden)]
     pub fn path(&self, key: K) -> PathBuf<T, C> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         PathBuf::new(self.namespace, &raw_keys, last_raw_key.as_ref())
     }
 
-    #[doc(hidden)]
     pub fn no_prefix(&self) -> Prefix<K, T, C> {
         Prefix::new(self.namespace, &[])
     }
@@ -123,17 +120,41 @@ where
         self.path(key).as_path().remove(storage)
     }
 
-    pub fn update<A, Err>(
+    pub fn may_update<F, E>(&self, storage: &mut dyn Storage, key: K, action: F) -> Result<T, E>
+    where
+        F: FnOnce(Option<T>) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        self.path(key).as_path().may_update(storage, action)
+    }
+
+    pub fn update<F, E>(&self, storage: &mut dyn Storage, key: K, action: F) -> Result<T, E>
+    where
+        F: FnOnce(T) -> Result<T, E>,
+        E: From<StdError>,
+    {
+        self.path(key).as_path().update(storage, action)
+    }
+
+    pub fn may_modify<F, E>(
         &self,
         storage: &mut dyn Storage,
         key: K,
-        action: A,
-    ) -> Result<Option<T>, Err>
+        action: F,
+    ) -> Result<Option<T>, E>
     where
-        A: FnOnce(Option<T>) -> Result<Option<T>, Err>,
-        Err: From<StdError>,
+        F: FnOnce(Option<T>) -> Result<Option<T>, E>,
+        E: From<StdError>,
     {
-        self.path(key).as_path().update(storage, action)
+        self.path(key).as_path().may_modify(storage, action)
+    }
+
+    pub fn modify<F, E>(&self, storage: &mut dyn Storage, key: K, action: F) -> Result<Option<T>, E>
+    where
+        F: FnOnce(T) -> Result<Option<T>, E>,
+        E: From<StdError>,
+    {
+        self.path(key).as_path().modify(storage, action)
     }
 
     // -------------------- iteration methods (full bound) ---------------------
@@ -1310,10 +1331,10 @@ mod cosmwasm_tests {
 
         // save and load on three keys, one under different owner
         let key: (&[u8], &[u8]) = (b"owner", b"spender");
-        ALLOWANCE.update(&mut storage, key, add_ten).unwrap();
+        ALLOWANCE.may_modify(&mut storage, key, add_ten).unwrap();
 
         let twenty = ALLOWANCE
-            .update(&mut storage, key, add_ten)
+            .may_modify(&mut storage, key, add_ten)
             .unwrap()
             .unwrap();
         assert_eq!(20, twenty);
@@ -1354,14 +1375,14 @@ mod cosmwasm_tests {
         };
 
         let old_john = PEOPLE
-            .update(&mut storage, b"john", birthday)
+            .may_modify(&mut storage, b"john", birthday)
             .unwrap()
             .unwrap();
         assert_eq!(old_john.age, 33);
         assert_eq!(old_john.name, "John");
 
         let new_jack = PEOPLE
-            .update(&mut storage, b"jack", birthday)
+            .may_modify(&mut storage, b"jack", birthday)
             .unwrap()
             .unwrap();
         assert_eq!(new_jack.age, 0);
@@ -1401,7 +1422,7 @@ mod cosmwasm_tests {
 
         // simple update
         ALLOWANCE
-            .update(
+            .may_modify(
                 &mut storage,
                 (b"owner", b"spender"),
                 |v| -> StdResult<Option<u64>> { Ok(Some(v.unwrap_or_default() + 222)) },
@@ -1444,7 +1465,7 @@ mod cosmwasm_tests {
             assert_eq!(allow.load(&storage).unwrap(), 1234);
 
             allow
-                .update(&mut storage, |x| -> StdResult<Option<u64>> {
+                .may_modify(&mut storage, |x| -> StdResult<Option<u64>> {
                     Ok(Some(x.unwrap_or_default() * 2))
                 })
                 .unwrap();

@@ -8,6 +8,7 @@ import {
 import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";
+import { formatUnits, parseUnits } from "@leftcurve/utils";
 import { useForm } from "react-hook-form";
 
 export const SendContainer: React.FC = () => {
@@ -32,7 +33,7 @@ export const SendContainer: React.FC = () => {
   const { data: balances } = useBalances({ address: account?.address });
 
   const denom = watch("denom");
-  const balance = Number(balances?.[denom] || 0);
+  const humanAmount = formatUnits(balances?.[denom] || 0, coins[denom].decimals);
 
   const { errors, isSubmitting } = formState;
 
@@ -42,7 +43,8 @@ export const SendContainer: React.FC = () => {
       return setError("address", { message: "Invalid address" });
     }
     const coin = coins[formData.denom];
-    const amount = Number(formData.amount);
+
+    const amount = parseUnits(formData.amount, coin.decimals);
 
     await signingClient.transfer({
       to: formData.address as Address,
@@ -70,7 +72,7 @@ export const SendContainer: React.FC = () => {
                   validate: (v) => {
                     if (!v) return "Amount is required";
                     if (Number(v) <= 0) return "Amount must be greater than 0";
-                    if (Number(v) > balance) return "Insufficient balance";
+                    if (Number(v) > Number(humanAmount)) return "Insufficient balance";
                     return true;
                   },
                 })}
@@ -82,7 +84,7 @@ export const SendContainer: React.FC = () => {
                   <div className="w-full items-center justify-between px-6 text-typography-rose-600 text-xs flex font-bold uppercase tracking-widest my-2">
                     <p>Balance:</p>
                     <p>
-                      {balance} {coins[denom].symbol}
+                      {humanAmount} {coins[denom].symbol}
                     </p>
                   </div>
                 }

@@ -8,14 +8,14 @@ use {
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
         query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
         query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm, APP_CONFIGS,
-        CHAIN_ID, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, Duration, Event, GenericResultExt,
-        GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query, QueryResponse,
-        StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CodeStatus, Duration, Event,
+        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query,
+        QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
 };
 
@@ -165,6 +165,31 @@ where
                 expect: last_finalized_block.height + 1,
                 actual: block.height,
             });
+        }
+
+        // Remove orphaned codes (those that are not used by any contract) that
+        // have been orphaned longer than the maximum age.
+        if let Some(since) = block
+            .timestamp
+            .into_nanos()
+            .checked_sub(cfg.max_orphan_age.into_nanos())
+        {
+            for hash in CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &buffer,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
+                        since: Duration::from_nanos(since),
+                    })),
+                    Order::Ascending,
+                )
+                .map(|res| res.map(|(_status, hash)| hash))
+                .collect::<StdResult<Vec<_>>>()?
+            {
+                CODES.remove(&mut buffer, hash)?;
+            }
         }
 
         // Find all cronjobs that should be performed. That is, ones that the
@@ -686,7 +711,7 @@ where
     match msg {
         Message::Configure(msg) => do_configure(ctx.downcast(), sender, msg),
         Message::Transfer(msg) => do_transfer(ctx, msg_depth, sender, msg, true),
-        Message::Upload(msg) => do_upload(ctx.downcast(), sender, msg),
+        Message::Upload(msg) => do_upload(ctx.downcast(), block, sender, msg),
         Message::Instantiate(msg) => do_instantiate(ctx, msg_depth, sender, msg),
         Message::Execute(msg) => do_execute(ctx, msg_depth, sender, msg),
         Message::Migrate(msg) => do_migrate(ctx, msg_depth, sender, msg),
@@ -750,6 +775,10 @@ where
         Query::WasmRaw(req) => {
             let res = query_wasm_raw(ctx.downcast(), req)?;
             Ok(QueryResponse::WasmRaw(res))
+        },
+        Query::WasmScan(req) => {
+            let res = query_wasm_scan(storage, gas_tracker, req)?;
+            Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
             let res = query_wasm_smart(ctx, query_depth, req)?;

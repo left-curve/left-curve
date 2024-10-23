@@ -20,3 +20,13 @@ export function snakeToCamel(str: string): string {
 export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+/**
+ * Truncate an address.
+ * @param address The address to truncate.
+ * @param substring The number of characters to show at the end.
+ * @returns The truncate address.
+ */
+export function truncateAddress(address: string, substring = 4): string {
+  return address.slice(0, 6).concat("...") + address.substring(address.length - substring);
+}

@@ -65,6 +65,10 @@ pub struct Config {
     pub cronjobs: BTreeMap<Addr, Duration>,
     /// Permissions for certain gated actions.
     pub permissions: Permissions,
+    /// Maximum age allowed for orphaned codes.
+    /// A code is deleted if it remains orphaned (not used by any contract) for
+    /// longer than this duration.
+    pub max_orphan_age: Duration,
 }
 
 /// Set of updates to be made to the config.

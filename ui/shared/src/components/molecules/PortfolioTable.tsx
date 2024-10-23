@@ -17,8 +17,8 @@ export const PortfolioTable: React.FC<Props> = ({ topComponent, bottomComponent 
       <div className="flex flex-col gap-1">
         <div className="grid grid-cols-[1fr_100px_100px] px-2 text-sm font-extrabold text-sand-800/50 font-diatype-rounded mx-2 tracking-widest uppercase">
           <p>Assets</p>
-          <p>Deposited</p>
-          <p className="w-full text-end">Amount</p>
+          <p>Quantity</p>
+          <p className="w-full text-end">Value</p>
         </div>
         {Object.entries(balances).map(([denom, amount]) => (
           <AssetCard key={denom} coin={{ denom, amount }} />

@@ -1,41 +1,188 @@
 ---
-import Footer from '~/components/Footer.astro';
-import Layout from '~/components/Layout.astro';
-import MotoSection from '~/components/MotoSection';
+import Footer from "~/components/Footer.astro";
+import Layout from "~/components/Layout.astro";
+import MottoSection from "~/components/MottoSection.astro";
 ---
 
 <Layout title="Dango">
-	  <div
-      class="flex flex-1 flex-col w-full relative items-center justify-between pb-4 scrollbar-none min-h-[130svh]"
+  <div class="fixed mx-0 top-6 z-50">
+    <img
+      src="/images/logo.webp"
+      alt="logo"
+      class="h-6 md:h-12 object-contain"
+    />
+  </div>
+  <div
+    class="snap-y snap-mandatory w-full overflow-y-scroll scroll-smooth h-[100svh] relative scrollbar-none"
+  >
+    <div class="header absolute top-0 w-full h-[115svh] z-0"></div>
+    <div
+      class="h-[100svh] snap-center z-10 flex-1 w-full relative flex flex-col justify-center items-center pt-24 md:pb-4"
     >
-      <div class="fixed mx-0 top-6 p-4 z-50 rounded-2xl">
-        <img src="/images/logo.webp" alt="logo" class=" h-6 md:h-12 object-contain" />
-      </div>
       <div
-        class="header pb-20 pt-[72px] md:pt-32 w-full flex flex-col gap-12 items-center justify-center px-4 h-[85svh] md:h-[95vh] mb-[15.5rem]"
+        class="w-full h-full px-2 relative max-w-[1440px] max-h-[885px] z-20"
       >
-        <picture class="object-contain w-full max-h-full">
-          <source srcset="/images/background.svg" media="(min-width: 1280px)" />
-          <img
-            src="/images/background-mobile.svg"
-            alt="background-mobile"
-            class="w-full max-h-full"
-          />
-        </picture>
+        <div
+          class="scale w-[36.11%] h-[38.54%] md:w-[26.25%] md:h-[45.54%] absolute left-[58.09%] top-[6.16%] sm:top-[1.16%] md:left-[44.31%] md:top-[2.15%] transition-all z-[0]"
+        >
+          <div class="w-full h-full transition-all hover:scale-110">
+            <img
+              src="/images/rabbits.svg"
+              alt="rabbits"
+              class="object-fit w-full h-full transition-all rabbit"
+            />
+          </div>
+        </div>
+        <div
+          class="scale w-[35.07%] h-[53.47%] left-[64.93%] top-[20.95%] sm:top-[27.95%] md:w-[27.08%] md:h-[67.12%] object-fit absolute md:left-[72.92%] md:top-[9.94%] hover:scale-[1.1] transition-all z-[3] md:z-[2] delay-3"
+        >
+          <div class="w-full h-full transition-all hover:scale-110">
+            <img
+              src="/images/monkeys.svg"
+              alt="monkeys"
+              class="object-fit w-full h-full transition-all monkey"
+            />
+          </div>
+        </div>
+        <div
+          class="scale w-[69.03%] h-[67.12%] object-fit absolute left-0 md:left-[23.40%] top-[17.88%] sm:top-[28.88%] md:top-[32.88%] hover:scale-[1.1] transition-all z-[4] hover:z-[6] delay-4"
+        >
+          <div
+            class="scale-x-[-1] md:scale-x-100 w-full h-full hover:scale-x-[-1.1] hover:scale-y-110 transition-all md:hover:scale-110"
+          >
+            <img
+              src="/images/dancer.svg"
+              alt="dancer"
+              class="object-fit w-full h-full transition-all dancer"
+            />
+          </div>
+        </div>
+        <div
+          class="scale w-[63.89%] h-[52.78%] md:w-[51.11%] md:h-[68.81%] object-fit absolute left-0 top-0 md:left-[2.08%] md:top-[3.39%] transition-all z-[1] delay-2"
+        >
+          <div class="w-full h-full transition-all hover:scale-110">
+            <img
+              src="/images/kiosko.svg"
+              alt="kisko"
+              class="object-fit w-full h-full transition-all kiosko"
+            />
+          </div>
+        </div>
+        <div
+          class="scale w-[23.68%] h-[31.29%] object-fit absolute left-[13.13%] top-[47.34%] hover:scale-[1.1] transition-all z-[5] delay-5 hidden md:block"
+        >
+          <div class="w-full h-full transition-all hover:scale-110">
+            <img
+              src="/images/dog.svg"
+              alt="dog"
+              class="object-fit w-full h-full transition-all dog"
+            />
+          </div>
+        </div>
+        <div
+          class="scale w-[30.21%] h-[29.51%] md:w-[24.44%] md:h-[38.98%] object-fit absolute left-[37.59%] top-[25.96%] sm:top-[28.96%] md:left-[0%] md:top-[57.97%] hover:scale-[1.1] transition-all z-[2] md:z-[7] delay-6"
+        >
+          <div class="w-full h-full transition-all hover:scale-110">
+            <img
+              src="/images/snake.svg"
+              alt="snake"
+              class="object-fit w-full h-full transition-all snake"
+            />
+          </div>
+        </div>
       </div>
-      <MotoSection client:visible />
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 32 32"
+        fill="none"
+        class="mt-4"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M2.85712 9.42859C5.80283 15.32 8.74856 18.5706 14.0619 21.5478C15.2649 22.2219 16.7351 22.2219 17.938 21.5478C23.2513 18.5706 26.1971 15.32 29.1428 9.42859"
+          stroke="#B9A2AA"
+          stroke-width="2.66667"
+          stroke-linecap="round"
+          stroke-linejoin="round"></path>
+      </svg>
+    </div>
+    <div
+      class="h-[100svh] snap-center flex flex-col items-center relative justify-center px-4 pt-24"
+    >
+      <MottoSection />
       <Footer className="w-full" />
     </div>
+  </div>
 </Layout>
 
-
 <style>
-.header {
-  background: linear-gradient(76deg, #C4B7BA, #FFF2E2);
-  --mask:
-    linear-gradient(to top, #0000 50px, #000 0),
-    radial-gradient(50px, #000 98%, #0000) bottom/92.5px 100px;
-  -webkit-mask: var(--mask);
-  mask: var(--mask);
-}
+  .header {
+    background: linear-gradient(76deg, #c4b7ba, #fff2e2);
+    --mask: linear-gradient(to top, #0000 50px, #000 0),
+      radial-gradient(50px, #000 98%, #0000) bottom/92.5px 100px;
+    -webkit-mask: var(--mask);
+    mask: var(--mask);
+  }
+
+  .scale {
+    opacity: 0;
+    transform: scale(0) translateY(500px);
+    animation: scale-up 0.8s ease forwards;
+  }
+  .delay-2 {
+    animation-delay: 0.2s;
+  }
+  .delay-3 {
+    animation-delay: 0.3s;
+  }
+  .delay-4 {
+    animation-delay: 0.4s;
+  }
+  .delay-5 {
+    animation-delay: 0.5s;
+  }
+  .delay-6 {
+    animation-delay: 0.6s;
+  }
+  .monkey {
+    animation: levitate 3s ease-in-out infinite;
+    animation-delay: 2.125s;
+  }
+  .snake {
+    animation: levitate 3s ease-in-out infinite;
+    animation-delay: 1.25s;
+  }
+  .rabbit {
+    animation: levitate 3s ease-in-out infinite;
+    animation-delay: 2.5s;
+  }
+  .dog {
+    animation: levitate 3s ease-in-out infinite;
+    animation-delay: 1.75s;
+  }
+  .dancer {
+    animation: levitate 3s ease-in-out infinite;
+    animation-delay: 0.125ms;
+  }
+
+  @keyframes levitate {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes scale-up {
+    0% {
+      transform: scale(0) translateY(500px);
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0px);
+    }
+  }
 </style>

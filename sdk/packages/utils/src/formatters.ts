@@ -1,8 +1,6 @@
-import type { Language } from "@leftcurve/types";
-
 export type CurrencyFormatterOptions = {
   currency: string;
-  language: Language;
+  language: string;
   maxFractionDigits?: number;
   minFractionDigits?: number;
 };
@@ -30,7 +28,7 @@ export function formatCurrency(amount: number | bigint, options: CurrencyFormatt
 }
 
 export type NumberFormatterOptions = {
-  language: Language;
+  language: string;
   maxFractionDigits?: number;
   minFractionDigits?: number;
 };
@@ -55,11 +53,70 @@ export function formatNumber(_amount_: number | bigint | string, options: Number
 }
 
 /**
- * Format an address.
- * @param address The address to format.
- * @param substring The number of characters to show at the end.
- * @returns The formatted address.
+ *  Divides a number by a given exponent of base 10 (10exponent), and formats it into a string representation of the number.
+ * @param value The number to format.
+ * @param decimals The number of decimals to divide the number by.
+ * @returns The formatted number.
  */
-export function formatAddress(address: string, substring = 4): string {
-  return address.slice(0, 6).concat("...") + address.substring(address.length - substring);
+export function formatUnits(value: bigint | number | string, decimals: number): string {
+  let display = typeof value === "string" ? value : value.toString();
+
+  const negative = display.startsWith("-");
+  if (negative) display = display.slice(1);
+
+  display = display.padStart(decimals, "0");
+
+  let [integer, fraction] = [
+    display.slice(0, display.length - decimals),
+    display.slice(display.length - decimals),
+  ];
+  fraction = fraction.replace(/(0+)$/, "");
+  return `${negative ? "-" : ""}${integer || "0"}${fraction ? `.${fraction}` : ""}`;
+}
+
+/**
+ * Parses a string representation of a number with a given number of decimals.
+ * @param value The string representation of the number.
+ * @param decimals The number of decimals to divide the number by.
+ * @returns The parsed number.
+ */
+export function parseUnits(value: string, decimals: number) {
+  if (!/^(-?)([0-9]*)\.?([0-9]*)$/.test(value)) {
+    throw new Error(`Number \`${value}\` is not a valid decimal number.`);
+  }
+
+  let [integer, fraction = "0"] = value.split(".");
+
+  const negative = integer.startsWith("-");
+  if (negative) integer = integer.slice(1);
+
+  // trim trailing zeros.
+  fraction = fraction.replace(/(0+)$/, "");
+
+  // round off if the fraction is larger than the number of decimals.
+  if (decimals === 0) {
+    if (Math.round(Number(`.${fraction}`)) === 1) integer = `${BigInt(integer) + BigInt(1)}`;
+    fraction = "";
+  } else if (fraction.length > decimals) {
+    const [left, unit, right] = [
+      fraction.slice(0, decimals - 1),
+      fraction.slice(decimals - 1, decimals),
+      fraction.slice(decimals),
+    ];
+
+    const rounded = Math.round(Number(`${unit}.${right}`));
+    if (rounded > 9) fraction = `${BigInt(left) + BigInt(1)}0`.padStart(left.length + 1, "0");
+    else fraction = `${left}${rounded}`;
+
+    if (fraction.length > decimals) {
+      fraction = fraction.slice(1);
+      integer = `${BigInt(integer) + BigInt(1)}`;
+    }
+
+    fraction = fraction.slice(0, decimals);
+  } else {
+    fraction = fraction.padEnd(decimals, "0");
+  }
+
+  return BigInt(`${negative ? "-" : ""}${integer}${fraction}`);
 }

@@ -52,11 +52,11 @@ pub enum Message {
     Transfer(MsgTransfer),
     /// Upload a Wasm binary code and store it in the chain's state.
     Upload(MsgUpload),
-    /// Register a new account.
+    /// Instantiate a new contract.
     Instantiate(MsgInstantiate),
     /// Execute a contract.
     Execute(MsgExecute),
-    /// Update the `code_hash` associated with a contract.
+    /// Update the code hash associated with a contract.
     Migrate(MsgMigrate),
 }
 

@@ -4,11 +4,11 @@ use {
         StorageProvider, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, Bound, Coin, Coins, Config, Context,
-        ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
+        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config,
+        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
         QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
         QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest,
-        QuerySupplyRequest, QueryWasmRawRequest, QueryWasmSmartRequest, StdResult,
+        QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest, QueryWasmSmartRequest, StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -121,11 +121,11 @@ where
     })
 }
 
-pub fn query_code(ctx: AppCtx, req: QueryCodeRequest) -> StdResult<Binary> {
+pub fn query_code(ctx: AppCtx, req: QueryCodeRequest) -> StdResult<Code> {
     CODES.load_with_gas(&ctx.storage, ctx.gas_tracker, req.hash)
 }
 
-pub fn query_codes(ctx: AppCtx, req: QueryCodesRequest) -> StdResult<BTreeMap<Hash256, Binary>> {
+pub fn query_codes(ctx: AppCtx, req: QueryCodesRequest) -> StdResult<BTreeMap<Hash256, Code>> {
     let start = req.start_after.map(Bound::Exclusive);
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
@@ -152,10 +152,34 @@ pub fn query_contracts(
         .collect()
 }
 
-pub fn query_wasm_raw(ctx: AppCtx, req: QueryWasmRawRequest) -> StdResult<Option<Binary>> {
-    StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &req.contract])
-        .read_with_gas(ctx.gas_tracker, &req.key)
+pub fn query_wasm_raw(
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    req: QueryWasmRawRequest,
+) -> StdResult<Option<Binary>> {
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
+        .read_with_gas(gas_tracker, &req.key)
         .map(|maybe_value| maybe_value.map(Binary::from))
+}
+
+pub fn query_wasm_scan(
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    req: QueryWasmScanRequest,
+) -> StdResult<BTreeMap<Binary, Binary>> {
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
+        .scan_with_gas(
+            gas_tracker,
+            req.min.as_deref(),
+            req.max.as_deref(),
+            // Order doesn't matter, as we're collecting results into a BTreeMap.
+            Order::Ascending,
+        )?
+        .take(limit as usize)
+        .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
+        .collect()
 }
 
 pub fn query_wasm_smart<VM>(

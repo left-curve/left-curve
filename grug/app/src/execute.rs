@@ -7,9 +7,9 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, Context, ContractInfo, Event, GenericResult,
+        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event, GenericResult,
         Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate, MsgMigrate, MsgTransfer,
-        MsgUpload, Op, SubMsgResult, Tx, TxOutcome,
+        MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -123,7 +123,12 @@ fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Eve
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(&mut ctx.storage, ctx.gas_tracker, code_hash, &msg.code)?;
+    CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
+        code: msg.code,
+        status: CodeStatus::Orphaned {
+            since: block.timestamp,
+        },
+    })?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", code_hash),
@@ -284,18 +289,32 @@ where
     // contract of the same address.
     let address = Addr::derive(sender, msg.code_hash, &msg.salt);
 
-    if CONTRACTS.has(&app_ctx.storage, address) {
-        return Err(AppError::AccountExists { address });
-    }
-
     // Save the contract info
-    let contract = ContractInfo {
-        code_hash: msg.code_hash,
-        label: msg.label.map(Inner::into_inner),
-        admin: msg.admin,
-    };
+    let contract = CONTRACTS.may_update(&mut app_ctx.storage, address, |maybe_contract| {
+        if maybe_contract.is_some() {
+            return Err(AppError::AccountExists { address });
+        }
 
-    CONTRACTS.save(&mut app_ctx.storage, address, &contract)?;
+        Ok(ContractInfo {
+            code_hash: msg.code_hash,
+            label: msg.label.map(Inner::into_inner),
+            admin: msg.admin,
+        })
+    })?;
+
+    // Increment the code's usage.
+    CODES.update(&mut app_ctx.storage, msg.code_hash, |mut code| -> StdResult<_> {
+        match &mut code.status {
+            CodeStatus::Orphaned { .. } => {
+                code.status = CodeStatus::InUse { usage: 1 };
+            },
+            CodeStatus::InUse { usage } => {
+                *usage += 1;
+            },
+        }
+
+        Ok(code)
+    })?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -448,24 +467,61 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut contract_info = CONTRACTS.load(&app_ctx.storage, msg.contract)?;
+    let mut old_code_hash = None;
 
-    // Only the account's admin can migrate it
-    let Some(admin) = &contract_info.admin else {
-        return Err(AppError::AdminNotSet);
-    };
+    // Update the contract info.
+    let contract_info = CONTRACTS.update(&mut app_ctx.storage, msg.contract, |mut info| {
+        old_code_hash = Some(info.code_hash);
 
-    if sender != admin {
-        return Err(AppError::NotAdmin {
-            sender,
-            admin: contract_info.admin.unwrap(),
-        });
-    }
+        // Ensure the sender is the admin of the contract.
+        if Some(sender) != info.admin {
+            return Err(AppError::Unauthorized);
+        }
 
-    // Update account info and save
-    contract_info.code_hash = msg.new_code_hash;
+        info.code_hash = msg.new_code_hash;
 
-    CONTRACTS.save(&mut app_ctx.storage, msg.contract, &contract_info)?;
+        Ok(info)
+    })?;
+
+    // Reduce usage count of the old code.
+    CODES.update(
+        &mut storage,
+        old_code_hash.unwrap(),
+        |mut code| -> StdResult<_> {
+            match &mut code.status {
+                CodeStatus::InUse { usage } => {
+                    if *usage == 1 {
+                        code.status = CodeStatus::Orphaned {
+                            since: block.timestamp,
+                        };
+                    } else {
+                        *usage -= 1;
+                    }
+                },
+                _ => unreachable!(),
+            }
+
+            Ok(code)
+        },
+    )?;
+
+    // Increase usage count of the new code.
+    CODES.update(
+        &mut storage,
+        msg.new_code_hash,
+        |mut code| -> StdResult<_> {
+            match &mut code.status {
+                CodeStatus::Orphaned { .. } => {
+                    code.status = CodeStatus::InUse { usage: 1 };
+                },
+                CodeStatus::InUse { usage } => {
+                    *usage += 1;
+                },
+            }
+
+            Ok(code)
+        },
+    )?;
 
     let ctx = Context {
         chain_id: app_ctx.chain_id.clone(),

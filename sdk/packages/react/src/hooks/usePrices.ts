@@ -8,7 +8,7 @@ import type {
   Prettify,
   Storage,
 } from "@leftcurve/types";
-import { type CurrencyFormatterOptions, formatCurrency } from "@leftcurve/utils";
+import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@leftcurve/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig";
 
@@ -78,7 +78,11 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       format = false,
     } = options || {};
     const totalValue = Object.entries(balances).reduce((total, [denom, amount]) => {
-      const price = getPrice(amount, denom, { currency, language, format: false });
+      const price = getPrice(formatUnits(amount, coins[denom].decimals), denom, {
+        currency,
+        language,
+        format: false,
+      });
       total += price;
       return total;
     }, 0);
