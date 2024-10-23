@@ -23,12 +23,13 @@ pub trait ResultExt: Sized {
     /// Ensure the result is ok, and the value satisfies the given predicate.
     fn should_succeed_and<F>(self, predicate: F) -> Self::Success
     where
+        Self::Success: Debug,
         F: FnOnce(&Self::Success) -> bool,
     {
         let success = self.should_succeed();
         assert!(
             predicate(&success),
-            "success as expected, but value does not satisfy predicate!"
+            "success as expected, but value does not satisfy predicate! value: {success:?}"
         );
         success
     }
@@ -42,7 +43,7 @@ pub trait ResultExt: Sized {
         let success = self.should_succeed();
         assert_eq!(
             success, expect,
-            "success as expected, but with wrong value!"
+            "success as expected, but with different value! expecting: {expect:?}, got: {success:?}"
         );
         success
     }
@@ -56,7 +57,7 @@ pub trait ResultExt: Sized {
         let success = self.should_succeed();
         assert_ne!(
             success, expect,
-            "success as expected, but with wrong value!"
+            "success as expected, but with same value! expecting: {expect:?}, got: {success:?}"
         );
         success
     }
@@ -67,12 +68,13 @@ pub trait ResultExt: Sized {
     /// Ensure the result is error, and the error satisfies the given predicate.
     fn should_fail_and<F>(self, predicate: F) -> Self::Error
     where
+        Self::Error: Display,
         F: FnOnce(&Self::Error) -> bool,
     {
         let error = self.should_fail();
         assert!(
             predicate(&error),
-            "fail as expected, but error does not satisfy predicate!"
+            "fail as expected, but error does not satisfy predicate! error: {error}"
         );
         error
     }
@@ -83,13 +85,13 @@ pub trait ResultExt: Sized {
     /// value as a substring.
     fn should_fail_with_error<U>(self, expect: U) -> Self::Error
     where
-        Self::Error: ToString,
-        U: ToString,
+        Self::Error: Display,
+        U: Display,
     {
         let error = self.should_fail();
         assert!(
             error.to_string().contains(&expect.to_string()),
-            "fail as expected, but with wrong error!"
+            "fail as expected, but with wrong error! expecting: {expect}, got: {error}"
         );
         error
     }
@@ -98,9 +100,9 @@ pub trait ResultExt: Sized {
     fn should_match<T, E>(self, expect: Result<T, E>)
     where
         Self::Success: Debug + PartialEq<T>,
-        Self::Error: ToString,
+        Self::Error: Display,
         T: Debug,
-        E: ToString,
+        E: Display,
     {
         match expect {
             Ok(expect) => {

@@ -220,6 +220,11 @@ impl<'a> Safe<'a> {
         self.signer = Some(signer);
         self
     }
+
+    pub fn with_sequence(&mut self, sequence: u32) -> &mut Self {
+        self.sequence = sequence;
+        self
+    }
 }
 
 impl<'a> Addressable for Safe<'a> {

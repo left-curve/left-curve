@@ -12,7 +12,7 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, JsonSerExt, Message,
-        NonZero, ResultExt, Timestamp, Uint128, VerificationError,
+        NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
@@ -332,7 +332,7 @@ fn safe() {
 
     // -------------------------- Unauthorized voting --------------------------
 
-    // Member 1 makes a proposal.
+    // Member 1 makes a proposal. This should be proposal 4.
     suite.execute(
         safe.with_signer(&member1),
         safe_address,
@@ -344,49 +344,106 @@ fn safe() {
         Coins::new(),
     );
 
-    // Attacker attempts to vote. The transaction is signed with the attacker's
-    // private key and comes with attacker's username and key hash in metadata.
-    let mut tx = suite.sign_transaction(safe.with_signer(&attacker), vec![Message::execute(
-        safe_address,
-        &multi::ExecuteMsg::Propose {
-            title: "nothing".to_string(),
-            description: None,
-            messages: vec![],
-        },
-        Coins::new(),
-    )
-    .unwrap()]);
+    // Attacker attempts to vote, impersonating member 2.
+    // Since attacker doesn't actual know member 2's private key, the tx will be
+    // signed by attacker's private key.
+    // There are a few variables to consider:
+    // - the `voter` field in `ExecuteMsg::Vote`
+    // - the `username` field in the metadata
+    // - the `key_hash` field in the metadata
+    // We test all 2**3 = 8 combinations.
+    for (voter, username, key_hash, error) in [
+        (
+            attacker.username.clone(),
+            attacker.username.clone(),
+            attacker.key_hash.clone(),
+            format!(
+                "account {} isn't associated with user `{}`",
+                safe.address(),
+                attacker.username
+            ),
+        ),
+        (
+            attacker.username.clone(),
+            attacker.username.clone(),
+            member2.key_hash.clone(),
+            format!(
+                "account {} isn't associated with user `{}`",
+                safe.address(),
+                attacker.username
+            ),
+        ),
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            attacker.key_hash.clone(),
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            member2.key_hash.clone(),
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            attacker.key_hash.clone(),
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            member2.key_hash.clone(),
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            member2.username.clone(),
+            attacker.key_hash.clone(),
+            format!(
+                "key hash {} isn't associated with user `{}`",
+                attacker.key_hash, member2.username
+            ),
+        ),
+        (
+            member2.username.clone(),
+            member2.username.clone(),
+            member2.key_hash.clone(),
+            "signature is unauthentic".to_string(),
+        ),
+    ] {
+        // Sign the tx with attackers's private key.
+        let mut tx = safe
+            .with_signer(&attacker)
+            .with_sequence(12) // TODO: sequence isn't incremented if auth fails... should we make sure it increments?
+            .sign_transaction(
+                vec![Message::execute(
+                    safe_address,
+                    &multi::ExecuteMsg::Vote {
+                        proposal_id: 4,
+                        voter,
+                        vote: Vote::Yes,
+                        execute: false,
+                    },
+                    Coins::new(),
+                )
+                .unwrap()],
+                &suite.chain_id,
+                suite.default_gas_limit,
+            )
+            .unwrap();
 
-    suite
-        .send_transaction(tx.clone())
-        .should_fail_with_error(format!(
-            "account {} isn't associated with user `{}`",
-            safe.address(),
-            attacker.username
-        ));
+        tx.data
+            .as_object_mut()
+            .unwrap()
+            .insert("username".to_string(), username.to_json_value().unwrap());
 
-    // Attacker tries again, this time impersonating as member 2. However,
-    // attacker doesn't actual know member 2's private key, so the tx is still
-    // signed with attacker's key, but he puts member 2's username in the metadata.
-    tx.data.as_object_mut().unwrap().insert(
-        "username".to_string(),
-        member2.username.to_json_value().unwrap(),
-    );
+        tx.data
+            .as_object_mut()
+            .unwrap()
+            .insert("key_hash".to_string(), key_hash.to_json_value().unwrap());
 
-    suite
-        .send_transaction(tx.clone())
-        .should_fail_with_error(format!(
-            "key hash {} isn't associated with user `{}`",
-            attacker.key_hash, member2.username
-        ));
-
-    // Attacker tries again, this time using user 2's key hash as well.
-    tx.data.as_object_mut().unwrap().insert(
-        "key_hash".to_string(),
-        member2.key_hash.to_json_value().unwrap(),
-    );
-
-    suite
-        .send_transaction(tx)
-        .should_fail_with_error(VerificationError::Unauthentic);
+        suite.send_transaction(tx).should_fail_with_error(error);
+    }
 }

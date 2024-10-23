@@ -118,7 +118,7 @@ where
     /// previous block's time plus this value.
     pub block_time: Duration,
     /// Transaction gas limit to use if user doesn't specify one.
-    default_gas_limit: u64,
+    pub default_gas_limit: u64,
 }
 
 impl TestSuite {
