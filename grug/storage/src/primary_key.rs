@@ -1,11 +1,10 @@
 use {
+    crate::Prefixer,
     bnum::{
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
-    grug_math::{
-        Bytable, Dec, Inner, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
-    },
+    grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
         nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part, StdError,
         StdResult,
@@ -504,8 +503,8 @@ pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
 }
 
 macro_rules! impl_unsigned_integer_key {
-    ($($t:ty),+) => {
-        $(impl PrimaryKey for $t {
+    ($t:ty) => {
+        impl PrimaryKey for $t {
             type Output = $t;
             type Prefix = ();
             type Suffix = ();
@@ -530,7 +529,12 @@ macro_rules! impl_unsigned_integer_key {
 
                 Ok(Self::from_be_bytes(bytes))
             }
-        })*
+        }
+    };
+    ($($t:ty),+) => {
+        $(
+            impl_unsigned_integer_key!($t);
+        )*
     };
 }
 
@@ -625,137 +629,18 @@ impl_bnum_signed_integer_key! {
     I512 => U512,
 }
 
-// --------------------------------- prefixer ----------------------------------
-
-pub trait Prefixer {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>>;
-
-    fn joined_prefix(&self) -> Vec<u8> {
-        let raw_prefixes = self.raw_prefixes();
-        nested_namespaces_with_key(None, &raw_prefixes, None)
-    }
-}
-
-impl Prefixer for () {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![]
-    }
-}
-
-impl Prefixer for &[u8] {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self)]
-    }
-}
-
-impl Prefixer for Vec<u8> {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self)]
-    }
-}
-
-impl Prefixer for &str {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
-    }
-}
-
-impl Prefixer for String {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
-    }
-}
-
-impl Prefixer for Addr {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_ref())]
-    }
-}
-
-impl<const N: usize> Prefixer for Hash<N> {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_ref())]
-    }
-}
-
-impl Prefixer for Part {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
-    }
-}
-
-impl Prefixer for Denom {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Owned(self.to_string().into_bytes())]
-    }
-}
-
-impl Prefixer for Duration {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
-    }
-}
-
-impl Prefixer for CodeStatus {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        self.raw_keys()
-    }
-}
-
-impl<P> Prefixer for &P
-where
-    P: Prefixer,
-{
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        (*self).raw_prefixes()
-    }
-}
-
-impl<A, B> Prefixer for (A, B)
-where
-    A: Prefixer,
-    B: Prefixer,
-{
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        let mut prefixes = self.0.raw_prefixes();
-        prefixes.extend(self.1.raw_prefixes());
-        prefixes
-    }
-}
-
-impl<T> Prefixer for Dec<T>
-where
-    Int<T>: PrimaryKey<Output = Int<T>>,
-{
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        self.raw_keys()
-    }
-}
-
-macro_rules! impl_integer_prefixer {
-    ($($t:ty),+) => {
-        $(impl Prefixer for $t {
-            fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-                vec![Cow::Owned(self.to_be_bytes().to_vec())]
-            }
-        })*
-    };
-}
-
-impl_integer_prefixer!(
-    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, Uint64, Uint128, Uint256, Uint512, Int64,
-    Int128, Int256, Int512
-);
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
     use {
-        super::*,
-        crate::Set,
-        grug_math::{Dec128, Dec256, NumberConst, Udec128, Udec256},
-        grug_types::{MockStorage, Order},
+        crate::{PrimaryKey, Set},
+        bnum::types::I256,
+        grug_math::{
+            Bytable, Dec128, Dec256, Int128, Int256, Int64, NumberConst, Udec128, Udec256, Uint128,
+            Uint256, Uint512, Uint64,
+        },
+        grug_types::{Addr, Duration, Hash, MockStorage, Order, StdResult},
         std::{fmt::Debug, str::FromStr},
         test_case::test_case,
     };
