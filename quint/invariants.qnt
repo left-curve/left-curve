@@ -9,13 +9,15 @@ val keylength = 4
 val maxVersion = 10
 
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
-/// E.g., if a node has path [1,0,0,1] then there must be a node with path [1,0,0]
+/// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
 // TODO: figure out versions. I guess we need a parent with a version >= my version
 pure def everyNodesParentIsInTheTree(t: Tree): bool =
   val nodePrefixes = t.nodes.keys()
   val paths = nodePrefixes.map(p => p.key_hash)
   paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
 
+/// Invariant: Everyone has a parent
+/// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
 def everyNodesParentIsInTheTreeInv = everyNodesParentIsInTheTree(tree)
 
 /// given two leaf nodes, computes the prefix of the key_hash that is commint
@@ -100,7 +102,7 @@ pure def properlyHashed(t: Tree, version: int): bool =
                                 }
     })    
 
-/// All hashes stored in the tree are actually the hashes of the subtree
+/// Invariant: All hashes stored in the tree are actually the hashes of the subtree
 def hashInv = 
     0.to(maxVersion).forall(i => properlyHashed(tree, i))
 
@@ -143,6 +145,7 @@ pure def allInternalNodesHaveChildren(t: Tree): bool =
         | Leaf(_) => true
     })
 
+/// Invariant: All nodes of type Internal have a child which is not None
 def allInternalNodesHaveChildrenInv = allInternalNodesHaveChildren(tree)
 
 pure def getNodeFromPath(t: Tree, b: BitArray): Node =
