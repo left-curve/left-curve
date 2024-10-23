@@ -11,8 +11,8 @@ use {
         mock_ibc_transfer,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Message, NonZero,
-        ResultExt, Timestamp, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, JsonSerExt, Message,
+        NonZero, ResultExt, Timestamp, Uint128, VerificationError,
     },
 };
 
@@ -22,8 +22,9 @@ fn safe() {
 
     // --------------------------------- Setup ---------------------------------
 
-    // Onboard 4 users. They will be the members of the Safe.
-    let [mut member1, member2, member3]: [TestAccount; 3] = ["member1", "member2", "member3"]
+    // Onboard 4 users. Three will be the members of the Safe. The other will
+    // play the role of an attacker.
+    let [mut member1, member2, member3, attacker] = ["member1", "member2", "member3", "attacker"]
         .into_iter()
         .map(|username| {
             let user = TestAccount::new_random(username).predict_address(
@@ -90,7 +91,7 @@ fn safe() {
     let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 5 }.into_bytes().as_slice(),
+        Salt { index: 6 }.into_bytes().as_slice(),
     );
     let mut safe = Safe::new(safe_address);
 
@@ -100,7 +101,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 6,
             params: AccountParams::Safe(params.clone()),
         });
 
@@ -120,7 +121,7 @@ fn safe() {
                     }),
                 },
                 safe.address() => Account {
-                    index: 5,
+                    index: 6,
                     params: AccountParams::Safe(params.clone()),
                 },
             });
@@ -264,7 +265,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 6,
             params: AccountParams::Safe(params),
         });
 
@@ -328,4 +329,64 @@ fn safe() {
             .unwrap(),
         )
         .should_fail_with_error("proposal isn't passed or timelock hasn't elapsed");
+
+    // -------------------------- Unauthorized voting --------------------------
+
+    // Member 1 makes a proposal.
+    suite.execute(
+        safe.with_signer(&member1),
+        safe_address,
+        &multi::ExecuteMsg::Propose {
+            title: "nothing".to_string(),
+            description: None,
+            messages: vec![],
+        },
+        Coins::new(),
+    );
+
+    // Attacker attempts to vote. The transaction is signed with the attacker's
+    // private key and comes with attacker's username and key hash in metadata.
+    let mut tx = suite.sign_transaction(safe.with_signer(&attacker), vec![Message::execute(
+        safe_address,
+        &multi::ExecuteMsg::Propose {
+            title: "nothing".to_string(),
+            description: None,
+            messages: vec![],
+        },
+        Coins::new(),
+    )
+    .unwrap()]);
+
+    suite
+        .send_transaction(tx.clone())
+        .should_fail_with_error(format!(
+            "account {} isn't associated with user `{}`",
+            safe.address(),
+            attacker.username
+        ));
+
+    // Attacker tries again, this time impersonating as member 2. However,
+    // attacker doesn't actual know member 2's private key, so the tx is still
+    // signed with attacker's key, but he puts member 2's username in the metadata.
+    tx.data.as_object_mut().unwrap().insert(
+        "username".to_string(),
+        member2.username.to_json_value().unwrap(),
+    );
+
+    suite
+        .send_transaction(tx.clone())
+        .should_fail_with_error(format!(
+            "key hash {} isn't associated with user `{}`",
+            attacker.key_hash, member2.username
+        ));
+
+    // Attacker tries again, this time using user 2's key hash as well.
+    tx.data.as_object_mut().unwrap().insert(
+        "key_hash".to_string(),
+        member2.key_hash.to_json_value().unwrap(),
+    );
+
+    suite
+        .send_transaction(tx)
+        .should_fail_with_error(VerificationError::Unauthentic);
 }
