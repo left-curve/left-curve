@@ -30,5 +30,5 @@ export type PasskeyCredential = {
 export type Eip712Credential = {
   sig: Base64;
   hash_data: Hex;
-  typed_data: Json;
+  typed_data: Base64;
 };

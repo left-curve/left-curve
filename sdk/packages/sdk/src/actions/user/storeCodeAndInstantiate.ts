@@ -65,11 +65,11 @@ export async function storeCodeAndInstantiate<
         { name: "salt", type: "string" },
         { name: "admin", type: "address" },
         { name: "funds", type: "Funds" },
-        { name: "msg", type: "Message" },
+        { name: "msg", type: "InstantiateAndUploadMessage" },
       ],
       Upload: [{ name: "code", type: "string" }],
       Funds: [...getCoinsTypedData(funds)],
-      Message: type,
+      InstantiateAndUploadMessage: type,
       ...extraTypes,
     },
   };

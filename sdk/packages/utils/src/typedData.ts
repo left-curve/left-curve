@@ -36,7 +36,7 @@ export function composeTypedData(
 
   return {
     types: {
-      Tx: [
+      Message: [
         { name: "chainId", type: "string" },
         { name: "sequence", type: "uint32" },
         { name: "messages", type: "TxMessage[]" },
@@ -44,7 +44,7 @@ export function composeTypedData(
       TxMessage: type,
       ...extraTypes,
     },
-    primaryType: "Tx",
+    primaryType: "Message",
     domain: {},
     message,
   };

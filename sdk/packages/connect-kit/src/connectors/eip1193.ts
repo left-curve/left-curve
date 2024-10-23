@@ -1,5 +1,5 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@leftcurve/crypto";
-import { decodeHex, encodeBase64, encodeHex } from "@leftcurve/encoding";
+import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
 import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { KeyAlgo } from "@leftcurve/types";
@@ -141,7 +141,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           const eip712: Eip712Credential = {
             sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
             hash_data: hashedTypedData.toUpperCase().slice(2),
-            typed_data: data,
+            typed_data: encodeBase64(encodeUtf8(JSON.stringify(data))),
           };
 
           const credential = { eip712 };

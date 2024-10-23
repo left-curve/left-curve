@@ -54,8 +54,8 @@ export type MessageTypedDataType =
   | { name: "migrate"; type: "Migrate" };
 
 export type TypedData = {
-  types: Record<"Tx", TxTypedDataType> & Record<"TxMessage", MessageTypedDataType[]>;
-  primaryType: "Tx";
+  types: Record<"Message", TxTypedDataType> & Record<"TxMessage", MessageTypedDataType[]>;
+  primaryType: "Message";
   domain: Record<string, never>;
   message: TxMessageTypedDataType;
 };
