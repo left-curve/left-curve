@@ -3,7 +3,10 @@ use {
     dango_types::{
         account::single,
         account_factory::AccountParams,
-        lending_pool::{self, QueryWhitelistedDenomsRequest, NAMESPACE},
+        lending_pool::{
+            self, QueryDebtsRequest, QueryLiabilitiesRequest, QueryWhitelistedDenomsRequest,
+            NAMESPACE,
+        },
     },
     grug::{Addressable, Coin, Coins, Denom, HashExt, Message, MsgTransfer, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
@@ -334,6 +337,23 @@ fn borrowing_works() -> anyhow::Result<()> {
     suite
         .query_balance(&margin_account.address(), USDC.clone())
         .should_succeed_and_equal(Uint128::new(100));
+
+    // Confirm that the lending pool has the liability
+    suite
+        .query_wasm_smart(
+            contracts.lending_pool,
+            QueryDebtsRequest(margin_account.address()),
+        )
+        .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100)?));
+    suite
+        .query_wasm_smart(contracts.lending_pool, QueryLiabilitiesRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and_equal(vec![(
+            margin_account.address(),
+            Coins::from(Coin::new(USDC.clone(), 100)?),
+        )]);
 
     Ok(())
 }
