@@ -325,7 +325,7 @@ module apply_fancy {
     existing_leaf: Option[LeafNode]
   ): CreateSubtreeMemo = {
     pure val bits_to_compute = Set(0,1)
-      .allListsUpTo(batch.max_height())
+      .allListsUpTo(max(batch.max_height(), tree.nodes.keys().max_height()))
       .toList((a, b) => intCompare(a.length(), b.length()))
 
    bits_to_compute.foldr(Map(), (bits_now, memo) => {
@@ -608,16 +608,7 @@ module apply_fancy {
   /// Try deleting every single node. The function should return None as the
   /// new root hash. See that nodes have been properly marked as orphaned.
   run deletingAllNodesTest = {
-    // start with the test case tree:
-    //           root
-    //         ┌──┴──┐
-    //        (0)    1(a)
-    //      ┌──┴──┐
-    //    null   (01)
-    //         ┌──┴──┐
-    //      010(r)  (011)
-    //            ┌──┴──┐
-    //        0110(m)  0111(L)
+    // start with the test case tree
 
     // Remove all nodes
     pure val ops = Set(
@@ -637,7 +628,51 @@ module apply_fancy {
       node.version == 0,
       result.orphans.contains({ key_hash: node.key_hash, orphaned_since_version: 1, version: 0 })
     }))
-   }
+  }
+
+  /// No-op is when the batch contains entirely of overwrites of values by the
+  /// same value, or deletes of non-existing keys. The version number shouldn't
+  /// be incremented and root hash shouldn't be changed.
+  run noOpsTestSkipped = {
+    // FIXME: I think this is not working due to batch subdivision (batches are not empty when we get to leaf). Need to validate
+
+    // start with the test case tree
+
+    // Remove all nodes
+    pure val ops = Set(
+      // overwriting keys with the same keys
+      { key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }, // a
+      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) }, // r
+      { key_hash: [0, 1, 1, 0], op: Insert([1, 1, 0, 1]) }, // m
+      { key_hash: [0, 1, 1, 1], op: Insert([1, 1, 0, 0]) }, // L
+
+      // deleting non-existing keys
+      { key_hash: [0, 0, 0, 0], op: Delete },
+      { key_hash: [1, 0, 1, 0], op: Delete },
+      { key_hash: [0, 0, 0, 1], op: Delete }
+    )
+
+    pure val result = apply_fancy(test_case_tree, 0, 1, ops)
+
+    // PS: we return a tree instead of the root hash, so no way to check for that now.
+    // If this is important, we can return it alongside the tree.
+
+    all {
+      // Make sure that no node has been marked as orphaned (other than the
+      // old root node, which is always orphaned).
+      assert(q::debug("orphans", result.orphans).forall(o => and {
+        o.orphaned_since_version == 1,
+        o.version == 0,
+        o.key_hash == ROOT_BITS
+      })),
+
+      // Make sure no node of version 1 has been written (other than the new
+      // root node, which is always written).
+      assert(result.nodes.keys().forall(node => {
+        node.version == 0 or (node.version == 1 and node.key_hash == ROOT_BITS)
+      }))
+    }
+  }
 
   // HACKS: these should be added to Quint soon
 
