@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module super_simple_apply {
   import hashes.* from "./hashes"
   import tree.* from "./tree"
