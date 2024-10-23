@@ -327,7 +327,7 @@ fn borrowing_works() -> anyhow::Result<()> {
             },
             Coins::new(),
         )
-        .should_fail_with_error("Not enough liquidity for uusdc. Max borrowable is 0");
+        .should_fail_with_error("subtraction overflow: 0 - 100");
 
     // Deposit some USDC
     suite

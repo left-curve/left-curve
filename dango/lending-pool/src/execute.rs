@@ -188,21 +188,11 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // Ensure sender is a margin account
     ensure_sender_account_is_margin(&ctx)?;
 
-    // Ensure the coins are whitelisted and lending pool has enough liquidity
+    // Ensure the coins are whitelisted
     for coin in coins.clone().into_iter() {
         ensure!(
             WHITELISTED_DENOMS.has(ctx.storage, coin.denom.clone()),
             "Invalid denom. Only whitelisted denoms can be borrowed."
-        );
-        let balance = ctx
-            .querier
-            .query_balance(ctx.contract, coin.denom.clone())?;
-        ensure!(
-            balance >= coin.amount,
-            format!(
-                "Not enough liquidity for {}. Max borrowable is {}",
-                coin.denom, balance
-            )
         );
     }
 
