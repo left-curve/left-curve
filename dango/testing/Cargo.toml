@@ -11,9 +11,9 @@ categories    = { workspace = true }
 
 [dependencies]
 dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
-dango-account-margin  = { workspace = true, features = ["library"] }
 dango-amm             = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
