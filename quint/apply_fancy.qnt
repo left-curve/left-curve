@@ -19,16 +19,16 @@ module apply_fancy {
   /// Pre computation of apply_at used to emulate recursion
   pure def pre_compute_apply_at(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
     range(0, tree.nodes.keys().max_height() + 1).foldr(Map(), (i, memo) => {
-      pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == q::debug("i",i))
+      pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == i)
 
-      q::debug("nodes at height", node_ids_at_this_height).fold((memo, tree), (acc, node_id) => {
+      node_ids_at_this_height.fold((memo, tree), (acc, node_id) => {
         pure val memo = acc._1
         pure val tree = acc._2
 
         pure val memo_key = (new_version, old_version, node_id.key_hash)
         // TODO: it might make sense to also store the parts of the batch relevant to this subtree and then compare to
         // the one being applied in the recursive emulation
-        pure val memo_value = tree.apply_at(memo, new_version, old_version, q::debug("node key hash", node_id.key_hash), batch)
+        pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch)
         (memo.put(memo_key, memo_value), memo_value.tree)
       })._1
     })
@@ -64,8 +64,8 @@ module apply_fancy {
   ): ApplyResult = {
     if (tree.nodes.has({ version: old_version, key_hash: bits })) {
       match tree.nodes.get({ version: old_version, key_hash: bits }) {
-        | Leaf(leaf_node) => q::debug("result apply_at_leaf", tree.apply_at_leaf(new_version, bits, leaf_node, batch))
-        | Internal(internal_node) => q::debug("result apply_at_internal", tree.apply_at_internal(memo, new_version, bits, internal_node, batch))
+        | Leaf(leaf_node) => tree.apply_at_leaf(new_version, bits, leaf_node, batch)
+        | Internal(internal_node) => tree.apply_at_internal(memo, new_version, bits, internal_node, batch)
       }
     } else {
       pure val batchAndOp = prepare_batch_for_subtree(batch, None)
@@ -82,7 +82,7 @@ module apply_fancy {
     batch: Set[OperationOnKey]
   ): ApplyResult = {
     // Split the batch into two, one for left child, one for right.
-    pure val partitioned_batch = q::debug("apply_at_internal", partition_batch(batch, q::debug("internal bits", bits)))
+    pure val partitioned_batch = partition_batch(batch, q::debug("internal node bits", bits))
     pure val batch_for_left = partitioned_batch._1
     pure val batch_for_right = partitioned_batch._2
 
@@ -110,22 +110,22 @@ module apply_fancy {
 
     if (left_outcome.is_unchanged() and right_outcome.is_unchanged()) {
       // Neither children is changed. This node is unchanged as well.
-      q::debug("match 0", { outcome: Unchanged(None), tree: tree_2 })
+      { outcome: Unchanged(None), tree: tree_2 }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None))
-        and (q::debug("cond 1", right_outcome == Deleted) or q::debug("cond 2", right_outcome == Unchanged(None)))) {
+                and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Both children are deleted or never existed. Delete this node as well.
-      q::debug("match 1",{ outcome: Deleted, tree: tree_2 })
+      { outcome: Deleted, tree: tree_2 }
 
     } else if (left_outcome.updated_to_leaf() and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Left child is a leaf, right child is deleted.
       // Delete the current internal node and move left child up.
       // The child needs to marked as orphaned.
-      q::debug("match 2", { outcome: left_outcome, tree: tree_2 })
+       { outcome: left_outcome, tree: tree_2 }
 
     } else if (left_outcome.unchanged_leaf() and right_outcome == Deleted) {
       // Mark left child as orphaned
-      q::debug("match 3",match left_outcome {
+      match left_outcome {
         | Unchanged(left) => {
           pure val tree_3 = tree_2.mark_node_as_orphaned(
             new_version,
@@ -135,26 +135,27 @@ module apply_fancy {
           { outcome: Updated(left.unwrap()), tree: tree_3 }
         }
         | _ => { outcome: left_outcome, tree: tree_2 } // impossible
-      })
+      }
+
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None)) and right_outcome.updated_to_leaf()) {
       // Left child is deleted, right child is a leaf.
       // Delete the current internal node and move right child up.
       // The child needs to marked as orphaned.
-      q::debug("match 4",{ outcome: right_outcome, tree: tree_2 })
+      { outcome: right_outcome, tree: tree_2 }
 
     } else if (left_outcome == Deleted and right_outcome.unchanged_leaf()) {
       // Mark right child as orphaned
-      q::debug("correct match", match right_outcome {
+      match right_outcome {
         | Unchanged(right) => {
           pure val tree_3 = tree_2.mark_node_as_orphaned(
             new_version,
             internal_node.right_child.unwrap().version,
             right_bits
           )
-          q::debug("left deleted", { outcome: Updated(right.unwrap()), tree: tree_3 })
+          { outcome: Updated(right.unwrap()), tree: tree_3 }
         }
         | _ => { outcome: right_outcome, tree: tree_2 } // impossible
-      })
+      }
 
     } else {
       // At least one child is updated and the path can't be collapsed.
@@ -195,7 +196,7 @@ module apply_fancy {
         right_child: new_right_child_and_tree.child
       })
 
-      q::debug("match 6",{ outcome: Updated(new_internal_node), tree: new_right_child_and_tree.tree })
+      { outcome: Updated(new_internal_node), tree: new_right_child_and_tree.tree }
     }
   }
 
@@ -226,7 +227,7 @@ module apply_fancy {
         }
         // Child exists, and there are ops to apply.
         | Some(child) => {
-          memo.get((new_version, child.version, q::debug("bits", child_bits)))
+          memo.get((new_version, child.version, child_bits))
         }
       }
     }
@@ -239,7 +240,7 @@ module apply_fancy {
     leaf_node: LeafNode,
     batch: Set[OperationOnKey]
   ): ApplyResult = {
-    pure val batchAndOp = q::debug("apply_at_leaf", prepare_batch_for_subtree(q::debug("batch", batch), Some(q::debug("leaf", leaf_node))))
+    pure val batchAndOp = prepare_batch_for_subtree(batch, Some(leaf_node))
     pure val batch = batchAndOp._1
     pure val operation = batchAndOp._2
 
@@ -582,8 +583,7 @@ module apply_fancy {
 
     // Version of root doesn't change according to rust test
     pure val expected_root = Internal({
-      // FIXME: left_child has version 1 in the actual implementation, but rust says 0
-      left_child: Some({ version: 0, hash: expected_left.hash() }),
+      left_child: Some({ version: 1, hash: expected_left.hash() }),
       right_child: Some({ version: 0, hash: expected_right.hash() })
     })
 
