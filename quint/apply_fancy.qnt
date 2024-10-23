@@ -580,8 +580,6 @@ module apply_fancy {
     //        0(L)   1(a)
     pure val expected_left = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
-
-    // Version of root doesn't change according to rust test
     pure val expected_root = Internal({
       left_child: Some({ version: 1, hash: expected_left.hash() }),
       right_child: Some({ version: 0, hash: expected_right.hash() })
