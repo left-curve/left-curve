@@ -285,6 +285,24 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
 }
 
 #[test]
+fn non_margin_accounts_cant_borrow() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::Borrow {
+                coins: Coins::new(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("Only margin accounts can borrow");
+
+    Ok(())
+}
+
+#[test]
 fn borrowing_works() -> anyhow::Result<()> {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
