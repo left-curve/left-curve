@@ -55,7 +55,7 @@ pub enum QueryMsg {
 
     /// Get the debts of a margin account.
     #[returns(Coins)]
-    Debts(Addr),
+    DebtsOfAccount(Addr),
 
     /// Paginate over all the lending pool's liabilities. Returns a Vec with
     /// tuples of (Addr, Coins), where the Addr is the address of the account

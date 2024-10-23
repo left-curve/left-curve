@@ -4,8 +4,8 @@ use {
         account::single,
         account_factory::AccountParams,
         lending_pool::{
-            self, QueryDebtsRequest, QueryLiabilitiesRequest, QueryWhitelistedDenomsRequest,
-            NAMESPACE,
+            self, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
+            QueryWhitelistedDenomsRequest, NAMESPACE,
         },
     },
     grug::{Addressable, Coin, Coins, Denom, HashExt, Message, MsgTransfer, ResultExt, Uint128},
@@ -360,7 +360,7 @@ fn borrowing_works() -> anyhow::Result<()> {
     suite
         .query_wasm_smart(
             contracts.lending_pool,
-            QueryDebtsRequest(margin_account.address()),
+            QueryDebtsOfAccountRequest(margin_account.address()),
         )
         .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100)?));
     suite

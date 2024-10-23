@@ -11,7 +11,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_whitelisted_denoms(ctx.storage, limit, start_after)?;
             res.to_json_value()
         },
-        QueryMsg::Debts(addr) => {
+        QueryMsg::DebtsOfAccount(addr) => {
             let res = query_debts(ctx.storage, addr)?;
             res.to_json_value()
         },
