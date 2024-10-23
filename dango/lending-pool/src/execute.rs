@@ -1,17 +1,13 @@
 use {
     crate::{state::WHITELISTED_DENOMS, LIABILITIES},
     anyhow::{bail, ensure, Ok},
-    dango_auth::authenticate_tx,
     dango_types::{
         account_factory::QueryAccountRequest,
         bank,
         config::ACCOUNT_FACTORY_KEY,
         lending_pool::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
-    grug::{
-        Addr, AuthCtx, AuthResponse, Coin, Coins, Denom, Inner, Message, MutableCtx, Part,
-        Response, Tx,
-    },
+    grug::{Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
     std::str::FromStr,
 };
 
@@ -23,13 +19,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     }
 
     Ok(Response::new())
-}
-
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    authenticate_tx(ctx, tx, None, None)?;
-
-    Ok(AuthResponse::new().request_backrun(false))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

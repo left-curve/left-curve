@@ -134,7 +134,6 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .build();
 
     let lending_pool = ContractBuilder::new(Box::new(dango_lending_pool::instantiate))
-        .with_authenticate(Box::new(dango_lending_pool::authenticate))
         .with_receive(Box::new(dango_lending_pool::receive))
         .with_execute(Box::new(dango_lending_pool::execute))
         .with_query(Box::new(dango_lending_pool::query))
