@@ -154,8 +154,30 @@ module tree {
   pure def getNodesOnPath(t: Tree, new_key_hash: Bytes_t) : Set[NodeId] = 
     t.nodes.keys().filter( key => listPrefixCombinations(new_key_hash).contains(key.key_hash))
   
-  pure def recomputeHashesOnPath(t: Tree, nodeIdsOnPath: Set[NodeId], newLeaf: LeafNode) : Tree = {
-    t
+  pure def recomputeHashesOnPath(t: Tree, nodeIdsOnPath: Set[NodeId], firstUpdatedInternal: InternalNode) : NodeId -> Node = {
+    val nodesToUpdate: List[NodeId]= nodeIdsOnPath.exclude(Set(longestPrefixNode(nodeIdsOnPath))).toList(nodeCompare)
+    
+    nodesToUpdate.foldl(t, (tree, nodeId) => 
+      val oldInternalNode = tree.nodes.get(nodeId)
+      val lastBitInPrefix = nodeId.key_hash.nth(nodeId.key_hash.length() - 1)
+
+
+      if(lastBitInPrefix == 0){
+        val newInternalNode = match oldInternalNode {
+          | Internal(old) => {...old, left_child: Some(hashInternalNode(firstUpdatedInternal))}
+          | Leaf(l) => {left_child: None, right_child: None}
+        }
+        true
+      }else {
+        val newInternalNode = match oldInternalNode {
+                | Internal(old) => {...old, right_child: Some(hashInternalNode(firstUpdatedInternal))}
+                | Leaf(l) => {left_child: None, right_child: None}
+        }
+        true
+      }
+      
+      )
+    
   }
   pure def leafHasNoOverlap(t: Tree, newLeaf: LeafNode) : bool = 
     not(t.nodes.keys()
@@ -211,8 +233,8 @@ module tree {
             | Internal(internal) => updatedNodes  
         }
         // TODO: recompute parent hashes; use nodeIdOnPath to iterate in descending length()
-        val newNodesWithRecomputedHashes = recomputeHashesOnPath(t, nodeIdsOnPath, newLeaf)
-
+        val newNodesWithRecomputedHashes = recomputeHashesOnPath(t, nodeIdsOnPath, replacement)
+        
         {...t, nodes: newUpdatedNodes}
       }
     }
