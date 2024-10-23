@@ -28,14 +28,12 @@ pub fn query_whitelisted_denoms(
     limit: Option<u32>,
     start_after: Option<Denom>,
 ) -> StdResult<Vec<Denom>> {
-    let iter = WHITELISTED_DENOMS
-        .range(
-            storage,
-            start_after.map(Bound::Exclusive),
-            None,
-            Order::Descending,
-        )
-        .into_iter();
+    let iter = WHITELISTED_DENOMS.range(
+        storage,
+        start_after.map(Bound::Exclusive),
+        None,
+        Order::Descending,
+    );
 
     let res = if let Some(limit) = limit {
         iter.take(limit as usize).collect::<StdResult<Vec<_>>>()?
