@@ -41,6 +41,14 @@ module rareSpells {
     else
       { EQ }
   }
+    pure def listCompare(__a: List[int], __b: List[int]): Ordering = {
+    if (__a.length() < __b.length())
+      { GT }
+    else if (__a.length() > __b.length())
+      { LT }
+    else
+      { EQ }
+  }
   ///
   /// Compute the sum of the values over all entries in a map.
   ///
