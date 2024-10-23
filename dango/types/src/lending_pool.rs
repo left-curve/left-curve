@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use grug::{Addr, Coins, Denom};
 
 /// The namespace that lending pool uses.
@@ -5,7 +7,7 @@ pub const NAMESPACE: &str = "lending";
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub whitelisted_denoms: Vec<Denom>,
+    pub whitelisted_denoms: BTreeSet<Denom>,
 }
 
 #[grug::derive(Serde)]

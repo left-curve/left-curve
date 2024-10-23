@@ -190,7 +190,7 @@ where
         &mut msgs,
         lending_pool_code_hash,
         &lending_pool::InstantiateMsg {
-            whitelisted_denoms: vec![fee_denom.clone()],
+            whitelisted_denoms: btree_set![fee_denom.clone()],
         },
         "dango/lending_pool",
         "dango/lending_pool",
