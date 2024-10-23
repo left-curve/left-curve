@@ -219,11 +219,9 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Update the sender's liabilities
     LIABILITIES.update(ctx.storage, ctx.sender, |debts| {
-        debts
-            .clone()
-            .unwrap_or_default()
-            .insert_many(coins.clone())?;
-        Ok(debts)
+        let mut debts = debts.clone().unwrap_or_default();
+        debts.insert_many(coins.clone())?;
+        Ok(Some(debts))
     })?;
 
     // Transfer the coins to the caller
