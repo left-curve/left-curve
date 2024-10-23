@@ -356,7 +356,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash.clone(),
+            attacker.key_hash,
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -366,7 +366,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            member2.key_hash.clone(),
+            member2.key_hash,
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -376,31 +376,31 @@ fn safe() {
         (
             attacker.username.clone(),
             member2.username.clone(),
-            attacker.key_hash.clone(),
+            attacker.key_hash,
             "can't vote with a different username".to_string(),
         ),
         (
             attacker.username.clone(),
             member2.username.clone(),
-            member2.key_hash.clone(),
+            member2.key_hash,
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash.clone(),
+            attacker.key_hash,
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            member2.key_hash.clone(),
+            member2.key_hash,
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             member2.username.clone(),
-            attacker.key_hash.clone(),
+            attacker.key_hash,
             format!(
                 "key hash {} isn't associated with user `{}`",
                 attacker.key_hash, member2.username
@@ -409,7 +409,7 @@ fn safe() {
         (
             member2.username.clone(),
             member2.username.clone(),
-            member2.key_hash.clone(),
+            member2.key_hash,
             "signature is unauthentic".to_string(),
         ),
     ] {
