@@ -353,6 +353,36 @@ fn safe() {
     // - the `key_hash` field in the metadata
     // We test all 2**3 = 8 combinations.
     for (voter, username, key_hash, error) in [
+        // First, in `dango_account_safe::authenticate`, the contract checks the
+        // voter in the execute message matches the username in the metadata.
+        // If not the same, the tx already fails here.
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            attacker.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            member2.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            attacker.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            member2.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        // Then, the contract calls `dango_auth::authenticate`. The method first
+        // checks the Safe is associated with the voter's username. That is, the
+        // voter is a member of the Safe.
         (
             attacker.username.clone(),
             attacker.username.clone(),
@@ -373,30 +403,7 @@ fn safe() {
                 attacker.username
             ),
         ),
-        (
-            attacker.username.clone(),
-            member2.username.clone(),
-            attacker.key_hash,
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            attacker.username.clone(),
-            member2.username.clone(),
-            member2.key_hash,
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            member2.username.clone(),
-            attacker.username.clone(),
-            attacker.key_hash,
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            member2.username.clone(),
-            attacker.username.clone(),
-            member2.key_hash,
-            "can't vote with a different username".to_string(),
-        ),
+        // Now we know the voter and username must both be that of a member.
         (
             member2.username.clone(),
             member2.username.clone(),
