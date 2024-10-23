@@ -104,6 +104,7 @@ grug-vm-wasm      = { path = "grug/vm-wasm" }
 dango-account-factory = { path = "dango/account-factory" }
 dango-account-safe    = { path = "dango/account-safe" }
 dango-account-spot    = { path = "dango/account-spot" }
+dango-account-margin  = { path = "dango/account-margin" }
 dango-amm             = { path = "dango/amm" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }

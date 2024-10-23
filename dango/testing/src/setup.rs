@@ -100,6 +100,12 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_account_safe::query))
         .build();
 
+    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_receive(Box::new(dango_account_margin::receive))
+        .with_query(Box::new(dango_account_margin::query))
+        .build();
+
     let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
         .with_execute(Box::new(dango_amm::execute))
         .with_query(Box::new(dango_amm::query))
@@ -138,6 +144,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         account_factory,
         account_spot,
         account_safe,
+        account_margin,
         amm,
         bank,
         ibc_transfer,
