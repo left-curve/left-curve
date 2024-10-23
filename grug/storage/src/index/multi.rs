@@ -390,6 +390,32 @@ where
         Box::new(iter)
     }
 
+    /// Iterate the primary keys and values under the given index value
+    /// using IK::Suffix as Bound.
+    pub fn prefix_range<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<B>>,
+        max: Option<PrefixBound<B>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(PK::Output, T)>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .prefix_keys_raw_no_trim(storage, min, max, order)
+            .map(|pk_raw| {
+                let pk_raw = self.trim_key(&pk_raw);
+                let pk = PK::from_slice(pk_raw)?;
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok((pk, v))
+            });
+
+        Box::new(iter)
+    }
+
     /// Iterate the raw primary keys under the given index value.
     pub fn keys_raw<'b>(
         &self,
@@ -412,28 +438,44 @@ where
         self.prefix.keys(storage, min, max, order)
     }
 
+    /// Iterate the primary keys under the given index value
+    /// using IK::Suffix as Bound.
+    pub fn prefix_keys<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<B>>,
+        max: Option<PrefixBound<B>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<B::Output>> + 'b> {
+        self.prefix.prefix_keys(storage, min, max, order)
+    }
+
     /// Iterate the raw values under the given index value.
     pub fn values_raw<'b>(
-        &self,
+        &'b self,
         storage: &'b dyn Storage,
         min: Option<Bound<B>>,
         max: Option<Bound<B>>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'b>
+    ) -> Box<dyn Iterator<Item = StdResult<Vec<u8>>> + 'b>
     where
         'a: 'b,
     {
         let iter = self
             .prefix
-            .keys_raw(storage, min, max, order)
-            .map(|pk_raw| self.primary_map.load_raw(storage, &pk_raw).unwrap());
+            .keys_raw_no_trimmer(storage, min, max, order)
+            .map(|pk_raw| {
+                let pk_raw = self.trim_key(&pk_raw);
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                Ok(v_raw)
+            });
 
         Box::new(iter)
     }
 
     /// Iterate the values under the given index value.
     pub fn values<'b>(
-        &self,
+        &'b self,
         storage: &'b dyn Storage,
         min: Option<Bound<B>>,
         max: Option<Bound<B>>,
@@ -444,10 +486,37 @@ where
     {
         let iter = self
             .prefix
-            .keys_raw(storage, min, max, order)
+            .keys_raw_no_trimmer(storage, min, max, order)
             .map(|pk_raw| {
-                let v_raw = self.primary_map.load_raw(storage, &pk_raw)?;
-                C::decode(&v_raw)
+                let pk_raw = self.trim_key(&pk_raw);
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok(v)
+            });
+
+        Box::new(iter)
+    }
+
+    /// Iterate the values under the given index value
+    /// using IK::Suffix as Bound.
+    pub fn prefix_values<'b>(
+        &'b self,
+        storage: &'b dyn Storage,
+        min: Option<PrefixBound<B>>,
+        max: Option<PrefixBound<B>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<T>> + 'b>
+    where
+        'a: 'b,
+    {
+        let iter = self
+            .prefix
+            .prefix_keys_raw_no_trim(storage, min, max, order)
+            .map(|pk_raw| {
+                let pk_raw = self.trim_key(&pk_raw);
+                let v_raw = self.primary_map.load_raw(storage, pk_raw)?;
+                let v = C::decode(&v_raw)?;
+                Ok(v)
             });
 
         Box::new(iter)
