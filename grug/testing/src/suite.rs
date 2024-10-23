@@ -118,7 +118,7 @@ where
     /// previous block's time plus this value.
     pub block_time: Duration,
     /// Transaction gas limit to use if user doesn't specify one.
-    default_gas_limit: u64,
+    pub default_gas_limit: u64,
 }
 
 impl TestSuite {
@@ -274,6 +274,25 @@ where
         block_outcome.tx_outcomes.pop().unwrap()
     }
 
+    /// Sign a transaction with the default gas limit.
+    pub fn sign_transaction(&self, signer: &mut dyn Signer, msgs: Vec<Message>) -> Tx {
+        self.sign_transaction_with_gas(signer, self.default_gas_limit, msgs)
+    }
+
+    /// Sign a transaction with the given gas limit.
+    pub fn sign_transaction_with_gas(
+        &self,
+        signer: &mut dyn Signer,
+        gas_limit: u64,
+        msgs: Vec<Message>,
+    ) -> Tx {
+        signer
+            .sign_transaction(msgs, &self.chain_id, gas_limit)
+            .unwrap_or_else(|err| {
+                panic!("fatal error while signing tx: {err}");
+            })
+    }
+
     /// Execute a single message.
     pub fn send_message(&mut self, signer: &mut dyn Signer, msg: Message) -> TxOutcome {
         self.send_message_with_gas(signer, self.default_gas_limit, msg)
@@ -301,14 +320,7 @@ where
         gas_limit: u64,
         msgs: Vec<Message>,
     ) -> TxOutcome {
-        assert!(!msgs.is_empty(), "please send more than zero messages");
-
-        // Compose and sign a single message
-        let tx = signer
-            .sign_transaction(msgs, &self.chain_id, gas_limit)
-            .unwrap_or_else(|err| panic!("fatal error while signing tx: {err}"));
-
-        self.send_transaction(tx)
+        self.send_transaction(self.sign_transaction_with_gas(signer, gas_limit, msgs))
     }
 
     /// Update the chain's config.

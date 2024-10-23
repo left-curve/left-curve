@@ -11,8 +11,8 @@ use {
         mock_ibc_transfer,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Message, NonZero,
-        ResultExt, Timestamp, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, JsonSerExt, Message,
+        NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
@@ -22,8 +22,9 @@ fn safe() {
 
     // --------------------------------- Setup ---------------------------------
 
-    // Onboard 4 users. They will be the members of the Safe.
-    let [mut member1, member2, member3]: [TestAccount; 3] = ["member1", "member2", "member3"]
+    // Onboard 4 users. Three will be the members of the Safe. The other will
+    // play the role of an attacker.
+    let [mut member1, member2, member3, attacker] = ["member1", "member2", "member3", "attacker"]
         .into_iter()
         .map(|username| {
             let user = TestAccount::new_random(username).predict_address(
@@ -90,7 +91,7 @@ fn safe() {
     let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 5 }.into_bytes().as_slice(),
+        Salt { index: 6 }.into_bytes().as_slice(),
     );
     let mut safe = Safe::new(safe_address);
 
@@ -100,7 +101,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 6,
             params: AccountParams::Safe(params.clone()),
         });
 
@@ -120,7 +121,7 @@ fn safe() {
                     }),
                 },
                 safe.address() => Account {
-                    index: 5,
+                    index: 6,
                     params: AccountParams::Safe(params.clone()),
                 },
             });
@@ -264,7 +265,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 6,
             params: AccountParams::Safe(params),
         });
 
@@ -328,4 +329,128 @@ fn safe() {
             .unwrap(),
         )
         .should_fail_with_error("proposal isn't passed or timelock hasn't elapsed");
+
+    // -------------------------- Unauthorized voting --------------------------
+
+    // Member 1 makes a proposal. This should be proposal 4.
+    suite.execute(
+        safe.with_signer(&member1),
+        safe_address,
+        &multi::ExecuteMsg::Propose {
+            title: "nothing".to_string(),
+            description: None,
+            messages: vec![],
+        },
+        Coins::new(),
+    );
+
+    // Attacker attempts to vote, impersonating member 2.
+    // Since attacker doesn't actual know member 2's private key, the tx will be
+    // signed by attacker's private key.
+    // There are a few variables to consider:
+    // - the `voter` field in `ExecuteMsg::Vote`
+    // - the `username` field in the metadata
+    // - the `key_hash` field in the metadata
+    // We test all 2**3 = 8 combinations.
+    for (voter, username, key_hash, error) in [
+        // First, in `dango_account_safe::authenticate`, the contract checks the
+        // voter in the execute message matches the username in the metadata.
+        // If not the same, the tx already fails here.
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            attacker.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            attacker.username.clone(),
+            member2.username.clone(),
+            member2.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            attacker.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            member2.username.clone(),
+            attacker.username.clone(),
+            member2.key_hash,
+            "can't vote with a different username".to_string(),
+        ),
+        // Then, the contract calls `dango_auth::authenticate`. The method first
+        // checks the Safe is associated with the voter's username. That is, the
+        // voter is a member of the Safe.
+        (
+            attacker.username.clone(),
+            attacker.username.clone(),
+            attacker.key_hash,
+            format!(
+                "account {} isn't associated with user `{}`",
+                safe.address(),
+                attacker.username
+            ),
+        ),
+        (
+            attacker.username.clone(),
+            attacker.username.clone(),
+            member2.key_hash,
+            format!(
+                "account {} isn't associated with user `{}`",
+                safe.address(),
+                attacker.username
+            ),
+        ),
+        // Now we know the voter and username must both be that of a member.
+        (
+            member2.username.clone(),
+            member2.username.clone(),
+            attacker.key_hash,
+            format!(
+                "key hash {} isn't associated with user `{}`",
+                attacker.key_hash, member2.username
+            ),
+        ),
+        (
+            member2.username.clone(),
+            member2.username.clone(),
+            member2.key_hash,
+            "signature is unauthentic".to_string(),
+        ),
+    ] {
+        // Sign the tx with attackers's private key.
+        let mut tx = safe
+            .with_signer(&attacker)
+            .with_sequence(12) // TODO: sequence isn't incremented if auth fails... should we make sure it increments?
+            .sign_transaction(
+                vec![Message::execute(
+                    safe_address,
+                    &multi::ExecuteMsg::Vote {
+                        proposal_id: 4,
+                        voter,
+                        vote: Vote::Yes,
+                        execute: false,
+                    },
+                    Coins::new(),
+                )
+                .unwrap()],
+                &suite.chain_id,
+                suite.default_gas_limit,
+            )
+            .unwrap();
+
+        tx.data
+            .as_object_mut()
+            .unwrap()
+            .insert("username".to_string(), username.to_json_value().unwrap());
+
+        tx.data
+            .as_object_mut()
+            .unwrap()
+            .insert("key_hash".to_string(), key_hash.to_json_value().unwrap());
+
+        suite.send_transaction(tx).should_fail_with_error(error);
+    }
 }
