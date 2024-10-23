@@ -605,6 +605,40 @@ module apply_fancy {
     }
   }
 
+  /// Try deleting every single node. The function should return None as the
+  /// new root hash. See that nodes have been properly marked as orphaned.
+  run deletingAllNodesTest = {
+    // start with the test case tree:
+    //           root
+    //         ┌──┴──┐
+    //        (0)    1(a)
+    //      ┌──┴──┐
+    //    null   (01)
+    //         ┌──┴──┐
+    //      010(r)  (011)
+    //            ┌──┴──┐
+    //        0110(m)  0111(L)
+
+    // Remove all nodes
+    pure val ops = Set(
+      { key_hash: [1, 1, 0, 0], op: Delete }, // a
+      { key_hash: [0, 1, 0, 0], op: Delete }, // r
+      { key_hash: [0, 1, 1, 0], op: Delete }, // m
+      { key_hash: [0, 1, 1, 1], op: Delete }  // L
+    )
+
+    pure val result = apply_fancy(test_case_tree, 0, 1, ops)
+
+    // PS: we return a tree instead of the root hash, so no way to check for that now.
+    // If this is important, we can return it alongside the tree.
+
+    // Check that every node has been marked as orphaned.
+    assert(result.nodes.keys().forall(node => all {
+      node.version == 0,
+      result.orphans.contains({ key_hash: node.key_hash, orphaned_since_version: 1, version: 0 })
+    }))
+   }
+
   // HACKS: these should be added to Quint soon
 
   pure def unwrap(value: Option[a]): a = {
