@@ -10,7 +10,7 @@ val maxVersion = 10
 
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
 /// E.g., if a node has path [1,0,0,1] then there must be a node with path [1,0,0]
-// TODO: figure out versions. I gett we need a parent with a version >= my version
+// TODO: figure out versions. I guess we need a parent with a version >= my version
 pure def everyNodesParentIsInTheTree(t: Tree): bool =
   val nodePrefixes = t.nodes.keys()
   val paths = nodePrefixes.map(p => p.key_hash)
@@ -18,6 +18,7 @@ pure def everyNodesParentIsInTheTree(t: Tree): bool =
 
 def everyNodesParentIsInTheTreeInv = everyNodesParentIsInTheTree(tree)
 
+/// given two leaf nodes, computes the prefix of the key_hash that is commint
 pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
   val indList = range(1, keylength + 1)
   indList.foldl([], (s, x) => 
@@ -25,62 +26,7 @@ pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
       b.key_hash.slice(0, x) 
     else s )
 
-
-pure def listCommonPrefix(a: BitArray, b: BitArray) : BitArray =
-    []
-
-pure def longestPrefixNode(s: Set[NodeId]) : NodeId =
-    {version: 0, key_hash: []}
-
-pure def newInternal(a: LeafNode, b: LeafNode): InternalNode =
-    // TODO: hashes, etc.
-    {left_child: None, right_child: None}
-
-pure def addLeafUnderInternal(i: InternalNode, l: LeafNode): InternalNode =
-    // TODO: hashes, etc.
-    // figure out whether l is left or right, and puts the hash(l) there
-        i
-pure def newPrefix(l: LeafNode, parent: NodeId): NodeId = 
-    // prefix of leafNode key of lenght parent.key.length + 1 
-    // and proper version
-    parent
-
-// forget empty tree
-pure def insert(t: Tree, l: LeafNode): Tree = 
-    val nodeIdOnPath = t.nodes.keys().filter(prefix => listCommonPrefix(prefix.key_hash,l.key_hash).length() > 0)
-    val nodeId: NodeId = longestPrefixNode(nodeIdOnPath)
-    val nodeToChange = t.nodes.get(nodeId)
-    val replacement: InternalNode = match nodeToChange {
-        | Leaf(leaf) => newInternal(leaf, l)      
-        // 0011 -> LeafA
-        // Add leafB
-        // 0011 -> Internal
-        // 00111 -> A (or B)
-        // 00110 -> B (or A)
-        | Internal(internal) => addLeafUnderInternal(internal, l)
-        // 0011 -> Internal
-        // 00111 -> Leaf A
-        // 00110000 -> l
-        // Then
-        // 0011 -> replacement
-        // newPrefix(l, 0011) = 00110
-        // add 00110 -> l
-    }
-    // TODO: In Leaf case above, we need to
-    val newNodes = t.nodes
-                        .put(nodeId, Internal(replacement))
-                        .set(newPrefix(l,nodeId), Leaf(l))        
-    val newnew = match   nodeToChange {
-        | Leaf(leaf) => newNodes.set(newPrefix(leaf,nodeId), Leaf(leaf))  
-        | Internal(internal) => newNodes      
-    }   
-    // TODO: use nodeIdOnPath to iterate in descending length()
-    t.with("nodes", newNodes)
-    // TODO: add special cases of empty tree, and only one leaf
-    // TODO: delete function + update
-    // TODO: implement helper functions
-
-
+/// Returns a set containing all leaf nodes in a tree
 pure def allLeafs(t: Tree) : Set[LeafNode] =
     val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
     allNodes.fold(Set(), (s,x) => match x {
@@ -88,44 +34,57 @@ pure def allLeafs(t: Tree) : Set[LeafNode] =
                             | Leaf(x) => s.union(Set(x))
     })
 
+/// Is the node an internal node?
 pure def isInternal(n: Node) : bool =
     match n {
         | Internal(_) => true
         | Leaf(_) => false
     }
-
+/// Is the node a leaf node?
 pure def isLeaf(n) = (not(isInternal(n)))
 
-pure def allInternalwithPrefix(t: Tree) : NodeId -> Node =
-    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
-    leafNodeIds.mapBy(p => t.nodes.get(p))
+// pure def allInternalwithPrefix(t: Tree) : NodeId -> Node =
+//     val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+//     leafNodeIds.mapBy(p => t.nodes.get(p))
 
-pure def allLeafswithPrefix(t: Tree) : NodeId -> Node =
-    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
-    internalNodeIds.mapBy(p => t.nodes.get(p))
+// pure def allLeafswithPrefix(t: Tree) : NodeId -> Node =
+//     val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+//     internalNodeIds.mapBy(p => t.nodes.get(p))
 
 
-
+/// Check whether there is a node with the given prefix
+/// TODO: currently it ignores versions. Instead of Bytes_t it should take a NodeId as input
 pure def existsNode(t: Tree, b: Bytes_t): bool =
     t.nodes.keys().filter(nId => nId.key_hash == b).size() > 0
 
+/// For any two leaf nodes, is there is a nodeId in the tree that is the common prefix
+/// of the nodes?
 pure def nodeAtCommonPrefix(t: Tree) : bool =
     t.allLeafs().forall(a =>
         t.allLeafs().forall(b =>
             (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a,b))   
     ))
 
+/// Invariant that checks that for any two leaf nodes, there is a nodeId in the
+/// tree that is the common prefix
+def nodeAtCommonPrefixInv = nodeAtCommonPrefix(tree)
 
+
+/// This computes the prefix of the child. 
+/// TODO: currently it ignores versions
 pure def rightChild(t: Tree, nId: NodeId): NodeId =
     // TODO: versions
     {version: 0, key_hash: nId.key_hash.append(1)}
 
+/// This computes the prefix of the child. 
+/// TODO: currently it ignores versions
 pure def leftChild(t: Tree, nId: NodeId): NodeId =
     // TODO: versions
     {version: 0, key_hash: nId.key_hash.append(0)}   
 
 
-
+/// Check that for all internal nodes, if they have a hash stored for a child,
+/// then the hash is the hash of the actualy the child
 pure def properlyHashed(t: Tree, version: int): bool = 
     t.nodes.keys().forall(nID => match t.nodes.get(nID) {
                                 | Leaf(_) => true
@@ -153,16 +112,20 @@ pure def isPrefix(short: BitArray, long: BitArray): bool =
     else
         short == long.slice(0, short.length() - 1)
 
-// TODO: there is no internal node that has a leaf node as its prefix
+/// Make sure that the map encodes a tree. In particular, there is no internal node 
+/// that has a leaf node as its prefix
+/// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
+/// TODO: versions
 pure def noInternalChild(t: Tree): bool =
     val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
     val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
     val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
     val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
     not(leafPrefixes.exists(lp => 
-            internalPrefixes.exists(ip
-                => isPrefix(lp, ip))))
+            internalPrefixes.exists(ip => 
+                isPrefix(lp, ip))))
 
+/// Invariant: there is no internal node  that has a leaf node as its prefix
 def noInternalChildInv = noInternalChild(tree)
 
 /// For the same path there are not multiple version stored within the nodes
