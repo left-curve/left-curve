@@ -11,14 +11,14 @@ import type {
 } from "@leftcurve/types";
 
 /**
- * @description Encode the typed data.
+ * @description Hash the typed data.
  *
- * @param typedData The typed data to encode.
- * @returns The encoded typed data.
+ * @param typedData The typed data to hash.
+ * @returns The hashed typed data.
  */
-export async function encodeTypedData(typedData: TypedData): Promise<Hex> {
+export async function hashTypedData(typedData: TypedData): Promise<Hex> {
   const { TypedDataEncoder } = await import("ethers");
-  return TypedDataEncoder.encode(typedData.domain, typedData.types, typedData.message);
+  return TypedDataEncoder.hash(typedData.domain, typedData.types, typedData.message);
 }
 
 /**

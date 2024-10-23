@@ -1,9 +1,9 @@
-import { ethHashMessage, secp256k1RecoverPubKey, sha256 } from "@leftcurve/crypto";
+import { ethHashMessage, secp256k1RecoverPubKey } from "@leftcurve/crypto";
 import { decodeHex, encodeBase64, encodeHex } from "@leftcurve/encoding";
 import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { KeyAlgo } from "@leftcurve/types";
-import { composeTypedData, encodeTypedData } from "@leftcurve/utils";
+import { composeTypedData, hashTypedData } from "@leftcurve/utils";
 import { createConnector } from "./createConnector";
 
 import type {
@@ -124,34 +124,38 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         return _isAuthorized;
       },
       async requestSignature(signDoc) {
-        const { typedData, ...txMessage } = signDoc;
-        const provider = await this.getProvider();
-        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+        try {
+          const { typedData, ...txMessage } = signDoc;
+          const provider = await this.getProvider();
+          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        if (!typedData) throw new Error("Typed data required");
-        const data = composeTypedData(txMessage, typedData);
-        const encodedTypedData = await encodeTypedData(data);
-        const hash = encodeHex(sha256(decodeHex(encodedTypedData)));
+          if (!typedData) throw new Error("Typed data required");
+          const data = composeTypedData(txMessage, typedData);
+          const hashedTypedData = await hashTypedData(data);
 
-        const signature = await provider.request({
-          method: "eth_signTypedData_v4",
-          params: [controllerAddress, hash],
-        });
+          const signature = await provider.request({
+            method: "eth_signTypedData_v4",
+            params: [controllerAddress, JSON.stringify(data)],
+          });
 
-        const eip712: Eip712Credential = {
-          sig: encodeBase64(decodeHex(signature)),
-          hash_data: hash,
-          typed_data: data,
-        };
+          const eip712: Eip712Credential = {
+            sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
+            hash_data: hashedTypedData.toUpperCase().slice(2),
+            typed_data: data,
+          };
 
-        const credential = { eip712 };
+          const credential = { eip712 };
 
-        const keyHash = createKeyHash({
-          pubKey: await secp256k1RecoverPubKey(hash, signature, true),
-          keyAlgo: KeyAlgo.Secp256k1,
-        });
+          const keyHash = createKeyHash({
+            pubKey: await secp256k1RecoverPubKey(hashedTypedData, signature, true),
+            keyAlgo: KeyAlgo.Secp256k1,
+          });
 
-        return { credential, keyHash, signDoc };
+          return { credential, keyHash, signDoc };
+        } catch (error) {
+          console.error(error);
+          throw error;
+        }
       },
       onConnect({ chainId, username }) {
         _username = username;
