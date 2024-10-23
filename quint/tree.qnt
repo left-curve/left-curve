@@ -229,4 +229,16 @@ module tree {
         orphans: Set(),
         nodes: Map()
   }
+
+  action insertAction(l) =
+      tree' = insert(tree,l)
+
+  run Example = {
+    val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [1]}, {key_hash: [0, 0, 0, 0], value_hash: [7]})
+    // TODO non-deterministic initialization
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  
 }
