@@ -91,6 +91,11 @@ export type {
 } from "./emitter";
 
 export type {
+  Code,
+  CodeStatus,
+} from "./code";
+
+export type {
   Coin,
   Coins,
   Funds,

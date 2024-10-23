@@ -1,4 +1,5 @@
 import type { Address } from "./address";
+import type { Code } from "./code";
 import type { Coin, Coins, Denom } from "./coin";
 import type { Duration, Permission } from "./common";
 import type { Metadata } from "./credential";
@@ -116,9 +117,9 @@ export type QueryContractRequest = {
 
 export type QueryResponse =
   | { config: ChainConfigResponse }
-  | { balance: Coin }
   | { appConfig: AppConfigResponse }
   | { appConfigs: AppConfigsResponse }
+  | { balance: Coin }
   | { balances: Coins }
   | { supply: Coin }
   | { supplies: Coins }
@@ -136,9 +137,9 @@ export type ChainInfoResponse = {
   lastFinalizedBlock: BlockInfo;
 };
 
-export type CodeResponse = Base64;
+export type CodeResponse = Code;
 
-export type CodesResponse = Record<Hex, Base64>;
+export type CodesResponse = Record<Hex, Code>;
 
 export type AppConfigResponse<T = JsonValue> = T;
 
