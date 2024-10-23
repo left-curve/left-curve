@@ -41,7 +41,7 @@ fn only_owner_can_whitelist_denoms() {
         .execute(
             &mut accounts.relayer,
             contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_fail_with_error("Only the owner can whitelist denoms");
@@ -51,7 +51,7 @@ fn only_owner_can_whitelist_denoms() {
         .execute(
             &mut accounts.owner,
             contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_succeed();
