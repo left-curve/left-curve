@@ -110,7 +110,6 @@ module tree {
         )
 
   pure def newInternalNode(existingLeaf: LeafNode, newLeaf: LeafNode): InternalNode =
-      // TODO: recompute parent hashes, etc.
       // get common prefix between already existing leaf and new leaf
       val internalNodePrefix = commonPrefix(existingLeaf, newLeaf)
       //getting first bit that does not overlap between new leaf and existing leaf
@@ -124,19 +123,14 @@ module tree {
       val existingHash = {version: 0, hash: hashLeafNode(existingLeaf)}
       
       if(firstNonOverlappingBitOfExistingLeaf.head() == 1){
-        // existing leaf should be right child
-        // new leaf is left child
         {left_child: Some(newHash), right_child: Some(existingHash)}        
       }
       else{
-        // existing leaf should be left child
-        // new leaf is right child
         {left_child: Some(newHash), right_child: Some(existingHash)}
       }
 
   pure def addLeafUnderInternal(internalToGrowLeaf: InternalNode, internalNodesNodeId: NodeId, 
                                   newLeaf: LeafNode): InternalNode =
-      // TODO: recompute parent hashes, etc.
       // figure out whether l is left or right, and puts the hash(l) there
       val firstNonOverlappingBitOfNewLeaf = newLeaf
                                               .key_hash
@@ -157,22 +151,25 @@ module tree {
 /// input a tree where the hashes of the node with nodeId might be wrong
   pure def recomputeHashOnNode(t: NodeId -> Node, nodeId: NodeId) : NodeId -> Node = {
       val newNode = match t.get(nodeId) {
-            | Internal(old) => 
+            | Internal(_) =>
                             val leftChildPrefix = nodeId.key_hash.append(0)
-                            val leftchild = t.get({version: 0, key_hash: leftChildPrefix}) // must it exist?
-                            val hl = if (true) None // catch the getOrElse return
-                                    else Some(hash(leftchild))
+                            val hashLeftChild = if(t.keys().contains({version: 0, key_hash: leftChildPrefix}))
+                                                Some({version: 0, hash: hash(t.get({version: 0, key_hash: leftChildPrefix}))})                                                
+                                                else None
+                            
                             val rightChildPrefix = nodeId.key_hash.append(1)
-                            val rightchild = t.get({version: 0, key_hash: rightChildPrefix})
-                            val hr = hash(rightchild)
-              Internal({right_child: Some({version: 0, hash: hr}), left_child: Some({version: 0, hash: hl})})
+                            val hashRightChild = if(t.keys().contains({version: 0, key_hash: rightChildPrefix}))
+                                                Some({version: 0, hash: hash(t.get({version: 0, key_hash: rightChildPrefix}))})                                                
+                                                else None
+              Internal({left_child: hashLeftChild, right_child: hashRightChild})
             | Leaf(l) => Leaf(l)
       }
-      t.set(nodeId, newNode)  
+      t.set(nodeId, newNode)
   }
 
   pure def recomputeHashesOnPath(t: Tree, nodeIdsOnPath: Set[NodeId]) : NodeId -> Node = {
-    val nodesToUpdate: List[NodeId]= nodeIdsOnPath.exclude(Set(longestPrefixNode(nodeIdsOnPath))).toList(nodeCompare)
+    //.exclude(Set(longestPrefixNode(nodeIdsOnPath)))
+    val nodesToUpdate: List[NodeId]= nodeIdsOnPath.toList(nodeCompare)
     nodesToUpdate.foldl(t.nodes, (nodes, nodeId) => 
       recomputeHashOnNode(nodes, nodeId))
   } 
@@ -231,9 +228,9 @@ module tree {
             | Internal(internal) => updatedNodes  
         }
         // TODO: recompute parent hashes; use nodeIdOnPath to iterate in descending length()
-        val newNodesWithRecomputedHashes = recomputeHashesOnPath(t, nodeIdsOnPath)
+        val newNodesWithRecomputedHashes = recomputeHashesOnPath({...t, nodes: newUpdatedNodes}, nodeIdsOnPath)
         
-        {...t, nodes: newUpdatedNodes}
+        {...t, nodes: newNodesWithRecomputedHashes}
       }
     }
       
@@ -252,9 +249,14 @@ module tree {
 
   action insertAction(l) =
       tree' = insert(tree,l)
-
+  
   run Example = {
-    val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [1]}, {key_hash: [0, 0, 0, 0], value_hash: [7]})
+    // [1]
+    // [1,0] None
+    // [1,1]
+    // [1,1,0]
+    // [1,1,1]
+    val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 0, 0, 1], value_hash: [42]})
     // TODO non-deterministic initialization
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
