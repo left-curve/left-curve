@@ -4,11 +4,12 @@ use {
         StorageProvider, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config,
-        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
+        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config, Context,
+        ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
         QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
         QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest,
-        QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest, QueryWasmSmartRequest, StdResult,
+        QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest, QueryWasmSmartRequest,
+        StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -152,26 +153,21 @@ pub fn query_contracts(
         .collect()
 }
 
-pub fn query_wasm_raw(
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
-    req: QueryWasmRawRequest,
-) -> StdResult<Option<Binary>> {
-    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
-        .read_with_gas(gas_tracker, &req.key)
+pub fn query_wasm_raw(ctx: AppCtx, req: QueryWasmRawRequest) -> StdResult<Option<Binary>> {
+    StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &req.contract])
+        .read_with_gas(ctx.gas_tracker, &req.key)
         .map(|maybe_value| maybe_value.map(Binary::from))
 }
 
 pub fn query_wasm_scan(
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
+    ctx: AppCtx,
     req: QueryWasmScanRequest,
 ) -> StdResult<BTreeMap<Binary, Binary>> {
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
+    StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &req.contract])
         .scan_with_gas(
-            gas_tracker,
+            ctx.gas_tracker,
             req.min.as_deref(),
             req.max.as_deref(),
             // Order doesn't matter, as we're collecting results into a BTreeMap.

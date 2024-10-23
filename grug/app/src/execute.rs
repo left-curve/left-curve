@@ -7,9 +7,9 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event, GenericResult,
-        Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate, MsgMigrate, MsgTransfer,
-        MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
+        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
+        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -123,10 +123,10 @@ fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Eve
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
+    CODES.save_with_gas(&mut ctx.storage, ctx.gas_tracker, code_hash, &Code {
         code: msg.code,
         status: CodeStatus::Orphaned {
-            since: block.timestamp,
+            since: ctx.block.timestamp,
         },
     })?;
 
@@ -303,18 +303,22 @@ where
     })?;
 
     // Increment the code's usage.
-    CODES.update(&mut app_ctx.storage, msg.code_hash, |mut code| -> StdResult<_> {
-        match &mut code.status {
-            CodeStatus::Orphaned { .. } => {
-                code.status = CodeStatus::InUse { usage: 1 };
-            },
-            CodeStatus::InUse { usage } => {
-                *usage += 1;
-            },
-        }
+    CODES.update(
+        &mut app_ctx.storage,
+        msg.code_hash,
+        |mut code| -> StdResult<_> {
+            match &mut code.status {
+                CodeStatus::Orphaned { .. } => {
+                    code.status = CodeStatus::InUse { usage: 1 };
+                },
+                CodeStatus::InUse { usage } => {
+                    *usage += 1;
+                },
+            }
 
-        Ok(code)
-    })?;
+            Ok(code)
+        },
+    )?;
 
     // Make the fund transfer
     let mut events = vec![];
@@ -485,14 +489,14 @@ where
 
     // Reduce usage count of the old code.
     CODES.update(
-        &mut storage,
+        &mut app_ctx.storage,
         old_code_hash.unwrap(),
         |mut code| -> StdResult<_> {
             match &mut code.status {
                 CodeStatus::InUse { usage } => {
                     if *usage == 1 {
                         code.status = CodeStatus::Orphaned {
-                            since: block.timestamp,
+                            since: app_ctx.block.timestamp,
                         };
                     } else {
                         *usage -= 1;
@@ -507,7 +511,7 @@ where
 
     // Increase usage count of the new code.
     CODES.update(
-        &mut storage,
+        &mut app_ctx.storage,
         msg.new_code_hash,
         |mut code| -> StdResult<_> {
             match &mut code.status {

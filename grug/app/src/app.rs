@@ -178,7 +178,7 @@ where
                 .idx
                 .status
                 .prefix_keys(
-                    &buffer,
+                    &ctx.storage,
                     None,
                     Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_nanos(since),
@@ -188,7 +188,7 @@ where
                 .map(|res| res.map(|(_status, hash)| hash))
                 .collect::<StdResult<Vec<_>>>()?
             {
-                CODES.remove(&mut buffer, hash)?;
+                CODES.remove(&mut ctx.storage, hash)?;
             }
         }
 
@@ -711,7 +711,7 @@ where
     match msg {
         Message::Configure(msg) => do_configure(ctx.downcast(), sender, msg),
         Message::Transfer(msg) => do_transfer(ctx, msg_depth, sender, msg, true),
-        Message::Upload(msg) => do_upload(ctx.downcast(), block, sender, msg),
+        Message::Upload(msg) => do_upload(ctx.downcast(), sender, msg),
         Message::Instantiate(msg) => do_instantiate(ctx, msg_depth, sender, msg),
         Message::Execute(msg) => do_execute(ctx, msg_depth, sender, msg),
         Message::Migrate(msg) => do_migrate(ctx, msg_depth, sender, msg),
@@ -777,7 +777,7 @@ where
             Ok(QueryResponse::WasmRaw(res))
         },
         Query::WasmScan(req) => {
-            let res = query_wasm_scan(storage, gas_tracker, req)?;
+            let res = query_wasm_scan(ctx.downcast(), req)?;
             Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
