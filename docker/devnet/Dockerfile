@@ -74,10 +74,11 @@ RUN cd left-curve \
   && cat artifacts/checksum.txt
 
 # Create genesis file.
-# Edit cometbft config such that Tendermint RPC accepts queries from all hosts.
+# Edit cometbft config such that Tendermint RPC accepts queries from all hosts and allows CORS from any origin.
 RUN cd left-curve \
   && cometbft init \
   && sed -i 's|laddr = "tcp://127.0.0.1:26657"|laddr = "tcp://0.0.0.0:26657"|g' ~/.cometbft/config/config.toml \
+  && sed -i 's|cors_allowed_origins = \[\]|cors_allowed_origins = ["*"]|g' ~/.cometbft/config/config.toml \
   && cargo run -p dango-genesis --example build_genesis -- ${CHAIN_ID} ${GENESIS_TIME} \
   && cat ~/.cometbft/config/genesis.json
 

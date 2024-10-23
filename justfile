@@ -79,8 +79,12 @@ docker-build-devnet:
 
 # Start a devnet from genesis
 start-devnet:
-  docker run -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
+  docker run --name {{DEVNET_CHAIN_ID}} -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
 
 # Restart a devnet that have been previous stopped
-restart-devnet container_id:
-  docker start -i $1
+restart-devnet:
+  docker start -i {{DEVNET_CHAIN_ID}}
+
+# Remove a devnet
+remove-devnet:
+  docker rm -f {{DEVNET_CHAIN_ID}}
