@@ -4,9 +4,9 @@ import type {
   Client,
   Hex,
   Json,
-  MessageTypedDataType,
   Signer,
   Transport,
+  TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
@@ -36,7 +36,7 @@ export async function migrate<chain extends Chain | undefined, signer extends Si
 
   const { extraTypes = {}, type = [] } = parameters.typedData || {};
 
-  const typedData: TypedDataParameter<MessageTypedDataType> = {
+  const typedData: TypedDataParameter<TxMessageType> = {
     type: [{ name: "migrate", type: "Migrate" }],
     extraTypes: {
       Migrate: [

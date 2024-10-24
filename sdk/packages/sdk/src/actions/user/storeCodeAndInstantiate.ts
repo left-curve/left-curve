@@ -7,9 +7,9 @@ import type {
   Funds,
   Hex,
   Json,
-  MessageTypedDataType,
   Signer,
   Transport,
+  TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
 
@@ -54,7 +54,7 @@ export async function storeCodeAndInstantiate<
 
   const { extraTypes = {}, type = [] } = parameters.typedData || {};
 
-  const typedData: TypedDataParameter<MessageTypedDataType> = {
+  const typedData: TypedDataParameter<TxMessageType> = {
     type: [
       { name: "instantiate", type: "Instantiate" },
       { name: "upload", type: "Upload" },
@@ -65,11 +65,11 @@ export async function storeCodeAndInstantiate<
         { name: "salt", type: "string" },
         { name: "admin", type: "address" },
         { name: "funds", type: "Funds" },
-        { name: "msg", type: "Message" },
+        { name: "msg", type: "InstantiateAndUploadMessage" },
       ],
       Upload: [{ name: "code", type: "string" }],
       Funds: [...getCoinsTypedData(funds)],
-      Message: type,
+      InstantiateAndUploadMessage: type,
       ...extraTypes,
     },
   };

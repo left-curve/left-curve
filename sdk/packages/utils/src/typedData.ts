@@ -1,41 +1,27 @@
 import type {
   Coins,
-  MessageTypedDataType,
+  EIP712Domain,
+  EIP712Message,
+  EIP712Types,
+  Hex,
   Power,
-  TxMessageTypedDataType,
+  TxMessageType,
   TypedData,
   TypedDataParameter,
-  TypedDataProperties,
+  TypedDataProperty,
   Username,
 } from "@leftcurve/types";
 
-import {
-  hashTypedData as viemHashTypedData,
-  type HashTypedDataParameters as viemTypedData,
-} from "viem";
-
 /**
- * @description Composes and hashes the typed data.
- *
- * @param message The typed message.
- * @param typeData The typed data parameters.
- * @returns The hashed typed data.
- */
-export function composeAndHashTypedData(
-  message: TxMessageTypedDataType,
-  typeData?: Partial<TypedDataParameter<MessageTypedDataType>>,
-) {
-  return hashTypedData(composeTypedData(message, typeData));
-}
-
-/**
- * @description Hashes the typed data.
+ * @description Hash the typed data.
  *
  * @param typedData The typed data to hash.
  * @returns The hashed typed data.
  */
-export function hashTypedData(typedData: TypedData) {
-  return viemHashTypedData(typedData as viemTypedData);
+export async function hashTypedData(typedData: TypedData): Promise<Hex> {
+  const { hashTypedData: viemHashTypedData } = await import("viem");
+
+  return viemHashTypedData<EIP712Types, "Message">(typedData);
 }
 
 /**
@@ -46,14 +32,19 @@ export function hashTypedData(typedData: TypedData) {
  * @retuns The composed typed data
  */
 export function composeTypedData(
-  message: TxMessageTypedDataType,
-  typeData?: Partial<TypedDataParameter<MessageTypedDataType>>,
+  message: EIP712Message,
+  domain: EIP712Domain,
+  typeData?: Partial<TypedDataParameter<TxMessageType>>,
 ): TypedData {
   const { type = [], extraTypes = {} } = typeData || {};
 
   return {
     types: {
-      Tx: [
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "verifyingContract", type: "address" },
+      ],
+      Message: [
         { name: "chainId", type: "string" },
         { name: "sequence", type: "uint32" },
         { name: "messages", type: "TxMessage[]" },
@@ -61,8 +52,8 @@ export function composeTypedData(
       TxMessage: type,
       ...extraTypes,
     },
-    primaryType: "Tx",
-    domain: {},
+    primaryType: "Message",
+    domain,
     message,
   };
 }
@@ -73,7 +64,7 @@ export function composeTypedData(
  * @param coins The coins to get the typed data for.
  * @returns The typed data properties.
  */
-export function getCoinsTypedData(coins?: Coins): TypedDataProperties[] {
+export function getCoinsTypedData(coins?: Coins): TypedDataProperty[] {
   if (!coins) return [];
   return Object.keys(coins).map((coin) => ({ name: coin, type: "string" }));
 }
@@ -84,7 +75,7 @@ export function getCoinsTypedData(coins?: Coins): TypedDataProperties[] {
  * @param members The members to get the typed data for.
  * @returns The typed data properties.
  */
-export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperties[] {
+export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperty[] {
   if (!members) return [];
   return Object.keys(members).map((member) => ({ name: member, type: "uint32" }));
 }
