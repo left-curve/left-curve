@@ -189,7 +189,7 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     ensure_sender_account_is_margin(&ctx)?;
 
     // Ensure the coins are whitelisted
-    for coin in coins.clone().into_iter() {
+    for coin in &coins {
         ensure!(
             WHITELISTED_DENOMS.has(ctx.storage, coin.denom.clone()),
             "Invalid denom. Only whitelisted denoms can be borrowed."
@@ -198,7 +198,7 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Update the sender's liabilities
     LIABILITIES.update(ctx.storage, ctx.sender, |debts| {
-        let mut debts = debts.clone().unwrap_or_default();
+        let mut debts = debts.unwrap_or_default();
         debts.insert_many(coins.clone())?;
         Ok(Some(debts))
     })?;
