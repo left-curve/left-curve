@@ -63,5 +63,10 @@ pure def hash(n: Node) : Term_t = {
         | Internal(n) => hashInternalNode(n)
     }
 }
-
+pure def getLeafOrEmpty(n: Node) : LeafNode ={
+    match n {
+        | Leaf(l) => l
+        | Internal(internal) => {key_hash: [], value_hash: []}
+    }
+}
 }
