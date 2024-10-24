@@ -69,7 +69,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             _ => bail!("a Safe account can only execute itself"),
         }
 
-        Ok(false)
+        Ok(true)
     })?;
 
     authenticate_tx(ctx, tx, None, Some(metadata), prove_ownership)?;
