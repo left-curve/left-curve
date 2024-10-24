@@ -12,7 +12,7 @@ module apply_fancy {
   type ApplyResult = { outcome: Outcome, tree: Tree }
 
   // for emulating recursion
-  type ApplyAtMemo = (Version, Version, BitArray) -> ApplyResult
+  type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
   pure val MAX_HEIGHT = 4
 
 
@@ -25,10 +25,12 @@ module apply_fancy {
         pure val memo = acc._1
         pure val tree = acc._2
 
-        pure val memo_key = (new_version, old_version, node_id.key_hash)
+        pure val batch_here = batch.filter(o => node_id.key_hash.isPrefixOf(o.key_hash))
+
+        pure val memo_key = (new_version, old_version, node_id.key_hash, batch_here)
         // TODO: it might make sense to also store the parts of the batch relevant to this subtree and then compare to
         // the one being applied in the recursive emulation
-        pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch)
+        pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch_here)
         (memo.put(memo_key, memo_value), memo_value.tree)
       })._1
     })
@@ -82,7 +84,7 @@ module apply_fancy {
     batch: Set[OperationOnKey]
   ): ApplyResult = {
     // Split the batch into two, one for left child, one for right.
-    pure val partitioned_batch = partition_batch(batch, q::debug("internal node bits", bits))
+    pure val partitioned_batch = q::debug("partitioned batch", partition_batch(batch, q::debug("internal node bits", bits)))
     pure val batch_for_left = partitioned_batch._1
     pure val batch_for_right = partitioned_batch._2
 
@@ -227,7 +229,7 @@ module apply_fancy {
         }
         // Child exists, and there are ops to apply.
         | Some(child) => {
-          memo.get((new_version, child.version, child_bits))
+          memo.get((new_version, child.version, child_bits, batch))
         }
       }
     }
@@ -329,9 +331,9 @@ module apply_fancy {
       .toList((a, b) => intCompare(a.length(), b.length()))
 
    bits_to_compute.foldr(Map(), (bits_now, memo) => {
-     pure val batch_now = batch.filter(kv => bits_now.prefix_of(kv.key_hash))
+     pure val batch_now = batch.filter(kv => bits_now.isPrefixOf(kv.key_hash))
 
-     pure val existing_leaf_now = if (existing_leaf != None and bits_now.prefix_of(existing_leaf.unwrap().key_hash)) {
+     pure val existing_leaf_now = if (existing_leaf != None and bits_now.isPrefixOf(existing_leaf.unwrap().key_hash)) {
        Some(existing_leaf.unwrap())
      } else {
        None
@@ -633,7 +635,7 @@ module apply_fancy {
   /// No-op is when the batch contains entirely of overwrites of values by the
   /// same value, or deletes of non-existing keys. The version number shouldn't
   /// be incremented and root hash shouldn't be changed.
-  run noOpsTestSkipped = {
+  run noOpsTest = {
     // FIXME: I think this is not working due to batch subdivision (batches are not empty when we get to leaf). Need to validate
 
     // start with the test case tree
@@ -690,10 +692,5 @@ module apply_fancy {
     } else {
       hack.get("value")
     }
-  }
-
-  pure def prefix_of(l1: List[a], l2: List[b]): bool = and {
-    l1.length() <= l2.length(),
-    l1.indices().forall(i => l1[i] == l2[i])
   }
 }
