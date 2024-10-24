@@ -139,7 +139,9 @@ fn cronjob_works() {
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
-    suite.configure(&mut accounts["larry"], updates, BTreeMap::new());
+    suite
+        .configure(&mut accounts["larry"], updates, BTreeMap::new())
+        .should_succeed();
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.

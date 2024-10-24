@@ -16,6 +16,7 @@ use {
 
 // ------------------------------- UploadOutcome -------------------------------
 
+#[must_use = "UploadOutcome must be checked for success or error with `should_succeed`, `should_fail` or similar methods."]
 pub struct UploadOutcome {
     code_hash: Hash256,
     outcome: TxOutcome,
@@ -44,6 +45,7 @@ impl ResultExt for UploadOutcome {
 
 // ---------------------------- InstantiateOutcome -----------------------------
 
+#[must_use = "InstantiateOutcome must be checked for success or error with `should_succeed`, `should_fail` or similar methods."]
 pub struct InstantiateOutcome {
     address: Addr,
     outcome: TxOutcome,
@@ -72,6 +74,7 @@ impl ResultExt for InstantiateOutcome {
 
 // ------------------------ UploadAndInstantiateOutcome ------------------------
 
+#[must_use = "UploadAndInstantiateOutcome must be checked for success or error with `should_succeed`, `should_fail` or similar methods."]
 pub struct UploadAndInstantiateOutcome {
     code_hash: Hash256,
     address: Addr,
