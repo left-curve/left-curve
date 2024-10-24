@@ -183,6 +183,15 @@ impl Coins {
         Ok(())
     }
 
+    /// Insert all coins from another `Coins`.
+    pub fn insert_many(&mut self, coins: Self) -> StdResult<()> {
+        for coin in coins.into_iter() {
+            self.insert(coin)?;
+        }
+
+        Ok(())
+    }
+
     /// Deduct a coin from the `Coins`.
     pub fn deduct(&mut self, coin: Coin) -> StdResult<()> {
         let Some(amount) = self.0.get_mut(&coin.denom) else {

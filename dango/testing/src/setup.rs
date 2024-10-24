@@ -100,6 +100,12 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_account_safe::query))
         .build();
 
+    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_receive(Box::new(dango_account_margin::receive))
+        .with_query(Box::new(dango_account_margin::query))
+        .build();
+
     let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
         .with_execute(Box::new(dango_amm::execute))
         .with_query(Box::new(dango_amm::query))
@@ -127,15 +133,23 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
+    let lending_pool = ContractBuilder::new(Box::new(dango_lending_pool::instantiate))
+        .with_receive(Box::new(dango_lending_pool::receive))
+        .with_execute(Box::new(dango_lending_pool::execute))
+        .with_query(Box::new(dango_lending_pool::query))
+        .build();
+
     let codes = Codes {
         account_factory,
         account_spot,
         account_safe,
+        account_margin,
         amm,
         bank,
         ibc_transfer,
         taxman,
         token_factory,
+        lending_pool,
     };
 
     setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes)

@@ -24,40 +24,41 @@ fn safe() {
 
     // Onboard 4 users. Three will be the members of the Safe. The other will
     // play the role of an attacker.
-    let [mut member1, member2, member3, attacker] = ["member1", "member2", "member3", "attacker"]
-        .into_iter()
-        .map(|username| {
-            let user = TestAccount::new_random(username).predict_address(
-                contracts.account_factory,
-                codes.account_spot.to_bytes().hash256(),
-                true,
-            );
+    let [mut member1, mut member2, member3, attacker] =
+        ["member1", "member2", "member3", "attacker"]
+            .into_iter()
+            .map(|username| {
+                let user = TestAccount::new_random(username).predict_address(
+                    contracts.account_factory,
+                    codes.account_spot.to_bytes().hash256(),
+                    true,
+                );
 
-            suite.execute(
-                &mut accounts.relayer,
-                contracts.ibc_transfer,
-                &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
-                    recipient: user.address(),
-                },
-                Coins::one("uusdc", 100_000_000).unwrap(),
-            );
+                suite.execute(
+                    &mut accounts.relayer,
+                    contracts.ibc_transfer,
+                    &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
+                        recipient: user.address(),
+                    },
+                    Coins::one("uusdc", 100_000_000).unwrap(),
+                );
 
-            suite.execute(
-                &mut Factory::new(contracts.account_factory),
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
-                },
-                Coins::new(),
-            );
+                suite.execute(
+                    &mut Factory::new(contracts.account_factory),
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: user.username.clone(),
+                        key: user.key,
+                        key_hash: user.key_hash,
+                    },
+                    Coins::new(),
+                );
 
-            user
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
+                user
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
     // ----------------------------- Safe creation -----------------------------
 
@@ -149,6 +150,36 @@ fn safe() {
         },
         Coins::new(),
     );
+
+    // Member 2 votes with member3 as username, should fail
+    suite
+        .execute(
+            &mut member2,
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 2,
+                voter: member3.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_fail();
+
+    // Non-member tries to vote from their spot account, should fail
+    suite
+        .execute(
+            &mut accounts.relayer,
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: member3.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_fail();
 
     // Member 2 votes YES.
     suite.execute(
