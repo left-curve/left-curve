@@ -153,7 +153,7 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
     let mut withdrawn = Coins::new();
     for coin in ctx.funds.into_iter() {
         // Ensure only LP tokens are sent
-        let mut iter = coin.denom.inner().into_iter();
+        let mut iter = coin.denom.inner().iter();
 
         ensure!(
             iter.next().map(|part| part.as_ref()) == Some(NAMESPACE),
@@ -168,8 +168,7 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
         // let denom_parts = iter.map(|part| part.clone()).collect::<Vec<_>>();
 
         // Add msg to send the underlying tokens to the recipient
-        let underlying_denom =
-            Denom::from_parts(iter.map(|part| part.clone()).collect::<Vec<_>>())?;
+        let underlying_denom = Denom::from_parts(iter.cloned().collect::<Vec<_>>())?;
         let amount = coin.amount;
         withdrawn.insert(Coin::new(underlying_denom, amount)?)?;
 
