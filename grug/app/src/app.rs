@@ -1,5 +1,7 @@
+use crate::AppCtx;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -62,7 +64,15 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash256> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+
+        let mut ctx = AppCtx::new(
+            block,
+            &chain_id,
+            GasTracker::new_limitless(),
+            buffer,
+            self.vm.clone(),
+        );
 
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
@@ -79,18 +89,18 @@ where
 
         // Save the config and genesis block, so that they can be queried when
         // executing genesis messages.
-        CHAIN_ID.save(&mut buffer, &chain_id)?;
-        CONFIG.save(&mut buffer, &genesis_state.config)?;
-        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+        CHAIN_ID.save(&mut ctx.storage, &chain_id)?;
+        CONFIG.save(&mut ctx.storage, &genesis_state.config)?;
+        LAST_FINALIZED_BLOCK.save(&mut ctx.storage, &block)?;
 
         // Save app configs.
         for (key, value) in genesis_state.app_configs {
-            APP_CONFIGS.save(&mut buffer, &key, &value)?;
+            APP_CONFIGS.save(&mut ctx.storage, &key, &value)?;
         }
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
+            schedule_cronjob(&mut ctx.storage, contract, block.timestamp, interval)?;
         }
 
         // Loop through genesis messages and execute each one.
@@ -98,23 +108,16 @@ where
         // It's expected that genesis messages should all successfully execute.
         // If anyone fails, it's considered fatal and genesis is aborted.
         // The developer should examine the error, fix it, and retry.
+
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
 
-            process_msg(
-                self.vm.clone(),
-                Box::new(buffer.clone()),
-                gas_tracker.clone(),
-                0,
-                block,
-                GENESIS_SENDER,
-                msg,
-            )?;
+            process_msg(ctx.clone_boxing_storage(), 0, GENESIS_SENDER, msg)?;
         }
 
         // Persist the state changes to disk
-        let (_, pending) = buffer.disassemble().disassemble();
+        let (_, pending) = ctx.storage.disassemble().disassemble();
         let (version, root_hash) = self.db.flush_and_commit(pending)?;
 
         // Sanity check: DB version should be 0
@@ -139,13 +142,21 @@ where
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+
+        let mut ctx = AppCtx::new(
+            block,
+            CHAIN_ID.load(&buffer)?,
+            GasTracker::new_limitless(),
+            buffer,
+            self.vm.clone(),
+        );
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        let cfg = CONFIG.load(&buffer)?;
-        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+        let cfg = CONFIG.load(&ctx.storage)?;
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&ctx.storage)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -167,7 +178,7 @@ where
                 .idx
                 .status
                 .prefix_keys(
-                    &buffer,
+                    &ctx.storage,
                     None,
                     Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_nanos(since),
@@ -177,7 +188,7 @@ where
                 .map(|res| res.map(|(_status, hash)| hash))
                 .collect::<StdResult<Vec<_>>>()?
             {
-                CODES.remove(&mut buffer, hash)?;
+                CODES.remove(&mut ctx.storage, hash)?;
             }
         }
 
@@ -185,7 +196,7 @@ where
         // scheduled time is earlier or equal to the current block time.
         let jobs = NEXT_CRONJOBS
             .prefix_range(
-                &buffer,
+                &ctx.storage,
                 None,
                 Some(PrefixBound::Inclusive(block.timestamp)),
                 Order::Ascending,
@@ -194,7 +205,7 @@ where
 
         // Delete these cronjobs. They will be scheduled a new time.
         NEXT_CRONJOBS.prefix_clear(
-            &mut buffer,
+            &mut ctx.storage,
             None,
             Some(PrefixBound::Inclusive(block.timestamp)),
         );
@@ -209,22 +220,13 @@ where
                 "Attempting to perform cronjob"
             );
 
-            // Cronjobs can use unlimited gas
-            let gas_tracker = GasTracker::new_limitless();
+            let result = do_cron_execute(ctx.clone_boxing_storage(), contract);
 
-            let result = do_cron_execute(
-                self.vm.clone(),
-                Box::new(buffer.clone()),
-                gas_tracker.clone(),
-                block,
-                contract,
-            );
-
-            cron_outcomes.push(new_outcome(gas_tracker, result));
+            cron_outcomes.push(new_outcome(ctx.gas_tracker.clone(), result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
-                &mut buffer,
+                &mut ctx.storage,
                 contract,
                 block.timestamp,
                 cfg.cronjobs[&contract],
@@ -237,9 +239,7 @@ where
             tracing::debug!(idx = _idx, "Processing transaction");
 
             tx_outcomes.push(process_tx(
-                self.vm.clone(),
-                buffer.clone(),
-                block,
+                ctx.clone_boxing_storage(),
                 tx,
                 AuthMode::Finalize,
             ));
@@ -250,11 +250,11 @@ where
         // Note that we do this _after_ the transactions have been executed.
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
-        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+        LAST_FINALIZED_BLOCK.save(&mut ctx.storage, &block)?;
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
-        let (_, batch) = buffer.disassemble().disassemble();
+        let (_, batch) = ctx.storage.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
 
         // Sanity checks, same as in `do_init_chain`:
@@ -294,43 +294,37 @@ where
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
-        let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
-        let gas_tracker = GasTracker::new_limited(tx.gas_limit);
         let mut events = vec![];
 
-        match do_withhold_fee(
-            self.vm.clone(),
-            Box::new(buffer.clone()),
+        let mut ctx = AppCtx::new(
+            LAST_FINALIZED_BLOCK.load(&buffer)?,
+            CHAIN_ID.load(&buffer)?,
             GasTracker::new_limitless(),
-            block,
-            &tx,
-            AuthMode::Check,
-        ) {
+            Box::new(buffer) as Box<dyn Storage>,
+            self.vm.clone(),
+        );
+
+        match do_withhold_fee(ctx.clone(), &tx, AuthMode::Check) {
             Ok(new_events) => {
                 events.extend(new_events);
             },
             Err(err) => {
-                return Ok(new_outcome(gas_tracker, Err(err)));
+                return Ok(new_outcome(ctx.gas_tracker, Err(err)));
             },
         }
 
-        match do_authenticate(
-            self.vm.clone(),
-            Box::new(buffer),
-            gas_tracker.clone(),
-            block,
-            &tx,
-            AuthMode::Check,
-        ) {
+        ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
+
+        match do_authenticate(ctx.clone(), &tx, AuthMode::Check) {
             Ok((new_events, _)) => {
                 events.extend(new_events);
             },
             Err(err) => {
-                return Ok(new_outcome(gas_tracker, Err(err)));
+                return Ok(new_outcome(ctx.gas_tracker, Err(err)));
             },
         }
 
-        Ok(new_outcome(gas_tracker, Ok(events)))
+        Ok(new_outcome(ctx.gas_tracker, Ok(events)))
     }
 
     // Returns (last_block_height, last_block_app_hash).
@@ -371,20 +365,16 @@ where
 
         // Use the state storage at the given version to perform the query.
         let storage = self.db.state_storage(version)?;
-        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
-        // The gas limit for serving this query.
-        // This is set as an off-chain, per-node parameter.
-        let gas_tracker = GasTracker::new_limited(self.query_gas_limit);
-
-        process_query(
+        let ctx = AppCtx::new(
+            LAST_FINALIZED_BLOCK.load(&storage)?,
+            CHAIN_ID.load(&storage)?,
+            GasTracker::new_limited(self.query_gas_limit),
+            Box::new(storage.clone()) as Box<dyn Storage>,
             self.vm.clone(),
-            Box::new(storage),
-            gas_tracker,
-            0,
-            block,
-            req,
-        )
+        );
+
+        process_query(ctx, 0, req)
     }
 
     /// Performs a raw query of the app's underlying key-value store.
@@ -427,6 +417,14 @@ where
 
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
+        let ctx = AppCtx::new(
+            block,
+            CHAIN_ID.load(&buffer)?,
+            GasTracker::new_limitless(),
+            Box::new(buffer) as Box<dyn Storage>,
+            self.vm.clone(),
+        );
+
         // We can't "prove" a gas simulation
         if prove {
             return Err(AppError::ProofNotSupported);
@@ -450,13 +448,7 @@ where
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        Ok(process_tx(
-            self.vm.clone(),
-            buffer,
-            block,
-            tx,
-            AuthMode::Simulate,
-        ))
+        Ok(process_tx(ctx, tx, AuthMode::Simulate))
     }
 }
 
@@ -523,9 +515,8 @@ where
     }
 }
 
-fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<VM>(mut ctx: AppCtx<VM>, tx: Tx, mode: AuthMode) -> TxOutcome
 where
-    S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -533,12 +524,11 @@ where
     //
     // The 1st layer (`buffer1`) is for fee handling; the 2nd layer (`buffer2`)
     // is for tx authentication and processing of the messages.
-    let buffer1 = Shared::new(Buffer::new(storage, None));
+    let buffer1 = Shared::new(Buffer::new(ctx.storage.clone(), None));
     let buffer2 = Shared::new(Buffer::new(buffer1.clone(), None));
 
     // Create the gas tracker, with the limit being the gas limit requested by
     // the transaction.
-    let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -551,21 +541,20 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-    match do_withhold_fee(
-        vm.clone(),
-        Box::new(buffer1.clone()),
-        GasTracker::new_limitless(),
-        block,
-        &tx,
-        mode,
-    ) {
+    match do_withhold_fee(ctx.clone_with_storage(Box::new(buffer1.clone())), &tx, mode) {
         Ok(new_events) => {
             events.extend(new_events);
         },
         Err(err) => {
-            return new_tx_outcome(gas_tracker.clone(), events.clone(), Err(err));
+            return new_tx_outcome(
+                GasTracker::new_limited(tx.gas_limit),
+                events.clone(),
+                Err(err),
+            );
         },
     }
+
+    ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // Call the sender account's `authenticate` function.
     //
@@ -580,33 +569,24 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    let request_backrun = match do_authenticate(
-        vm.clone(),
-        Box::new(buffer2.clone()),
-        gas_tracker.clone(),
-        block,
-        &tx,
-        mode,
-    ) {
-        Ok((new_events, request_backrun)) => {
-            buffer2.write_access().commit();
-            events.extend(new_events);
-            request_backrun
-        },
-        Err(err) => {
-            drop(buffer2);
-            return process_finalize_fee(
-                vm,
-                buffer1,
-                gas_tracker,
-                block,
-                tx,
-                mode,
-                events,
-                Err(err),
-            );
-        },
-    };
+    let request_backrun =
+        match do_authenticate(ctx.clone_with_storage(Box::new(buffer2.clone())), &tx, mode) {
+            Ok((new_events, request_backrun)) => {
+                buffer2.write_access().commit();
+                events.extend(new_events);
+                request_backrun
+            },
+            Err(err) => {
+                drop(buffer2);
+                return process_finalize_fee(
+                    ctx.clone_with_buffer_storage(buffer1),
+                    tx,
+                    mode,
+                    events,
+                    Err(err),
+                );
+            },
+        };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
@@ -617,10 +597,7 @@ where
     // If anything fails, discard state changes in `buffer2` (but keeping those
     // in `buffer1`), discard the events, and jump to `finalize_fee`.
     match process_msgs_then_backrun(
-        vm.clone(),
-        buffer2.clone(),
-        gas_tracker.clone(),
-        block,
+        ctx.clone_with_storage(Box::new(buffer2.clone())),
         &tx,
         mode,
         request_backrun,
@@ -632,10 +609,7 @@ where
         Err(err) => {
             drop(buffer2);
             return process_finalize_fee(
-                vm,
-                buffer1,
-                gas_tracker,
-                block,
+                ctx.clone_with_buffer_storage(buffer1),
                 tx,
                 mode,
                 events,
@@ -655,21 +629,23 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(vm, buffer1, gas_tracker, block, tx, mode, events, Ok(()))
+    process_finalize_fee(
+        ctx.clone_with_buffer_storage(buffer1),
+        tx,
+        mode,
+        events,
+        Ok(()),
+    )
 }
 
 #[inline]
-fn process_msgs_then_backrun<S, VM>(
-    vm: VM,
-    buffer: Shared<Buffer<S>>,
-    gas_tracker: GasTracker,
-    block: BlockInfo,
+fn process_msgs_then_backrun<VM>(
+    ctx: AppCtx<VM>,
     tx: &Tx,
     mode: AuthMode,
     request_backrun: bool,
 ) -> AppResult<Vec<Event>>
 where
-    S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
@@ -679,36 +655,18 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        msg_events.extend(process_msg(
-            vm.clone(),
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
-            0,
-            block,
-            tx.sender,
-            msg.clone(),
-        )?);
+        msg_events.extend(process_msg(ctx.clone(), 0, tx.sender, msg.clone())?);
     }
 
     if request_backrun {
-        msg_events.extend(do_backrun(
-            vm.clone(),
-            Box::new(buffer),
-            gas_tracker,
-            block,
-            tx,
-            mode,
-        )?);
+        msg_events.extend(do_backrun(ctx, tx, mode)?);
     }
 
     Ok(msg_events)
 }
 
 fn process_finalize_fee<S, VM>(
-    vm: VM,
-    buffer: Shared<Buffer<S>>,
-    gas_tracker: GasTracker,
-    block: BlockInfo,
+    mut ctx: AppCtx<VM, Shared<Buffer<S>>>,
     tx: Tx,
     mode: AuthMode,
     mut events: Vec<Event>,
@@ -719,36 +677,30 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
+    let outcome_so_far = new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), result.clone());
 
-    match do_finalize_fee(
-        vm,
-        Box::new(buffer.clone()),
-        GasTracker::new_limitless(),
-        block,
-        &tx,
-        &outcome_so_far,
-        mode,
-    ) {
+    // backup gas tracker
+    let used_gt = ctx.gas_tracker.clone();
+
+    ctx.gas_tracker = GasTracker::new_limitless();
+
+    match do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode) {
         Ok(new_events) => {
             events.extend(new_events);
-            buffer.disassemble().consume();
-            new_tx_outcome(gas_tracker, events, result)
+            ctx.storage.disassemble().consume();
+            new_tx_outcome(used_gt, events, result)
         },
         Err(err) => {
             events.clear();
-            drop(buffer);
-            new_tx_outcome(gas_tracker, Vec::new(), Err(err))
+            drop(ctx.storage);
+            new_tx_outcome(used_gt, Vec::new(), Err(err))
         },
     }
 }
 
 pub fn process_msg<VM>(
-    vm: VM,
-    mut storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
+    ctx: AppCtx<VM>,
     msg_depth: usize,
-    block: BlockInfo,
     sender: Addr,
     msg: Message,
 ) -> AppResult<Vec<Event>>
@@ -757,36 +709,18 @@ where
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure(msg) => do_configure(&mut storage, block, sender, msg),
-        Message::Transfer(msg) => do_transfer(
-            vm,
-            storage,
-            gas_tracker,
-            msg_depth,
-            block,
-            sender,
-            msg,
-            true,
-        ),
-        Message::Upload(msg) => do_upload(&mut storage, gas_tracker, block, sender, msg),
-        Message::Instantiate(msg) => {
-            do_instantiate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
-        },
-        Message::Execute(msg) => {
-            do_execute(vm, storage, gas_tracker, msg_depth, block, sender, msg)
-        },
-        Message::Migrate(msg) => {
-            do_migrate(vm, storage, gas_tracker, msg_depth, block, sender, msg)
-        },
+        Message::Configure(msg) => do_configure(ctx.downcast(), sender, msg),
+        Message::Transfer(msg) => do_transfer(ctx, msg_depth, sender, msg, true),
+        Message::Upload(msg) => do_upload(ctx.downcast(), sender, msg),
+        Message::Instantiate(msg) => do_instantiate(ctx, msg_depth, sender, msg),
+        Message::Execute(msg) => do_execute(ctx, msg_depth, sender, msg),
+        Message::Migrate(msg) => do_migrate(ctx, msg_depth, sender, msg),
     }
 }
 
 pub fn process_query<VM>(
-    vm: VM,
-    storage: Box<dyn Storage>,
-    gas_tracker: GasTracker,
+    ctx: AppCtx<VM>,
     query_depth: usize,
-    block: BlockInfo,
     req: Query,
 ) -> AppResult<QueryResponse>
 where
@@ -794,75 +728,66 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Config(req) => {
-            let res = query_config(&storage, gas_tracker, req)?;
+        Query::Config(..) => {
+            let res = query_config(ctx.downcast())?;
             Ok(QueryResponse::Config(res))
         },
         Query::AppConfig(req) => {
-            let res = query_app_config(&storage, gas_tracker, req)?;
+            let res = query_app_config(ctx.downcast(), req)?;
             Ok(QueryResponse::AppConfig(res))
         },
         Query::AppConfigs(req) => {
-            let res = query_app_configs(&storage, gas_tracker, req)?;
+            let res = query_app_configs(ctx.downcast(), req)?;
             Ok(QueryResponse::AppConfigs(res))
         },
         Query::Balance(req) => {
-            let res = query_balance(vm, storage, gas_tracker, query_depth, block, req)?;
+            let res = query_balance(ctx, query_depth, req)?;
             Ok(QueryResponse::Balance(res))
         },
         Query::Balances(req) => {
-            let res = query_balances(vm, storage, gas_tracker, query_depth, block, req)?;
+            let res = query_balances(ctx, query_depth, req)?;
             Ok(QueryResponse::Balances(res))
         },
         Query::Supply(req) => {
-            let res = query_supply(vm, storage, gas_tracker, query_depth, block, req)?;
+            let res = query_supply(ctx, query_depth, req)?;
             Ok(QueryResponse::Supply(res))
         },
         Query::Supplies(req) => {
-            let res = query_supplies(vm, storage, gas_tracker, query_depth, block, req)?;
+            let res = query_supplies(ctx, query_depth, req)?;
             Ok(QueryResponse::Supplies(res))
         },
         Query::Code(req) => {
-            let res = query_code(&storage, gas_tracker, req)?;
+            let res = query_code(ctx.downcast(), req)?;
             Ok(QueryResponse::Code(res))
         },
         Query::Codes(req) => {
-            let res = query_codes(&storage, gas_tracker, req)?;
+            let res = query_codes(ctx.downcast(), req)?;
             Ok(QueryResponse::Codes(res))
         },
         Query::Contract(req) => {
-            let res = query_contract(&storage, gas_tracker, req)?;
+            let res = query_contract(ctx.downcast(), req)?;
             Ok(QueryResponse::Contract(res))
         },
         Query::Contracts(req) => {
-            let res = query_contracts(&storage, gas_tracker, req)?;
+            let res = query_contracts(ctx.downcast(), req)?;
             Ok(QueryResponse::Contracts(res))
         },
         Query::WasmRaw(req) => {
-            let res = query_wasm_raw(storage, gas_tracker, req)?;
+            let res = query_wasm_raw(ctx.downcast(), req)?;
             Ok(QueryResponse::WasmRaw(res))
         },
         Query::WasmScan(req) => {
-            let res = query_wasm_scan(storage, gas_tracker, req)?;
+            let res = query_wasm_scan(ctx.downcast(), req)?;
             Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
-            let res = query_wasm_smart(vm, storage, gas_tracker, query_depth, block, req)?;
+            let res = query_wasm_smart(ctx, query_depth, req)?;
             Ok(QueryResponse::WasmSmart(res))
         },
         Query::Multi(reqs) => {
             let res = reqs
                 .into_iter()
-                .map(|req| {
-                    process_query(
-                        vm.clone(),
-                        storage.clone(),
-                        gas_tracker.clone(),
-                        query_depth,
-                        block,
-                        req,
-                    )
-                })
+                .map(|req| process_query(ctx.clone(), query_depth, req))
                 .collect::<AppResult<Vec<_>>>()?;
             Ok(QueryResponse::Multi(res))
         },
