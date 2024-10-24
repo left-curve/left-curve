@@ -6,8 +6,7 @@ module invariants {
 import tree.* from "./tree"
 import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
-
-val keylength = 4
+import utils.* from "./utils"
 val maxVersion = 10
 
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
@@ -19,21 +18,6 @@ pure def everyNodesParentIsInTheTree(t: Tree): bool =
   paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
 
 def everyNodesParentIsInTheTreeInv = everyNodesParentIsInTheTree(tree)
-
-pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
-  val indList = range(1, keylength + 1)
-  indList.foldl([], (s, x) => 
-    if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
-      b.key_hash.slice(0, x) 
-    else s )
-
-
-pure def allLeafs(t: Tree) : Set[LeafNode] =
-    val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
-    allNodes.fold(Set(), (s,x) => match x {
-                            | Internal(_) => s
-                            | Leaf(x) => s.union(Set(x))
-    })
 
 pure def isInternal(n: Node) : bool =
     match n {

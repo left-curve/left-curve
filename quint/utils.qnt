@@ -28,4 +28,10 @@ module utils {
     indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
                                     b.key_hash.slice(0, x) 
                                 else s )
+  
+  pure def prefix_of(l1: List[a], l2: List[b]): bool = and {
+    l1.length() <= l2.length(),
+    l1.indices().forall(i => l1[i] == l2[i])
+  }
+  
 }

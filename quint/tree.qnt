@@ -7,8 +7,7 @@ module tree {
   export node.*
   import hashes.* from "./hashes"
   export hashes.*
-  import utils.* from"./utils"
-  export utils.*
+  import utils.* from "./utils"
   
   pure val MAX_HASH_LENGTH = 4
 
@@ -77,6 +76,12 @@ module tree {
     pure val updated_nodes = keys_of_non_orphanes.mapBy(x => tree.nodes.get(x))
     { nodes: updated_nodes, orphans: prunned_orphans }
   }
+  pure def allLeafs(t: Tree) : Set[LeafNode] =
+    val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
+    allNodes.fold(Set(), (s,x) => match x {
+                            | Internal(_) => s
+                            | Leaf(x) => s.union(Set(x))
+    })
   pure def getKeyWithLongestOverlappingPrefix(tree: Tree, keyValue: KeyWithValue) : NodeId = {
     // get all prefix combination from keyValue.key_hash
     // e.g. 
@@ -122,25 +127,7 @@ module tree {
           else 
             longestOverlappingPrefix
         )
-//      original tree
-//        root
-//        / \
-//       0   1
-//          
-//    tree after inserts
-//        root
-//        / \
-//       0   1
-//          / \
-//      null   11
-//            /  \
-//         null  111
-//               /  \
-//            1110  1111
-// >>> newLeaf1
-// { key_hash: [1, 1, 1, 1], value_hash: [5] }
-// >>> newLeaf2
-// { key_hash: [1, 1, 1, 0], value_hash: [42] }
+
   pure def createInternalOutOfLeafs(internalNodePrefix: List[int], existingLeaf: LeafNode, newLeaf: LeafNode) : InternalNode ={
     //getting first bit that does not overlap between new leaf and existing leaf
     // this dictates wether which leaf is going to be which
@@ -223,22 +210,13 @@ module tree {
       {version:0, key_hash: l.key_hash.slice(0,parent.key_hash.length()+1)}
   
   pure def getNodesOnPath(t: Tree, new_key_hash: Bytes_t) : Set[NodeId] = 
-    // allLeafs.filter(leaf => listPrefixCombinations(new_key_hash).contains(leaf.key_hash))
     val nodesOnPath = t.nodes.keys().filter( key => listPrefixCombinations(new_key_hash).contains(key.key_hash))
     val nodesToReturn = 
       if(nodesOnPath.size() == 1 and nodesOnPath == Set({ key_hash: ROOT_BITS, version: 0 }))
       val leaf = getLeafOrEmpty(t.nodes.get({ version:0,key_hash:[] }))
       val longestCommonPrefixBetweenKeys = commonPrefixBetweenKeys(leaf.key_hash, new_key_hash)
       val ids = 0.to(longestCommonPrefixBetweenKeys.length()).map(i => longestCommonPrefixBetweenKeys.slice(0,i))
-      // val a = 1.to(longestCommonPrefixBetweenKeys.length()).map(0 => longestCommonPrefixBetweenKeys.slice(0,i))
       ids.fold(Set(), (nodeIds, id) => nodeIds.union(Set({version:0, key_hash: id})))
-      // val adequateLeaf = t.allLeafs().filter(leaf => listPrefixCombinations(new_key_hash).intersect(listPrefixCombinations(leaf.key_hash)).size() > 0)
-      // listPrefixCombinations(adequateLeaf.getOnlyElement().key_hash).fold(Set(),(nodeIds, prefixCombo) => 
-      //                     val combinationsFromNewLeaf = listPrefixCombinations(new_key_hash)
-      //                     if(combinationsFromNewLeaf.contains(prefixCombo))
-      //                       nodeIds.union(Set({version:0, key_hash: prefixCombo}))
-      //                     else nodeIds
-      //     )
       else
         nodesOnPath
       
@@ -264,7 +242,6 @@ module tree {
   }
 
   pure def recomputeHashesOnPath(t: Tree, nodeIdsOnPath: Set[NodeId]) : NodeId -> Node = {
-    //.exclude(Set(longestPrefixNode(nodeIdsOnPath)))
     val nodesToUpdate: List[NodeId]= nodeIdsOnPath.toList(nodeCompare)
     nodesToUpdate.foldl(t.nodes, (nodes, nodeId) => 
       recomputeHashOnNode(nodes, nodeId))
@@ -284,13 +261,7 @@ module tree {
     val nodes = t.nodes.put({ version: 0, key_hash: ROOT_BITS }, Internal(internal) )
                        .put({ version: 0, key_hash: List(leafPrefix) }, Leaf(leaf))
     { ...t, nodes: nodes }
-  pure def allLeafs(t: Tree) : Set[LeafNode] =
-    val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
-    allNodes.fold(Set(), (s,x) => match x {
-                            | Internal(_) => s
-                            | Leaf(x) => s.union(Set(x))
-    })
-  
+
   pure def leafHasNoOverlap(t: Tree, newLeaf: LeafNode) : bool = 
     allLeafs(t).filter(leaf=> 
                     leaf.key_hash.head() == newLeaf.key_hash.head()).size() == 0
@@ -340,11 +311,6 @@ module tree {
           }
         }
         tree
-        //   val existingInternalLeaf = Internal(t.nodes.get({ version: 0, }))
-        // // }else{
-          
-        // // }
-        
       }else{
         val nodeIdsOnPath: Set[NodeId] = getNodesOnPath(t, newLeaf.key_hash)
         val nodeId: NodeId = longestPrefixNode(nodeIdsOnPath)
@@ -356,7 +322,6 @@ module tree {
             | Leaf(leafToChange) => newInternalNodes(tree, nodeIdAfterReconstruction, leafToChange, newLeaf)
             | Internal(internalToGrowLeaf) => addLeafUnderInternal(tree,internalToGrowLeaf, nodeIdAfterReconstruction, newLeaf)
         }
-        // TODO: recompute parent hashes; use nodeIdOnPath to iterate in descending length()
         val newNodesWithRecomputedHashes = recomputeHashesOnPath({...tree, nodes: updatedNodes}, nodeIdsOnPath)
           
         {...tree, nodes: newNodesWithRecomputedHashes}
@@ -378,29 +343,8 @@ module tree {
 
   action insertAction(l) =
       tree' = insert(tree,l)
-  
-  run e1 = {
-    val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]})
-    // TODO non-deterministic initialization
-    init
-    .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
-  }
-  run e12 = {
-    val leafs = List({key_hash: [1, 0, 1, 1], value_hash: [33]})
-    e1.then(insertAction(leafs[0]))
-    .expect(true)
-  }
-  run e123 = {
-    val leafs = List({key_hash: [1, 0, 0, 1], value_hash: [83]})
-    e1.then(e12).then(insertAction(leafs[0]))
-    .expect(true)
-  }
-  run e1234 ={
-    val leafs = List({key_hash: [0, 0, 1, 1], value_hash: [102]})
-    e1.then(insertAction(leafs[0]))
-    .expect(true)
-  }
+
+
   run Example = {
     val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 0, 0, 1], value_hash: [42]})
     // TODO non-deterministic initialization
@@ -426,17 +370,14 @@ module tree {
     .then(leafs.length().reps(i => insertAction(leafs[i])))
     .expect(true) //some invariant
   }
-// sha256("r") = 0100...
-// sha256("m") = 0110...
-// sha256("L") = 0111...
-// sha256("a") = 1100...
+
   run ExampleSC2 = {
     val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [1, 1, 1, 0], value_hash: [42]})
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
     .expect(true) //some invariant
   }
-  run testRustTree = {
+  run ExampleRustTree = {
     val leafs = List(
       {key_hash: [0, 1, 0, 0], value_hash: [5]}, 
       {key_hash: [0, 1, 1, 0], value_hash: [33]},
@@ -447,5 +388,38 @@ module tree {
     .then(leafs.length().reps(i => insertAction(leafs[i])))
     .expect(true) //some invariant
   }
+  run ExampleRun = {
+    val leafs = List(
+      { key_hash: [1, 1, 1, 1], value_hash: [5] }, 
+      { key_hash: [1, 1, 1, 0], value_hash: [42] })
 
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+//      original tree
+//        root
+//        / \
+//       0   1
+//          
+//    tree after inserts
+//        root
+//        / \
+//       0   1
+//          / \
+//      null   11
+//            /  \
+//         null  111
+//               /  \
+//            1110  1111
+run ExampleRun2 = {
+    val leafs = List(
+      { key_hash: [0, 0, 0, 0], value_hash: [33] },
+      { key_hash: [1, 1, 1, 1], value_hash: [5] }, 
+      { key_hash: [1, 1, 1, 0], value_hash: [42] })
+
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
 }
