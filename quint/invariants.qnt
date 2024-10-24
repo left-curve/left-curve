@@ -2,24 +2,30 @@
 
 module invariants {
 
-import tree.* from "./tree" 
+import tree.* from "./tree"
+import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
 
 val keylength = 4
+val maxVersion = 10
 
 /// Make sure the tree encoded in the map forms a tree (everyone has a parent)
 /// E.g., if a node has path [1,0,0,1] then there must be a node with path [1,0,0]
-// TODO: I think this is wrong. The point is the first node that is added doesn't have any
-// inner node parent. Inner nodes are generated from common prefixes
+// TODO: figure out versions. I gett we need a parent with a version >= my version
 pure def everyNodesParentIsInTheTree(t: Tree): bool =
-    val paths = t.nodes.keys().map(nId => nId.key_hash)
-    paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
+  val nodePrefixes = t.nodes.keys()
+  val paths = nodePrefixes.map(p => p.key_hash)
+  paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1))) 
+
+def everyNodesParentIsInTheTreeInv = everyNodesParentIsInTheTree(tree)
 
 pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
-    val indList = range(1, keylength + 1)
-    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
-                                    b.key_hash.slice(0, x) 
-                                else s )
+  val indList = range(1, keylength + 1)
+  indList.foldl([], (s, x) => 
+    if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
+      b.key_hash.slice(0, x) 
+    else s )
+
 
 pure def listCommonPrefix(a: BitArray, b: BitArray) : BitArray =
     []
@@ -83,6 +89,24 @@ pure def allLeafs(t: Tree) : Set[LeafNode] =
                             | Leaf(x) => s.union(Set(x))
     })
 
+pure def isInternal(n: Node) : bool =
+    match n {
+        | Internal(_) => true
+        | Leaf(_) => false
+    }
+
+pure def isLeaf(n) = (not(isInternal(n)))
+
+pure def allInternalwithPrefix(t: Tree) : NodeId -> Node =
+    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+    leafNodeIds.mapBy(p => t.nodes.get(p))
+
+pure def allLeafswithPrefix(t: Tree) : NodeId -> Node =
+    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    internalNodeIds.mapBy(p => t.nodes.get(p))
+
+
+
 pure def existsNode(t: Tree, b: Bytes_t): bool =
     t.nodes.keys().filter(nId => nId.key_hash == b).size() > 0
 
@@ -93,9 +117,54 @@ pure def nodeAtCommonPrefix(t: Tree) : bool =
     ))
 
 
-// TODO NodeId -> Node is a bijection
+pure def rightChild(t: Tree, nId: NodeId): NodeId =
+    // TODO: versions
+    {version: 0, key_hash: nId.key_hash.append(1)}
+
+pure def leftChild(t: Tree, nId: NodeId): NodeId =
+    // TODO: versions
+    {version: 0, key_hash: nId.key_hash.append(0)}   
 
 
+
+pure def properlyHashed(t: Tree, version: int): bool = 
+    t.nodes.keys().forall(nID => match t.nodes.get(nID) {
+                                | Leaf(_) => true
+                                | Internal(n) => and {
+                                    match n.left_child {
+                                        | None => true
+                                        | Some(c) => c.hash == hash(t.nodes.get(leftChild(t, nID)))
+                                    },
+                                    match n.right_child {
+                                        | None => true
+                                        | Some(c) => c.hash == hash(t.nodes.get(rightChild(t, nID)))
+                                    }
+                                }
+    })    
+
+/// All hashes stored in the tree are actually the hashes of the subtree
+def hashInv = 
+    0.to(maxVersion).forall(i => properlyHashed(tree, i))
+
+// TODO NodeId -> Node is a bijection: perhaps not with versions
+
+pure def isPrefix(short: BitArray, long: BitArray): bool =
+    if (short.length() > long.length())
+        false
+    else
+        short == long.slice(0, short.length() - 1)
+
+// TODO: there is no internal node that has a leaf node as its prefix
+pure def noInternalChild(t: Tree): bool =
+    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
+    val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
+    not(leafPrefixes.exists(lp => 
+            internalPrefixes.exists(ip
+                => isPrefix(lp, ip))))
+
+def noInternalChildInv = noInternalChild(tree)
 
 /// For the same path there are not multiple version stored within the nodes
 pure def oneNodePerPath(t: Tree): bool =
@@ -112,11 +181,15 @@ pure def allInternalNodesHaveChildren(t: Tree): bool =
         | Leaf(_) => true
     })
 
+def allInternalNodesHaveChildrenInv = allInternalNodesHaveChildren(tree)
+
 pure def getNodeFromPath(t: Tree, b: BitArray): Node =
     val key = t.nodes.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
     t.nodes.get(key)
 
+
 /// If a node has one child, the child is an internal node
+// TODO: I think Leftcurve doesn't have this property
 pure def density(t: Tree): bool =
     t.nodes.keys().forall(nId => match t.nodes.get(nId) {
         | Internal(n) => 
