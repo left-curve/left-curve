@@ -418,10 +418,12 @@ impl<'a> MerkleTree<'a> {
 
     /// Generate Merkle proof for the a key at the given version.
     ///
-    /// If the key exists in the tree, a membership proof is returned;
-    /// otherwise, a non-membership proof is returned.
+    /// Notes:
     ///
-    /// If version is isn't specified, use the latest version.
+    /// - If the key exists in the tree, a membership proof is returned;
+    ///   otherwise, a non-membership proof is returned.
+    /// - If version is isn't specified, use the latest version.
+    /// - If the tree is empty, a "data not found" error is returned.
     ///
     /// Note that this method only looks at the key, not the value. Therefore
     /// it may be possible that the caller thinks key A exists with value B,
@@ -732,7 +734,12 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage, hex_literal::hex, test_case::test_case};
+    use {
+        super::*,
+        grug_types::{MockStorage, ResultExt, StdError},
+        hex_literal::hex,
+        test_case::test_case,
+    };
 
     const TREE: MerkleTree = MerkleTree::new_default();
 
@@ -982,6 +989,31 @@ mod tests {
             TREE.prove(&storage, key.as_bytes().hash256(), 0).unwrap(),
             proof
         );
+    }
+
+    /// An edge case found in the Zellic audit.
+    ///
+    /// Attempting to generate proofs in an empty tree would fail with a "data
+    /// not found" error as the root node doesn't exist.
+    ///
+    /// We decide to simply add documentation and not fix this, as fixing it
+    /// involves changing the function signature, which impacts many downstream
+    /// packages. It's too big of a change for a minor edge case we consider it
+    /// not worth it.
+    ///
+    /// In practice, the tree is never empty, as we always need to store things
+    /// like the chain ID and config.
+    #[test]
+    fn proving_in_empty_tree() {
+        let storage = MockStorage::new();
+
+        // Attempting to generate proof without applying any batch.
+        // The tree is empty at this point.
+        // We check that the expected error is emitted.
+        TREE.prove(&storage, b"foo".hash256(), 0)
+            .should_fail_with_error(StdError::data_not_found::<Node>(
+                TREE.nodes.path((0, &ROOT_BITS)).as_path().storage_key(),
+            ));
     }
 
     #[test]
