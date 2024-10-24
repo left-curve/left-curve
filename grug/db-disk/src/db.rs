@@ -8,8 +8,8 @@ use {
         NonExistenceProof,
     },
     rocksdb::{
-        BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
-        WriteBatch,
+        BoundColumnFamily, DBWithThreadMode, Direction, IteratorMode, MultiThreaded, Options,
+        ReadOptions, WriteBatch,
     },
     std::{
         path::Path,
@@ -245,11 +245,12 @@ impl Db for DiskDb {
                 let cf = cf_preimages(&self.inner.db);
                 let key_hash = key.hash256();
 
-                let opts = new_read_options(Some(version), None, Some(&key_hash));
+                let opts = new_read_options(Some(version), None, None);
+                let mode = IteratorMode::From(&key_hash, Direction::Reverse);
                 let left = self
                     .inner
                     .db
-                    .iterator_cf_opt(&cf, opts, IteratorMode::End)
+                    .iterator_cf_opt(&cf, opts, mode)
                     .next()
                     .map(|res| {
                         let (_, key) = res?;
@@ -258,11 +259,12 @@ impl Db for DiskDb {
                     })
                     .transpose()?;
 
-                let opts = new_read_options(Some(version), Some(&key_hash), None);
+                let opts = new_read_options(Some(version), None, None);
+                let mode = IteratorMode::From(&key_hash, Direction::Forward);
                 let right = self
                     .inner
                     .db
-                    .iterator_cf_opt(&cf, opts, IteratorMode::Start)
+                    .iterator_cf_opt(&cf, opts, mode)
                     .next()
                     .map(|res| {
                         let (_, key) = res?;
@@ -1250,8 +1252,8 @@ mod tests {
                     &proof,
                     &ICS23_PROOF_SPEC,
                     &root0,
-                    &k,
-                    &v,
+                    k,
+                    v,
                 ));
             }
 
@@ -1274,7 +1276,7 @@ mod tests {
             // - generate and verify non-membership proof at version 1, after the
             //   key has been deleted.
             // Also update the state.
-            for (k, _) in &batch1 {
+            for k in batch1.keys() {
                 // Prove in version 0
                 let proof = db.ics23_prove(k.clone(), Some(version0)).unwrap();
                 assert!(ics23::verify_membership::<HostFunctionsManager>(
@@ -1339,7 +1341,7 @@ mod tests {
                     v,
                 ));
             }
-            for (k, _) in &deletes2 {
+            for k in deletes2.keys() {
                 let proof = db.ics23_prove(k.clone(), Some(version2)).unwrap();
                 assert!(ics23::verify_non_membership::<HostFunctionsManager>(
                     &proof,
