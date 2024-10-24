@@ -12,7 +12,6 @@ use {
         WriteBatch,
     },
     std::{
-        collections::BTreeMap,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -96,7 +95,6 @@ pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
-    preimages: BTreeMap<Hash256, Vec<u8>>,
 }
 
 impl DiskDb {
@@ -305,17 +303,10 @@ impl Db for DiskDb {
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
-        // Compute the preimages.
-        let preimages = batch
-            .keys()
-            .map(|key| (key.hash256(), key.clone()))
-            .collect();
-
         *(self.inner.pending_data.write()?) = Some(PendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
-            preimages,
         });
 
         Ok((new_version, root_hash))
@@ -335,12 +326,6 @@ impl Db for DiskDb {
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
 
-        // Writes in preimages (note: don't forget timestamping)
-        let cf = cf_preimages(&self.inner.db);
-        for (key_hash, key) in pending.preimages {
-            batch.put_cf_with_ts(&cf, key_hash, ts, key);
-        }
-
         // Writes in state commitment
         let cf = cf_state_commitment(&self.inner.db);
         for (key, op) in pending.state_commitment {
@@ -348,6 +333,17 @@ impl Db for DiskDb {
                 batch.put_cf(&cf, key, value);
             } else {
                 batch.delete_cf(&cf, key);
+            }
+        }
+
+        // Writes in preimages (note: don't forget timestamping, and deleting
+        // key hashes that are deleted in state storage - see Zellic audut).
+        let cf = cf_preimages(&self.inner.db);
+        for (key, op) in &pending.state_storage {
+            if let Op::Insert(_) = op {
+                batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
+            } else {
+                batch.delete_cf_with_ts(&cf, key.hash256(), ts);
             }
         }
 
@@ -1151,6 +1147,63 @@ mod tests {
                 "exclusion verification failed for key `{key}`"
             );
         }
+    }
+
+    /// Testing a coding mistake found in the Zellic audit (finding 3.1).
+    ///
+    /// If a batch contains deletions, we forgot to also delete the keys from
+    /// the preimages map.
+    ///
+    /// In this example,
+    ///
+    /// - We build the tree at version 0 with two keys: "b" and "a".
+    /// - Then, at version 1, we delete "a".
+    /// - Then, we prove the non-existence of "L" at version 1.
+    ///
+    /// Hashes:
+    ///
+    /// - sha256("m") = 0110...
+    /// - sha256("L") = 0111...
+    /// - sha256("a") = 1100...
+    ///
+    /// Their relation is:
+    ///
+    /// > "m" < "L" < "a"
+    ///
+    /// At version 1, we expect the ICS-23 proof to contain a left neighbor ("m")
+    /// and no right neighbor.
+    ///
+    /// However, since we don't to delete the preimage of "a", the function
+    /// incorrectly thinks "a" exists as the right neighbor.
+    ///
+    /// When loading the key from state storage, it panics.
+    #[test]
+    fn ics23_prove_after_deletion() {
+        let path = TempDataDir::new("__grug_disk_db_ics23_prove_after_deletion");
+        let db = DiskDb::open(&path).unwrap();
+
+        // Apply batch at version 0.
+        let _ = db
+            .flush_and_commit(Batch::from([
+                (b"b".to_vec(), Op::Insert(b"buzz".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"fuzz".to_vec())),
+            ]))
+            .unwrap();
+
+        // Apply batch at version 1.
+        let (version, maybe_root) = db
+            .flush_and_commit(Batch::from([(b"a".to_vec(), Op::Delete)]))
+            .unwrap();
+
+        // Generate and verify non-existence proof of "L" at version 1.
+        let key = b"L".to_vec();
+        let proof = db.ics23_prove(key.clone(), Some(version)).unwrap();
+        assert!(ics23::verify_non_membership::<HostFunctionsManager>(
+            &proof,
+            &ICS23_PROOF_SPEC,
+            &maybe_root.unwrap().to_vec(),
+            &key,
+        ));
     }
 
     proptest! {
