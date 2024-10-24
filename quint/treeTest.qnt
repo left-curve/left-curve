@@ -376,7 +376,13 @@ run twoInsertsWihSharedPrefixOnEmptyTreeTest_simple_version =
            { key_hash: [1], version: 0 } -> expected_right
          ), orphans: Set() }
     )
-
+  run singleInsertOnEmptyTreeTest_simple_version =
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    assert(
+      empty_tree.insert({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1]})
+      == { nodes: Map({ key_hash: [], version: 0 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })),
+           orphans: Set() }
+    )
 
 
   run Example = {
