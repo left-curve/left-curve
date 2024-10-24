@@ -29,6 +29,6 @@ export type PasskeyCredential = {
 
 export type Eip712Credential = {
   sig: Base64;
-  hash_data: Hex;
+  /** The EIP712 typed data object containing types, domain and the message. */
   typed_data: Base64;
 };

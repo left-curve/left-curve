@@ -3,11 +3,11 @@ import type {
   Chain,
   Client,
   Message,
-  MessageTypedDataType,
   Metadata,
   Signer,
   Transport,
   Tx,
+  TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getAccountSequence } from "../public/getAccountSequence";
@@ -19,7 +19,7 @@ export type SignAndBroadcastTxParameters = {
   sender: Address;
   messages: Message[];
   gasLimit?: number;
-  typedData?: TypedDataParameter<MessageTypedDataType>;
+  typedData?: TypedDataParameter<TxMessageType>;
 };
 
 export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
@@ -46,6 +46,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
   const sequence = await getAccountSequence(client, { address: sender }).catch(() => 0);
 
   const { credential, keyHash } = await client.signer.signTx({
+    sender,
     chainId,
     messages,
     sequence,

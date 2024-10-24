@@ -1,3 +1,4 @@
+import type { Address } from "./address";
 import type { Message } from "./tx";
 
 // biome-ignore format: no formatting
@@ -13,23 +14,17 @@ type MBits =
   | 160 | 168 | 176 | 184 | 192 | 200 | 208 | 216 | 224 | 232
   | 240 | 248 | 256
 
-export type TypedDataProperties = {
+export type TypedDataProperty = {
   name: string;
-  type: TypedDataTypes;
+  type: SolidityTypes;
 };
 
-export type TypedDataParameter<T = TypedDataProperties> = {
+export type TypedDataParameter<T = TypedDataProperty> = {
   type: T[];
-  extraTypes: Record<string, TypedDataProperties[]>;
+  extraTypes: Record<string, TypedDataProperty[]>;
 };
 
-export type TxMessageTypedDataType = {
-  chainId: string;
-  sequence: number;
-  messages: Message[];
-};
-
-export type TypedDataTypes =
+export type SolidityTypes =
   | "string"
   | "address"
   | "bool"
@@ -39,13 +34,18 @@ export type TypedDataTypes =
   | `${string}[]`
   | `${string}[${number}]`;
 
-export type TxTypedDataType = [
+export type DomainType = [
+  { name: "name"; type: "string" },
+  { name: "verifyingContract"; type: "address" },
+];
+
+export type MessageType = [
   { name: "chainId"; type: "string" },
   { name: "sequence"; type: "uint32" },
   { name: "messages"; type: "TxMessage[]" },
 ];
 
-export type MessageTypedDataType =
+export type TxMessageType =
   | { name: "configure"; type: "Configure" }
   | { name: "transfer"; type: "Transfer" }
   | { name: "upload"; type: "Upload" }
@@ -53,9 +53,25 @@ export type MessageTypedDataType =
   | { name: "execute"; type: "Execute" }
   | { name: "migrate"; type: "Migrate" };
 
-export type TypedData = {
-  types: Record<"Message", TxTypedDataType> & Record<"TxMessage", MessageTypedDataType[]>;
+export type TypedData<TType extends TxMessageType | unknown = TxMessageType | unknown> = {
+  types: EIP712Types<TType>;
   primaryType: "Message";
-  domain: Record<string, never>;
-  message: TxMessageTypedDataType;
+  domain: EIP712Domain;
+  message: EIP712Message;
+};
+
+export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType | unknown> =
+  Record<"Message", MessageType> &
+    Record<"TxMessage", TMessage[]> &
+    Record<"EIP712Domain", DomainType>;
+
+export type EIP712Message = {
+  chainId: string;
+  sequence: number;
+  messages: Message[];
+};
+
+export type EIP712Domain = {
+  name: string;
+  verifyingContract: Address;
 };

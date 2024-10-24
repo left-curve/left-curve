@@ -32,6 +32,6 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "ethers": "^6.13.4"
+    "viem": "^2.21.34"
   }
 }

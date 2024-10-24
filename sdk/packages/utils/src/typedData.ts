@@ -1,12 +1,14 @@
 import type {
   Coins,
+  EIP712Domain,
+  EIP712Message,
+  EIP712Types,
   Hex,
-  MessageTypedDataType,
   Power,
-  TxMessageTypedDataType,
+  TxMessageType,
   TypedData,
   TypedDataParameter,
-  TypedDataProperties,
+  TypedDataProperty,
   Username,
 } from "@leftcurve/types";
 
@@ -17,8 +19,9 @@ import type {
  * @returns The hashed typed data.
  */
 export async function hashTypedData(typedData: TypedData): Promise<Hex> {
-  const { TypedDataEncoder } = await import("ethers");
-  return TypedDataEncoder.hash(typedData.domain, typedData.types, typedData.message);
+  const { hashTypedData: viemHashTypedData } = await import("viem");
+
+  return viemHashTypedData<EIP712Types, "Message">(typedData);
 }
 
 /**
@@ -29,13 +32,18 @@ export async function hashTypedData(typedData: TypedData): Promise<Hex> {
  * @retuns The composed typed data
  */
 export function composeTypedData(
-  message: TxMessageTypedDataType,
-  typeData?: Partial<TypedDataParameter<MessageTypedDataType>>,
+  message: EIP712Message,
+  domain: EIP712Domain,
+  typeData?: Partial<TypedDataParameter<TxMessageType>>,
 ): TypedData {
   const { type = [], extraTypes = {} } = typeData || {};
 
   return {
     types: {
+      EIP712Domain: [
+        { name: "name", type: "string" },
+        { name: "verifyingContract", type: "address" },
+      ],
       Message: [
         { name: "chainId", type: "string" },
         { name: "sequence", type: "uint32" },
@@ -45,7 +53,7 @@ export function composeTypedData(
       ...extraTypes,
     },
     primaryType: "Message",
-    domain: {},
+    domain,
     message,
   };
 }
@@ -56,7 +64,7 @@ export function composeTypedData(
  * @param coins The coins to get the typed data for.
  * @returns The typed data properties.
  */
-export function getCoinsTypedData(coins?: Coins): TypedDataProperties[] {
+export function getCoinsTypedData(coins?: Coins): TypedDataProperty[] {
   if (!coins) return [];
   return Object.keys(coins).map((coin) => ({ name: coin, type: "string" }));
 }
@@ -67,7 +75,7 @@ export function getCoinsTypedData(coins?: Coins): TypedDataProperties[] {
  * @param members The members to get the typed data for.
  * @returns The typed data properties.
  */
-export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperties[] {
+export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperty[] {
   if (!members) return [];
   return Object.keys(members).map((member) => ({ name: member, type: "uint32" }));
 }

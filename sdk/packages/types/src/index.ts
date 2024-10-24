@@ -153,13 +153,16 @@ export type {
 } from "./signature";
 
 export type {
-  MessageTypedDataType,
-  TxTypedDataType,
-  TypedDataTypes,
-  TypedDataProperties,
+  DomainType,
+  TxMessageType,
+  MessageType,
+  SolidityTypes,
+  TypedDataProperty,
   TypedDataParameter,
-  TxMessageTypedDataType,
   TypedData,
+  EIP712Types,
+  EIP712Domain,
+  EIP712Message,
 } from "./typedData";
 
 export type {
