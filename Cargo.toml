@@ -88,7 +88,7 @@ grug-client       = { path = "grug/client" }
 grug-crypto       = { path = "grug/crypto" }
 grug-db-disk      = { path = "grug/db-disk" }
 grug-db-memory    = { path = "grug/db-memory" }
-grug-ffi           = { path = "grug/ffi" }
+grug-ffi          = { path = "grug/ffi" }
 grug-jmt          = { path = "grug/jellyfish-merkle" }
 grug-macros       = { path = "grug/macros" }
 grug-math         = { path = "grug/math" }
@@ -122,7 +122,7 @@ debug            = false
 debug-assertions = false
 incremental      = false
 lto              = true
-overflow-checks   = true
+overflow-checks  = true
 opt-level        = 3
 panic            = "abort"
 rpath            = false

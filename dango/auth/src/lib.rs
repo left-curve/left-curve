@@ -353,4 +353,61 @@ mod tests {
         )
         .unwrap();
     }
+
+    #[test]
+    fn secp256k1_authentication() {
+        let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
+        let user_username = Username::from_str("owner").unwrap();
+        let user_keyhash = Hash160::from_str("CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB").unwrap();
+        let user_key = Key::Secp256k1(
+            [
+                2, 111, 13, 75, 148, 145, 161, 77, 233, 136, 36, 236, 240, 231, 244, 217, 82, 186,
+                93, 163, 132, 66, 35, 3, 19, 17, 197, 180, 52, 200, 219, 178, 97,
+            ]
+            .into(),
+        );
+
+        let tx = r#"{
+          "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+          "credential": {
+            "secp256k1": "GkkfQb81pEZJISbqAhJOZuZ5wgRyN0Q4HABD9HDAkxB516nV5d0UjRciNhh3RIg2Hh8nmS3jHFVl3NO34PVLNA=="
+          },
+          "data": {
+            "key_hash": "CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB",
+            "username": "owner",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                "coins": {
+                  "uusdc": "5"
+                }
+              }
+            }
+          ],
+          "gas_limit": 1046678
+        }"#;
+
+        let querier = MockQuerier::new()
+            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS_BY_USER
+                    .insert(storage, (&user_username, user_keyhash))
+                    .unwrap();
+                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_chain_id("dev-2")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+    }
 }
