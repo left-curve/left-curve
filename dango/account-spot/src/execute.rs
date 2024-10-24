@@ -20,7 +20,7 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    authenticate_tx(ctx, tx, None, None)?;
+    authenticate_tx(ctx, tx, None, None, true)?;
 
     Ok(AuthResponse::new().request_backrun(false))
 }
