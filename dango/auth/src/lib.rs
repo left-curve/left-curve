@@ -198,9 +198,6 @@ pub fn authenticate_tx(
                     (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
                         ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
                     },
-                    (Key::Ed25519(pk), Credential::Ed25519(sig)) => {
-                        ctx.api.ed25519_verify(&sign_bytes, &sig, &pk)?;
-                    },
                     _ => bail!("key and credential types don't match!"),
                 }
             },
