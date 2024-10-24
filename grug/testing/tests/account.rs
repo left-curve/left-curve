@@ -21,7 +21,9 @@ fn check_tx_and_finalize() {
         Message::transfer(accounts["larry"].address, Coins::one("uatom", 10).unwrap()).unwrap();
 
     // Create a tx to set sequence to 1.
-    suite.send_message(&mut accounts["rhaki"], transfer_msg.clone());
+    suite
+        .send_message(&mut accounts["rhaki"], transfer_msg.clone())
+        .should_succeed();
 
     // Create a tx with sequence 0, 1, 2, 4.
     let txs: Vec<Tx> = [0, 1, 2, 4]
@@ -173,11 +175,13 @@ fn backrunning_works() {
     let receiver = accounts["receiver"].address;
 
     // Attempt to send a transaction
-    suite.transfer(
-        &mut accounts["sender"],
-        receiver,
-        Coins::one("ugrug", 123).unwrap(),
-    );
+    suite
+        .transfer(
+            &mut accounts["sender"],
+            receiver,
+            Coins::one("ugrug", 123).unwrap(),
+        )
+        .should_succeed();
 
     // Receiver should have received ugrug, and sender should have minted bad kids.
     suite

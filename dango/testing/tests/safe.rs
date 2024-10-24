@@ -33,25 +33,29 @@ fn safe() {
                 true,
             );
 
-            suite.execute(
-                &mut accounts.relayer,
-                contracts.ibc_transfer,
-                &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
-                    recipient: user.address(),
-                },
-                Coins::one("uusdc", 100_000_000).unwrap(),
-            );
+            suite
+                .execute(
+                    &mut accounts.relayer,
+                    contracts.ibc_transfer,
+                    &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
+                        recipient: user.address(),
+                    },
+                    Coins::one("uusdc", 100_000_000).unwrap(),
+                )
+                .should_succeed();
 
-            suite.execute(
-                &mut Factory::new(contracts.account_factory),
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
-                },
-                Coins::new(),
-            );
+            suite
+                .execute(
+                    &mut Factory::new(contracts.account_factory),
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: user.username.clone(),
+                        key: user.key,
+                        key_hash: user.key_hash,
+                    },
+                    Coins::new(),
+                )
+                .should_succeed();
 
             user
         })
@@ -75,16 +79,18 @@ fn safe() {
     };
 
     // Member 1 sends a transaction to create the Safe.
-    suite.execute(
-        &mut member1,
-        contracts.account_factory,
-        &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Safe(params.clone()),
-        },
-        // Fund the Safe with some tokens.
-        // The Safe will pay for gas fees, so it must have sufficient tokens.
-        Coins::one("uusdc", 5_000_000).unwrap(),
-    );
+    suite
+        .execute(
+            &mut member1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Safe(params.clone()),
+            },
+            // Fund the Safe with some tokens.
+            // The Safe will pay for gas fees, so it must have sufficient tokens.
+            Coins::one("uusdc", 5_000_000).unwrap(),
+        )
+        .should_succeed();
 
     // Derive the Safe's address.
     // We have 2 genesis users + 3 members, so the Safe's index should be 5.
@@ -135,47 +141,53 @@ fn safe() {
     // ---------------------- Proposal with auto-execute -----------------------
 
     // Member 1 makes a proposal to transfer some tokens.
-    suite.execute(
-        safe.with_signer(&member1),
-        safe_address,
-        &multi::ExecuteMsg::Propose {
-            title: "send 123 uusdc to owner".to_string(),
-            description: None,
-            messages: vec![Message::transfer(
-                accounts.owner.address(),
-                Coins::one("uusdc", 888_888).unwrap(),
-            )
-            .unwrap()],
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "send 123 uusdc to owner".to_string(),
+                description: None,
+                messages: vec![Message::transfer(
+                    accounts.owner.address(),
+                    Coins::one("uusdc", 888_888).unwrap(),
+                )
+                .unwrap()],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Member 2 votes YES.
-    suite.execute(
-        safe.with_signer(&member2),
-        safe_address,
-        &multi::ExecuteMsg::Vote {
-            proposal_id: 1,
-            voter: member2.username.clone(),
-            vote: Vote::Yes,
-            execute: false,
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member2),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: member2.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Member 3 votes YES with auto-execute.
     // The proposal should pass and execute.
-    suite.execute(
-        safe.with_signer(&member3),
-        safe_address,
-        &multi::ExecuteMsg::Vote {
-            proposal_id: 1,
-            voter: member3.username.clone(),
-            vote: Vote::Yes,
-            execute: true,
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member3),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: member3.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Proposal should be in the "executed" state.
     suite
@@ -206,37 +218,41 @@ fn safe() {
         threshold: None,
     };
 
-    suite.execute(
-        safe.with_signer(&member1),
-        safe_address,
-        &multi::ExecuteMsg::Propose {
-            title: "add owner as member".to_string(),
-            description: None,
-            messages: vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::ConfigureSafe {
-                    updates: updates.clone(),
-                },
-                Coins::new(),
-            )
-            .unwrap()],
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "add owner as member".to_string(),
+                description: None,
+                messages: vec![Message::execute(
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::ConfigureSafe {
+                        updates: updates.clone(),
+                    },
+                    Coins::new(),
+                )
+                .unwrap()],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Member 2 and 3 votes on the proposal (without auto-execute).
     for member in [&member2, &member3] {
-        suite.execute(
-            safe.with_signer(member),
-            safe_address,
-            &multi::ExecuteMsg::Vote {
-                proposal_id: 2,
-                voter: member.username.clone(),
-                vote: Vote::Yes,
-                execute: false,
-            },
-            Coins::new(),
-        );
+        suite
+            .execute(
+                safe.with_signer(member),
+                safe_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 2,
+                    voter: member.username.clone(),
+                    vote: Vote::Yes,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
     }
 
     // Proposal should be in the "passed" state.
@@ -245,12 +261,14 @@ fn safe() {
         .should_succeed_and(|prop| matches!(prop.status, Status::Passed { .. }));
 
     // Member 1 executes the proposal.
-    suite.execute(
-        safe.with_signer(&member1),
-        safe_address,
-        &multi::ExecuteMsg::Execute { proposal_id: 2 },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member1),
+            safe_address,
+            &multi::ExecuteMsg::Execute { proposal_id: 2 },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Proposal should now be in the "executed" state.
     suite
@@ -286,30 +304,34 @@ fn safe() {
     // ---------------------------- Failed proposal ----------------------------
 
     // Member 1 makes a proposal.
-    suite.execute(
-        safe.with_signer(&member1),
-        safe_address,
-        &multi::ExecuteMsg::Propose {
-            title: "nothing".to_string(),
-            description: None,
-            messages: vec![],
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Members 2 and owner vote against it.
     for member in [&member2, &accounts.owner] {
-        suite.execute(
-            safe.with_signer(member),
-            safe_address,
-            &multi::ExecuteMsg::Vote {
-                proposal_id: 3,
-                voter: member.username.clone(),
-                vote: Vote::No,
-                execute: false,
-            },
-            Coins::new(),
-        );
+        suite
+            .execute(
+                safe.with_signer(member),
+                safe_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 3,
+                    voter: member.username.clone(),
+                    vote: Vote::No,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
     }
 
     // The proposal should be in the "failed" state.
@@ -333,16 +355,18 @@ fn safe() {
     // -------------------------- Unauthorized voting --------------------------
 
     // Member 1 makes a proposal. This should be proposal 4.
-    suite.execute(
-        safe.with_signer(&member1),
-        safe_address,
-        &multi::ExecuteMsg::Propose {
-            title: "nothing".to_string(),
-            description: None,
-            messages: vec![],
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            safe.with_signer(&member1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Attacker attempts to vote, impersonating member 2.
     // Since attacker doesn't actual know member 2's private key, the tx will be
