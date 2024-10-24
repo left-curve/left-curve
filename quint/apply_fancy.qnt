@@ -15,24 +15,24 @@ module apply_fancy {
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
   pure val MAX_HEIGHT = 4
 
-
   /// Pre computation of apply_at used to emulate recursion
-  pure def pre_compute_apply_at(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
-    range(0, tree.nodes.keys().max_height() + 1).foldr(Map(), (i, memo) => {
-      pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == i)
+  pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
+    range(0, new_version + 1).foldl(Map(), (memo, old_version) => {
+      range(0, tree.nodes.keys().max_height() + 1).foldr(memo, (i, memo) => {
+        pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == i)
 
-      node_ids_at_this_height.fold((memo, tree), (acc, node_id) => {
-        pure val memo = acc._1
-        pure val tree = acc._2
+        // Tree is processed from root to leaves
+        node_ids_at_this_height.fold((memo, tree), (acc, node_id) => {
+          pure val memo = acc._1
+          pure val tree = acc._2
 
-        pure val batch_here = batch.filter(o => node_id.key_hash.isPrefixOf(o.key_hash))
+          pure val batch_here = batch.filter(o => node_id.key_hash.isPrefixOf(o.key_hash))
 
-        pure val memo_key = (new_version, old_version, node_id.key_hash, batch_here)
-        // TODO: it might make sense to also store the parts of the batch relevant to this subtree and then compare to
-        // the one being applied in the recursive emulation
-        pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch_here)
-        (memo.put(memo_key, memo_value), memo_value.tree)
-      })._1
+          pure val memo_key = (new_version, old_version, node_id.key_hash, batch_here)
+          pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch_here)
+          (memo.put(memo_key, memo_value), memo_value.tree)
+        })._1
+      })
     })
   }
 
@@ -44,7 +44,7 @@ module apply_fancy {
         tree
       }
 
-    pure val memo = pre_compute_apply_at(tree_1, old_version, new_version, batch)
+    pure val memo = pre_compute_apply_at(tree_1, new_version, batch)
     pure val apply_result = tree_1.apply_at(memo, new_version, old_version, ROOT_BITS, batch)
 
     match apply_result.outcome {
@@ -90,7 +90,7 @@ module apply_fancy {
 
     // Apply the left batch at left child
     pure val left_bits = bits.append(0)
-    pure val left_result = tree.apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
+    pure val left_result = q::debug("tree", tree).apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
     pure val left_outcome = q::debug("left outcome", left_result.outcome)
 
     // Apply the right batch at right child
@@ -636,8 +636,6 @@ module apply_fancy {
   /// same value, or deletes of non-existing keys. The version number shouldn't
   /// be incremented and root hash shouldn't be changed.
   run noOpsTest = {
-    // FIXME: I think this is not working due to batch subdivision (batches are not empty when we get to leaf). Need to validate
-
     // start with the test case tree
 
     // Remove all nodes
