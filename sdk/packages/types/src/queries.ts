@@ -1,8 +1,9 @@
 import type { Address } from "./address";
-import type { Coin, Coins } from "./coin";
+import type { Code } from "./code";
+import type { Coin, Coins, Denom } from "./coin";
 import type { Duration, Permission } from "./common";
 import type { Metadata } from "./credential";
-import type { Hex, Json } from "./encoding";
+import type { Base64, Hex, Json, JsonValue } from "./encoding";
 import type { Message } from "./tx";
 
 export type BlockInfo = {
@@ -13,6 +14,7 @@ export type BlockInfo = {
 
 export type ContractInfo = {
   codeHash: Hex;
+  label?: string;
   admin?: Address;
 };
 
@@ -45,13 +47,14 @@ export type QueryRequest =
   | { balance: QueryBalanceRequest }
   | { balances: QueryBalancesRequest }
   | { supply: QuerySupplyRequest }
-  | { supplies: QuerySuppliesReuest }
+  | { supplies: QuerySuppliesRequest }
   | { code: QueryCodeRequest }
   | { codes: QueryCodesRequest }
   | { contract: QueryContractRequest }
   | { contracts: QueryContractsRequest }
   | { wasmRaw: QueryWasmRawRequest }
-  | { wasmSmart: QueryWasmSmartRequest };
+  | { wasmSmart: QueryWasmSmartRequest }
+  | { multi: QueryRequest[] };
 
 export type QueryConfigRequest = Record<string, never>;
 
@@ -65,27 +68,27 @@ export type QueryAppConfigsRequest = {
 };
 
 export type QueryBalanceRequest = {
-  address: string;
-  denom: string;
+  address: Address;
+  denom: Denom;
 };
 
 export type QueryBalancesRequest = {
-  address: string;
-  startAfter?: string;
+  address: Address;
+  startAfter?: Denom;
   limit?: number;
 };
 
 export type QuerySupplyRequest = {
-  denom: string;
+  denom: Denom;
 };
 
-export type QuerySuppliesReuest = {
-  startAfter?: string;
+export type QuerySuppliesRequest = {
+  startAfter?: Denom;
   limit?: number;
 };
 
 export type QueryCodeRequest = {
-  hash: string;
+  hash: Hex;
 };
 
 export type QueryCodesRequest = {
@@ -94,12 +97,12 @@ export type QueryCodesRequest = {
 };
 
 export type QueryWasmRawRequest = {
-  contract: string;
-  key: string;
+  contract: Address;
+  key: Base64;
 };
 
 export type QueryWasmSmartRequest = {
-  contract: string;
+  contract: Address;
   msg: Json;
 };
 
@@ -114,18 +117,19 @@ export type QueryContractRequest = {
 
 export type QueryResponse =
   | { config: ChainConfigResponse }
-  | { balance: Coin }
   | { appConfig: AppConfigResponse }
   | { appConfigs: AppConfigsResponse }
+  | { balance: Coin }
   | { balances: Coins }
   | { supply: Coin }
   | { supplies: Coins }
-  | { code: string }
-  | { codes: string[] }
+  | { code: CodeResponse }
+  | { codes: CodesResponse }
   | { contract: ContractResponse }
   | { contracts: ContractsResponse }
   | { wasmRaw: WasmRawResponse }
-  | { wasmSmart: WasmSmartResponse };
+  | { wasmSmart: WasmSmartResponse }
+  | { multi: QueryResponse[] };
 
 export type ChainInfoResponse = {
   chainId: string;
@@ -133,9 +137,13 @@ export type ChainInfoResponse = {
   lastFinalizedBlock: BlockInfo;
 };
 
-export type AppConfigResponse = Json;
+export type CodeResponse = Code;
 
-export type AppConfigsResponse = Record<string, Json>;
+export type CodesResponse = Record<Hex, Code>;
+
+export type AppConfigResponse<T = JsonValue> = T;
+
+export type AppConfigsResponse = Json;
 
 export type AccountResponse = {
   address: Address;
@@ -143,16 +151,9 @@ export type AccountResponse = {
   admin?: string;
 };
 
-export type WasmRawResponse = {
-  contract: Address;
-  key: string;
-  value?: string;
-};
+export type WasmRawResponse = Base64 | undefined;
 
-export type WasmSmartResponse = {
-  contract: Address;
-  data: string;
-};
+export type WasmSmartResponse<T = JsonValue> = T;
 
 export type ContractResponse = ContractInfo;
 

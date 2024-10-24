@@ -1,4 +1,11 @@
-import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type {
+  AppConfigResponse,
+  Chain,
+  Client,
+  JsonValue,
+  Signer,
+  Transport,
+} from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetAppConfigParameters = {
@@ -6,7 +13,7 @@ export type GetAppConfigParameters = {
   height?: number;
 };
 
-export type GetAppConfigReturnType<value extends any | undefined> = Promise<value>;
+export type GetAppConfigReturnType<T = JsonValue> = Promise<AppConfigResponse<T>>;
 
 /**
  * Get the application configuration.
@@ -16,7 +23,7 @@ export type GetAppConfigReturnType<value extends any | undefined> = Promise<valu
  * @returns The application configuration.
  */
 export async function getAppConfig<
-  value extends any | undefined = any | undefined,
+  value extends JsonValue = JsonValue,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer | undefined = Signer | undefined,
 >(
@@ -29,7 +36,7 @@ export async function getAppConfig<
   };
   const res = await queryApp<chain, signer>(client, { query, height });
 
-  if ("appConfig" in res) return res.appConfig as unknown as value;
+  if ("appConfig" in res) return res.appConfig as value;
 
   throw new Error(`expecting appConfig response, got ${JSON.stringify(res)}`);
 }

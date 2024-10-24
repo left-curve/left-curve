@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, JsonValue, Signer, Transport } from "@leftcurve/types";
 
 import {
   type GetBalanceParameters,
@@ -168,7 +168,7 @@ export type PublicActions<
   getCode: (args: GetCodeParameters) => GetCodeReturnType;
   getCodes: (args?: GetCodesParameters) => GetCodesReturnType;
   getChainInfo: (args?: GetChainInfoParameters) => GetChainInfoReturnType;
-  getAppConfig: <value extends any | undefined>(
+  getAppConfig: <value extends JsonValue>(
     args: GetAppConfigParameters,
   ) => GetAppConfigReturnType<value>;
   getAppConfigs: (args?: GetAppConfigsParameters) => GetAppConfigsReturnType;
@@ -191,10 +191,8 @@ export type PublicActions<
   getContractInfo: (args: GetContractInfoParameters) => GetContractInfoReturnType;
   getContractsInfo: (args?: GetContractsInfoParameters) => GetContractsInfoReturnType;
   queryApp: (args: QueryAppParameters) => QueryAppReturnType;
-  queryWasmRaw: <value extends any | undefined>(
-    args: QueryWasmRawParameters,
-  ) => QueryWasmRawReturnType<value>;
-  queryWasmSmart: <value extends any | undefined>(
+  queryWasmRaw: (args: QueryWasmRawParameters) => QueryWasmRawReturnType;
+  queryWasmSmart: <value extends JsonValue>(
     args: QueryWasmSmartParameters,
   ) => QueryWasmSmartReturnType<value>;
   registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;

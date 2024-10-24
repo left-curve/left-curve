@@ -14,7 +14,11 @@ export type {
   QuerySupplyRequest,
   QueryRequest,
   QueryResponse,
-  QuerySuppliesReuest,
+  QuerySuppliesRequest,
+  CodeResponse,
+  CodesResponse,
+  QueryAppConfigRequest,
+  QueryAppConfigsRequest,
   QueryWasmRawRequest,
   QueryWasmSmartRequest,
   WasmRawResponse,
@@ -85,6 +89,11 @@ export type {
   EventData,
   Emitter,
 } from "./emitter";
+
+export type {
+  Code,
+  CodeStatus,
+} from "./code";
 
 export type {
   Coin,

@@ -1,9 +1,9 @@
-import type { Chain, Client, Coins, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, Coins, Denom, Signer, Transport } from "@leftcurve/types";
 import { queryApp } from "./queryApp";
 
 export type GetSuppliesParameters =
   | {
-      startAfter?: string;
+      startAfter?: Denom;
       limit?: number;
       height?: number;
     }
