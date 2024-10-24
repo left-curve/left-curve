@@ -3,9 +3,9 @@ import type {
   Chain,
   Client,
   Coins,
-  MessageTypedDataType,
   Signer,
   Transport,
+  TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
@@ -26,7 +26,7 @@ export async function transfer<chain extends Chain | undefined, signer extends S
   const { sender, to, coins } = parameters;
   const transferMsg = { transfer: { to, coins } };
 
-  const typedData: TypedDataParameter<MessageTypedDataType> = {
+  const typedData: TypedDataParameter<TxMessageType> = {
     type: [{ name: "transfer", type: "Transfer" }],
     extraTypes: {
       Transfer: [
