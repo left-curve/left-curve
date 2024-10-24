@@ -10,7 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-alloy-dyn-abi         = { version = "0.8.9", features = ["eip712"] }
+alloy-dyn-abi         = { workspace = true }
+alloy-primitives      = { workspace = true }
 anyhow                = { workspace = true }
 base64                = { workspace = true }
 grug                  = { workspace = true }

@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Binary, ByteArray, Hash160, Hash256, Message},
+    grug::{Binary, ByteArray, Hash160, Message},
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -25,7 +25,7 @@ pub enum Credential {
     Secp256k1(ByteArray<64>),
     /// An Ed25519 signature.
     Ed25519(ByteArray<64>),
-    /// An EIP712 signature signed with a compatible eth wallet.
+    /// An EIP712 signature signed by a compatible eth wallet.
     Eip712(Eip712Signature),
 }
 
@@ -64,8 +64,9 @@ pub struct PasskeySignature {
 /// An EIP712 signature signed with a compatible eth wallet.
 #[grug::derive(Serde)]
 pub struct Eip712Signature {
+    /// The EIP712 typed data object containing type information,
+    /// domain and the message object.
     pub typed_data: Binary,
-    pub hash_data: Hash256,
     pub sig: ByteArray<64>,
 }
 
