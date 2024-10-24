@@ -698,7 +698,6 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
 mod tests {
     use {
         crate::{DiskDb, TempDataDir},
-        core::str,
         grug_app::{Db, PrunableDb},
         grug_jmt::{
             verify_proof, MembershipProof, NonMembershipProof, Proof, ProofNode, ICS23_PROOF_SPEC,
@@ -707,6 +706,7 @@ mod tests {
         hex_literal::hex,
         ics23::HostFunctionsManager,
         proptest::prelude::*,
+        std::collections::BTreeMap,
     };
 
     // Using the same test case as in our rust-rocksdb fork:
@@ -1207,60 +1207,146 @@ mod tests {
     }
 
     proptest! {
+        /// Apply three batches as follows:
+        ///
+        /// 1. Insertions only.
+        /// 2. Deletions only.
+        /// 3. Both insertions and deletions.
+        ///
+        /// After each batch, generate and verify ICS-23 proofs.
         #[test]
         fn proptest_ics23_prove_works(
-            existing_kvs in prop::collection::hash_map("[a-z]{1,10}", "[a-z]{1,10}", 100),
-            non_existing_keys in prop::collection::vec("[a-z]{1,10}", 100),
+            (inserts1, deletes1) in prop::collection::hash_map("[a-z]{1,10}", "[a-z]{1,10}", 1..100).prop_flat_map(|kvs| {
+                let len = kvs.len();
+                (Just(kvs), prop::collection::vec(any::<prop::sample::Selector>(), 0..len))
+            }),
+            inserts2 in prop::collection::hash_map("[a-z]{1,10}", "[a-z]{1,10}", 1..100),
+            deletes2 in prop::collection::vec(any::<prop::sample::Selector>(), 0..50)
         ) {
             let path = TempDataDir::new("_grug_disk_db_ics23_proving_works");
             let db = DiskDb::open(&path).unwrap();
+            let mut state = BTreeMap::new();
 
-            let existing_kvs = existing_kvs
+            // --------------------------- version 0 ---------------------------
+
+            let batch0 = inserts1
                 .into_iter()
-                .map(|(k, v)| (k.as_bytes().to_vec(), Op::Insert(v.as_bytes().to_vec())))
+                .map(|(k, v)| (k.into_bytes(), Op::Insert(v.into_bytes())))
                 .collect::<Batch>();
-            let non_existing_keys = non_existing_keys
-                .into_iter()
-                .map(|k| k.as_bytes().to_vec())
-                .filter(|k| !existing_kvs.contains_key(k))
-                .collect::<Vec<_>>();
+            let (version0, maybe_root) = db.flush_and_commit(batch0.clone()).unwrap();
+            let root0 = maybe_root.unwrap().to_vec();
+            assert_eq!(version0, 0);
 
-            let (_, maybe_root) = db.flush_and_commit(existing_kvs.clone()).unwrap();
-            let root = maybe_root.unwrap().to_vec();
-
-            // Loop through the KVs that exist in the DB. Generate and verify
-            // inclusion proofs.
-            for (key, op) in existing_kvs {
-                let value = op.unwrap_value();
-                let proof = db.ics23_prove(key.clone(), None).unwrap();
-                assert!(
-                    ics23::verify_membership::<HostFunctionsManager>(
-                        &proof,
-                        &ICS23_PROOF_SPEC,
-                        &root,
-                        &key,
-                        &value,
-                    ),
-                    "inclusion verification failed for key `{}` and value `{}`",
-                    str::from_utf8(&key).unwrap(),
-                    str::from_utf8(&value).unwrap(),
-                );
+            // Update state mirroring version 0.
+            for (k, v) in &batch0 {
+                state.insert(k.clone(), v.clone().into_option().unwrap());
             }
 
-            // Loop through the KVs that don't exist. Generate and verify
-            // exclusion proofs.
-            for key in non_existing_keys {
-                let proof = db.ics23_prove(key.clone(), None).unwrap();
-                assert!(
-                    ics23::verify_non_membership::<HostFunctionsManager>(
-                        &proof,
-                        &ICS23_PROOF_SPEC,
-                        &root,
-                        &key,
-                    ),
-                    "exclusion verification failed for key `{}`",
-                    str::from_utf8(&key).unwrap(),
-                );
+            // Generate and verify membership proofs for each key in the state of
+            // version 0.
+            for (k, v) in &state {
+                let proof = db.ics23_prove(k.clone(), Some(version0)).unwrap();
+                assert!(ics23::verify_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root0,
+                    &k,
+                    &v,
+                ));
+            }
+
+            // --------------------------- version 1 ---------------------------
+
+            let batch1 = deletes1
+                .into_iter()
+                .map(|s| {
+                    let (k, _) = s.select(&batch0);
+                    (k.clone(), Op::Delete)
+                })
+                .collect::<Batch>();
+            let (version1, maybe_root) = db.flush_and_commit(batch1.clone()).unwrap();
+            let root1 = maybe_root.unwrap().to_vec();
+            assert_eq!(version1, 1);
+
+            // For each key in this batch,
+            // - generate and verify membership proof at verson 0, when the key
+            //   still existsed in the state;
+            // - generate and verify non-membership proof at version 1, after the
+            //   key has been deleted.
+            // Also update the state.
+            for (k, _) in &batch1 {
+                // Prove in version 0
+                let proof = db.ics23_prove(k.clone(), Some(version0)).unwrap();
+                assert!(ics23::verify_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root0,
+                    k,
+                    state.get(k).unwrap(),
+                ));
+
+                // Prove in version 1
+                let proof = db.ics23_prove(k.clone(), Some(version1)).unwrap();
+                assert!(ics23::verify_non_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root1,
+                    k,
+                ));
+
+                // Update the state mirroring version 1.
+                state.remove(k);
+            }
+
+            // --------------------------- version 2 ---------------------------
+
+            let deletes2 = deletes2
+                .into_iter()
+                .map(|s| {
+                    let (k, _) = s.select(&batch0);
+                    (k.clone(), Op::Delete)
+                })
+                .collect::<Batch>();
+            let batch2 = inserts2
+                .into_iter()
+                .map(|(k, v)| (k.into_bytes(), Op::Insert(v.into_bytes())))
+                .chain(deletes2.clone())
+                .collect::<Batch>();
+            let (version2, maybe_root) = db.flush_and_commit(batch2.clone()).unwrap();
+            let root2 = maybe_root.unwrap().to_vec();
+            assert_eq!(version2, 2);
+
+            // Update the state mirroring version 2.
+            for (k, op) in batch2 {
+                match op {
+                    Op::Insert(v) => {
+                        state.insert(k.clone(), v);
+                    },
+                    Op::Delete => {
+                        state.remove(&k);
+                    },
+                }
+            }
+
+            // Generate and verify proofs at version 2.
+            for (k, v) in &state {
+                let proof = db.ics23_prove(k.clone(), Some(version2)).unwrap();
+                assert!(ics23::verify_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root2,
+                    k,
+                    v,
+                ));
+            }
+            for (k, _) in &deletes2 {
+                let proof = db.ics23_prove(k.clone(), Some(version2)).unwrap();
+                assert!(ics23::verify_non_membership::<HostFunctionsManager>(
+                    &proof,
+                    &ICS23_PROOF_SPEC,
+                    &root2,
+                    k,
+                ));
             }
         }
     }
