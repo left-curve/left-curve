@@ -57,18 +57,20 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                             "can't vote with a different username"
                         );
 
-                        if let Ok(proposal) = PROPOSALS.load(ctx.storage, proposal_id) {
-                            if let Status::Voting { params, .. } = proposal.status {
-                                if params.members.contains_key(&metadata.username) {
-                                    prove_ownership ^= false;
-                                } else {
-                                    prove_ownership = true
-                                }
-                            } else {
+                        match PROPOSALS.load(ctx.storage, proposal_id) {
+                            Ok(proposal) => match proposal.status {
+                                Status::Voting { params, .. } => {
+                                    if params.members.contains_key(&metadata.username) {
+                                        prove_ownership ^= false;
+                                    } else {
+                                        prove_ownership = true
+                                    }
+                                },
                                 // We can raise an error here, or let the execute handling the fails
                                 // since proposal is not in vote status.
-                                prove_ownership = true
-                            }
+                                _ => prove_ownership = true,
+                            },
+                            Err(_) => prove_ownership = true,
                         }
                     },
                     _ => prove_ownership = true,
