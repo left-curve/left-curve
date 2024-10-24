@@ -7,8 +7,12 @@ use {
             self, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
             QueryWhitelistedDenomsRequest, NAMESPACE,
         },
+        token_factory,
     },
-    grug::{Addressable, Coin, Coins, Denom, HashExt, Message, MsgTransfer, ResultExt, Uint128},
+    grug::{
+        Addressable, Coin, Coins, Denom, HashExt, Inner, Message, MsgTransfer, NumberConst, Part,
+        ResultExt, Uint128,
+    },
     std::{str::FromStr, sync::LazyLock},
     test_case::test_case,
 };
@@ -372,6 +376,98 @@ fn borrowing_works() -> anyhow::Result<()> {
             margin_account.address(),
             Coins::from(Coin::new(USDC.clone(), 100)?),
         )]);
+
+    Ok(())
+}
+
+#[test]
+fn composite_denom() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    let fee_token_creation = Coin::new("uusdc", 10_000_000_u128)?;
+    let amount: Uint128 = 100_000.into();
+    let owner_addr = accounts.owner.address();
+
+    // Create a new token with token_factory
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &token_factory::ExecuteMsg::Create {
+                subdenom: Denom::from_str("foo")?,
+                username: None,
+                admin: None,
+            },
+            Coins::from(fee_token_creation),
+        )
+        .should_succeed();
+
+    let denom = Denom::from_str(&format!("factory/{}/foo", owner_addr))?;
+
+    // Register the denom in the lending_pool
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::WhitelistDenom(denom.clone()),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Mint some tokens
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &token_factory::ExecuteMsg::Mint {
+                denom: denom.clone(),
+                to: owner_addr,
+                amount,
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Deposit some tokens
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::Deposit { recipient: None },
+            Coins::from(Coin::new(denom.clone(), amount)?),
+        )
+        .should_succeed();
+
+    let mut parts = denom.clone().into_inner();
+    parts.insert(0, Part::from_str(lending_pool::NAMESPACE)?);
+    parts.insert(1, Part::from_str("lp")?);
+
+    let lp_token = Denom::from_parts(parts)?;
+
+    // check if lp_token is minted
+    suite
+        .query_balance(&accounts.owner.address(), lp_token.clone())
+        .should_succeed_and_equal(amount);
+
+    // withdraw
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending_pool,
+            &lending_pool::ExecuteMsg::Withdraw { recipient: None },
+            Coins::from(Coin::new(lp_token.clone(), amount)?),
+        )
+        .should_succeed();
+
+    // check if lp_token is burned
+    suite
+        .query_balance(&accounts.owner.address(), lp_token)
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // check if lp_token is burned
+    suite
+        .query_balance(&accounts.owner.address(), denom)
+        .should_succeed_and_equal(amount);
 
     Ok(())
 }

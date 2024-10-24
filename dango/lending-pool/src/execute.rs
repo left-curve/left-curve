@@ -119,11 +119,10 @@ pub fn deposit(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Respo
             "Invalid denom"
         );
 
-        let lp_denom = Denom::from_parts(vec![
-            Part::from_str(NAMESPACE)?,
-            Part::from_str("lp")?,
-            Part::from_str(&coin.denom.to_string())?,
-        ])?;
+        let mut parts = vec![Part::from_str(NAMESPACE)?, Part::from_str("lp")?];
+        parts.extend_from_slice(coin.denom.inner());
+
+        let lp_denom = Denom::from_parts(parts)?;
 
         msgs.push(Message::execute(
             cfg.bank,
@@ -154,15 +153,23 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
     let mut withdrawn = Coins::new();
     for coin in ctx.funds.into_iter() {
         // Ensure only LP tokens are sent
+        let mut iter = coin.denom.inner().into_iter();
+
         ensure!(
-            coin.denom.inner().len() == 3
-                && coin.denom.namespace().is_some_and(|ns| **ns == NAMESPACE)
-                && coin.denom.inner().to_vec()[1].as_str() == "lp",
-            "Invalid denom"
+            iter.next().map(|part| part.as_ref()) == Some(NAMESPACE),
+            "namespace:{NAMESPACE} not found"
         );
 
+        ensure!(
+            iter.next().map(|part| part.as_ref()) == Some("lp"),
+            "namespace: lp not found"
+        );
+
+        // let denom_parts = iter.map(|part| part.clone()).collect::<Vec<_>>();
+
         // Add msg to send the underlying tokens to the recipient
-        let underlying_denom = Denom::from_parts(vec![coin.denom.inner()[2].clone()])?;
+        let underlying_denom =
+            Denom::from_parts(iter.map(|part| part.clone()).collect::<Vec<_>>())?;
         let amount = coin.amount;
         withdrawn.insert(Coin::new(underlying_denom, amount)?)?;
 
