@@ -15,24 +15,27 @@ module apply_fancy {
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
   pure val MAX_HEIGHT = 4
 
+  pure val bits_to_compute = Set(0,1)
+    .allListsUpTo(MAX_HEIGHT)
+    .toList((a, b) => intCompare(a.length(), b.length()))
+
+  pure def sorted_nodes(tree: Tree): List[NodeId] = {
+    tree.nodes.keys().toList((a, b) => intCompare(b.key_hash.length(), a.key_hash.length()))
+  }
+
   /// Pre computation of apply_at used to emulate recursion
   pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
     range(0, new_version + 1).foldl(Map(), (memo, old_version) => {
-      range(0, tree.nodes.keys().max_height() + 1).foldr(memo, (i, memo) => {
-        pure val node_ids_at_this_height = tree.nodes.keys().filter(k => k.key_hash.length() == i)
+      bits_to_compute.foldr((memo, tree), (bits, acc) => {
+        pure val memo = acc._1
+        pure val tree = acc._2
 
-        // Tree is processed from root to leaves
-        node_ids_at_this_height.fold((memo, tree), (acc, node_id) => {
-          pure val memo = acc._1
-          pure val tree = acc._2
+        pure val batch_here = batch.filter(o => bits.isPrefixOf(o.key_hash))
 
-          pure val batch_here = batch.filter(o => node_id.key_hash.isPrefixOf(o.key_hash))
-
-          pure val memo_key = (new_version, old_version, node_id.key_hash, batch_here)
-          pure val memo_value = tree.apply_at(memo, new_version, old_version, node_id.key_hash, batch_here)
-          (memo.put(memo_key, memo_value), memo_value.tree)
-        })._1
-      })
+        pure val memo_key = (new_version, old_version, bits, batch_here)
+        pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
+        (memo.put(memo_key, memo_value), memo_value.tree)
+      })._1
     })
   }
 
@@ -90,7 +93,7 @@ module apply_fancy {
 
     // Apply the left batch at left child
     pure val left_bits = bits.append(0)
-    pure val left_result = q::debug("tree", tree).apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
+    pure val left_result = tree.apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
     pure val left_outcome = q::debug("left outcome", left_result.outcome)
 
     // Apply the right batch at right child
@@ -326,10 +329,6 @@ module apply_fancy {
     batch: Set[KeyWithValue],
     existing_leaf: Option[LeafNode]
   ): CreateSubtreeMemo = {
-    pure val bits_to_compute = Set(0,1)
-      .allListsUpTo(max(batch.max_height(), tree.nodes.keys().max_height()))
-      .toList((a, b) => intCompare(a.length(), b.length()))
-
    bits_to_compute.foldr(Map(), (bits_now, memo) => {
      pure val batch_now = batch.filter(kv => bits_now.isPrefixOf(kv.key_hash))
 
