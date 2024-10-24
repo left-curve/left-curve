@@ -318,8 +318,144 @@ run InsertTest1 = {
     }
 
 }
-val t = {orphans: Set(),
-        nodes: Map()}
+run twoInsertsWihSharedPrefixOnEmptyTreeTest_simple_version =
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    pure val leafsToInsert = List(
+      { key_hash: [0, 1, 1, 0], value_hash: [1, 1, 1, 1] }, // m
+      { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 1, 0] } // L
+    )    
+    pure val expected_leaf_1 = Leaf({ key_hash: [0, 1, 1, 0], value_hash: [1, 1, 1, 1] })
+    pure val expected_leaf_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 1 ,0] })
+    pure val internal_height_3 = Internal({
+      left_child: Some({ version: 0, hash: expected_leaf_1.hash() }),
+      right_child: Some({ version: 0, hash: expected_leaf_2.hash() })
+    })
+    pure val internal_height_2 = Internal({
+      left_child: None,
+      right_child: Some({ version: 0, hash: internal_height_3.hash() })
+    })
+    pure val internal_height_1 = Internal({
+      left_child: None,
+      right_child: Some({ version: 0, hash: internal_height_2.hash() })
+    })
+    pure val expected_root = Internal({
+      left_child: Some({ version: 0, hash: internal_height_1.hash() }),
+      right_child: None
+    })
+
+    assert(
+      leafsToInsert.foldl(empty_tree, (tree, leaf) => tree.insert(leaf))
+      == { nodes: Map(
+           { key_hash: [], version: 0 } -> expected_root,
+           { key_hash: [0], version: 0 } -> internal_height_1,
+           { key_hash: [0, 1], version: 0 } -> internal_height_2,
+           { key_hash: [0, 1, 1], version: 0 } -> internal_height_3,
+           { key_hash: [0, 1, 1, 0], version: 0 } -> expected_leaf_1,
+           { key_hash: [0, 1, 1, 1], version: 0 } -> expected_leaf_2
+         ), orphans: Set() }
+    )
+
+  run twoInsertsOnEmptyTreeTest_simple_version =
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    pure val leafsToInsert = List(
+      { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, // a
+      { key_hash: [0, 1, 0, 0], value_hash: [1, 1, 1, 0] } // r
+    )
+
+    pure val expected_left = Leaf({ key_hash: [0, 1, 0, 0], value_hash: [1, 1, 1, 0] })
+    pure val expected_right = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] })
+    pure val expected_root = Internal({
+      left_child: Some({ version: 0, hash: expected_left.hash() }),
+      right_child: Some({ version: 0, hash: expected_right.hash() })
+    })
+    assert(
+      leafsToInsert.foldl(empty_tree, (tree, leaf) => tree.insert(leaf))
+      == { nodes: Map(
+           { key_hash: [], version: 0 } -> expected_root,
+           { key_hash: [0], version: 0 } -> expected_left,
+           { key_hash: [1], version: 0 } -> expected_right
+         ), orphans: Set() }
+    )
+
+
+
+  run Example = {
+    val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 0, 0, 1], value_hash: [42]})
+    // TODO non-deterministic initialization
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  val newLeaf1 = {key_hash: [1, 1, 1, 0, 1], value_hash: [5]}
+  val newLeaf2 = {key_hash: [1, 0, 1, 0, 0], value_hash: [42]}
+
+  run ExampleSC = {
+    val leafs = List({key_hash: [1, 1, 1, 0], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 1, 0, 1], value_hash: [42]},{key_hash: [1, 1, 1, 1], value_hash: [60]})
+    // TODO non-deterministic initialization
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  run ExampleSC1 = {
+    val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 1, 1, 0], value_hash: [42]},{key_hash: [1, 1, 1, 1], value_hash: [666]},
+    {key_hash: [1, 0, 0, 1], value_hash: [333]})
+    // TODO non-deterministic initialization
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+
+  run ExampleSC2 = {
+    val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [1, 1, 1, 0], value_hash: [42]})
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  run ExampleRustTree = {
+    val leafs = List(
+      {key_hash: [0, 1, 0, 0], value_hash: [5]}, 
+      {key_hash: [0, 1, 1, 0], value_hash: [33]},
+      {key_hash: [0, 1, 1, 1], value_hash: [666]},
+      {key_hash: [1, 1, 0, 0], value_hash: [77]})
+
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  run ExampleRun = {
+    val leafs = List(
+      { key_hash: [1, 1, 1, 1], value_hash: [5] }, 
+      { key_hash: [1, 1, 1, 0], value_hash: [42] })
+
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+//      original tree
+//        root
+//        / \
+//       0   1
+//          
+//    tree after inserts
+//        root
+//        / \
+//       0   1
+//          / \
+//      null   11
+//            /  \
+//         null  111
+//               /  \
+//            1110  1111
+run ExampleRun2 = {
+    val leafs = List(
+      { key_hash: [0, 0, 0, 0], value_hash: [33] },
+      { key_hash: [1, 1, 1, 1], value_hash: [5] }, 
+      { key_hash: [1, 1, 1, 0], value_hash: [42] })
+
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
 // type Tree = int -> int //to do
 
 // type Operation
