@@ -1,6 +1,6 @@
 use {
     crate::{
-        exeucte_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop,
+        execute_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop,
         query_recover_secp256k1, query_stack_overflow, query_verify_ed25519,
         query_verify_ed25519_batch, query_verify_secp256k1, query_verify_secp256r1, ExecuteMsg,
         InstantiateMsg, QueryMsg,
@@ -18,7 +18,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::InfiniteLoop {} => infinite_loop(),
         ExecuteMsg::ForceWriteOnQuery { key, value } => force_write_on_query(ctx, key, value),
-        ExecuteMsg::StackOverflow {} => exeucte_stack_overflow(ctx),
+        ExecuteMsg::StackOverflow {} => execute_stack_overflow(ctx),
     }
 }
 
@@ -37,7 +37,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         QueryMsg::VerifySecp256k1 { pk, sig, msg_hash } => {
             query_verify_secp256k1(ctx, pk, sig, msg_hash)?.to_json_value()
         },
-        QueryMsg::RecoverSepc256k1 {
+        QueryMsg::RecoverSecp256k1 {
             sig,
             msg_hash,
             recovery_id,
