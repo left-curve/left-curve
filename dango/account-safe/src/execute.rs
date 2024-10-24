@@ -45,41 +45,31 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // To achive this we need to check all msgs:
     // - Until msgs are vote and the vote at time was a member, we can omit the onwership check on authenticate_tx;
     // - If the proposal is not found, or there are other type of msgs, we need to check the ownership.
-    let prove_ownership = tx.msgs.iter().try_fold(false, |mut prove_ownership, msg| {
+    let prove_ownership = tx.msgs.iter().try_fold(false, |prove_ownership, msg| {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
-                match msg.clone().deserialize_json::<ExecuteMsg>()? {
-                    ExecuteMsg::Vote {
-                        proposal_id, voter, ..
-                    } => {
-                        ensure!(
-                            voter == metadata.username,
-                            "can't vote with a different username"
-                        );
+                if let ExecuteMsg::Vote {
+                    proposal_id, voter, ..
+                } = msg.clone().deserialize_json::<ExecuteMsg>()?
+                {
+                    ensure!(
+                        voter == metadata.username,
+                        "can't vote with a different username"
+                    );
 
-                        match PROPOSALS.load(ctx.storage, proposal_id) {
-                            Ok(proposal) => match proposal.status {
-                                Status::Voting { params, .. } => {
-                                    if params.members.contains_key(&metadata.username) {
-                                        prove_ownership ^= false;
-                                    } else {
-                                        prove_ownership = true
-                                    }
-                                },
-                                // We can raise an error here, or let the execute handling the fails
-                                // since proposal is not in vote status.
-                                _ => prove_ownership = true,
-                            },
-                            Err(_) => prove_ownership = true,
+                    if let Ok(proposal) = PROPOSALS.load(ctx.storage, proposal_id) {
+                        if let Status::Voting { params, .. } = proposal.status {
+                            if params.members.contains_key(&metadata.username) {
+                                return Ok(prove_ownership ^ false);
+                            }
                         }
-                    },
-                    _ => prove_ownership = true,
+                    }
                 }
             },
             _ => bail!("a Safe account can only execute itself"),
         }
 
-        Ok(prove_ownership)
+        Ok(false)
     })?;
 
     authenticate_tx(ctx, tx, None, Some(metadata), prove_ownership)?;
