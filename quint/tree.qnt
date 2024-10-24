@@ -102,7 +102,7 @@ module tree {
        0.to(new_key_hash.length()).map(i => new_key_hash.slice(0,i))
 
   pure def longestPrefixNode(s: Set[NodeId]) : NodeId =
-      s.fold({version: 0 , key_hash: []}, (longestOverlappingPrefix, node) => 
+      s.fold({version: 0 , key_hash: ROOT_BITS}, (longestOverlappingPrefix, node) => 
           if (node.key_hash.length() > longestOverlappingPrefix.key_hash.length() ) 
             node
           else 
@@ -146,28 +146,31 @@ module tree {
   pure def getLastBitOfPrefix(prefix: List[int]) : int = 
     prefix.slice(prefix.length() - 1, prefix.length()).head()
 
-  pure def addTwoLeaves(nodes: NodeId->Node, existingLeafPrefix: BitArray, existingLeaf: LeafNode, newLeafPrefix: BitArray, newLeaf: LeafNode): NodeId -> Node =
+  pure def addTwoLeaves(nodes: NodeId->Node, 
+                        existingLeafPrefix: BitArray, existingLeaf: LeafNode, 
+                        newLeafPrefix: BitArray, newLeaf: LeafNode): NodeId -> Node =
     nodes.put({version: 0, key_hash: existingLeafPrefix}, Leaf(existingLeaf))
            .put({version: 0, key_hash: newLeafPrefix}, Leaf(newLeaf))
-  pure def newInternalNodes(t: Tree, existingLeafNodeId: NodeId, existingLeaf: LeafNode, newLeaf: LeafNode): NodeId -> Node =
+
+  pure def newInternalNodes(t: Tree, existingLeafNodeId: NodeId, 
+                            existingLeaf: LeafNode, newLeaf: LeafNode): NodeId -> Node =
       // get longest common prefix between already existing leaf and new leaf
       val longestCommonPrefixBetweenLeaves = commonPrefix(existingLeaf, newLeaf)
       val existingNodeNewPrefix = existingLeaf.key_hash.slice(0,longestCommonPrefixBetweenLeaves.length()+1)
       val newNodePrefix = newLeaf.key_hash.slice(0,longestCommonPrefixBetweenLeaves.length()+1)
       if(longestCommonPrefixBetweenLeaves.length() == 1){
-        val internal = createInternalOutOfLeafs(longestCommonPrefixBetweenLeaves,existingLeaf, newLeaf)
-        // common prefix [0,0]
-        // new leaf [0,0,1,1]
-        // existing [0,0,0,0]
-        
+        val internal = createInternalOutOfLeafs(longestCommonPrefixBetweenLeaves,existingLeaf, newLeaf)       
         t.nodes.put({version: 0, key_hash: longestCommonPrefixBetweenLeaves}, Internal(internal))
                .addTwoLeaves(existingNodeNewPrefix, existingLeaf, newNodePrefix, newLeaf)
 
       }else {
-        val prefixCombos = 1.to(longestCommonPrefixBetweenLeaves.length()).map(i => longestCommonPrefixBetweenLeaves.slice(0,i))
-        val nodesToCreatePrefixList = prefixCombos.filter(prefix => prefix.length() >= existingLeafNodeId.key_hash.length()).toList(listCompare)
+        val prefixCombos = 1.to(longestCommonPrefixBetweenLeaves.length())
+                            .map(i => longestCommonPrefixBetweenLeaves.slice(0,i))
+        val nodesToCreatePrefixList = prefixCombos.filter(prefix => 
+                                                  prefix.length() >= existingLeafNodeId.key_hash.length())
+                                                  .toList(listCompare)
         val lowestInternalNode = createInternalOutOfLeafs(longestCommonPrefixBetweenLeaves,existingLeaf, newLeaf)
-        val updatedNodes = t.nodes.put({version: 0, key_hash: longestCommonPrefixBetweenLeaves}, Internal(lowestInternalNode))
+        val updatedNodes = t.nodes.put({ version: 0, key_hash: longestCommonPrefixBetweenLeaves }, Internal(lowestInternalNode))
                                   .addTwoLeaves(existingNodeNewPrefix, existingLeaf, newNodePrefix, newLeaf)
 
         val foldOutcome = nodesToCreatePrefixList.foldl({
@@ -175,11 +178,13 @@ module tree {
           internalNodePrefix: longestCommonPrefixBetweenLeaves, 
           lastInternalNode: lowestInternalNode}, (iterator, el) => 
           val internalnode = if(getLastBitOfPrefix(iterator.internalNodePrefix)==1)
-            {left_child:None, right_child: Some({version: 0, hash: hashInternalNode(iterator.lastInternalNode)})}
+            { left_child:None, right_child: Some({ version: 0, hash: hashInternalNode(iterator.lastInternalNode) }) }
           else
-            {left_child:Some({version: 0, hash: hashInternalNode(iterator.lastInternalNode)}), right_child: None}
+            { left_child: Some({ version: 0, hash: hashInternalNode(iterator.lastInternalNode) }), right_child: None }
           
-          {nodes: iterator.nodes.put({version:0, key_hash:el}, Internal(internalnode)), internalNodePrefix:el, lastInternalNode:internalnode}
+          { nodes: iterator.nodes.put({version:0, key_hash:el},Internal(internalnode)), 
+            internalNodePrefix:el, 
+            lastInternalNode:internalnode }
         )
         foldOutcome.nodes
       }
@@ -206,10 +211,20 @@ module tree {
   pure def getNodesOnPath(t: Tree, new_key_hash: Bytes_t) : Set[NodeId] = 
     // allLeafs.filter(leaf => listPrefixCombinations(new_key_hash).contains(leaf.key_hash))
     val nodesOnPath = t.nodes.keys().filter( key => listPrefixCombinations(new_key_hash).contains(key.key_hash))
-    val nodesToReturn = if(nodesOnPath.size() == 1 and nodesOnPath == Set({ key_hash: [], version: 0 }))
-      val adequateLeaf = t.allLeafs().filter(leaf => listPrefixCombinations(new_key_hash).intersect(listPrefixCombinations(leaf.key_hash)).size() > 0)
-      listPrefixCombinations(adequateLeaf.getOnlyElement().key_hash).fold(Set(),(nodeIds, prefixCombo) => 
-              nodeIds.union(Set({version:0, key_hash: prefixCombo})))
+    val nodesToReturn = 
+      if(nodesOnPath.size() == 1 and nodesOnPath == Set({ key_hash: ROOT_BITS, version: 0 }))
+      val leaf = getLeafOrEmpty(t.nodes.get({ version:0,key_hash:[] }))
+      val longestCommonPrefixBetweenKeys = commonPrefixBetweenKeys(leaf.key_hash, new_key_hash)
+      val ids = 0.to(longestCommonPrefixBetweenKeys.length()).map(i => longestCommonPrefixBetweenKeys.slice(0,i))
+      // val a = 1.to(longestCommonPrefixBetweenKeys.length()).map(0 => longestCommonPrefixBetweenKeys.slice(0,i))
+      ids.fold(Set(), (nodeIds, id) => nodeIds.union(Set({version:0, key_hash: id})))
+      // val adequateLeaf = t.allLeafs().filter(leaf => listPrefixCombinations(new_key_hash).intersect(listPrefixCombinations(leaf.key_hash)).size() > 0)
+      // listPrefixCombinations(adequateLeaf.getOnlyElement().key_hash).fold(Set(),(nodeIds, prefixCombo) => 
+      //                     val combinationsFromNewLeaf = listPrefixCombinations(new_key_hash)
+      //                     if(combinationsFromNewLeaf.contains(prefixCombo))
+      //                       nodeIds.union(Set({version:0, key_hash: prefixCombo}))
+      //                     else nodeIds
+      //     )
       else
         nodesOnPath
       
@@ -241,7 +256,20 @@ module tree {
       recomputeHashOnNode(nodes, nodeId))
   } 
 
-
+  pure def constructStartTree(t: Tree): Tree = 
+    val node = t.nodes.get({ version: 0, key_hash:ROOT_BITS })
+    val leaf = match node {
+      | Internal(_) => { key_hash:[], value_hash: [] }
+      | Leaf(l) => l
+    }
+    val leafPrefix = leaf.key_hash.head()
+    val internal  = if(leafPrefix == 0) 
+      { left_child: Some({ version: 0, hash: hashLeafNode(leaf) }), right_child: None }
+    else
+      { left_child:None, right_child: Some({ version: 0, hash: hashLeafNode(leaf) }) }
+    val nodes = t.nodes.put({ version: 0, key_hash: ROOT_BITS }, Internal(internal) )
+                       .put({ version: 0, key_hash: List(leafPrefix) }, Leaf(leaf))
+    { ...t, nodes: nodes }
   pure def allLeafs(t: Tree) : Set[LeafNode] =
     val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
     allNodes.fold(Set(), (s,x) => match x {
@@ -253,24 +281,18 @@ module tree {
     allLeafs(t).filter(leaf=> 
                     leaf.key_hash.head() == newLeaf.key_hash.head()).size() == 0
 
+  pure def isActualNode(nodes: NodeId -> Node, nodeId: NodeId) : bool =
+    nodes.keys().contains(nodeId)
 
-  pure def insert(t: Tree, newLeaf: LeafNode): Tree = 
-    if(t.nodes.keys().size() == 0){
-      val n = makeNodeId(0, [])
-      val updatedNodes = t.nodes.put(n,Leaf(newLeaf))
-      {...t, nodes: updatedNodes}
-    }
-    else{
-      if(leafHasNoOverlap(t, newLeaf)){
-        val existingLeaf = t.nodes.get({version:0, key_hash: []}).getLeafOrEmpty()
-        val updatedNodes: NodeId -> Node = if(newLeaf.key_hash.head() == 0) {
+  pure def onlyOneElementInTree(t: Tree, existingLeaf: LeafNode,newLeaf: LeafNode ): Tree = 
+    val updatedNodes: NodeId -> Node = if(newLeaf.key_hash.head() == 0) {
               val internalNode : InternalNode = {
                                   left_child: Some({ version: 0,
                                                 hash: hashLeafNode(newLeaf)}), 
                                   right_child: Some({ 
                                                 version: 0,
                                                 hash: hashLeafNode(existingLeaf)})}
-              t.nodes.put({version: 0, key_hash:[]}, Internal(internalNode))
+              t.nodes.put({version: 0, key_hash:ROOT_BITS}, Internal(internalNode))
                                         .put({version: 0, key_hash:[newLeaf.key_hash.head()]}, Leaf(newLeaf))
             }else{
               val internalNode : InternalNode = {
@@ -278,22 +300,52 @@ module tree {
                                                 hash: hashLeafNode(existingLeaf)}), 
                                   right_child: Some({ version: 0,
                                                 hash: hashLeafNode(newLeaf)})}
-              t.nodes.put({version: 0, key_hash:[]}, Internal(internalNode))
+              t.nodes.put({version: 0, key_hash:ROOT_BITS}, Internal(internalNode))
                                         .put({version: 0, key_hash:[newLeaf.key_hash.head()]}, Leaf(newLeaf))
             }
         {...t, nodes: updatedNodes.put({version: 0, key_hash:[existingLeaf.key_hash.head()]}, Leaf(existingLeaf))}
+  pure def insert(t: Tree, newLeaf: LeafNode): Tree = 
+    if(t.nodes.keys().size() == 0){
+      val n = makeNodeId(0, ROOT_BITS)
+      val updatedNodes = t.nodes.put(n,Leaf(newLeaf))
+      {...t, nodes: updatedNodes}
+    }else if(false) t
+    else{
+      if(leafHasNoOverlap(t, newLeaf)){
+        val rootNode = t.nodes.get({version:0, key_hash: ROOT_BITS})
+        val tree = match rootNode{
+          | Leaf(existingLeaf) => onlyOneElementInTree(t, existingLeaf, newLeaf)
+          | Internal(rootNode) => {
+            val updatedRootNode = 
+              if(rootNode.left_child == None) {...rootNode, left_child: Some({version: 0, hash: hashLeafNode(newLeaf)})}
+                else {...rootNode, right_child: Some({version: 0, hash: hashLeafNode(newLeaf)})}
+            val newLeafNodeId = { version: 0, key_hash: List(newLeaf.key_hash.head())}
+            val updatedNodes = t.nodes.put({version:0, key_hash: ROOT_BITS}, Internal(updatedRootNode))
+                                      .put(newLeafNodeId, Leaf(newLeaf))
+            {...t, nodes: updatedNodes}
+          }
+        }
+        tree
+        //   val existingInternalLeaf = Internal(t.nodes.get({ version: 0, }))
+        // // }else{
+          
+        // // }
+        
       }else{
         val nodeIdsOnPath: Set[NodeId] = getNodesOnPath(t, newLeaf.key_hash)
         val nodeId: NodeId = longestPrefixNode(nodeIdsOnPath)
-        val nodeToChange = t.nodes.get(nodeId)
+        val actualNode = isActualNode(t.nodes, nodeId)
+        val tree = if(not(actualNode)) constructStartTree(t) else t  
+        val nodeIdAfterReconstruction: NodeId = getNodesOnPath(tree, newLeaf.key_hash).longestPrefixNode()
+        val nodeToChange = tree.nodes.get(nodeIdAfterReconstruction)
         val updatedNodes: NodeId -> Node = match nodeToChange {
-            | Leaf(leafToChange) => newInternalNodes(t, nodeId, leafToChange, newLeaf)
-            | Internal(internalToGrowLeaf) => addLeafUnderInternal(t,internalToGrowLeaf, nodeId, newLeaf)
+            | Leaf(leafToChange) => newInternalNodes(tree, nodeIdAfterReconstruction, leafToChange, newLeaf)
+            | Internal(internalToGrowLeaf) => addLeafUnderInternal(tree,internalToGrowLeaf, nodeIdAfterReconstruction, newLeaf)
         }
         // TODO: recompute parent hashes; use nodeIdOnPath to iterate in descending length()
-        val newNodesWithRecomputedHashes = recomputeHashesOnPath({...t, nodes: updatedNodes}, nodeIdsOnPath)
-        
-        {...t, nodes: newNodesWithRecomputedHashes}
+        val newNodesWithRecomputedHashes = recomputeHashesOnPath({...tree, nodes: updatedNodes}, nodeIdsOnPath)
+          
+        {...tree, nodes: newNodesWithRecomputedHashes}
       }
     }
       
@@ -302,16 +354,16 @@ module tree {
       // TODO: implement helper functions
 
 
-  var t: Tree
+  var tree: Tree
 
   action init =
-    t' = {
+    tree' = {
         orphans: Set(),
         nodes: Map()
   }
 
   action insertAction(l) =
-      t' = insert(t,l)
+      tree' = insert(tree,l)
   
   run e1 = {
     val leafs = List({key_hash: [1, 1, 1, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]})
@@ -356,6 +408,27 @@ module tree {
     val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [0, 0, 0, 0], value_hash: [7]}, {key_hash: [1, 1, 1, 0], value_hash: [42]},{key_hash: [1, 1, 1, 1], value_hash: [666]},
     {key_hash: [1, 0, 0, 1], value_hash: [333]})
     // TODO non-deterministic initialization
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+// sha256("r") = 0100...
+// sha256("m") = 0110...
+// sha256("L") = 0111...
+// sha256("a") = 1100...
+  run ExampleSC2 = {
+    val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [1, 1, 1, 0], value_hash: [42]})
+    init
+    .then(leafs.length().reps(i => insertAction(leafs[i])))
+    .expect(true) //some invariant
+  }
+  run testRustTree = {
+    val leafs = List(
+      {key_hash: [0, 1, 0, 0], value_hash: [5]}, 
+      {key_hash: [0, 1, 1, 0], value_hash: [33]},
+      {key_hash: [0, 1, 1, 1], value_hash: [666]},
+      {key_hash: [1, 1, 0, 0], value_hash: [77]})
+
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
     .expect(true) //some invariant

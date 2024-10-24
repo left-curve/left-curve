@@ -18,6 +18,11 @@ module utils {
       hack.get("value")
     }
   }
+  pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
+    val indList = range(1, keylength + 1)
+    indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
+                                    b.slice(0, x) 
+                                else s )
   pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
