@@ -38,21 +38,41 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // execute itself. Everything else needs to be done through proposals.
     // Additionally, if the action is proposing or voting, the proposer/voter's
     // username must match the transaction signer's username.
-    for msg in &tx.msgs {
+
+    // Edgcases:
+    // if user that is not a member anymore tries to vote on a proposal
+    // we need to allow it to vote.
+    // To achive this we need to check all msgs:
+    // - Until msgs are vote and the vote at time was a member, we can omit the onwership check on authenticate_tx;
+    // - If the proposal is not found, or there are other type of msgs, we need to check the ownership.
+    let prove_ownership = tx.msgs.iter().try_fold(false, |prove_ownership, msg| {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
-                if let ExecuteMsg::Vote { voter, .. } = msg.clone().deserialize_json()? {
+                if let ExecuteMsg::Vote {
+                    proposal_id, voter, ..
+                } = msg.clone().deserialize_json::<ExecuteMsg>()?
+                {
                     ensure!(
                         voter == metadata.username,
                         "can't vote with a different username"
                     );
+
+                    if let Ok(proposal) = PROPOSALS.load(ctx.storage, proposal_id) {
+                        if let Status::Voting { params, .. } = proposal.status {
+                            if params.members.contains_key(&metadata.username) {
+                                return Ok(prove_ownership ^ false);
+                            }
+                        }
+                    }
                 }
             },
             _ => bail!("a Safe account can only execute itself"),
         }
-    }
 
-    authenticate_tx(ctx, tx, None, Some(metadata))?;
+        Ok(true)
+    })?;
+
+    authenticate_tx(ctx, tx, None, Some(metadata), prove_ownership)?;
 
     Ok(AuthResponse::new().request_backrun(false))
 }
@@ -64,6 +84,11 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.contract,
+        "only the Safe account itself can execute its own transactions"
+    );
+
     match msg {
         ExecuteMsg::Propose {
             title,
@@ -322,7 +347,16 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: SAFE,
                 gas_limit: 1_000_000,
-                msgs: vec![],
+                msgs: vec![Message::execute(
+                    SAFE,
+                    &multi::ExecuteMsg::Propose {
+                        title: "title".to_string(),
+                        description: None,
+                        messages: vec![],
+                    },
+                    Coins::new(),
+                )
+                .unwrap()],
                 data: Metadata {
                     username: non_member.clone(),
                     // The things below (key hash, sequence, credential) don't

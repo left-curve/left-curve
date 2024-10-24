@@ -25,6 +25,7 @@ pub fn authenticate_tx(
     // metadata, they can be provided here, so we don't redo the work.
     maybe_factory: Option<Addr>,
     maybe_metadata: Option<Metadata>,
+    prove_ownership: bool,
 ) -> anyhow::Result<()> {
     // Query the chain for account factory's address, if it's not already done.
     let factory = if let Some(factory) = maybe_factory {
@@ -51,11 +52,24 @@ pub fn authenticate_tx(
     // We use Wasm raw queries instead of smart queries to optimize on gas.
     // We also user the multi query to reduce the number of FFI calls.
     let key = {
-        let [res1, res2, res3] = ctx.querier.query_multi([
-            Query::wasm_raw(
-                factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-            ),
+        if prove_ownership {
+            // If the sender account is associated with the username, then an entry
+            // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
+            // empty because we Borsh for encoding.
+            ensure!(
+                ctx.querier
+                    .query_wasm_raw(
+                        factory,
+                        ACCOUNTS_BY_USER.path((&metadata.username, tx.sender))
+                    )?
+                    .is_some_and(|bytes| bytes.is_empty()),
+                "account {} isn't associated with user `{}`",
+                tx.sender,
+                metadata.username
+            )
+        }
+
+        let [res1, res2] = ctx.querier.query_multi([
             Query::wasm_raw(
                 factory,
                 KEYS_BY_USER.path((&metadata.username, metadata.key_hash)),
@@ -63,27 +77,17 @@ pub fn authenticate_tx(
             Query::wasm_raw(factory, KEYS.path(metadata.key_hash)),
         ])?;
 
-        // If the sender account is associated with the username, then an entry
-        // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-        // empty because we Borsh for encoding.
-        ensure!(
-            res1.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
-            "account {} isn't associated with user `{}`",
-            tx.sender,
-            metadata.username,
-        );
-
         // Similarly, if the key hash is associated with the username, it must
         // be present in the `KEYS_BY_USER` set.
         ensure!(
-            res2.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
+            res1.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
             "key hash {} isn't associated with user `{}`",
             metadata.key_hash,
             metadata.username
         );
 
         // Deserialize the key from Borsh bytes.
-        res3.as_wasm_raw()
+        res2.as_wasm_raw()
             .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
             .deserialize_borsh()?
     };
@@ -248,6 +252,13 @@ mod tests {
             .with_chain_id("dev-2")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+        authenticate_tx(
+            ctx.as_auth(),
+            tx.deserialize_json().unwrap(),
+            None,
+            None,
+            true,
+        )
+        .unwrap();
     }
 }
