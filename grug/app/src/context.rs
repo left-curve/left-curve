@@ -41,11 +41,11 @@ where
     /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined>`
     pub fn downcast(&self) -> AppCtx<Undefined> {
         AppCtx {
-            block: self.block,
-            chain_id: self.chain_id.clone(),
-            gas_tracker: self.gas_tracker.clone(),
-            storage: self.storage.clone(),
             vm: Undefined::default(),
+            storage: self.storage.clone(),
+            gas_tracker: self.gas_tracker.clone(),
+            chain_id: self.chain_id.clone(),
+            block: self.block,
         }
     }
 }
@@ -60,11 +60,11 @@ where
         S1: Storage,
     {
         AppCtx {
-            block: self.block,
-            chain_id: self.chain_id.clone(),
-            gas_tracker: self.gas_tracker.clone(),
-            storage,
             vm: self.vm.clone(),
+            storage,
+            gas_tracker: self.gas_tracker.clone(),
+            chain_id: self.chain_id.clone(),
+            block: self.block,
         }
     }
 }
@@ -79,11 +79,11 @@ where
         storage: Shared<Buffer<S1>>,
     ) -> AppCtx<VM, Shared<Buffer<S1>>> {
         AppCtx {
-            block: self.block,
-            chain_id: self.chain_id.clone(),
-            gas_tracker: self.gas_tracker.clone(),
-            storage,
             vm: self.vm.clone(),
+            storage,
+            gas_tracker: self.gas_tracker.clone(),
+            chain_id: self.chain_id.clone(),
+            block: self.block,
         }
     }
 }
@@ -96,11 +96,11 @@ where
     /// Clone the `AppCtx` boxing the inner `storage`
     pub fn clone_boxing_storage(&self) -> AppCtx<VM, Box<dyn Storage>> {
         AppCtx {
-            block: self.block,
-            chain_id: self.chain_id.clone(),
-            gas_tracker: self.gas_tracker.clone(),
-            storage: Box::new(self.storage.clone()),
             vm: self.vm.clone(),
+            storage: Box::new(self.storage.clone()),
+            gas_tracker: self.gas_tracker.clone(),
+            chain_id: self.chain_id.clone(),
+            block: self.block,
         }
     }
 }
