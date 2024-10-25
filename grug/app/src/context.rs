@@ -5,7 +5,7 @@ use {
 
 /// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
 #[derive(Clone)]
-pub struct AppCtx<VM = Undefined<()>, S = Box<dyn Storage>> {
+pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>> {
     pub block: BlockInfo,
     pub chain_id: String,
     pub gas_tracker: GasTracker,
@@ -42,8 +42,8 @@ where
         &self.vm
     }
 
-    /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined<()>>`
-    pub fn downcast(&self) -> AppCtx<Undefined<()>> {
+    /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined>`
+    pub fn downcast(&self) -> AppCtx<Undefined> {
         AppCtx {
             block: self.block,
             chain_id: self.chain_id.clone(),
