@@ -62,15 +62,7 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash256> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
-
-        let mut ctx = AppCtx::new(
-            self.vm.clone(),
-            buffer,
-            GasTracker::new_limitless(),
-            &chain_id,
-            block,
-        );
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
 
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
@@ -87,26 +79,34 @@ where
 
         // Save the config and genesis block, so that they can be queried when
         // executing genesis messages.
-        CHAIN_ID.save(&mut ctx.storage, &chain_id)?;
-        CONFIG.save(&mut ctx.storage, &genesis_state.config)?;
-        LAST_FINALIZED_BLOCK.save(&mut ctx.storage, &block)?;
+        CHAIN_ID.save(&mut buffer, &chain_id)?;
+        CONFIG.save(&mut buffer, &genesis_state.config)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
         // Save app configs.
         for (key, value) in genesis_state.app_configs {
-            APP_CONFIGS.save(&mut ctx.storage, &key, &value)?;
+            APP_CONFIGS.save(&mut buffer, &key, &value)?;
         }
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut ctx.storage, contract, block.timestamp, interval)?;
+            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
         }
+
+        // Prepare the context for processing the genesis messages.
+        let ctx = AppCtx::new(
+            self.vm.clone(),
+            buffer,
+            GasTracker::new_limitless(),
+            chain_id.clone(),
+            block,
+        );
 
         // Loop through genesis messages and execute each one.
         //
         // It's expected that genesis messages should all successfully execute.
         // If anyone fails, it's considered fatal and genesis is aborted.
         // The developer should examine the error, fix it, and retry.
-
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
