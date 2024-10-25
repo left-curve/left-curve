@@ -88,16 +88,12 @@ fn transfers_with_insufficient_gas_limit() {
     let to = accounts["receiver"].address;
 
     // Make a bank transfer with a small gas limit; should fail.
-    // Bank transfers should take around ~1M gas.
-    //
-    // We can't easily tell whether gas will run out during the Wasm execution
-    // (in which case, the error would be a `VmError::GasDepletion`) or during
-    // a host function call (in which case, a `VmError::OutOfGas`). We can only
-    // say that the error has to be one of the two. Therefore, we simply ensure
-    // the error message contains the word "gas".
+    // For this test to work, the tx should request enough gas to pass `withhold_fee`,
+    // but not enough to cover the actual transfer.
+    // In experience, 200k gas works.
     let outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
-        100_000,
+        200_000,
         Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
     );
 

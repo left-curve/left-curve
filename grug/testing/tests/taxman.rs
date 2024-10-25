@@ -241,7 +241,7 @@ fn finalizing_fee_erroring() {
     // zero gas limit.
     let outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
-        0,
+        2000,
         Message::transfer(to, Coins::new()).unwrap(),
     );
 

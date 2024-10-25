@@ -1,6 +1,7 @@
 use {
     crate::GasTracker,
     grug_types::{BlockInfo, Storage, Undefined},
+    std::mem,
 };
 
 /// The context under which app functions are executed.
@@ -35,6 +36,11 @@ impl<VM, S> AppCtx<VM, S> {
             chain_id: chain_id.into(),
             block,
         }
+    }
+
+    /// Replace the gas tracker with a new one; return the old one.
+    pub fn replace_gas_tracker(&mut self, gas_tracker: GasTracker) -> GasTracker {
+        mem::replace(&mut self.gas_tracker, gas_tracker)
     }
 
     /// Cast the context to a variant where the VM is undefined.

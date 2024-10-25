@@ -545,21 +545,15 @@ where
     let buffer1 = Shared::new(Buffer::new(storage.clone(), None));
     let buffer2 = Shared::new(Buffer::new(buffer1.clone(), None));
 
-    // Create two layers of contexts simiarly.
+    // Create two layers of contexts using the two buffers.
     let ctx1 = AppCtx::new(
         vm.clone(),
-        buffer1.clone(),
+        buffer1,
         gas_tracker.clone(),
         chain_id.clone(),
         block,
     );
-    let ctx2 = AppCtx::new(
-        vm.clone(),
-        buffer2.clone(),
-        gas_tracker.clone(),
-        chain_id,
-        block,
-    );
+    let ctx2 = AppCtx::new(vm, buffer2, gas_tracker.clone(), chain_id, block);
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -596,12 +590,12 @@ where
     // `buffer1`), discard the events, and jump to `finalize_fee`.
     let request_backrun = match do_authenticate(ctx2.clone_boxing_storage(), &tx, mode) {
         Ok((new_events, request_backrun)) => {
-            buffer2.write_access().commit();
+            ctx2.storage.write_access().commit();
             events.extend(new_events);
             request_backrun
         },
         Err(err) => {
-            drop(buffer2);
+            drop(ctx2.storage);
             return process_finalize_fee(ctx1, tx, mode, events, Err(err));
         },
     };
@@ -616,11 +610,11 @@ where
     // in `buffer1`), discard the events, and jump to `finalize_fee`.
     match process_msgs_then_backrun(ctx2.clone_boxing_storage(), &tx, mode, request_backrun) {
         Ok(new_events) => {
-            buffer2.disassemble().consume();
+            ctx2.storage.disassemble().consume();
             events.extend(new_events);
         },
         Err(err) => {
-            drop(buffer2);
+            drop(ctx2.storage);
             return process_finalize_fee(ctx1, tx, mode, events, Err(err));
         },
     }
@@ -678,23 +672,19 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let outcome_so_far = new_tx_outcome(ctx.gas_tracker.clone(), events.clone(), result.clone());
-
-    // backup gas tracker
-    let used_gt = ctx.gas_tracker.clone();
-
-    ctx.gas_tracker = GasTracker::new_limitless();
+    let gas_tracker = ctx.replace_gas_tracker(GasTracker::new_limitless());
+    let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
 
     match do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode) {
         Ok(new_events) => {
             events.extend(new_events);
             ctx.storage.disassemble().consume();
-            new_tx_outcome(used_gt, events, result)
+            new_tx_outcome(gas_tracker, events, result)
         },
         Err(err) => {
             events.clear();
             drop(ctx.storage);
-            new_tx_outcome(used_gt, Vec::new(), Err(err))
+            new_tx_outcome(gas_tracker, Vec::new(), Err(err))
         },
     }
 }
