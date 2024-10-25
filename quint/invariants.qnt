@@ -8,57 +8,80 @@ import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
 import utils.* from "./utils"
 
-val maxVersion = 10
+pure def treeVersion(t: Tree): int =
+  t.nodes.keys().filter(nId => nId.key_hash == [])
+                .fold(-1, (s, x) => 
+                  if (x.version > s)
+                    x.version
+                  else
+                    s)
 
 /// return the prefixes of all childred from nodes at the given version 
-pure def ChildrenPrefixes(nodes: TreeMap, version: int): Set[BitArray] = 
-  val prefixes = nodes.keys()
-                      .filter(nId => nId.version == version)
-                      .map(nId => nId.key_hash)
-  prefixes.fold(Set(), (s, x) =>
-    match nodes.get({version: version, key_hash: x}) {
+pure def childrenPrefixes(nodes: TreeMap): Set[BitArray] = 
+  val allChildren = nodes.keys().fold(Set(), (s, x) =>
+    match nodes.get(x) {
       | Internal(n) =>
         val lc = if (n.left_child != None) 
-                  Set(x.append(0)) 
+                  Set(x.key_hash.append(0)) 
                 else 
                   Set()
         val rc = if (n.right_child != None) 
-                  Set(x.append(1)) 
+                  Set(x.key_hash.append(1)) 
                 else 
                   Set()
         s.union(lc).union(rc)  
       | Leaf(_) => s
     }
   )
+  allChildren.exclude(nodes.keys().map(nId => nId.key_hash))
 
 /// return the NodeId for the given prefix with the largest version less than the given version
-pure def getnodeIdforVersion(nodes: TreeMap, key: BitArray, version: int): NodeId = 
-  nodes .keys()
-        .filter(nId => nId.key_hash == key and nId.version <= version)
-        .fold({ version: -1, key_hash: key }, (s,x) => 
-          if (x.version > s.version)
-            x
-          else 
-          s
-        )
+pure def getnodeIdforMaxVersion(nodes: TreeMap, key: BitArray): Option[NodeId] = 
+  val default = { version: -1, key_hash: key }
+  val result = nodes.keys()
+                    .filter(nId => nId.key_hash == key)
+                    .fold(default, (s,x) => 
+                      if (x.version > s.version)
+                        x
+                      else 
+                        s
+                    ) 
+  if (result == default)
+    None
+  else
+    Some(result)
+
+pure def nodesUpdatedAtVersion(t: TreeMap, version: int): TreeMap =
+  t.keys()
+    .filter(nId => nId.version == version)
+    .mapBy(nId => t.get(nId))
+
+pure def nodesUpdatedByVersion(t: TreeMap, version: int): TreeMap =
+  t.keys()
+    .filter(nId => nId.version <= version)
+    .mapBy(nId => t.get(nId))
+
+
+pure def addDirectChildren(t: TreeMap, pool: TreeMap) : TreeMap =
+  childrenPrefixes(t) 
+    .fold(t, (treeNodes, prefix) => 
+      match getnodeIdforMaxVersion(pool, prefix) {
+        | Some(nodeId) => treeNodes.put(nodeId, pool.get(nodeId))
+        | None => treeNodes
+      }
+    )
 
 /// compute the tree at the given version
+/// TODO: check/re-check/double check. write tests
 pure def treeAtVersion(t: Tree, version: int): TreeMap =
-  val nodesUpToVersion = t.nodes.keys()
-                                .filter(nId => nId.version <= version)
-                                .mapBy(nId => t.nodes.get(nId))
-  val nodesAtVersion = t.nodes.keys()
-                              .filter(nId => nId.version == version)
-                              .mapBy(nId => t.nodes.get(nId))
-  val indList = range(1, version + 1) // TODO check borders
-  // go back in versions and add childred nodes
-  indList.foldr(nodesAtVersion, (ver, treeNodes) => 
-    // for the current versions check the childred to add
-    // add them one-by-one in the fold, but pick the largest version of this child
-    ChildrenPrefixes(nodesUpToVersion, ver).fold(treeNodes, (ss, xx) => 
-      val nodeId = getnodeIdforVersion(nodesUpToVersion, xx, ver)
-      ss.set(nodeId, nodesUpToVersion.get(nodeId)))
-  )
+  // first check if there is a root at this version
+  if (t.nodes.keys().contains({ version: version, key_hash: []}))
+    val nodesUpToVersion = nodesUpdatedByVersion(t.nodes, version)
+    val nodesAtVersion = nodesUpdatedAtVersion(t.nodes, version)  // take the nodes for the current version...
+    0.to(MAX_HASH_LENGTH).fold(nodesAtVersion, (treeNodes, _) =>  // ... and grow the tree by adding direct children
+      addDirectChildren(treeNodes, nodesUpToVersion))
+  else
+    Map()
     
 
 
@@ -76,7 +99,7 @@ pure def everyNodesParentIsInTheTree(t: TreeMap): bool =
 /// Invariant: Everyone has a parent
 /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
 def everyNodesParentIsInTheTreeInv = 
-  0.to(maxVersion).forall(v =>
+  0.to(tree.treeVersion()).forall(v =>
     val vTree = treeAtVersion(tree,v)
     everyNodesParentIsInTheTree(vTree)
   )
@@ -115,23 +138,27 @@ pure def nodeAtCommonPrefix(t: TreeMap) : bool =
 /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
 /// tree that is the common prefix
 def nodeAtCommonPrefixInv = 
-  0.to(maxVersion).forall(v =>
+  0.to(tree.treeVersion()).forall(v =>
     val vTree = treeAtVersion(tree,v)
     nodeAtCommonPrefix(vTree)
   )
 
 /// This computes the prefix of the child. 
-/// TODO: currently it ignores versions
 pure def rightChild(t: TreeMap, nId: NodeId): NodeId =
-    // TODO: versions
-    {version: 0, key_hash: nId.key_hash.append(1)}
+    // there should only be one node for each prefix, but we need to figure out its version
+    t.keys().filter(n => n.key_hash == nId.key_hash.append(1))  // filter down to a singleton
+            .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
 
 /// This computes the prefix of the child. 
-/// TODO: currently it ignores versions
 pure def leftChild(t: TreeMap, nId: NodeId): NodeId =
-    // TODO: versions
     // there should only be one node for each prefix, but we need to figure out its version
-    {version: 0, key_hash: nId.key_hash.append(0)}   
+    t.keys().filter(n => n.key_hash == nId.key_hash.append(0))  // filter down to a singleton
+            .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
+
+/// The treemaps we use in the invariants have unique key_hashes 
+pure def goodTreeMap(t: TreeMap): bool =
+  t.keys().forall(a =>
+    t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
 
 
 /// Check that for all internal nodes, if they have a hash stored for a child,
@@ -153,7 +180,7 @@ pure def properlyHashed(t: TreeMap): bool =
 
 /// Invariant: All hashes stored in the tree are actually the hashes of the subtree
 def hashInv = 
-    0.to(maxVersion).forall(v => properlyHashed(treeAtVersion(tree,v)))
+    0.to(tree.treeVersion()).forall(v => properlyHashed(treeAtVersion(tree,v)))
 
 // TODO TreeMap is a bijection: perhaps not with versions
 
@@ -161,15 +188,15 @@ pure def isPrefix(short: BitArray, long: BitArray): bool =
     if (short.length() > long.length())
         false
     else
-        short == long.slice(0, short.length() - 1)
+        short == long.slice(0, short.length())
 
 /// Make sure that the map encodes a tree. In particular, there is no internal node 
 /// that has a leaf node as its prefix
 /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
 /// TODO: versions
-pure def noInternalChild(t: Tree): bool =
-    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
-    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+pure def noInternalChild(t: TreeMap): bool =
+    val leafNodeIds = t.keys().filter(nId => t.get(nId).isLeaf())
+    val internalNodeIds = t.keys().filter(nId => t.get(nId).isInternal())
     val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
     val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
     not(leafPrefixes.exists(lp => 
@@ -177,7 +204,8 @@ pure def noInternalChild(t: Tree): bool =
                 isPrefix(lp, ip))))
 
 /// Invariant: there is no internal node  that has a leaf node as its prefix
-def noInternalChildInv = noInternalChild(tree)
+def noInternalChildInv = 
+    0.to(tree.treeVersion()).forall(v => noInternalChild(treeAtVersion(tree,v)))
 
 /// For the same path there are not multiple version stored within the nodes
 pure def oneNodePerPath(t: Tree): bool =
@@ -188,23 +216,24 @@ pure def interNalNodeHasChildren(n: InternalNode): bool =
     n.left_child != None or n.right_child != None
 
 /// There is no internal nodes without children
-pure def allInternalNodesHaveChildren(t: Tree): bool =
-    t.nodes.keys().forall(nId => match t.nodes.get(nId) {
+pure def allInternalNodesHaveChildren(t: TreeMap): bool =
+    t.keys().forall(nId => match t.get(nId) {
         | Internal(n) => interNalNodeHasChildren(n)
         | Leaf(_) => true
     })
 
 /// Invariant: All nodes of type Internal have a child which is not None
-def allInternalNodesHaveChildrenInv = allInternalNodesHaveChildren(tree)
+def allInternalNodesHaveChildrenInv = 
+  0.to(tree.treeVersion()).forall(v => allInternalNodesHaveChildren(treeAtVersion(tree,v)))
 
-pure def getNodeFromPath(t: Tree, b: BitArray): Node =
-    val key = t.nodes.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
-    t.nodes.get(key)
+pure def getNodeFromPath(t: TreeMap, b: BitArray): Node =
+    val key = t.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
+    t.get(key)
 
 
 /// If a node (different from the root) has one child, the child is an internal node
-pure def density(t: Tree): bool =
-    t.nodes.keys().filter(nId => nId.key_hash != []).forall(nId => match t.nodes.get(nId) {
+pure def density(t: TreeMap): bool =
+    t.keys().filter(nId => nId.key_hash != []).forall(nId => match t.get(nId) {
         | Internal(n) => 
                         if (interNalNodeHasChildren(n))
                             if (n.left_child == None)
@@ -233,6 +262,8 @@ pure def density(t: Tree): bool =
         | Leaf(_) => true
     })    
 
-def densityInv = density(tree)
+/// Invariant: If a node (different from the root) has one child, the child is an internal node
+def densityInv = 
+  0.to(tree.treeVersion()).forall(v => density(treeAtVersion(tree,v)))
 
 }
