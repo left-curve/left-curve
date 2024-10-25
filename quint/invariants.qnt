@@ -8,7 +8,13 @@ import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
 import utils.* from "./utils"
 
-val maxVersion = 10
+pure def treeVersion(t: Tree): int =
+  t.nodes.keys().filter(nId => nId.key_hash == [])
+                .fold(-1, (s, x) => 
+                  if (x.version > s)
+                    x.version
+                  else
+                    s)
 
 /// return the prefixes of all childred from nodes at the given version 
 pure def ChildrenPrefixes(nodes: TreeMap, version: int): Set[BitArray] = 
@@ -79,7 +85,7 @@ pure def everyNodesParentIsInTheTree(t: TreeMap): bool =
 /// Invariant: Everyone has a parent
 /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
 def everyNodesParentIsInTheTreeInv = 
-  0.to(maxVersion).forall(v =>
+  0.to(tree.treeVersion()).forall(v =>
     val vTree = treeAtVersion(tree,v)
     everyNodesParentIsInTheTree(vTree)
   )
@@ -118,7 +124,7 @@ pure def nodeAtCommonPrefix(t: TreeMap) : bool =
 /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
 /// tree that is the common prefix
 def nodeAtCommonPrefixInv = 
-  0.to(maxVersion).forall(v =>
+  0.to(tree.treeVersion()).forall(v =>
     val vTree = treeAtVersion(tree,v)
     nodeAtCommonPrefix(vTree)
   )
@@ -160,7 +166,7 @@ pure def properlyHashed(t: TreeMap): bool =
 
 /// Invariant: All hashes stored in the tree are actually the hashes of the subtree
 def hashInv = 
-    0.to(maxVersion).forall(v => properlyHashed(treeAtVersion(tree,v)))
+    0.to(tree.treeVersion()).forall(v => properlyHashed(treeAtVersion(tree,v)))
 
 // TODO TreeMap is a bijection: perhaps not with versions
 
@@ -174,9 +180,9 @@ pure def isPrefix(short: BitArray, long: BitArray): bool =
 /// that has a leaf node as its prefix
 /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
 /// TODO: versions
-pure def noInternalChild(t: Tree): bool =
-    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
-    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
+pure def noInternalChild(t: TreeMap): bool =
+    val leafNodeIds = t.keys().filter(nId => t.get(nId).isLeaf())
+    val internalNodeIds = t.keys().filter(nId => t.get(nId).isInternal())
     val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
     val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
     not(leafPrefixes.exists(lp => 
@@ -184,7 +190,8 @@ pure def noInternalChild(t: Tree): bool =
                 isPrefix(lp, ip))))
 
 /// Invariant: there is no internal node  that has a leaf node as its prefix
-def noInternalChildInv = noInternalChild(tree)
+def noInternalChildInv = 
+    0.to(tree.treeVersion()).forall(v => noInternalChild(treeAtVersion(tree,v)))
 
 /// For the same path there are not multiple version stored within the nodes
 pure def oneNodePerPath(t: Tree): bool =
@@ -195,23 +202,24 @@ pure def interNalNodeHasChildren(n: InternalNode): bool =
     n.left_child != None or n.right_child != None
 
 /// There is no internal nodes without children
-pure def allInternalNodesHaveChildren(t: Tree): bool =
-    t.nodes.keys().forall(nId => match t.nodes.get(nId) {
+pure def allInternalNodesHaveChildren(t: TreeMap): bool =
+    t.keys().forall(nId => match t.get(nId) {
         | Internal(n) => interNalNodeHasChildren(n)
         | Leaf(_) => true
     })
 
 /// Invariant: All nodes of type Internal have a child which is not None
-def allInternalNodesHaveChildrenInv = allInternalNodesHaveChildren(tree)
+def allInternalNodesHaveChildrenInv = 
+  0.to(tree.treeVersion()).forall(v => allInternalNodesHaveChildren(treeAtVersion(tree,v)))
 
-pure def getNodeFromPath(t: Tree, b: BitArray): Node =
-    val key = t.nodes.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
-    t.nodes.get(key)
+pure def getNodeFromPath(t: TreeMap, b: BitArray): Node =
+    val key = t.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
+    t.get(key)
 
 
 /// If a node (different from the root) has one child, the child is an internal node
-pure def density(t: Tree): bool =
-    t.nodes.keys().filter(nId => nId.key_hash != []).forall(nId => match t.nodes.get(nId) {
+pure def density(t: TreeMap): bool =
+    t.keys().filter(nId => nId.key_hash != []).forall(nId => match t.get(nId) {
         | Internal(n) => 
                         if (interNalNodeHasChildren(n))
                             if (n.left_child == None)
@@ -240,6 +248,8 @@ pure def density(t: Tree): bool =
         | Leaf(_) => true
     })    
 
-def densityInv = density(tree)
+/// Invariant: If a node (different from the root) has one child, the child is an internal node
+def densityInv = 
+  0.to(tree.treeVersion()).forall(v => density(treeAtVersion(tree,v)))
 
 }
