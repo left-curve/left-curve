@@ -78,11 +78,7 @@ pure def treeAtVersion(t: Tree, version: int): TreeMap =
   if (t.nodes.keys().contains({ version: version, key_hash: []}))
     val nodesUpToVersion = nodesUpdatedByVersion(t.nodes, version)
     val nodesAtVersion = nodesUpdatedAtVersion(t.nodes, version)
-    val indList = range(1, version + 1) // TODO check borders
-    // go back in versions and add childred nodes
-    indList.foldr(nodesAtVersion, (_, treeNodes) => 
-      // for the current versions check the childred to add
-      // add them one-by-one in the fold, but pick the largest version of this child
+    0.to(MAX_HASH_LENGTH).fold(nodesAtVersion, (treeNodes, _) => 
       addDirectChildren(treeNodes, nodesUpToVersion))
   else
     Map()
