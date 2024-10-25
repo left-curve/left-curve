@@ -39,12 +39,12 @@ where
     VM: Vm,
 {
     /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined>`
-    pub fn downcast(&self) -> AppCtx<Undefined> {
+    pub fn downcast(self) -> AppCtx<Undefined> {
         AppCtx {
             vm: Undefined::default(),
-            storage: self.storage.clone(),
-            gas_tracker: self.gas_tracker.clone(),
-            chain_id: self.chain_id.clone(),
+            storage: self.storage,
+            gas_tracker: self.gas_tracker,
+            chain_id: self.chain_id,
             block: self.block,
         }
     }
