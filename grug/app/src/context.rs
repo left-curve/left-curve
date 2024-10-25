@@ -6,30 +6,30 @@ use {
 /// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
 #[derive(Clone)]
 pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>> {
-    pub block: BlockInfo,
-    pub chain_id: String,
-    pub gas_tracker: GasTracker,
+    pub vm: VM,
     pub storage: S,
-    vm: VM,
+    pub gas_tracker: GasTracker,
+    pub chain_id: String,
+    pub block: BlockInfo,
 }
 
 impl AppCtx {
     pub fn new<VM, S, C>(
-        block: BlockInfo,
-        chain_id: C,
-        gas_tracker: GasTracker,
-        storage: S,
         vm: VM,
+        storage: S,
+        gas_tracker: GasTracker,
+        chain_id: C,
+        block: BlockInfo,
     ) -> AppCtx<VM, S>
     where
         C: Into<String>,
     {
         AppCtx {
-            block,
-            chain_id: chain_id.into(),
-            gas_tracker,
-            storage,
             vm,
+            storage,
+            gas_tracker,
+            chain_id: chain_id.into(),
+            block,
         }
     }
 }
@@ -38,10 +38,6 @@ impl<VM> AppCtx<VM>
 where
     VM: Vm,
 {
-    pub fn vm(&self) -> &VM {
-        &self.vm
-    }
-
     /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined>`
     pub fn downcast(&self) -> AppCtx<Undefined> {
         AppCtx {

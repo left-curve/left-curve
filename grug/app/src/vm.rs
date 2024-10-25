@@ -224,7 +224,7 @@ where
     let querier = QuerierProvider::new(ctx.clone());
     let storage = StorageProvider::new(ctx.storage.clone(), &[CONTRACT_NAMESPACE, &contract]);
 
-    Ok(ctx.vm().clone().build_instance(
+    Ok(ctx.vm.clone().build_instance(
         &code.code,
         code_hash,
         storage,

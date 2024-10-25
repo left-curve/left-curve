@@ -67,11 +67,11 @@ where
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
 
         let mut ctx = AppCtx::new(
-            block,
-            &chain_id,
-            GasTracker::new_limitless(),
-            buffer,
             self.vm.clone(),
+            buffer,
+            GasTracker::new_limitless(),
+            &chain_id,
+            block,
         );
 
         // Make sure the genesis block height is zero. This is necessary to
@@ -143,13 +143,14 @@ where
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let chain_id = CHAIN_ID.load(&buffer)?;
 
         let mut ctx = AppCtx::new(
-            block,
-            CHAIN_ID.load(&buffer)?,
-            GasTracker::new_limitless(),
-            buffer,
             self.vm.clone(),
+            buffer,
+            GasTracker::new_limitless(),
+            chain_id,
+            block,
         );
 
         let mut cron_outcomes = vec![];
@@ -294,14 +295,17 @@ where
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<Outcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let chain_id = CHAIN_ID.load(&buffer)?;
+        let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+
         let mut events = vec![];
 
         let mut ctx = AppCtx::new(
-            LAST_FINALIZED_BLOCK.load(&buffer)?,
-            CHAIN_ID.load(&buffer)?,
-            GasTracker::new_limitless(),
-            Box::new(buffer) as Box<dyn Storage>,
             self.vm.clone(),
+            Box::new(buffer) as _,
+            GasTracker::new_limitless(),
+            chain_id,
+            block,
         );
 
         match do_withhold_fee(ctx.clone(), &tx, AuthMode::Check) {
@@ -365,13 +369,15 @@ where
 
         // Use the state storage at the given version to perform the query.
         let storage = self.db.state_storage(version)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         let ctx = AppCtx::new(
-            LAST_FINALIZED_BLOCK.load(&storage)?,
-            CHAIN_ID.load(&storage)?,
-            GasTracker::new_limited(self.query_gas_limit),
-            Box::new(storage.clone()) as Box<dyn Storage>,
             self.vm.clone(),
+            Box::new(storage.clone()) as _,
+            GasTracker::new_limited(self.query_gas_limit),
+            chain_id,
+            block,
         );
 
         process_query(ctx, 0, req)
@@ -414,15 +420,15 @@ where
         prove: bool,
     ) -> AppResult<TxOutcome> {
         let buffer = Buffer::new(self.db.state_storage(None)?, None);
-
+        let chain_id = CHAIN_ID.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         let ctx = AppCtx::new(
-            block,
-            CHAIN_ID.load(&buffer)?,
-            GasTracker::new_limitless(),
-            Box::new(buffer) as Box<dyn Storage>,
             self.vm.clone(),
+            Box::new(buffer) as _,
+            GasTracker::new_limitless(),
+            chain_id,
+            block,
         );
 
         // We can't "prove" a gas simulation

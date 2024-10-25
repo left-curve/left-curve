@@ -536,11 +536,11 @@ mod tests {
                 StorageProvider::new(Box::new(storage.clone()), &[NAMESPACE_CONTRACT]);
 
             let querier_provider = QuerierProvider::new(AppCtx::new(
-                MOCK_BLOCK,
-                "dev-1",
-                gas_tracker.clone(),
-                Box::new(storage.clone()),
                 WasmVm::new(0),
+                Box::new(storage.clone()),
+                gas_tracker.clone(),
+                "dev-1",
+                MOCK_BLOCK,
             ));
 
             let env = Environment::new(
