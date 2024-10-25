@@ -28,11 +28,24 @@ module rareSpells {
     else
       { EQ }
   }
-  pure def tupleCompare(__a: (int, List[int]), __b: (int, List[int])): Ordering = {
-    if (__a._1 < __b._1)
-      { LT }
-    else if (__a._1 > __b._1)
+  type NodeIdToCompare = { 
+    version: int, 
+    key_hash: List[int]
+  }
+
+  pure def nodeCompare(__a: NodeIdToCompare, __b: NodeIdToCompare): Ordering = {
+    if (__a.key_hash.length() < __b.key_hash.length())
       { GT }
+    else if (__a.key_hash.length() > __b.key_hash.length())
+      { LT }
+    else
+      { EQ }
+  }
+    pure def listCompare(__a: List[int], __b: List[int]): Ordering = {
+    if (__a.length() < __b.length())
+      { GT }
+    else if (__a.length() > __b.length())
+      { LT }
     else
       { EQ }
   }
@@ -108,7 +121,8 @@ module rareSpells {
   run toListAndSetTest =
   all {
       assert(Set(4, 2, 1, 55, 23, 3).toList(intCompare).toSet() == Set(1, 2, 3, 4, 23, 55)),
-      assert(Set( (22, [1, 2, 3, 4]), (232, [1, 2, 3, 4]), (231, [1, 2, 3, 4]), (199, [1, 2, 3, 4]), (1, [1, 2, 3, 4]), (2322, [1, 2, 3, 4])).toList(tupleCompare).toSet() == Set( (1, [1, 2, 3, 4]), (22, [1, 2, 3, 4]), (199, [1, 2, 3, 4]), (231, [1, 2, 3, 4]), (232, [1, 2, 3, 4]), (2322, [1, 2, 3, 4]))),
+      assert(Set({version:0, key_hash: []}, {version:0, key_hash: [1,0,1]}, {version:0, key_hash: [1,0,1,1]},{version:0, key_hash: [1,0]},{version:0, key_hash: [1]}).toList(nodeCompare) 
+            == List({version:0, key_hash: [1,0,1,1]},{version:0, key_hash: [1,0,1]}, {version:0, key_hash: [1,0]}, {version:0, key_hash: [1]}, {version:0, key_hash: []})),
       assert(List(2,3,1).toSet() == Set(1, 2, 3)),
       assert(List(2,3,1).toSet() == List(3,2,1).toSet()),
       assert(Set(2,3,1).toList(intCompare) == Set(3,1,2).toList(intCompare)),
