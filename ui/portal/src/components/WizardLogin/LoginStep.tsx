@@ -31,7 +31,7 @@ export const LoginStep: React.FC = () => {
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-6 w-full">
       {retry ? (
         <p className="text-typography-rose-600 text-center text-xl">
           The credential connected does not match the on-chain record.
@@ -51,32 +51,9 @@ export const LoginStep: React.FC = () => {
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
         error={errors.username?.message}
       />
-      <div className="flex flex-col w-full gap-3 md:gap-6">
-        <DangoButton fullWidth onClick={onSubmit} isLoading={isSubmitting}>
-          {retry ? "Choose credentials" : "Login"}
-        </DangoButton>
-        {retry ? (
-          <DangoButton
-            onClick={() => [previousStep(), setData({ username, retry: false })]}
-            variant="ghost"
-            color="sand"
-            className="text-lg"
-          >
-            Back
-          </DangoButton>
-        ) : (
-          <DangoButton
-            as={Link}
-            to="/auth/signup"
-            variant="ghost"
-            color="sand"
-            className="text-lg"
-            isDisabled={isSubmitting}
-          >
-            Don't have an account?
-          </DangoButton>
-        )}
-      </div>
-    </>
+      <DangoButton fullWidth onClick={onSubmit} isLoading={isSubmitting}>
+        {retry ? "Choose credentials" : "Login"}
+      </DangoButton>
+    </div>
   );
 };

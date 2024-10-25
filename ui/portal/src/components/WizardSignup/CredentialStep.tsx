@@ -28,7 +28,7 @@ export const CredentialStep: React.FC = () => {
   });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col flex-1 w-full gap-8 md:gap-12">
+    <form onSubmit={onSubmit} className="flex flex-col w-full gap-4 md:gap-6">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
@@ -42,22 +42,9 @@ export const CredentialStep: React.FC = () => {
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
         error={errors.username?.message}
       />
-      <div className="flex flex-col w-full gap-3 md:gap-6">
-        <DangoButton type="submit" fullWidth isLoading={isSubmitting}>
-          Choose credentials
-        </DangoButton>
-        <DangoButton
-          type="button"
-          as={Link}
-          to="/auth/login"
-          variant="ghost"
-          color="sand"
-          className="text-lg"
-          isDisabled={isSubmitting}
-        >
-          Already have an account?
-        </DangoButton>
-      </div>
+      <DangoButton type="submit" fullWidth isLoading={isSubmitting}>
+        Choose credentials
+      </DangoButton>
     </form>
   );
 };
