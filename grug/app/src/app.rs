@@ -540,20 +540,20 @@ where
 
     // Create two layers of buffers.
     //
-    // The 1st layer (`buffer1`) is for fee handling; the 2nd layer (`buffer2`)
-    // is for tx authentication and processing of the messages.
-    let buffer1 = Shared::new(Buffer::new(storage.clone(), None));
-    let buffer2 = Shared::new(Buffer::new(buffer1.clone(), None));
+    // The 1st layer is for fee handling; the 2nd is for tx authentication and
+    // processing of the messages.
+    let fee_buffer = Shared::new(Buffer::new(storage.clone(), None));
+    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None));
 
     // Create two layers of contexts using the two buffers.
-    let ctx1 = AppCtx::new(
+    let fee_ctx = AppCtx::new(
         vm.clone(),
-        buffer1,
+        fee_buffer,
         gas_tracker.clone(),
         chain_id.clone(),
         block,
     );
-    let ctx2 = AppCtx::new(vm, buffer2, gas_tracker.clone(), chain_id, block);
+    let msg_ctx = AppCtx::new(vm, msg_buffer, gas_tracker.clone(), chain_id, block);
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -566,7 +566,7 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-    match do_withhold_fee(ctx1.clone_boxing_storage(), &tx, mode) {
+    match do_withhold_fee(fee_ctx.clone_boxing_storage(), &tx, mode) {
         Ok(new_events) => {
             events.extend(new_events);
         },
@@ -581,41 +581,41 @@ where
     // verifying a cryptographic signature, to ensure the tx comes from the
     // sender account's rightful owner.
     //
-    // Note that we use `buffer2` for this.
+    // Note that we use `msg_buffer` for this.
     //
-    // If succeeds, commit state changes in `buffer2` into `buffer1`, and record
+    // If succeeds, commit state changes in `msg_buffer` into `fee_buffer`, and record
     // the events emitted.
     //
-    // If fails, discard state changes in `buffer2` (but keeping those in
-    // `buffer1`), discard the events, and jump to `finalize_fee`.
-    let request_backrun = match do_authenticate(ctx2.clone_boxing_storage(), &tx, mode) {
+    // If fails, discard state changes in `msg_buffer` (but keeping those in
+    // `fee_buffer`), discard the events, and jump to `finalize_fee`.
+    let request_backrun = match do_authenticate(msg_ctx.clone_boxing_storage(), &tx, mode) {
         Ok((new_events, request_backrun)) => {
-            ctx2.storage.write_access().commit();
+            msg_ctx.storage.write_access().commit();
             events.extend(new_events);
             request_backrun
         },
         Err(err) => {
-            drop(ctx2.storage);
-            return process_finalize_fee(ctx1, tx, mode, events, Err(err));
+            drop(msg_ctx.storage);
+            return process_finalize_fee(fee_ctx, tx, mode, events, Err(err));
         },
     };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
     //
-    // If everything succeeds, commit state changes in `buffer2` into `buffer1`,
+    // If everything succeeds, commit state changes in `msg_buffer` into `fee_buffer`,
     // and record the events emitted.
     //
-    // If anything fails, discard state changes in `buffer2` (but keeping those
-    // in `buffer1`), discard the events, and jump to `finalize_fee`.
-    match process_msgs_then_backrun(ctx2.clone_boxing_storage(), &tx, mode, request_backrun) {
+    // If anything fails, discard state changes in `msg_buffer` (but keeping those
+    // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
+    match process_msgs_then_backrun(msg_ctx.clone_boxing_storage(), &tx, mode, request_backrun) {
         Ok(new_events) => {
-            ctx2.storage.disassemble().consume();
+            msg_ctx.storage.disassemble().consume();
             events.extend(new_events);
         },
         Err(err) => {
-            drop(ctx2.storage);
-            return process_finalize_fee(ctx1, tx, mode, events, Err(err));
+            drop(msg_ctx.storage);
+            return process_finalize_fee(fee_ctx, tx, mode, events, Err(err));
         },
     }
 
@@ -630,7 +630,7 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(ctx1, tx, mode, events, Ok(()))
+    process_finalize_fee(fee_ctx, tx, mode, events, Ok(()))
 }
 
 #[inline]
