@@ -1,17 +1,30 @@
 // -*- mode: Bluespec; -*-
 
-module super_simple_apply {
+module apply_super_simple {
   import hashes.* from "./hashes"
   import tree.* from "./tree"
   import node.* from "./node"
   import utils.* from "./utils"
   import basicSpells.* from "./spells/basicSpells"
-  import invariants.* from "./invariants"
-  pure val MAX_HEIGHT = 4
-  
-  pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree = 
-    if(tree.nodes.keys().size() == 0 ) tree else {...tree, orphans: tree.orphans
-                                                      .union(Set(makeOrphanId(new_version, old_version, ROOT_BITS)))}
+
+  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
+    batch.fold(tree, (t, op) => {
+      match op.op {
+        | Insert(value_hash) => {
+          pure val newLeaf = { key_hash: op.key_hash, value_hash: value_hash }
+          super_simple_apply(t, old_version, new_version, newLeaf)
+        }
+        | Delete => t // TODO: implement delete
+      }
+    })
+  }
+
+  pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree =
+    if (tree.nodes.has({ version: old_version, key_hash: ROOT_BITS })) {
+      tree.mark_node_as_orphaned(new_version, old_version, ROOT_BITS)
+    } else {
+      tree
+    }
 
   pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = {
     val newLeftUnwrapped = match internal.left_child {
@@ -64,9 +77,7 @@ module super_simple_apply {
         nodes
     )
       
-      
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode): Tree = {
-    
     val treeWithOrphanedRoot = orphanRootIfExists(tree, old_version, new_version)
     val treeForOldVersion = treeAtVersion(tree, old_version)
     pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
@@ -77,7 +88,7 @@ module super_simple_apply {
     })
 
     pure val keys_with_values = existing_keys_with_values.union(Set(insert))
-    pure val result = range(0, MAX_HEIGHT).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
+    pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
       acc._2.fold(acc, (acc, kv) => {
         pure val prefix = kv.key_hash.slice(0, i)
         pure val left = acc._2.find(k => k.key_hash == prefix.append(0))
@@ -129,6 +140,7 @@ module super_simple_apply {
     val newNodes = removeDuplicateEntries(nodes, new_version)
     { nodes: newNodes, orphans: treeWithOrphanedRoot.orphans }
   }
+
   run simple::singleInsertOnEmptyTreeTest_A =
     pure val t1 = super_simple_apply(empty_tree, 0, 1, { key_hash: [0, 1, 1], value_hash: [5] })
     pure val t2 = super_simple_apply(t1, 1, 2, { key_hash: [0, 0, 1], value_hash: [33] })
