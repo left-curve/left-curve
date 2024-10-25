@@ -4,6 +4,10 @@ module tree_test {
   import tree.* from "../tree"
   import node.* from "../node"
   import basicSpells.* from "../spells/basicSpells"
+  import apply_state_machine.* from "../apply_state_machine"
+  import apply_simple as simple from "../apply_simple"
+  import apply_fancy as fancy from "../apply_fancy"
+  import super_simple_apply as super_simple from "../super_simple_apply"
 
   pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId =
     { orphaned_since_version: osv, version: v, key_hash: kh }
@@ -151,21 +155,33 @@ module tree_test {
     Prune1Test.then(Prune2Test).then(Prune3Test)
   }
 
-  // type Tree = int -> int //to do
+  run simpleVsFancyTest = {
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
 
-  // type Operation
+    pure val reference = simple::apply(empty_tree, 0, 0, ops)
+    pure val result = fancy::apply(empty_tree, 0, 0, ops)
+    assert(reference == result)
+  }
 
-  // pure def apply(t: Tree, op: Operation): Tree =
-  //     t
+  run superSimpleVsFancyTest = {
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
 
-  // pure def applyFancy(t: Tree, l: List[Operation]): Tree =
-  //     t
+    pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
+    pure val result = fancy::apply(empty_tree, 0, 0, ops)
+    assert(reference == result)
+  }
 
-  // run treeTest =
-  //     val l = List() // generate random inputs
-  //     val tree = Map()
-  //     val reference = l.foldl(tree, (s, x) => apply(s, x))
-  //     val result = applyFancy(tree, l)
-  //     assert(reference == result)
+  run superSimpleVsSimpleTest = {
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
 
+    pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
+    pure val result = simple::apply(empty_tree, 0, 0, ops)
+    assert(reference == result)
+  }
 }
