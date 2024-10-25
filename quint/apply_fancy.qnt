@@ -15,10 +15,9 @@ module apply_fancy {
 
   // for emulating recursion
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
-  pure val MAX_HEIGHT = 4
 
   pure val bits_to_compute = Set(0,1)
-    .allListsUpTo(MAX_HEIGHT)
+    .allListsUpTo(MAX_HASH_LENGTH)
     .toList((a, b) => intCompare(a.length(), b.length()))
 
   pure def sorted_nodes(tree: Tree): List[NodeId] = {
