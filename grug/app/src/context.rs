@@ -1,9 +1,12 @@
 use {
-    crate::{Buffer, GasTracker, Shared, Vm},
+    crate::{GasTracker, Vm},
     grug_types::{BlockInfo, Storage, Undefined},
 };
 
-/// Wrapper `ctx` struct that holds the `VM`, `storage`, `block`, and `gas_tracker`
+/// The context under which app functions are executed.
+///
+/// Includes the virtual machine used, and key-value storage being operated on,
+/// gas tracker, block, and so on.
 #[derive(Clone)]
 pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>> {
     pub vm: VM,
@@ -38,7 +41,10 @@ impl<VM> AppCtx<VM>
 where
     VM: Vm,
 {
-    /// Downcast the `AppCtx<VM>` to `AppCtx<Undefined>`
+    /// Cast the context to a variant where the VM is undefined.
+    ///
+    /// Used for methods that don't require a VM, such as updating chain config
+    /// or uploading a code.
     pub fn downcast(self) -> AppCtx<Undefined> {
         AppCtx {
             vm: Undefined::default(),
@@ -54,30 +60,8 @@ impl<VM, S> AppCtx<VM, S>
 where
     VM: Clone,
 {
-    /// Clone the `AppCtx` replacing the storage with a generic `Storage`
-    pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1>
-    where
-        S1: Storage,
-    {
-        AppCtx {
-            vm: self.vm.clone(),
-            storage,
-            gas_tracker: self.gas_tracker.clone(),
-            chain_id: self.chain_id.clone(),
-            block: self.block,
-        }
-    }
-}
-
-impl<VM> AppCtx<VM, Box<dyn Storage>>
-where
-    VM: Clone,
-{
-    /// Clone the `AppCtx` that is using a `Box<dyn Storage>` replacing it with a new `Shared<Buffer<S>>`
-    pub fn clone_with_buffer_storage<S1>(
-        &self,
-        storage: Shared<Buffer<S1>>,
-    ) -> AppCtx<VM, Shared<Buffer<S1>>> {
+    /// Clone the context, at the same time replacing the storage with a new one.
+    pub fn clone_with_storage<S1>(&self, storage: S1) -> AppCtx<VM, S1> {
         AppCtx {
             vm: self.vm.clone(),
             storage,
@@ -93,7 +77,7 @@ where
     VM: Clone,
     S: Storage + Clone + 'static,
 {
-    /// Clone the `AppCtx` boxing the inner `storage`
+    /// Clone the context, at the same time put the storage in a `Box`.
     pub fn clone_boxing_storage(&self) -> AppCtx<VM, Box<dyn Storage>> {
         AppCtx {
             vm: self.vm.clone(),

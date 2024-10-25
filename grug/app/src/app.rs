@@ -140,22 +140,13 @@ where
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let chain_id = CHAIN_ID.load(&buffer)?;
-
-        let mut ctx = AppCtx::new(
-            self.vm.clone(),
-            buffer,
-            GasTracker::new_limitless(),
-            chain_id,
-            block,
-        );
+        let cfg = CONFIG.load(&buffer)?;
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
-
-        let cfg = CONFIG.load(&ctx.storage)?;
-        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&ctx.storage)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -177,7 +168,7 @@ where
                 .idx
                 .status
                 .prefix_keys(
-                    &ctx.storage,
+                    &buffer,
                     None,
                     Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
                         since: Duration::from_nanos(since),
@@ -187,7 +178,7 @@ where
                 .map(|res| res.map(|(_status, hash)| hash))
                 .collect::<StdResult<Vec<_>>>()?
             {
-                CODES.remove(&mut ctx.storage, hash)?;
+                CODES.remove(&mut buffer, hash)?;
             }
         }
 
@@ -195,7 +186,7 @@ where
         // scheduled time is earlier or equal to the current block time.
         let jobs = NEXT_CRONJOBS
             .prefix_range(
-                &ctx.storage,
+                &buffer,
                 None,
                 Some(PrefixBound::Inclusive(block.timestamp)),
                 Order::Ascending,
@@ -204,7 +195,7 @@ where
 
         // Delete these cronjobs. They will be scheduled a new time.
         NEXT_CRONJOBS.prefix_clear(
-            &mut ctx.storage,
+            &mut buffer,
             None,
             Some(PrefixBound::Inclusive(block.timestamp)),
         );
@@ -219,13 +210,24 @@ where
                 "Attempting to perform cronjob"
             );
 
-            let result = do_cron_execute(ctx.clone_boxing_storage(), contract);
+            let gas_tracker = GasTracker::new_limitless();
 
-            cron_outcomes.push(new_outcome(ctx.gas_tracker.clone(), result));
+            let result = do_cron_execute(
+                AppCtx::new(
+                    self.vm.clone(),
+                    Box::new(buffer.clone()) as _,
+                    gas_tracker.clone(),
+                    chain_id.clone(),
+                    block,
+                ),
+                contract,
+            );
+
+            cron_outcomes.push(new_outcome(gas_tracker, result));
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
-                &mut ctx.storage,
+                &mut buffer,
                 contract,
                 block.timestamp,
                 cfg.cronjobs[&contract],
@@ -238,7 +240,10 @@ where
             tracing::debug!(idx = _idx, "Processing transaction");
 
             tx_outcomes.push(process_tx(
-                ctx.clone_boxing_storage(),
+                self.vm.clone(),
+                buffer.clone(),
+                chain_id.clone(),
+                block,
                 tx,
                 AuthMode::Finalize,
             ));
@@ -249,11 +254,11 @@ where
         // Note that we do this _after_ the transactions have been executed.
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
-        LAST_FINALIZED_BLOCK.save(&mut ctx.storage, &block)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
-        let (_, batch) = ctx.storage.disassemble().disassemble();
+        let (_, batch) = buffer.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
 
         // Sanity checks, same as in `do_init_chain`:
@@ -296,15 +301,15 @@ where
         let chain_id = CHAIN_ID.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
-        let mut events = vec![];
-
-        let mut ctx = AppCtx::new(
+        let ctx = AppCtx::new(
             self.vm.clone(),
             Box::new(buffer) as _,
-            GasTracker::new_limitless(),
+            GasTracker::new_limited(tx.gas_limit),
             chain_id,
             block,
         );
+
+        let mut events = vec![];
 
         match do_withhold_fee(ctx.clone(), &tx, AuthMode::Check) {
             Ok(new_events) => {
@@ -314,8 +319,6 @@ where
                 return Ok(new_outcome(ctx.gas_tracker, Err(err)));
             },
         }
-
-        ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
         match do_authenticate(ctx.clone(), &tx, AuthMode::Check) {
             Ok((new_events, _)) => {
@@ -421,14 +424,6 @@ where
         let chain_id = CHAIN_ID.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
-        let ctx = AppCtx::new(
-            self.vm.clone(),
-            Box::new(buffer) as _,
-            GasTracker::new_limitless(),
-            chain_id,
-            block,
-        );
-
         // We can't "prove" a gas simulation
         if prove {
             return Err(AppError::ProofNotSupported);
@@ -452,7 +447,14 @@ where
 
         // Run the transaction with `simulate` as `true`. Track how much gas was
         // consumed, and, if it was successful, what events were emitted.
-        Ok(process_tx(ctx, tx, AuthMode::Simulate))
+        Ok(process_tx(
+            self.vm.clone(),
+            buffer,
+            chain_id,
+            block,
+            tx,
+            AuthMode::Simulate,
+        ))
     }
 }
 
@@ -519,20 +521,45 @@ where
     }
 }
 
-fn process_tx<VM>(mut ctx: AppCtx<VM>, tx: Tx, mode: AuthMode) -> TxOutcome
+fn process_tx<S, VM>(
+    vm: VM,
+    storage: S,
+    chain_id: String,
+    block: BlockInfo,
+    tx: Tx,
+    mode: AuthMode,
+) -> TxOutcome
 where
+    S: Storage + Clone + 'static,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    // Create the gas tracker, with the limit being the gas limit requested by
+    // the transaction.
+    let gas_tracker = GasTracker::new_limited(tx.gas_limit);
+
     // Create two layers of buffers.
     //
     // The 1st layer (`buffer1`) is for fee handling; the 2nd layer (`buffer2`)
     // is for tx authentication and processing of the messages.
-    let buffer1 = Shared::new(Buffer::new(ctx.storage.clone(), None));
+    let buffer1 = Shared::new(Buffer::new(storage.clone(), None));
     let buffer2 = Shared::new(Buffer::new(buffer1.clone(), None));
 
-    // Create the gas tracker, with the limit being the gas limit requested by
-    // the transaction.
+    // Create two layers of contexts simiarly.
+    let ctx1 = AppCtx::new(
+        vm.clone(),
+        buffer1.clone(),
+        gas_tracker.clone(),
+        chain_id.clone(),
+        block,
+    );
+    let ctx2 = AppCtx::new(
+        vm.clone(),
+        buffer2.clone(),
+        gas_tracker.clone(),
+        chain_id,
+        block,
+    );
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -545,20 +572,14 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-    match do_withhold_fee(ctx.clone_with_storage(Box::new(buffer1.clone())), &tx, mode) {
+    match do_withhold_fee(ctx1.clone_boxing_storage(), &tx, mode) {
         Ok(new_events) => {
             events.extend(new_events);
         },
         Err(err) => {
-            return new_tx_outcome(
-                GasTracker::new_limited(tx.gas_limit),
-                events.clone(),
-                Err(err),
-            );
+            return new_tx_outcome(gas_tracker, events.clone(), Err(err));
         },
     }
-
-    ctx.gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
     // Call the sender account's `authenticate` function.
     //
@@ -573,24 +594,17 @@ where
     //
     // If fails, discard state changes in `buffer2` (but keeping those in
     // `buffer1`), discard the events, and jump to `finalize_fee`.
-    let request_backrun =
-        match do_authenticate(ctx.clone_with_storage(Box::new(buffer2.clone())), &tx, mode) {
-            Ok((new_events, request_backrun)) => {
-                buffer2.write_access().commit();
-                events.extend(new_events);
-                request_backrun
-            },
-            Err(err) => {
-                drop(buffer2);
-                return process_finalize_fee(
-                    ctx.clone_with_buffer_storage(buffer1),
-                    tx,
-                    mode,
-                    events,
-                    Err(err),
-                );
-            },
-        };
+    let request_backrun = match do_authenticate(ctx2.clone_boxing_storage(), &tx, mode) {
+        Ok((new_events, request_backrun)) => {
+            buffer2.write_access().commit();
+            events.extend(new_events);
+            request_backrun
+        },
+        Err(err) => {
+            drop(buffer2);
+            return process_finalize_fee(ctx1, tx, mode, events, Err(err));
+        },
+    };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
@@ -600,25 +614,14 @@ where
     //
     // If anything fails, discard state changes in `buffer2` (but keeping those
     // in `buffer1`), discard the events, and jump to `finalize_fee`.
-    match process_msgs_then_backrun(
-        ctx.clone_with_storage(Box::new(buffer2.clone())),
-        &tx,
-        mode,
-        request_backrun,
-    ) {
+    match process_msgs_then_backrun(ctx2.clone_boxing_storage(), &tx, mode, request_backrun) {
         Ok(new_events) => {
             buffer2.disassemble().consume();
             events.extend(new_events);
         },
         Err(err) => {
             drop(buffer2);
-            return process_finalize_fee(
-                ctx.clone_with_buffer_storage(buffer1),
-                tx,
-                mode,
-                events,
-                Err(err),
-            );
+            return process_finalize_fee(ctx1, tx, mode, events, Err(err));
         },
     }
 
@@ -633,13 +636,7 @@ where
     // discard all previous state changes and events, as if the tx never happened.
     // Also, print a tracing message at the ERROR level to the CLI, to raise
     // developer's awareness.
-    process_finalize_fee(
-        ctx.clone_with_buffer_storage(buffer1),
-        tx,
-        mode,
-        events,
-        Ok(()),
-    )
+    process_finalize_fee(ctx1, tx, mode, events, Ok(()))
 }
 
 #[inline]

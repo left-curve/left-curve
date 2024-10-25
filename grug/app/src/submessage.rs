@@ -20,7 +20,7 @@ const MAX_MESSAGE_DEPTH: usize = 30;
 ///   account that emitted the submessages, not the transaction's sender.
 /// - The context for this function requires a boxed storage (`Box<dyn Storage>`)
 ///   instead of using a generic (`AppCtx<VM, S> where S: Storage`).
-///   This is necessary because the function is recursive.
+///   This is necessary because the function is
 pub fn handle_submessages<VM>(
     ctx: AppCtx<VM>,
     msg_depth: usize,
