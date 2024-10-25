@@ -44,21 +44,24 @@ pure def getnodeIdforVersion(nodes: TreeMap, key: BitArray, version: int): NodeI
 
 /// compute the tree at the given version
 pure def treeAtVersion(t: Tree, version: int): TreeMap =
-  val nodesUpToVersion = t.nodes.keys()
-                                .filter(nId => nId.version <= version)
+  // first check if there is a root at this version
+  if (t.nodes.keys().contains({ version: version, key_hash: []}))
+    val nodesUpToVersion = t.nodes.keys()
+                                  .filter(nId => nId.version <= version)
+                                  .mapBy(nId => t.nodes.get(nId))
+    val nodesAtVersion = t.nodes.keys()
+                                .filter(nId => nId.version == version)
                                 .mapBy(nId => t.nodes.get(nId))
-  val nodesAtVersion = t.nodes.keys()
-                              .filter(nId => nId.version == version)
-                              .mapBy(nId => t.nodes.get(nId))
-  val indList = range(1, version + 1) // TODO check borders
-  // go back in versions and add childred nodes
-  indList.foldr(nodesAtVersion, (ver, treeNodes) => 
-    // for the current versions check the childred to add
-    // add them one-by-one in the fold, but pick the largest version of this child
-    ChildrenPrefixes(nodesUpToVersion, ver).fold(treeNodes, (ss, xx) => 
-      val nodeId = getnodeIdforVersion(nodesUpToVersion, xx, ver)
-      ss.set(nodeId, nodesUpToVersion.get(nodeId)))
-  )
+    val indList = range(1, version + 1) // TODO check borders
+    // go back in versions and add childred nodes
+    indList.foldr(nodesAtVersion, (ver, treeNodes) => 
+      // for the current versions check the childred to add
+      // add them one-by-one in the fold, but pick the largest version of this child
+      ChildrenPrefixes(nodesUpToVersion, ver).fold(treeNodes, (ss, xx) => 
+        val nodeId = getnodeIdforVersion(nodesUpToVersion, xx, ver)
+        ss.put(nodeId, nodesUpToVersion.get(nodeId))))
+  else
+    Map()
     
 
 
@@ -121,17 +124,21 @@ def nodeAtCommonPrefixInv =
   )
 
 /// This computes the prefix of the child. 
-/// TODO: currently it ignores versions
 pure def rightChild(t: TreeMap, nId: NodeId): NodeId =
-    // TODO: versions
-    {version: 0, key_hash: nId.key_hash.append(1)}
+    // there should only be one node for each prefix, but we need to figure out its version
+    t.keys().filter(n => n.key_hash == nId.key_hash.append(1))  // filter down to a singleton
+            .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
 
 /// This computes the prefix of the child. 
-/// TODO: currently it ignores versions
 pure def leftChild(t: TreeMap, nId: NodeId): NodeId =
-    // TODO: versions
     // there should only be one node for each prefix, but we need to figure out its version
-    {version: 0, key_hash: nId.key_hash.append(0)}   
+    t.keys().filter(n => n.key_hash == nId.key_hash.append(0))  // filter down to a singleton
+            .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
+
+/// The treemaps we use in the invariants have unique key_hashes 
+pure def goodTreeMap(t: TreeMap): bool =
+  t.keys().forall(a =>
+    t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
 
 
 /// Check that for all internal nodes, if they have a hash stored for a child,
@@ -161,15 +168,15 @@ pure def isPrefix(short: BitArray, long: BitArray): bool =
     if (short.length() > long.length())
         false
     else
-        short == long.slice(0, short.length() - 1)
+        short == long.slice(0, short.length())
 
 /// Make sure that the map encodes a tree. In particular, there is no internal node 
 /// that has a leaf node as its prefix
 /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
 /// TODO: versions
 pure def noInternalChild(t: Tree): bool =
-    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
-    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
+    val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
     val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
     val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
     not(leafPrefixes.exists(lp => 
