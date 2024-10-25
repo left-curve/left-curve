@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module utils {
   import basicSpells.* from "./spells/basicSpells"
   import node.* from "./node"
@@ -10,6 +12,7 @@ module utils {
       | Some(x) => x
     }
   }
+
   pure def getOnlyElement(s: Set[a]): a = {
     pure val hack = s.map(e => ("value", e)).setToMap()
     if (s.size() != 1) {
@@ -18,11 +21,13 @@ module utils {
       hack.get("value")
     }
   }
+
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
                                     b.slice(0, x) 
                                 else s )
+
   pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
@@ -33,5 +38,4 @@ module utils {
     l1.length() <= l2.length(),
     l1.indices().forall(i => l1[i] == l2[i])
   }
-  
 }
