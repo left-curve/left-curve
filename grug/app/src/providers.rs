@@ -120,11 +120,13 @@ fn prefixed_range_bounds(
 // ---------------------------------- querier ----------------------------------
 
 /// Provides querier functionalities to the VM.
-pub struct QuerierProvider<VM>(AppCtx<VM>);
+pub struct QuerierProvider<VM> {
+    ctx: AppCtx<VM>,
+}
 
 impl<VM> QuerierProvider<VM> {
     pub fn new(ctx: AppCtx<VM>) -> Self {
-        Self(ctx)
+        Self { ctx }
     }
 }
 
@@ -135,7 +137,7 @@ where
     AppError: From<VM::Error>,
 {
     pub fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
-        process_query(self.0.clone(), query_depth, req).into_generic_result()
+        process_query(self.ctx.clone(), query_depth, req).into_generic_result()
     }
 }
 
