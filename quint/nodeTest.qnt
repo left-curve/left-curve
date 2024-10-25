@@ -4,6 +4,8 @@ module nodeTest {
     
 import node.* from "./node"
 import hashes.* from "./hashes"
+import basicSpells.* from "./spells/basicSpells"
+
 run hash_InternalTest = {
     nondet left_child_key = 0.to(16).oneOf()
     nondet left_child_value = 0.to(16).oneOf()

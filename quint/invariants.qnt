@@ -2,13 +2,14 @@
 
 module invariants {
 
+
 import tree.* from "./tree"
 import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
+import utils.* from "./utils"
 
 type TreeMap = NodeId -> Node
 
-val keylength = 4
 val maxVersion = 10
 
 /// return the prefixes of all childred from nodes at the given version 
@@ -81,22 +82,6 @@ def everyNodesParentIsInTheTreeInv =
     val vTree = treeAtVersion(tree,v)
     everyNodesParentIsInTheTree(vTree)
   )
-
-/// given two leaf nodes, computes the prefix of the key_hash that is commint
-pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
-  val indList = range(1, keylength + 1)
-  indList.foldl([], (s, x) => 
-    if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
-      b.key_hash.slice(0, x) 
-    else s )
-
-/// Returns a set containing all leaf nodes in a tree
-pure def allLeafs(t: TreeMap) : Set[LeafNode] =
-    val allNodes = t.keys().fold(Set(), (s, x) => s.union(Set(t.get(x))))
-    allNodes.fold(Set(), (s,x) => match x {
-                            | Internal(_) => s
-                            | Leaf(x) => s.union(Set(x))
-    })
 
 /// Is the node an internal node?
 pure def isInternal(n: Node) : bool =
