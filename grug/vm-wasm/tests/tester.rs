@@ -4,7 +4,7 @@ use {
     grug_db_memory::MemDb,
     grug_math::{InnerMut, Udec128},
     grug_tester::{
-        QueryRecoverSepc256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
+        QueryRecoverSecp256k1Request, QueryVerifyEd25519BatchRequest, QueryVerifyEd25519Request,
         QueryVerifySecp256k1Request, QueryVerifySecp256r1Request,
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
@@ -391,7 +391,7 @@ fn recovering_secp256k1_pubkey() {
         let msg_hash = Identity256::from(sha2_256(MSG));
         let (sig, recovery_id) = sk.sign_digest_recoverable(msg_hash.clone()).unwrap();
 
-        (vk, QueryRecoverSepc256k1Request {
+        (vk, QueryRecoverSecp256k1Request {
             sig: sig.to_vec().into(),
             msg_hash: msg_hash.into_bytes().to_vec().into(),
             recovery_id: recovery_id.to_byte(),

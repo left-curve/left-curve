@@ -137,7 +137,7 @@ fn do_vote(
 
     // Ensure the voter hasn't already voted.
     // Unlike Cosmos SDK's x/gov module, we don't allow changing votes.
-    // Whereas DAO voters sometimes change votes, this rarely happens for multisigs.
+    // Whereas DAO voters sometimes change votes, this rarely happens for multisig.
     ensure!(
         !VOTES.has(ctx.storage, (proposal_id, &voter)),
         "user `{voter}` has already voted in this proposal"
@@ -226,7 +226,7 @@ fn do_vote(
 fn execute_proposal(ctx: MutableCtx, proposal_id: ProposalId) -> anyhow::Result<Response> {
     let mut proposal = PROPOSALS.load(ctx.storage, proposal_id)?;
 
-    // The propsal can only be executed if passed, and timelock has elapsed.
+    // The proposal can only be executed if passed, and timelock has elapsed.
     let msgs = match proposal.status {
         Status::Passed { execute_after } if ctx.block.timestamp > execute_after => {
             proposal.status = Status::Executed;
