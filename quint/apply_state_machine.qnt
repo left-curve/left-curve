@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
   import hashes.* from "./hashes"
