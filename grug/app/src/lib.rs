@@ -2,7 +2,7 @@
 mod abci;
 mod app;
 mod buffer;
-mod ctx;
+mod context;
 mod error;
 mod events;
 mod execute;
@@ -16,6 +16,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, ctx::*, error::*, events::*, execute::*, gas::*, providers::*, query::*,
+    app::*, buffer::*, context::*, error::*, events::*, execute::*, gas::*, providers::*, query::*,
     shared::*, state::*, submessage::*, traits::*, vm::*,
 };
