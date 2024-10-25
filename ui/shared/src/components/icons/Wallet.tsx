@@ -1,19 +1,24 @@
-import { type ConnectorId, ConnectorIdType } from "@leftcurve/types";
+import { BackpackIcon } from "./wallets/Backpack";
+import { EthereumIcon } from "./wallets/Ethereum";
 import { KeplrIcon } from "./wallets/Keplr";
-import { MetamaskIcon } from "./wallets/Metamask";
 import { PasskeyIcon } from "./wallets/Passkey";
+import { PhantomIcon } from "./wallets/Phantom";
 
 interface Props extends React.SVGAttributes<HTMLOrSVGElement> {
-  connectorId: ConnectorId;
+  connectorId: string;
 }
 
 export const WalletIcon: React.FC<Props> = ({ connectorId, ...props }) => {
   switch (connectorId) {
-    case ConnectorIdType.Metamask:
-      return <MetamaskIcon {...props} />;
-    case ConnectorIdType.Keplr:
+    case "metamask":
+      return <EthereumIcon {...props} />;
+    case "keplr":
       return <KeplrIcon {...props} />;
-    case ConnectorIdType.Passkey:
+    case "phantom":
+      return <PhantomIcon {...props} />;
+    case "backpack":
+      return <BackpackIcon {...props} />;
+    case "passkey":
       return <PasskeyIcon {...props} />;
   }
 };
