@@ -36,8 +36,10 @@ module tree {
   }
 
 
+  type TreeMap = NodeId -> Node
+
   type Tree = {
-      nodes : NodeId -> Node,
+      nodes: TreeMap,
       orphans: Set[OrphanId]
   }
 
@@ -76,8 +78,8 @@ module tree {
     pure val updated_nodes = keys_of_non_orphanes.mapBy(x => tree.nodes.get(x))
     { nodes: updated_nodes, orphans: prunned_orphans }
   }
-  pure def allLeafs(t: Tree) : Set[LeafNode] =
-    val allNodes = t.nodes.keys().fold(Set(), (s, x) => s.union(Set(t.nodes.get(x))))
+  pure def allLeafs(t: TreeMap) : Set[LeafNode] =
+    val allNodes = t.keys().fold(Set(), (s, x) => s.union(Set(t.get(x))))
     allNodes.fold(Set(), (s,x) => match x {
                             | Internal(_) => s
                             | Leaf(x) => s.union(Set(x))
@@ -263,7 +265,7 @@ module tree {
     { ...t, nodes: nodes }
 
   pure def leafHasNoOverlap(t: Tree, newLeaf: LeafNode) : bool = 
-    allLeafs(t).filter(leaf=> 
+    allLeafs(t.nodes).filter(leaf=>
                     leaf.key_hash.head() == newLeaf.key_hash.head()).size() == 0
 
   pure def isActualNode(nodes: NodeId -> Node, nodeId: NodeId) : bool =
@@ -333,15 +335,15 @@ module tree {
       // TODO: implement helper functions
 
 
-  var tree: Tree
+  // var tree: Tree
 
-  action init =
-    tree' = {
-        orphans: Set(),
-        nodes: Map()
-  }
+  // action init =
+  //   tree' = {
+  //       orphans: Set(),
+  //       nodes: Map()
+  // }
 
-  action insertAction(l) =
-      tree' = insert(tree,l)
+  // action insertAction(l) =
+  //     tree' = insert(tree,l)
 
 }

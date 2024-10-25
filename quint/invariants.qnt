@@ -8,8 +8,6 @@ import apply_state_machine.* from "./apply_state_machine"
 import basicSpells.* from "./spells/basicSpells"
 import utils.* from "./utils"
 
-type TreeMap = NodeId -> Node
-
 val maxVersion = 10
 
 /// return the prefixes of all childred from nodes at the given version 
