@@ -10,34 +10,36 @@ module apply_simple_test {
     { version: v, key_hash: kh }
 
   run CommonPrefixTest1 = {
-    val testTree : Tree = {
-      orphans: Set(),nodes: Map(
-      // root node without hash pointing to left internal node and right leaf node
-      makeNodeId(0, []) -> Internal({
-        left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-        right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
-      }),
-      makeNodeId(0, [0]) -> Internal({
-        left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-        right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
-      }),
-      makeNodeId(0, [1]) -> Leaf({value_hash: [0], key_hash:[0]}),
-        makeNodeId(0, [0,0]) -> Internal({
-          left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-          right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
+    val testTree: Tree = {
+      orphans: Set(),
+      nodes: Map(
+        // root node without hash pointing to left internal node and right leaf node
+        makeNodeId(0, []) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
         }),
-          makeNodeId(0, [0,0,0]) -> Leaf({value_hash: [0], key_hash:[0,0,0,0]}),
-          makeNodeId(0, [0,0,1]) -> Leaf({value_hash: [0], key_hash:[0,0,1,0]}),
-        makeNodeId(0, [0,1]) -> Internal({
-          left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-          right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
+        makeNodeId(0, [0]) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
         }),
-          makeNodeId(0, [0,1,0]) -> Leaf({value_hash: [0], key_hash:[0,1,0,0]}),
-          makeNodeId(0, [0,1,1]) -> Leaf({value_hash: [0], key_hash:[0,1,1,0]})
-    )}
-    val keyValue = {key_hash : [0,1,1,0], value_hash:[1]}
+        makeNodeId(0, [1]) -> Leaf({ value_hash: [0], key_hash: [0] }),
+        makeNodeId(0, [0, 0]) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
+        }),
+        makeNodeId(0, [0, 0, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 0, 0] }),
+        makeNodeId(0, [0, 0, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 1, 0] }),
+        makeNodeId(0, [0, 1]) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
+        }),
+        makeNodeId(0, [0, 1, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 0, 0] }),
+        makeNodeId(0, [0, 1, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 1, 0] })
+      )
+    }
+    val keyValue = { key_hash: [0, 1, 1, 0], value_hash: [1] }
     val longestPrefixNode = getKeyWithLongestOverlappingPrefix(testTree, keyValue)
-    assert({key_hash : [0,1], version:0} == longestPrefixNode)
+    assert({ key_hash: [0, 1], version: 0 } == longestPrefixNode)
   }
 
   run CommonPrefixTest2 = {
@@ -46,30 +48,31 @@ module apply_simple_test {
       nodes: Map(
         // root node without hash pointing to left internal node and right leaf node
         makeNodeId(0, []) -> Internal({
-          left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-          right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
         }),
         makeNodeId(0, [0]) -> Internal({
-          left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-          right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
         }),
-        makeNodeId(0, [1]) -> Leaf({value_hash: [0], key_hash:[0]}),
-          makeNodeId(0, [0,0]) -> Internal({
-            left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-            right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
-          }),
-            makeNodeId(0, [0,0,0]) -> Leaf({value_hash: [0], key_hash:[0,0,0,0]}),
-            makeNodeId(0, [0,0,1]) -> Leaf({value_hash: [0], key_hash:[0,0,1,0]}),
-          makeNodeId(0, [0,1]) -> Internal({
-            left_child: Some({ version: 0, hash : Map([0] -> Raw([0])) }),
-            right_child: Some({ version: 0, hash :  Map([0] -> Raw([1])) })
-          }),
-            makeNodeId(0, [0,1,0]) -> Leaf({value_hash: [0], key_hash:[0,1,0,0]}),
-            makeNodeId(0, [0,1,1]) -> Leaf({value_hash: [0], key_hash:[0,1,1,0]})
-        )}
-    val keyValue = {key_hash : [0,1,1,0], value_hash:[1]}
+        makeNodeId(0, [1]) -> Leaf({ value_hash: [0], key_hash: [0] }),
+        makeNodeId(0, [0, 0]) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
+        }),
+        makeNodeId(0, [0, 0, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 0, 0] }),
+        makeNodeId(0, [0, 0, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 1, 0] }),
+        makeNodeId(0, [0, 1]) -> Internal({
+          left_child: Some({ version: 0, hash: Map([0] -> Raw([0])) }),
+          right_child: Some({ version: 0, hash: Map([0] -> Raw([1])) })
+        }),
+        makeNodeId(0, [0, 1, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 0, 0] }),
+        makeNodeId(0, [0, 1, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 1, 0] })
+      )
+    }
+    val keyValue = { key_hash: [0, 1, 1, 0], value_hash: [1] }
     val longestPrefixNode = getKeyWithLongestOverlappingPrefix(testTree, keyValue)
-    assert({key_hash : [0,1,1], version:0} == longestPrefixNode)
+    assert({ key_hash: [0, 1, 1], version: 0 } == longestPrefixNode)
   }
 
   val testTree: Tree = {
@@ -77,114 +80,145 @@ module apply_simple_test {
     nodes: Map(
       // root node without hash pointing to left internal node and right leaf node
       makeNodeId(0, []) -> Internal({
-        left_child: Some({ version: 0, hash : hashInternalNode({
-          left_child: Some({ version: 0, hash : hashInternalNode({
-            left_child: None,
-            right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
+        left_child: Some({
+          version: 0,
+          hash: hashInternalNode({
+            left_child: Some({
+              version: 0,
+              hash: hashInternalNode({
+                left_child: None,
+                right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+              })
+            }),
+            right_child: Some({
+              version: 0,
+              hash: hashInternalNode({
+                left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+                right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+              })
+            })
           })
         }),
-        right_child: Some({ version: 0, hash : hashInternalNode({
-            left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-            right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-          })})
-        })}),
-        right_child: Some({ version: 0, hash :  hashLeafNode({value_hash: [0], key_hash:[0]}) })
+        right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0] }) })
       }),
       makeNodeId(0, [0]) -> Internal({
-        left_child: Some({ version: 0, hash : hashInternalNode({
-          left_child: None,
-          right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
-        })}),
-        right_child: Some({ version: 0, hash : hashInternalNode({
-          left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-          right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-        })})
+        left_child: Some({
+          version: 0,
+          hash: hashInternalNode({
+            left_child: None,
+            right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+          })
+        }),
+        right_child: Some({
+          version: 0,
+          hash: hashInternalNode({
+            left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+            right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+          })
+        })
       }),
-        makeNodeId(0, [0,0]) -> Internal({
-          left_child: None,
-          right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
-        }),
-          makeNodeId(0, [0,0,1]) -> Leaf({value_hash: [0], key_hash:[0,0,1,0]}),
-        makeNodeId(0, [0,1]) -> Internal({
-          left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-          right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-        }),
-          makeNodeId(0, [0,1,0]) -> Leaf({value_hash: [0], key_hash:[0,1,0,0]}),
-          makeNodeId(0, [0,1,1]) -> Leaf({value_hash: [0], key_hash:[0,1,1,0]}),
-      makeNodeId(0, [1]) -> Leaf({value_hash: [0], key_hash:[0]})
-    )}
+      makeNodeId(0, [0, 0]) -> Internal({
+        left_child: None,
+        right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+      }),
+      makeNodeId(0, [0, 0, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 1, 0] }),
+      makeNodeId(0, [0, 1]) -> Internal({
+        left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+        right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+      }),
+      makeNodeId(0, [0, 1, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 0, 0] }),
+      makeNodeId(0, [0, 1, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 1, 0] }),
+      makeNodeId(0, [1]) -> Leaf({ value_hash: [0], key_hash: [0] })
+    )
+  }
 
   run InsertTest1 = {
-  // sketch of tree used in test
-  // state before
-  //             root - []
-  //            ┌──┴──┐
-  //           (0)    1
-  //     ┌──────┴──────┐
-  //   (00)           (01)
-  //  ┌──┴──┐        ┌──┴──┐
-  // null  0010     0100  0110
+    // sketch of tree used in test
+    // state before
+    //             root - []
+    //            ┌──┴──┐
+    //           (0)    1
+    //     ┌──────┴──────┐
+    //   (00)           (01)
+    //  ┌──┴──┐        ┌──┴──┐
+    // null  0010     0100  0110
 
-  // newLeaf = {value_hash: [0], key_hash:[0,0,0,1]}
-  // tree.insert(newLeaf)
-  // state after
-  //             root - []
-  //            ┌──┴──┐
-  //           (0)    1
-  //     ┌──────┴──────┐
-  //   (00)           (01)
-  //  ┌──┴──┐        ┌──┴──┐
-  // 000  0010     0100  0110
-      val testTree : Tree = {
-          orphans: Set(),nodes: Map(
-          //root node without hash pointing to left internal node and right leaf node
-          makeNodeId(0, []) -> Internal({
-              left_child: Some({ version: 0, hash : hashInternalNode({
-              left_child: Some({ version: 0, hash : hashInternalNode({
+    // newLeaf = {value_hash: [0], key_hash:[0,0,0,1]}
+    // tree.insert(newLeaf)
+    // state after
+    //             root - []
+    //            ┌──┴──┐
+    //           (0)    1
+    //     ┌──────┴──────┐
+    //   (00)           (01)
+    //  ┌──┴──┐        ┌──┴──┐
+    // 000  0010     0100  0110
+    val testTree: Tree = {
+      orphans: Set(),
+      nodes: Map(
+        // root node without hash pointing to left internal node and right leaf node
+        makeNodeId(0, []) -> Internal({
+          left_child: Some({
+            version: 0,
+            hash: hashInternalNode({
+              left_child: Some({
+                version: 0,
+                hash: hashInternalNode({
                   left_child: None,
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
-              })}),
-              right_child: Some({ version: 0, hash : hashInternalNode({
-                  left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-              })})
-          })}),
-              right_child: Some({ version: 0, hash :  hashLeafNode({value_hash: [0], key_hash:[0]}) })
-          }),
-          makeNodeId(0, [0]) -> Internal({
-              left_child: Some({ version: 0, hash : hashInternalNode({
-                  left_child: None,
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
-              })}),
-              right_child: Some({ version: 0, hash : hashInternalNode({
-                  left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-              })})
-          }),
-              makeNodeId(0, [0,0]) -> Internal({
-                  left_child: None,
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,0,1,0]}) })
+                  right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+                })
               }),
-                  makeNodeId(0, [0,0,1]) -> Leaf({value_hash: [0], key_hash:[0,0,1,0]}),
-              makeNodeId(0, [0,1]) -> Internal({
-                  left_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,0,0]}) }),
-                  right_child: Some({ version: 0, hash : hashLeafNode({value_hash: [0], key_hash:[0,1,1,0]}) })
-              }),
-                  makeNodeId(0, [0,1,0]) -> Leaf({value_hash: [0], key_hash:[0,1,0,0]}),
-                  makeNodeId(0, [0,1,1]) -> Leaf({value_hash: [0], key_hash:[0,1,1,0]}),
-          makeNodeId(0, [1]) -> Leaf({value_hash: [0], key_hash:[0]})
-      )}
-      val newLeaf = { key_hash: [0,0,0,0], value_hash: [0]}
-      val nodesOnPath = getNodesOnPath(testTree, newLeaf.key_hash)
-      val nodeId = longestPrefixNode(nodesOnPath)
-      val newLeaf1 = { key_hash: [0,0,1,1], value_hash: [0]}
-      val nodesOnPath1 = getNodesOnPath(testTree, newLeaf1.key_hash)
+              right_child: Some({
+                version: 0,
+                hash: hashInternalNode({
+                  left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+                  right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+                })
+              })
+            })
+          }),
+          right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0] }) })
+        }),
+        makeNodeId(0, [0]) -> Internal({
+          left_child: Some({
+            version: 0,
+            hash: hashInternalNode({
+              left_child: None,
+              right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+            })
+          }),
+          right_child: Some({
+            version: 0,
+            hash: hashInternalNode({
+              left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+              right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+            })
+          })
+        }),
+        makeNodeId(0, [0, 0]) -> Internal({
+          left_child: None,
+          right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 0, 1, 0] }) })
+        }),
+        makeNodeId(0, [0, 0, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 0, 1, 0] }),
+        makeNodeId(0, [0, 1]) -> Internal({
+          left_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 0, 0] }) }),
+          right_child: Some({ version: 0, hash: hashLeafNode({ value_hash: [0], key_hash: [0, 1, 1, 0] }) })
+        }),
+        makeNodeId(0, [0, 1, 0]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 0, 0] }),
+        makeNodeId(0, [0, 1, 1]) -> Leaf({ value_hash: [0], key_hash: [0, 1, 1, 0] }),
+        makeNodeId(0, [1]) -> Leaf({ value_hash: [0], key_hash: [0] })
+      )
+    }
+    val newLeaf = { key_hash: [0, 0, 0, 0], value_hash: [0] }
+    val nodesOnPath = getNodesOnPath(testTree, newLeaf.key_hash)
+    val nodeId = longestPrefixNode(nodesOnPath)
+    val newLeaf1 = { key_hash: [0, 0, 1, 1], value_hash: [0] }
+    val nodesOnPath1 = getNodesOnPath(testTree, newLeaf1.key_hash)
 
-      all{
-          assert(nodesOnPath1 == Set(makeNodeId(0,[]),makeNodeId(0,[0]),makeNodeId(0,[0,0]),makeNodeId(0,[0,0,1]))),
-          assert(nodeId == makeNodeId(0,[0,0]))
-      }
-
+    all {
+      assert(nodesOnPath1 == Set(makeNodeId(0, []), makeNodeId(0, [0]), makeNodeId(0, [0, 0]), makeNodeId(0, [0, 0, 1]))),
+      assert(nodeId == makeNodeId(0, [0, 0]))
+    }
   }
 
   pure val empty_tree = { nodes: Map(), orphans: Set() }
@@ -196,11 +230,10 @@ module apply_simple_test {
            orphans: Set() }
     )
 
-
   run twoInsertsOnEmptyTreeTest =
     pure val ops = Set(
       { key_hash: [1, 1, 0, 0], op: Insert([1, 1, 1, 1]) }, // a
-      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) } // r
+      { key_hash: [0, 1, 0, 0], op: Insert([1, 1, 1, 0]) }  // r
     )
 
     pure val expected_left = Leaf({ key_hash: [0, 1, 0, 0], value_hash: [1, 1, 1, 0] })
@@ -227,7 +260,7 @@ module apply_simple_test {
     )
 
     pure val expected_leaf_1 = Leaf({ key_hash: [0, 1, 1, 0], value_hash: [1, 1, 1, 1] })
-    pure val expected_leaf_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 1 ,0] })
+    pure val expected_leaf_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 1, 0] })
     pure val internal_height_3 = Internal({
       left_child: Some({ version: 0, hash: expected_leaf_1.hash() }),
       right_child: Some({ version: 0, hash: expected_leaf_2.hash() })
@@ -260,11 +293,10 @@ module apply_simple_test {
 
   // simple state machine for tests
   var tree: Tree
+
   action init =
-    tree' = {
-        orphans: Set(),
-        nodes: Map()
-  }
+    tree' = empty_tree
+
   action insertAction(l) =
     pure val leaf_as_op = { key_hash: l.key_hash, op: Insert(l.value_hash) }
     tree' = apply(tree, 0, 0, Set(leaf_as_op))
@@ -274,7 +306,7 @@ module apply_simple_test {
      // TODO non-deterministic initialization
      init
      .then(leafs.length().reps(i => insertAction(leafs[i])))
-     .expect(true) //some invariant
+     .expect(true) // some invariant
   }
 
   run ExampleSC = {
@@ -282,7 +314,7 @@ module apply_simple_test {
     // TODO non-deterministic initialization
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
 
   run ExampleSC1 = {
@@ -291,14 +323,14 @@ module apply_simple_test {
     // TODO non-deterministic initialization
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
 
   run ExampleSC2 = {
     val leafs = List({key_hash: [1, 1, 0, 1], value_hash: [5]}, {key_hash: [1, 1, 1, 0], value_hash: [42]})
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
 
   run ExampleRustTree = {
@@ -310,7 +342,7 @@ module apply_simple_test {
 
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
 
   run ExampleRun = {
@@ -320,8 +352,9 @@ module apply_simple_test {
 
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
+
   //      original tree
   //        root
   //        / \
@@ -345,6 +378,6 @@ module apply_simple_test {
 
     init
     .then(leafs.length().reps(i => insertAction(leafs[i])))
-    .expect(true) //some invariant
+    .expect(true) // some invariant
   }
 }
