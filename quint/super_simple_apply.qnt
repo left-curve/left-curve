@@ -6,21 +6,74 @@ module super_simple_apply {
   import node.* from "./node"
   import utils.* from "./utils"
   import basicSpells.* from "./spells/basicSpells"
-
+  import invariants.* from "./invariants"
   pure val MAX_HEIGHT = 4
-  // For types like -> batch: Vec<(Hash256, Hash256)>
-  type KeyWithValue = { key_hash: BitArray, value_hash: Bytes_t }
+  
+  pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree = 
+    if(tree.nodes.keys().size() == 0 ) tree else {...tree, orphans: tree.orphans
+                                                      .union(Set(makeOrphanId(new_version, old_version, ROOT_BITS)))}
 
+  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = {
+    val newLeftUnwrapped = match internal.left_child {
+      | Some(left_child) => left_child.hash
+      | None => Map()
+    }
+    val newRightUnwrapped = match internal.right_child {
+      | Some(right_child) => right_child.hash
+      | None => Map()
+    }
+    
+    val oldLeftUnwrapped = match internalOldVersion.left_child {
+      | Some(left_child) => left_child.hash
+      | None => Map()
+    }
+    val oldRightUnwrapped = match internalOldVersion.right_child {
+      | Some(right_child) => right_child.hash
+      | None => Map()
+    }
+    if(not(newLeftUnwrapped==Map())
+      and not(newRightUnwrapped==Map())
+      and not(oldLeftUnwrapped==Map())
+      and not(oldRightUnwrapped==Map()))
+      newLeftUnwrapped == oldLeftUnwrapped and newRightUnwrapped == oldRightUnwrapped
+    else
+      false
+  }
+
+  pure def removeDuplicateEntries(nodes: NodeId->Node, new_version: Version) : NodeId->Node =
+    nodes.keys().fold(nodes, (nodes, key) => 
+      val nodeForKey = nodes.get(key)
+      if(nodes.keys().contains({...key, version: new_version})) 
+        val nodeForKeyWithNewVersion = nodes.get({...key, version: new_version})
+        if(nodeForKey == nodeForKeyWithNewVersion and not(new_version==key.version))
+          nodes.mapRemove({...key, version: new_version})
+        else     
+          //  match nodeForKeyWithNewVersion {
+          //    | Internal(internalNewVersion) 
+          //       => match nodeForKey {
+          //         | Internal(internalOldVersion) =>  
+          //           if(cmpInternalAndNode(internalNewVersion, internalOldVersion)) 
+          //             nodes.mapRemove({...key, version: new_version})
+          //           else nodes
+          //         | Leaf(_) => nodes
+          //       }
+          //    | Leaf(_) => nodes
+          //  }
+          nodes
+      else 
+        nodes
+    )
+      
+      
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode): Tree = {
-    pure val existing_keys_with_values = tree.nodes.keys().fold(Set(), (acc, k) => {
-      if (k.version == old_version) {
+    
+    val treeWithOrphanedRoot = orphanRootIfExists(tree, old_version, new_version)
+    val treeForOldVersion = treeAtVersion(tree, old_version)
+    pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
         match tree.nodes.get(k) {
           | Leaf(leaf) => acc.union(Set(leaf))
           | _ => acc
         }
-      } else {
-        acc
-      }
     })
 
     pure val keys_with_values = existing_keys_with_values.union(Set(insert))
@@ -70,9 +123,19 @@ module super_simple_apply {
         (acc._1.union(queue_2), queue_2)
       })
     })
+    
+    val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node)).fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
 
-    { nodes: result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node)).setToMap(), orphans: Set() }
+    val newNodes = removeDuplicateEntries(nodes, new_version)
+    { nodes: newNodes, orphans: treeWithOrphanedRoot.orphans }
   }
+  run simple::singleInsertOnEmptyTreeTest_A =
+    pure val t1 = super_simple_apply(empty_tree, 0, 1, { key_hash: [0, 1, 1], value_hash: [5] })
+    pure val t2 = super_simple_apply(t1, 1, 2, { key_hash: [0, 0, 1], value_hash: [33] })
+    pure val t3 = super_simple_apply(t2, 2, 3, {key_hash: [1,0,1], value_hash:[77]})
+    pure val t4 = super_simple_apply(t3, 3, 4, {key_hash: [1,1,1], value_hash:[42]})
+
+    assert(true==true)
 
   pure val empty_tree = { nodes: Map(), orphans: Set() }
    run simple::SingleInsertOnLeafTest =
