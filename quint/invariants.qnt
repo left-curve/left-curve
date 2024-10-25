@@ -17,7 +17,7 @@ pure def treeVersion(t: Tree): int =
                     s)
 
 /// return the prefixes of all childred from nodes at the given version 
-pure def ChildrenPrefixes(nodes: TreeMap): Set[BitArray] = 
+pure def childrenPrefixes(nodes: TreeMap): Set[BitArray] = 
   val allChildren = nodes.keys().fold(Set(), (s, x) =>
     match nodes.get(x) {
       | Internal(n) =>
@@ -39,13 +39,13 @@ pure def ChildrenPrefixes(nodes: TreeMap): Set[BitArray] =
 pure def getnodeIdforMaxVersion(nodes: TreeMap, key: BitArray): Option[NodeId] = 
   val default = { version: -1, key_hash: key }
   val result = nodes.keys()
-        .filter(nId => nId.key_hash == key)
-        .fold(default, (s,x) => 
-          if (x.version > s.version)
-            x
-          else 
-          s
-        )
+                    .filter(nId => nId.key_hash == key)
+                    .fold(default, (s,x) => 
+                      if (x.version > s.version)
+                        x
+                      else 
+                        s
+                    ) 
   if (result == default)
     None
   else
@@ -63,7 +63,7 @@ pure def nodesUpdatedByVersion(t: TreeMap, version: int): TreeMap =
 
 
 pure def addDirectChildren(t: TreeMap, pool: TreeMap) : TreeMap =
-  ChildrenPrefixes(t) 
+  childrenPrefixes(t) 
     .fold(t, (treeNodes, prefix) => 
       match getnodeIdforMaxVersion(pool, prefix) {
         | Some(nodeId) => treeNodes.put(nodeId, pool.get(nodeId))
@@ -77,8 +77,8 @@ pure def treeAtVersion(t: Tree, version: int): TreeMap =
   // first check if there is a root at this version
   if (t.nodes.keys().contains({ version: version, key_hash: []}))
     val nodesUpToVersion = nodesUpdatedByVersion(t.nodes, version)
-    val nodesAtVersion = nodesUpdatedAtVersion(t.nodes, version)
-    0.to(MAX_HASH_LENGTH).fold(nodesAtVersion, (treeNodes, _) => 
+    val nodesAtVersion = nodesUpdatedAtVersion(t.nodes, version)  // take the nodes for the current version...
+    0.to(MAX_HASH_LENGTH).fold(nodesAtVersion, (treeNodes, _) =>  // ... and grow the tree by adding direct children
       addDirectChildren(treeNodes, nodesUpToVersion))
   else
     Map()
