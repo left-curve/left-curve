@@ -1,5 +1,5 @@
 use {
-    crate::{GasTracker, Vm},
+    crate::GasTracker,
     grug_types::{BlockInfo, Storage, Undefined},
 };
 
@@ -16,14 +16,15 @@ pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>> {
     pub block: BlockInfo,
 }
 
-impl AppCtx {
-    pub fn new<VM, S, C>(
+impl<VM, S> AppCtx<VM, S> {
+    /// Create a new context.
+    pub fn new<C>(
         vm: VM,
         storage: S,
         gas_tracker: GasTracker,
         chain_id: C,
         block: BlockInfo,
-    ) -> AppCtx<VM, S>
+    ) -> Self
     where
         C: Into<String>,
     {
@@ -35,17 +36,12 @@ impl AppCtx {
             block,
         }
     }
-}
 
-impl<VM> AppCtx<VM>
-where
-    VM: Vm,
-{
     /// Cast the context to a variant where the VM is undefined.
     ///
     /// Used for methods that don't require a VM, such as updating chain config
     /// or uploading a code.
-    pub fn downcast(self) -> AppCtx<Undefined> {
+    pub fn downcast(self) -> AppCtx<Undefined, S> {
         AppCtx {
             vm: Undefined::default(),
             storage: self.storage,
