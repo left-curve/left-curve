@@ -1,5 +1,5 @@
 use {
-    crate::{LIABILITIES, MARKETS},
+    crate::{DEBTS, MARKETS},
     dango_types::lending::{Market, QueryMsg},
     grug::{Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
@@ -48,7 +48,7 @@ pub fn query_markets(
 }
 
 pub fn query_debt(storage: &dyn Storage, account: Addr) -> StdResult<Coins> {
-    LIABILITIES.load(storage, account)
+    DEBTS.load(storage, account)
 }
 
 pub fn query_debts(
@@ -59,7 +59,7 @@ pub fn query_debts(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    LIABILITIES
+    DEBTS
         .range(storage, start, None, Order::Ascending)
         .take(limit as usize)
         .collect()

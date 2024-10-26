@@ -1,5 +1,5 @@
 use {
-    crate::{LIABILITIES, MARKETS},
+    crate::{DEBTS, MARKETS},
     anyhow::{bail, ensure, Ok},
     dango_types::{
         account_factory::QueryAccountRequest,
@@ -174,7 +174,7 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     }
 
     // Update the sender's liabilities
-    LIABILITIES.may_update(ctx.storage, ctx.sender, |debts| {
+    DEBTS.may_update(ctx.storage, ctx.sender, |debts| {
         let mut debts = debts.unwrap_or_default();
         debts.insert_many(coins.clone())?;
         Ok(debts)
