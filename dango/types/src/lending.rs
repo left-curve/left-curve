@@ -1,6 +1,7 @@
-use std::collections::BTreeSet;
-
-use grug::{Addr, Coins, Denom};
+use {
+    grug::{Addr, Coins, Denom},
+    std::collections::BTreeSet,
+};
 
 /// The namespace that lending pool uses.
 pub const NAMESPACE: &str = "lending";
