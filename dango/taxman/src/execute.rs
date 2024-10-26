@@ -1,5 +1,5 @@
 use {
-    crate::CONFIG,
+    crate::{CONFIG, WITHHELD_FEE},
     anyhow::ensure,
     dango_types::{
         bank,
@@ -8,7 +8,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        Response, StdResult, Tx, TxOutcome, Uint128,
+        NumberConst, Response, StdResult, Tx, TxOutcome, Uint128,
     },
 };
 
@@ -53,18 +53,21 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let fee_cfg = CONFIG.load(ctx.storage)?;
     let account_factory: Addr = ctx.querier.query_app_config("account_factory")?;
 
-    // Two situations where gas handling is skipped:
-    // 1. During simulation, no need to do anything.
-    // 2. The account factory contract is exempt from gas fees.
-    if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
-        return Ok(Response::new());
-    }
-
     // Compute the maximum amount of fee this transaction may incur.
-    //
     // Note that we ceil this amount, instead of flooring.
-    let withhold_amount =
-        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    //
+    // Under two situations, we don't charge any gas:
+    //
+    // 1. During simulation. At this time, the user doesn't know how much gas
+    //    gas limit to request. The node's query gas limit is used as `tx.gas_limit`
+    //    in this case.
+    // 2. Sender is the account factory contract. This happens during a new user
+    //    onboarding. We don't charge gas fee this in case.
+    let withhold_amount = if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
+        Uint128::ZERO
+    } else {
+        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?
+    };
 
     // If the withhold amount is non-zero, we force transfer this amount from
     // the sender to taxman.
@@ -82,7 +85,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
-                denom: fee_cfg.fee_denom,
+                denom: fee_cfg.fee_denom.clone(),
                 amount: withhold_amount,
             },
             Coins::new(),
@@ -91,31 +94,27 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         None
     };
 
+    // Save the withheld fee in storage, which we will use in `finalize_fee`.
+    WITHHELD_FEE.save(ctx.storage, &(fee_cfg, withhold_amount))?;
+
     Ok(Response::new().may_add_message(withhold_msg))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Response> {
-    let fee_cfg = CONFIG.load(ctx.storage)?;
+    let (fee_cfg, withheld_amount) = WITHHELD_FEE.take(ctx.storage)?;
     let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
-
-    // Again, during simulation, or any tx sent by the account factory, is
-    // exempt from gas fees.
-    if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
-        return Ok(Response::new());
-    }
-
-    // Compute how much fee was withheld earlier during `withhold_fee`.
-    //
-    // FIXME: this doesn't work if the fee rate was changed during this tx!!!
-    // Instead of recomputing, we should save this in the storage.
-    let withheld_amount =
-        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // Compute how much fee to charge the sender, based on the actual amount of
     // gas consumed.
-    let charge_amount =
-        Uint128::new(outcome.gas_used as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
+    //
+    // Again, during simulation, or any tx sent by the account factory, is
+    // exempt from gas fees.
+    let charge_amount = if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
+        Uint128::ZERO
+    } else {
+        Uint128::new(outcome.gas_used as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?
+    };
 
     // If we have withheld more funds than the actual charge amount, we need to
     // refund the difference.

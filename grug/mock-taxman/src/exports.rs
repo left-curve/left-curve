@@ -1,5 +1,5 @@
 use {
-    crate::{configure, initialize_config, query_config, ExecuteMsg, InstantiateMsg, QueryMsg},
+    crate::{initialize_config, query_config, InstantiateMsg, QueryMsg},
     grug_types::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 
@@ -10,11 +10,6 @@ mod __wasm_exports {
     #[no_mangle]
     extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
         grug_ffi::do_instantiate(&super::instantiate, ctx_ptr, msg_ptr)
-    }
-
-    #[no_mangle]
-    extern "C" fn execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
-        grug_ffi::do_execute(&super::execute, ctx_ptr, msg_ptr)
     }
 
     #[no_mangle]
@@ -35,12 +30,6 @@ mod __wasm_exports {
 
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     initialize_config(ctx.storage, &msg.config)
-}
-
-pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
-    match msg {
-        ExecuteMsg::Configure { new_cfg } => configure(ctx, &new_cfg),
-    }
 }
 
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
