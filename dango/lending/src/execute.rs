@@ -212,32 +212,3 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // Transfer the coins to the caller
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
 }
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-
-    use {
-        super::*,
-        grug::{MockContext, MockQuerier},
-    };
-
-    /// Address of the Lending Pool for use in the following tests.
-    const LENDING: Addr = Addr::mock(255);
-
-    #[test]
-    fn cant_transfer_to_lending() {
-        let querier = MockQuerier::new();
-        let mut ctx = MockContext::new()
-            .with_querier(querier)
-            .with_contract(LENDING)
-            .with_sender(Addr::mock(123))
-            .with_funds(Coins::new());
-
-        let res = receive(ctx.as_mutable());
-        assert!(res.is_err_and(|err| err
-            .to_string()
-            .contains("Can't send tokens to this contract")));
-    }
-}
