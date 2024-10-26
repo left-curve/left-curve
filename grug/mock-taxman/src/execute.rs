@@ -1,28 +1,11 @@
 use {
     crate::{Config, CONFIG},
-    anyhow::ensure,
     grug_math::{IsZero, MultiplyFraction, Number, Uint128},
-    grug_types::{
-        AuthCtx, AuthMode, Coins, Message, MutableCtx, Response, StdResult, Storage, Tx, TxOutcome,
-    },
+    grug_types::{AuthCtx, AuthMode, Coins, Message, Response, StdResult, Storage, Tx, TxOutcome},
 };
 
 pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<Response> {
     CONFIG.save(storage, cfg)?;
-
-    Ok(Response::new())
-}
-
-pub fn configure(ctx: MutableCtx, new_cfg: &Config) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
-    // Only the chain's owner can update fee config.
-    ensure!(
-        ctx.sender == cfg.owner,
-        "you don't have the right, O you don't have the right"
-    );
-
-    CONFIG.save(ctx.storage, new_cfg)?;
 
     Ok(Response::new())
 }

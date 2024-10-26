@@ -41,7 +41,6 @@ impl TestVm for RustVm {
 
     fn default_taxman_code() -> Binary {
         ContractBuilder::new(Box::new(grug_mock_taxman::instantiate))
-            .with_execute(Box::new(grug_mock_taxman::execute))
             .with_query(Box::new(grug_mock_taxman::query))
             .with_withhold_fee(Box::new(grug_mock_taxman::withhold_fee))
             .with_finalize_fee(Box::new(grug_mock_taxman::finalize_fee))
