@@ -5,7 +5,7 @@ use {
         account_factory::QueryAccountRequest,
         bank,
         config::ACCOUNT_FACTORY_KEY,
-        lending_pool::{ExecuteMsg, InstantiateMsg, NAMESPACE},
+        lending::{ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
     grug::{Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
     std::str::FromStr,
@@ -224,14 +224,14 @@ mod tests {
     };
 
     /// Address of the Lending Pool for use in the following tests.
-    const LENDING_POOL: Addr = Addr::mock(255);
+    const LENDING: Addr = Addr::mock(255);
 
     #[test]
-    fn cant_transfer_to_lending_pool() {
+    fn cant_transfer_to_lending() {
         let querier = MockQuerier::new();
         let mut ctx = MockContext::new()
             .with_querier(querier)
-            .with_contract(LENDING_POOL)
+            .with_contract(LENDING)
             .with_sender(Addr::mock(123))
             .with_funds(Coins::new());
 

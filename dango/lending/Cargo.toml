@@ -1,5 +1,5 @@
 [package]
-name          = "dango-lending-pool"
+name          = "dango-lending"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }

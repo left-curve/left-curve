@@ -133,10 +133,10 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
-    let lending_pool = ContractBuilder::new(Box::new(dango_lending_pool::instantiate))
-        .with_receive(Box::new(dango_lending_pool::receive))
-        .with_execute(Box::new(dango_lending_pool::execute))
-        .with_query(Box::new(dango_lending_pool::query))
+    let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
+        .with_receive(Box::new(dango_lending::receive))
+        .with_execute(Box::new(dango_lending::execute))
+        .with_query(Box::new(dango_lending::query))
         .build();
 
     let codes = Codes {
@@ -149,7 +149,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         ibc_transfer,
         taxman,
         token_factory,
-        lending_pool,
+        lending,
     };
 
     setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes)

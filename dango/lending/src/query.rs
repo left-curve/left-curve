@@ -1,6 +1,6 @@
 use {
     crate::{LIABILITIES, WHITELISTED_DENOMS},
-    dango_types::lending_pool::QueryMsg,
+    dango_types::lending::QueryMsg,
     grug::{Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
 };
 

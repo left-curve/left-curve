@@ -4,7 +4,7 @@ pub mod amm;
 pub mod auth;
 pub mod bank;
 pub mod config;
-pub mod lending_pool;
+pub mod lending;
 pub mod mock_ibc_transfer;
 pub mod taxman;
 pub mod token_factory;

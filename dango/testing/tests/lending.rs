@@ -3,7 +3,7 @@ use {
     dango_types::{
         account::single,
         account_factory::AccountParams,
-        lending_pool::{
+        lending::{
             self, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
             QueryWhitelistedDenomsRequest, NAMESPACE,
         },
@@ -22,14 +22,14 @@ static _OSMO: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uosmo").unwrap
 static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
 
 #[test]
-fn cant_transfer_to_lending_pool() {
+fn cant_transfer_to_lending() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
     suite
         .send_message(
             &mut accounts.relayer,
             Message::Transfer(MsgTransfer {
-                to: contracts.lending_pool,
+                to: contracts.lending,
                 coins: Coins::one(USDC.clone(), 123).unwrap(),
             }),
         )
@@ -44,8 +44,8 @@ fn only_owner_can_whitelist_denoms() {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_fail_with_error("Only the owner can whitelist denoms");
@@ -54,8 +54,8 @@ fn only_owner_can_whitelist_denoms() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_succeed();
@@ -69,8 +69,8 @@ fn only_owner_can_delist_denoms() {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
             Coins::new(),
         )
         .should_fail_with_error("Only the owner can delist denoms");
@@ -79,8 +79,8 @@ fn only_owner_can_delist_denoms() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
             Coins::new(),
         )
         .should_succeed();
@@ -92,7 +92,7 @@ fn whitelist_denom_works() {
 
     // Ensure USDC is already in the whitelist
     suite
-        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
             limit: None,
             start_after: None,
         })
@@ -102,8 +102,8 @@ fn whitelist_denom_works() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(USDC.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::WhitelistDenom(USDC.clone()),
             Coins::new(),
         )
         .should_fail_with_error("Denom already whitelisted");
@@ -112,15 +112,15 @@ fn whitelist_denom_works() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_succeed();
 
     // Ensure ATOM is now in the whitelist
     suite
-        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
             limit: None,
             start_after: None,
         })
@@ -133,7 +133,7 @@ fn delist_denom_works() {
 
     // Ensure USDC is already in the whitelist
     suite
-        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
             limit: None,
             start_after: None,
         })
@@ -143,8 +143,8 @@ fn delist_denom_works() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::DelistDenom(ATOM.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::DelistDenom(ATOM.clone()),
             Coins::new(),
         )
         .should_fail_with_error("Denom not whitelisted");
@@ -153,15 +153,15 @@ fn delist_denom_works() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::DelistDenom(USDC.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
             Coins::new(),
         )
         .should_succeed();
 
     // Ensure USDC is no longer in the whitelist
     suite
-        .query_wasm_smart(contracts.lending_pool, QueryWhitelistedDenomsRequest {
+        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
             limit: None,
             start_after: None,
         })
@@ -187,8 +187,8 @@ fn cant_deposit_from_margin_account() -> anyhow::Result<()> {
     suite
         .execute(
             &mut margin_account,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Deposit { recipient: None },
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit { recipient: None },
             Coins::new(),
         )
         .should_fail_with_error("Margin accounts can't deposit or withdraw");
@@ -212,8 +212,8 @@ fn deposit_works(use_recipient: bool) -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Deposit { recipient },
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit { recipient },
             Coins::one(USDC.clone(), 123)?,
         )
         .should_succeed();
@@ -247,8 +247,8 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Deposit { recipient: None },
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit { recipient: None },
             Coins::one(USDC.clone(), 123)?,
         )
         .should_succeed();
@@ -266,8 +266,8 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Withdraw { recipient },
+            contracts.lending,
+            &lending::ExecuteMsg::Withdraw { recipient },
             Coins::one(lp_denom.clone(), 123)?,
         )
         .should_succeed();
@@ -295,8 +295,8 @@ fn non_margin_accounts_cant_borrow() -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Borrow {
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow {
                 coins: Coins::new(),
             },
             Coins::new(),
@@ -325,8 +325,8 @@ fn borrowing_works() -> anyhow::Result<()> {
     suite
         .execute(
             &mut margin_account,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Borrow {
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow {
                 coins: Coins::from(Coin::new(USDC.clone(), 100)?),
             },
             Coins::new(),
@@ -337,8 +337,8 @@ fn borrowing_works() -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.relayer,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Deposit { recipient: None },
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit { recipient: None },
             Coins::one(USDC.clone(), 100)?,
         )
         .should_succeed();
@@ -347,8 +347,8 @@ fn borrowing_works() -> anyhow::Result<()> {
     suite
         .execute(
             &mut margin_account,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Borrow {
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow {
                 coins: Coins::from(Coin::new(USDC.clone(), 100)?),
             },
             Coins::new(),
@@ -363,12 +363,12 @@ fn borrowing_works() -> anyhow::Result<()> {
     // Confirm that the lending pool has the liability
     suite
         .query_wasm_smart(
-            contracts.lending_pool,
+            contracts.lending,
             QueryDebtsOfAccountRequest(margin_account.address()),
         )
         .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100)?));
     suite
-        .query_wasm_smart(contracts.lending_pool, QueryLiabilitiesRequest {
+        .query_wasm_smart(contracts.lending, QueryLiabilitiesRequest {
             limit: None,
             start_after: None,
         })
@@ -404,12 +404,12 @@ fn composite_denom() -> anyhow::Result<()> {
 
     let denom = Denom::from_str(&format!("factory/{}/foo", owner_addr))?;
 
-    // Register the denom in the lending_pool
+    // Register the denom in the lending
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::WhitelistDenom(denom.clone()),
+            contracts.lending,
+            &lending::ExecuteMsg::WhitelistDenom(denom.clone()),
             Coins::default(),
         )
         .should_succeed();
@@ -432,14 +432,14 @@ fn composite_denom() -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Deposit { recipient: None },
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit { recipient: None },
             Coins::from(Coin::new(denom.clone(), amount)?),
         )
         .should_succeed();
 
     let mut parts = denom.clone().into_inner();
-    parts.insert(0, Part::from_str(lending_pool::NAMESPACE)?);
+    parts.insert(0, Part::from_str(lending::NAMESPACE)?);
     parts.insert(1, Part::from_str("lp")?);
 
     let lp_token = Denom::from_parts(parts)?;
@@ -453,8 +453,8 @@ fn composite_denom() -> anyhow::Result<()> {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.lending_pool,
-            &lending_pool::ExecuteMsg::Withdraw { recipient: None },
+            contracts.lending,
+            &lending::ExecuteMsg::Withdraw { recipient: None },
             Coins::from(Coin::new(lp_token.clone(), amount)?),
         )
         .should_succeed();
