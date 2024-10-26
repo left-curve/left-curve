@@ -189,9 +189,7 @@ fn non_margin_accounts_cant_borrow() {
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow {
-                coins: Coins::new(),
-            },
+            &lending::ExecuteMsg::Borrow(Coins::new()),
             Coins::new(),
         )
         .should_fail_with_error("Only margin accounts can borrow");
@@ -220,9 +218,7 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow {
-                coins: Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
-            },
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_fail_with_error("subtraction overflow: 0 - 100");
@@ -242,9 +238,7 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow {
-                coins: Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
-            },
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_succeed();

@@ -27,20 +27,15 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Apply updates to markets.
     UpdateMarkets(BTreeMap<Denom, MarketUpdates>),
-
     /// Deposit tokens into the lending pool.
+    /// Sender must attach one or more supported tokens and nothing else.
     Deposit {},
-
-    /// Withdraw tokens from the lending pool by redeeming LP tokens. LP tokens
-    /// should be sent to the contract together with this message.
+    /// Withdraw tokens from the lending pool by redeeming LP tokens.
+    /// Sender must attach one or more LP tokens and nothing else.
     Withdraw {},
-
-    /// Borrow coins from the lending pool. Can only be invoked by margin
-    /// accounts.
-    Borrow {
-        /// The coins to borrow.
-        coins: Coins,
-    },
+    /// Borrow coins from the lending pool.
+    /// Sender must be a margin account.
+    Borrow(Coins),
 }
 
 #[grug::derive(Serde, QueryRequest)]

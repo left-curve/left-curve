@@ -32,7 +32,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::UpdateMarkets(updates) => update_markets(ctx, updates),
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
-        ExecuteMsg::Borrow { coins } => borrow(ctx, coins),
+        ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
     }
 }
 
