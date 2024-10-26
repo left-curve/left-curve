@@ -6,9 +6,9 @@ import type {
   Funds,
   Hex,
   Json,
-  MessageTypedDataType,
   Signer,
   Transport,
+  TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
@@ -47,7 +47,7 @@ export async function instantiate<chain extends Chain | undefined, signer extend
 
   const { extraTypes = {}, type = [] } = parameters.typedData || {};
 
-  const typedData: TypedDataParameter<MessageTypedDataType> = {
+  const typedData: TypedDataParameter<TxMessageType> = {
     type: [{ name: "instantiate", type: "Instantiate" }],
     extraTypes: {
       Instantiate: [

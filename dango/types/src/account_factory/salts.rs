@@ -63,10 +63,6 @@ impl<'a> NewUserSalt<'a> {
                 bytes.push(1);
                 bytes.extend_from_slice(&pk);
             },
-            Key::Ed25519(pk) => {
-                bytes.push(2);
-                bytes.extend_from_slice(&pk);
-            },
         }
         bytes
     }

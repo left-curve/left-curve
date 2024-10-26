@@ -19,7 +19,6 @@ export {
   getCoinsTypedData,
   getMembersTypedData,
   composeTypedData,
-  composeAndHashTypedData,
   hashTypedData,
 } from "./typedData";
 

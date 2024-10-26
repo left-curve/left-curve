@@ -3,9 +3,9 @@ import type {
   Chain,
   Client,
   Message,
-  MessageTypedDataType,
   Signer,
   Transport,
+  TxMessageType,
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
@@ -17,7 +17,7 @@ export type SafeAccountProposeParameters = {
   title: string;
   description?: string;
   messages: Message[];
-  typedData?: TypedDataParameter<MessageTypedDataType>;
+  typedData?: TypedDataParameter<TxMessageType>;
 };
 
 export type SafeAccountProposeReturnType = ExecuteReturnType;
