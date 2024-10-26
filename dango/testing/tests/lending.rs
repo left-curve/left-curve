@@ -253,14 +253,14 @@ fn borrowing_works() {
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
-        .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100).unwrap()));
+        .should_succeed_and_equal(Coins::one(USDC.clone(), 100).unwrap());
     suite
         .query_wasm_smart(contracts.lending, QueryDebtsRequest {
             limit: None,
             start_after: None,
         })
         .should_succeed_and_equal(btree_map! {
-            margin_account.address() => Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
+            margin_account.address() => Coins::one(USDC.clone(), 100).unwrap(),
         });
 }
 
@@ -282,7 +282,7 @@ fn composite_denom() {
                 username: None,
                 admin: None,
             },
-            Coins::from(fee_token_creation),
+            fee_token_creation,
         )
         .should_succeed();
 
@@ -320,7 +320,7 @@ fn composite_denom() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::from(Coin::new(denom.clone(), amount).unwrap()),
+            Coins::one(denom.clone(), amount).unwrap(),
         )
         .should_succeed();
 
@@ -341,7 +341,7 @@ fn composite_denom() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::Withdraw {},
-            Coins::from(Coin::new(lp_token.clone(), amount).unwrap()),
+            Coins::one(lp_token.clone(), amount).unwrap(),
         )
         .should_succeed();
 
