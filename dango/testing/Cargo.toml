@@ -31,7 +31,6 @@ grug-vm-wasm          = { workspace = true }
 k256                  = { workspace = true }
 
 [dev-dependencies]
-anyhow    = { workspace = true }
 criterion = { workspace = true }
 rand      = { workspace = true }
 test-case = { workspace = true }
