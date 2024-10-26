@@ -268,7 +268,7 @@ impl Instance for RustInstance {
 mod tests {
     use {
         crate::{ContractBuilder, RustVm},
-        grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
+        grug_app::{AppCtx, GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
         grug_types::{
             Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
             Storage, Timestamp,
@@ -327,8 +327,13 @@ mod tests {
 
         let gas_tracker = GasTracker::new_limitless();
 
-        let querier_provider =
-            QuerierProvider::new(vm.clone(), Box::new(db.clone()), gas_tracker.clone(), block);
+        let querier_provider = QuerierProvider::new(AppCtx::new(
+            vm.clone(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            "dev-1".to_string(),
+            block,
+        ));
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 

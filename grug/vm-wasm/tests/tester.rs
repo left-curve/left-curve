@@ -101,7 +101,7 @@ fn immutable_state() {
     suite
         .send_message_with_gas(
             &mut accounts["sender"],
-            1_000_000,
+            2_000_000,
             Message::execute(
                 tester,
                 &grug_tester::ExecuteMsg::ForceWriteOnQuery {
