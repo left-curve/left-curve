@@ -54,22 +54,13 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
-
-    /// Get the debts of a margin account.
+    /// Query the debt of a single margin account.
     #[returns(Coins)]
-    DebtsOfAccount(Addr),
-
-    /// Paginate over all the lending pool's liabilities. Returns a Vec with
-    /// tuples of (Addr, Coins), where the Addr is the address of the account
-    /// that owes the debt and the Coins are the coins owed.
-    #[returns(Vec<(Addr, Coins)>)]
-    Liabilities {
-        /// The maximum number of entries to return. If not set, will attempt to
-        /// return all entries.
-        limit: Option<u32>,
-
-        /// The address to start paginating after. If not set, will start from
-        /// the first address.
+    Debt { account: Addr },
+    /// Enumerate debts of all margin accounts.
+    #[returns(BTreeMap<Addr, Coins>)]
+    Debts {
         start_after: Option<Addr>,
+        limit: Option<u32>,
     },
 }

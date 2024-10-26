@@ -4,8 +4,8 @@ use {
         account::single,
         account_factory::AccountParams,
         lending::{
-            self, MarketUpdates, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
-            QueryMarketsRequest, NAMESPACE,
+            self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
+            NAMESPACE,
         },
         token_factory,
     },
@@ -256,20 +256,18 @@ fn borrowing_works() {
 
     // Confirm that the lending pool has the liability
     suite
-        .query_wasm_smart(
-            contracts.lending,
-            QueryDebtsOfAccountRequest(margin_account.address()),
-        )
+        .query_wasm_smart(contracts.lending, QueryDebtRequest {
+            account: margin_account.address(),
+        })
         .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100).unwrap()));
     suite
-        .query_wasm_smart(contracts.lending, QueryLiabilitiesRequest {
+        .query_wasm_smart(contracts.lending, QueryDebtsRequest {
             limit: None,
             start_after: None,
         })
-        .should_succeed_and_equal(vec![(
-            margin_account.address(),
-            Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
-        )]);
+        .should_succeed_and_equal(btree_map! {
+            margin_account.address() => Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
+        });
 }
 
 #[test]
