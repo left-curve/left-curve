@@ -37,7 +37,7 @@ fn fee_rate_update_works() {
         .should_succeed();
 
     // This transaction was run when fee rate was zero.
-    // The owner's USDC balance shold be unchanged.
+    // The owner's USDC balance should be unchanged.
     suite
         .query_balance(&accounts.owner, USDC.clone())
         .should_succeed_and_equal(owner_usdc_balance);
