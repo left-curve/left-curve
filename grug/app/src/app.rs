@@ -600,6 +600,20 @@ where
         },
     };
 
+    println!("after authenticate");
+    for (k, v) in fee_ctx.storage.scan(None, None, Order::Ascending) {
+        if k.starts_with(b"wasm") {
+            let address = Addr::from_inner(k[4..24].try_into().unwrap());
+            let key = k[24..].to_vec();
+            println!(
+                "addr={}, k={} v={}",
+                address,
+                grug_types::Binary::from(key),
+                grug_types::Binary::from(v)
+            );
+        }
+    }
+
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
     //
