@@ -317,29 +317,29 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-        "sender": "0x2e3d61d8cca8a774b884175fcf736e4c4e8060db",
-        "credential": {
+          "sender": "0x2e3d61d8cca8a774b884175fcf736e4c4e8060db",
+          "credential": {
             "eip712": {
-                "sig": "BMbo/9aO/rPkhbt2hN1OaHl32QWME9BtLtwttbuUDyZmpnivpk73SLwDw6bc+3wsHSVxGVsARo5NtPPtQBDdvA==",
-                "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MmUzZDYxZDhjY2E4YTc3NGI4ODQxNzVmY2Y3MzZlNGM0ZTgwNjBkYiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMiIsIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyJ0byI6IjB4MTIzNTU5Y2E5NGQ3MzQxMTFmMzJjYzdkNjAzYzMzNDFjNGQyOWE4NCIsImNvaW5zIjp7InV1c2RjIjoiMTAwMDAwMCJ9fX1dLCJzZXF1ZW5jZSI6MH19"
+              "sig": "BMbo/9aO/rPkhbt2hN1OaHl32QWME9BtLtwttbuUDyZmpnivpk73SLwDw6bc+3wsHSVxGVsARo5NtPPtQBDdvA==",
+              "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MmUzZDYxZDhjY2E4YTc3NGI4ODQxNzVmY2Y3MzZlNGM0ZTgwNjBkYiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMiIsIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyJ0byI6IjB4MTIzNTU5Y2E5NGQ3MzQxMTFmMzJjYzdkNjAzYzMzNDFjNGQyOWE4NCIsImNvaW5zIjp7InV1c2RjIjoiMTAwMDAwMCJ9fX1dLCJzZXF1ZW5jZSI6MH19"
             }
-        },
-        "data": {
+          },
+          "data": {
             "key_hash": "125DA0206939DD8D2DB125C8903F7F1EF96C6195",
             "username": "test100",
             "sequence": 0
-        },
-        "msgs": [
+          },
+          "msgs": [
             {
-            "transfer": {
+              "transfer": {
                 "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
                 "coins": {
-                    "uusdc": "1000000"
+                  "uusdc": "1000000"
                 }
+              }
             }
-            }
-        ],
-        "gas_limit": 1116931
+          ],
+          "gas_limit": 1116931
         }"#;
 
         authenticate_tx(
