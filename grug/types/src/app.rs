@@ -135,6 +135,7 @@ pub struct ContractInfo {
 /// Includes the events emitted, and gas consumption.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+#[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct Outcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
     pub gas_limit: Option<u64>,
@@ -158,6 +159,7 @@ pub struct Outcome {
 /// this. However, state changes and events from the messages are discarded.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+#[must_use = "`TxOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct TxOutcome {
     pub gas_limit: u64,
     pub gas_used: u64,

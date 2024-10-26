@@ -77,7 +77,7 @@ pub enum QueryMsg {
     },
     /// Recover an Secp256k1 publick key from a signature.
     #[returns(Binary)]
-    RecoverSepc256k1 {
+    RecoverSecp256k1 {
         sig: Binary,
         msg_hash: Binary,
         recovery_id: u8,

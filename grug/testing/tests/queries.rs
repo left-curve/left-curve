@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty},
+    grug_types::{Coins, Empty, ResultExt},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -36,13 +36,15 @@ fn handling_multi_query() {
     let query_maker_code = ContractBuilder::new(Box::new(query_maker::instantiate)).build();
 
     // If the contract successfully deploys, the multi query must have worked.
-    suite.upload_and_instantiate(
-        &mut accounts["larry"],
-        query_maker_code,
-        &Empty {},
-        "query_maker",
-        Some("query_maker"),
-        None,
-        Coins::new(),
-    );
+    suite
+        .upload_and_instantiate(
+            &mut accounts["larry"],
+            query_maker_code,
+            &Empty {},
+            "query_maker",
+            Some("query_maker"),
+            None,
+            Coins::new(),
+        )
+        .should_succeed();
 }

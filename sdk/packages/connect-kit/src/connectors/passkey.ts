@@ -92,7 +92,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature({ messages, chainId, sequence }) {
+      async requestSignature(signDoc) {
+        const { messages, chainId, sequence } = signDoc;
         const bytes = sha256(serialize({ messages, chainId, sequence }));
 
         const {
@@ -118,7 +119,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const credential = { passkey };
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
 
-        return { credential, keyHash, signDoc: { messages, chainId, sequence } };
+        return { credential, keyHash, signDoc };
       },
       onConnect({ chainId, username }) {
         _username = username;

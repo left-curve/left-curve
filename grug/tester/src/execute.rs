@@ -17,7 +17,7 @@ pub fn force_write_on_query(ctx: MutableCtx, key: String, value: String) -> StdR
     Ok(Response::new())
 }
 
-pub fn exeucte_stack_overflow(ctx: MutableCtx) -> StdResult<Response> {
+pub fn execute_stack_overflow(ctx: MutableCtx) -> StdResult<Response> {
     Ok(Response::new().add_message(Message::execute(
         ctx.contract,
         &ExecuteMsg::StackOverflow {},

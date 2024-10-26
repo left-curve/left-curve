@@ -1,4 +1,6 @@
 use {
+    alloy_dyn_abi::{Eip712Domain, TypedData},
+    alloy_primitives::U160,
     anyhow::{anyhow, bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
@@ -6,7 +8,9 @@ use {
         auth::{ClientData, Credential, Key, Metadata, SignDoc},
         config::ACCOUNT_FACTORY_KEY,
     },
-    grug::{Addr, AuthCtx, AuthMode, BorshDeExt, Counter, JsonDeExt, JsonSerExt, Query, Tx},
+    grug::{
+        json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
+    },
 };
 
 /// Expected sequence number of the next transaction this account sends.
@@ -88,16 +92,6 @@ pub fn authenticate_tx(
             .deserialize_borsh()?
     };
 
-    // Compute the sign bytes.
-    let sign_bytes = ctx.api.sha2_256(
-        &SignDoc {
-            messages: tx.msgs,
-            chain_id: ctx.chain_id,
-            sequence: metadata.sequence,
-        }
-        .to_json_vec()?,
-    );
-
     // Verify sequence.
     match ctx.mode {
         // For `CheckTx`, we only make sure the tx's sequence is no smaller than
@@ -128,6 +122,36 @@ pub fn authenticate_tx(
     // Verify signature.
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => match (key, tx.credential.deserialize_json()?) {
+            (Key::Secp256k1(pk), Credential::Eip712(cred)) => {
+                let TypedData {
+                    resolver, domain, ..
+                } = cred.typed_data.deserialize_json()?;
+
+                // Recreate the EIP-712 data originally used for signing.
+                // Verify that the critical values in the transaction such as
+                // the message and the verifying contract (sender).
+                let typed_data = TypedData {
+                    resolver,
+                    domain: Eip712Domain {
+                        name: domain.name,
+                        verifying_contract: Some(
+                            U160::from_be_bytes(ctx.contract.into_inner()).into(),
+                        ),
+                        ..Default::default()
+                    },
+                    primary_type: "Message".to_string(),
+                    message: json!({
+                        "chainId": ctx.chain_id,
+                        "sequence": metadata.sequence,
+                        "messages": tx.msgs,
+                    }),
+                };
+
+                // EIP-712 hash used in the signature.
+                let sign_bytes = typed_data.eip712_signing_hash()?;
+
+                ctx.api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
+            },
             (Key::Secp256r1(pk), Credential::Passkey(cred)) => {
                 // Verify that Passkey has signed the correct data.
                 // The data should be the SHA-256 hash of a `ClientData`, where
@@ -135,6 +159,15 @@ pub fn authenticate_tx(
                 // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
                 let signed_hash = {
                     let client_data: ClientData = cred.client_data.deserialize_json()?;
+
+                    let sign_bytes = ctx.api.sha2_256(
+                        &SignDoc {
+                            messages: tx.msgs,
+                            chain_id: ctx.chain_id,
+                            sequence: metadata.sequence,
+                        }
+                        .to_json_vec()?,
+                    );
                     let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
 
                     ensure!(
@@ -162,10 +195,16 @@ pub fn authenticate_tx(
                 ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
             },
             (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
+                let sign_bytes = ctx.api.sha2_256(
+                    &SignDoc {
+                        messages: tx.msgs,
+                        chain_id: ctx.chain_id,
+                        sequence: metadata.sequence,
+                    }
+                    .to_json_vec()?,
+                );
+
                 ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
-            },
-            (Key::Ed25519(pk), Credential::Ed25519(sig)) => {
-                ctx.api.ed25519_verify(&sign_bytes, &sig, &pk)?;
             },
             _ => bail!("key and credential types don't match!"),
         },
@@ -228,6 +267,130 @@ mod tests {
             }
           ],
           "gas_limit": 1116375
+        }"#;
+
+        let querier = MockQuerier::new()
+            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS_BY_USER
+                    .insert(storage, (&user_username, user_keyhash))
+                    .unwrap();
+                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_chain_id("dev-2")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+    }
+
+    #[test]
+    fn eip712_authentication() {
+        let user_address = Addr::from_str("0x2e3d61d8cca8a774b884175fcf736e4c4e8060db").unwrap();
+        let user_username = Username::from_str("test100").unwrap();
+        let user_keyhash = Hash160::from_str("125DA0206939DD8D2DB125C8903F7F1EF96C6195").unwrap();
+        let user_key = Key::Secp256k1(
+            [
+                2, 133, 171, 100, 31, 51, 234, 81, 118, 154, 124, 111, 48, 233, 1, 122, 227, 69,
+                186, 224, 13, 210, 84, 190, 7, 38, 186, 1, 203, 80, 142, 47, 121,
+            ]
+            .into(),
+        );
+
+        let querier = MockQuerier::new()
+            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS_BY_USER
+                    .insert(storage, (&user_username, user_keyhash))
+                    .unwrap();
+                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_contract(Addr::from_str("0x2e3d61d8cca8a774b884175fcf736e4c4e8060db").unwrap())
+            .with_chain_id("dev-2")
+            .with_mode(AuthMode::Finalize);
+
+        let tx = r#"{
+          "sender": "0x2e3d61d8cca8a774b884175fcf736e4c4e8060db",
+          "credential": {
+            "eip712": {
+              "sig": "BMbo/9aO/rPkhbt2hN1OaHl32QWME9BtLtwttbuUDyZmpnivpk73SLwDw6bc+3wsHSVxGVsARo5NtPPtQBDdvA==",
+              "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MmUzZDYxZDhjY2E4YTc3NGI4ODQxNzVmY2Y3MzZlNGM0ZTgwNjBkYiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMiIsIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyJ0byI6IjB4MTIzNTU5Y2E5NGQ3MzQxMTFmMzJjYzdkNjAzYzMzNDFjNGQyOWE4NCIsImNvaW5zIjp7InV1c2RjIjoiMTAwMDAwMCJ9fX1dLCJzZXF1ZW5jZSI6MH19"
+            }
+          },
+          "data": {
+            "key_hash": "125DA0206939DD8D2DB125C8903F7F1EF96C6195",
+            "username": "test100",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                "coins": {
+                  "uusdc": "1000000"
+                }
+              }
+            }
+          ],
+          "gas_limit": 1116931
+        }"#;
+
+        authenticate_tx(
+            ctx.as_auth(),
+            tx.deserialize_json::<Tx>().unwrap(),
+            None,
+            None,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn secp256k1_authentication() {
+        let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
+        let user_username = Username::from_str("owner").unwrap();
+        let user_keyhash = Hash160::from_str("CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB").unwrap();
+        let user_key = Key::Secp256k1(
+            [
+                2, 111, 13, 75, 148, 145, 161, 77, 233, 136, 36, 236, 240, 231, 244, 217, 82, 186,
+                93, 163, 132, 66, 35, 3, 19, 17, 197, 180, 52, 200, 219, 178, 97,
+            ]
+            .into(),
+        );
+
+        let tx = r#"{
+          "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+          "credential": {
+            "secp256k1": "GkkfQb81pEZJISbqAhJOZuZ5wgRyN0Q4HABD9HDAkxB516nV5d0UjRciNhh3RIg2Hh8nmS3jHFVl3NO34PVLNA=="
+          },
+          "data": {
+            "key_hash": "CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB",
+            "username": "owner",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
+                "coins": {
+                  "uusdc": "5"
+                }
+              }
+            }
+          ],
+          "gas_limit": 1046678
         }"#;
 
         let querier = MockQuerier::new()

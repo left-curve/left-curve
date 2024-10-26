@@ -68,16 +68,18 @@ fn token_factory() {
         .should_fail_with_error("isn't associated with username");
 
     // Finally, correctly create a denom.
-    suite.execute(
-        &mut accounts.owner,
-        contracts.token_factory,
-        &ExecuteMsg::Create {
-            subdenom: SUBDENOM.clone(),
-            username: Some(owner_username.clone()),
-            admin: None,
-        },
-        Coins::one("uusdc", 10_000_000).unwrap(),
-    );
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Create {
+                subdenom: SUBDENOM.clone(),
+                username: Some(owner_username.clone()),
+                admin: None,
+            },
+            Coins::one("uusdc", 10_000_000).unwrap(),
+        )
+        .should_succeed();
 
     // Attempt to create the same denom again. Should fail.
     suite
@@ -151,16 +153,18 @@ fn token_factory() {
         .should_fail_with_error("data not found");
 
     // Correctly mint a token.
-    suite.execute(
-        &mut accounts.owner,
-        contracts.token_factory,
-        &ExecuteMsg::Mint {
-            denom: denom.clone(),
-            to: accounts.relayer.address(),
-            amount: Uint128::new(12_345),
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Mint {
+                denom: denom.clone(),
+                to: accounts.relayer.address(),
+                amount: Uint128::new(12_345),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // The recipient's balance should have been updated.
     suite
@@ -187,16 +191,18 @@ fn token_factory() {
         .should_fail_with_error("subtraction overflow");
 
     // Properly burn the token.
-    suite.execute(
-        &mut accounts.owner,
-        contracts.token_factory,
-        &ExecuteMsg::Burn {
-            denom: denom.clone(),
-            from: accounts.relayer.address(),
-            amount: Uint128::new(2_345),
-        },
-        Coins::new(),
-    );
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.token_factory,
+            &ExecuteMsg::Burn {
+                denom: denom.clone(),
+                from: accounts.relayer.address(),
+                amount: Uint128::new(2_345),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
     // The recipient's balance should have been updated.
     suite

@@ -192,7 +192,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap()
     ),
-    ["1", "2", "1.1"];
+    ["1", "2", "1.1"],
+    false;
     "reply_always_1pe_2pe_reply_1.1ok"
 )]
 #[test_case(
@@ -206,7 +207,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap()
     ),
-    ["1", "1.1"];
+    ["1", "1.1"],
+    false;
     "reply_always_1pe_2fail_reply_1.1ok"
 )]
 #[test_case(
@@ -220,7 +222,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap()
     ),
-    [];
+    [],
+    true;
     "reply_always_1pe_2ok_reply_1.1fail"
 )]
 #[test_case(
@@ -242,7 +245,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap()
     ),
-    ["1", "1.1"];
+    ["1", "1.1"],
+    false;
     "reply_always_1pe_2pe_3pe_4fail_1reply_1.1ok"
 )]
 #[test_case(
@@ -264,7 +268,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "1.1", "2.1"];
+    ["1", "1.1", "2.1"],
+    false;
     "reply_always_1pe_2pe_3f_1reply_1.1pe_2.1ok"
 )]
 #[test_case(
@@ -295,7 +300,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "2", "3.2", "1.1", "2.1"];
+    ["1", "2", "3.2", "1.1", "2.1"],
+    false;
     "reply_always_1pe_2pe_3_pe_4f_2reply_3.2ok_1reply_1.1pe_2.1ok"
 )]
 #[test_case(
@@ -326,7 +332,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "1.1", "2.1"];
+    ["1", "1.1", "2.1"],
+    false;
     "reply_always_1pe_2pe_3pe_4fail_2reply_3.2fail_1reply_1.1pe_2.1ok"
 )]
 // ----------------------------- ReplyOn::Success ------------------------------
@@ -341,7 +348,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "2", "1.1"];
+    ["1", "2", "1.1"],
+    false;
     "reply_success_1pe_2ok_reply_1.1ok"
 )]
 #[test_case(
@@ -355,7 +363,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    [];
+    [],
+    true;
     "reply_success_1pe_2ok_reply_1.1fail"
 )]
 #[test_case(
@@ -369,7 +378,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    [];
+    [],
+    true;
     "reply_success_1pe_2fail_reply_1.1ok"
 )]
 // ------------------------------ ReplyOn::Error -------------------------------
@@ -384,7 +394,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "1.1"];
+    ["1", "1.1"],
+    false;
     "reply_error_1pe_2fail_reply_1.1ok"
 )]
 #[test_case(
@@ -398,7 +409,8 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    [];
+    [],
+    true;
     "reply_error_1pe_2fail_reply_1.1fail"
 )]
 #[test_case(
@@ -412,13 +424,20 @@ fn setup() -> (TestSuite, TestAccounts, Addr) {
         )
         .unwrap(),
     ),
-    ["1", "2"];
+    ["1", "2"],
+    false;
     "reply_error_1pe_2ok_reply_1.1fail"
 )]
-fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S]) {
+fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: bool) {
     let (mut suite, mut accounts, replier_addr) = setup();
 
-    suite.execute(&mut accounts["owner"], replier_addr, &msg, Coins::default());
+    let result = suite.execute(&mut accounts["owner"], replier_addr, &msg, Coins::default());
+
+    if should_tx_fail {
+        result.should_fail();
+    } else {
+        result.should_succeed();
+    }
 
     data.sort();
 

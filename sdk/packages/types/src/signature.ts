@@ -1,8 +1,9 @@
+import type { Address } from "./address";
 import type { Credential } from "./credential";
 import type { Hex } from "./encoding";
 import type { KeyHash } from "./key";
 import type { Message } from "./tx";
-import type { MessageTypedDataType, TypedDataParameter } from "./typedData";
+import type { TxMessageType, TypedDataParameter } from "./typedData";
 
 export type EthPersonalMessage = Hex | string | Uint8Array;
 
@@ -13,10 +14,11 @@ export type Signature = {
 };
 
 export type SignDoc = {
+  sender: Address;
   messages: Message[];
   chainId: string;
   sequence: number;
-  typedData?: TypedDataParameter<MessageTypedDataType>;
+  typedData?: TypedDataParameter<TxMessageType>;
 };
 
 export type SignedDoc = {
