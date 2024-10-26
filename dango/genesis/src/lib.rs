@@ -5,7 +5,8 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
-        lending, mock_ibc_transfer, taxman, token_factory,
+        lending::{self, MarketUpdates},
+        mock_ibc_transfer, taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
@@ -192,7 +193,9 @@ where
         &mut msgs,
         lending_code_hash,
         &lending::InstantiateMsg {
-            whitelisted_denoms: btree_set![fee_denom.clone()],
+            markets: btree_map! {
+                fee_denom.clone() => MarketUpdates {},
+            },
         },
         "dango/lending",
         "dango/lending",

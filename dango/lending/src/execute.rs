@@ -1,21 +1,20 @@
 use {
-    crate::{state::WHITELISTED_DENOMS, LIABILITIES},
+    crate::{LIABILITIES, MARKETS},
     anyhow::{bail, ensure, Ok},
     dango_types::{
         account_factory::QueryAccountRequest,
         bank,
         config::ACCOUNT_FACTORY_KEY,
-        lending::{ExecuteMsg, InstantiateMsg, NAMESPACE},
+        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE},
     },
     grug::{Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
-    std::str::FromStr,
+    std::{collections::BTreeMap, str::FromStr},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    // Store the whitelisted denoms.
-    for denom in msg.whitelisted_denoms {
-        WHITELISTED_DENOMS.insert(ctx.storage, denom)?;
+    for (denom, _updates) in msg.markets {
+        MARKETS.save(ctx.storage, &denom, &Market {})?;
     }
 
     Ok(Response::new())
@@ -30,48 +29,26 @@ pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::WhitelistDenom(denom) => whitelist_denom(ctx, denom),
-        ExecuteMsg::DelistDenom(denom) => delist_denom(ctx, denom),
+        ExecuteMsg::UpdateMarkets(updates) => update_markets(ctx, updates),
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow { coins } => borrow(ctx, coins),
     }
 }
 
-pub fn whitelist_denom(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
-    // Ensure only chain owner can whitelist denoms
+fn update_markets(
+    ctx: MutableCtx,
+    updates: BTreeMap<Denom, MarketUpdates>,
+) -> anyhow::Result<Response> {
+    // Ensure only chain owner can update markets denoms.
     ensure!(
         ctx.sender == ctx.querier.query_config()?.owner,
         "Only the owner can whitelist denoms"
     );
 
-    // Ensure the denom is not already in the whitelist
-    ensure!(
-        !WHITELISTED_DENOMS.has(ctx.storage, denom.clone()),
-        "Denom already whitelisted"
-    );
-
-    // Insert the denom into the whitelist
-    WHITELISTED_DENOMS.insert(ctx.storage, denom)?;
-
-    Ok(Response::new())
-}
-
-pub fn delist_denom(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
-    // Ensure only chain owner can delist denoms
-    ensure!(
-        ctx.sender == ctx.querier.query_config()?.owner,
-        "Only the owner can delist denoms"
-    );
-
-    // Ensure the denom is in the whitelist
-    ensure!(
-        WHITELISTED_DENOMS.has(ctx.storage, denom.clone()),
-        "Denom not whitelisted"
-    );
-
-    // Remove the denom from the whitelist
-    WHITELISTED_DENOMS.remove(ctx.storage, denom);
+    for (denom, _updates) in updates {
+        MARKETS.save(ctx.storage, &denom, &Market {})?;
+    }
 
     Ok(Response::new())
 }
@@ -113,11 +90,8 @@ pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // For each deposited denom, ensure it's whitelisted and mint LP tokens.
     let cfg = ctx.querier.query_config()?;
     let mut msgs = vec![];
-    for coin in ctx.funds.into_iter() {
-        ensure!(
-            WHITELISTED_DENOMS.has(ctx.storage, coin.denom.clone()),
-            "Invalid denom"
-        );
+    for coin in ctx.funds {
+        ensure!(MARKETS.has(ctx.storage, &coin.denom), "Invalid denom");
 
         let mut parts = vec![Part::from_str(NAMESPACE)?, Part::from_str("lp")?];
         parts.extend_from_slice(coin.denom.inner());
@@ -194,7 +168,7 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // Ensure the coins are whitelisted
     for coin in &coins {
         ensure!(
-            WHITELISTED_DENOMS.has(ctx.storage, coin.denom.clone()),
+            MARKETS.has(ctx.storage, coin.denom),
             "Invalid denom. Only whitelisted denoms can be borrowed."
         );
     }

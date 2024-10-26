@@ -4,14 +4,14 @@ use {
         account::single,
         account_factory::AccountParams,
         lending::{
-            self, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
-            QueryWhitelistedDenomsRequest, NAMESPACE,
+            self, MarketUpdates, QueryDebtsOfAccountRequest, QueryLiabilitiesRequest,
+            QueryMarketsRequest, NAMESPACE,
         },
         token_factory,
     },
     grug::{
-        Addressable, Coin, Coins, Denom, HashExt, Inner, Message, MsgTransfer, NumberConst, Part,
-        ResultExt, Uint128,
+        btree_map, Addressable, Coin, Coins, Denom, HashExt, Inner, Message, MsgTransfer,
+        NumberConst, Part, ResultExt, Uint128,
     },
     std::{str::FromStr, sync::LazyLock},
 };
@@ -36,135 +36,46 @@ fn cant_transfer_to_lending() {
 }
 
 #[test]
-fn only_owner_can_whitelist_denoms() {
+fn update_markets_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
-    // Try to whitelist a denom from non-owner, should fail
+    // Ensure USDC market already exists.
+    suite
+        .query_wasm_smart(contracts.lending, QueryMarketsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and(|markets| markets.contains_key(&USDC));
+
+    // Try to update markets from non-owner, should fail.
     suite
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            &lending::ExecuteMsg::UpdateMarkets(btree_map! {}),
             Coins::new(),
         )
         .should_fail_with_error("Only the owner can whitelist denoms");
 
-    // Whitelist a denom from owner, should succeed
+    // Whitelist ATOM from owner, should succeed.
     suite
         .execute(
             &mut accounts.owner,
             contracts.lending,
-            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
-            Coins::new(),
-        )
-        .should_succeed();
-}
-
-#[test]
-fn only_owner_can_delist_denoms() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    // Try to delist a denom from non-owner, should fail
-    suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
-            Coins::new(),
-        )
-        .should_fail_with_error("Only the owner can delist denoms");
-
-    // Delist a denom from owner, should succeed
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
-            Coins::new(),
-        )
-        .should_succeed();
-}
-
-#[test]
-fn whitelist_denom_works() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    // Ensure USDC is already in the whitelist
-    suite
-        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
-            limit: None,
-            start_after: None,
-        })
-        .should_succeed_and_equal(vec![USDC.clone()]);
-
-    // Try to whitelist a denom that is already in the whitelist, should fail
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::WhitelistDenom(USDC.clone()),
-            Coins::new(),
-        )
-        .should_fail_with_error("Denom already whitelisted");
-
-    // Whitelist ATOM from owner, should succeed
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::WhitelistDenom(ATOM.clone()),
+            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
+                ATOM.clone() => MarketUpdates {},
+            }),
             Coins::new(),
         )
         .should_succeed();
 
-    // Ensure ATOM is now in the whitelist
+    // Ensure ATOM market now exists.
     suite
-        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
+        .query_wasm_smart(contracts.lending, QueryMarketsRequest {
             limit: None,
             start_after: None,
         })
-        .should_succeed_and_equal(vec![USDC.clone(), ATOM.clone()]);
-}
-
-#[test]
-fn delist_denom_works() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    // Ensure USDC is already in the whitelist
-    suite
-        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
-            limit: None,
-            start_after: None,
-        })
-        .should_succeed_and_equal(vec![USDC.clone()]);
-
-    // Delist denom not in the whitelist, should fail
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::DelistDenom(ATOM.clone()),
-            Coins::new(),
-        )
-        .should_fail_with_error("Denom not whitelisted");
-
-    // Delist USDC from owner, should succeed
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::DelistDenom(USDC.clone()),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Ensure USDC is no longer in the whitelist
-    suite
-        .query_wasm_smart(contracts.lending, QueryWhitelistedDenomsRequest {
-            limit: None,
-            start_after: None,
-        })
-        .should_succeed_and_equal(vec![]);
+        .should_succeed_and(|markets| markets.contains_key(&ATOM));
 }
 
 #[test]
@@ -390,7 +301,9 @@ fn composite_denom() {
         .execute(
             &mut accounts.owner,
             contracts.lending,
-            &lending::ExecuteMsg::WhitelistDenom(denom.clone()),
+            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
+                denom.clone() => MarketUpdates {},
+            }),
             Coins::default(),
         )
         .should_succeed();
