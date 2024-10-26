@@ -127,9 +127,9 @@ pub fn authenticate_tx(
                     resolver, domain, ..
                 } = cred.typed_data.deserialize_json()?;
 
-                // Recreate the EIP-712 data originally used for signing
-                // Verify that the critical values in the transaction
-                // such as the message and the verifying contract (sender)
+                // Recreate the EIP-712 data originally used for signing.
+                // Verify that the critical values in the transaction such as
+                // the message and the verifying contract (sender).
                 let typed_data = TypedData {
                     resolver,
                     domain: Eip712Domain {
@@ -147,7 +147,7 @@ pub fn authenticate_tx(
                     }),
                 };
 
-                // EIP-712 hash used in the signature
+                // EIP-712 hash used in the signature.
                 let sign_bytes = typed_data.eip712_signing_hash()?;
 
                 ctx.api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
