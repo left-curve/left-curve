@@ -32,8 +32,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::WhitelistDenom(denom) => whitelist_denom(ctx, denom),
         ExecuteMsg::DelistDenom(denom) => delist_denom(ctx, denom),
-        ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
-        ExecuteMsg::Withdraw { recipient } => withdraw(ctx, recipient),
+        ExecuteMsg::Deposit {} => deposit(ctx),
+        ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow { coins } => borrow(ctx, coins),
     }
 }
@@ -106,7 +106,7 @@ fn ensure_sender_account_is_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn deposit(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Response> {
+pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Ensure margin accounts can't deposit
     ensure_sender_account_is_not_margin(&ctx)?;
 
@@ -127,7 +127,7 @@ pub fn deposit(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Respo
         msgs.push(Message::execute(
             cfg.bank,
             &bank::ExecuteMsg::Mint {
-                to: recipient.unwrap_or(ctx.sender),
+                to: ctx.sender,
                 denom: lp_denom,
                 amount: coin.amount,
             },
@@ -138,12 +138,9 @@ pub fn deposit(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Respo
     Ok(Response::new().add_messages(msgs))
 }
 
-pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Response> {
+pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Ensure margin accounts can't withdraw
     ensure_sender_account_is_not_margin(&ctx)?;
-
-    // Unwrap the recipient
-    let recipient = recipient.unwrap_or(ctx.sender);
 
     // Ensure there are funds to withdraw
     ensure!(!ctx.funds.is_empty(), "No funds to withdraw");
@@ -185,7 +182,7 @@ pub fn withdraw(ctx: MutableCtx, recipient: Option<Addr>) -> anyhow::Result<Resp
     }
 
     // Transfer the underlying tokens to the recipient
-    msgs.push(Message::transfer(recipient, withdrawn)?);
+    msgs.push(Message::transfer(ctx.sender, withdrawn)?);
 
     Ok(Response::new().add_messages(msgs))
 }

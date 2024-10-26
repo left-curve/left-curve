@@ -14,7 +14,6 @@ use {
         ResultExt, Uint128,
     },
     std::{str::FromStr, sync::LazyLock},
-    test_case::test_case,
 };
 
 static ATOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uatom").unwrap());
@@ -191,22 +190,15 @@ fn cant_deposit_from_margin_account() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Deposit { recipient: None },
+            &lending::ExecuteMsg::Deposit {},
             Coins::new(),
         )
         .should_fail_with_error("Margin accounts can't deposit or withdraw");
 }
 
-#[test_case(false; "no recipient arg")]
-#[test_case(true; "with recipient arg")]
-fn deposit_works(use_recipient: bool) {
+#[test]
+fn deposit_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    let recipient = if use_recipient {
-        Some(accounts.owner.address())
-    } else {
-        None
-    };
 
     let balance_before = suite
         .query_balance(&accounts.relayer, USDC.clone())
@@ -216,7 +208,7 @@ fn deposit_works(use_recipient: bool) {
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::Deposit { recipient },
+            &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 123).unwrap(),
         )
         .should_succeed();
@@ -230,27 +222,20 @@ fn deposit_works(use_recipient: bool) {
     let lp_denom =
         Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()]).unwrap();
     suite
-        .query_balance(&recipient.unwrap_or(accounts.relayer.address()), lp_denom)
+        .query_balance(&accounts.relayer, lp_denom)
         .should_succeed_and_equal(Uint128::new(123));
 }
 
-#[test_case(false; "no recipient arg")]
-#[test_case(true; "with recipient arg")]
-fn withdraw_works(use_recipient: bool) {
+#[test]
+fn withdraw_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    let recipient = if use_recipient {
-        Some(accounts.owner.address())
-    } else {
-        None
-    };
 
     // First deposit
     suite
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::Deposit { recipient: None },
+            &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 123).unwrap(),
         )
         .should_succeed();
@@ -261,10 +246,7 @@ fn withdraw_works(use_recipient: bool) {
         .should_succeed_and_equal(Uint128::new(123));
 
     let balance_before = suite
-        .query_balance(
-            &recipient.unwrap_or(accounts.relayer.address()),
-            USDC.clone(),
-        )
+        .query_balance(&accounts.relayer, USDC.clone())
         .unwrap();
 
     // Now withdraw
@@ -272,7 +254,7 @@ fn withdraw_works(use_recipient: bool) {
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::Withdraw { recipient },
+            &lending::ExecuteMsg::Withdraw {},
             Coins::one(lp_denom.clone(), 123).unwrap(),
         )
         .should_succeed();
@@ -284,10 +266,7 @@ fn withdraw_works(use_recipient: bool) {
 
     // Ensure balance was added to recipient.
     suite
-        .query_balance(
-            &recipient.unwrap_or(accounts.relayer.address()),
-            USDC.clone(),
-        )
+        .query_balance(&accounts.relayer, USDC.clone())
         .should_succeed_and_equal(balance_before + Uint128::new(123));
 }
 
@@ -342,7 +321,7 @@ fn borrowing_works() {
         .execute(
             &mut accounts.relayer,
             contracts.lending,
-            &lending::ExecuteMsg::Deposit { recipient: None },
+            &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
         )
         .should_succeed();
@@ -435,7 +414,7 @@ fn composite_denom() {
         .execute(
             &mut accounts.owner,
             contracts.lending,
-            &lending::ExecuteMsg::Deposit { recipient: None },
+            &lending::ExecuteMsg::Deposit {},
             Coins::from(Coin::new(denom.clone(), amount).unwrap()),
         )
         .should_succeed();
@@ -456,7 +435,7 @@ fn composite_denom() {
         .execute(
             &mut accounts.owner,
             contracts.lending,
-            &lending::ExecuteMsg::Withdraw { recipient: None },
+            &lending::ExecuteMsg::Withdraw {},
             Coins::from(Coin::new(lp_token.clone(), amount).unwrap()),
         )
         .should_succeed();
