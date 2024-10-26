@@ -169,19 +169,22 @@ fn delist_denom_works() {
 }
 
 #[test]
-fn cant_deposit_from_margin_account() -> anyhow::Result<()> {
+fn cant_deposit_from_margin_account() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
     // Create a margin account.
-    let mut margin_account = accounts.relayer.register_new_account(
-        &mut suite,
-        contracts.account_factory,
-        codes.account_margin.to_bytes().hash256(),
-        AccountParams::Margin(single::Params {
-            owner: accounts.relayer.username.clone(),
-        }),
-        Coins::new(),
-    )?;
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
 
     // Try to deposit from the margin account, should fail
     suite
@@ -192,13 +195,11 @@ fn cant_deposit_from_margin_account() -> anyhow::Result<()> {
             Coins::new(),
         )
         .should_fail_with_error("Margin accounts can't deposit or withdraw");
-
-    Ok(())
 }
 
 #[test_case(false; "no recipient arg")]
 #[test_case(true; "with recipient arg")]
-fn deposit_works(use_recipient: bool) -> anyhow::Result<()> {
+fn deposit_works(use_recipient: bool) {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
     let recipient = if use_recipient {
@@ -207,14 +208,16 @@ fn deposit_works(use_recipient: bool) -> anyhow::Result<()> {
         None
     };
 
-    let balance_before = suite.query_balance(&accounts.relayer, USDC.clone())?;
+    let balance_before = suite
+        .query_balance(&accounts.relayer, USDC.clone())
+        .unwrap();
 
     suite
         .execute(
             &mut accounts.relayer,
             contracts.lending,
             &lending::ExecuteMsg::Deposit { recipient },
-            Coins::one(USDC.clone(), 123)?,
+            Coins::one(USDC.clone(), 123).unwrap(),
         )
         .should_succeed();
 
@@ -224,17 +227,16 @@ fn deposit_works(use_recipient: bool) -> anyhow::Result<()> {
         .should_succeed_and_equal(balance_before - Uint128::new(123));
 
     // Ensure LP token was minted to recipient.
-    let lp_denom = Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()])?;
+    let lp_denom =
+        Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()]).unwrap();
     suite
         .query_balance(&recipient.unwrap_or(accounts.relayer.address()), lp_denom)
         .should_succeed_and_equal(Uint128::new(123));
-
-    Ok(())
 }
 
 #[test_case(false; "no recipient arg")]
 #[test_case(true; "with recipient arg")]
-fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
+fn withdraw_works(use_recipient: bool) {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
     let recipient = if use_recipient {
@@ -249,18 +251,21 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
             &mut accounts.relayer,
             contracts.lending,
             &lending::ExecuteMsg::Deposit { recipient: None },
-            Coins::one(USDC.clone(), 123)?,
+            Coins::one(USDC.clone(), 123).unwrap(),
         )
         .should_succeed();
-    let lp_denom = Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()])?;
+    let lp_denom =
+        Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()]).unwrap();
     suite
         .query_balance(&accounts.relayer.address(), lp_denom.clone())
         .should_succeed_and_equal(Uint128::new(123));
 
-    let balance_before = suite.query_balance(
-        &recipient.unwrap_or(accounts.relayer.address()),
-        USDC.clone(),
-    )?;
+    let balance_before = suite
+        .query_balance(
+            &recipient.unwrap_or(accounts.relayer.address()),
+            USDC.clone(),
+        )
+        .unwrap();
 
     // Now withdraw
     suite
@@ -268,7 +273,7 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
             &mut accounts.relayer,
             contracts.lending,
             &lending::ExecuteMsg::Withdraw { recipient },
-            Coins::one(lp_denom.clone(), 123)?,
+            Coins::one(lp_denom.clone(), 123).unwrap(),
         )
         .should_succeed();
 
@@ -284,12 +289,10 @@ fn withdraw_works(use_recipient: bool) -> anyhow::Result<()> {
             USDC.clone(),
         )
         .should_succeed_and_equal(balance_before + Uint128::new(123));
-
-    Ok(())
 }
 
 #[test]
-fn non_margin_accounts_cant_borrow() -> anyhow::Result<()> {
+fn non_margin_accounts_cant_borrow() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
     suite
@@ -302,24 +305,25 @@ fn non_margin_accounts_cant_borrow() -> anyhow::Result<()> {
             Coins::new(),
         )
         .should_fail_with_error("Only margin accounts can borrow");
-
-    Ok(())
 }
 
 #[test]
-fn borrowing_works() -> anyhow::Result<()> {
+fn borrowing_works() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
     // Create a margin account.
-    let mut margin_account = accounts.relayer.register_new_account(
-        &mut suite,
-        contracts.account_factory,
-        codes.account_margin.to_bytes().hash256(),
-        AccountParams::Margin(single::Params {
-            owner: accounts.relayer.username.clone(),
-        }),
-        Coins::new(),
-    )?;
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
 
     // Try to borrow from the margin account, should succeed fail as no coins are deposited
     suite
@@ -327,7 +331,7 @@ fn borrowing_works() -> anyhow::Result<()> {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow {
-                coins: Coins::from(Coin::new(USDC.clone(), 100)?),
+                coins: Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
             },
             Coins::new(),
         )
@@ -339,7 +343,7 @@ fn borrowing_works() -> anyhow::Result<()> {
             &mut accounts.relayer,
             contracts.lending,
             &lending::ExecuteMsg::Deposit { recipient: None },
-            Coins::one(USDC.clone(), 100)?,
+            Coins::one(USDC.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -349,7 +353,7 @@ fn borrowing_works() -> anyhow::Result<()> {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Borrow {
-                coins: Coins::from(Coin::new(USDC.clone(), 100)?),
+                coins: Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
             },
             Coins::new(),
         )
@@ -366,7 +370,7 @@ fn borrowing_works() -> anyhow::Result<()> {
             contracts.lending,
             QueryDebtsOfAccountRequest(margin_account.address()),
         )
-        .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100)?));
+        .should_succeed_and_equal(Coins::from(Coin::new(USDC.clone(), 100).unwrap()));
     suite
         .query_wasm_smart(contracts.lending, QueryLiabilitiesRequest {
             limit: None,
@@ -374,17 +378,15 @@ fn borrowing_works() -> anyhow::Result<()> {
         })
         .should_succeed_and_equal(vec![(
             margin_account.address(),
-            Coins::from(Coin::new(USDC.clone(), 100)?),
+            Coins::from(Coin::new(USDC.clone(), 100).unwrap()),
         )]);
-
-    Ok(())
 }
 
 #[test]
-fn composite_denom() -> anyhow::Result<()> {
+fn composite_denom() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let fee_token_creation = Coin::new("uusdc", 10_000_000_u128)?;
+    let fee_token_creation = Coin::new("uusdc", 10_000_000_u128).unwrap();
     let amount: Uint128 = 100_000.into();
     let owner_addr = accounts.owner.address();
 
@@ -394,7 +396,7 @@ fn composite_denom() -> anyhow::Result<()> {
             &mut accounts.owner,
             contracts.token_factory,
             &token_factory::ExecuteMsg::Create {
-                subdenom: Denom::from_str("foo")?,
+                subdenom: Denom::from_str("foo").unwrap(),
                 username: None,
                 admin: None,
             },
@@ -402,7 +404,7 @@ fn composite_denom() -> anyhow::Result<()> {
         )
         .should_succeed();
 
-    let denom = Denom::from_str(&format!("factory/{}/foo", owner_addr))?;
+    let denom = Denom::from_str(&format!("factory/{}/foo", owner_addr)).unwrap();
 
     // Register the denom in the lending
     suite
@@ -434,15 +436,15 @@ fn composite_denom() -> anyhow::Result<()> {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::Deposit { recipient: None },
-            Coins::from(Coin::new(denom.clone(), amount)?),
+            Coins::from(Coin::new(denom.clone(), amount).unwrap()),
         )
         .should_succeed();
 
     let mut parts = denom.clone().into_inner();
-    parts.insert(0, Part::from_str(lending::NAMESPACE)?);
-    parts.insert(1, Part::from_str("lp")?);
+    parts.insert(0, Part::from_str(lending::NAMESPACE).unwrap());
+    parts.insert(1, Part::from_str("lp").unwrap());
 
-    let lp_token = Denom::from_parts(parts)?;
+    let lp_token = Denom::from_parts(parts).unwrap();
 
     // check if lp_token is minted
     suite
@@ -455,7 +457,7 @@ fn composite_denom() -> anyhow::Result<()> {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::Withdraw { recipient: None },
-            Coins::from(Coin::new(lp_token.clone(), amount)?),
+            Coins::from(Coin::new(lp_token.clone(), amount).unwrap()),
         )
         .should_succeed();
 
@@ -468,6 +470,4 @@ fn composite_denom() -> anyhow::Result<()> {
     suite
         .query_balance(&accounts.owner.address(), denom)
         .should_succeed_and_equal(amount);
-
-    Ok(())
 }
