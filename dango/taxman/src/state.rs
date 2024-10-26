@@ -1,8 +1,8 @@
 use {
     dango_types::taxman::Config,
-    grug::{Coin, Item},
+    grug::{Item, Uint128},
 };
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const WITHHELD_COIN: Item<Coin> = Item::new("withheld");
+pub const WITHHELD_FEE: Item<(Config, Uint128)> = Item::new("withheld_fee");

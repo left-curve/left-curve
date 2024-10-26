@@ -1,5 +1,5 @@
 use {
-    crate::CONFIG,
+    crate::{CONFIG, WITHHELD_FEE},
     anyhow::ensure,
     dango_types::{
         bank,
@@ -82,7 +82,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
-                denom: fee_cfg.fee_denom,
+                denom: fee_cfg.fee_denom.clone(),
                 amount: withhold_amount,
             },
             Coins::new(),
@@ -91,12 +91,15 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
         None
     };
 
+    // Save the withheld fee in storage, which we will use in `finalize_fee`.
+    WITHHELD_FEE.save(ctx.storage, &(fee_cfg, withhold_amount))?;
+
     Ok(Response::new().may_add_message(withhold_msg))
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Response> {
-    let fee_cfg = CONFIG.load(ctx.storage)?;
+    let (fee_cfg, withheld_amount) = WITHHELD_FEE.take(ctx.storage)?;
     let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
 
     // Again, during simulation, or any tx sent by the account factory, is
@@ -104,13 +107,6 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
         return Ok(Response::new());
     }
-
-    // Compute how much fee was withheld earlier during `withhold_fee`.
-    //
-    // FIXME: this doesn't work if the fee rate was changed during this tx!!!
-    // Instead of recomputing, we should save this in the storage.
-    let withheld_amount =
-        Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?;
 
     // Compute how much fee to charge the sender, based on the actual amount of
     // gas consumed.
