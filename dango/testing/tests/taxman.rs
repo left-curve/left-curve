@@ -1,11 +1,8 @@
-use std::{str::FromStr, sync::LazyLock};
-
-use grug::{Addressable, MultiplyFraction, Number, Uint128};
-
 use {
     dango_testing::setup_test,
     dango_types::taxman,
-    grug::{Coins, Denom, ResultExt, Udec128},
+    grug::{Addressable, Coins, Denom, MultiplyFraction, Number, ResultExt, Udec128, Uint128},
+    std::{str::FromStr, sync::LazyLock},
 };
 
 const OLD_FEE_RATE: Udec128 = Udec128::new_percent(1); // 0.01 uusdc per gas unit
