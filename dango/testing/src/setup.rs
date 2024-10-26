@@ -87,6 +87,12 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_authenticate(Box::new(dango_account_factory::authenticate))
         .build();
 
+    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_receive(Box::new(dango_account_margin::receive))
+        .with_query(Box::new(dango_account_margin::query))
+        .build();
+
     let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
         .with_authenticate(Box::new(dango_account_spot::authenticate))
         .with_receive(Box::new(dango_account_spot::receive))
@@ -98,12 +104,6 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_receive(Box::new(dango_account_safe::receive))
         .with_execute(Box::new(dango_account_safe::execute))
         .with_query(Box::new(dango_account_safe::query))
-        .build();
-
-    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
-        .with_authenticate(Box::new(dango_account_margin::authenticate))
-        .with_receive(Box::new(dango_account_margin::receive))
-        .with_query(Box::new(dango_account_margin::query))
         .build();
 
     let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
@@ -121,6 +121,12 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_execute(Box::new(dango_ibc_transfer::execute))
         .build();
 
+    let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
+        .with_receive(Box::new(dango_lending::receive))
+        .with_execute(Box::new(dango_lending::execute))
+        .with_query(Box::new(dango_lending::query))
+        .build();
+
     let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
         .with_execute(Box::new(dango_taxman::execute))
         .with_query(Box::new(dango_taxman::query))
@@ -133,23 +139,17 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
-    let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
-        .with_receive(Box::new(dango_lending::receive))
-        .with_execute(Box::new(dango_lending::execute))
-        .with_query(Box::new(dango_lending::query))
-        .build();
-
     let codes = Codes {
         account_factory,
+        account_margin,
         account_spot,
         account_safe,
-        account_margin,
         amm,
         bank,
         ibc_transfer,
+        lending,
         taxman,
         token_factory,
-        lending,
     };
 
     setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes)
