@@ -152,7 +152,49 @@ pub fn authenticate_tx(
 
                 ctx.api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
             },
-            (key, credential) => {
+            (Key::Secp256r1(pk), Credential::Passkey(cred)) => {
+                // Verify that Passkey has signed the correct data.
+                // The data should be the SHA-256 hash of a `ClientData`, where
+                // the challenge is the sign bytes.
+                // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
+                let signed_hash = {
+                    let client_data: ClientData = cred.client_data.deserialize_json()?;
+
+                    let sign_bytes = ctx.api.sha2_256(
+                        &SignDoc {
+                            messages: tx.msgs,
+                            chain_id: ctx.chain_id,
+                            sequence: metadata.sequence,
+                        }
+                        .to_json_vec()?,
+                    );
+                    let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
+
+                    ensure!(
+                        client_data.challenge == sign_bytes_base64,
+                        "incorrect challenge: expecting {}, got {}",
+                        sign_bytes_base64,
+                        client_data.challenge
+                    );
+
+                    let client_data_hash = ctx.api.sha2_256(&cred.client_data);
+
+                    let signed_data = [
+                        cred.authenticator_data.as_ref(),
+                        client_data_hash.as_slice(),
+                    ]
+                    .concat();
+
+                    // Note we use the FFI `sha2_256` method instead of `hash256`
+                    // from `HashExt`, because we may change the hash function
+                    // used in `HashExt` (we're exploring BLAKE3 over SHA-256).
+                    // Passkey always signs over SHA-256 digests.
+                    ctx.api.sha2_256(&signed_data)
+                };
+
+                ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
+            },
+            (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
                 let sign_bytes = ctx.api.sha2_256(
                     &SignDoc {
                         messages: tx.msgs,
@@ -161,46 +203,10 @@ pub fn authenticate_tx(
                     }
                     .to_json_vec()?,
                 );
-                match (key, credential) {
-                    (Key::Secp256r1(pk), Credential::Passkey(cred)) => {
-                        // Verify that Passkey has signed the correct data.
-                        // The data should be the SHA-256 hash of a `ClientData`, where
-                        // the challenge is the sign bytes.
-                        // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
-                        let signed_hash = {
-                            let client_data: ClientData = cred.client_data.deserialize_json()?;
-                            let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
 
-                            ensure!(
-                                client_data.challenge == sign_bytes_base64,
-                                "incorrect challenge: expecting {}, got {}",
-                                sign_bytes_base64,
-                                client_data.challenge
-                            );
-
-                            let client_data_hash = ctx.api.sha2_256(&cred.client_data);
-
-                            let signed_data = [
-                                cred.authenticator_data.as_ref(),
-                                client_data_hash.as_slice(),
-                            ]
-                            .concat();
-
-                            // Note we use the FFI `sha2_256` method instead of `hash256`
-                            // from `HashExt`, because we may change the hash function
-                            // used in `HashExt` (we're exploring BLAKE3 over SHA-256).
-                            // Passkey always signs over SHA-256 digests.
-                            ctx.api.sha2_256(&signed_data)
-                        };
-
-                        ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
-                    },
-                    (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
-                        ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
-                    },
-                    _ => bail!("key and credential types don't match!"),
-                }
+                ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
             },
+            _ => bail!("key and credential types don't match!"),
         },
         // No need to verify signature in simulation mode.
         AuthMode::Simulate => (),
