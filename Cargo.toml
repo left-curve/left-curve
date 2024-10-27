@@ -111,6 +111,7 @@ dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
+dango-oracle          = { path = "dango/oracle" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }
