@@ -51,7 +51,7 @@ module apply_super_simple_test{
            orphans: Set() }
     )
   
-  run bigInsertionTestingExample = 
+  run bigInsertionTest= 
     pure val result = empty_tree
           .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] })
           .super_simple_apply(1, 2, {key_hash: [1,0,1], value_hash:[77]})
