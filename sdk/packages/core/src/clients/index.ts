@@ -1,13 +1,13 @@
-export { createBaseClient } from "./baseClient";
+export { createBaseClient } from "./baseClient.js";
 
 export {
   type PublicClient,
   type PublicClientConfig,
   createPublicClient,
-} from "./publicClient";
+} from "./publicClient.js";
 
 export {
   type UserClient,
   type UserClientConfig,
   createUserClient,
-} from "./userClient";
+} from "./userClient.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeUtf8, encodeUtf8 } from "./utf8";
+import { decodeUtf8, encodeUtf8 } from "./utf8.js";
 
 describe("utf8", () => {
   it("encodes ascii strings", () => {

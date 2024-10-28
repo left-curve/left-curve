@@ -1,6 +1,6 @@
 import type { AccountInfo, Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
-import { getAppConfig } from "./getAppConfig";
-import { queryWasmSmart } from "./queryWasmSmart";
+import { getAppConfig } from "./getAppConfig.js";
+import { queryWasmSmart } from "./queryWasmSmart.js";
 
 export type GetAccountInfoParameters = {
   address: Address;

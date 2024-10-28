@@ -1,5 +1,5 @@
 import superjson from "superjson";
-import { decodeBase64, encodeBase64 } from "./base64";
+import { decodeBase64, encodeBase64 } from "./base64.js";
 
 superjson.registerCustom(
   {

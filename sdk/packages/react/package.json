@@ -7,14 +7,15 @@
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
-    "pre-dev": "NODE_ENV=development pnpm tsup --clean",
-    "dev": "NODE_ENV=development pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
-    "build": "NODE_ENV=production pnpm tsup --clean"
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
   },
-  "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "sideEffects": false,
+  "type": "module",
   "files": [
     "build",
     "src",
@@ -23,8 +24,8 @@
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
-      "import": "./build/index.mjs",
-      "default": "./build/index.js"
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
     }
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import QRCodeStyling, { type Options as QROptions } from "qr-code-styling";
 import { useEffect, useRef } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 const defaultOptions: QROptions = {
   width: 250,

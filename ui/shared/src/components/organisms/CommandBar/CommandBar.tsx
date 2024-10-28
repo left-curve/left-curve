@@ -4,13 +4,13 @@ import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 
 import { useClickAway } from "react-use";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../../utils";
 
-import { Button } from "~/components";
-import { CloseIcon, SearchIcon } from "~/components";
+import { Button } from "../../";
+import { CloseIcon, SearchIcon } from "../../";
 import { CommandBody } from "./CommandBody";
 
-import type { AppletMetadata } from "~/types";
+import type { AppletMetadata } from "../../../types";
 
 interface Props {
   applets: {

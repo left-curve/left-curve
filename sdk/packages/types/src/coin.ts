@@ -1,4 +1,4 @@
-import type { Prettify } from "./utils";
+import type { Prettify } from "./utils.js";
 
 export type CoinGeckoId = string;
 export type Denom = string;

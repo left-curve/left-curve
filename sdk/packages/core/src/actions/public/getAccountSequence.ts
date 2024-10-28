@@ -1,5 +1,5 @@
 import type { Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
-import { queryWasmSmart } from "./queryWasmSmart";
+import { queryWasmSmart } from "./queryWasmSmart.js";
 
 export type GetAccountSequenceParameters = {
   address: Address;

@@ -1,2 +1,2 @@
-export { ConnectorSigner } from "./connector";
-export { PrivateKeySigner } from "./privateKey";
+export { ConnectorSigner } from "./connector.js";
+export { PrivateKeySigner } from "./privateKey.js";

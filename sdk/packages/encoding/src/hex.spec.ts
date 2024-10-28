@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeHex, encodeHex } from "./hex";
+import { decodeHex, encodeHex } from "./hex.js";
 
 describe("Hex", () => {
   it("decode to hex", () => {

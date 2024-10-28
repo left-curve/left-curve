@@ -25,7 +25,7 @@ export class BaseError extends Error {
       ...(details ? [`Details: ${details}`] : []),
     ].join("\n");
 
-    super(message, args.cause ? { cause: args.cause } : undefined);
+    super(message);
 
     this.details = details;
     this.name = args.name ?? this.name;

@@ -14,8 +14,8 @@ import type {
 } from "@leftcurve/types";
 
 import { getCoinsTypedData } from "@leftcurve/utils";
-import { computeAddress } from "../public/computeAddress";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
+import { computeAddress } from "../public/computeAddress.js";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type StoreCodeAndInstantiateParameters = {
   sender: Address;

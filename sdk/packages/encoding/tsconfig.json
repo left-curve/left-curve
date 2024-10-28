@@ -1,5 +1,10 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "@leftcurve/config/ts/common.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "rootDir": "src"
+  },
   "include": ["src"],
   "exclude": ["node_modules", "build"]
 }

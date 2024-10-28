@@ -8,7 +8,7 @@ import type {
   Username,
   Vote,
 } from "@leftcurve/types";
-import { queryWasmSmart } from "~/actions/public/queryWasmSmart";
+import { queryWasmSmart } from "../../public/queryWasmSmart.js";
 
 export type SafeAccountGetVoteParameters = {
   address: Address;

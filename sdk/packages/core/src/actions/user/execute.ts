@@ -10,7 +10,7 @@ import type {
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getCoinsTypedData } from "@leftcurve/utils";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type ExecuteParameters = {
   sender: Address;

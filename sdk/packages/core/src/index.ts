@@ -4,17 +4,17 @@ export {
   createAccountSalt,
   createKeyHash,
   isValidAddress,
-} from "./accounts";
+} from "./accounts/index.js";
 
-export { createBaseClient } from "./clients/baseClient";
-export { createPublicClient } from "./clients/publicClient";
-export { createUserClient } from "./clients/userClient";
+export { createBaseClient } from "./clients/baseClient.js";
+export { createPublicClient } from "./clients/publicClient.js";
+export { createUserClient } from "./clients/userClient.js";
 
-export { http } from "./transports/http";
+export { http } from "./transports/http.js";
 
 export {
   type UserActions,
   type PublicActions,
   userActions,
   publicActions,
-} from "./actions";
+} from "./actions/index.js";

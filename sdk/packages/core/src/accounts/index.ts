@@ -1,5 +1,5 @@
-export { computeAddress } from "../actions";
-export { createAccountSalt } from "./salt";
-export { createSignBytes } from "./signature";
-export { createKeyHash } from "./key";
-export { isValidAddress } from "./address";
+export { computeAddress } from "../actions/index.js";
+export { createAccountSalt } from "./salt.js";
+export { createSignBytes } from "./signature.js";
+export { createKeyHash } from "./key.js";
+export { isValidAddress } from "./address.js";

@@ -1,5 +1,5 @@
-import type { Base64, Hex } from "./encoding";
-import type { Prettify } from "./utils";
+import type { Base64, Hex } from "./encoding.js";
+import type { Prettify } from "./utils.js";
 
 export type CometBftRpcSchema = [
   {

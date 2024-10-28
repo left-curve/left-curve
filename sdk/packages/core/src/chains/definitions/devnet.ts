@@ -1,4 +1,4 @@
-import { defineChain } from "../defineChain";
+import { defineChain } from "../defineChain.js";
 
 export const devnet = /*#__PURE__*/ defineChain({
   id: "dev-2",

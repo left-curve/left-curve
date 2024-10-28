@@ -4,7 +4,7 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 
 import type { Hex, Signature } from "@leftcurve/types";
-import type { KeyPair } from "./keypair";
+import type { KeyPair } from "./keypair.js";
 
 /**
  * Recover the public key from a message hash and signature.

@@ -1,4 +1,4 @@
-import { type WebAuthnData, parseAsn1Signature } from "./signature";
+import { type WebAuthnData, parseAsn1Signature } from "./signature.js";
 
 export type VerifyParameters = {
   publicKey: Uint8Array;

@@ -1,4 +1,4 @@
-import type { MaybePromise, Prettify } from "./utils";
+import type { MaybePromise, Prettify } from "./utils.js";
 
 export type HttpRpcClientOptions = {
   /** Request configuration to pass to `fetch`. */

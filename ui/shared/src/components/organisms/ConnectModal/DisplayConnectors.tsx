@@ -2,8 +2,8 @@
 
 import type { Connector } from "@leftcurve/types";
 
-import { Button, WalletIcon } from "~/components";
-import { twMerge } from "~/utils";
+import { Button, WalletIcon } from "../../";
+import { twMerge } from "../../../utils";
 
 interface Props {
   connectors: readonly Connector[];

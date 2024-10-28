@@ -3,7 +3,7 @@
 import { type GetConnectorsReturnType, getConnectors } from "@leftcurve/connect-kit";
 import type { ConfigParameter } from "@leftcurve/types";
 
-import { useConfig } from "./useConfig";
+import { useConfig } from "./useConfig.js";
 
 export type UseConnectorsParameters = ConfigParameter;
 

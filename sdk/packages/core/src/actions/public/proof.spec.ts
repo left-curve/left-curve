@@ -1,7 +1,7 @@
 import { sha256 } from "@leftcurve/crypto";
 import { decodeHex, encodeUtf8 } from "@leftcurve/encoding";
 import { describe, expect, test } from "vitest";
-import { verifyMembershipProof, verifyNonMembershipProof } from "./proof";
+import { verifyMembershipProof, verifyNonMembershipProof } from "./proof.js";
 
 // we use the same test case as in the JMT crate
 const rootHash = decodeHex("ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b");

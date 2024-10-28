@@ -10,9 +10,9 @@ import type {
   Transport,
   Username,
 } from "@leftcurve/types";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../user/broadcastTxSync";
-import { getAppConfig } from "./getAppConfig";
-import { simulate } from "./simulate";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../user/broadcastTxSync.js";
+import { getAppConfig } from "./getAppConfig.js";
+import { simulate } from "./simulate.js";
 
 export type RegisterUserParameters = {
   username: Username;

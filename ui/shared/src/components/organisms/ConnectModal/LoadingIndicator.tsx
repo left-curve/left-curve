@@ -1,7 +1,7 @@
 import type React from "react";
 import { forwardRef } from "react";
 import { type VariantProps, tv } from "tailwind-variants";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../../utils";
 
 const spinner = tv({
   slots: {

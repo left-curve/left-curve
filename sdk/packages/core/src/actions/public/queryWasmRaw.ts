@@ -7,7 +7,7 @@ import type {
   Transport,
   WasmRawResponse,
 } from "@leftcurve/types";
-import { queryApp } from "./queryApp";
+import { queryApp } from "./queryApp.js";
 
 export type QueryWasmRawParameters = {
   contract: Address;

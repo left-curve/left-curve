@@ -1,8 +1,8 @@
 import type { Chain, Client, ClientConfig, Transport } from "@leftcurve/types";
-import type { PublicActions } from "../actions/publicActions";
+import type { PublicActions } from "../actions/publicActions.js";
 
-import { publicActions } from "../actions/publicActions";
-import { createBaseClient } from "./baseClient";
+import { publicActions } from "../actions/publicActions.js";
+import { createBaseClient } from "./baseClient.js";
 
 export type PublicClientConfig<
   transport extends Transport = Transport,

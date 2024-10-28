@@ -1,7 +1,7 @@
-import type { Username } from "./account";
-import type { Chain } from "./chain";
-import type { Signer } from "./signer";
-import type { Transport } from "./transports";
+import type { Username } from "./account.js";
+import type { Chain } from "./chain.js";
+import type { Signer } from "./signer.js";
+import type { Transport } from "./transports.js";
 
 /**
  * Client configuration options.

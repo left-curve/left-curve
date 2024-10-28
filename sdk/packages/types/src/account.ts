@@ -1,7 +1,7 @@
-import type { Address } from "./address";
-import type { Key, KeyHash } from "./key";
-import type { Safe } from "./safe";
-import type { Prettify } from "./utils";
+import type { Address } from "./address.js";
+import type { Key, KeyHash } from "./key.js";
+import type { Safe } from "./safe.js";
+import type { Prettify } from "./utils.js";
 
 export type User = {
   keys: Record<KeyHash, Key>;

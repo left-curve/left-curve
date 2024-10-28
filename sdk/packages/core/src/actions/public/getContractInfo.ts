@@ -1,5 +1,5 @@
 import type { Address, Chain, Client, ContractInfo, Signer, Transport } from "@leftcurve/types";
-import { queryApp } from "./queryApp";
+import { queryApp } from "./queryApp.js";
 
 export type GetContractInfoParameters = {
   address: Address;

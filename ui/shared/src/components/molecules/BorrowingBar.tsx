@@ -1,7 +1,7 @@
 import type { Language } from "@leftcurve/types";
 import { formatNumber } from "@leftcurve/utils";
 import type React from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 interface Props {
   total: number;

@@ -1,2 +1,1 @@
-export { localhost } from "./definitions/localhost";
-export { devnet } from "./definitions/devnet";
+export { devnet } from "./definitions/devnet.js";

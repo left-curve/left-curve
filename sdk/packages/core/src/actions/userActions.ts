@@ -1,36 +1,36 @@
 import type { Chain, Client, Signer, Transport, TxParameters } from "@leftcurve/types";
 
-import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute";
+import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute.js";
 
-import { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate";
+import { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate.js";
 
-import { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer";
+import { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer.js";
 
-import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode";
+import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode.js";
 
 import {
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
   registerAccount,
-} from "./user/registerAccount";
+} from "./user/registerAccount.js";
 
 import {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./user/instantiate";
+} from "./user/instantiate.js";
 
 import {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./user/storeCodeAndInstantiate";
+} from "./user/storeCodeAndInstantiate.js";
 
 import {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./user/signAndBroadcastTx";
+} from "./user/signAndBroadcastTx.js";
 
 export type UserActions<
   transport extends Transport = Transport,

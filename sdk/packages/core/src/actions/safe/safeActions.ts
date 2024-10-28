@@ -4,43 +4,43 @@ import {
   type SafeAccountGetProposalParameters,
   type SafeAccountGetProposalReturnType,
   safeAccountGetProposal,
-} from "./queries/getProposal";
+} from "./queries/getProposal.js";
 
 import {
   type SafeAccountGetProposalsParameters,
   type SafeAccountGetProposalsReturnType,
   safeAccountGetProposals,
-} from "./queries/getProposals";
+} from "./queries/getProposals.js";
 
 import {
   type SafeAccountGetVoteParameters,
   type SafeAccountGetVoteReturnType,
   safeAccountGetVote,
-} from "./queries/getVote";
+} from "./queries/getVote.js";
 
 import {
   type SafeAccountGetVotesParameters,
   type SafeAccountGetVotesReturnType,
   safeAccountGetVotes,
-} from "./queries/getVotes";
+} from "./queries/getVotes.js";
 
 import {
   type SafeAccountExecuteParameters,
   type SafeAccountExecuteReturnType,
   safeAccountExecute,
-} from "./mutations/execute";
+} from "./mutations/execute.js";
 
 import {
   type SafeAccountProposeParameters,
   type SafeAccountProposeReturnType,
   safeAccountPropose,
-} from "./mutations/propose";
+} from "./mutations/propose.js";
 
 import {
   type SafeAccountVoteParameters,
   type SafeAccountVoteReturnType,
   safeAccountVote,
-} from "./mutations/vote";
+} from "./mutations/vote.js";
 
 export type SafeActions<
   transport extends Transport = Transport,

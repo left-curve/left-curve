@@ -10,10 +10,10 @@ import type {
   TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { getAccountSequence } from "../public/getAccountSequence";
-import { getChainInfo } from "../public/getChainInfo";
-import { simulate } from "../public/simulate";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync";
+import { getAccountSequence } from "../public/getAccountSequence.js";
+import { getChainInfo } from "../public/getChainInfo.js";
+import { simulate } from "../public/simulate.js";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 export type SignAndBroadcastTxParameters = {
   sender: Address;

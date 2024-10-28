@@ -8,7 +8,7 @@ import type {
   Signer,
   Transport,
 } from "@leftcurve/types";
-import { queryAbci } from "./queryAbci";
+import { queryAbci } from "./queryAbci.js";
 
 export type QueryAppParameters = {
   query: QueryRequest;

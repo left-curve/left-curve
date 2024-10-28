@@ -8,7 +8,7 @@ import type {
   TxMessageType,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx";
+import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type StoreCodeParameters = {
   sender: Address;

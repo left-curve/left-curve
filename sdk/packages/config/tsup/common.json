@@ -1,8 +1,8 @@
 {
   "dts": true,
-  "shims": true,
+  "bundle": true,
   "outDir": "build",
   "platform": "neutral",
-  "target": "esnext",
-  "format": ["esm", "cjs"]
+  "format": ["cjs", "esm"],
+  "treeshake": "recommended"
 }

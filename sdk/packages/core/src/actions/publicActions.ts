@@ -4,155 +4,159 @@ import {
   type GetBalanceParameters,
   type GetBalanceReturnType,
   getBalance,
-} from "./public/getBalance";
+} from "./public/getBalance.js";
 
 import {
   type GetBalancesParameters,
   type GetBalancesReturnType,
   getBalances,
-} from "./public/getBalances";
+} from "./public/getBalances.js";
 
-import { type GetSupplyParameters, type GetSupplyReturnType, getSupply } from "./public/getSupply";
+import {
+  type GetSupplyParameters,
+  type GetSupplyReturnType,
+  getSupply,
+} from "./public/getSupply.js";
 
 import {
   type GetSuppliesParameters,
   type GetSuppliesReturnType,
   getSupplies,
-} from "./public/getSupplies";
+} from "./public/getSupplies.js";
 
-import { type GetCodeParameters, type GetCodeReturnType, getCode } from "./public/getCode";
+import { type GetCodeParameters, type GetCodeReturnType, getCode } from "./public/getCode.js";
 
-import { type GetCodesParameters, type GetCodesReturnType, getCodes } from "./public/getCodes";
+import { type GetCodesParameters, type GetCodesReturnType, getCodes } from "./public/getCodes.js";
 
 import {
   type GetChainInfoParameters,
   type GetChainInfoReturnType,
   getChainInfo,
-} from "./public/getChainInfo";
+} from "./public/getChainInfo.js";
 
-import { type QueryAppParameters, type QueryAppReturnType, queryApp } from "./public/queryApp";
+import { type QueryAppParameters, type QueryAppReturnType, queryApp } from "./public/queryApp.js";
 
 import {
   type QueryWasmRawParameters,
   type QueryWasmRawReturnType,
   queryWasmRaw,
-} from "./public/queryWasmRaw";
+} from "./public/queryWasmRaw.js";
 
 import {
   type QueryWasmSmartParameters,
   type QueryWasmSmartReturnType,
   queryWasmSmart,
-} from "./public/queryWasmSmart";
+} from "./public/queryWasmSmart.js";
 
 import {
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,
-} from "./public/registerUser";
+} from "./public/registerUser.js";
 
-import { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate";
+import { type SimulateParameters, type SimulateReturnType, simulate } from "./public/simulate.js";
 
 import {
   type ComputeAddressParameters,
   type ComputeAddressReturnType,
   computeAddress,
-} from "./public/computeAddress";
+} from "./public/computeAddress.js";
 
 import {
   type GetAppConfigParameters,
   type GetAppConfigReturnType,
   getAppConfig,
-} from "./public/getAppConfig";
+} from "./public/getAppConfig.js";
 
 import {
   type GetAppConfigsParameters,
   type GetAppConfigsReturnType,
   getAppConfigs,
-} from "./public/getAppConfigs";
+} from "./public/getAppConfigs.js";
 
 import {
   type GetAccountTypeCodeHashParameters,
   type GetAccountTypeCodeHashReturnType,
   getAccountTypeCodeHash,
-} from "./public/getAccountTypeCodeHash";
+} from "./public/getAccountTypeCodeHash.js";
 
 import {
   type GetAccountTypeCodeHashesParameters,
   type GetAccountTypeCodeHashesReturnType,
   getAccountTypeCodeHashes,
-} from "./public/getAccountTypeCodeHashes";
+} from "./public/getAccountTypeCodeHashes.js";
 
 import {
   type GetUsersByKeyHashReturnType,
   type GetUsersByKeyhashParameters,
   getUsersByKeyHash,
-} from "./public/getUsersByKeyHash";
+} from "./public/getUsersByKeyHash.js";
 
 import {
   type GetKeysByUsernameParameters,
   type GetKeysByUsernameReturnType,
   getKeysByUsername,
-} from "./public/getKeysByUsername";
+} from "./public/getKeysByUsername.js";
 
-import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./public/getKey";
+import { type GetKeyParameters, type GetKeyReturnType, getKey } from "./public/getKey.js";
 
-import { type GetKeysParameters, type GetKeysReturnType, getKeys } from "./public/getKeys";
+import { type GetKeysParameters, type GetKeysReturnType, getKeys } from "./public/getKeys.js";
 
 import {
   type GetAccountsByUsernameParameters,
   type GetAccountsByUsernameReturnType,
   getAccountsByUsername,
-} from "./public/getAccountsByUsername";
+} from "./public/getAccountsByUsername.js";
 
 import {
   type GetNextAccountIndexParameters,
   type GetNextAccountIndexReturnType,
   getNextAccountIndex,
-} from "./public/getNextAccountIndex";
+} from "./public/getNextAccountIndex.js";
 
 import {
   type GetNextAccountAddressParameters,
   type GetNextAccountAddressReturnType,
   getNextAccountAddress,
-} from "./public/getNextAccountAddress";
+} from "./public/getNextAccountAddress.js";
 
 import {
   type GetContractInfoParameters,
   type GetContractInfoReturnType,
   getContractInfo,
-} from "./public/getContractInfo";
+} from "./public/getContractInfo.js";
 
 import {
   type GetContractsInfoParameters,
   type GetContractsInfoReturnType,
   getContractsInfo,
-} from "./public/getContractsInfo";
+} from "./public/getContractsInfo.js";
 
 import {
   type GetDepositParameters,
   type GetDepositReturnType,
   getDeposit,
-} from "./public/getDeposit";
+} from "./public/getDeposit.js";
 
 import {
   type GetDepositsParameters,
   type GetDepositsReturnType,
   getDeposits,
-} from "./public/getDeposits";
+} from "./public/getDeposits.js";
 
 import {
   type GetAccountInfoParameters,
   type GetAccountInfoReturnType,
   getAccountInfo,
-} from "./public/getAccountInfo";
+} from "./public/getAccountInfo.js";
 
 import {
   type GetAllAccountInfoParameters,
   type GetAllAccountInfoReturnType,
   getAllAccountInfo,
-} from "./public/getAllAccountInfo";
+} from "./public/getAllAccountInfo.js";
 
-import { type GetUserParameters, type GetUserReturnType, getUser } from "./public/getUser";
+import { type GetUserParameters, type GetUserReturnType, getUser } from "./public/getUser.js";
 
 export type PublicActions<
   transport extends Transport = Transport,

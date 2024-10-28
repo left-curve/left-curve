@@ -9,7 +9,7 @@ import type {
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getMembersTypedData } from "@leftcurve/utils";
-import { type ExecuteReturnType, execute, getAppConfig } from "~/actions";
+import { type ExecuteReturnType, execute, getAppConfig } from "../index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;

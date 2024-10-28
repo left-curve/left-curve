@@ -1,6 +1,6 @@
 import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
-import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query";
-import { useConfig } from "./useConfig";
+import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
+import { useConfig } from "./useConfig.js";
 
 import {
   type GetConnectorClientData,

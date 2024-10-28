@@ -1,7 +1,7 @@
 import { Ed25519, sha256 } from "@leftcurve/crypto";
 import { Secp256k1 } from "@leftcurve/crypto";
 import { encodeBase64, serialize } from "@leftcurve/encoding";
-import { createKeyHash } from "../accounts";
+import { createKeyHash } from "../accounts/index.js";
 
 import type { KeyPair } from "@leftcurve/crypto";
 import {

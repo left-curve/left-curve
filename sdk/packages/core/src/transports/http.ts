@@ -1,6 +1,6 @@
-import { UrlRequiredError } from "~/errors/transports";
-import { httpRpc } from "~/rpc/httpClient";
-import { createTransport } from "./createTransport";
+import { UrlRequiredError } from "../errors/transports.js";
+import { httpRpc } from "../rpc/httpClient.js";
+import { createTransport } from "./createTransport.js";
 
 import type {
   CometBftRpcSchema,

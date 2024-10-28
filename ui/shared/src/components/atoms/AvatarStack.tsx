@@ -1,5 +1,5 @@
 import type React from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 interface AvatarProps {
   images: string[];

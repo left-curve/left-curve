@@ -7,7 +7,7 @@ import type {
   Signer,
   Transport,
 } from "@leftcurve/types";
-import { queryWasmSmart } from "~/actions/public/queryWasmSmart";
+import { queryWasmSmart } from "../../public/queryWasmSmart.js";
 
 export type SafeAccountGetProposalsParameters = {
   address: Address;

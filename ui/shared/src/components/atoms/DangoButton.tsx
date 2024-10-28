@@ -1,7 +1,6 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import type { As } from "~/types";
-import { twMerge } from "~/utils";
-import { forwardRef } from "~/utils/dom";
+import type { As } from "../../types";
+import { forwardRef, twMerge } from "../../utils";
 import { Spinner } from "./Spinner";
 
 export interface ButtonProps

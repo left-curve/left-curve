@@ -2,7 +2,7 @@ import {
   type GetBalancesParameters as _GetBalancesParameters_,
   getBalances as getBalancesAction,
 } from "@leftcurve/sdk/actions";
-import { getPublicClient } from "./getPublicClient";
+import { getPublicClient } from "./getPublicClient.js";
 
 import type { ChainId, Coins, Config, Prettify } from "@leftcurve/types";
 

@@ -1,6 +1,6 @@
 import type { Config } from "@leftcurve/types";
 import { assertDeepEqual } from "@leftcurve/utils";
-import { type GetAccountReturnType, getAccount } from "./getAccount";
+import { type GetAccountReturnType, getAccount } from "./getAccount.js";
 
 export type WatchAccountParameters = {
   onChange(account: GetAccountReturnType, prevAccount: GetAccountReturnType): void;

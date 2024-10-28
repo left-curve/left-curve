@@ -2,12 +2,12 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { AppletCard } from "~/components";
+import { AppletCard } from "../../";
 
 import { useMemo } from "react";
 import { CommandBodyPreview } from "./CommandBodyPreview";
 
-import type { AppletMetadata } from "~/types";
+import type { AppletMetadata } from "../../../types";
 
 interface Props {
   isOpen: boolean;
