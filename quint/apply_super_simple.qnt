@@ -1,15 +1,23 @@
 // -*- mode: Bluespec; -*-
 
-module super_simple_apply {
+module apply_super_simple {
   import hashes.* from "./hashes"
   import tree.* from "./tree"
   import node.* from "./node"
   import utils.* from "./utils"
   import basicSpells.* from "./spells/basicSpells"
 
-  pure val MAX_HEIGHT = 4
-  // For types like -> batch: Vec<(Hash256, Hash256)>
-  type KeyWithValue = { key_hash: BitArray, value_hash: Bytes_t }
+  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
+    batch.fold(tree, (t, op) => {
+      match op.op {
+        | Insert(value_hash) => {
+          pure val newLeaf = { key_hash: op.key_hash, value_hash: value_hash }
+          super_simple_apply(t, old_version, new_version, newLeaf)
+        }
+        | Delete => t // TODO: implement delete
+      }
+    })
+  }
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode): Tree = {
     pure val existing_keys_with_values = tree.nodes.keys().fold(Set(), (acc, k) => {
@@ -24,7 +32,7 @@ module super_simple_apply {
     })
 
     pure val keys_with_values = existing_keys_with_values.union(Set(insert))
-    pure val result = range(0, MAX_HEIGHT).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
+    pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
       acc._2.fold(acc, (acc, kv) => {
         pure val prefix = kv.key_hash.slice(0, i)
         pure val left = acc._2.find(k => k.key_hash == prefix.append(0))
