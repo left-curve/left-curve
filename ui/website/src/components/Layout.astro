@@ -1,31 +1,31 @@
 ---
 interface Props {
-	title: string;
+  title: string;
 }
 
 const { title } = Astro.props;
-import "@dango/shared/fonts/ABCDiatypeRounded/index.css";
+import "@dango/assets/fonts/ABCDiatypeRounded/index.css";
 ---
 
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="description" content="Astro description" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{title}</title>
-	</head>
- <body class="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center">
-		 <slot />
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Astro description" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+  </head>
+  <body
+    class="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center"
+  >
+    <slot />
+  </body>
 </html>
 
 <style is:global>
-
-body {
-  font-family: 'ABCDiatypeRounded';
-}
-
+  body {
+    font-family: "ABCDiatypeRounded";
+  }
 </style>

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@dango/shared": "workspace:^",
+    "@dango/assets": "workspace:^",
     "@leftcurve/connect-kit": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/utils": "workspace:^",

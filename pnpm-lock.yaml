@@ -414,8 +414,13 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
+  ui/assets: {}
+
   ui/portal:
     dependencies:
+      '@dango/assets':
+        specifier: workspace:^
+        version: link:../assets
       '@dango/shared':
         specifier: workspace:^
         version: link:../shared
@@ -501,6 +506,9 @@ importers:
 
   ui/shared:
     dependencies:
+      '@dango/assets':
+        specifier: workspace:^
+        version: link:../assets
       '@leftcurve/react':
         specifier: workspace:^
         version: link:../../sdk/packages/react
@@ -640,9 +648,9 @@ importers:
 
   ui/website:
     dependencies:
-      '@dango/shared':
+      '@dango/assets':
         specifier: workspace:^
-        version: link:../shared
+        version: link:../assets
       react:
         specifier: 'catalog:'
         version: 18.3.1

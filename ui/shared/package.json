@@ -54,6 +54,7 @@
     }
   },
   "dependencies": {
+    "@dango/assets": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/sdk": "workspace:^",
     "@leftcurve/utils": "workspace:^",

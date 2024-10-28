@@ -15,7 +15,7 @@
     "dev": "turbo dev",
     "dev:pkg": "turbo dev -F=./sdk/packages/**",
     "dev:portal": "turbo dev -F=./sdk/packages/** -F @dango/shared -F @dango/portal",
-    "dev:website": "turbo dev -F @dango/shared -F @dango/website",
+    "dev:website": "turbo dev -F @dango/website",
     "build:pkg": "turbo build -F=./sdk/packages/**",
     "build:graph": "turbo build --graph=build-graph.png",
     "build:portal": "turbo build -F @dango/portal",
