@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "./browser.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "module": "preserve",
-    "moduleResolution": "bundler",
-    "jsx": "react-jsx"
+    "moduleResolution": "bundler"
   }
 }

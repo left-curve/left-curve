@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "./common.json",
   "compilerOptions": {
-    "moduleDetection": "force",
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "es2021"]
+    "lib": ["dom", "dom.iterable", "es2021"],
+    "moduleDetection": "force"
   }
 }
