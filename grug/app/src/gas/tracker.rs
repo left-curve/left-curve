@@ -35,17 +35,6 @@ impl<T> Clone for GasTracker<T> {
 }
 
 impl GasTracker {
-    /// Create a new gas tracker, with or without a gas limit.
-    // pub fn new(maybe_limit: Option<u64>) -> GasTracker<GasModeUndefined> {
-    //     GasTracker {
-    //         inner: Shared::new(GasTrackerInner {
-    //             limit: maybe_limit,
-    //             used: 0,
-    //         }),
-    //         phantom: std::marker::PhantomData,
-    //     }
-    // }
-
     /// Create a new gas tracker without a gas limit.
     pub fn new_limitless() -> GasTracker<GasModeLimitLess> {
         GasTracker {
