@@ -203,4 +203,40 @@ module apply_state_machine {
   /// Invariant: If a node (different from the root) has one child, the child is an internal node
   def densityInv =
     0.to(tree.treeVersion()).forall(v => density(treeAtVersion(tree,v)))
+
+
+  /// returns a set of all prefixes of a list 
+  pure def allPrefixes (l: List[a]): Set[List[a]] = 
+    0.to(l.length()).map(i => l.slice(0,i))
+  
+  /// Invariant: For every node has predecessors with higer (or equal) version
+  /// (This could be rewritten to talk about direct predecessors only)
+  def versionInv = 
+    // This invariant actually works on the whole tree rather than on a TreeMap
+    tree.nodes.keys().forall(a =>
+      allPrefixes(a.key_hash).forall(p =>
+        tree.nodes.keys().exists(b =>
+        p == b.key_hash and b.version >= a.version
+      )))
+
+  /// Every internal node must have at least one child with the same version
+  def denseVersions(t: TreeMap): bool =
+    t.keys().forall(nId => match t.get(nId) {
+        | Internal(n) =>
+          val leftOK = 
+            match n.left_child {
+              | Some(c) => t.keys().exists(a => a.key_hash == nId.key_hash.append(0) and a.version == nId.version)
+              | None => false
+            }  
+          val rightOK = 
+            match n.right_child {
+              | Some(c) => t.keys().exists(a => a.key_hash == nId.key_hash.append(1) and a.version == nId.version)
+              | None => false
+            }  
+          or(leftOK, rightOK)
+        | Leaf(_) => true
+    })
+
 }
+
+
