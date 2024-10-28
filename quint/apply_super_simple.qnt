@@ -44,7 +44,7 @@ module apply_super_simple {
     val internalNodes = allInternals(nodes)
     
     internalNodes.keys().fold(nodes, (nodes, key) =>
-        if(new_version > key.version and internalNodes.keys().contains({...key, version: new_version}))
+        if (new_version > key.version and internalNodes.has({...key, version: new_version}))
           val internalOld = internalNodes.get(key)
           val internalNew = internalNodes.get({ ...key, version: new_version })
           val unpackedOld = internalOld.unpackInternalNode()
