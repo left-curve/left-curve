@@ -1,10 +1,13 @@
 use {
-    grug_types::{Batch, Op, Order, Record, Storage},
+    crate::{Shared, APP_CONFIGS, CONFIG},
+    grug_types::{Batch, Config, Json, Op, Order, Record, StdResult, Storage},
     std::{
         cmp::Ordering,
+        collections::BTreeMap,
         iter::{self, Peekable},
         mem,
-        ops::Bound,
+        ops::{Bound, Deref},
+        sync::RwLockWriteGuard,
     },
 };
 
@@ -203,6 +206,66 @@ where
             (Some(_), None) => self.base.next(),
             (None, None) => None,
         }
+    }
+}
+
+// ---------------------------------- app-cfg ----------------------------------
+
+#[derive(Clone)]
+pub struct ConfigBuffer {
+    base: Config,
+    pending_cfg: Shared<Config>,
+    pending_app_configs: Shared<BTreeMap<String, Op<Json>>>,
+}
+
+impl ConfigBuffer {
+    /// Create a new `ConfigBuffer` with the given base `Config`.
+    pub fn new(base: Config) -> Self {
+        Self {
+            base: base.clone(),
+            pending_cfg: Shared::new(base),
+            pending_app_configs: Shared::new(BTreeMap::new()),
+        }
+    }
+
+    pub fn write_cfg<F>(&self, f: F)
+    where
+        F: FnOnce(RwLockWriteGuard<Config>),
+    {
+        self.pending_cfg.write_with(f);
+    }
+
+    pub fn add_app_config(&self, key: String, op: Op<Json>) {
+        self.pending_app_configs.write_access().insert(key, op);
+    }
+
+    pub fn commit<S>(self, storage: &mut S) -> StdResult<()>
+    where
+        S: Storage,
+    {
+        let pending = self.pending_cfg.read_access();
+
+        if self.base != *pending {
+            CONFIG.save(storage, &*pending)?;
+        }
+
+        for (key, op) in self.pending_app_configs.read_access().deref() {
+            if let Op::Insert(value) = op {
+                APP_CONFIGS.save(storage, key, value)?;
+            } else {
+                APP_CONFIGS.remove(storage, key);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Deref for ConfigBuffer {
+    type Target = Config;
+
+    fn deref(&self) -> &Self::Target {
+        &self.base
     }
 }
 

@@ -2,14 +2,14 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, GasModeLimitLess, GasModeLimited, MeteredItem, MeteredMap, Vm,
-        APP_CONFIGS, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
+        AppError, AppResult, GasModeLimitLess, GasModeLimited, MeteredMap, Vm, CODES, CONTRACTS,
+        NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
         GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
-        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, Storage, SubMsgResult, Tx, TxOutcome,
+        MsgMigrate, MsgTransfer, MsgUpload, StdResult, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -33,32 +33,30 @@ pub fn do_configure(ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<V
 }
 
 fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<Event> {
-    let mut cfg = CONFIG.load(&ctx.storage)?;
-
     // Make sure the sender is authorized to set the config.
-    if sender != cfg.owner {
+    if sender != ctx.cfg.owner {
         return Err(AppError::NotOwner {
             sender,
-            owner: cfg.owner,
+            owner: ctx.cfg.owner,
         });
     }
 
     if let Some(new_owner) = msg.updates.owner {
-        cfg.owner = new_owner;
+        ctx.cfg.write_cfg(|mut cfg| cfg.owner = new_owner);
     }
 
     if let Some(new_bank) = msg.updates.bank {
-        cfg.bank = new_bank;
+        ctx.cfg.write_cfg(|mut cfg| cfg.bank = new_bank);
     }
 
     if let Some(new_taxman) = msg.updates.taxman {
-        cfg.taxman = new_taxman;
+        ctx.cfg.write_cfg(|mut cfg| cfg.taxman = new_taxman);
     }
 
     if let Some(new_cronjobs) = msg.updates.cronjobs {
         // If the list of cronjobs has been changed, we have to delete the
         // existing scheduled ones and reschedule.
-        if new_cronjobs != cfg.cronjobs {
+        if new_cronjobs != ctx.cfg.cronjobs {
             NEXT_CRONJOBS.clear(&mut ctx.storage, None, None);
 
             for (contract, interval) in &new_cronjobs {
@@ -66,23 +64,17 @@ fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<
             }
         }
 
-        cfg.cronjobs = new_cronjobs;
+        ctx.cfg.write_cfg(|mut cfg| cfg.cronjobs = new_cronjobs);
     }
 
     if let Some(new_permissions) = msg.updates.permissions {
-        cfg.permissions = new_permissions;
+        ctx.cfg
+            .write_cfg(|mut cfg| cfg.permissions = new_permissions);
     }
-
-    // Save the updated config.
-    CONFIG.save(&mut ctx.storage, &cfg)?;
 
     // Update app configs
     for (key, op) in msg.app_updates {
-        if let Op::Insert(value) = op {
-            APP_CONFIGS.save(&mut ctx.storage, &key, &value)?;
-        } else {
-            APP_CONFIGS.remove(&mut ctx.storage, &key);
-        }
+        ctx.cfg.add_app_config(key, op);
     }
 
     Ok(Event::new("configure").add_attribute("sender", sender))
@@ -109,10 +101,7 @@ pub fn do_upload(ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<Vec<E
 
 // Return the hash of the code that is stored, for logging purpose.
 fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Event, Hash256)> {
-    // Make sure the user has the permission to upload contracts
-    let cfg = CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker.clone())?;
-
-    if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
+    if !has_permission(&ctx.cfg.permissions.upload, ctx.cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
     }
 
@@ -185,13 +174,14 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&app_ctx.storage)?;
-    let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
+    let code_hash = CONTRACTS
+        .load(&app_ctx.storage, app_ctx.cfg.bank)?
+        .code_hash;
 
     let ctx = Context {
         chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
-        contract: cfg.bank,
+        contract: app_ctx.cfg.bank,
         sender: None,
         funds: None,
         mode: None,
@@ -279,9 +269,11 @@ where
     AppError: From<VM::Error>,
 {
     // Make sure the user has the permission to instantiate contracts
-    let cfg = CONFIG.load(&app_ctx.storage)?;
-
-    if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
+    if !has_permission(
+        &app_ctx.cfg.permissions.instantiate,
+        app_ctx.cfg.owner,
+        sender,
+    ) {
         return Err(AppError::Unauthorized);
     }
 
@@ -711,13 +703,12 @@ where
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let cfg = CONFIG.load(&app_ctx.storage)?;
-        let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
+        let taxman = CONTRACTS.load(&app_ctx.storage, app_ctx.cfg.taxman)?;
 
         let ctx = Context {
             chain_id: app_ctx.chain_id.clone(),
             block: app_ctx.block,
-            contract: cfg.taxman,
+            contract: app_ctx.cfg.taxman,
             sender: None,
             funds: None,
             mode: Some(mode),
@@ -762,13 +753,12 @@ where
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let cfg = CONFIG.load(&app_ctx.storage)?;
-        let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
+        let taxman = CONTRACTS.load(&app_ctx.storage, app_ctx.cfg.taxman)?;
 
         let ctx = Context {
             chain_id: app_ctx.chain_id.clone(),
             block: app_ctx.block,
-            contract: cfg.taxman,
+            contract: app_ctx.cfg.taxman,
             sender: None,
             funds: None,
             mode: Some(mode),

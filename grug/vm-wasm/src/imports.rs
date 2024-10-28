@@ -415,12 +415,14 @@ mod tests {
             write_to_memory, Environment, VmResult, WasmVm, GAS_PER_OPERATION,
         },
         grug_app::{
-            AppCtx, GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS,
+            AppCtx, ConfigBuffer, GasTracker, QuerierProvider, Shared, StorageProvider,
+            APP_CONFIGS, GAS_COSTS,
         },
         grug_crypto::{Identity256, Identity512},
         grug_types::{
-            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
-            Hash256, MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
+            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, Config, GenericResult,
+            Hash256, MockStorage, Order, Permission, Permissions, Query, QueryResponse, Storage,
+            Timestamp,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
@@ -539,6 +541,17 @@ mod tests {
                 WasmVm::new(0),
                 Box::new(storage.clone()),
                 gas_tracker.clone(),
+                ConfigBuffer::new(Config {
+                    owner: Addr::mock(0),
+                    bank: Addr::mock(1),
+                    taxman: Addr::mock(2),
+                    cronjobs: Default::default(),
+                    permissions: Permissions {
+                        upload: Permission::Everybody,
+                        instantiate: Permission::Everybody,
+                    },
+                    max_orphan_age: Default::default(),
+                }),
                 "dev-1",
                 MOCK_BLOCK,
             ));

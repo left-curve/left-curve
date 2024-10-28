@@ -1,5 +1,5 @@
 use {
-    crate::{GasModeLimitLess, GasModeLimited, GasTracker},
+    crate::{ConfigBuffer, GasModeLimitLess, GasModeLimited, GasTracker},
     grug_types::{BlockInfo, Storage, Undefined},
 };
 
@@ -11,6 +11,7 @@ pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>, G = Undefined> {
     pub vm: VM,
     pub storage: S,
     pub gas_tracker: GasTracker<G>,
+    pub cfg: ConfigBuffer,
     pub chain_id: String,
     pub block: BlockInfo,
 }
@@ -25,6 +26,7 @@ where
             vm: self.vm.clone(),
             storage: self.storage.clone(),
             gas_tracker: self.gas_tracker.clone(),
+            cfg: self.cfg.clone(),
             chain_id: self.chain_id.clone(),
             block: self.block,
         }
@@ -37,6 +39,7 @@ impl<VM, S, G> AppCtx<VM, S, G> {
         vm: VM,
         storage: S,
         gas_tracker: GasTracker<G>,
+        cfg: ConfigBuffer,
         chain_id: C,
         block: BlockInfo,
     ) -> Self
@@ -47,6 +50,7 @@ impl<VM, S, G> AppCtx<VM, S, G> {
             vm,
             storage,
             gas_tracker,
+            cfg,
             chain_id: chain_id.into(),
             block,
         }
@@ -66,6 +70,7 @@ impl<VM, S, G> AppCtx<VM, S, G> {
                 vm: self.vm,
                 storage: self.storage,
                 gas_tracker,
+                cfg: self.cfg,
                 chain_id: self.chain_id,
                 block: self.block,
             },
@@ -82,6 +87,7 @@ impl<VM, S, G> AppCtx<VM, S, G> {
             vm: Undefined::default(),
             storage: self.storage,
             gas_tracker: self.gas_tracker,
+            cfg: self.cfg,
             chain_id: self.chain_id,
             block: self.block,
         }
@@ -98,6 +104,7 @@ where
             vm: self.vm.clone(),
             storage,
             gas_tracker: self.gas_tracker.clone(),
+            cfg: self.cfg.clone(),
             chain_id: self.chain_id.clone(),
             block: self.block,
         }
@@ -115,6 +122,7 @@ where
             vm: self.vm.clone(),
             storage: Box::new(self.storage.clone()),
             gas_tracker: self.gas_tracker.clone(),
+            cfg: self.cfg.clone(),
             chain_id: self.chain_id.clone(),
             block: self.block,
         }
@@ -127,6 +135,7 @@ impl<VM, S> AppCtx<VM, S, GasModeLimitLess> {
             vm: self.vm,
             storage: self.storage,
             gas_tracker: self.gas_tracker.to_undefined(),
+            cfg: self.cfg,
             chain_id: self.chain_id,
             block: self.block,
         }
@@ -139,6 +148,7 @@ impl<VM, S> AppCtx<VM, S, GasModeLimited> {
             vm: self.vm,
             storage: self.storage,
             gas_tracker: self.gas_tracker.to_undefined(),
+            cfg: self.cfg,
             chain_id: self.chain_id,
             block: self.block,
         }

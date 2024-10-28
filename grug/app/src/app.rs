@@ -1,4 +1,6 @@
-use crate::GasModeLimited;
+use std::ops::Deref;
+
+use crate::{ConfigBuffer, GasModeLimited};
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
 
@@ -6,10 +8,10 @@ use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
-        query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
-        query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_scan, query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        Shared, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_app_configs, query_balance, query_balances, query_code, query_codes, query_contract,
+        query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
+        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker, Shared, Vm,
+        APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -91,15 +93,16 @@ where
         }
 
         // Schedule cronjobs.
-        for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, contract, block.timestamp, interval)?;
+        for (contract, interval) in &genesis_state.config.cronjobs {
+            schedule_cronjob(&mut buffer, *contract, block.timestamp, *interval)?;
         }
 
         // Prepare the context for processing the genesis messages.
-        let ctx = AppCtx::new(
+        let mut ctx = AppCtx::new(
             self.vm.clone(),
             buffer,
             GasTracker::new_limitless().to_undefined(),
+            ConfigBuffer::new(genesis_state.config),
             chain_id.clone(),
             block,
         );
@@ -115,6 +118,9 @@ where
 
             process_msg(ctx.clone_boxing_storage(), 0, GENESIS_SENDER, msg)?;
         }
+
+        // Save the cfg changes.
+        ctx.cfg.commit(&mut ctx.storage)?;
 
         // Persist the state changes to disk
         let (_, pending) = ctx.storage.disassemble().disassemble();
@@ -144,7 +150,7 @@ where
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let chain_id = CHAIN_ID.load(&buffer)?;
-        let cfg = CONFIG.load(&buffer)?;
+        let cfg = ConfigBuffer::new(CONFIG.load(&buffer)?);
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         let mut cron_outcomes = vec![];
@@ -219,6 +225,7 @@ where
                     self.vm.clone(),
                     Box::new(buffer.clone()) as _,
                     gas_tracker.clone(),
+                    cfg.clone(),
                     chain_id.clone(),
                     block,
                 ),
@@ -244,6 +251,7 @@ where
             tx_outcomes.push(process_tx(
                 self.vm.clone(),
                 buffer.clone(),
+                cfg.clone(),
                 chain_id.clone(),
                 block,
                 tx,
@@ -257,6 +265,9 @@ where
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+
+        // Save the cfg changes.
+        cfg.commit(&mut buffer)?;
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
@@ -302,11 +313,13 @@ where
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let chain_id = CHAIN_ID.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+        let cfg = ConfigBuffer::new(CONFIG.load(&buffer)?);
 
         let ctx = AppCtx::new(
             self.vm.clone(),
             Box::new(buffer) as _,
             GasTracker::new_limited(tx.gas_limit),
+            cfg,
             chain_id,
             block,
         );
@@ -374,11 +387,13 @@ where
         let storage = self.db.state_storage(version)?;
         let chain_id = CHAIN_ID.load(&storage)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+        let cfg = ConfigBuffer::new(CONFIG.load(&storage)?);
 
         let ctx = AppCtx::new(
             self.vm.clone(),
             Box::new(storage.clone()) as _,
             GasTracker::new_limited(self.query_gas_limit).to_undefined(),
+            cfg,
             chain_id,
             block,
         );
@@ -425,6 +440,7 @@ where
         let buffer = Buffer::new(self.db.state_storage(None)?, None);
         let chain_id = CHAIN_ID.load(&buffer)?;
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+        let cfg = ConfigBuffer::new(CONFIG.load(&buffer)?);
 
         // We can't "prove" a gas simulation
         if prove {
@@ -452,6 +468,7 @@ where
         Ok(process_tx(
             self.vm.clone(),
             buffer,
+            cfg,
             chain_id,
             block,
             tx,
@@ -526,6 +543,7 @@ where
 fn process_tx<S, VM>(
     vm: VM,
     storage: S,
+    cfg: ConfigBuffer,
     chain_id: String,
     block: BlockInfo,
     tx: Tx,
@@ -552,10 +570,11 @@ where
         vm.clone(),
         fee_buffer,
         gas_tracker.clone(),
+        cfg.clone(),
         chain_id.clone(),
         block,
     );
-    let msg_ctx = AppCtx::new(vm, msg_buffer, gas_tracker.clone(), chain_id, block);
+    let msg_ctx = AppCtx::new(vm, msg_buffer, gas_tracker.clone(), cfg, chain_id, block);
 
     // Record the events emitted during the processing of this transaction.
     let mut events = Vec::new();
@@ -726,10 +745,7 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Config(..) => {
-            let res = query_config(ctx.downcast())?;
-            Ok(QueryResponse::Config(res))
-        },
+        Query::Config(..) => Ok(QueryResponse::Config(ctx.cfg.deref().clone())),
         Query::AppConfig(req) => {
             let res = query_app_config(ctx.downcast(), req)?;
             Ok(QueryResponse::AppConfig(res))
