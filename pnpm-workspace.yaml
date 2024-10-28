@@ -1,7 +1,7 @@
 packages:
   - "sdk/packages/*"
   - "sdk/examples/*"
-  - "sdk/workers/*"
+  - "ui/workers/*"
   - "ui/*"
 
 catalog:
