@@ -1282,6 +1282,7 @@ dependencies = [
  "grug",
  "paste",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -2119,6 +2120,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sha2 0.10.8",
+ "sha3",
  "test-case",
  "thiserror",
 ]
@@ -4621,6 +4623,15 @@ name = "uuid"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
+
+[[package]]
+name = "vaa"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
 
 [[package]]
 name = "valuable"

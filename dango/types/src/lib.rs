@@ -7,3 +7,4 @@ pub mod config;
 pub mod mock_ibc_transfer;
 pub mod taxman;
 pub mod token_factory;
+pub mod vaa;
