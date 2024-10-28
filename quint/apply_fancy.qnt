@@ -21,13 +21,14 @@ module apply_fancy {
     .toList((a, b) => intCompare(a.length(), b.length()))
 
   pure def sorted_nodes(tree: Tree): List[NodeId] = {
-    tree.nodes.keys().toList((a, b) => intCompare(b.key_hash.length(), a.key_hash.length()))
+    tree.nodes.keys().toList((a, b) => intCompare(a.key_hash.length(), b.key_hash.length()))
   }
 
   /// Pre computation of apply_at used to emulate recursion
   pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
     range(0, new_version + 1).foldl(Map(), (memo, old_version) => {
-      bits_to_compute.foldr((memo, tree), (bits, acc) => {
+      sorted_nodes(tree).foldr((memo, tree), (node_id, acc) => {
+        pure val bits = node_id.key_hash
         pure val memo = acc._1
         pure val tree = acc._2
 
@@ -51,10 +52,19 @@ module apply_fancy {
     pure val memo = pre_compute_apply_at(tree_1, new_version, batch)
     pure val apply_result = tree_1.apply_at(memo, new_version, old_version, ROOT_BITS, batch)
 
-    match apply_result.outcome {
+    match q::debug("final outcome", apply_result.outcome) {
       | Updated(new_root_node) => {
           ...apply_result.tree,
           nodes: apply_result.tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
+        }
+      | Unchanged(optional) => {
+          match optional {
+            | Some(new_root_node) => {
+                ...apply_result.tree,
+                nodes: apply_result.tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
+              }
+            | None => apply_result.tree
+          }
         }
       | _ => apply_result.tree
     }
@@ -116,7 +126,7 @@ module apply_fancy {
 
     if (left_outcome.is_unchanged() and right_outcome.is_unchanged()) {
       // Neither children is changed. This node is unchanged as well.
-      { outcome: Unchanged(None), tree: tree_2 }
+      { outcome: Unchanged(Some(Internal(internal_node))), tree: tree_2 }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None))
                 and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
