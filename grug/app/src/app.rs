@@ -1,5 +1,7 @@
+use crate::GasModeLimited;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -97,7 +99,7 @@ where
         let ctx = AppCtx::new(
             self.vm.clone(),
             buffer,
-            GasTracker::new_limitless(),
+            GasTracker::new_limitless().to_undefined(),
             chain_id.clone(),
             block,
         );
@@ -376,7 +378,7 @@ where
         let ctx = AppCtx::new(
             self.vm.clone(),
             Box::new(storage.clone()) as _,
-            GasTracker::new_limited(self.query_gas_limit),
+            GasTracker::new_limited(self.query_gas_limit).to_undefined(),
             chain_id,
             block,
         );
@@ -608,7 +610,12 @@ where
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
-    match process_msgs_then_backrun(msg_ctx.clone_boxing_storage(), &tx, mode, request_backrun) {
+    match process_msgs_then_backrun(
+        msg_ctx.clone_boxing_storage().unbound(),
+        &tx,
+        mode,
+        request_backrun,
+    ) {
         Ok(new_events) => {
             msg_ctx.storage.disassemble().consume();
             events.extend(new_events);
@@ -661,7 +668,7 @@ where
 }
 
 fn process_finalize_fee<S, VM>(
-    mut ctx: AppCtx<VM, Shared<Buffer<S>>>,
+    ctx: AppCtx<VM, Shared<Buffer<S>>, GasModeLimited>,
     tx: Tx,
     mode: AuthMode,
     mut events: Vec<Event>,
@@ -672,7 +679,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let gas_tracker = ctx.replace_gas_tracker(GasTracker::new_limitless());
+    let (ctx, gas_tracker) = ctx.with_gas_tracker(GasTracker::new_limitless());
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
 
     match do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode) {
@@ -821,17 +828,21 @@ pub(crate) fn schedule_cronjob(
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }
 
-fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcome {
+fn new_outcome<T>(gas_tracker: GasTracker<T>, result: AppResult<Vec<Event>>) -> Outcome {
     Outcome {
-        gas_limit: gas_tracker.limit(),
+        gas_limit: gas_tracker.maybe_limit(),
         gas_used: gas_tracker.used(),
         result: result.into_generic_result(),
     }
 }
 
-fn new_tx_outcome(gas_tracker: GasTracker, events: Vec<Event>, result: AppResult<()>) -> TxOutcome {
+fn new_tx_outcome(
+    gas_tracker: GasTracker<GasModeLimited>,
+    events: Vec<Event>,
+    result: AppResult<()>,
+) -> TxOutcome {
     TxOutcome {
-        gas_limit: gas_tracker.limit().unwrap(),
+        gas_limit: gas_tracker.limit(),
         gas_used: gas_tracker.used(),
         events,
         result: result.into_generic_result(),

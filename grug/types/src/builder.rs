@@ -6,7 +6,7 @@
 use std::{fmt::Debug, marker::PhantomData};
 
 /// Represents a builder parameter that has not yet been provided.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Undefined<T = ()>(PhantomData<T>);
 
 impl<T> Default for Undefined<T> {

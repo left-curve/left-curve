@@ -2,14 +2,14 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS,
-        NEXT_CRONJOBS,
+        AppError, AppResult, GasModeLimitLess, GasModeLimited, MeteredItem, MeteredMap, Vm,
+        APP_CONFIGS, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
         GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
-        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
+        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, Storage, SubMsgResult, Tx, TxOutcome,
     },
 };
 
@@ -607,7 +607,7 @@ where
 // ------------------------------- authenticate --------------------------------
 
 pub fn do_authenticate<VM>(
-    app_ctx: AppCtx<VM>,
+    app_ctx: AppCtx<VM, Box<dyn Storage>, GasModeLimited>,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<(Vec<Event>, bool)>
@@ -625,6 +625,8 @@ where
         funds: None,
         mode: Some(mode),
     };
+
+    let app_ctx = app_ctx.unbound();
 
     let result = || -> AppResult<_> {
         let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
@@ -699,7 +701,11 @@ where
 
 // ---------------------------------- taxman -----------------------------------
 
-pub fn do_withhold_fee<VM>(app_ctx: AppCtx<VM>, tx: &Tx, mode: AuthMode) -> AppResult<Vec<Event>>
+pub fn do_withhold_fee<VM>(
+    app_ctx: AppCtx<VM, Box<dyn Storage>, GasModeLimited>,
+    tx: &Tx,
+    mode: AuthMode,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -718,7 +724,7 @@ where
         };
 
         call_in_1_out_1_handle_response(
-            app_ctx,
+            app_ctx.unbound(),
             0,
             0,
             true,
@@ -746,7 +752,7 @@ where
 }
 
 pub fn do_finalize_fee<VM>(
-    app_ctx: AppCtx<VM>,
+    app_ctx: AppCtx<VM, Box<dyn Storage>, GasModeLimitLess>,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -769,7 +775,7 @@ where
         };
 
         call_in_2_out_1_handle_response(
-            app_ctx,
+            app_ctx.unbound(),
             0,
             0,
             true,
@@ -801,7 +807,10 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+pub fn do_cron_execute<VM>(
+    ctx: AppCtx<VM, Box<dyn Storage>, GasModeLimitLess>,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -826,7 +835,10 @@ where
     }
 }
 
-fn _do_cron_execute<VM>(app_ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+fn _do_cron_execute<VM>(
+    app_ctx: AppCtx<VM, Box<dyn Storage>, GasModeLimitLess>,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -841,5 +853,13 @@ where
         mode: None,
     };
 
-    call_in_0_out_1_handle_response(app_ctx, 0, 0, true, "cron_execute", code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        app_ctx.unbound(),
+        0,
+        0,
+        true,
+        "cron_execute",
+        code_hash,
+        &ctx,
+    )
 }

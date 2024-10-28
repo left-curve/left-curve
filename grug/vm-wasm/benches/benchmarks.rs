@@ -45,7 +45,7 @@ fn looping(c: &mut Criterion) {
                 b.iter_batched(
                     || {
                         let storage = Box::new(MockStorage::new());
-                        let gas_tracker = GasTracker::new_limitless();
+                        let gas_tracker = GasTracker::new_limitless().to_undefined();
 
                         let querier = QuerierProvider::new(AppCtx::new(
                             vm.clone(),

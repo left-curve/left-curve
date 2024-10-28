@@ -475,7 +475,7 @@ mod tests {
 
     fn setup_test() -> Suite {
         let gas_checkpoint = u64::MAX;
-        let gas_tracker = GasTracker::new_limitless();
+        let gas_tracker = GasTracker::new_limitless().to_undefined();
         // Compile the contract; create Wasmer store and instance.
         let (mut store, instance) = {
             let mut compiler = Singlepass::new();

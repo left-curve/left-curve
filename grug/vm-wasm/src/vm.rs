@@ -98,7 +98,7 @@ impl Vm for WasmVm {
         // would be the `authenticate` call) will have the limit as X. Suppose
         // this call consumed Y gas points, the next call will have its limit as
         // (X-Y); so on.
-        let gas_remaining = gas_tracker.remaining().unwrap_or(u64::MAX);
+        let gas_remaining = gas_tracker.maybe_remaining().unwrap_or(u64::MAX);
 
         // Create the Wasmer store, function environment, and register import
         // functions.

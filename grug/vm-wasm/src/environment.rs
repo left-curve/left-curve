@@ -228,7 +228,7 @@ impl Environment {
                 self.gas_checkpoint = 0;
 
                 Err(StdError::OutOfGas {
-                    limit: self.gas_tracker.limit().unwrap_or(u64::MAX),
+                    limit: self.gas_tracker.maybe_limit().unwrap_or(u64::MAX),
                     used: self.gas_tracker.used(),
                     comment: name,
                 }
@@ -260,7 +260,7 @@ impl Environment {
                 self.gas_tracker.consume(consumed, comment)?;
 
                 // If there is a limit on gas_tracker, update the remaining points in the store
-                if let Some(remaining) = self.gas_tracker.remaining() {
+                if let Some(remaining) = self.gas_tracker.maybe_remaining() {
                     set_remaining_points(store, instance, remaining);
                     self.gas_checkpoint = remaining;
                 }
@@ -301,9 +301,9 @@ mod test {
 
     fn setup_test(wat: &[u8], max_gas: Option<u64>) -> (Environment, Store, Box<Instance>) {
         let (gas_checkpoint, gas_tracker) = if let Some(max_gas) = max_gas {
-            (max_gas, GasTracker::new_limited(max_gas))
+            (max_gas, GasTracker::new_limited(max_gas).to_undefined())
         } else {
-            (u64::MAX, GasTracker::new_limitless())
+            (u64::MAX, GasTracker::new_limitless().to_undefined())
         };
 
         // Compile the contract; create Wasmer store and instance.
@@ -507,13 +507,13 @@ mod test {
         let (mut env, mut store, _instance) = setup_test(wat, Some(100));
 
         consume(1, &mut env, &mut store).unwrap();
-        assert_eq!(env.gas_tracker.remaining(), Some(95));
+        assert_eq!(env.gas_tracker.maybe_remaining(), Some(95));
 
         consume(10, &mut env, &mut store).unwrap();
-        assert_eq!(env.gas_tracker.remaining(), Some(45));
+        assert_eq!(env.gas_tracker.maybe_remaining(), Some(45));
 
         consume(9, &mut env, &mut store).unwrap();
-        assert_eq!(env.gas_tracker.remaining(), Some(0));
+        assert_eq!(env.gas_tracker.maybe_remaining(), Some(0));
 
         assert!(matches!(
             consume(1, &mut env, &mut store).unwrap_err(),
@@ -530,10 +530,10 @@ mod test {
         let (mut env, mut store, _instance) = setup_test(MOCK_WAT, Some(100));
 
         env.consume_external_gas(&mut store, 10, "comment").unwrap();
-        assert_eq!(env.gas_tracker.remaining(), Some(90));
+        assert_eq!(env.gas_tracker.maybe_remaining(), Some(90));
 
         env.consume_external_gas(&mut store, 90, "comment").unwrap();
-        assert_eq!(env.gas_tracker.remaining(), Some(0));
+        assert_eq!(env.gas_tracker.maybe_remaining(), Some(0));
 
         let err = env
             .consume_external_gas(&mut store, 1, "comment")

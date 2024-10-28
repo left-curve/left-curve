@@ -325,7 +325,7 @@ mod tests {
             hash: Hash::ZERO,
         };
 
-        let gas_tracker = GasTracker::new_limitless();
+        let gas_tracker = GasTracker::new_limitless().to_undefined();
 
         let querier_provider = QuerierProvider::new(AppCtx::new(
             vm.clone(),
