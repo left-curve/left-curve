@@ -211,7 +211,7 @@ module apply_state_machine {
 
   /// returns a set of all prefixes of a list 
   pure def allPrefixes (l: List[a]): Set[List[a]] = 
-    pruned_until.to(l.length()).map(i => l.slice(0,i))
+    0.to(l.length()).map(i => l.slice(0,i))
   
   /// Invariant: For every node has predecessors with higer (or equal) version
   /// (This could be rewritten to talk about direct predecessors only)
