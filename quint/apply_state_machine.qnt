@@ -258,7 +258,7 @@ module apply_state_machine {
   val allInvariants = all {
     everyNodesParentIsInTheTreeInv,
     nodeAtCommonPrefixInv,
-    // hashInv,
+    hashInv,
     noInternalChildInv,
     allInternalNodesHaveChildrenInv,
     densityInv,

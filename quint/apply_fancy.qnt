@@ -13,7 +13,7 @@ module apply_fancy {
   /// The return type of apply_* functions, as some of them modify the tree
   type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_add: Set[(NodeId, Node)] }
 
-  // for emulating recursion
+  /// Result of apply_at calls, for emulating recursion
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
 
   pure val bits_to_compute = Set(0,1)
@@ -26,19 +26,16 @@ module apply_fancy {
 
   /// Pre computation of apply_at used to emulate recursion
   pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
-    range(0, new_version).foldl((Map(), tree), (memo, old_version) => {
-      sorted_nodes(tree).foldr(memo, (node_id, acc) => {
+    range(0, new_version).foldl(Map(), (memo, old_version) => {
+      sorted_nodes(tree).foldr(memo, (node_id, memo) => {
         pure val bits = node_id.key_hash
-        pure val memo = acc._1
-        pure val tree = acc._2
-
         pure val batch_here = batch.filter(o => bits.isPrefixOf(o.key_hash))
 
         pure val memo_key = (new_version, old_version, bits, batch_here)
         pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
-        (memo.put(memo_key, memo_value), tree)
+        memo.put(memo_key, memo_value)
       })
-    })._1
+    })
   }
 
   pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
@@ -144,20 +141,26 @@ module apply_fancy {
 
     pure val nodes_from_children = left_result.nodes_to_add.union(right_result.nodes_to_add)
 
+    pure val default_result = {
+      outcome: Unchanged(None),
+      orphans_to_add: orphans_from_children,
+      nodes_to_add: nodes_from_children,
+    }
+
     if (left_outcome.is_unchanged() and right_outcome.is_unchanged()) {
       // Neither children is changed. This node is unchanged as well.
-      { outcome: Unchanged(Some(Internal(internal_node))), orphans_to_add: orphans_from_children, nodes_to_add: Set() }
+      { ...default_result, outcome: Unchanged(Some(Internal(internal_node))) }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None))
                 and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Both children are deleted or never existed. Delete this node as well.
-      { outcome: Deleted, orphans_to_add: orphans_from_children, nodes_to_add: nodes_from_children }
+      { ...default_result, outcome: Deleted }
 
     } else if (left_outcome.updated_to_leaf() and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Left child is a leaf, right child is deleted.
       // Delete the current internal node and move left child up.
       // The child needs to marked as orphaned.
-       { outcome: left_outcome, orphans_to_add: orphans_from_children, nodes_to_add: nodes_from_children }
+      { ...default_result, outcome: left_outcome }
 
     } else if (left_outcome.unchanged_leaf() and right_outcome == Deleted) {
       // Mark left child as orphaned
@@ -168,16 +171,16 @@ module apply_fancy {
             version: internal_node.left_child.unwrap().version,
             key_hash: left_bits,
           }))
-          { outcome: Updated(left.unwrap()), orphans_to_add: orphans, nodes_to_add: nodes_from_children }
+          { ...default_result, outcome: Updated(left.unwrap()), orphans_to_add: orphans }
         }
-        | _ => { outcome: left_outcome, orphans_to_add: orphans_from_children, nodes_to_add: nodes_from_children } // impossible
+        | _ => default_result // impossible
       }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None)) and right_outcome.updated_to_leaf()) {
       // Left child is deleted, right child is a leaf.
       // Delete the current internal node and move right child up.
       // The child needs to marked as orphaned.
-      { outcome: right_outcome, orphans_to_add: orphans_from_children, nodes_to_add: nodes_from_children }
+      { ...default_result, outcome: right_outcome }
 
     } else if (left_outcome == Deleted and right_outcome.unchanged_leaf()) {
       // Mark right child as orphaned
@@ -188,9 +191,9 @@ module apply_fancy {
             version: internal_node.right_child.unwrap().version,
             key_hash: right_bits,
           }))
-          { outcome: Updated(right.unwrap()), orphans_to_add: orphans, nodes_to_add: nodes_from_children }
+          { ...default_result, outcome: Updated(right.unwrap()), orphans_to_add: orphans }
         }
-        | _ => { outcome: right_outcome, orphans_to_add: orphans_from_children, nodes_to_add: nodes_from_children } // impossible
+        | _ => default_result // impossible
       }
 
     } else {
@@ -233,8 +236,8 @@ module apply_fancy {
       })
 
       {
+        ...default_result,
         outcome: Updated(new_internal_node),
-        orphans_to_add: orphans_from_children,
         nodes_to_add: nodes_from_children
           .union(new_left_child_and_tree.nodes_to_add)
           .union(new_right_child_and_tree.nodes_to_add),
@@ -435,11 +438,6 @@ module apply_fancy {
         (acc._1, acc._2.union(Set(op)))
       }
     })
-  }
-
-  /// Corresponding save_node, under a different name so it doesn't suggest mutability
-  pure def add_node(tree: Tree, version: Version, bits: BitArray, node: Node): Tree = {
-    { ...tree, nodes: tree.nodes.put({ version: version, key_hash: bits }, node) }
   }
 
   pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
