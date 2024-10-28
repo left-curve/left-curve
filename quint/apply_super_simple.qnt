@@ -49,6 +49,8 @@ module apply_super_simple {
           val internalNew = internalNodes.get({ ...key, version: new_version })
           val unpackedOld = internalOld.unpackInternalNode()
           val unpackedNew = internalNew.unpackInternalNode()
+          // At most one children will have the same hash because, if they both had same hashes
+          // we would have removed the new_node in `removeDuplicateEntries`
           if( unpackedNew.left.hash == unpackedOld.left.hash and  unpackedNew.left.version != unpackedOld.left.version )
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, left_child: Some( unpackedOld.left ) }))
           else if ( unpackedNew.right.hash == unpackedOld.right.hash and unpackedNew.right.version != unpackedOld.right.version )
