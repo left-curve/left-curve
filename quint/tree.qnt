@@ -56,6 +56,8 @@ module tree {
   pure def is_node_orphaned(nodeId: NodeId, orphans: Set[OrphanId]): bool = {
     orphans.exists(el => (el.version == nodeId.version and el.key_hash == nodeId.key_hash))
   }
+  
+  pure def isRoot(key: NodeId) : bool = key.key_hash == ROOT_BITS
 
   pure def prune(tree: Tree, up_to_version: Version): Tree = {
     pure val orphans_to_be_removed = tree.orphans.filter(orphan =>
@@ -79,7 +81,14 @@ module tree {
       | Leaf(x) => s.union(Set(x))
     })
   }
-
+  
+  pure def allInternals(t: TreeMap): NodeId -> InternalNode = 
+    t.keys().fold(Map(), (internals, key) => 
+      match t.get(key) {
+      | Internal(x) => internals.put(key, x)
+      | Leaf(_) => internals
+    })
+  
   pure def treeVersion(t: Tree): int =
     t.nodes.keys()
       .filter(nId => nId.key_hash == [])
