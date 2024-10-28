@@ -50,6 +50,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // Load all feeds submitted by guardians since the last cron execute.
     for res in PRICE_FEEDS.prefix_range(ctx.storage, None, None, Order::Ascending) {
         let ((denom, _guardian), feed) = res?;
+
         // We expect there to be ~20 guardians, so pre-allocate a vector
         // with capacity of 20.
         denom_feeds
@@ -71,20 +72,21 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         feeds.sort();
 
         // Find the median price.
-        let median = if num_feeds % 2 == 0 {
+        // Here as an optimization, we use bitwise operators (`&` and `>>`)
+        // instead of division or modulo.
+        let median = if num_feeds & 1 == 0 {
             // If there's an even number of feeds, take the average of the two
             // middle ones.
-            let feed1 = feeds[num_feeds / 2 - 1];
-            let feed2 = feeds[num_feeds / 2];
+            let feed1 = feeds[(num_feeds >> 1) - 1];
+            let feed2 = feeds[num_feeds >> 1];
 
-            // A little optimization: use bit shift instead of division.
             feed1
                 .numerator()
                 .checked_add(*feed2.numerator())?
                 .checked_shr(1)
                 .map(Udec128::raw)?
         } else {
-            feeds[num_feeds / 2]
+            feeds[num_feeds >> 1]
         };
 
         PRICES.save(ctx.storage, &denom, &Price {
@@ -93,7 +95,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         })?;
     }
 
-    // Delete all feeds.
+    // Delete all feeds. Start with a clean slate for the next epoch.
     PRICE_FEEDS.clear(ctx.storage, None, None);
 
     Ok(Response::new())

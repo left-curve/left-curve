@@ -5,8 +5,8 @@ use {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
-    /// The minimum number of guardians that must have voted on the price in
-    /// order for it to be considered valid and votes tallied.
+    /// The minimum number of price feeds that must have been submitted during
+    /// the epoch in order for the price to be considered valid.
     pub quorum: u32,
 }
 
