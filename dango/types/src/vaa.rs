@@ -67,6 +67,7 @@ impl<'de> Visitor<'de> for VAAVisitor {
 
         // We should use api functions but we are inside a trait, can't use it.
         // For now use the HashExt trait directly.
+        // This need double hash
         let hash = bytes.hash256().keccak256().keccak256();
 
         let timestamp = bytes.next_u32();
