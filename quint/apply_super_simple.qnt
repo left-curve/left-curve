@@ -50,7 +50,6 @@ module apply_super_simple {
           val unpackedOld = internalOld.unpackInternalNode()
           val unpackedNew = internalNew.unpackInternalNode()
           if( unpackedNew.left.hash == unpackedOld.left.hash and  unpackedNew.left.version != unpackedOld.left.version )
-            // val removedNewNode = nodes.mapRemove(key)
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, left_child: Some( unpackedOld.left ) }))
           else if ( unpackedNew.right.hash == unpackedOld.right.hash and unpackedNew.right.version != unpackedOld.right.version )
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, right_child: Some( unpackedOld.right) }))
@@ -91,7 +90,10 @@ module apply_super_simple {
         }
     })
 
-    pure val keys_with_values = existing_keys_with_values.union(Set(insert))
+    pure val keys_with_values = if(existing_keys_with_values.filter(x => x.key_hash == insert.key_hash).size() > 0) 
+                                existing_keys_with_values.filter(x => x.key_hash != insert.key_hash)
+                                                         .union(Set(insert))
+                                else existing_keys_with_values.union(Set(insert))
     pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
       acc._2.fold(acc, (acc, kv) => {
         pure val prefix = kv.key_hash.slice(0, i)
