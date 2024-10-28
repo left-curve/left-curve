@@ -2,7 +2,7 @@ import { ed25519 } from "@noble/curves/ed25519";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 
-import type { KeyPair } from "./keypair";
+import type { KeyPair } from "./keypair.js";
 
 /**
  * Verify a ed25519 signature

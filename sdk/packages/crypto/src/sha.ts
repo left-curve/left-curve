@@ -2,7 +2,7 @@ import { keccak_256 as nobleKeccak256 } from "@noble/hashes/sha3";
 import { sha256 as nobleSha256 } from "@noble/hashes/sha256";
 import { sha512 as nobleSha512 } from "@noble/hashes/sha512";
 
-import type { HashFunction } from "./hash";
+import type { HashFunction } from "./hash.js";
 
 export class Keccak256 implements HashFunction {
   readonly blockSize = 136;

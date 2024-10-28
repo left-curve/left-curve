@@ -1,7 +1,7 @@
 "use client";
 
 import { useBlockExplorer } from "@leftcurve/react";
-import { CloseIcon, ExternalLinkIcon } from "~/components";
+import { CloseIcon, ExternalLinkIcon } from "../";
 
 interface Props {
   notification: {

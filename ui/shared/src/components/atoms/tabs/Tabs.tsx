@@ -2,7 +2,7 @@ import { useTabList } from "@react-aria/tabs";
 import { type TabListStateOptions, useTabListState } from "@react-stately/tabs";
 import type React from "react";
 import { type ReactElement, useRef } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../../utils";
 import { Tab } from "./Tab";
 import TabPanel from "./TabPanel";
 

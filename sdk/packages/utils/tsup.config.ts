@@ -7,5 +7,6 @@ import { type Options, defineConfig } from "tsup";
  */
 export default defineConfig({
   ...(config as Options),
+  outExtension: ({ format }) => (format === "cjs" ? { js: ".cjs" } : { js: ".js" }),
   entry: ["src/**"],
 });

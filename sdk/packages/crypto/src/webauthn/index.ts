@@ -1,3 +1,3 @@
-export * from "./create";
-export * from "./signature";
-export * from "./verify";
+export * from "./create.js";
+export * from "./signature.js";
+export * from "./verify.js";

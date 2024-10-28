@@ -1,10 +1,10 @@
-import type { Address } from "./address";
-import type { Code } from "./code";
-import type { Coin, Coins, Denom } from "./coin";
-import type { Duration, Permission } from "./common";
-import type { Metadata } from "./credential";
-import type { Base64, Hex, Json, JsonValue } from "./encoding";
-import type { Message } from "./tx";
+import type { Address } from "./address.js";
+import type { Code } from "./code.js";
+import type { Coin, Coins, Denom } from "./coin.js";
+import type { Duration, Permission } from "./common.js";
+import type { Metadata } from "./credential.js";
+import type { Base64, Hex, Json, JsonValue } from "./encoding.js";
+import type { Message } from "./tx.js";
 
 export type BlockInfo = {
   height: string;

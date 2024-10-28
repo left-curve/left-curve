@@ -29,7 +29,7 @@ export type {
   ContractsResponse,
   AppConfigsResponse,
   AppConfigResponse,
-} from "./queries";
+} from "./queries.js";
 
 export type {
   Message,
@@ -42,7 +42,7 @@ export type {
   Tx,
   TxParameters,
   UnsignedTx,
-} from "./tx";
+} from "./tx.js";
 
 export type {
   Proof,
@@ -51,17 +51,17 @@ export type {
   MembershipProof,
   Node,
   NonMembershipProof,
-} from "./proof";
+} from "./proof.js";
 
 export type {
   Transport,
   TransportConfig,
-} from "./transports";
+} from "./transports.js";
 
 export type {
   ChainId,
   Chain,
-} from "./chain";
+} from "./chain.js";
 
 export type {
   User,
@@ -74,13 +74,13 @@ export type {
   AccountParams,
   AccountMultiConfig,
   AccountSingleConfig,
-} from "./account";
+} from "./account.js";
 
 export type {
   Key,
   KeyHash,
   KeyAlgoType,
-} from "./key";
+} from "./key.js";
 
 export type {
   EventMap,
@@ -88,12 +88,12 @@ export type {
   EventFn,
   EventData,
   Emitter,
-} from "./emitter";
+} from "./emitter.js";
 
 export type {
   Code,
   CodeStatus,
-} from "./code";
+} from "./code.js";
 
 export type {
   Coin,
@@ -107,20 +107,20 @@ export type {
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
-} from "./coin";
+} from "./coin.js";
 
 export type {
   ClientConfig,
   ClientExtend,
   Client,
-} from "./client";
+} from "./client.js";
 
 export type {
   Credential,
   Metadata,
   Eip712Credential,
   PasskeyCredential,
-} from "./credential";
+} from "./credential.js";
 
 export type {
   Connection,
@@ -131,13 +131,13 @@ export type {
   ConnectorParameter,
   ConnectorEventMap,
   CreateConnectorFn,
-} from "./connector";
+} from "./connector.js";
 
 export type {
   AbstractStorage,
   CreateStorageParameters,
   Storage,
-} from "./storage";
+} from "./storage.js";
 
 export type {
   State,
@@ -146,20 +146,20 @@ export type {
   CreateConfigParameters,
   ConfigParameter,
   ConnectionStatusType,
-} from "./config";
+} from "./config.js";
 
-export type { Address } from "./address";
+export type { Address } from "./address.js";
 
-export type { Signer } from "./signer";
+export type { Signer } from "./signer.js";
 
-export type { EIP1193Provider } from "./eip1193";
+export type { EIP1193Provider } from "./eip1193.js";
 
 export type {
   Signature,
   SignDoc,
   SignedDoc,
   EthPersonalMessage,
-} from "./signature";
+} from "./signature.js";
 
 export type {
   DomainType,
@@ -172,7 +172,7 @@ export type {
   EIP712Types,
   EIP712Domain,
   EIP712Message,
-} from "./typedData";
+} from "./typedData.js";
 
 export type {
   Json,
@@ -180,7 +180,7 @@ export type {
   Base64,
   Binary,
   JsonValue,
-} from "./encoding";
+} from "./encoding.js";
 
 export type {
   Prettify,
@@ -193,7 +193,7 @@ export type {
   StrictOmit,
   UnionStrictOmit,
   MaybePromise,
-} from "./utils";
+} from "./utils.js";
 
 export type {
   ProposalId,
@@ -201,13 +201,13 @@ export type {
   ProposalStatus,
   Power,
   Safe,
-} from "./safe";
+} from "./safe.js";
 
 export type {
   Duration,
   Timestamp,
   Language,
-} from "./common";
+} from "./common.js";
 
 export type {
   JsonRpcError,
@@ -223,21 +223,12 @@ export type {
   RequestFnParameters,
   RpcRequestOptions,
   DerivedRpcSchema,
-} from "./rpc";
+} from "./rpc.js";
 
 export type {
   HttpRequestParameters,
   HttpRpcClientOptions,
-} from "./http";
-
-export {
-  AbciQueryResponse,
-  RpcAbciQueryResponse,
-  RpcTxData,
-  RpcEventAttribute,
-  RpcEvent,
-  RpcBroadcastTxSyncResponse,
-} from "./abci";
+} from "./http.js";
 
 export {
   Block,
@@ -269,11 +260,11 @@ export {
   BlockVersion,
   TxEvent,
   QueryAbciResponse,
-} from "./cometbft";
+} from "./cometbft.js";
 
-export { AccountType } from "./account";
-export { KeyTag, KeyAlgo } from "./key";
-export { Vote } from "./safe";
+export { AccountType } from "./account.js";
+export { KeyTag, KeyAlgo } from "./key.js";
+export { Vote } from "./safe.js";
 
-export { ConnectorTypes, ConnectorIdType } from "./connector";
-export { ConnectionStatus } from "./config";
+export { ConnectorTypes, ConnectorIdType } from "./connector.js";
+export { ConnectionStatus } from "./config.js";

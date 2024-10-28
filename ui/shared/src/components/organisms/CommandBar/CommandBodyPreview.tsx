@@ -1,9 +1,9 @@
 "use client";
 
 import { useStorage } from "@leftcurve/react";
-import { AppletCard } from "~/components/molecules/AppletCard";
+import { AppletCard } from "../../";
 
-import type { AppletMetadata } from "~/types";
+import type { AppletMetadata } from "../../../types";
 
 interface Props {
   popularApplets: AppletMetadata[];

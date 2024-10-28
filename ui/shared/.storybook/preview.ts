@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react";
 
 import "../styles.css";
-import "../public/fonts/ABCDiatypeRounded/index.css";
+import "@dango/assets/fonts/ABCDiatypeRounded/index.css";
 
 const preview: Preview = {
   parameters: {

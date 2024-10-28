@@ -2,7 +2,7 @@
 
 import { useAccount } from "@leftcurve/react";
 import { useRef } from "react";
-import { Button, ConnectModal } from "~/components";
+import { Button, ConnectModal } from "../";
 import type { ModalRef } from "./Modal";
 
 export const ConnectButton: React.FC = () => {

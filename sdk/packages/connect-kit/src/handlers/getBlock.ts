@@ -5,9 +5,9 @@ import {
   type GetBlockParameters,
   type GetBlockReturnType,
   getBlock,
-} from "../actions/getBlock";
+} from "../actions/getBlock.js";
 
-import { type ScopeKeyParameter, filterQueryOptions } from "./query";
+import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
 import type { Config, ExactPartial, Prettify } from "@leftcurve/types";
 

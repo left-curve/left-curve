@@ -1,11 +1,9 @@
-import { twMerge } from "~/utils";
-
 import { useTab } from "@react-aria/tabs";
 import type { TabListState } from "@react-stately/tabs";
 import type { ItemProps, Node } from "@react-types/shared";
 
 import type { ReactNode } from "react";
-import { forwardRef, useDOMRef } from "~/utils/dom";
+import { forwardRef, twMerge, useDOMRef } from "../../../utils";
 
 interface Props<T extends object = object> extends Omit<ItemProps<T>, "children" | "title"> {
   /**

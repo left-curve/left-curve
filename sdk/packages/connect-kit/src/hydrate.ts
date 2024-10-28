@@ -1,5 +1,5 @@
 import { type Config, ConnectionStatus, type State } from "@leftcurve/types";
-import { reconnect } from "./actions";
+import { reconnect } from "./actions/index.js";
 
 type HydrateParameters = {
   initialState?: State;

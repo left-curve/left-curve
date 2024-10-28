@@ -2,11 +2,12 @@
   "name": "@leftcurve/crypto",
   "version": "0.1.0",
   "private": true,
-  "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
+  "type": "module",
   "files": [
     "build",
     "src",
@@ -22,8 +23,8 @@
     "lint:fix": "pnpm biome ci ./src",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {

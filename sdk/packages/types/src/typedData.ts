@@ -1,5 +1,5 @@
-import type { Address } from "./address";
-import type { Message } from "./tx";
+import type { Address } from "./address.js";
+import type { Message } from "./tx.js";
 
 // biome-ignore format: no formatting
 type MBytes =

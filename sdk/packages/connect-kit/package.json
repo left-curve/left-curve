@@ -9,15 +9,16 @@
     "lint:fix": "pnpm biome ci ./src",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
-  "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
+  "type": "module",
   "files": [
     "build",
     "src",
@@ -28,18 +29,18 @@
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
-      "import": "./build/index.mjs",
-      "default": "./build/index.js"
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
     },
     "./chains": {
       "types": "./build/chains.d.ts",
-      "import": "./build/chains.mjs",
-      "default": "./build/chains.js"
+      "import": "./build/chains.js",
+      "default": "./build/chains.cjs"
     },
     "./handlers": {
       "types": "./build/handlers/index.d.ts",
-      "import": "./build/handlers/index.mjs",
-      "default": "./build/handlers/index.js"
+      "import": "./build/handlers/index.js",
+      "default": "./build/handlers/index.cjs"
     }
   },
   "typesVersions": {

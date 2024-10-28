@@ -4,7 +4,7 @@ import { createKeyHash, createUserClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { KeyAlgo } from "@leftcurve/types";
 import { composeTypedData, getRootDomain, hashTypedData } from "@leftcurve/utils";
-import { createConnector } from "./createConnector";
+import { createConnector } from "./createConnector.js";
 
 import type {
   AccountTypes,

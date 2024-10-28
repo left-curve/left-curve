@@ -14,14 +14,14 @@ import {
   type Transport,
 } from "@leftcurve/types";
 
-import { createEmitter } from "./createEmitter";
-import { createStorage } from "./storages/createStorage";
+import { createEmitter } from "./createEmitter.js";
+import { createStorage } from "./storages/createStorage.js";
 
 import { createBaseClient } from "@leftcurve/sdk";
 import { uid } from "@leftcurve/utils";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
-import { version } from "../package.json";
+import pkgJson from "../package.json" with { type: "json" };
 
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]],
@@ -128,7 +128,7 @@ export function createConfig<
     };
   }
 
-  const currentVersion = Number.parseInt(version);
+  const currentVersion = Number.parseInt(pkgJson.version);
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",

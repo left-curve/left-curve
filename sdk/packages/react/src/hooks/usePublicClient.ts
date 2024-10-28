@@ -6,7 +6,7 @@ import {
 } from "@leftcurve/connect-kit";
 
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
-import { useConfig } from "./useConfig";
+import { useConfig } from "./useConfig.js";
 
 import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
 

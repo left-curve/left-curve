@@ -1,10 +1,10 @@
 "use client";
 
 import { Fragment, useRef, useState } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 import { useClickAway } from "react-use";
-import { BellIcon, Button, CloseIcon } from "~/components";
+import { BellIcon, Button, CloseIcon } from "../";
 import { NotificationCard } from "./NotificationCard";
 
 const mockNotifications = [

@@ -17,10 +17,10 @@ import {
   ConnectionStatus,
   type Prettify,
 } from "@leftcurve/types";
-import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query";
+import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 
-import { useConfig } from "./useConfig";
-import { type UseConnectorsReturnType, useConnectors } from "./useConnectors";
+import { useConfig } from "./useConfig.js";
+import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
 
 export type UseConnectParameters<config extends Config = Config, context = unknown> = Prettify<
   ConfigParameter<config> & {
@@ -44,7 +44,12 @@ export function useConnect<config extends Config = Config, context = unknown>(
   const config = useConfig(parameters);
 
   const mutationOptions = connectMutationOptions(config);
-  const { mutate, mutateAsync, ...result } = useMutation({
+  const { mutate, mutateAsync, ...result } = useMutation<
+    ConnectData,
+    ConnectErrorType,
+    ConnectVariables,
+    context
+  >({
     ...mutation,
     ...mutationOptions,
   });

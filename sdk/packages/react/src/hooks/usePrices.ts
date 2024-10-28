@@ -10,7 +10,7 @@ import type {
 } from "@leftcurve/types";
 import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@leftcurve/utils";
 import { useQuery } from "@tanstack/react-query";
-import { useConfig } from "./useConfig";
+import { useConfig } from "./useConfig.js";
 
 export type UsePricesParameters = {
   refetchInterval?: number;

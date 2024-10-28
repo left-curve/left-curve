@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 type Props = {
   address?: string;
