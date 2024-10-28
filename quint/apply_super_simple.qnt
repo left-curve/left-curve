@@ -25,7 +25,7 @@ module apply_super_simple {
     } else {
       tree
     }
-  pure def upackChild(child: Option[Child]) : Child = 
+  pure def unpackChild(child: Option[Child]) : Child = 
     pure val EMPTY_MAP = Map()
     match child {
       | Some(c) => { version: c.version, hash: c.hash }
