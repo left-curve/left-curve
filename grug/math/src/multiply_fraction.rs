@@ -65,7 +65,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio(*rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio(rhs.numerator(), Dec::<U>::denominator())
     }
 
     fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
@@ -73,7 +73,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_floor(*rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio_floor(rhs.numerator(), Dec::<U>::denominator())
     }
 
     fn checked_mul_dec_ceil(self, rhs: Dec<U>) -> MathResult<Self> {
@@ -81,7 +81,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_ceil(*rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio_ceil(rhs.numerator(), Dec::<U>::denominator())
     }
 
     fn checked_div_dec(self, rhs: Dec<U>) -> MathResult<Self> {
@@ -97,7 +97,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio(Dec::<U>::denominator(), *rhs.numerator())
+        self.checked_multiply_ratio(Dec::<U>::denominator(), rhs.numerator())
     }
 
     fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
@@ -109,7 +109,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_floor(Dec::<U>::denominator(), *rhs.numerator())
+        self.checked_multiply_ratio_floor(Dec::<U>::denominator(), rhs.numerator())
     }
 
     fn checked_div_dec_ceil(self, rhs: Dec<U>) -> MathResult<Self> {
@@ -121,7 +121,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_ceil(Dec::<U>::denominator(), *rhs.numerator())
+        self.checked_multiply_ratio_ceil(Dec::<U>::denominator(), rhs.numerator())
     }
 }
 

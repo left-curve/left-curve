@@ -4,7 +4,7 @@ use {
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
-    grug_math::{Bytable, Dec, Inner, Int},
+    grug_math::{Bytable, Dec, Fraction, Inner, Int},
     grug_types::{
         nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part, StdError,
         StdResult,
@@ -413,6 +413,7 @@ where
 impl<T> PrimaryKey for Dec<T>
 where
     Int<T>: PrimaryKey<Output = Int<T>>,
+    Dec<T>: Fraction<T>,
 {
     type Output = Self;
     type Prefix = ();
@@ -421,7 +422,11 @@ where
     const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        self.numerator().raw_keys()
+        self.numerator()
+            .raw_keys()
+            .into_iter()
+            .map(|cow| Cow::Owned(cow.into_owned()))
+            .collect()
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
