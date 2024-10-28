@@ -17,15 +17,6 @@ module utils {
     }
   }
 
-  pure def getOnlyElement(s: Set[a]): a = {
-    pure val hack = s.map(e => ("value", e)).setToMap()
-    if (s.size() != 1) {
-      hack.get("error: expected singleton")
-    } else {
-      hack.get("value")
-    }
-  }
-
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
