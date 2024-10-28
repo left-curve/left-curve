@@ -8,14 +8,14 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@dango/shared": "workspace:^",
     "@dango/assets": "workspace:^",
+    "@dango/shared": "workspace:^",
     "@leftcurve/connect-kit": "workspace:^",
-    "@leftcurve/react": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
     "@leftcurve/crypto": "workspace:^",
     "@leftcurve/encoding": "workspace:^",
+    "@leftcurve/react": "workspace:^",
+    "@leftcurve/sdk": "workspace:^",
+    "@leftcurve/utils": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "framer-motion": "catalog:",
     "react": "catalog:",
@@ -36,7 +36,6 @@
     "postcss": "catalog:",
     "react-refresh": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:",
-    "wait-on": "^8.0.1"
+    "typescript": "catalog:"
   }
 }
