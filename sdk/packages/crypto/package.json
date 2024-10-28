@@ -22,9 +22,9 @@
     "lint:fix": "pnpm biome ci ./src",
     "test": "pnpm vitest run",
     "test:watch": "pnpm vitest",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
-    "build": "pnpm tsup --clean"
+    "pre-dev": "NODE_ENV=development pnpm tsup --clean",
+    "dev": "NODE_ENV=development pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "build": "NODE_ENV=production pnpm tsup --clean"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",

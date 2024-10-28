@@ -41,6 +41,7 @@
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@biomejs/biome": "^1.8.3",
     "tsup": "^8.3.0",
     "turbo": "^2.0.11",

@@ -26,7 +26,6 @@
     "!tsup.config.ts"
   ],
   "exports": {
-    "./fonts/*": "./build/fonts/*",
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.mjs",

@@ -7,9 +7,9 @@
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
-    "build": "pnpm tsup --clean"
+    "pre-dev": "NODE_ENV=development pnpm tsup --clean",
+    "dev": "NODE_ENV=development pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "build": "NODE_ENV=production pnpm tsup --clean"
   },
   "main": "./build/index.js",
   "module": "./build/index.mjs",
@@ -38,7 +38,6 @@
     "@leftcurve/config": "workspace:^",
     "@leftcurve/types": "workspace:^",
     "@tanstack/react-query": "catalog:",
-    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@types/use-sync-external-store": "^0.0.6",
