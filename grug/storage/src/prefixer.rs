@@ -1,8 +1,7 @@
 use {
     crate::PrimaryKey,
     grug_math::{
-        Bytable, Dec, Fraction, Int, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512,
-        Uint64,
+        Bytable, Dec, Fraction, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
     },
     grug_types::{nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part},
     std::{borrow::Cow, str, vec},
@@ -112,10 +111,10 @@ where
     }
 }
 
-impl<T> Prefixer for Dec<T>
+impl<U> Prefixer for Dec<U>
 where
-    Int<T>: PrimaryKey<Output = Int<T>>,
-    Dec<T>: Fraction<T>,
+    U: PrimaryKey<Output = U>,
+    Dec<U>: Fraction<U>,
 {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         self.raw_keys()

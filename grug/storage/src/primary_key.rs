@@ -410,10 +410,10 @@ where
     }
 }
 
-impl<T> PrimaryKey for Dec<T>
+impl<U> PrimaryKey for Dec<U>
 where
-    Int<T>: PrimaryKey<Output = Int<T>>,
-    Dec<T>: Fraction<T>,
+    Dec<U>: Fraction<U>,
+    U: PrimaryKey<Output = U>,
 {
     type Output = Self;
     type Prefix = ();
@@ -422,22 +422,18 @@ where
     const KEY_ELEMS: u8 = 1;
 
     fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        self.numerator()
-            .raw_keys()
-            .into_iter()
-            .map(|cow| Cow::Owned(cow.into_owned()))
-            .collect()
+        self.inner().raw_keys()
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let numerator = Int::<T>::from_slice(bytes)?;
-        Ok(Self::raw(numerator))
+        let numerator = U::from_slice(bytes)?;
+        Ok(Self::raw(Int::new(numerator)))
     }
 }
 
 impl<U> PrimaryKey for Int<U>
 where
-    U: PrimaryKey<Output = U> + Copy,
+    U: PrimaryKey<Output = U>,
 {
     type Output = Self;
     type Prefix = ();
