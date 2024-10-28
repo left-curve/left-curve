@@ -1,5 +1,5 @@
 use {
-    dango_types::vaa::{InstantiateMsg, QueryMsg},
+    dango_types::oracle::{InstantiateMsg, QueryMsg},
     grug::{ImmutableCtx, Json, MutableCtx, Response, StdResult},
 };
 

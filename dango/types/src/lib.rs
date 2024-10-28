@@ -5,6 +5,6 @@ pub mod auth;
 pub mod bank;
 pub mod config;
 pub mod mock_ibc_transfer;
+pub mod oracle;
 pub mod taxman;
 pub mod token_factory;
-pub mod vaa;

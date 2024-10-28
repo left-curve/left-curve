@@ -1229,6 +1229,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-oracle"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -4623,15 +4632,6 @@ name = "uuid"
 version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81dfa00651efa65069b0b6b651f4aaa31ba9e3c3ce0137aaad053604ee7e0314"
-
-[[package]]
-name = "vaa"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
-]
 
 [[package]]
 name = "valuable"
