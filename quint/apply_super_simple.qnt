@@ -32,8 +32,8 @@ module apply_super_simple {
       | None => { version: -1, hash: EMPTY_MAP }
     }
   pure def unpackInternalNode(internal: InternalNode) : { left: Child, right: Child } =
-    { left: internal.left_child.upackChild(), 
-      right: internal.right_child.upackChild() }
+    { left: internal.left_child.unpackChild(), 
+      right: internal.right_child.unpackChild() }
 
   pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = {
     pure val unpackedNew = internal.unpackInternalNode()
