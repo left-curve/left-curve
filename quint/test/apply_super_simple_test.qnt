@@ -1,4 +1,6 @@
-module apply_super_simple_test{
+// -*- mode: Bluespec; -*-
+
+module apply_super_simple_test {
   import basicSpells.* from "../spells/basicSpells"
   import tree.* from "../tree"
   import node.* from "../node"
