@@ -18,6 +18,9 @@ pub enum AppError {
     #[error("DB error: {0}")]
     Db(String),
 
+    #[error("proposal preparer error: {0}")]
+    PrepareProposal(String),
+
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {
         address: Addr,

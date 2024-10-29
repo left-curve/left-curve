@@ -1,5 +1,5 @@
 use {
-    crate::{App, AppError, Db, NaiveProposalPreparer, NoOpQuerier, ProposalPreparer, Vm},
+    crate::{App, AppError, Db, NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, QuerierWrapper,
@@ -92,7 +92,7 @@ where
                 );
 
                 NaiveProposalPreparer
-                    .prepare_proposal(QuerierWrapper::new(&NoOpQuerier), req.txs, max_tx_bytes)
+                    .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), req.txs, max_tx_bytes)
                     .unwrap()
             });
 

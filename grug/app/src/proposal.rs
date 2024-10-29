@@ -1,8 +1,11 @@
 use {
-    crate::ProposalPreparer,
+    crate::{AppError, ProposalPreparer},
     grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdResult},
     prost::bytes::Bytes,
-    std::convert::Infallible,
+    std::{
+        convert::Infallible,
+        fmt::{self, Display},
+    },
     tracing::info,
 };
 
@@ -15,7 +18,7 @@ use {
 pub struct NaiveProposalPreparer;
 
 impl ProposalPreparer for NaiveProposalPreparer {
-    type Error = Infallible;
+    type Error = NaiveError;
 
     fn prepare_proposal(
         &self,
@@ -43,12 +46,29 @@ impl ProposalPreparer for NaiveProposalPreparer {
     }
 }
 
+/// A placeholder error type that is never constructed.
+/// Used in conjunction with [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
+#[derive(Debug, Clone, Copy)]
+pub struct NaiveError(Infallible);
+
+impl Display for NaiveError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<NaiveError> for AppError {
+    fn from(err: NaiveError) -> Self {
+        AppError::PrepareProposal(err.to_string())
+    }
+}
+
 /// A querier that doesn't actually perform any query.
 /// Used in conjunction with [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
 #[derive(Debug, Clone, Copy)]
-pub struct NoOpQuerier;
+pub struct NaiveQuerier;
 
-impl Querier for NoOpQuerier {
+impl Querier for NaiveQuerier {
     fn query_chain(&self, _req: Query) -> StdResult<QueryResponse> {
         unreachable!("attempting to query a no-op querier");
     }
