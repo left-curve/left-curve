@@ -38,4 +38,8 @@ module utils {
   pure def take(s: Set[a], n: int): Set[a] = {
     s.fold(Set(), (acc, x) => if (acc.size() < n) acc.union(Set(x)) else acc)
   }
+
+  pure def mapToTuples(m: a -> b): Set[(a, b)] = {
+    m.keys().map(k => (k, m.get(k)))
+  }
 }
