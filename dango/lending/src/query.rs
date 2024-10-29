@@ -55,7 +55,7 @@ pub fn query_debts(
     storage: &dyn Storage,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> StdResult<Vec<(Addr, Coins)>> {
+) -> StdResult<BTreeMap<Addr, Coins>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
