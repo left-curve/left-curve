@@ -1,15 +1,15 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::{anyhow, ensure, Ok},
+    anyhow::{anyhow, bail, ensure, Ok},
     dango_account_factory::ACCOUNTS,
     dango_types::{
         account_factory::Account,
         bank,
         config::ACCOUNT_FACTORY_KEY,
-        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE},
+        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
     },
-    grug::{Addr, BorshDeExt, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
-    std::{collections::BTreeMap, str::FromStr},
+    grug::{Addr, BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -49,23 +49,26 @@ fn update_markets(
 }
 
 pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // For each deposited denom, ensure it's whitelisted and mint LP tokens.
     let cfg = ctx.querier.query_config()?;
+
     let mut msgs = vec![];
+
     for coin in ctx.funds {
         ensure!(MARKETS.has(ctx.storage, &coin.denom), "Invalid denom");
 
-        let mut parts = vec![Part::from_str(NAMESPACE)?, Part::from_str("lp")?];
-        parts.extend_from_slice(coin.denom.inner());
+        let denom = coin.denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?;
 
-        let lp_denom = Denom::from_parts(parts)?;
+        // TODO:
+        // 1. compute LP token mint amount
+        // 2. update `Market`
+        let amount = coin.amount;
 
         msgs.push(Message::execute(
             cfg.bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom: lp_denom,
-                amount: coin.amount,
+                denom,
+                amount,
             },
             Coins::new(),
         )?);
@@ -75,30 +78,20 @@ pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Ensure there are funds to withdraw
-    ensure!(!ctx.funds.is_empty(), "No funds to withdraw");
-
     let cfg = ctx.querier.query_config()?;
+
     let mut msgs = vec![];
     let mut withdrawn = Coins::new();
-    for coin in ctx.funds.into_iter() {
-        // Ensure only LP tokens are sent
-        let mut iter = coin.denom.inner().iter();
 
-        ensure!(
-            iter.next().map(|part| part.as_ref()) == Some(NAMESPACE),
-            "namespace:{NAMESPACE} not found"
-        );
+    for coin in ctx.funds {
+        let Some(underlying_denom) = coin.denom.strip(&[&NAMESPACE, &SUBNAMESPACE]) else {
+            bail!("not a lending pool token: {}", coin.denom)
+        };
 
-        ensure!(
-            iter.next().map(|part| part.as_ref()) == Some("lp"),
-            "namespace: lp not found"
-        );
-
-        // Add msg to send the underlying tokens to the recipient
-        let underlying_denom = Denom::from_parts(iter.cloned().collect::<Vec<_>>())?;
-        let amount = coin.amount;
-        withdrawn.insert(Coin::new(underlying_denom, amount)?)?;
+        // TODO:
+        // 1. compute withdraw amount
+        // 2. update `Market`
+        let underlying_amount = coin.amount;
 
         // Burn the LP tokens
         msgs.push(Message::execute(
@@ -106,16 +99,17 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
                 denom: coin.denom,
-                amount,
+                amount: coin.amount,
             },
             Coins::new(),
         )?);
+
+        withdrawn.insert(Coin::new(underlying_denom, underlying_amount)?)?;
     }
 
-    // Transfer the underlying tokens to the recipient
-    msgs.push(Message::transfer(ctx.sender, withdrawn)?);
-
-    Ok(Response::new().add_messages(msgs))
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
 pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
@@ -145,9 +139,11 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     }
 
     // Update the sender's liabilities
-    DEBTS.may_update(ctx.storage, ctx.sender, |debts| {
-        let mut debts = debts.unwrap_or_default();
+    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
+        let mut debts = maybe_debts.unwrap_or_default();
+
         debts.insert_many(coins.clone())?;
+
         Ok(debts)
     })?;
 

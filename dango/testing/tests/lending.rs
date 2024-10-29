@@ -5,13 +5,13 @@ use {
         account_factory::AccountParams,
         lending::{
             self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
-            NAMESPACE,
+            NAMESPACE, SUBNAMESPACE,
         },
         token_factory,
     },
     grug::{
-        btree_map, Addressable, Coin, Coins, Denom, HashExt, Inner, Message, MsgTransfer,
-        NumberConst, Part, ResultExt, Uint128,
+        btree_map, Addressable, Coin, Coins, Denom, HashExt, Message, MsgTransfer, NumberConst,
+        ResultExt, Uint128,
     },
     grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
@@ -83,6 +83,8 @@ fn update_markets_works() {
 fn deposit_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
+    let lp_denom = USDC.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
+
     let balance_before = suite
         .query_balance(&accounts.relayer, USDC.clone())
         .unwrap();
@@ -102,8 +104,6 @@ fn deposit_works() {
         .should_succeed_and_equal(balance_before - Uint128::new(123));
 
     // Ensure LP token was minted to recipient.
-    let lp_denom =
-        Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()]).unwrap();
     suite
         .query_balance(&accounts.relayer, lp_denom)
         .should_succeed_and_equal(Uint128::new(123));
@@ -112,6 +112,8 @@ fn deposit_works() {
 #[test]
 fn withdraw_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    let lp_denom = USDC.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
 
     // First deposit
     suite
@@ -122,8 +124,7 @@ fn withdraw_works() {
             Coins::one(USDC.clone(), 123).unwrap(),
         )
         .should_succeed();
-    let lp_denom =
-        Denom::from_parts([NAMESPACE.to_string(), "lp".to_string(), USDC.to_string()]).unwrap();
+
     suite
         .query_balance(&accounts.relayer.address(), lp_denom.clone())
         .should_succeed_and_equal(Uint128::new(123));
@@ -226,6 +227,7 @@ fn borrowing_works() {
             account: margin_account.address(),
         })
         .should_succeed_and_equal(Coins::one(USDC.clone(), 100).unwrap());
+
     suite
         .query_wasm_smart(contracts.lending, QueryDebtsRequest {
             limit: None,
@@ -296,11 +298,7 @@ fn composite_denom() {
         )
         .should_succeed();
 
-    let mut parts = denom.clone().into_inner();
-    parts.insert(0, Part::from_str(lending::NAMESPACE).unwrap());
-    parts.insert(1, Part::from_str("lp").unwrap());
-
-    let lp_token = Denom::from_parts(parts).unwrap();
+    let lp_token = denom.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
 
     // check if lp_token is minted
     suite

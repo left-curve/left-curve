@@ -1,10 +1,14 @@
 use {
-    grug::{Addr, Coins, Denom},
-    std::collections::BTreeMap,
+    grug::{Addr, Coins, Denom, Part},
+    std::{collections::BTreeMap, sync::LazyLock},
 };
 
-/// The namespace that lending pool uses.
-pub const NAMESPACE: &str = "lending";
+/// The namespace that tokens associated with lending will be minted under.
+/// The lending contract must be granted admin power over this namespace.
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("lending"));
+
+/// Sub-namespace that liquidity share tokens will be minted under.
+pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("pool"));
 
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]

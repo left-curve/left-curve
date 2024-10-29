@@ -221,7 +221,7 @@ where
         Part::from_str(amm::NAMESPACE)? => amm,
         Part::from_str(token_factory::NAMESPACE)? => token_factory,
         Part::from_str(mock_ibc_transfer::NAMESPACE)? => ibc_transfer,
-        Part::from_str(lending::NAMESPACE)? => lending,
+        lending::NAMESPACE.clone() => lending,
     };
 
     // Instantiate the bank contract.
