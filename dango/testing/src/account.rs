@@ -53,7 +53,7 @@ impl TestAccount<Undefined<Addr>> {
             key_hash,
             sequence: 0,
             sk,
-            address: Undefined::default(),
+            address: Undefined::new(),
         }
     }
 
