@@ -22,7 +22,7 @@ pub struct Accounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug)]
-pub struct TestAccount<T: MaybeDefined<Inner = Addr> = Defined<Addr>> {
+pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub username: Username,
     pub key: Key,
     pub key_hash: Hash160,
@@ -53,7 +53,7 @@ impl TestAccount<Undefined<Addr>> {
             key_hash,
             sequence: 0,
             sk,
-            address: Undefined::default(),
+            address: Undefined::new(),
         }
     }
 
@@ -102,7 +102,7 @@ impl TestAccount<Undefined<Addr>> {
 
 impl<T> TestAccount<T>
 where
-    T: MaybeDefined<Inner = Addr>,
+    T: MaybeDefined<Addr>,
 {
     pub fn sign_transaction_with_sequence(
         &self,
