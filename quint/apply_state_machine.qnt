@@ -4,6 +4,7 @@ module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
+  export tree.*
   import node.* from "./node"
   import utils.* from "./utils"
 
@@ -255,6 +256,13 @@ module apply_state_machine {
         | Leaf(_) => true
     })
 
+  def orphansInNoTreeInv: bool =
+    tree.orphans.forall(o =>
+      val nodeId = { version: o.version, key_hash: o.key_hash}
+      o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
+        not(tree.treeAtVersion(ver).keys().contains(nodeId))))
+
+
   val allInvariants = all {
     everyNodesParentIsInTheTreeInv,
     nodeAtCommonPrefixInv,
@@ -263,5 +271,19 @@ module apply_state_machine {
     allInternalNodesHaveChildrenInv,
     densityInv,
     versionInv,
+    orphansInNoTreeInv,
   }
+}
+
+
+module pruning_state_machine {
+  import apply_state_machine.*
+
+
+  var unpruned_tree: Tree
+
+// just an idea to investigate pruning separatey agains an unpruned version of the tree
+
+
+
 }
