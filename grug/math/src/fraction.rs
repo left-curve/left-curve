@@ -85,7 +85,7 @@ mod tests {
         method = |_0d: Dec<_>, passing| {
             for (base, numerator) in passing {
                 dt(_0d, base);
-                assert_eq!(*base.numerator(), numerator);
+                assert_eq!(base.numerator(), numerator);
             }
         }
     );

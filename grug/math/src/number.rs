@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec, FixedPoint, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio, NextNumber,
-        NumberConst, PrevNumber, Sign,
+        Dec, FixedPoint, Fraction, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio,
+        NextNumber, NumberConst, PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
     std::fmt::Display,
@@ -145,7 +145,7 @@ where
     fn checked_mul(self, other: Self) -> MathResult<Self> {
         (|| {
             self.0
-                .checked_full_mul(*other.numerator())?
+                .checked_full_mul(other.numerator())?
                 .checked_div(Self::PRECISION.into_next())?
                 .checked_into_prev()
                 .map(Self)
@@ -154,7 +154,7 @@ where
     }
 
     fn checked_div(self, other: Self) -> MathResult<Self> {
-        Dec::checked_from_ratio(*self.numerator(), *other.numerator())
+        Dec::checked_from_ratio(self.numerator(), other.numerator())
     }
 
     fn checked_rem(self, other: Self) -> MathResult<Self> {
