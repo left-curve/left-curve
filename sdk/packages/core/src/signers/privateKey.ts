@@ -63,8 +63,8 @@ export class PrivateKeySigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc) {
-    const { messages, chainId, sequence } = signDoc;
-    const tx = sha256(serialize({ messages, chainId, sequence }));
+    const { messages, chainId, sequence, sender } = signDoc;
+    const tx = sha256(serialize({ sender, messages, chainId, sequence }));
 
     const signature = await this.signBytes(tx);
 
