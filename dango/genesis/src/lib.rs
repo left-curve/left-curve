@@ -5,12 +5,14 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
-        mock_ibc_transfer, taxman, token_factory,
+        mock_ibc_transfer,
+        oracle::{self, GuardianSetInfo},
+        taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions,
-        StdResult, Udec128, Uint128, GENESIS_SENDER,
+        Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, NonZero, Part, Permission,
+        Permissions, StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
@@ -20,11 +22,36 @@ pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
 
 pub type Addresses = BTreeMap<Username, Addr>;
 
+const GUARDIANS_ADDRESSES: [&str; 19] = [
+    "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
+    "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
+    "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
+    "EHoAhrMtegl3kmogUTHYcx05y+s=",
+    "jIKy/YL67ScR1Zrw8kmdFucm9rI=",
+    "EbOXVsBCRBvm2GULabVOvnFeI0M=",
+    "VM5bTTSPt0uVjolm4uw9vUlYp80=",
+    "FefK8HxOPcjnxGn5LIzYj7gAWiA=",
+    "dKO/kTlT1pUmDYi8GqJaTu42PvA=",
+    "AArAB2cns1++otrCj+5cyw/qdo4=",
+    "r0XO0Ta52eJJA0ZK6In1yKcj/BQ=",
+    "+TEkt8c4hDy7iehkyGLDjN3Mz5U=",
+    "0sw3pNwDao0jK0j2LN1HMUEvSJA=",
+    "2nmPaJajMx9ktIwS0dV/2cvnCBE=",
+    "caob4dNsr+OGeRD5nAnjR4mcGcM=",
+    "gZK25zh8zXaCd8F9qxt6UCfAs88=",
+    "F44hrS53rgZxFUnPux+cep2Alug=",
+    "XhSH81UV0CqSdTUEqNdUcbn0nts=",
+    "b768iY9APkdz6V/rFegMmpnINI0=",
+];
+
+const GUARDIAN_INDEX: u32 = 4;
+
 #[grug::derive(Serde)]
 pub struct Contracts {
     pub account_factory: Addr,
     pub amm: Addr,
     pub bank: Addr,
+    pub oracle: Addr,
     pub ibc_transfer: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
@@ -37,6 +64,7 @@ pub struct Codes<T> {
     pub account_safe: T,
     pub amm: T,
     pub bank: T,
+    pub oracle: T,
     pub ibc_transfer: T,
     pub taxman: T,
     pub token_factory: T,
@@ -54,6 +82,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
+    let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
@@ -64,6 +93,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_safe,
         amm,
         bank,
+        oracle,
         ibc_transfer,
         taxman,
         token_factory,
@@ -94,6 +124,7 @@ where
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
@@ -225,10 +256,29 @@ where
         "dango/taxman",
     )?;
 
+    // Instantiate the oracle contract.
+    let oracle = instantiate(
+        &mut msgs,
+        oracle_code_hash,
+        &oracle::InstantiateMsg {
+            guardian_set: btree_map!(
+                GUARDIAN_INDEX => GuardianSetInfo {
+                        expiration_time: 0,
+                        addresses: GUARDIANS_ADDRESSES.into_iter().map(|addr| {
+                            Hash160::from_inner(Binary::from_str(addr)
+                            .unwrap().into_inner().try_into().unwrap())
+                        }).collect() }
+            ),
+        },
+        "dango/oracle",
+        "dango/oracle",
+    )?;
+
     let contracts = Contracts {
         account_factory,
         amm,
         bank,
+        oracle,
         ibc_transfer,
         taxman,
         token_factory,

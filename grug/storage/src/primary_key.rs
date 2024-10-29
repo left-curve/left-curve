@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
-        nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part, StdError,
-        StdResult,
+        nested_namespaces_with_key, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Part,
+        StdError, StdResult,
     },
     std::{borrow::Cow, mem, str, vec},
 };
@@ -194,8 +194,11 @@ impl PrimaryKey for String {
     }
 }
 
-impl PrimaryKey for Addr {
-    type Output = Addr;
+impl<const S: usize, E> PrimaryKey for EncodedBytes<[u8; S], E>
+where
+    E: Encoder,
+{
+    type Output = EncodedBytes<[u8; S], E>;
     type Prefix = ();
     type Suffix = ();
 
@@ -207,24 +210,7 @@ impl PrimaryKey for Addr {
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         let inner = bytes.try_into()?;
-        Ok(Addr::from_inner(inner))
-    }
-}
-
-impl<const N: usize> PrimaryKey for Hash<N> {
-    type Output = Hash<N>;
-    type Prefix = ();
-    type Suffix = ();
-
-    const KEY_ELEMS: u8 = 1;
-
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_ref())]
-    }
-
-    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let inner = bytes.try_into()?;
-        Ok(Hash::from_inner(inner))
+        Ok(EncodedBytes::<[u8; S], E>::from_inner(inner))
     }
 }
 

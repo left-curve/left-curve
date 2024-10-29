@@ -1360,6 +1360,7 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
+ "pyth-sdk 0.8.0",
 ]
 
 [[package]]
@@ -1383,6 +1384,7 @@ dependencies = [
  "dango-bank",
  "dango-genesis",
  "dango-ibc-transfer",
+ "dango-oracle",
  "dango-taxman",
  "dango-token-factory",
  "dango-types",

@@ -17,6 +17,7 @@ dango-amm             = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
 dango-ibc-transfer    = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-token-factory   = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }

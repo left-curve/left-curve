@@ -1,10 +1,7 @@
 use {
     super::BytesAnalyzer,
     anyhow::{bail, ensure},
-    grug::{
-        Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, StdError,
-        StdResult, Storage,
-    },
+    grug::{Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, Storage},
     k256::{
         elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
         AffinePoint, EncodedPoint,
@@ -25,20 +22,20 @@ impl GuardianSetInfo {
     }
 }
 
-#[derive(Debug)]
+#[grug::derive(Serde)]
 pub struct GuardianSignature {
     pub id_recover: u8,
-    pub signature: ByteArray<{ VAA::SIGNATURE_LEN - 1 }>,
+    pub signature: ByteArray<{ WormholeVAA::SIGNATURE_LEN - 1 }>,
 }
 
 impl GuardianSignature {
-    pub fn new<T>(raw_bytes: T) -> StdResult<Self>
+    pub fn new<T>(raw_bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
     {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
-        let signature = bytes.next_bytes::<{ VAA::SIGNATURE_LEN - 1 }>()?;
+        let signature = bytes.next_bytes::<{ WormholeVAA::SIGNATURE_LEN - 1 }>()?;
         let id_recover = bytes.next_u8();
 
         Ok(GuardianSignature {
@@ -48,8 +45,8 @@ impl GuardianSignature {
     }
 }
 
-#[derive(Debug)]
-pub struct VAA {
+#[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
+pub struct WormholeVAA {
     pub version: u8,
     pub guardian_set_index: u32,
     pub hash: Hash256,
@@ -63,11 +60,11 @@ pub struct VAA {
     pub payload: Vec<u8>,
 }
 
-impl VAA {
+impl WormholeVAA {
     pub const HEADER_LEN: usize = 6;
     pub const SIGNATURE_LEN: usize = 65;
 
-    pub fn new<T>(raw_bytes: T) -> StdResult<Self>
+    pub fn new<T>(raw_bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
     {
@@ -80,10 +77,10 @@ impl VAA {
         let signatures = (0..len_signers)
             .map(|_| {
                 let index = bytes.next_u8();
-                let signature = bytes.next_bytes::<{ VAA::SIGNATURE_LEN }>()?;
+                let signature = bytes.next_bytes::<{ WormholeVAA::SIGNATURE_LEN }>()?;
                 Ok((index, GuardianSignature::new(signature)?))
             })
-            .collect::<StdResult<BTreeMap<u8, GuardianSignature>>>()?;
+            .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
 
         // We should use api functions but we are inside a trait, can't use it.
         // For now use the HashExt trait directly.
@@ -97,7 +94,7 @@ impl VAA {
         let sequence = bytes.next_u64()?;
         let consistency_level = bytes.next_u8();
 
-        Ok(VAA {
+        Ok(WormholeVAA {
             version,
             guardian_set_index,
             signatures,
@@ -124,8 +121,9 @@ impl VAA {
         let guardian_set = guardian_set.load(storage, self.guardian_set_index)?;
 
         ensure!(
-            guardian_set.expiration_time != 0
-                && guardian_set.expiration_time as u128 > block.timestamp.into_inner().into_inner(),
+            !(guardian_set.expiration_time != 0
+                && block.timestamp.into_inner().into_inner()
+                    > guardian_set.expiration_time as u128),
             "Guardian set expired"
         );
 
@@ -163,54 +161,50 @@ impl VAA {
     }
 }
 
-impl FromStr for VAA {
-    type Err = StdError;
+impl FromStr for WormholeVAA {
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::new(Binary::from_str(s)?.into_inner())
     }
 }
 
-impl<'de> Deserialize<'de> for VAA {
+impl<'de> Deserialize<'de> for WormholeVAA {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_str(VAAVisitor {})
+        deserializer.deserialize_str(WormholeVAAVisitor {})
     }
 }
 
-pub struct VAAVisitor;
+pub struct WormholeVAAVisitor;
 
-impl<'de> Visitor<'de> for VAAVisitor {
-    type Value = VAA;
+impl<'de> Visitor<'de> for WormholeVAAVisitor {
+    type Value = WormholeVAA;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str("vaa")
+        f.write_str("wormhole-vaa")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        VAA::from_str(v).map_err(E::custom)
+        WormholeVAA::from_str(v).map_err(E::custom)
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
-    use {
-        super::*,
-        crate::oracle::PythVaa,
-        grug::{Duration, MockApi, MockStorage},
-    };
+    use {super::*, grug::MockStorage};
 
-    const VAA: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn";
+    pub const VAA: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn";
 
-    const GUARDIAN_SETS: Map<u32, GuardianSetInfo> = Map::new("guardian_sets");
+    pub const GUARDIAN_SETS: Map<u32, GuardianSetInfo> = Map::new("guardian_sets");
 
-    const GUARDIANS_ADDRESSES: [&str; 19] = [
+    pub const GUARDIANS_ADDRESSES: [&str; 19] = [
         "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
         "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
         "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
@@ -232,9 +226,9 @@ mod tests {
         "b768iY9APkdz6V/rFegMmpnINI0=",
     ];
 
-    const GUARDIAN_SETS_INDEX: u32 = 4;
+    pub const GUARDIAN_SETS_INDEX: u32 = 4;
 
-    fn populate_guardian_set() -> MockStorage {
+    pub fn populate_guardian_set() -> MockStorage {
         let mut storage = MockStorage::new();
 
         let guardian_set = GuardianSetInfo {
@@ -279,48 +273,6 @@ mod tests {
     #[test]
     fn des_vaa() {
         let str = r#""UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn""#;
-        serde_json::from_str::<VAA>(str).unwrap();
-    }
-
-    #[tokio::test]
-    async fn fetch_vaa() {
-        let url = "https://hermes.pyth.network/api/latest_vaas";
-
-        let client = reqwest::Client::new();
-
-        let response = client
-            .get(url)
-            .query(&[
-                (
-                    "ids[]",
-                    "c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33",
-                ),
-                ("binary", "true"),
-            ])
-            .send()
-            .await
-            .unwrap();
-
-        let result = response.text().await.unwrap();
-        println!("{}", result);
-    }
-
-    #[test]
-    fn validate_vaa() {
-        let storage = &populate_guardian_set();
-        let api = &MockApi;
-
-        let block_info = BlockInfo {
-            timestamp: Duration::from_nanos(1),
-            height: 0,
-            hash: Hash256::from_inner([0; 32]),
-        };
-
-        let pyth_vaa = PythVaa::from_str(VAA).unwrap();
-
-        pyth_vaa
-            .vaa
-            .verify(storage, api, block_info, GUARDIAN_SETS)
-            .unwrap();
+        serde_json::from_str::<WormholeVAA>(str).unwrap();
     }
 }

@@ -18,11 +18,11 @@ serde      = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror  = { workspace = true }
 
-byteorder                  = "1"
-k256                       = { workspace = true}
-pyth-sdk                   = "0.8.0"
-pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-crosschain" }
-pythnet-sdk                = "2"
+byteorder     = { workspace = true}
+k256          = { workspace = true}
+pyth-sdk      = { workspace = true}
+pyth-wormhole = { workspace = true}
+pythnet-sdk   = { workspace = true}
 [dev-dependencies]
 reqwest = "0.12.9"
 tokio   = { workspace = true }

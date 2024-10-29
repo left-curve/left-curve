@@ -28,6 +28,7 @@ bnum               = { git = "https://github.com/left-curve/bnum", rev = "2d3a7c
 # TODO: switch to official release once our PR is merged and released.
 # https://github.com/near/borsh-rs/pull/312
 borsh              = { git = "https://github.com/left-curve/borsh-rs", rev = "21df6d0", features = ["json"] }
+byteorder          = "1"
 chrono             = "0.4"
 clap               = "4"
 clru               = "0.6"
@@ -51,6 +52,9 @@ p256               = "0.13"
 proc-macro2        = "1"
 proptest           = "1"
 prost              = "0.13"
+pyth-sdk           = "0.8.0"
+pyth-wormhole      = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-wormhole-attester-sdk"}
+pythnet-sdk        = "2"
 quote              = "1"
 rand               = "0.8"
 ripemd             = "0.1"
@@ -110,6 +114,7 @@ dango-amm             = { path = "dango/amm" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
 dango-genesis         = { path = "dango/genesis" }
+dango-oracle          = { path = "dango/oracle" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }

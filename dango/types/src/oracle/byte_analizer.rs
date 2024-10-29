@@ -1,6 +1,4 @@
-use std::ops::Deref;
-
-use grug::{StdError, StdResult};
+use {anyhow::bail, std::ops::Deref};
 
 pub struct BytesAnalyzer {
     bytes: Vec<u8>,
@@ -10,13 +8,13 @@ pub struct BytesAnalyzer {
 macro_rules! impl_bytes {
     ($($n:ty => $size:expr),+ ) => {
         paste::paste! {
-            $(pub fn [<next_ $n>](&mut self) -> StdResult<$n> {
+            $(pub fn [<next_ $n>](&mut self) -> anyhow::Result<$n> {
                 if self.index + $size <= self.bytes.len() {
                     let bytes = &self.bytes[self.index..self.index + $size];
                     self.index += $size;
                     Ok(<$n>::from_be_bytes(bytes.try_into()?))
                 } else {
-                    Err(StdError::host("Not enough bytes".to_string()))
+                    bail!("Not enough bytes")
                 }
             })*
         }
@@ -35,14 +33,14 @@ impl BytesAnalyzer {
         self.bytes[self.index - 1]
     }
 
-    pub fn next_bytes<const S: usize>(&mut self) -> StdResult<[u8; S]> {
+    pub fn next_bytes<const S: usize>(&mut self) -> anyhow::Result<[u8; S]> {
         if self.index + S <= self.bytes.len() {
             let mut bytes: [u8; S] = [0; S];
             bytes.copy_from_slice(&self.bytes[self.index..self.index + S]);
             self.index += S;
             Ok(bytes)
         } else {
-            Err(StdError::host("Not enough bytes".to_string()))
+            bail!("Not enough bytes")
         }
     }
 
