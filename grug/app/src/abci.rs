@@ -1,5 +1,5 @@
 use {
-    crate::{App, AppError, Db, Vm},
+    crate::{App, AppError, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, Timestamp,
@@ -11,18 +11,21 @@ use {
     tendermint_proto::{
         abci::{
             Event as TmEvent, EventAttribute as TmAttribute, ExecTxResult, RequestCheckTx,
-            RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestQuery, ResponseCheckTx,
-            ResponseCommit, ResponseFinalizeBlock, ResponseInfo, ResponseInitChain, ResponseQuery,
+            RequestFinalizeBlock, RequestInfo, RequestInitChain, RequestPrepareProposal,
+            RequestQuery, ResponseCheckTx, ResponseCommit, ResponseFinalizeBlock, ResponseInfo,
+            ResponseInitChain, ResponsePrepareProposal, ResponseQuery,
         },
         crypto::{ProofOp, ProofOps},
         google::protobuf::Timestamp as TmTimestamp,
     },
+    tracing::error,
 };
 
-impl<DB, VM> App<DB, VM>
+impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
+    PP: ProposalPreparer + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
@@ -33,10 +36,11 @@ where
     }
 }
 
-impl<DB, VM> Application for App<DB, VM>
+impl<DB, VM, PP> Application for App<DB, VM, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
+    PP: ProposalPreparer + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
@@ -72,6 +76,28 @@ where
             },
             Err(err) => panic!("failed to init chain: {err}"),
         }
+    }
+
+    fn prepare_proposal(&self, req: RequestPrepareProposal) -> ResponsePrepareProposal {
+        let max_tx_bytes = req.max_tx_bytes.try_into().unwrap_or(0);
+        let txs = self
+            .pp
+            .prepare_proposal(req.txs.clone(), max_tx_bytes)
+            .unwrap_or_else(|err| {
+                // For the sake of liveness, in case proposal preparation fails,
+                // we fall back to the naive strategy instead of panicking.
+                #[cfg(feature = "tracing")]
+                error!(
+                    err = err.to_string(),
+                    "Failed to prepare proposal! Falling back to naive preparer."
+                );
+
+                NaiveProposalPreparer
+                    .prepare_proposal(req.txs, max_tx_bytes)
+                    .unwrap()
+            });
+
+        ResponsePrepareProposal { txs }
     }
 
     fn finalize_block(&self, req: RequestFinalizeBlock) -> ResponseFinalizeBlock {

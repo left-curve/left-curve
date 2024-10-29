@@ -1,5 +1,7 @@
+use crate::NaiveProposalPreparer;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -22,9 +24,10 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM> {
+pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
+    pub pp: PP,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -40,17 +43,18 @@ pub struct App<DB, VM> {
     query_gas_limit: u64,
 }
 
-impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM, query_gas_limit: u64) -> Self {
+impl<DB, VM, PP> App<DB, VM, PP> {
+    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
+            pp,
             query_gas_limit,
         }
     }
 }
 
-impl<DB, VM> App<DB, VM>
+impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
@@ -462,7 +466,7 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM> App<DB, VM>
+impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,

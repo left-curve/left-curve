@@ -1,5 +1,5 @@
 use {
-    grug_app::{App, AppError, AppResult, Db, Vm},
+    grug_app::{App, AppError, AppResult, Db, NaiveProposalPreparer, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -190,7 +190,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, u64::MAX);
+        let app = App::new(db, vm, NaiveProposalPreparer, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

@@ -3,6 +3,7 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Context, Hash256, Storage},
     ics23::CommitmentProof,
+    prost::bytes::Bytes,
 };
 
 // ------------------------------------ db -------------------------------------
@@ -183,4 +184,17 @@ pub trait Instance {
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;
+}
+
+// ----------------------------- proposal preparer -----------------------------
+
+/// Represents a worker that processes the ABCI++ `PrepareProposal` request.
+pub trait ProposalPreparer {
+    type Error: ToString;
+
+    fn prepare_proposal(
+        &self,
+        txs: Vec<Bytes>,
+        max_tx_bytes: usize,
+    ) -> Result<Vec<Bytes>, Self::Error>;
 }
