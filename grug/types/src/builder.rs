@@ -39,17 +39,27 @@ impl<T> Defined<T> {
 
 /// Represents a builder parameter that may or may not have been provided.
 pub trait MaybeDefined<T> {
-    fn maybe_inner(self) -> Option<T>;
+    fn maybe_inner(&self) -> Option<&T>;
+
+    fn maybe_into_inner(self) -> Option<T>;
 }
 
 impl<T> MaybeDefined<T> for Defined<T> {
-    fn maybe_inner(self) -> Option<T> {
+    fn maybe_inner(&self) -> Option<&T> {
+        Some(self.inner())
+    }
+
+    fn maybe_into_inner(self) -> Option<T> {
         Some(self.into_inner())
     }
 }
 
 impl<T> MaybeDefined<T> for Undefined<T> {
-    fn maybe_inner(self) -> Option<T> {
+    fn maybe_inner(&self) -> Option<&T> {
+        None
+    }
+
+    fn maybe_into_inner(self) -> Option<T> {
         None
     }
 }

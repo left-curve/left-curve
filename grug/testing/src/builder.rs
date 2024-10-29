@@ -331,7 +331,7 @@ where
         C: TryInto<Coins>,
         C::Error: Debug,
     {
-        let mut accounts = self.accounts.maybe_inner().unwrap_or_default();
+        let mut accounts = self.accounts.maybe_into_inner().unwrap_or_default();
         assert!(
             !accounts.contains_key(name),
             "account with name {name} already exists"
