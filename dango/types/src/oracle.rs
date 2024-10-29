@@ -1,5 +1,6 @@
+mod byte_analizer;
 mod msg;
 mod pyth;
 mod wormhole;
 
-pub use {msg::*, pyth::*, wormhole::*};
+pub use {byte_analizer::*, msg::*, pyth::*, wormhole::*};

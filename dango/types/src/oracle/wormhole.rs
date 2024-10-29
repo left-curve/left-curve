@@ -1,4 +1,5 @@
 use {
+    super::BytesAnalyzer,
     anyhow::{bail, ensure},
     grug::{
         Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, StdError,
@@ -11,6 +12,41 @@ use {
     serde::{de::Visitor, Deserialize},
     std::{collections::BTreeMap, ops::Deref, str::FromStr},
 };
+
+#[grug::derive(Serde, Borsh)]
+pub struct GuardianSetInfo {
+    pub addresses: Vec<Hash160>,
+    pub expiration_time: u32,
+}
+
+impl GuardianSetInfo {
+    pub fn quorum(&self) -> usize {
+        ((self.addresses.len() * 10 / 3) * 2) / 10 + 1
+    }
+}
+
+#[derive(Debug)]
+pub struct GuardianSignature {
+    pub id_recover: u8,
+    pub signature: ByteArray<{ VAA::SIGNATURE_LEN - 1 }>,
+}
+
+impl GuardianSignature {
+    pub fn new<T>(raw_bytes: T) -> StdResult<Self>
+    where
+        T: Into<Vec<u8>>,
+    {
+        let mut bytes = BytesAnalyzer::new(raw_bytes.into());
+
+        let signature = bytes.next_bytes::<{ VAA::SIGNATURE_LEN - 1 }>()?;
+        let id_recover = bytes.next_u8();
+
+        Ok(GuardianSignature {
+            id_recover,
+            signature: ByteArray::from_inner(signature),
+        })
+    }
+}
 
 #[derive(Debug)]
 pub struct VAA {
@@ -158,98 +194,6 @@ impl<'de> Visitor<'de> for VAAVisitor {
         E: serde::de::Error,
     {
         VAA::from_str(v).map_err(E::custom)
-    }
-}
-
-pub struct BytesAnalyzer {
-    bytes: Vec<u8>,
-    index: usize,
-}
-
-macro_rules! impl_bytes {
-    ($($n:ty => $size:expr),+ ) => {
-        paste::paste! {
-            $(pub fn [<next_ $n>](&mut self) -> StdResult<$n> {
-                if self.index + $size <= self.bytes.len() {
-                    let bytes = &self.bytes[self.index..self.index + $size];
-                    self.index += $size;
-                    Ok(<$n>::from_be_bytes(bytes.try_into()?))
-                } else {
-                    Err(StdError::host("Not enough bytes".to_string()))
-                }
-            })*
-        }
-    };
-}
-
-impl BytesAnalyzer {
-    impl_bytes!(u16 => 2, u32 => 4, u64 => 8);
-
-    pub fn new(bytes: Vec<u8>) -> Self {
-        Self { bytes, index: 0 }
-    }
-
-    pub fn next_u8(&mut self) -> u8 {
-        self.index += 1;
-        self.bytes[self.index - 1]
-    }
-
-    pub fn next_bytes<const S: usize>(&mut self) -> StdResult<[u8; S]> {
-        if self.index + S <= self.bytes.len() {
-            let mut bytes: [u8; S] = [0; S];
-            bytes.copy_from_slice(&self.bytes[self.index..self.index + S]);
-            self.index += S;
-            Ok(bytes)
-        } else {
-            Err(StdError::host("Not enough bytes".to_string()))
-        }
-    }
-
-    pub fn consume(mut self) -> Vec<u8> {
-        self.bytes.split_off(self.index)
-    }
-}
-
-impl Deref for BytesAnalyzer {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
-        &self.bytes[self.index..]
-    }
-}
-
-#[grug::derive(Serde, Borsh)]
-pub struct GuardianSetInfo {
-    pub addresses: Vec<Hash160>,
-    pub expiration_time: u32,
-}
-
-impl GuardianSetInfo {
-    pub fn quorum(&self) -> usize {
-        ((self.addresses.len() * 10 / 3) * 2) / 10 + 1
-    }
-}
-
-#[derive(Debug)]
-pub struct GuardianSignature {
-    pub id_recover: u8,
-    pub signature: ByteArray<{ VAA::SIGNATURE_LEN - 1 }>,
-}
-
-impl GuardianSignature {
-    pub fn new<T>(raw_bytes: T) -> StdResult<Self>
-    where
-        T: Into<Vec<u8>>,
-    {
-        let mut bytes = BytesAnalyzer::new(raw_bytes.into());
-
-        let signature = bytes.next_bytes::<{ VAA::SIGNATURE_LEN - 1 }>()?;
-        let id_recover = bytes.next_u8();
-
-        Ok(GuardianSignature {
-            id_recover,
-            signature: ByteArray::from_inner(signature),
-        })
     }
 }
 
