@@ -104,6 +104,7 @@ grug-vm-wasm      = { path = "grug/vm-wasm" }
 
 # Dango packages
 dango-account-factory = { path = "dango/account-factory" }
+dango-account-margin  = { path = "dango/account-margin" }
 dango-account-safe    = { path = "dango/account-safe" }
 dango-account-spot    = { path = "dango/account-spot" }
 dango-amm             = { path = "dango/amm" }
@@ -111,6 +112,7 @@ dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
+dango-lending         = { path = "dango/lending" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }

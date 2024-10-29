@@ -11,12 +11,14 @@ categories    = { workspace = true }
 
 [dependencies]
 dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
 dango-amm             = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
 dango-ibc-transfer    = { workspace = true, features = ["library"] }
+dango-lending         = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-token-factory   = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
