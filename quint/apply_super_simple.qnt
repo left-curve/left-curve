@@ -18,7 +18,23 @@ module apply_super_simple {
       }
     })
   }
-
+  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = 
+    oldTree.orphans
+        .union(updatedTree.treeAtVersion(old_version)
+              .keys()
+              .fold(Set(), (orphans, key) =>
+                    if(updatedTree.treeAtVersion(new_version)
+                        .keys()
+                        .contains(key))
+                      orphans
+                    else                       
+                      orphans.union(
+                      Set({ orphaned_since_version: new_version, 
+                          version: key.version, 
+                          key_hash: key.key_hash})
+                      )
+                    )
+                  )
   pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree =
     if (tree.nodes.has({ version: old_version, key_hash: ROOT_BITS })) {
       tree.mark_node_as_orphaned(new_version, old_version, ROOT_BITS)
@@ -83,7 +99,6 @@ module apply_super_simple {
     )
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode): Tree = {
-    val treeWithOrphanedRoot = orphanRootIfExists(tree, old_version, new_version)
     val treeForOldVersion = treeAtVersion(tree, old_version)
     pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
         match tree.nodes.get(k) {
@@ -140,10 +155,16 @@ module apply_super_simple {
       })
     })
     
-    val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node)).fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
+    val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
+                      .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
 
-    val updatedNodes = removeDuplicateEntries(nodes, new_version).updateChildVersions(new_version)
+    val updatedNodes = removeDuplicateEntries(nodes, new_version)
+                        .updateChildVersions(new_version)
     
-    { nodes: updatedNodes, orphans: treeWithOrphanedRoot.orphans }
+    val updatedTree = { nodes: updatedNodes, 
+                         orphans: Set() }    
+    val orphans = extractOrphansFromNewVersion(tree, updatedTree, old_version, new_version)
+      
+    { nodes: updatedNodes, orphans: orphans }
   }
 }
