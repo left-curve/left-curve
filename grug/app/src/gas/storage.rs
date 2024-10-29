@@ -1,28 +1,39 @@
 use {
-    crate::{GasTracker, GAS_COSTS},
+    crate::{Gas, GasTracker, GAS_COSTS},
     grug_storage::{Codec, IndexedMap, Item, Map, PrimaryKey},
-    grug_types::{Bound, Order, Record, StdResult, Storage},
+    grug_types::{Bound, MaybeDefined, Order, Record, StdResult, Storage},
 };
 
 // ---------------------------------- storage ----------------------------------
 
 pub trait MeteredStorage {
-    fn read_with_gas(&self, gas_tracker: GasTracker, key: &[u8]) -> StdResult<Option<Vec<u8>>>;
+    fn read_with_gas<L>(
+        &self,
+        gas_tracker: GasTracker<L>,
+        key: &[u8],
+    ) -> StdResult<Option<Vec<u8>>>
+    where
+        L: MaybeDefined<Gas>;
 
-    fn scan_with_gas<'a>(
+    fn scan_with_gas<'a, L>(
         &'a self,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>>;
+    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>>
+    where
+        L: MaybeDefined<Gas> + 'a;
 }
 
 impl<S> MeteredStorage for S
 where
     S: Storage,
 {
-    fn read_with_gas(&self, gas_tracker: GasTracker, key: &[u8]) -> StdResult<Option<Vec<u8>>> {
+    fn read_with_gas<L>(&self, gas_tracker: GasTracker<L>, key: &[u8]) -> StdResult<Option<Vec<u8>>>
+    where
+        L: MaybeDefined<Gas>,
+    {
         let maybe_data = self.read(key);
 
         match &maybe_data {
@@ -37,13 +48,16 @@ where
         Ok(maybe_data)
     }
 
-    fn scan_with_gas<'a>(
+    fn scan_with_gas<'a, L>(
         &'a self,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>> {
+    ) -> StdResult<Box<dyn Iterator<Item = StdResult<Record>> + 'a>>
+    where
+        L: MaybeDefined<Gas> + 'a,
+    {
         // Gas cost for creating an iterator.
         gas_tracker.consume(GAS_COSTS.db_scan, "db_scan")?;
 
@@ -54,14 +68,19 @@ where
 // ----------------------------------- item ------------------------------------
 
 pub trait MeteredItem<T> {
-    fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<T>;
+    fn load_with_gas<L>(&self, storage: &dyn Storage, gas_tracker: GasTracker<L>) -> StdResult<T>
+    where
+        L: MaybeDefined<Gas>;
 }
 
 impl<'a, T, C> MeteredItem<T> for Item<'a, T, C>
 where
     C: Codec<T>,
 {
-    fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<T> {
+    fn load_with_gas<L>(&self, storage: &dyn Storage, gas_tracker: GasTracker<L>) -> StdResult<T>
+    where
+        L: MaybeDefined<Gas>,
+    {
         let data_raw = self.load_raw(storage)?;
 
         gas_tracker.consume(GAS_COSTS.db_read.cost(data_raw.len()), "db_read/found")?;
@@ -76,34 +95,45 @@ pub trait MeteredMap<K, T>
 where
     K: PrimaryKey,
 {
-    fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker, key: K)
-        -> StdResult<T>;
-
-    fn has_with_gas(
+    fn load_with_gas<L>(
         &self,
         storage: &dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
-    ) -> StdResult<bool>;
+    ) -> StdResult<T>
+    where
+        L: MaybeDefined<Gas>;
 
-    fn range_with_gas<'b>(
+    fn has_with_gas<L>(
+        &self,
+        storage: &dyn Storage,
+        gas_tracker: GasTracker<L>,
+        key: K,
+    ) -> StdResult<bool>
+    where
+        L: MaybeDefined<Gas>;
+
+    fn range_with_gas<'b, L>(
         &self,
         storage: &'b dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
     ) -> StdResult<Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>>
     where
-        T: 'b;
+        T: 'b,
+        L: MaybeDefined<Gas> + 'b;
 
-    fn save_with_gas(
+    fn save_with_gas<L>(
         &self,
         storage: &mut dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
         value: &T,
-    ) -> StdResult<()>;
+    ) -> StdResult<()>
+    where
+        L: MaybeDefined<Gas>;
 }
 
 impl<'a, K, T, C> MeteredMap<K, T> for Map<'a, K, T, C>
@@ -111,12 +141,15 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    fn load_with_gas(
+    fn load_with_gas<L>(
         &self,
         storage: &dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
-    ) -> StdResult<T> {
+    ) -> StdResult<T>
+    where
+        L: MaybeDefined<Gas>,
+    {
         let data_raw = self.path(key).as_path().load_raw(storage)?;
 
         gas_tracker.consume(GAS_COSTS.db_read.cost(data_raw.len()), "db_read/found")?;
@@ -124,12 +157,15 @@ where
         C::decode(&data_raw)
     }
 
-    fn has_with_gas(
+    fn has_with_gas<L>(
         &self,
         storage: &dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
-    ) -> StdResult<bool> {
+    ) -> StdResult<bool>
+    where
+        L: MaybeDefined<Gas>,
+    {
         match self.path(key).as_path().may_load_raw(storage) {
             Some(data) => {
                 gas_tracker.consume(GAS_COSTS.db_read.cost(data.len()), "db_read/found")?;
@@ -142,16 +178,17 @@ where
         }
     }
 
-    fn range_with_gas<'b>(
+    fn range_with_gas<'b, L>(
         &self,
         storage: &'b dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
     ) -> StdResult<Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>>
     where
         T: 'b,
+        L: MaybeDefined<Gas> + 'b,
     {
         // Gas cost for creating an iterator.
         gas_tracker.consume(GAS_COSTS.db_scan, "db_scan")?;
@@ -169,13 +206,16 @@ where
         Ok(Box::new(iter))
     }
 
-    fn save_with_gas(
+    fn save_with_gas<L>(
         &self,
         storage: &mut dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
         value: &T,
-    ) -> StdResult<()> {
+    ) -> StdResult<()>
+    where
+        L: MaybeDefined<Gas>,
+    {
         let data_raw = C::encode(value)?;
         let path = self.path(key);
 
@@ -200,46 +240,56 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    fn load_with_gas(
+    fn load_with_gas<L>(
         &self,
         storage: &dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
-    ) -> StdResult<T> {
+    ) -> StdResult<T>
+    where
+        L: MaybeDefined<Gas>,
+    {
         self.primary.load_with_gas(storage, gas_tracker, key)
     }
 
-    fn has_with_gas(
+    fn has_with_gas<L>(
         &self,
         storage: &dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
-    ) -> StdResult<bool> {
+    ) -> StdResult<bool>
+    where
+        L: MaybeDefined<Gas>,
+    {
         self.primary.has_with_gas(storage, gas_tracker, key)
     }
 
-    fn range_with_gas<'b>(
+    fn range_with_gas<'b, L>(
         &self,
         storage: &'b dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
         order: Order,
     ) -> StdResult<Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b>>
     where
         T: 'b,
+        L: MaybeDefined<Gas> + 'b,
     {
         self.primary
             .range_with_gas(storage, gas_tracker, min, max, order)
     }
 
-    fn save_with_gas(
+    fn save_with_gas<L>(
         &self,
         storage: &mut dyn Storage,
-        gas_tracker: GasTracker,
+        gas_tracker: GasTracker<L>,
         key: K,
         value: &T,
-    ) -> StdResult<()> {
+    ) -> StdResult<()>
+    where
+        L: MaybeDefined<Gas>,
+    {
         // TODO: this implementation doesn't account for gas cost of writing to
         // the index set.
         self.primary.save_with_gas(storage, gas_tracker, key, value)
@@ -249,7 +299,10 @@ where
 // --------------------------------- iterator ----------------------------------
 
 pub trait MeteredIterator: Sized {
-    fn metered(self, gas_tracker: GasTracker) -> MeteredIter<Self> {
+    fn metered<L>(self, gas_tracker: GasTracker<L>) -> MeteredIter<Self, L>
+    where
+        L: MaybeDefined<Gas>,
+    {
         MeteredIter {
             iter: self,
             gas_tracker,
@@ -259,14 +312,18 @@ pub trait MeteredIterator: Sized {
 
 impl<I> MeteredIterator for I where I: Iterator<Item = Record> {}
 
-pub struct MeteredIter<I> {
+pub struct MeteredIter<I, L>
+where
+    L: MaybeDefined<Gas>,
+{
     iter: I,
-    gas_tracker: GasTracker,
+    gas_tracker: GasTracker<L>,
 }
 
-impl<I> Iterator for MeteredIter<I>
+impl<I, L> Iterator for MeteredIter<I, L>
 where
     I: Iterator<Item = Record>,
+    L: MaybeDefined<Gas>,
 {
     type Item = StdResult<I::Item>;
 

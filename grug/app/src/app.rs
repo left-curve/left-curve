@@ -1,6 +1,11 @@
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
 use {
+    crate::Gas,
+    grug_types::{Defined, MaybeDefined},
+};
+
+use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
@@ -821,17 +826,24 @@ pub(crate) fn schedule_cronjob(
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }
 
-fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcome {
+fn new_outcome<L>(gas_tracker: GasTracker<L>, result: AppResult<Vec<Event>>) -> Outcome
+where
+    L: MaybeDefined<Gas>,
+{
     Outcome {
-        gas_limit: gas_tracker.limit(),
+        gas_limit: gas_tracker.maybe_limit(),
         gas_used: gas_tracker.used(),
         result: result.into_generic_result(),
     }
 }
 
-fn new_tx_outcome(gas_tracker: GasTracker, events: Vec<Event>, result: AppResult<()>) -> TxOutcome {
+fn new_tx_outcome(
+    gas_tracker: GasTracker<Defined<Gas>>,
+    events: Vec<Event>,
+    result: AppResult<()>,
+) -> TxOutcome {
     TxOutcome {
-        gas_limit: gas_tracker.limit().unwrap(),
+        gas_limit: gas_tracker.limit(),
         gas_used: gas_tracker.used(),
         events,
         result: result.into_generic_result(),

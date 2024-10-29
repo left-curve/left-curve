@@ -1,7 +1,7 @@
 use {
-    crate::{GasTracker, QuerierProvider, StorageProvider},
+    crate::{Gas, GasTracker, QuerierProvider, StorageProvider},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Batch, Context, Hash256, Storage},
+    grug_types::{Batch, Context, Hash256, MaybeDefined, Storage},
     ics23::CommitmentProof,
 };
 
@@ -141,7 +141,7 @@ pub trait Vm: Sized {
     ///
     /// Need a mutable reference (`&mut self`) because the VM might uses some
     /// sort of caching to speed up instance building.
-    fn build_instance(
+    fn build_instance<L>(
         &mut self,
         code: &[u8],
         code_hash: Hash256,
@@ -149,8 +149,10 @@ pub trait Vm: Sized {
         state_mutable: bool,
         querier: QuerierProvider<Self>,
         query_depth: usize,
-        gas_tracker: GasTracker,
-    ) -> Result<Self::Instance, Self::Error>;
+        gas_tracker: GasTracker<L>,
+    ) -> Result<Self::Instance, Self::Error>
+    where
+        L: MaybeDefined<Gas>;
 }
 
 pub trait Instance {
