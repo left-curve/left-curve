@@ -2,6 +2,7 @@ import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
 import type { AnyCoin, Denom } from "./coin.js";
 import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector.js";
+import type { EIP6963ProviderDetail } from "./eip6963.js";
 import type { Storage } from "./storage.js";
 import type { Transport } from "./transports.js";
 
@@ -29,13 +30,11 @@ export type Config<
   >,
   coin extends AnyCoin = AnyCoin,
 > = {
-  readonly ssr: boolean;
   readonly chains: chains;
   readonly coins: Record<ChainId, Record<Denom, coin>>;
   readonly connectors: readonly Connector[];
   readonly storage: Storage | null;
   readonly state: State<chains>;
-  readonly store: StoreApi;
   setState<tchains extends readonly [Chain, ...Chain[]] = chains>(
     value: State<tchains> | ((state: State<tchains>) => State<tchains>),
   ): void;
@@ -51,6 +50,7 @@ export type Config<
   getClient<chainId extends chains[number]["id"]>(parameters?: {
     chainId?: chainId | chains[number]["id"] | undefined;
   }): Client<transports[chainId], chains[number]>;
+  _internal: Internal;
 };
 
 export type CreateConfigParameters<
@@ -67,6 +67,7 @@ export type CreateConfigParameters<
   ssr?: boolean;
   batch?: boolean;
   storage?: Storage | null;
+  multiInjectedProviderDiscovery?: boolean;
   connectors?: CreateConnectorFn[];
 };
 
@@ -82,5 +83,20 @@ export type StoreApi = {
   persist: {
     rehydrate: () => Promise<void> | void;
     hasHydrated: () => boolean;
+  };
+};
+
+export type MipdStore = {
+  getProviders: () => EIP6963ProviderDetail[];
+};
+
+type Internal = {
+  readonly ssr: boolean;
+  readonly mipd: MipdStore | undefined;
+  readonly store: StoreApi;
+  connectors: {
+    setup: (connectorFn: CreateConnectorFn) => Connector;
+    setState(value: Connector[] | ((state: Connector[]) => Connector[])): void;
+    subscribe(listener: (state: Connector[], prevState: Connector[]) => void): () => void;
   };
 };

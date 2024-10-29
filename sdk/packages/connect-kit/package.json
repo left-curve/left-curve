@@ -65,6 +65,7 @@
     "@leftcurve/types": "workspace:^",
     "@leftcurve/utils": "workspace:^",
     "eventemitter3": "^5.0.1",
+    "mipd": "^0.0.7",
     "zustand": "^4.5.5"
   },
   "peerDependencies": {
