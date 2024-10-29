@@ -10,12 +10,18 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow    = { workspace = true }
-borsh     = { workspace = true, features = ["derive"] }
-grug      = { workspace = true }
-paste     = { workspace = true }
-serde     = { workspace = true, features = ["derive"] }
+anyhow     = { workspace = true }
+borsh      = { workspace = true, features = ["derive"] }
+grug       = { workspace = true }
+paste      = { workspace = true }
+serde      = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-thiserror = { workspace = true }
+thiserror  = { workspace = true }
 
+byteorder                  = "1"
+pyth-sdk                   = "0.8.0"
+pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-crosschain" }
+pythnet-sdk                = "2"
 [dev-dependencies]
+reqwest = "0.12.9"
+tokio   = { workspace = true }

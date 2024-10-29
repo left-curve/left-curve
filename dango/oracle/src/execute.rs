@@ -4,11 +4,11 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(_ctx: ImmutableCtx, _msg: QueryMsg) -> StdResult<Json> {
     todo!()
 }
