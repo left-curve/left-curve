@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Binary, ByteArray, Hash160, Message},
+    grug::{Addr, Binary, ByteArray, Hash160, Message},
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -28,9 +28,10 @@ pub enum Credential {
 /// Data that a transaction's sender must sign with their private key.
 ///
 /// This includes the messages to be included in the transaction, as well as
-/// chain ID and account sequence number for replay protection.
+/// chain ID, sender and account sequence number for replay protection.
 #[grug::derive(Serde)]
 pub struct SignDoc {
+    pub sender: Addr,
     pub messages: Vec<Message>,
     pub chain_id: String,
     pub sequence: u32,

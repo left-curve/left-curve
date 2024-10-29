@@ -87,7 +87,12 @@ fn sends(c: &mut Criterion) {
 
                         let (data, credential) = accounts
                             .owner
-                            .sign_transaction_with_sequence(vec![msg.clone()], &suite.chain_id, 0)
+                            .sign_transaction_with_sequence(
+                                sender,
+                                vec![msg.clone()],
+                                &suite.chain_id,
+                                0,
+                            )
                             .unwrap();
 
                         Tx {
