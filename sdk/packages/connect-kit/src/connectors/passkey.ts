@@ -93,8 +93,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         return _isAuthorized;
       },
       async requestSignature(signDoc) {
-        const { messages, chainId, sequence } = signDoc;
-        const bytes = sha256(serialize({ messages, chainId, sequence }));
+        const { sender, messages, chainId, sequence } = signDoc;
+        const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
 
         const {
           webauthn,
