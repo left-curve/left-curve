@@ -11,9 +11,9 @@ module apply_fancy {
   import rareSpells.* from "./spells/rareSpells"
   
   /// The return type of apply_* functions, as some of them modify the tree
-  type ApplyResult = { outcome: Outcome, tree: Tree }
+  type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_add: Set[(NodeId, Node)] }
 
-  // for emulating recursion
+  /// Result of apply_at calls, for emulating recursion
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
 
   pure val bits_to_compute = Set(0,1)
@@ -21,26 +21,24 @@ module apply_fancy {
     .toList((a, b) => intCompare(a.length(), b.length()))
 
   pure def sorted_nodes(tree: Tree): List[NodeId] = {
-    tree.nodes.keys().toList((a, b) => intCompare(b.key_hash.length(), a.key_hash.length()))
+    tree.nodes.keys().toList((a, b) => intCompare(a.key_hash.length(), b.key_hash.length()))
   }
 
   /// Pre computation of apply_at used to emulate recursion
   pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[OperationOnKey]): ApplyAtMemo = {
-    range(0, new_version + 1).foldl(Map(), (memo, old_version) => {
-      bits_to_compute.foldr((memo, tree), (bits, acc) => {
-        pure val memo = acc._1
-        pure val tree = acc._2
-
+    range(0, new_version).foldl(Map(), (memo, old_version) => {
+      sorted_nodes(tree).foldr(memo, (node_id, memo) => {
+        pure val bits = node_id.key_hash
         pure val batch_here = batch.filter(o => bits.isPrefixOf(o.key_hash))
 
         pure val memo_key = (new_version, old_version, bits, batch_here)
         pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
-        (memo.put(memo_key, memo_value), memo_value.tree)
-      })._1
+        memo.put(memo_key, memo_value)
+      })
     })
   }
 
-  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]) : Tree = {
+  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
     pure val tree_1 =
       if (tree.nodes.has({ version: old_version, key_hash: ROOT_BITS })) {
         tree.mark_node_as_orphaned(new_version, old_version, ROOT_BITS)
@@ -50,13 +48,26 @@ module apply_fancy {
 
     pure val memo = pre_compute_apply_at(tree_1, new_version, batch)
     pure val apply_result = tree_1.apply_at(memo, new_version, old_version, ROOT_BITS, batch)
+    pure val new_tree = {
+      nodes: tree_1.nodes.add_nodes(apply_result.nodes_to_add),
+      orphans: tree_1.orphans.union(apply_result.orphans_to_add)
+    }
 
-    match apply_result.outcome {
+    match debug("final outcome", apply_result.outcome) {
       | Updated(new_root_node) => {
-          ...apply_result.tree,
-          nodes: apply_result.tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
+          ...new_tree,
+          nodes: new_tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
         }
-      | _ => apply_result.tree
+      | Unchanged(optional) => {
+          match optional {
+            | Some(new_root_node) => {
+                ...new_tree,
+                nodes: new_tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
+              }
+            | None => new_tree
+          }
+        }
+      | _ => new_tree
     }
   }
 
@@ -88,79 +99,101 @@ module apply_fancy {
     batch: Set[OperationOnKey]
   ): ApplyResult = {
     // Split the batch into two, one for left child, one for right.
-    pure val partitioned_batch = q::debug("partitioned batch", partition_batch(batch, q::debug("internal node bits", bits)))
+    pure val partitioned_batch = debug("partitioned batch", partition_batch(batch, debug("internal node bits", bits)))
     pure val batch_for_left = partitioned_batch._1
     pure val batch_for_right = partitioned_batch._2
 
     // Apply the left batch at left child
     pure val left_bits = bits.append(0)
     pure val left_result = tree.apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
-    pure val left_outcome = q::debug("left outcome", left_result.outcome)
+    pure val left_outcome = debug("left outcome", left_result.outcome)
 
     // Apply the right batch at right child
     pure val right_bits = bits.append(1)
-    pure val right_result = left_result.tree.apply_at_child(memo, new_version, right_bits, internal_node.right_child, batch_for_right)
-    pure val right_outcome = q::debug("right outcome", right_result.outcome)
+    pure val right_result = tree.apply_at_child(memo, new_version, right_bits, internal_node.right_child, batch_for_right)
+    pure val right_outcome = debug("right outcome", right_result.outcome)
 
     // If the left child exists and have been updated or deleted, then the
     // old one needs to be marked as orphaned.
-    pure val tree_1 = if (left_outcome.is_updated_or_deleted() and internal_node.left_child != None) {
-      right_result.tree.mark_node_as_orphaned(new_version, internal_node.left_child.unwrap().version, left_bits)
-    } else right_result.tree
+    pure val left_orphans = if (left_outcome.is_updated_or_deleted() and internal_node.left_child != None) {
+      Set({
+        orphaned_since_version: new_version,
+        version: internal_node.left_child.unwrap().version,
+        key_hash: left_bits,
+      })
+    } else Set()
 
     // If the right child exists and have been updated or deleted, then the
     // old one needs to be marked as orphaned.
-    pure val tree_2 = if (right_outcome.is_updated_or_deleted() and internal_node.right_child != None) {
-      tree_1.mark_node_as_orphaned(new_version, internal_node.right_child.unwrap().version, right_bits)
-    } else tree_1
+    pure val right_orphans = if (right_outcome.is_updated_or_deleted() and internal_node.right_child != None) {
+      Set({
+        orphaned_since_version: new_version,
+        version: internal_node.right_child.unwrap().version,
+        key_hash: right_bits,
+      })
+    } else Set()
+
+    pure val orphans_from_children =
+      left_result.orphans_to_add
+        .union(right_result.orphans_to_add)
+        .union(left_orphans)
+        .union(right_orphans)
+
+    pure val nodes_from_children = left_result.nodes_to_add.union(right_result.nodes_to_add)
+
+    pure val default_result = {
+      outcome: Unchanged(None),
+      orphans_to_add: orphans_from_children,
+      nodes_to_add: nodes_from_children,
+    }
 
     if (left_outcome.is_unchanged() and right_outcome.is_unchanged()) {
       // Neither children is changed. This node is unchanged as well.
-      { outcome: Unchanged(None), tree: tree_2 }
+      { ...default_result, outcome: Unchanged(Some(Internal(internal_node))) }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None))
                 and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Both children are deleted or never existed. Delete this node as well.
-      { outcome: Deleted, tree: tree_2 }
+      { ...default_result, outcome: Deleted }
 
     } else if (left_outcome.updated_to_leaf() and (right_outcome == Deleted or right_outcome == Unchanged(None))) {
       // Left child is a leaf, right child is deleted.
       // Delete the current internal node and move left child up.
       // The child needs to marked as orphaned.
-       { outcome: left_outcome, tree: tree_2 }
+      { ...default_result, outcome: left_outcome }
 
     } else if (left_outcome.unchanged_leaf() and right_outcome == Deleted) {
       // Mark left child as orphaned
       match left_outcome {
         | Unchanged(left) => {
-          pure val tree_3 = tree_2.mark_node_as_orphaned(
-            new_version,
-            internal_node.left_child.unwrap().version,
-            left_bits
-          )
-          { outcome: Updated(left.unwrap()), tree: tree_3 }
+          pure val orphans = orphans_from_children.union(Set({
+            orphaned_since_version: new_version,
+            version: internal_node.left_child.unwrap().version,
+            key_hash: left_bits,
+          }))
+          { ...default_result, outcome: Updated(left.unwrap()), orphans_to_add: orphans }
         }
-        | _ => { outcome: left_outcome, tree: tree_2 } // impossible
+        | _ => default_result // impossible
       }
 
     } else if ((left_outcome == Deleted or left_outcome == Unchanged(None)) and right_outcome.updated_to_leaf()) {
       // Left child is deleted, right child is a leaf.
       // Delete the current internal node and move right child up.
       // The child needs to marked as orphaned.
-      { outcome: right_outcome, tree: tree_2 }
+      { ...default_result, outcome: right_outcome }
 
     } else if (left_outcome == Deleted and right_outcome.unchanged_leaf()) {
       // Mark right child as orphaned
       match right_outcome {
         | Unchanged(right) => {
-          pure val tree_3 = tree_2.mark_node_as_orphaned(
-            new_version,
-            internal_node.right_child.unwrap().version,
-            right_bits
-          )
-          { outcome: Updated(right.unwrap()), tree: tree_3 }
+          pure val orphans = orphans_from_children.union(Set({
+            orphaned_since_version: new_version,
+            version: internal_node.right_child.unwrap().version,
+            key_hash: right_bits,
+          }))
+          { ...default_result, outcome: Updated(right.unwrap()), orphans_to_add: orphans }
         }
-        | _ => { outcome: right_outcome, tree: tree_2 } // impossible
+        | _ => default_result // impossible
       }
 
     } else {
@@ -170,30 +203,30 @@ module apply_fancy {
       pure val new_left_child_and_tree = match left_outcome {
         | Updated(node) => {
           child: Some({ version: new_version, hash: node.hash() }),
-          tree: tree_2.add_node(new_version, left_bits, node)
+          nodes_to_add: Set(({ version: new_version, key_hash: left_bits }, node))
         }
         | Deleted => {
           child: None,
-          tree: tree_2
+          nodes_to_add: Set(),
         }
         | Unchanged(_) => {
           child: internal_node.left_child,
-          tree: tree_2
+          nodes_to_add: Set(),
         }
       }
 
       pure val new_right_child_and_tree = match right_outcome {
         | Updated(node) => {
           child: Some({ version: new_version, hash: node.hash() }),
-          tree: new_left_child_and_tree.tree.add_node(new_version, right_bits, node)
+          nodes_to_add: Set(({ version: new_version, key_hash: right_bits }, node))
         }
         | Deleted => {
           child: None,
-          tree: new_left_child_and_tree.tree
+          nodes_to_add: Set(),
         }
         | Unchanged(_) => {
           child: internal_node.right_child,
-          tree: new_left_child_and_tree.tree
+          nodes_to_add: Set(),
         }
       }
 
@@ -202,7 +235,13 @@ module apply_fancy {
         right_child: new_right_child_and_tree.child
       })
 
-      { outcome: Updated(new_internal_node), tree: new_right_child_and_tree.tree }
+      {
+        ...default_result,
+        outcome: Updated(new_internal_node),
+        nodes_to_add: nodes_from_children
+          .union(new_left_child_and_tree.nodes_to_add)
+          .union(new_right_child_and_tree.nodes_to_add),
+      }
     }
   }
 
@@ -217,11 +256,11 @@ module apply_fancy {
     if (batch == Set()) {
       match child {
         // Child doesn't exist, and there is no op to apply.
-        | None => { outcome: Unchanged(None), tree: tree }
+        | None => { outcome: Unchanged(None), orphans_to_add: Set(), nodes_to_add: Set() }
         // Child exists, but there is no op to apply.
         | Some(child) => {
           pure val child_node = tree.nodes.get({ version: child.version, key_hash: child_bits })
-          { outcome: Unchanged(Some(child_node)), tree: tree }
+          { outcome: Unchanged(Some(child_node)), orphans_to_add: Set(), nodes_to_add: Set() }
         }
       }
     } else {
@@ -268,7 +307,7 @@ module apply_fancy {
         | None => Unchanged(Some(Leaf(leaf_node)))
       }
 
-      { outcome: outcome, tree: tree }
+      { outcome: outcome, orphans_to_add: Set(), nodes_to_add: Set() }
     } else {
       match operation {
         | Some(op) => {
@@ -383,8 +422,7 @@ module apply_fancy {
     pure val memo = pre_compute_create_subtree(tree, version, bits, batch, existing_leaf)
 
     pure val result = memo.get(bits)
-    pure val new_nodes = result.nodes_to_add.fold(tree.nodes, (acc, i) => acc.put(i._1, i._2))
-    { outcome: result.outcome, tree: { ...tree, nodes: new_nodes } }
+    { outcome: result.outcome, orphans_to_add: Set(), nodes_to_add: result.nodes_to_add }
   }
 
   pure def max_height(values_with_key_hash) = {
@@ -402,9 +440,8 @@ module apply_fancy {
     })
   }
 
-  /// Corresponding save_node, under a different name so it doesn't suggest mutability
-  pure def add_node(tree: Tree, version: Version, bits: BitArray, node: Node): Tree = {
-    { ...tree, nodes: tree.nodes.put({ version: version, key_hash: bits }, node) }
+  pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
+    new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
   }
 
   pure def into_child(version: Version, outcome: Outcome): Option[Child] = {

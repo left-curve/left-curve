@@ -4,19 +4,26 @@ module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
+  export tree.*
   import node.* from "./node"
   import utils.* from "./utils"
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
 
+  pure val MAX_OPS = 5
+
   var tree: Tree
   var version: int
+  var smallest_unpruned_version: int
+  var ops_history: List[Set[OperationOnKey]]
 
   action init = all {
     // For now, we always start with an empty tree
     tree' = { nodes: Map(), orphans: Set() },
-    version' = 1
+    version' = 1,
+    smallest_unpruned_version' = 0,
+    ops_history' = [],
   }
 
   pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH).setOfMaps(Set(0, 1))).powerset()
@@ -25,18 +32,26 @@ module apply_state_machine {
     { key_hash: key_hash, op: Insert(key_hash) } // value_hash is equal to key_hash to make things easier
   }
 
-  action step_fancy = all {
+  action step_fancy = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
-    tree' = fancy::apply(tree, version - 1, version, ops),
-    version' = version + 1
+    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    all {
+      tree' = fancy::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+    }
   }
 
-  action step_simple = all {
+  action step_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
-    tree' = simple::apply(tree, version - 1, version, ops),
-    version' = version + 1
+    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    all {
+      tree' = simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+    }
   }
 
   /********* INVARIANTS ***********/
@@ -51,10 +66,14 @@ module apply_state_machine {
     val paths = nodePrefixes.map(p => p.key_hash)
     paths.forall(p => p.length() > 1 implies paths.contains(p.slice(0, p.length()-1)))
 
+  /// The set of unpruned tree versions that should be complete in the tree 
+  def activeTreeVersions: Set[int] =
+    smallest_unpruned_version.to(tree.treeVersion())
+
   /// Invariant: Everyone has a parent
   /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
   def everyNodesParentIsInTheTreeInv =
-    0.to(tree.treeVersion()).forall(v =>
+    activeTreeVersions.forall(v =>
       val vTree = treeAtVersion(tree,v)
       everyNodesParentIsInTheTree(vTree)
     )
@@ -83,7 +102,7 @@ module apply_state_machine {
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
   /// tree that is the common prefix
   def nodeAtCommonPrefixInv =
-    0.to(tree.treeVersion()).forall(v =>
+    activeTreeVersions.forall(v =>
       val vTree = treeAtVersion(tree,v)
       nodeAtCommonPrefix(vTree)
     )
@@ -124,7 +143,7 @@ module apply_state_machine {
 
   /// Invariant: All hashes stored in the tree are actually the hashes of the subtree
   def hashInv =
-      0.to(tree.treeVersion()).forall(v => properlyHashed(treeAtVersion(tree,v)))
+      activeTreeVersions.forall(v => properlyHashed(treeAtVersion(tree,v)))
 
   // TODO TreeMap is a bijection: perhaps not with versions
 
@@ -143,7 +162,7 @@ module apply_state_machine {
 
   /// Invariant: there is no internal node  that has a leaf node as its prefix
   def noInternalChildInv =
-      0.to(tree.treeVersion()).forall(v => noInternalChild(treeAtVersion(tree,v)))
+      activeTreeVersions.forall(v => noInternalChild(treeAtVersion(tree,v)))
 
   /// For the same path there are not multiple version stored within the nodes
   pure def oneNodePerPath(t: Tree): bool =
@@ -162,10 +181,10 @@ module apply_state_machine {
 
   /// Invariant: All nodes of type Internal have a child which is not None
   def allInternalNodesHaveChildrenInv =
-    0.to(tree.treeVersion()).forall(v => allInternalNodesHaveChildren(treeAtVersion(tree,v)))
+    activeTreeVersions.forall(v => allInternalNodesHaveChildren(treeAtVersion(tree,v)))
 
   pure def getNodeFromPath(t: TreeMap, b: BitArray): Node =
-      val key = t.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
+      val key = t.keys().filter(nId => nId.key_hash == b).getOnlyElement()
       t.get(key)
 
 
@@ -202,5 +221,69 @@ module apply_state_machine {
 
   /// Invariant: If a node (different from the root) has one child, the child is an internal node
   def densityInv =
-    0.to(tree.treeVersion()).forall(v => density(treeAtVersion(tree,v)))
+    activeTreeVersions.forall(v => density(treeAtVersion(tree,v)))
+
+
+  /// returns a set of all prefixes of a list 
+  pure def allPrefixes (l: List[a]): Set[List[a]] = 
+    0.to(l.length()).map(i => l.slice(0,i))
+  
+  /// Invariant: For every node has predecessors with higer (or equal) version
+  /// (This could be rewritten to talk about direct predecessors only)
+  def versionInv = 
+    // This invariant actually works on the whole tree rather than on a TreeMap
+    tree.nodes.keys().forall(a =>
+      allPrefixes(a.key_hash).forall(p =>
+        tree.nodes.keys().exists(b =>
+        p == b.key_hash and b.version >= a.version
+      )))
+
+  /// Every internal node must have at least one child with the same version
+  def denseVersions(t: TreeMap): bool =
+    t.keys().forall(nId => match t.get(nId) {
+        | Internal(n) =>
+          val leftOK = 
+            match n.left_child {
+              | Some(c) => t.keys().exists(a => a.key_hash == nId.key_hash.append(0) and a.version == nId.version)
+              | None => false
+            }  
+          val rightOK = 
+            match n.right_child {
+              | Some(c) => t.keys().exists(a => a.key_hash == nId.key_hash.append(1) and a.version == nId.version)
+              | None => false
+            }  
+          or(leftOK, rightOK)
+        | Leaf(_) => true
+    })
+
+  def orphansInNoTreeInv: bool =
+    tree.orphans.forall(o =>
+      val nodeId = { version: o.version, key_hash: o.key_hash}
+      o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
+        not(tree.treeAtVersion(ver).keys().contains(nodeId))))
+
+
+  val allInvariants = all {
+    everyNodesParentIsInTheTreeInv,
+    nodeAtCommonPrefixInv,
+    hashInv,
+    noInternalChildInv,
+    allInternalNodesHaveChildrenInv,
+    densityInv,
+    versionInv,
+    orphansInNoTreeInv,
+  }
+}
+
+
+module pruning_state_machine {
+  import apply_state_machine.*
+
+
+  var unpruned_tree: Tree
+
+// just an idea to investigate pruning separatey agains an unpruned version of the tree
+
+
+
 }
