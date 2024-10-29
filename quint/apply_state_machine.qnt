@@ -246,12 +246,26 @@ module apply_state_machine {
         | Leaf(_) => true
     })
 
+
+
+  def orphansInNoTreeInv: bool =
+    tree.orphans.forall(o =>
+      val nodeId = { version: o.version, key_hash: o.key_hash}
+      o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
+        not(tree.treeAtVersion(ver).keys().contains(nodeId))))
+
+
 }
 
 
 module pruning_state_machine {
   import apply_state_machine.*
 
+
   var unpruned_tree: Tree
+
+// just an idea to investigate pruning separatey agains an unpruned version of the tree
+
+
 
 }
