@@ -4,6 +4,7 @@ module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
+  export tree.*
   import node.* from "./node"
   import utils.* from "./utils"
 
@@ -248,3 +249,9 @@ module apply_state_machine {
 }
 
 
+module pruning_state_machine {
+  import apply_state_machine.*
+
+  var unpruned_tree: Tree
+
+}
