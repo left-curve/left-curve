@@ -47,21 +47,6 @@ fn update_markets(
     Ok(Response::new())
 }
 
-/// Ensures that the sender's account is not a margin account.
-fn ensure_sender_account_is_not_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
-    ensure!(
-        !ctx.querier
-            .query_wasm_smart(account_factory, QueryAccountRequest {
-                address: ctx.sender,
-            })?
-            .params
-            .is_margin(),
-        "Margin accounts can't deposit or withdraw"
-    );
-    Ok(())
-}
-
 /// Ensures that the sender's account is a margin account.
 fn ensure_sender_account_is_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
     let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
@@ -78,9 +63,6 @@ fn ensure_sender_account_is_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
 }
 
 pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Ensure margin accounts can't deposit
-    ensure_sender_account_is_not_margin(&ctx)?;
-
     // For each deposited denom, ensure it's whitelisted and mint LP tokens.
     let cfg = ctx.querier.query_config()?;
     let mut msgs = vec![];
@@ -107,9 +89,6 @@ pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Ensure margin accounts can't withdraw
-    ensure_sender_account_is_not_margin(&ctx)?;
-
     // Ensure there are funds to withdraw
     ensure!(!ctx.funds.is_empty(), "No funds to withdraw");
 

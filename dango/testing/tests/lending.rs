@@ -80,35 +80,6 @@ fn update_markets_works() {
 }
 
 #[test]
-fn cant_deposit_from_margin_account() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
-
-    // Create a margin account.
-    let mut margin_account = accounts
-        .relayer
-        .register_new_account(
-            &mut suite,
-            contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
-            Coins::new(),
-        )
-        .unwrap();
-
-    // Try to deposit from the margin account, should fail
-    suite
-        .execute(
-            &mut margin_account,
-            contracts.lending,
-            &lending::ExecuteMsg::Deposit {},
-            Coins::new(),
-        )
-        .should_fail_with_error("Margin accounts can't deposit or withdraw");
-}
-
-#[test]
 fn deposit_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test();
 
