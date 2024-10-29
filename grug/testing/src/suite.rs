@@ -5,8 +5,8 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, Message, Op,
-        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
+        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
         TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
@@ -262,11 +262,24 @@ where
 
     /// Make a new block with the given transactions.
     pub fn make_block(&mut self, txs: Vec<Tx>) -> BlockOutcome {
-        let num_txs = txs.len();
-
         // Advance block height and time
         self.block.height += 1;
         self.block.timestamp = self.block.timestamp + self.block_time;
+
+        // Prepare proposal
+        let raw_txs = txs
+            .into_iter()
+            .map(|tx| tx.to_json_vec().unwrap().into())
+            .collect();
+        let txs = self
+            .app
+            .do_prepare_proposal(raw_txs, usize::MAX)
+            .unwrap_or_else(|err| {
+                panic!("fatal error while preparing proposal: {err}");
+            })
+            .into_iter()
+            .map(|raw_tx| raw_tx.deserialize_json().unwrap())
+            .collect();
 
         // Call ABCI `FinalizeBlock` method
         let block_outcome = self
@@ -275,16 +288,6 @@ where
             .unwrap_or_else(|err| {
                 panic!("fatal error while finalizing block: {err}");
             });
-
-        // Sanity check: the number of tx results returned by the app should
-        // equal the number of txs.
-        assert_eq!(
-            num_txs,
-            block_outcome.tx_outcomes.len(),
-            "sent {} txs but received {} tx results; something is wrong",
-            num_txs,
-            block_outcome.tx_outcomes.len()
-        );
 
         // Call ABCI `Commit` method
         self.app.do_commit().unwrap_or_else(|err| {
@@ -297,15 +300,6 @@ where
     /// Execute a single transaction.
     pub fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
         let mut block_outcome = self.make_block(vec![tx]);
-
-        // Sanity check: we sent one transaction, so there should be exactly one
-        // transaction outcome in the block outcome.
-        assert_eq!(
-            block_outcome.tx_outcomes.len(),
-            1,
-            "expecting exactly one transaction outcome, got {}; something is wrong!",
-            block_outcome.tx_outcomes.len()
-        );
 
         block_outcome.tx_outcomes.pop().unwrap()
     }
