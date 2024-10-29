@@ -7,9 +7,9 @@ import {
   disconnectMutationOptions,
 } from "@leftcurve/connect-kit/handlers";
 import type { ConfigParameter, Connector, Prettify } from "@leftcurve/types";
-import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query";
-import { useConfig } from "./useConfig";
-import { useConnectors } from "./useConnectors";
+import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
+import { useConfig } from "./useConfig.js";
+import { useConnectors } from "./useConnectors.js";
 
 export type UseDisconnectParameters<context = unknown> = Prettify<
   ConfigParameter & {
@@ -35,7 +35,12 @@ export function useDisconnect<context = unknown>(
   const config = useConfig(parameters);
 
   const mutationOptions = disconnectMutationOptions(config);
-  const { mutate, mutateAsync, ...result } = useMutation({
+  const { mutate, mutateAsync, ...result } = useMutation<
+    DisconnectData,
+    DisconnectErrorType,
+    DisconnectVariables,
+    context
+  >({
     ...mutation,
     ...mutationOptions,
   });

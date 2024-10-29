@@ -31,6 +31,9 @@ export const tailwindConfig: Partial<Config> = {
           start: "#FFF2E2",
           end: "#C4B7BA",
         },
+        "borders-purple": {
+          600: "#A38590",
+        },
         "typography-black": {
           100: "#867481",
           200: "#6B4862",
@@ -65,7 +68,9 @@ export const tailwindConfig: Partial<Config> = {
           400: "#FCDFBA",
         },
         "surface-purple": {
+          100: "#E5DCE0",
           200: "#E0D6DA",
+          300: "#CFBFC5",
         },
         "surface-green": {
           100: "#EEF2F0",

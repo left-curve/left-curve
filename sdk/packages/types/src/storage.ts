@@ -1,4 +1,4 @@
-import type { JsonValue } from "./encoding";
+import type { JsonValue } from "./encoding.js";
 
 export type AbstractStorage = {
   getItem(key: string): string | null | undefined | Promise<string | null | undefined>;

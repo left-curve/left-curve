@@ -4,9 +4,9 @@ import type React from "react";
 import { type PropsWithChildren, useState } from "react";
 
 import { useConnectors } from "@leftcurve/react";
-import { Button, CloseIcon } from "~/components";
-import { useWizard } from "~/providers";
-import { twMerge } from "~/utils";
+import { Button, CloseIcon } from "../../";
+import { useWizard } from "../../../providers";
+import { twMerge } from "../../../utils";
 
 import { DisplayConnectors } from "./DisplayConnectors";
 

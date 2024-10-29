@@ -1,6 +1,6 @@
 import type { Binary, Json, JsonValue } from "@leftcurve/types";
 import { camelToSnake, recursiveTransform, snakeToCamel } from "@leftcurve/utils";
-import { decodeUtf8, encodeUtf8 } from "./utf8";
+import { decodeUtf8, encodeUtf8 } from "./utf8.js";
 
 /**
  * Serialize a message to binary.

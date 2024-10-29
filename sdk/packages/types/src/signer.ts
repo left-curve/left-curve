@@ -1,6 +1,6 @@
-import type { Credential } from "./credential";
-import type { KeyHash } from "./key";
-import type { SignDoc } from "./signature";
+import type { Credential } from "./credential.js";
+import type { KeyHash } from "./key.js";
+import type { SignDoc } from "./signature.js";
 
 export type Signer = {
   getKeyHash: () => Promise<KeyHash>;

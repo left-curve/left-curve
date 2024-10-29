@@ -25,7 +25,7 @@ pub struct Accounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug)]
-pub struct TestAccount<T: MaybeDefined<Inner = Addr> = Defined<Addr>> {
+pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub username: Username,
     pub key: Key,
     pub key_hash: Hash160,
@@ -56,7 +56,7 @@ impl TestAccount<Undefined<Addr>> {
             key_hash,
             sequence: 0,
             sk,
-            address: Undefined::default(),
+            address: Undefined::new(),
         }
     }
 
@@ -105,15 +105,17 @@ impl TestAccount<Undefined<Addr>> {
 
 impl<T> TestAccount<T>
 where
-    T: MaybeDefined<Inner = Addr>,
+    T: MaybeDefined<Addr>,
 {
     pub fn sign_transaction_with_sequence(
         &self,
+        sender: Addr,
         msgs: Vec<Message>,
         chain_id: &str,
         sequence: u32,
     ) -> StdResult<(Metadata, Credential)> {
         let sign_bytes = SignDoc {
+            sender,
             messages: msgs.clone(),
             chain_id: chain_id.to_string(),
             sequence,
@@ -200,8 +202,12 @@ impl Signer for TestAccount<Defined<Addr>> {
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let (data, credential) =
-            self.sign_transaction_with_sequence(msgs.clone(), chain_id, self.sequence)?;
+        let (data, credential) = self.sign_transaction_with_sequence(
+            self.address(),
+            msgs.clone(),
+            chain_id,
+            self.sequence,
+        )?;
 
         // Increment the internally tracked sequence.
         self.sequence += 1;
@@ -297,7 +303,12 @@ impl<'a> Signer for Safe<'a> {
         let (data, credential) = self
             .signer
             .expect("[Safe]: signer not set")
-            .sign_transaction_with_sequence(msgs.clone(), chain_id, self.sequence)?;
+            .sign_transaction_with_sequence(
+                self.address(),
+                msgs.clone(),
+                chain_id,
+                self.sequence,
+            )?;
 
         // Increment the internally tracked sequence.
         self.sequence += 1;

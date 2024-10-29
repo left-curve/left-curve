@@ -5,11 +5,11 @@ export {
   encodeBase64Url,
   base64ToBase64Url,
   base64UrlToBase64,
-} from "./base64";
+} from "./base64.js";
 
-export { decodeEndian32, encodeEndian32 } from "./endian32";
-export { decodeHex, encodeHex, isHex, hexToBigInt } from "./hex";
-export { decodeUtf8, encodeUtf8 } from "./utf8";
-export { deserialize, serialize } from "./binary";
+export { decodeEndian32, encodeEndian32 } from "./endian32.js";
+export { decodeHex, encodeHex, isHex, hexToBigInt } from "./hex.js";
+export { decodeUtf8, encodeUtf8 } from "./utf8.js";
+export { deserialize, serialize } from "./binary.js";
 
-export { serializeJson, deserializeJson } from "./json";
+export { serializeJson, deserializeJson } from "./json.js";

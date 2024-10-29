@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { recursiveTransform } from "./mappers";
-import { camelToSnake, snakeToCamel } from "./strings";
+import { recursiveTransform } from "./mappers.js";
+import { camelToSnake, snakeToCamel } from "./strings.js";
 
 describe("recursiveTransform", () => {
   it("transforms keys in objects from camelCase to snake_case", () => {

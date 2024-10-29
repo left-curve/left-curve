@@ -1,7 +1,6 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import type { As } from "~/types";
-import { twMerge } from "~/utils";
-import { forwardRef } from "~/utils/dom";
+import type { As } from "../../types";
+import { forwardRef, twMerge } from "../../utils";
 import { Spinner } from "./Spinner";
 
 export interface ButtonProps
@@ -86,11 +85,11 @@ const buttonVariants = tv(
       },
       color: {
         rose: "",
-        sand: "",
+        purple: "",
       },
       size: {
         sm: "px-12 py-2 text-xs",
-        md: "px-12 py-3",
+        md: "px-12 py-3 max-h-[3rem]",
       },
       radius: {
         none: "rounded-none",
@@ -133,14 +132,15 @@ const buttonVariants = tv(
       // variant / bordered
       {
         variant: "bordered",
-        color: "sand",
-        class: "border-typography-rose-600 hover:bg-surface-rose-600/20 text-typography-rose-600",
+        color: "purple",
+        class:
+          "border-borders-purple-600 bg-surface-purple-100 hover:bg-surface-purple-300 text-typography-purple-400",
       },
       // variant / ghost
       {
         variant: "ghost",
-        color: "sand",
-        class: "text-typography-rose-500 hover:text-typography-rose-600",
+        color: "rose",
+        class: "text-typography-purple-400 hover:text-typography-rose-600",
       },
       // variant / iconOnly
       {

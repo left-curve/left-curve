@@ -6,9 +6,9 @@ import { useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
 import { truncateAddress } from "@leftcurve/utils";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
-import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "~/components";
+import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "../";
 
 export const MenuConnections: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);

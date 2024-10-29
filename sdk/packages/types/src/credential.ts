@@ -1,6 +1,6 @@
-import type { Username } from "./account";
-import type { Base64, Hex, Json } from "./encoding";
-import type { KeyHash } from "./key";
+import type { Username } from "./account.js";
+import type { Base64 } from "./encoding.js";
+import type { KeyHash } from "./key.js";
 
 export type Metadata = {
   /** Identifies which key was used to signed this transaction. */

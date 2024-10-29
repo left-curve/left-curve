@@ -1,13 +1,13 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { useWizard } from "~/providers";
+import { useWizard } from "../../../providers";
 
-import { BackArrowIcon, Button, Input, WalletIcon } from "~/components";
+import { BackArrowIcon, Button, Input, WalletIcon } from "../../";
 import { LoadingIndicator } from "./LoadingIndicator";
 
 import { motion } from "framer-motion";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../../utils";
 
 import type { Connector } from "@leftcurve/types";
 

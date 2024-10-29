@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeEndian32, encodeEndian32 } from "./endian32";
+import { decodeEndian32, encodeEndian32 } from "./endian32.js";
 
 describe("encodeEndian32", () => {
   describe("big-endian", () => {

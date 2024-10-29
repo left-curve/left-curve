@@ -7,7 +7,7 @@ import type {
   Connector,
   Username,
 } from "@leftcurve/types";
-import { changeAccount as changeAccountAction } from "./changeAccount";
+import { changeAccount as changeAccountAction } from "./changeAccount.js";
 
 export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {

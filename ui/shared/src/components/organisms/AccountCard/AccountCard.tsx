@@ -2,11 +2,11 @@
 
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 
-import { Button } from "~/components";
+import { Button } from "../../";
 
 import { truncateAddress } from "@leftcurve/utils";
 import { type VariantProps, tv } from "tailwind-variants";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../../utils";
 
 import { CardMarginBottom } from "./CardMarginBottom";
 import { CardSafeBottom } from "./CardSafeBottom";

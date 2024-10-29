@@ -1,5 +1,5 @@
 import { usePublicClient } from "@leftcurve/react";
-import { forwardRef, useDOMRef } from "~/utils";
+import { forwardRef, useDOMRef } from "../../utils";
 import Address from "../atoms/Address";
 import { SearchInput, type SearchInputProps } from "./SearchInput";
 

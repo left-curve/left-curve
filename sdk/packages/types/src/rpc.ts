@@ -1,6 +1,6 @@
-import type { Json } from "./encoding";
-import type { HttpRequestParameters } from "./http";
-import type { Prettify } from "./utils";
+import type { Json } from "./encoding.js";
+import type { HttpRequestParameters } from "./http.js";
+import type { Prettify } from "./utils.js";
 
 export type RpcSchema = readonly {
   Method: string;

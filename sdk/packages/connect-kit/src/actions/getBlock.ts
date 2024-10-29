@@ -1,5 +1,5 @@
 import { getChainInfo } from "@leftcurve/sdk/actions";
-import { getPublicClient } from "./getPublicClient";
+import { getPublicClient } from "./getPublicClient.js";
 
 import type { BlockInfo, ChainId, Config } from "@leftcurve/types";
 

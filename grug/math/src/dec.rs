@@ -40,10 +40,6 @@ impl<U> Dec<U> {
     pub const fn raw(value: Int<U>) -> Self {
         Self(value)
     }
-
-    pub fn numerator(&self) -> &Int<U> {
-        &self.0
-    }
 }
 
 impl<U> Dec<U>

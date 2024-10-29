@@ -2,7 +2,7 @@
 
 import type { Config, State } from "@leftcurve/types";
 import { type PropsWithChildren, createContext, createElement } from "react";
-import { Hydrate } from "./hydrate";
+import { Hydrate } from "./hydrate.js";
 
 export const GrunnectContext = createContext<Config | undefined>(undefined);
 

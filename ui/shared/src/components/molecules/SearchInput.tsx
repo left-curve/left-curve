@@ -2,7 +2,7 @@ import { useControlledState } from "@react-stately/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, useState } from "react";
 import { useClickAway, useDebounce } from "react-use";
-import { forwardRef, twMerge, useDOMRef } from "~/utils";
+import { forwardRef, twMerge, useDOMRef } from "../../utils";
 
 import { Input, type InputProps } from "../atoms/Input";
 import { Spinner } from "../atoms/Spinner";
@@ -67,7 +67,7 @@ export const SearchInput = forwardRef<"input", SearchInputProps>(
             options.length ? "scale-100" : "scale-0",
           )}
         >
-          {options.map((option) => (
+          {options.map((option: string) => (
             <button
               onClick={() => [setInputValue(option), setShowMenu(false)]}
               type="button"

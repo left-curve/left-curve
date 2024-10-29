@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decodeHex } from "@leftcurve/encoding";
-import { Ripemd160 } from "./ripemd";
+import { Ripemd160 } from "./ripemd.js";
 
 describe("ripemd160", () => {
   it("constructor initializes correctly", () => {

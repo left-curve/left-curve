@@ -15,6 +15,7 @@ export default defineConfig([
     external: ["react", "react-dom", "@tanstack/react-query"],
     platform: "browser",
     publicDir: "./public",
+    outExtension: ({ format }) => (format === "cjs" ? { js: ".cjs" } : { js: ".js" }),
     esbuildOptions(options) {
       options.banner = {
         js: "'use client'",

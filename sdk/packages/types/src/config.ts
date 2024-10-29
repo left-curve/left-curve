@@ -1,9 +1,9 @@
-import type { Chain, ChainId } from "./chain";
-import type { Client } from "./client";
-import type { AnyCoin, Denom } from "./coin";
-import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector";
-import type { Storage } from "./storage";
-import type { Transport } from "./transports";
+import type { Chain, ChainId } from "./chain.js";
+import type { Client } from "./client.js";
+import type { AnyCoin, Denom } from "./coin.js";
+import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector.js";
+import type { Storage } from "./storage.js";
+import type { Transport } from "./transports.js";
 
 export const ConnectionStatus = {
   Connected: "connected",
