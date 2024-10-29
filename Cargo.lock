@@ -1415,6 +1415,7 @@ dependencies = [
  "borsh 1.5.1",
  "byteorder",
  "grug",
+ "k256",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",

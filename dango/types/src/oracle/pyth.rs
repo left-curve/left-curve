@@ -58,6 +58,10 @@ impl PythVaa {
 
             let (vaa, updates) = uncast_enum!(res.proof, Proof::WormholeMerkle, vaa, updates);
 
+            let raw_waa = Vec::from(vaa.clone());
+
+            println!("{:?}", raw_waa);
+
             let parsed_vaa = VAA::new(Vec::from(vaa))?;
             let msg = WormholeMessage::try_from_bytes(parsed_vaa.payload.clone()).unwrap();
 

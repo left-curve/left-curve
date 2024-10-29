@@ -19,6 +19,7 @@ serde_json = { workspace = true }
 thiserror  = { workspace = true }
 
 byteorder                  = "1"
+k256                       = { workspace = true}
 pyth-sdk                   = "0.8.0"
 pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-crosschain" }
 pythnet-sdk                = "2"

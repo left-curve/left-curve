@@ -4,12 +4,12 @@ use {
         Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, StdError,
         StdResult, Storage,
     },
-    serde::{de::Visitor, Deserialize},
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        ops::Deref,
-        str::FromStr,
+    k256::{
+        elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
+        AffinePoint, EncodedPoint,
     },
+    serde::{de::Visitor, Deserialize},
+    std::{collections::BTreeMap, ops::Deref, str::FromStr},
 };
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ impl VAA {
         // We should use api functions but we are inside a trait, can't use it.
         // For now use the HashExt trait directly.
         // This need double hash
-        let hash = bytes.deref().hash256().keccak256().keccak256();
+        let hash = bytes.deref().keccak256().keccak256();
 
         let timestamp = bytes.next_u32()?;
         let nonce = bytes.next_u32()?;
@@ -80,18 +80,18 @@ impl VAA {
         self,
         storage: &dyn Storage,
         api: &dyn Api,
-        // block: BlockInfo,
+        block: BlockInfo,
         guardian_set: Map<u32, GuardianSetInfo>,
     ) -> anyhow::Result<()> {
         ensure!(self.version == 1, "Invalid VAA version");
 
         let guardian_set = guardian_set.load(storage, self.guardian_set_index)?;
 
-        // ensure!(
-        //     guardian_set.expiration_time != 0
-        //         && guardian_set.expiration_time as u128 > block.timestamp.into_inner().into_inner(),
-        //     "Guardian set expired"
-        // );
+        ensure!(
+            guardian_set.expiration_time != 0
+                && guardian_set.expiration_time as u128 > block.timestamp.into_inner().into_inner(),
+            "Guardian set expired"
+        );
 
         ensure!(
             guardian_set.quorum() <= self.signatures.len(),
@@ -102,7 +102,17 @@ impl VAA {
             let pk =
                 api.secp256k1_pubkey_recover(&self.hash, &sign.signature, sign.id_recover, true)?;
 
-            let pk = &pk.keccak256()[12..];
+            let affine_point_option =
+                AffinePoint::from_encoded_point(&EncodedPoint::from_bytes(pk)?);
+            let affine_point = if affine_point_option.is_some().into() {
+                affine_point_option.unwrap()
+            } else {
+                bail!("Encoded point not on the curve");
+            };
+
+            let decompressed_point = affine_point.to_encoded_point(false);
+            let prehash = &decompressed_point.as_bytes()[1..];
+            let addr = &prehash.keccak256()[12..];
 
             let info = guardian_set
                 .addresses
@@ -110,7 +120,7 @@ impl VAA {
                 .ok_or_else(|| anyhow::anyhow!("Guardian not found in the guardian set"))?
                 .into_inner();
 
-            ensure!(pk == info, "Invalid signature");
+            ensure!(addr == info, "Invalid signature");
         }
 
         Ok(())
@@ -249,7 +259,7 @@ mod tests {
     use {
         super::*,
         crate::oracle::PythVaa,
-        grug::{MockApi, MockStorage},
+        grug::{Duration, MockApi, MockStorage},
     };
 
     const VAA: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn";
@@ -292,7 +302,7 @@ mod tests {
                     Hash160::from_inner(b.try_into().unwrap())
                 })
                 .collect(),
-            expiration_time: 0,
+            expiration_time: 100,
         };
 
         GUARDIAN_SETS
@@ -356,8 +366,17 @@ mod tests {
         let storage = &populate_guardian_set();
         let api = &MockApi;
 
+        let block_info = BlockInfo {
+            timestamp: Duration::from_nanos(1),
+            height: 0,
+            hash: Hash256::from_inner([0; 32]),
+        };
+
         let pyth_vaa = PythVaa::from_str(VAA).unwrap();
 
-        pyth_vaa.vaa.verify(storage, api, GUARDIAN_SETS).unwrap();
+        pyth_vaa
+            .vaa
+            .verify(storage, api, block_info, GUARDIAN_SETS)
+            .unwrap();
     }
 }
