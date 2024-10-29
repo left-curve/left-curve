@@ -67,7 +67,8 @@ module apply_state_machine {
   }
   action step_super_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
     all {
       tree' = super_simple::apply(tree, version - 1, version, ops),
       version' = version + 1,
