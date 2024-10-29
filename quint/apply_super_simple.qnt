@@ -7,21 +7,10 @@ module apply_super_simple {
   import hashes.* from "./hashes"
   import utils.* from "./utils"
 
-  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
-    batch.fold(tree, (t, op) => {
-      match op.op {
-        | Insert(value_hash) => {
-          pure val newLeaf = { key_hash: op.key_hash, value_hash: value_hash }
-          super_simple_apply(t, old_version, new_version, newLeaf, true)
-        }
-        | Delete => {
-          pure val leafToDelete = { key_hash: op.key_hash, value_hash: [] }
-          super_simple_apply(t, old_version, new_version, leafToDelete, false)
-        }
-      }
-    })
-  }
-  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = {
+  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = 
+    super_simple_apply(tree, old_version, new_version, batch)
+  
+  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = 
     pure val nodes_at_old = updatedTree.treeAtVersion(old_version).keys()
     pure val nodes_at_new = updatedTree.treeAtVersion(new_version).keys()
     pure val orphaned_nodes = nodes_at_old.exclude(nodes_at_new)
@@ -30,9 +19,8 @@ module apply_super_simple {
       version: node.version,
       key_hash: node.key_hash,
     })
-
     oldTree.orphans.union(new_orphans)
-}
+
 
   pure def unpackChild(child: Option[Child]) : Child = 
     pure val EMPTY_MAP = Map()
@@ -96,20 +84,27 @@ module apply_super_simple {
       else 
         nodes
     )
-
-  pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode, isInsert: bool): Tree = {
-    val treeForOldVersion = treeAtVersion(tree, old_version)
-    pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
-        match tree.nodes.get(k) {
-          | Leaf(leaf) => acc.union(Set(leaf))
-          | _ => acc
+  pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
+    batch.fold(tree, (t, op) => {
+      val treeForOldVersion = treeAtVersion(tree, old_version)
+      pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
+          match tree.nodes.get(k) {
+            | Leaf(leaf) => acc.union(Set(leaf))
+            | _ => acc
+          }
+      })
+      pure val keys_with_values_without_new = existing_keys_with_values
+                                  .filter(x => x.key_hash != op.key_hash)
+      
+      val keys_and_values_and_op = match op.op {
+        | Insert(value_hash) => {
+          (keys_with_values_without_new.union(Set({key_hash: op.key_hash, value_hash: value_hash})), true)
         }
-    })
-  
-    pure val keys_with_values = existing_keys_with_values
-                                  .filter(x => x.key_hash != insert.key_hash)
-                                  .union(if (isInsert) Set(insert) else Set())
-    pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
+        | Delete => {
+          (keys_with_values_without_new, false)
+        }
+      }
+      pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_and_values_and_op._1.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
       acc._2.fold(acc, (acc, kv) => {
         pure val prefix = kv.key_hash.slice(0, i)
         pure val left = acc._2.find(k => k.key_hash == prefix.append(0))
@@ -158,12 +153,13 @@ module apply_super_simple {
     
     val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
                       .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
-                      .removeDuplicateEntries(insert.key_hash, new_version, isInsert)
+                      .removeDuplicateEntries(op.key_hash, new_version, keys_and_values_and_op._2)
                       .updateChildVersions(new_version)
     
     val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
                                                old_version, new_version)
       
     { nodes: nodes, orphans: orphans }
+    })
   }
 }

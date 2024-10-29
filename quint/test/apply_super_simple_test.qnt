@@ -19,19 +19,30 @@ module apply_super_simple_test {
      //                1110   1111
 
      pure val small_tree = empty_tree
-       .super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [5] }, true)
-       .super_simple_apply(1, 2, { key_hash: [1, 1, 1, 1], value_hash: [6] }, true)
+       .apply(0, 1, Set({ key_hash: [0, 1, 1, 1], op: Insert([5]) },
+                                     { key_hash: [1, 1, 1, 1], op: Insert([6]) }))
 
-     pure val result = super_simple_apply(small_tree, 2, 3, { key_hash: [1, 1, 1, 0], value_hash: [7] }, true)
-
+     pure val result = apply(small_tree, 1, 2, Set({ key_hash: [1, 1, 1, 0], op: Insert([7]) }))
+    //TODO: FIXME
      pure val leaf_for_0 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [5] })
      pure val expected_leaf_1 = Leaf({ key_hash: [1, 1, 1, 0], value_hash: [7] })
      pure val expected_leaf_2 = Leaf({ key_hash: [1, 1, 1, 1], value_hash: [6] })
-     pure val internal_height_3 = Internal({left_child: Some({ version: 3, hash: expected_leaf_1.hash() }),       right_child: Some({ version: 3, hash: expected_leaf_2.hash() })     })
-     pure val internal_height_2 = Internal({       left_child: None,       right_child: Some({ version: 3, hash: internal_height_3.hash() })     })
-     pure val internal_height_1 = Internal({       left_child: None,       right_child: Some({ version: 3, hash: internal_height_2.hash() })     })
-     pure val expected_root = Internal({       left_child: Some({ version: 2, hash: leaf_for_0.hash() }),       right_child: Some({ version: 3, hash: internal_height_1.hash() })     })
-
+     pure val internal_height_3 = Internal({
+      left_child: Some({ version: 3, hash: expected_leaf_1.hash() }),       
+      right_child: Some({ version: 3, hash: expected_leaf_2.hash() })     })
+     pure val internal_height_2 = Internal({       
+      left_child: None,       
+      right_child: Some({ version: 3, hash: internal_height_3.hash() })     
+      })
+     pure val internal_height_1 = Internal({       
+      left_child: None,       
+      right_child: Some({ version: 3, hash: internal_height_2.hash() })     
+      })
+     pure val expected_root = Internal({       
+      left_child: Some({ version: 2, hash: leaf_for_0.hash() }),       
+      right_child: Some({ version: 3, hash: internal_height_1.hash() })     
+      })
+  //TODO: FIXME
      assert(
       result.treeAtVersion(3)
       == Map(
@@ -48,18 +59,18 @@ module apply_super_simple_test {
 
   run singleInsertOnEmptyTreeTest =
     assert(
-      super_simple_apply(empty_tree, 0, 1, { key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] }, true)
+      empty_tree.apply( 0, 1, Set({ key_hash: [0, 1, 1], op:Insert([1, 1, 1, 1]) }))
       == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })),
            orphans: Set() }
     )
   
   run bigInsertionTest= 
     pure val result = empty_tree
-          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
-          .super_simple_apply(1, 2, {key_hash: [1,0,1], value_hash:[77]}, true)
-          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
-          .super_simple_apply(3, 4, {key_hash: [1,1,1], value_hash:[42]}, true)
-
+          .apply(0, 1, Set({ key_hash: [0, 1, 1], op:Insert([5])},
+                           { key_hash: [1,0,1], op:Insert([77])},
+                           { key_hash: [0, 1, 0], op:Insert([33]) },
+                           {key_hash: [1,1,1], op:Insert([42])}))
+    //TODO: FIXME
     pure val result_nodes = Map(
           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
           { key_hash: [], version: 2 } ->
@@ -138,15 +149,14 @@ module apply_super_simple_test {
 
   run bigInsertionUpdateTest = 
     pure val result = empty_tree
-          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
-          .super_simple_apply(1, 2, { key_hash: [1,0,1], value_hash:[77] }, true)
-          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
-          .super_simple_apply(3, 4, { key_hash: [1,1,1], value_hash:[42] }, true)
+          .apply(0, 1, Set({ key_hash: [0, 1, 1], op:Insert([5])},
+                           { key_hash: [1,0,1], op:Insert([77])},
+                           { key_hash: [0, 1, 0], op:Insert([33]) },
+                           {key_hash: [1,1,1], op:Insert([42])}))
 
-
-    val update = result.super_simple_apply(4, 5, { key_hash: [1,1,1], value_hash:[333] }, true)
-    val update1 = update.super_simple_apply(5, 6, { key_hash: [0,1,1], value_hash:[662] }, true)
-
+    val update = result.apply(1, 2,  Set({key_hash: [1,1,1], op:Insert([333])}))
+    val update1 = update.apply(2, 3, Set({ key_hash: [0,1,1], op:Insert([662]) }))
+    //TODO: FIXME
     pure val result_nodes = Map(
           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
           { key_hash: [], version: 2 } ->
@@ -457,15 +467,17 @@ module apply_super_simple_test {
 
   
   run bigInsertionUpdateDeleteTest = 
-    pure val result = empty_tree
-          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
-          .super_simple_apply(1, 2, { key_hash: [1,0,1], value_hash:[77] }, true)
-          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
-          .super_simple_apply(3, 4, { key_hash: [1,1,1], value_hash:[42] }, true)
-          .super_simple_apply(4, 5, { key_hash: [1,1,1], value_hash:[333] }, true)
-          .super_simple_apply(5, 6, { key_hash: [0,1,1], value_hash:[662] }, true)
-    pure val delete_node_from_tree = result.super_simple_apply(6, 7, { key_hash: [0, 1, 0], value_hash: [] }, false)
- 
+      pure val result = empty_tree
+          .apply(0, 1, Set({ key_hash: [0, 1, 1], op:Insert([5])},
+                           { key_hash: [1,0,1], op:Insert([77])},
+                           { key_hash: [0, 1, 0], op:Insert([33]) },
+                           {key_hash: [1,1,1], op:Insert([42])},
+                           {key_hash: [1,1,1], op:Insert([333])}, 
+                           { key_hash: [0,1,1], op:Insert([662]) }))
+
+    pure val delete_node_from_tree = result.apply(1, 2, Set({ key_hash: [0, 1, 0], op:Delete }))
+
+    //TODO: FIXME
     pure val result_nodes = Map(
           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
           { key_hash: [], version: 2 } ->
@@ -738,9 +750,9 @@ module apply_super_simple_test {
     })  
   run singleInsertOnLeafTest =
     // At first, we have a tree with only "L"
-    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
+    pure val tree_with_leaf = empty_tree.apply(0, 1, Set({ key_hash: [0, 1, 1, 1], op:Insert([1, 1, 0, 0]) }))
     // Then we insert "a"
-    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
+    pure val result = tree_with_leaf.apply(1, 2, Set({ key_hash: [1, 1, 0, 0], op:Insert([1, 1, 1, 1]) }))
 
     pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
@@ -762,11 +774,11 @@ module apply_super_simple_test {
   
   run singleInsertOnLeafThenUpdateTest =
     // At first, we have a tree with only "L"
-    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
     // Then we insert "a"
-    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
+    pure val tree_with_leaf = empty_tree.apply(0, 1, Set({ key_hash: [0, 1, 1, 1], op:Insert([1, 1, 0, 0] )}))
+    pure val result = tree_with_leaf.apply(1, 2, Set({ key_hash: [1, 1, 0, 0], op:Insert([1, 1, 1, 1]) }))
     // Then we update "a" with new value
-    pure val updated_tree_result = super_simple_apply(result, 2, 3, { key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] }, true)
+    pure val updated_tree_result = result.apply(2, 3, Set({ key_hash: [1, 1, 0, 0], op:Insert([0, 0, 0, 0]) }))
 
     pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
@@ -795,13 +807,13 @@ module apply_super_simple_test {
     )
   run singleInsertOnLeafThenUpdateThenDeleteTest =
     // At first, we have a tree with only "L"
-    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
+    pure val tree_with_leaf = empty_tree.apply(0, 1, Set({ key_hash: [0, 1, 1, 1], op:Insert([1, 1, 0, 0]) }))
     // Then we insert "a"
-    pure val result = tree_with_leaf.super_simple_apply(1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
+    pure val result = tree_with_leaf.apply(1, 2, Set({ key_hash: [1, 1, 0, 0], op:Insert([1, 1, 1, 1]) }))
     // Then we update "a" with new value
-    pure val updated_tree_result = result.super_simple_apply(2, 3, { key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] }, true)
+    pure val updated_tree_result = result.apply(2, 3, Set({ key_hash: [1, 1, 0, 0], op:Insert([0, 0, 0, 0]) }))
     
-    pure val updated_tree_delete = updated_tree_result.super_simple_apply(3, 4, { key_hash: [0, 1, 1, 1], value_hash: [] }, false)
+    pure val updated_tree_delete = updated_tree_result.apply(3, 4, Set({ key_hash: [0, 1, 1, 1], op:Delete}))
 
     pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a

@@ -10,6 +10,7 @@ module apply_state_machine {
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
+  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
 
@@ -53,7 +54,16 @@ module apply_state_machine {
       ops_history' = ops_history.append(ops),
     }
   }
-
+  action step_super_simple = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    all {
+      tree' = super_simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops)
+    }
+  }
   /********* INVARIANTS ***********/
 
   // TODO: if an internal node has one child, then the child must be internal node
@@ -261,7 +271,6 @@ module apply_state_machine {
       val nodeId = { version: o.version, key_hash: o.key_hash}
       o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
-
 
   val allInvariants = all {
     everyNodesParentIsInTheTreeInv,
