@@ -1,5 +1,5 @@
 mod msg;
-mod pyth_vaa;
-mod vaa;
+mod pyth;
+mod wormhole;
 
-pub use {msg::*, pyth_vaa::*, vaa::*};
+pub use {msg::*, pyth::*, wormhole::*};
