@@ -77,18 +77,21 @@ module apply_super_simple {
     0.to(l.length()).map(i => l.slice(0,i))
 
   pure def removeDuplicateEntries(nodes: NodeId->Node, nodeKeyHash: BitArray, new_version: Version, isInsert: bool) : NodeId->Node = 
-    if(isInsert) nodes.keys().fold(nodes, (nodes, key) => 
+    val keyPrefixes = allPrefixesForKey(nodeKeyHash)
+    nodes.keys().fold(nodes, (nodes, key) => 
       if(new_version > key.version and nodes.keys().contains({...key, version: new_version}))
         val nodeForKey = nodes.get(key)
         val nodeForKeyWithNewVersion = nodes.get({...key, version: new_version})
-        if(nodeForKey == nodeForKeyWithNewVersion)
+        if (nodeForKey == nodeForKeyWithNewVersion and (isInsert or not(keyPrefixes.contains(key.key_hash))))
           nodes.mapRemove({...key, version: new_version})
         else
             match nodeForKeyWithNewVersion {
              | Internal(internalNewVersion) 
                 => match nodeForKey {
                   | Internal(internalOldVersion) =>  
-                    if(cmpInternalAndNode(internalNewVersion, internalOldVersion) and not(key.isRoot()))  
+                    if(cmpInternalAndNode(internalNewVersion, internalOldVersion) 
+                        and not(key.isRoot())
+                        and (isInsert or not(keyPrefixes.contains(key.key_hash))))
                       nodes.mapRemove({...key, version: new_version})
                     else nodes
                   | Leaf(_) => nodes
@@ -98,32 +101,32 @@ module apply_super_simple {
       else 
         nodes
     )
-    else 
-      val keyPrefixes = allPrefixesForKey(nodeKeyHash)
+
+      // val keyPrefixes = allPrefixesForKey(nodeKeyHash)
       
-      nodes.keys().fold(nodes, (nodes, key) => 
-        if(new_version > key.version and nodes.keys().contains({...key, version: new_version}))
-          val nodeForKey = nodes.get(key)
-          val nodeForKeyWithNewVersion = nodes.get({...key, version: new_version})
-          if(nodeForKey == nodeForKeyWithNewVersion and not(keyPrefixes.contains(key.key_hash)))
-            nodes.mapRemove({...key, version: new_version})
-          else
-              match nodeForKeyWithNewVersion {
-              | Internal(internalNewVersion) 
-                  => match nodeForKey {
-                    | Internal(internalOldVersion) =>  
-                      if(cmpInternalAndNode(internalNewVersion, internalOldVersion) 
-                          and not(key.isRoot()
-                          and not(keyPrefixes.contains(key.key_hash))))  
-                        nodes.mapRemove({...key, version: new_version})
-                      else nodes
-                    | Leaf(_) => nodes
-                  }
-              | Leaf(_) => nodes
-            }
-        else 
-          nodes
-      )
+      // nodes.keys().fold(nodes, (nodes, key) => 
+      //   if(new_version > key.version and nodes.keys().contains({...key, version: new_version}))
+      //     val nodeForKey = nodes.get(key)
+      //     val nodeForKeyWithNewVersion = nodes.get({...key, version: new_version})
+      //     if(nodeForKey == nodeForKeyWithNewVersion and not(keyPrefixes.contains(key.key_hash)))
+      //       nodes.mapRemove({...key, version: new_version})
+      //     else
+      //         match nodeForKeyWithNewVersion {
+      //         | Internal(internalNewVersion) 
+      //             => match nodeForKey {
+      //               | Internal(internalOldVersion) =>  
+                      // if(cmpInternalAndNode(internalNewVersion, internalOldVersion) 
+                      //     and not(key.isRoot()
+                      //     and not(keyPrefixes.contains(key.key_hash))))  
+      //                   nodes.mapRemove({...key, version: new_version})
+      //                 else nodes
+      //               | Leaf(_) => nodes
+      //             }
+      //         | Leaf(_) => nodes
+      //       }
+      //   else 
+      //     nodes
+      // )
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode, isInsert: bool): Tree = {
     val treeForOldVersion = treeAtVersion(tree, old_version)
