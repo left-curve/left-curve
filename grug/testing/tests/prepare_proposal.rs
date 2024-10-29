@@ -72,12 +72,10 @@ mod mock_oracle {
 
     pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         match msg {
-            QueryMsg::Prices {} => {
-                let prices = PRICES
-                    .range(ctx.storage, None, None, Order::Ascending)
-                    .collect::<StdResult<BTreeMap<_, _>>>()?;
-                prices.to_json_value()
-            },
+            QueryMsg::Prices {} => PRICES
+                .range(ctx.storage, None, None, Order::Ascending)
+                .collect::<StdResult<BTreeMap<_, _>>>()?
+                .to_json_value(),
         }
     }
 }
