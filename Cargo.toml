@@ -57,6 +57,7 @@ pyth-wormhole      = { git = "https://github.com/pyth-network/pyth-crosschain", 
 pythnet-sdk        = "2"
 quote              = "1"
 rand               = "0.8"
+reqwest            = "0.12"
 ripemd             = "0.1"
 # Use the latest `master` branch of rust-rocksdb, which includes support for
 # the user-defined timestamp feature:

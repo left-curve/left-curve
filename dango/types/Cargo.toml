@@ -10,19 +10,18 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow     = { workspace = true }
-borsh      = { workspace = true, features = ["derive"] }
-grug       = { workspace = true }
-paste      = { workspace = true }
-serde      = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-thiserror  = { workspace = true }
-
+anyhow        = { workspace = true }
+borsh         = { workspace = true, features = ["derive"] }
 byteorder     = { workspace = true}
+grug          = { workspace = true }
 k256          = { workspace = true}
 pyth-sdk      = { workspace = true}
 pyth-wormhole = { workspace = true}
 pythnet-sdk   = { workspace = true}
+paste         = { workspace = true }
+serde         = { workspace = true, features = ["derive"] }
+serde_json    = { workspace = true }
+thiserror     = { workspace = true }
 
 [dev-dependencies]
-tokio   = { workspace = true }
+tokio = { workspace = true }
