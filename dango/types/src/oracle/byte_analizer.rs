@@ -56,3 +56,28 @@ impl Deref for BytesAnalyzer {
         &self.bytes[self.index..]
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn byte_analizer() {
+        let raw = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+
+        let mut analizer = BytesAnalyzer::new(raw);
+
+        assert_eq!(analizer.next_u8(), 1);
+        assert_eq!(analizer.next_u16().unwrap(), u16::from_be_bytes([2, 3]));
+        assert_eq!(
+            analizer.next_u32().unwrap(),
+            u32::from_be_bytes([4, 5, 6, 7])
+        );
+
+        // deref
+        assert_eq!(analizer.deref(), &[8, 9, 10, 11, 12, 13, 14, 15]);
+
+        assert_eq!(analizer.next_bytes::<4>().unwrap(), [8, 9, 10, 11]);
+        assert_eq!(analizer.consume(), vec![12, 13, 14, 15]);
+    }
+}

@@ -1,7 +1,8 @@
 use {
     dango_testing::setup_test,
-    dango_types::oracle::{PythId, QueryPriceFeedRequest},
-    grug::{Binary, Coins, ResultExt},
+    dango_types::oracle::{PythId, PythVaa, QueryPriceFeedRequest},
+    grug::{Binary, Coins, JsonDeExt, ResultExt},
+    pyth_sdk::PriceFeed,
     std::str::FromStr,
 };
 
@@ -20,13 +21,15 @@ const VAA_1:&str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE
 /// - publish_time: **1730209108**
 const VAA_2:&str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw/qtQ/jX44qUBV+Du+woo5lWLrE1ttnAPfwv9aftKy/r0pz0OdAQP25Bjy5Hx3MaOEF49sx+OrA6fxSNtBIxEkZ/wqznQAvlNE86loIz2osKoAWYeCg9FjU/8A2CmZZhcyXb4Cf+beAQSN829+7wKOw6tdMnKwtiYKdXL1yo1uP10iZ3EhU2M4cxrD0xYKA0pkb9hmhRo+zHrOY9pyTGXAsz7FjlI+gvgCAQa5MiGBgMRLFGW0fTd+bqc+isCQDbhgm/99yNkVaDt40ASST8CfH5zp4Xim5l5Yhs+/HMpeFSuTNULeDXsTO2FaAAjaPzeC8Bie6n154BaKA+45xn0lDa0epmVZs16zVCkKczSUNVG5e5VZe6N8edT+dVicoZYT9tgHJn2WDIjcpRv7AAsc0fdXE42zolp1Dhg1XVL5oe6NeTZi2Beu2ecv5FkvtCwm9dytTv6C359wJqUZLbZVaqOU9CEVbBvTzbKAm/tQAAx12qSCdkLtlJZAmhhrCvW56375q1Dy74L417r+GhDgYRqPCNWyaY7azRFfOwahxc9ECZgHj1aJg0bk395+JhTnAQ2K/IC6aRcSpPd+SfbWnfPtdJTdJFw5QCS50FbBfxxmqBTcG8E8fyYyCz5SGC8rtXgrBi+cQZe8FgW4CoLXXxC+AQ7TotPy0p9aHpwlIrXvu9B2nThByrwd4icwnOfQsUDHcG65PXWvu9nc1o5EK6SImnv+AmIu+RID2MnyTavsGEMpAA/XdQHG8mkgdWlZ1w7fg2MBs3fa0VxIlKc1DuaBdZVZEjrnB4gE15oqMZ21Bt8ji6r6J+ar/9K46EUeYC2t6CuBARDpRTI9ZZlh0MvxIbxRkuAgtRTv8oNrSz4sQJMNbhWdswTmqQQMZjtdJwGWepaAGhnEiuF/JgIr20AnDxCWbolgABGwVILVFDCHnLV54/bIdXUEiigPZvsKcDxLpOoJ722xZT1cXwXoBmwQ2lXQxGOjyj8VvgAt2kZJNbGc77+pmsqdABIFwK9Dc5BLxz+dXztA5bPMcEKkfZ18t7HPZ9BVQN7f1Cw4XcBZDSRR0MM6tqeBYvLJZhDMbt2Ax0m0+RlzQTZyAWcg5VQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFWSo1AUFVV1YAAAAAAApl86sAACcQTdtYrFsURmdX9JeZM/nLGOdGy18BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZ8iV0qxQAAAAIvYnVX////+AAAAABnIOVUAAAAAGcg5VQAAAZ3rChYAAAAAAIykC3MCknCJZOvI3H3Ijt5NftDL77S253kTxg9ywpWvf3kzbZeQqXixw7K/fcAEWCww773jqhfS4CdRyUc38SMv+DhHywJbnUSyzFEWOTBVmVuvEtt6xWOTDMifAi8cAX0cBtZOyeIeLytWSqkMVYhtbm0gKCLnjtBEKLg/zEHSL48Ndm9VTihIpe8REto4Pf2MjlxRY6Smgw2TMZCJTCEj2869KzQsQhVSH4VmOJNJpevlYaqeFmJ7WDOC1tFWrVulGSZ/nIt63NKB+JP";
 
-const ID: &str = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
+pub const WBTC_USD_ID: &str = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
+pub const ETH_USD_ID: &str = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
 #[test]
 fn oracle() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let id = PythId::from_str(ID).unwrap();
+    let id = PythId::from_str(WBTC_USD_ID).unwrap();
 
     // Push price
     {
@@ -95,4 +98,97 @@ fn oracle() {
         assert_eq!(current_price.get_price_unchecked().publish_time, 1730209108);
         assert_eq!(current_price.get_price_unchecked().price, 7131950295749);
     }
+}
+
+#[tokio::test]
+async fn multiple_vaas() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    let mut last_btc_vaa: Option<PriceFeed> = None;
+    let mut last_eth_vaa: Option<PriceFeed> = None;
+
+    let pyth_id_btc = PythId::from_str(WBTC_USD_ID).unwrap();
+    let pyth_id_eth = PythId::from_str(ETH_USD_ID).unwrap();
+
+    for _ in 0..10 {
+        // get 2 separate vaa
+        let (btc, eth) = tokio::try_join!(
+            get_latest_vaas(PYTH_URL, &[WBTC_USD_ID]),
+            get_latest_vaas(PYTH_URL, &[ETH_USD_ID])
+        )
+        .unwrap();
+
+        let btc_vaa = PythVaa::from_str(&btc[0]).unwrap().unverified()[0];
+        let eth_vaa = PythVaa::from_str(&eth[0]).unwrap().unverified()[0];
+
+        if let Some(last_btc_vaa) = &mut last_btc_vaa {
+            if btc_vaa.get_price_unchecked().publish_time
+                > last_btc_vaa.get_price_unchecked().publish_time
+            {
+                last_btc_vaa.clone_from(&btc_vaa);
+            }
+        } else {
+            last_btc_vaa = Some(btc_vaa);
+        }
+
+        if let Some(last_eth_vaa) = &mut last_eth_vaa {
+            if eth_vaa.get_price_unchecked().publish_time
+                > last_eth_vaa.get_price_unchecked().publish_time
+            {
+                last_eth_vaa.clone_from(&eth_vaa);
+            }
+        } else {
+            last_eth_vaa = Some(eth_vaa);
+        }
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &RawExecuteMsg::UpdatePriceFeeds {
+                    data: vec![
+                        Binary::from_str(&btc[0]).unwrap(),
+                        Binary::from_str(&eth[0]).unwrap(),
+                    ],
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+
+        let current_price = suite
+            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_btc })
+            .unwrap();
+
+        assert_eq!(current_price.id.to_bytes(), *pyth_id_btc);
+        assert_eq!(
+            current_price.get_price_unchecked().publish_time,
+            last_btc_vaa.unwrap().get_price_unchecked().publish_time
+        );
+        assert_eq!(
+            current_price.get_price_unchecked().price,
+            last_btc_vaa.unwrap().get_price_unchecked().price
+        );
+
+        let current_price = suite
+            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_eth })
+            .unwrap();
+
+        assert_eq!(current_price.id.to_bytes(), *pyth_id_eth);
+        assert_eq!(
+            current_price.get_price_unchecked().publish_time,
+            last_eth_vaa.unwrap().get_price_unchecked().publish_time
+        );
+        assert_eq!(
+            current_price.get_price_unchecked().price,
+            last_eth_vaa.unwrap().get_price_unchecked().price
+        );
+    }
+}
+
+pub async fn get_latest_vaas(url: &str, ids: &[&str]) -> anyhow::Result<Vec<String>> {
+    let url = format!("{url}/api/latest_vaas");
+    let ids = ids.iter().map(|id| ("ids[]", id)).collect::<Vec<_>>();
+    let client = reqwest::Client::new();
+    let response = client.get(url).query(&ids).send().await?;
+    Ok(response.text().await?.deserialize_json()?)
 }

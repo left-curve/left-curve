@@ -23,6 +23,6 @@ k256          = { workspace = true}
 pyth-sdk      = { workspace = true}
 pyth-wormhole = { workspace = true}
 pythnet-sdk   = { workspace = true}
+
 [dev-dependencies]
-reqwest = "0.12.9"
 tokio   = { workspace = true }

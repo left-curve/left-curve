@@ -1376,6 +1376,7 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "criterion",
  "dango-account-factory",
  "dango-account-safe",
@@ -1395,8 +1396,11 @@ dependencies = [
  "grug-vm-rust",
  "grug-vm-wasm",
  "k256",
+ "pyth-sdk 0.8.0",
  "rand",
+ "reqwest 0.12.9",
  "test-case",
+ "tokio",
 ]
 
 [[package]]
@@ -1422,7 +1426,6 @@ dependencies = [
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",
  "pythnet-sdk",
- "reqwest 0.12.9",
  "serde",
  "serde_json",
  "thiserror",

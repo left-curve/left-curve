@@ -57,6 +57,10 @@ impl PythVaa {
         Ok(self.feeds)
     }
 
+    pub fn unverified(self) -> Vec<PriceFeed> {
+        self.feeds
+    }
+
     pub fn new<T>(bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
@@ -198,11 +202,11 @@ impl<'de> Deserialize<'de> for PythVaa {
 #[cfg(test)]
 mod tests {
 
-    use grug::{Duration, Hash256, MockApi};
-
-    use crate::oracle::tests::{populate_guardian_set, GUARDIAN_SETS, VAA};
-
-    use super::*;
+    use {
+        super::*,
+        crate::oracle::{populate_guardian_set, GUARDIAN_SETS, VAA},
+        grug::{Duration, Hash256, MockApi},
+    };
 
     #[test]
     fn des_pyth_vaa() {
@@ -227,28 +231,5 @@ mod tests {
             .vaa
             .verify(storage, api, block_info, GUARDIAN_SETS)
             .unwrap();
-    }
-
-    #[tokio::test]
-    async fn fetch_vaa() {
-        let url = "https://hermes.pyth.network/api/latest_vaas";
-
-        let client = reqwest::Client::new();
-
-        let response = client
-            .get(url)
-            .query(&[
-                (
-                    "ids[]",
-                    "c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33",
-                ),
-                ("binary", "true"),
-            ])
-            .send()
-            .await
-            .unwrap();
-
-        let result = response.text().await.unwrap();
-        println!("{}", result);
     }
 }

@@ -30,9 +30,14 @@ grug-vm-wasm          = { workspace = true }
 k256                  = { workspace = true }
 
 [dev-dependencies]
+anyhow    = { workspace = true }
 criterion = { workspace = true }
 rand      = { workspace = true }
+reqwest   = "0.12.9"
+pyth-sdk  = { workspace = true }
 test-case = { workspace = true }
+tokio     = { workspace = true }
+dango-types           = { workspace = true }
 
 [[bench]]
 name = "benchmarks"
