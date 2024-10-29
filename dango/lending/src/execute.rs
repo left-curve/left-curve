@@ -1,13 +1,14 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::{ensure, Ok},
+    anyhow::{anyhow, ensure, Ok},
+    dango_account_factory::ACCOUNTS,
     dango_types::{
-        account_factory::QueryAccountRequest,
+        account_factory::Account,
         bank,
         config::ACCOUNT_FACTORY_KEY,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE},
     },
-    grug::{Addr, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
+    grug::{Addr, BorshDeExt, Coin, Coins, Denom, Inner, Message, MutableCtx, Part, Response},
     std::{collections::BTreeMap, str::FromStr},
 };
 
@@ -45,21 +46,6 @@ fn update_markets(
     }
 
     Ok(Response::new())
-}
-
-/// Ensures that the sender's account is a margin account.
-fn ensure_sender_account_is_margin(ctx: &MutableCtx) -> anyhow::Result<()> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
-    ensure!(
-        ctx.querier
-            .query_wasm_smart(account_factory, QueryAccountRequest {
-                address: ctx.sender,
-            })?
-            .params
-            .is_margin(),
-        "Only margin accounts can borrow and repay"
-    );
-    Ok(())
 }
 
 pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -133,8 +119,22 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
-    // Ensure sender is a margin account
-    ensure_sender_account_is_margin(&ctx)?;
+    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+
+    // Ensure sender is a margin account.
+    // An an optimization, use raw instead of smart query.
+    ensure!(
+        ctx.querier
+            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
+            .ok_or_else(|| anyhow!(
+                "borrower {} is not registered in account factory",
+                ctx.sender
+            ))?
+            .deserialize_borsh::<Account>()?
+            .params
+            .is_margin(),
+        "Only margin accounts can borrow and repay"
+    );
 
     // Ensure the coins are whitelisted
     for coin in &coins {

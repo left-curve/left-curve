@@ -1243,6 +1243,7 @@ name = "dango-lending"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account-factory",
  "dango-auth",
  "dango-types",
  "grug",
