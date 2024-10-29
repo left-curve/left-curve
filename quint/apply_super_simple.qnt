@@ -111,11 +111,9 @@ module apply_super_simple {
         }
     })
   
-    pure val keys_with_values = if(isInsert) existing_keys_with_values
-                                              .filter(x => x.key_hash != insert.key_hash)
-                                              .union(Set(insert))
-                                else existing_keys_with_values
-                                              .filter(x => x.key_hash != insert.key_hash)
+    pure val keys_with_values = existing_keys_with_values
+                                  .filter(x => x.key_hash != insert.key_hash)
+                                  .union(if (isInsert) Set(insert) else Set())
     pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_with_values.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
       acc._2.fold(acc, (acc, kv) => {
         pure val prefix = kv.key_hash.slice(0, i)
