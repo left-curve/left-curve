@@ -122,7 +122,6 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .build();
 
     let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
-        .with_receive(Box::new(dango_lending::receive))
         .with_execute(Box::new(dango_lending::execute))
         .with_query(Box::new(dango_lending::query))
         .build();

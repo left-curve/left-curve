@@ -13,6 +13,7 @@ use {
         btree_map, Addressable, Coin, Coins, Denom, HashExt, Inner, Message, MsgTransfer,
         NumberConst, Part, ResultExt, Uint128,
     },
+    grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -32,7 +33,7 @@ fn cant_transfer_to_lending() {
                 coins: Coins::one(USDC.clone(), 123).unwrap(),
             }),
         )
-        .should_fail_with_error("Can't send tokens to this contract");
+        .should_fail_with_error(VmError::function_not_found("receive"));
 }
 
 #[test]

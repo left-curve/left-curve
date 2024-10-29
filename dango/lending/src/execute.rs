@@ -1,6 +1,6 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::{bail, ensure, Ok},
+    anyhow::{ensure, Ok},
     dango_types::{
         account_factory::QueryAccountRequest,
         bank,
@@ -18,12 +18,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     }
 
     Ok(Response::new())
-}
-
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn receive(_ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Reject all transfers.
-    bail!("Can't send tokens to this contract. Use the `deposit` message instead.");
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
