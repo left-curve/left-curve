@@ -127,8 +127,8 @@ where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    OW: MaybeDefined<Inner = Addr>,
-    TA: MaybeDefined<Inner = TestAccounts>,
+    OW: MaybeDefined<Addr>,
+    TA: MaybeDefined<TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -373,7 +373,7 @@ where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    OW: MaybeDefined<Inner = Addr>,
+    OW: MaybeDefined<Addr>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
