@@ -136,8 +136,6 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
             "namespace: lp not found"
         );
 
-        // let denom_parts = iter.map(|part| part.clone()).collect::<Vec<_>>();
-
         // Add msg to send the underlying tokens to the recipient
         let underlying_denom = Denom::from_parts(iter.cloned().collect::<Vec<_>>())?;
         let amount = coin.amount;
