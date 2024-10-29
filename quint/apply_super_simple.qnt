@@ -18,23 +18,18 @@ module apply_super_simple {
       }
     })
   }
-  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = 
-    oldTree.orphans
-        .union(updatedTree.treeAtVersion(old_version)
-              .keys()
-              .fold(Set(), (orphans, key) =>
-                    if(updatedTree.treeAtVersion(new_version)
-                        .keys()
-                        .contains(key))
-                      orphans
-                    else                       
-                      orphans.union(
-                      Set({ orphaned_since_version: new_version, 
-                          version: key.version, 
-                          key_hash: key.key_hash})
-                      )
-                    )
-                  )
+  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = {
+    pure val nodes_at_old = updatedTree.treeAtVersion(old_version).keys()
+    pure val nodes_at_new = updatedTree.treeAtVersion(new_version).keys()
+    pure val orphaned_nodes = nodes_at_old.exclude(nodes_at_new)
+    pure val new_orphans = orphaned_nodes.map(node => {
+      orphaned_since_version: new_version,
+      version: node.version,
+      key_hash: node.key_hash,
+    })
+
+    oldTree.orphans.union(new_orphans)
+}
 
   pure def unpackChild(child: Option[Child]) : Child = 
     pure val EMPTY_MAP = Map()
