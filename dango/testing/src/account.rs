@@ -140,7 +140,7 @@ where
 
 impl<T> TestAccount<T>
 where
-    T: MaybeDefined<Inner = Addr>,
+    T: MaybeDefined<Addr>,
     Self: Signer,
 {
     /// Register a new account with the username and key of this account and returns a new
