@@ -18,9 +18,9 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow                = { workspace = true }
-dango-types           = { workspace = true }
-grug                  = { workspace = true }
-pyth-sdk              = { workspace = true }
+anyhow      = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
+pyth-sdk    = { workspace = true }
 
 [dev-dependencies]
