@@ -1,7 +1,5 @@
-use crate::NaiveProposalPreparer;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
-
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -9,7 +7,8 @@ use {
         query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
         query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
         query_wasm_scan, query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        Shared, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        NaiveProposalPreparer, Shared, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG,
+        LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
