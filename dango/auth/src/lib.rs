@@ -233,29 +233,29 @@ mod tests {
 
     #[test]
     fn passkey_authentication() {
-        let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
-        let user_username = Username::from_str("test4").unwrap();
-        let user_keyhash = Hash160::from_str("4466B77A86FB18EBA97080D56398B61470148059").unwrap();
+        let user_address = Addr::from_str("0x0e6d8a14f8e200f060ef35514c8184d54042e811").unwrap();
+        let user_username = Username::from_str("test200").unwrap();
+        let user_keyhash = Hash160::from_str("8BFF03014982A50218CE139F1FAC0B1897DEDEF9").unwrap();
         let user_key = Key::Secp256r1(
             [
-                3, 32, 23, 59, 89, 52, 51, 126, 80, 201, 159, 243, 253, 222, 209, 56, 72, 217, 193,
-                1, 195, 12, 83, 16, 188, 138, 208, 246, 53, 238, 156, 133, 163,
+                3, 190, 24, 244, 141, 90, 188, 110, 30, 146, 69, 153, 207, 241, 45, 19, 100, 19,
+                164, 93, 119, 95, 139, 59, 198, 252, 5, 5, 129, 204, 10, 136, 15,
             ]
             .into(),
         );
 
         let tx = r#"{
-          "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
+          "sender": "0x0e6d8a14f8e200f060ef35514c8184d54042e811",
           "credential": {
             "passkey": {
-              "sig": "BqtWfd8nTuTIiVipr/OcbeiBjsWmAp8e3VitWD+AekOmAPs/4dJkgjt7p+dB3ZJpqg6LHP+RX9bvALfgMoYh2Q==",
-              "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQmN3X1JrUDdDc3EtZWVFemw0ZWxFSWxTZXN0b055VVA1b21tUFJkU3VJQSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+              "sig": "Ni2ljMLszTN+iL9lXPzPMo7klwVFUsK3SBCFnsYNdDOkN03/T2Es/7zTZ4CyJGQGcIeAzM4/fO+XbIASu92Q4w==",
+              "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidXYya01mUllmUDJ2cXFGSGxBT0xsVlotTTItYWQtM3kyaVlNVVY1MGJqWSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
               "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
             }
           },
           "data": {
-            "key_hash": "4466B77A86FB18EBA97080D56398B61470148059",
-            "username": "test4",
+            "key_hash": "8BFF03014982A50218CE139F1FAC0B1897DEDEF9",
+            "username": "test200",
             "sequence": 0
           },
           "msgs": [
@@ -263,12 +263,12 @@ mod tests {
               "transfer": {
                 "to": "0x123559ca94d734111f32cc7d603c3341c4d29a84",
                 "coins": {
-                  "uusdc": "5"
+                  "uusdc": "1000000"
                 }
               }
             }
           ],
-          "gas_limit": 1116375
+          "gas_limit": 1116937
         }"#;
 
         let querier = MockQuerier::new()
@@ -363,11 +363,11 @@ mod tests {
     fn secp256k1_authentication() {
         let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
         let user_username = Username::from_str("owner").unwrap();
-        let user_keyhash = Hash160::from_str("CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB").unwrap();
+        let user_keyhash = Hash160::from_str("46DDF382989C9B321428A688032BC9F2A34F6BCD").unwrap();
         let user_key = Key::Secp256k1(
             [
-                2, 111, 13, 75, 148, 145, 161, 77, 233, 136, 36, 236, 240, 231, 244, 217, 82, 186,
-                93, 163, 132, 66, 35, 3, 19, 17, 197, 180, 52, 200, 219, 178, 97,
+                3, 124, 218, 165, 96, 43, 172, 215, 28, 79, 219, 96, 16, 200, 82, 173, 128, 6, 111,
+                33, 56, 47, 216, 47, 135, 163, 94, 250, 183, 130, 253, 241, 70,
             ]
             .into(),
         );
@@ -375,10 +375,10 @@ mod tests {
         let tx = r#"{
           "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
           "credential": {
-            "secp256k1": "GkkfQb81pEZJISbqAhJOZuZ5wgRyN0Q4HABD9HDAkxB516nV5d0UjRciNhh3RIg2Hh8nmS3jHFVl3NO34PVLNA=="
+            "secp256k1": "W+kfvnD23DMencrjT3/OLVfNkwYQTNcVsP2WHzIGj4ZizYAIpMslIiqE25vSDG3E634w4V+ppHIutqLZMY6sLg=="
           },
           "data": {
-            "key_hash": "CB8E23B4BE5F8386E68AEDC900C9BFDA26519FDB",
+            "key_hash": "46DDF382989C9B321428A688032BC9F2A34F6BCD",
             "username": "owner",
             "sequence": 0
           },
