@@ -35,12 +35,7 @@ module apply_super_simple {
                       )
                     )
                   )
-  pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree =
-    if (tree.nodes.has({ version: old_version, key_hash: ROOT_BITS })) {
-      tree.mark_node_as_orphaned(new_version, old_version, ROOT_BITS)
-    } else {
-      tree
-    }
+
   pure def unpackChild(child: Option[Child]) : Child = 
     pure val EMPTY_MAP = Map()
     match child {
@@ -51,11 +46,11 @@ module apply_super_simple {
     { left: internal.left_child.unpackChild(), 
       right: internal.right_child.unpackChild() }
 
-  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = {
+  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = 
     pure val unpackedNew = internal.unpackInternalNode()
     pure val unpackedOld = internalOldVersion.unpackInternalNode()
     unpackedNew.left.hash == unpackedOld.left.hash and unpackedNew.right.hash == unpackedOld.right.hash
-  }
+  
   pure def updateChildVersions(nodes: NodeId->Node, new_version: Version) : NodeId->Node = 
     val internalNodes = allInternals(nodes)
     
@@ -157,14 +152,11 @@ module apply_super_simple {
     
     val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
                       .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
-
-    val updatedNodes = removeDuplicateEntries(nodes, new_version)
-                        .updateChildVersions(new_version)
-    
-    val updatedTree = { nodes: updatedNodes, 
-                         orphans: Set() }    
-    val orphans = extractOrphansFromNewVersion(tree, updatedTree, old_version, new_version)
+                      .removeDuplicateEntries(new_version)
+                      .updateChildVersions(new_version)
+    val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
+                                               old_version, new_version)
       
-    { nodes: updatedNodes, orphans: orphans }
+    { nodes: nodes, orphans: orphans }
   }
 }
