@@ -11,15 +11,19 @@ module apply_state_machine {
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
 
+  pure val MAX_OPS = 5
+
   var tree: Tree
   var version: int
   var smallest_unpruned_version: int
+  var ops_history: List[Set[OperationOnKey]]
 
   action init = all {
     // For now, we always start with an empty tree
     tree' = { nodes: Map(), orphans: Set() },
     version' = 1,
-    smallest_unpruned_version' = 0
+    smallest_unpruned_version' = 0,
+    ops_history' = [],
   }
 
   pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH).setOfMaps(Set(0, 1))).powerset()
@@ -28,20 +32,26 @@ module apply_state_machine {
     { key_hash: key_hash, op: Insert(key_hash) } // value_hash is equal to key_hash to make things easier
   }
 
-  action step_fancy = all {
+  action step_fancy = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
-    tree' = fancy::apply(tree, version - 1, version, ops),
-    version' = version + 1,
-    smallest_unpruned_version' = smallest_unpruned_version
+    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    all {
+      tree' = fancy::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+    }
   }
 
-  action step_simple = all {
+  action step_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
-    tree' = simple::apply(tree, version - 1, version, ops),
-    version' = version + 1,
-    smallest_unpruned_version' = smallest_unpruned_version
+    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    all {
+      tree' = simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+    }
   }
 
   /********* INVARIANTS ***********/
@@ -174,7 +184,7 @@ module apply_state_machine {
     activeTreeVersions.forall(v => allInternalNodesHaveChildren(treeAtVersion(tree,v)))
 
   pure def getNodeFromPath(t: TreeMap, b: BitArray): Node =
-      val key = t.keys().filter(nId => nId.key_hash == b).fold({version: 0, key_hash: []}, (s, x) => x)
+      val key = t.keys().filter(nId => nId.key_hash == b).getOnlyElement()
       t.get(key)
 
 
@@ -246,8 +256,6 @@ module apply_state_machine {
         | Leaf(_) => true
     })
 
-
-
   def orphansInNoTreeInv: bool =
     tree.orphans.forall(o =>
       val nodeId = { version: o.version, key_hash: o.key_hash}
@@ -255,6 +263,16 @@ module apply_state_machine {
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
 
 
+  val allInvariants = all {
+    everyNodesParentIsInTheTreeInv,
+    nodeAtCommonPrefixInv,
+    hashInv,
+    noInternalChildInv,
+    allInternalNodesHaveChildrenInv,
+    densityInv,
+    versionInv,
+    orphansInNoTreeInv,
+  }
 }
 
 
