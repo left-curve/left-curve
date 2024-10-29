@@ -1,5 +1,9 @@
+use crate::ProposalPreparer;
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+
+use {crate::QuerierProvider, grug_types::QuerierWrapper, prost::bytes::Bytes};
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -57,7 +61,8 @@ impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain(
         &self,
@@ -140,6 +145,27 @@ where
         );
 
         Ok(root_hash.unwrap())
+    }
+
+    pub fn do_prepare_proposal(
+        &self,
+        txs: Vec<Bytes>,
+        max_tx_bytes: usize,
+    ) -> AppResult<Vec<Bytes>> {
+        let storage = self.db.state_storage(None)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+        let querier = QuerierProvider::new(AppCtx::new(
+            self.vm.clone(),
+            Box::new(storage),
+            GasTracker::new_limitless(),
+            chain_id,
+            block,
+        ));
+
+        Ok(self
+            .pp
+            .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
@@ -469,7 +495,8 @@ impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain_raw(
         &self,

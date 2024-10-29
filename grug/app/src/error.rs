@@ -1,10 +1,14 @@
 use {
     grug_types::{Addr, Hash256, StdError},
+    std::convert::Infallible,
     thiserror::Error,
 };
 
 #[derive(Debug, Clone, Error)]
 pub enum AppError {
+    #[error(transparent)]
+    Infallible(#[from] Infallible),
+
     #[error(transparent)]
     Std(#[from] StdError),
 

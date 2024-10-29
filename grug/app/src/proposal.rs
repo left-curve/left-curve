@@ -1,4 +1,10 @@
-use {crate::ProposalPreparer, prost::bytes::Bytes, std::convert::Infallible, tracing::info};
+use {
+    crate::ProposalPreparer,
+    grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdResult},
+    prost::bytes::Bytes,
+    std::convert::Infallible,
+    tracing::info,
+};
 
 /// A proposal preparer that implements a naive strategy of simply removing
 /// transactions from end of the list until the list is within the size limit.
@@ -13,6 +19,7 @@ impl ProposalPreparer for NaiveProposalPreparer {
 
     fn prepare_proposal(
         &self,
+        _querier: QuerierWrapper,
         mut txs: Vec<Bytes>,
         max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
@@ -33,5 +40,16 @@ impl ProposalPreparer for NaiveProposalPreparer {
         info!(num_txs = txs.len(), "Prepared proposal");
 
         Ok(txs)
+    }
+}
+
+/// A querier that doesn't actually perform any query.
+/// Used in conjunction with [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
+#[derive(Debug, Clone, Copy)]
+pub struct NoOpQuerier;
+
+impl Querier for NoOpQuerier {
+    fn query_chain(&self, _req: Query) -> StdResult<QueryResponse> {
+        unreachable!("attempting to query a no-op querier");
     }
 }

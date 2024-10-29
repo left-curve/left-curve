@@ -6,7 +6,7 @@ use {
         NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, Vm},
+    grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
@@ -57,9 +57,10 @@ where
     )
     .unwrap();
 
-    let suite = TestSuite::new_with_db_and_vm(
+    let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
+        NaiveProposalPreparer,
         "dev-1".to_string(),
         Duration::from_millis(250),
         1_000_000,

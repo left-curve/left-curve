@@ -1,9 +1,9 @@
 use {
-    crate::{App, AppError, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
+    crate::{App, AppError, Db, NaiveProposalPreparer, NoOpQuerier, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, Timestamp,
-        TxOutcome, GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, QuerierWrapper,
+        Timestamp, TxOutcome, GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
@@ -26,7 +26,7 @@ where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
-    AppError: From<DB::Error> + From<VM::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
     where
@@ -41,7 +41,7 @@ where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
-    AppError: From<DB::Error> + From<VM::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
         match self.do_info() {
@@ -81,8 +81,7 @@ where
     fn prepare_proposal(&self, req: RequestPrepareProposal) -> ResponsePrepareProposal {
         let max_tx_bytes = req.max_tx_bytes.try_into().unwrap_or(0);
         let txs = self
-            .pp
-            .prepare_proposal(req.txs.clone(), max_tx_bytes)
+            .do_prepare_proposal(req.txs.clone(), max_tx_bytes)
             .unwrap_or_else(|err| {
                 // For the sake of liveness, in case proposal preparation fails,
                 // we fall back to the naive strategy instead of panicking.
@@ -93,7 +92,7 @@ where
                 );
 
                 NaiveProposalPreparer
-                    .prepare_proposal(req.txs, max_tx_bytes)
+                    .prepare_proposal(QuerierWrapper::new(&NoOpQuerier), req.txs, max_tx_bytes)
                     .unwrap()
             });
 
