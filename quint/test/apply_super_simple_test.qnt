@@ -19,10 +19,10 @@ module apply_super_simple_test {
      //                1110   1111
 
      pure val small_tree = empty_tree
-       .super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [5] })
-       .super_simple_apply(1, 2, { key_hash: [1, 1, 1, 1], value_hash: [6] })
+       .super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [5] }, true)
+       .super_simple_apply(1, 2, { key_hash: [1, 1, 1, 1], value_hash: [6] }, true)
 
-     pure val result = super_simple_apply(small_tree, 2, 3, { key_hash: [1, 1, 1, 0], value_hash: [7] })
+     pure val result = super_simple_apply(small_tree, 2, 3, { key_hash: [1, 1, 1, 0], value_hash: [7] }, true)
 
      pure val leaf_for_0 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [5] })
      pure val expected_leaf_1 = Leaf({ key_hash: [1, 1, 1, 0], value_hash: [7] })
@@ -48,17 +48,17 @@ module apply_super_simple_test {
 
   run singleInsertOnEmptyTreeTest =
     assert(
-      super_simple_apply(empty_tree, 0, 1, { key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })
+      super_simple_apply(empty_tree, 0, 1, { key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] }, true)
       == { nodes: Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [1, 1, 1, 1] })),
            orphans: Set() }
     )
   
   run bigInsertionTest= 
     pure val result = empty_tree
-          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] })
-          .super_simple_apply(1, 2, {key_hash: [1,0,1], value_hash:[77]})
-          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] })
-          .super_simple_apply(3, 4, {key_hash: [1,1,1], value_hash:[42]})
+          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
+          .super_simple_apply(1, 2, {key_hash: [1,0,1], value_hash:[77]}, true)
+          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
+          .super_simple_apply(3, 4, {key_hash: [1,1,1], value_hash:[42]}, true)
 
     pure val result_nodes = Map(
           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
@@ -138,14 +138,14 @@ module apply_super_simple_test {
 
   run bigInsertionUpdateTest = 
     pure val result = empty_tree
-          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] })
-          .super_simple_apply(1, 2, { key_hash: [1,0,1], value_hash:[77] })
-          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] })
-          .super_simple_apply(3, 4, { key_hash: [1,1,1], value_hash:[42] })
+          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
+          .super_simple_apply(1, 2, { key_hash: [1,0,1], value_hash:[77] }, true)
+          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
+          .super_simple_apply(3, 4, { key_hash: [1,1,1], value_hash:[42] }, true)
 
 
-    val update = result.super_simple_apply(4, 5, { key_hash: [1,1,1], value_hash:[333] })
-    val update1 = update.super_simple_apply(5, 6, { key_hash: [0,1,1], value_hash:[662] })
+    val update = result.super_simple_apply(4, 5, { key_hash: [1,1,1], value_hash:[333] }, true)
+    val update1 = update.super_simple_apply(5, 6, { key_hash: [0,1,1], value_hash:[662] }, true)
 
     pure val result_nodes = Map(
           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
@@ -456,11 +456,291 @@ module apply_super_simple_test {
   
 
   
+  run bigInsertionUpdateDeleteTest = 
+    pure val result = empty_tree
+          .super_simple_apply(0, 1, { key_hash: [0, 1, 1], value_hash: [5] }, true)
+          .super_simple_apply(1, 2, { key_hash: [1,0,1], value_hash:[77] }, true)
+          .super_simple_apply(2, 3, { key_hash: [0, 1, 0], value_hash: [33] }, true)
+          .super_simple_apply(3, 4, { key_hash: [1,1,1], value_hash:[42] }, true)
+          .super_simple_apply(4, 5, { key_hash: [1,1,1], value_hash:[333] }, true)
+          .super_simple_apply(5, 6, { key_hash: [0,1,1], value_hash:[662] }, true)
+    pure val delete_node_from_tree = result.super_simple_apply(6, 7, { key_hash: [0, 1, 0], value_hash: [] }, false)
+ 
+    pure val result_nodes = Map(
+          { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [], version: 2 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 5]), [0] -> Hash), version: 2 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 2 })
+            }),
+          { key_hash: [], version: 3 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 2 })
+            }),
+          { key_hash: [], version: 4 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 42]), [0, 2] -> Hash, [0] -> Hash), version: 4 })
+            }),
+          { key_hash: [], version: 5 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 333]), [0, 2] -> Hash, [0] -> Hash), version: 5 })
+            }),
+          { key_hash: [], version: 6 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 662]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 6
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 333]), [0, 2] -> Hash, [0] -> Hash), version: 5 })
+            }),
+          { key_hash: [0, 1, 0], version: 3 } -> Leaf({ key_hash: [0, 1, 0], value_hash: [33] }),
+          { key_hash: [0, 1, 1], version: 3 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [0, 1, 1], version: 6 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [662] }),
+          { key_hash: [0, 1], version: 3 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 0, 33]), [0] -> Hash), version: 3 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 5]), [0] -> Hash), version: 3 })
+            }),
+          { key_hash: [0, 1], version: 6 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 0, 33]), [0] -> Hash), version: 3 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 662]), [0] -> Hash), version: 6 })
+            }),
+          { key_hash: [0], version: 2 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [0], version: 3 } ->
+            Internal({
+              left_child: None,
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 0, 1, 0, 33]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 0, 1, 1, 5]), [0, 2] -> Hash, [0] -> Hash), version: 3 })
+            }),
+          { key_hash: [0], version: 6 } ->
+            Internal({
+              left_child: None,
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 0, 1, 0, 33]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 0, 1, 1, 662]), [0, 2] -> Hash, [0] -> Hash), version: 6 })
+            }),
+          { key_hash: [1, 0], version: 4 } -> Leaf({ key_hash: [1, 0, 1], value_hash: [77] }),
+          { key_hash: [1, 1], version: 4 } -> Leaf({ key_hash: [1, 1, 1], value_hash: [42] }),
+          { key_hash: [1, 1], version: 5 } -> Leaf({ key_hash: [1, 1, 1], value_hash: [333] }),
+          { key_hash: [1], version: 2 } -> Leaf({ key_hash: [1, 0, 1], value_hash: [77] }),
+          { key_hash: [1], version: 4 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 4 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 1, 1, 42]), [0] -> Hash), version: 4 })
+            }),
+          { key_hash: [1], version: 5 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 4 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 1, 1, 333]), [0] -> Hash), version: 5 })
+            })
+    )
+    pure val result_delete_nodes = Map(
+          { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [], version: 2 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 5]), [0] -> Hash), version: 2 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 2 })
+            }),
+          { key_hash: [], version: 3 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 2 })
+            }),
+          { key_hash: [], version: 4 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 42]), [0, 2] -> Hash, [0] -> Hash), version: 4 })
+            }),
+          { key_hash: [], version: 5 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 5]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 3
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 333]), [0, 2] -> Hash, [0] -> Hash), version: 5 })
+            }),
+          { key_hash: [], version: 6 } ->
+            Internal({
+              left_child:
+                Some({
+                  hash:
+                    Map(
+                      [0, 0] -> Raw([0]),
+                      [0, 1, 0] -> Raw([0]),
+                      [0, 1] -> Hash,
+                      [0, 2, 0] -> Raw([0]),
+                      [0, 2, 1, 0] -> Raw([1, 0, 1, 0, 33]),
+                      [0, 2, 1] -> Hash,
+                      [0, 2, 2, 0] -> Raw([1, 0, 1, 1, 662]),
+                      [0, 2, 2] -> Hash,
+                      [0, 2] -> Hash,
+                      [0] -> Hash
+                    ),
+                  version: 6
+                }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 333]), [0, 2] -> Hash, [0] -> Hash), version: 5 })
+            }),
+          { key_hash: [], version: 7 } ->
+            Internal({
+              left_child: Some({ hash:Map([0, 0] -> Raw([1, 0, 1, 1, 662]), [0] -> Hash), version: 7 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 1, 0, 1, 77]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 1, 1, 1, 333]), [0, 2] -> Hash, [0] -> Hash), version: 5 })
+            }),
+          { key_hash: [0, 1, 0], version: 3 } -> Leaf({ key_hash: [0, 1, 0], value_hash: [33] }),
+          { key_hash: [0, 1, 1], version: 3 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [0, 1, 1], version: 6 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [662] }),
+          { key_hash: [0, 1], version: 3 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 0, 33]), [0] -> Hash), version: 3 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 5]), [0] -> Hash), version: 3 })
+            }),
+          { key_hash: [0, 1], version: 6 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 0, 33]), [0] -> Hash), version: 3 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 0, 1, 1, 662]), [0] -> Hash), version: 6 })
+            }),
+          { key_hash: [0], version: 2 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [5] }),
+          { key_hash: [0], version: 7 } -> Leaf({ key_hash: [0, 1, 1], value_hash: [662] }),
+          { key_hash: [0], version: 3 } ->
+            Internal({
+              left_child: None,
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 0, 1, 0, 33]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 0, 1, 1, 5]), [0, 2] -> Hash, [0] -> Hash), version: 3 })
+            }),
+          { key_hash: [0], version: 6 } ->
+            Internal({
+              left_child: None,
+              right_child: Some({ hash: Map([0, 0] -> Raw([0]), [0, 1, 0] -> Raw([1, 0, 1, 0, 33]), [0, 1] -> Hash, [0, 2, 0] -> Raw([1, 0, 1, 1, 662]), [0, 2] -> Hash, [0] -> Hash), version: 6 })
+            }),
+          { key_hash: [1, 0], version: 4 } -> Leaf({ key_hash: [1, 0, 1], value_hash: [77] }),
+          { key_hash: [1, 1], version: 4 } -> Leaf({ key_hash: [1, 1, 1], value_hash: [42] }),
+          { key_hash: [1, 1], version: 5 } -> Leaf({ key_hash: [1, 1, 1], value_hash: [333] }),
+          { key_hash: [1], version: 2 } -> Leaf({ key_hash: [1, 0, 1], value_hash: [77] }),
+          { key_hash: [1], version: 4 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 4 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 1, 1, 42]), [0] -> Hash), version: 4 })
+            }),
+          { key_hash: [1], version: 5 } ->
+            Internal({
+              left_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 0, 1, 77]), [0] -> Hash), version: 4 }),
+              right_child: Some({ hash: Map([0, 0] -> Raw([1, 1, 1, 1, 333]), [0] -> Hash), version: 5 })
+            })
+    )
+    assert(all{
+      result.nodes == result_nodes,
+      delete_node_from_tree.nodes == result_delete_nodes
+    })  
   run singleInsertOnLeafTest =
     // At first, we have a tree with only "L"
-    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] })
+    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
     // Then we insert "a"
-    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] })
+    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
 
     pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
@@ -482,11 +762,11 @@ module apply_super_simple_test {
   
   run singleInsertOnLeafThenUpdateTest =
     // At first, we have a tree with only "L"
-    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] })
+    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
     // Then we insert "a"
-    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] })
+    pure val result = super_simple_apply(tree_with_leaf, 1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
     // Then we update "a" with new value
-    pure val updated_tree_result = super_simple_apply(result, 2, 3, { key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] })
+    pure val updated_tree_result = super_simple_apply(result, 2, 3, { key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] }, true)
 
     pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
     pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
@@ -511,6 +791,43 @@ module apply_super_simple_test {
            { key_hash: [], version: 3 } -> expected_root_3,
            { key_hash: [0], version: 2 } -> expected_left_2,
            { key_hash: [1], version: 3 } -> expected_right_3
+         )
+    )
+  run singleInsertOnLeafThenUpdateThenDeleteTest =
+    // At first, we have a tree with only "L"
+    pure val tree_with_leaf = empty_tree.super_simple_apply(0, 1, { key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }, true)
+    // Then we insert "a"
+    pure val result = tree_with_leaf.super_simple_apply(1, 2, { key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }, true)
+    // Then we update "a" with new value
+    pure val updated_tree_result = result.super_simple_apply(2, 3, { key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] }, true)
+    
+    pure val updated_tree_delete = updated_tree_result.super_simple_apply(3, 4, { key_hash: [0, 1, 1, 1], value_hash: [] }, false)
+
+    pure val expected_left_2 = Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }) // L
+    pure val expected_right_2 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [1, 1, 1, 1] }) // a
+    pure val expected_root_2 = Internal({
+      left_child: Some({ version: 2, hash: expected_left_2.hash() }),
+      right_child: Some({ version: 2, hash: expected_right_2.hash() })
+    })
+    pure val expected_right_3 = Leaf({ key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] }) // a
+    pure val expected_root_3 = Internal({
+      left_child: Some({ version: 2, hash: expected_left_2.hash() }),
+      right_child: Some({ version: 3, hash: expected_right_3.hash() })
+    })
+    assert(
+      updated_tree_delete.nodes == Map(
+           // Old leaf is still here under version 1
+           { key_hash: [], version: 1 } -> Leaf({ key_hash: [0, 1, 1, 1], value_hash: [1, 1, 0, 0] }),
+           // New tree under version 1
+           { key_hash: [], version: 2 } -> expected_root_2,
+           { key_hash: [0], version: 2 } -> expected_left_2,
+           { key_hash: [1], version: 2 } -> expected_right_2,
+           // version 3 after updateing "a"
+           { key_hash: [], version: 3 } -> expected_root_3,
+           { key_hash: [0], version: 2 } -> expected_left_2,
+           { key_hash: [1], version: 3 } -> expected_right_3,
+          // version 4 after deleting "a"
+           { key_hash: [], version: 4 } -> Leaf({ key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] })
          )
     )
 }
