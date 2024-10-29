@@ -18,13 +18,19 @@ module apply_super_simple {
       }
     })
   }
+  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = {
+    pure val nodes_at_old = updatedTree.treeAtVersion(old_version).keys()
+    pure val nodes_at_new = updatedTree.treeAtVersion(new_version).keys()
+    pure val orphaned_nodes = nodes_at_old.exclude(nodes_at_new)
+    pure val new_orphans = orphaned_nodes.map(node => {
+      orphaned_since_version: new_version,
+      version: node.version,
+      key_hash: node.key_hash,
+    })
 
-  pure def orphanRootIfExists(tree: Tree, old_version: Version, new_version: Version): Tree =
-    if (tree.nodes.has({ version: old_version, key_hash: ROOT_BITS })) {
-      tree.mark_node_as_orphaned(new_version, old_version, ROOT_BITS)
-    } else {
-      tree
-    }
+    oldTree.orphans.union(new_orphans)
+}
+
   pure def unpackChild(child: Option[Child]) : Child = 
     pure val EMPTY_MAP = Map()
     match child {
@@ -35,11 +41,11 @@ module apply_super_simple {
     { left: internal.left_child.unpackChild(), 
       right: internal.right_child.unpackChild() }
 
-  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = {
+  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = 
     pure val unpackedNew = internal.unpackInternalNode()
     pure val unpackedOld = internalOldVersion.unpackInternalNode()
     unpackedNew.left.hash == unpackedOld.left.hash and unpackedNew.right.hash == unpackedOld.right.hash
-  }
+  
   pure def updateChildVersions(nodes: NodeId->Node, new_version: Version) : NodeId->Node = 
     val internalNodes = allInternals(nodes)
     
@@ -83,7 +89,6 @@ module apply_super_simple {
     )
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, insert: LeafNode): Tree = {
-    val treeWithOrphanedRoot = orphanRootIfExists(tree, old_version, new_version)
     val treeForOldVersion = treeAtVersion(tree, old_version)
     pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
         match tree.nodes.get(k) {
@@ -140,10 +145,13 @@ module apply_super_simple {
       })
     })
     
-    val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node)).fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
-
-    val updatedNodes = removeDuplicateEntries(nodes, new_version).updateChildVersions(new_version)
-    
-    { nodes: updatedNodes, orphans: treeWithOrphanedRoot.orphans }
+    val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
+                      .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
+                      .removeDuplicateEntries(new_version)
+                      .updateChildVersions(new_version)
+    val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
+                                               old_version, new_version)
+      
+    { nodes: nodes, orphans: orphans }
   }
 }
