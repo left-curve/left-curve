@@ -3,7 +3,7 @@ use {
     dango_types::oracle::{PythId, PythVaa, QueryPriceFeedRequest},
     grug::{Binary, Coins, JsonDeExt, ResultExt},
     pyth_sdk::PriceFeed,
-    std::str::FromStr,
+    std::{collections::BTreeMap, str::FromStr},
 };
 
 #[grug::derive(Serde)]
@@ -23,6 +23,15 @@ const VAA_2:&str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw/
 
 pub const WBTC_USD_ID: &str = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
 pub const ETH_USD_ID: &str = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+pub const USDC_USD_ID: &str = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+pub const SOL_USD_ID: &str = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+pub const ATOM_USD_ID: &str = "0xb00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819";
+pub const BNB_USD_ID: &str = "0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f";
+pub const DOGE_USD_ID: &str = "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c";
+pub const XRP_USD_ID: &str = "0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8";
+pub const TON_USD_ID: &str = "0x8963217838ab4cf5cadc172203c1f0b763fbaa45f346d8ee50ba994bbcac3026";
+pub const SHIBA_USD_ID: &str = "0xf0d57deca57b3da2fe63a493f4c25925fdfd8edf834b20f93e1f84dbd1504d4a";
+
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
 #[test]
@@ -101,7 +110,7 @@ fn oracle() {
 }
 
 #[tokio::test]
-async fn multiple_vaas() {
+async fn double_vaas() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
     let mut last_btc_vaa: Option<PriceFeed> = None;
@@ -110,7 +119,7 @@ async fn multiple_vaas() {
     let pyth_id_btc = PythId::from_str(WBTC_USD_ID).unwrap();
     let pyth_id_eth = PythId::from_str(ETH_USD_ID).unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..5 {
         // get 2 separate vaa
         let (btc, eth) = tokio::try_join!(
             get_latest_vaas(PYTH_URL, &[WBTC_USD_ID]),
@@ -118,77 +127,192 @@ async fn multiple_vaas() {
         )
         .unwrap();
 
-        let btc_vaa = PythVaa::from_str(&btc[0]).unwrap().unverified()[0];
-        let eth_vaa = PythVaa::from_str(&eth[0]).unwrap().unverified()[0];
+        let btc_vaa = btc.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
+            .clone()
+            .unverified()[0];
+        let eth_vaa = eth.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
+            .clone()
+            .unverified()[0];
 
-        if let Some(last_btc_vaa) = &mut last_btc_vaa {
-            if btc_vaa.get_price_unchecked().publish_time
-                > last_btc_vaa.get_price_unchecked().publish_time
-            {
-                last_btc_vaa.clone_from(&btc_vaa);
+        // update last btc vaa
+        {
+            if let Some(last_btc_vaa) = &mut last_btc_vaa {
+                if btc_vaa.get_price_unchecked().publish_time
+                    > last_btc_vaa.get_price_unchecked().publish_time
+                {
+                    last_btc_vaa.clone_from(&btc_vaa);
+                }
+            } else {
+                last_btc_vaa = Some(btc_vaa);
             }
-        } else {
-            last_btc_vaa = Some(btc_vaa);
         }
 
-        if let Some(last_eth_vaa) = &mut last_eth_vaa {
-            if eth_vaa.get_price_unchecked().publish_time
-                > last_eth_vaa.get_price_unchecked().publish_time
-            {
-                last_eth_vaa.clone_from(&eth_vaa);
+        // update last eth vaa
+        {
+            if let Some(last_eth_vaa) = &mut last_eth_vaa {
+                if eth_vaa.get_price_unchecked().publish_time
+                    > last_eth_vaa.get_price_unchecked().publish_time
+                {
+                    last_eth_vaa.clone_from(&eth_vaa);
+                }
+            } else {
+                last_eth_vaa = Some(eth_vaa);
             }
-        } else {
-            last_eth_vaa = Some(eth_vaa);
         }
 
+        // update price feeds
         suite
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
                 &RawExecuteMsg::UpdatePriceFeeds {
                     data: vec![
-                        Binary::from_str(&btc[0]).unwrap(),
-                        Binary::from_str(&eth[0]).unwrap(),
+                        btc.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
+                        eth.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
                     ],
                 },
                 Coins::default(),
             )
             .should_succeed();
 
-        let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_btc })
-            .unwrap();
+        // check btc price
+        {
+            let current_price = suite
+                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_btc })
+                .unwrap();
 
-        assert_eq!(current_price.id.to_bytes(), *pyth_id_btc);
-        assert_eq!(
-            current_price.get_price_unchecked().publish_time,
-            last_btc_vaa.unwrap().get_price_unchecked().publish_time
-        );
-        assert_eq!(
-            current_price.get_price_unchecked().price,
-            last_btc_vaa.unwrap().get_price_unchecked().price
-        );
+            assert_eq!(current_price.id.to_bytes(), *pyth_id_btc);
+            assert_eq!(
+                current_price.get_price_unchecked().publish_time,
+                last_btc_vaa.unwrap().get_price_unchecked().publish_time
+            );
+            assert_eq!(
+                current_price.get_price_unchecked().price,
+                last_btc_vaa.unwrap().get_price_unchecked().price
+            );
+        }
 
-        let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_eth })
-            .unwrap();
+        // check eth price
+        {
+            let current_price = suite
+                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_eth })
+                .unwrap();
 
-        assert_eq!(current_price.id.to_bytes(), *pyth_id_eth);
-        assert_eq!(
-            current_price.get_price_unchecked().publish_time,
-            last_eth_vaa.unwrap().get_price_unchecked().publish_time
-        );
-        assert_eq!(
-            current_price.get_price_unchecked().price,
-            last_eth_vaa.unwrap().get_price_unchecked().price
-        );
+            assert_eq!(current_price.id.to_bytes(), *pyth_id_eth);
+            assert_eq!(
+                current_price.get_price_unchecked().publish_time,
+                last_eth_vaa.unwrap().get_price_unchecked().publish_time
+            );
+            assert_eq!(
+                current_price.get_price_unchecked().price,
+                last_eth_vaa.unwrap().get_price_unchecked().price
+            );
+        }
+
+        // sleep for 1 second
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
 
-pub async fn get_latest_vaas(url: &str, ids: &[&str]) -> anyhow::Result<Vec<String>> {
+#[tokio::test]
+async fn multiple_vaas() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    let ids = [
+        WBTC_USD_ID,
+        ETH_USD_ID,
+        USDC_USD_ID,
+        SOL_USD_ID,
+        ATOM_USD_ID,
+        BNB_USD_ID,
+        DOGE_USD_ID,
+        XRP_USD_ID,
+        TON_USD_ID,
+        SHIBA_USD_ID,
+    ];
+
+    let mut last_price_feeds = ids
+        .iter()
+        .map(|id| (*id, None))
+        .collect::<BTreeMap<_, Option<PriceFeed>>>();
+
+    for _ in 0..5 {
+        let string_json_vaas = get_latest_vaas(PYTH_URL, &ids).await.unwrap();
+
+        let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
+
+        for vaa in parsed_vaa {
+            for price_feed in vaa.unverified() {
+                let last_price_feed = last_price_feeds
+                    .get_mut(price_feed.id.to_string().as_str())
+                    .unwrap();
+
+                if let Some(last_price_feed) = last_price_feed {
+                    if price_feed.get_price_unchecked().publish_time
+                        > last_price_feed.get_price_unchecked().publish_time
+                    {
+                        last_price_feed.clone_from(&price_feed);
+                    }
+                } else {
+                    *last_price_feed = Some(price_feed);
+                }
+            }
+        }
+
+        // Check if all prices has been fetched
+        for v in last_price_feeds.values() {
+            assert!(v.is_some());
+        }
+
+        // Push all prices
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &RawExecuteMsg::UpdatePriceFeeds {
+                    data: string_json_vaas.deserialize_json().unwrap(),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+
+        // Check all prices
+        for (id, last_price_feed) in &last_price_feeds {
+            let current_price: PriceFeed = suite
+                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest {
+                    id: PythId::from_str(id).unwrap(),
+                })
+                .unwrap();
+
+            assert_eq!(current_price.id.to_string(), *id);
+            assert_eq!(
+                current_price.get_price_unchecked().publish_time,
+                last_price_feed
+                    .as_ref()
+                    .unwrap()
+                    .get_price_unchecked()
+                    .publish_time
+            );
+            assert_eq!(
+                current_price.get_price_unchecked().price,
+                last_price_feed
+                    .as_ref()
+                    .unwrap()
+                    .get_price_unchecked()
+                    .price
+            );
+        }
+
+        // sleep for 1 second
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
+
+/// Return JSON string of the latest VAA from Pyth network.
+pub async fn get_latest_vaas(url: &str, ids: &[&str]) -> anyhow::Result<String> {
     let url = format!("{url}/api/latest_vaas");
     let ids = ids.iter().map(|id| ("ids[]", id)).collect::<Vec<_>>();
     let client = reqwest::Client::new();
     let response = client.get(url).query(&ids).send().await?;
-    Ok(response.text().await?.deserialize_json()?)
+    Ok(response.text().await?)
 }

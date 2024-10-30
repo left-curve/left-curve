@@ -29,10 +29,7 @@ pub struct GuardianSignature {
 }
 
 impl GuardianSignature {
-    pub fn new<T>(raw_bytes: T) -> anyhow::Result<Self>
-    where
-        T: Into<Vec<u8>>,
-    {
+    pub fn new(raw_bytes: [u8; WormholeVAA::SIGNATURE_LEN]) -> anyhow::Result<Self> {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
         let signature = bytes.next_bytes::<{ WormholeVAA::SIGNATURE_LEN - 1 }>()?;
@@ -82,10 +79,13 @@ impl WormholeVAA {
             })
             .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
 
-        // We should use api functions but we are inside a trait, can't use it.
-        // For now use the HashExt trait directly.
-        // This need double hash
+        // save some gas in wasm32
+        #[cfg(not(target_arch = "wasm32"))]
         let hash = bytes.deref().keccak256().keccak256();
+        #[cfg(target_arch = "wasm32")]
+        let hash = Hash256::from_inner(
+            grug::ExternalApi.keccak256(&grug::ExternalApi.keccak256(bytes.deref())),
+        );
 
         let timestamp = bytes.next_u32()?;
         let nonce = bytes.next_u32()?;
@@ -121,9 +121,8 @@ impl WormholeVAA {
         let guardian_set = guardian_set.load(storage, self.guardian_set_index)?;
 
         ensure!(
-            !(guardian_set.expiration_time != 0
-                && block.timestamp.into_inner().into_inner()
-                    > guardian_set.expiration_time as u128),
+            guardian_set.expiration_time == 0
+                || guardian_set.expiration_time as u128 > block.timestamp.into_inner().into_inner(),
             "Guardian set expired"
         );
 
