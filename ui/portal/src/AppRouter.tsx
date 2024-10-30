@@ -17,7 +17,7 @@ export const AppRouter: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="w-full flex flex-1 justify-center items-center">
+        <div className="h-screen w-full flex justify-center items-center">
           <Spinner size="lg" color="pink" />
         </div>
       }
