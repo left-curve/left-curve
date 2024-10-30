@@ -57,6 +57,6 @@ pub use testing::*;
 
 // Dependencies used by the procedural macros.
 #[doc(hidden)]
-pub mod __prelude {
+pub mod __private {
     pub use {::borsh, ::serde, ::serde_json, ::serde_with};
 }

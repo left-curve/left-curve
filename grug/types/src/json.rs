@@ -26,7 +26,7 @@ const TAG_NON_INT: u8 = 2;
 #[macro_export]
 macro_rules! json {
     ($($json:tt)+) => {
-        $crate::Json::from_inner($crate::__prelude::serde_json::json!($($json)+))
+        $crate::Json::from_inner($crate::__private::serde_json::json!($($json)+))
     };
 }
 
