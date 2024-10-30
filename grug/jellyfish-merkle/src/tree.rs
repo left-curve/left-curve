@@ -1152,6 +1152,67 @@ mod tests {
         assert_tree(&storage, vec![], vec![]);
     }
 
+    #[test]
+    fn no_extra_saves() {
+        {
+            let mut storage = MockStorage::new();
+            let _ = TREE.apply_raw(
+                &mut storage,
+                0,
+                1,
+                &Batch::from([
+                    (b"m".to_vec(), Op::Insert(b"10".to_vec())),
+                    (b"L".to_vec(), Op::Insert(b"6".to_vec())),
+                    (b"q".to_vec(), Op::Delete),
+                    (b"Z".to_vec(), Op::Insert(b"2".to_vec())),
+                    (b"a".to_vec(), Op::Insert(b"14".to_vec())),
+                ]),
+            );
+            let _ = TREE.apply_raw(
+                &mut storage,
+                1,
+                2,
+                &Batch::from([
+                    (b"r".to_vec(), Op::Insert(b"6".to_vec())),
+                    (b"w".to_vec(), Op::Delete),
+                    (b"m".to_vec(), Op::Delete),
+                    (b"L".to_vec(), Op::Delete),
+                    (b"a".to_vec(), Op::Insert(b"5".to_vec())),
+                ]),
+            );
+
+            assert_tree(
+                &storage,
+                vec![
+                    (1, ROOT_BITS),
+                    (1, BitArray::from_bits(&[0])),
+                    (1, BitArray::from_bits(&[1])),
+                    (1, BitArray::from_bits(&[0, 1])),
+                    (1, BitArray::from_bits(&[1, 0])),
+                    (1, BitArray::from_bits(&[1, 1])),
+                    (1, BitArray::from_bits(&[0, 1, 1])),
+                    (1, BitArray::from_bits(&[0, 1, 1, 0])),
+                    (1, BitArray::from_bits(&[0, 1, 1, 1])),
+                    (2, ROOT_BITS),
+                    (2, BitArray::from_bits(&[0])),
+                    (2, BitArray::from_bits(&[1])),
+                    (2, BitArray::from_bits(&[1, 1])),
+                    // (2, BitArray::from_bits(&[0, 1, 0])), // This exists right now but shouldn't
+                ],
+                vec![
+                    (2, 1, BitArray::from_bits(&[])),
+                    (2, 1, BitArray::from_bits(&[0])),
+                    (2, 1, BitArray::from_bits(&[1])),
+                    (2, 1, BitArray::from_bits(&[0, 1])),
+                    (2, 1, BitArray::from_bits(&[1, 1])),
+                    (2, 1, BitArray::from_bits(&[0, 1, 1])),
+                    (2, 1, BitArray::from_bits(&[0, 1, 1, 0])),
+                    (2, 1, BitArray::from_bits(&[0, 1, 1, 1])),
+                ],
+            );
+        }
+    }
+
     fn assert_tree(
         storage: &dyn Storage,
         nodes: Vec<(u64, BitArray)>,
