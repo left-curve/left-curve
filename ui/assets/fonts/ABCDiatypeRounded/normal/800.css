@@ -1,0 +1,7 @@
+@font-face {
+  font-family: 'ABCDiatypeRounded';
+  font-style: normal;
+  font-weight: 800;
+  src: url(../files/ABCDiatypeRounded-Black.woff2) format('woff2'),
+    url(../files/ABCDiatypeRounded-Black.woff) format('woff');
+}

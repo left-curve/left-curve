@@ -1,0 +1,7 @@
+@font-face {
+  font-family: 'Exposure';
+  font-style: normal;
+  font-weight: 400;
+  src: url(../files/Exposure+0-205TF.woff2) format('woff2'),
+    url(../files/Exposure+0-205TF.woff) format('woff');
+}
