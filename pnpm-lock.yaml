@@ -263,9 +263,6 @@ importers:
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
-      mipd:
-        specifier: ^0.0.7
-        version: 0.0.7(typescript@5.6.3)
       zustand:
         specifier: ^4.5.5
         version: 4.5.5(@types/react@18.3.11)(react@18.3.1)
@@ -4338,14 +4335,6 @@ packages:
   minipass@7.1.2:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
-
-  mipd@0.0.7:
-    resolution: {integrity: sha512-aAPZPNDQ3uMTdKbuO2YmAw2TxLHO0moa4YKAyETM/DTj5FloZo+a+8tU+iv4GmW+sOxKLSRwcSFuczk+Cpt6fg==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   mlly@1.7.2:
     resolution: {integrity: sha512-tN3dvVHYVz4DhSXinXIk7u9syPYaJvio118uomkovAtWBT+RdbP6Lfh/5Lvo519YMmwBafwlh20IPTXIStscpA==}
@@ -9973,10 +9962,6 @@ snapshots:
   minimist@1.2.8: {}
 
   minipass@7.1.2: {}
-
-  mipd@0.0.7(typescript@5.6.3):
-    optionalDependencies:
-      typescript: 5.6.3
 
   mlly@1.7.2:
     dependencies:

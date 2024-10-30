@@ -4,7 +4,6 @@ import { createStorage } from "./storages/createStorage.js";
 import { createBaseClient } from "@leftcurve/sdk";
 import { ConnectionStatus } from "@leftcurve/types";
 import { uid } from "@leftcurve/utils";
-import { createStore as createMipd } from "mipd";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
@@ -26,6 +25,7 @@ import type {
   Transport,
 } from "@leftcurve/types";
 import { eip6963 } from "./connectors/eip6963.js";
+import { createMipdStore } from "./mipd.js";
 
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]],
@@ -47,7 +47,7 @@ export function createConfig<
   //////////////////////////////////////////////////////////////////////////////
 
   const mipd =
-    typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipd() : undefined;
+    typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
   const chains = createStore(() => rest.chains);
   const coins = createStore(() => rest.coins);
@@ -146,6 +146,7 @@ export function createConfig<
 
   function getInitialState(): State {
     return {
+      isMipdLoaded: !multiInjectedProviderDiscovery,
       chainId: chains.getState()[0].id,
       connections: new Map(),
       connectors: new Map(),
@@ -221,6 +222,7 @@ export function createConfig<
 
     if (storage && !store.persist.hasHydrated()) return;
     connectors.setState((x) => [...x, ...newConnectors], true);
+    store.setState((x) => ({ ...x, isMipdLoaded: true }));
   });
 
   //////////////////////////////////////////////////////////////////////////////
