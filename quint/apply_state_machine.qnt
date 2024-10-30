@@ -282,7 +282,16 @@ module pruning_state_machine {
 
   var unpruned_tree: Tree
 
-// just an idea to investigate pruning separatey agains an unpruned version of the tree
+  // TODO: add steps that take care of unpruned_tree
+  // - When pruning don't update unpruned_tree
+  // - For all other actions (insert, delete), 
+  //     - apply update on unpruned_tree, and
+  //     - assign to unpruned_tree'
+
+  def pruningDoesNotAffectActiveTreesInv = 
+    activeTreeVersions.forall(v =>
+      tree.treeAtVersion(v) == unpruned_tree.treeAtVersion(v)
+  )  
 
 
 
