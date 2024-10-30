@@ -1,10 +1,10 @@
 "use client";
 
 import { forwardRef, useRef } from "react";
-import { WizardProvider } from "~/providers";
-import { mergeRefs } from "~/utils";
+import { WizardProvider } from "../../../providers";
+import { mergeRefs } from "../../../utils";
 
-import { Button, Modal, type ModalRef } from "~/components";
+import { Button, Modal, type ModalRef } from "../../";
 
 import { DisplayConnect } from "./DisplayConnect";
 import { DisplayIntro } from "./DisplayIntro";

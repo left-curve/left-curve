@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 import { type GetChainIdReturnType, getChainId, watchChainId } from "@leftcurve/connect-kit";
 import type { Config, ConfigParameter } from "@leftcurve/types";
-import { useConfig } from "./useConfig";
+import { useConfig } from "./useConfig.js";
 
 export type UseChainIdParameters<config extends Config = Config> = ConfigParameter<config>;
 

@@ -61,3 +61,4 @@ export { WalletIcon } from "./icons/Wallet";
 export { ExternalLinkIcon } from "./icons/ExternalLink";
 export { SearchIcon } from "./icons/Search";
 export { ArrowSelectorIcon } from "./icons/ArrowSelector";
+export { SwapArrowDownIcon } from "./icons/SwapArrowDown";

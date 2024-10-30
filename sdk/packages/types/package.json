@@ -2,22 +2,23 @@
   "name": "@leftcurve/types",
   "version": "0.1.0",
   "private": true,
-  "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
+  "type": "module",
   "files": ["build", "src", "!**/*.spec.ts", "!typedoc.json", "!tsup.config.ts"],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
-      "import": "./build/index.mjs",
-      "default": "./build/index.js"
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
     },
     "./window": {
       "types": "./build/window.d.ts",
-      "import": "./build/window.mjs",
-      "default": "./build/window.js"
+      "import": "./build/window.js",
+      "default": "./build/window.cjs"
     }
   },
   "typesVersions": {
@@ -31,8 +32,8 @@
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {

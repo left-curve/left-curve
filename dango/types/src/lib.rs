@@ -4,6 +4,7 @@ pub mod amm;
 pub mod auth;
 pub mod bank;
 pub mod config;
+pub mod lending;
 pub mod mock_ibc_transfer;
 pub mod oracle;
 pub mod taxman;

@@ -1,6 +1,6 @@
 import { encodeUtf8 } from "@leftcurve/encoding";
 import { decode } from "cbor-x";
-import { ripemd160 } from "../ripemd";
+import { ripemd160 } from "../ripemd.js";
 
 export type CredentialAttestion = {
   id: string;

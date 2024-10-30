@@ -1,5 +1,5 @@
-import type { NativeCoin } from "./coin";
-import type { Json } from "./encoding";
+import type { NativeCoin } from "./coin.js";
+import type { Json } from "./encoding.js";
 
 export type ChainId = string;
 

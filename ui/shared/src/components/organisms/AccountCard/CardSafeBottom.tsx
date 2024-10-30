@@ -1,5 +1,5 @@
 import type { Power, Username } from "@leftcurve/types";
-import { AvatarStack } from "~/components/atoms/AvatarStack";
+import { AvatarStack } from "../../atoms/AvatarStack";
 
 interface Props {
   isLoading: boolean;

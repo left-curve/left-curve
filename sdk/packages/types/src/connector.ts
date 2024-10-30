@@ -1,11 +1,11 @@
-import type { Account, Username } from "./account";
-import type { Chain, ChainId } from "./chain";
-import type { Client } from "./client";
-import type { Emitter } from "./emitter";
-import type { KeyHash } from "./key";
-import type { SignDoc, SignedDoc } from "./signature";
-import type { Signer } from "./signer";
-import type { Transport } from "./transports";
+import type { Account, Username } from "./account.js";
+import type { Chain, ChainId } from "./chain.js";
+import type { Client } from "./client.js";
+import type { Emitter } from "./emitter.js";
+import type { KeyHash } from "./key.js";
+import type { SignDoc, SignedDoc } from "./signature.js";
+import type { Signer } from "./signer.js";
+import type { Transport } from "./transports.js";
 
 export type ConnectorUId = string;
 

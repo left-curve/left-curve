@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { deserialize, serialize } from "./binary";
-import { decodeUtf8, encodeUtf8 } from "./utf8";
+import { deserialize, serialize } from "./binary.js";
+import { decodeUtf8, encodeUtf8 } from "./utf8.js";
 
 describe("serializing and deserializing complex types", () => {
   test.each([

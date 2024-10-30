@@ -9,12 +9,12 @@
     "clean:build": "rm -rf ./build",
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",
-    "pre-dev": "pnpm build",
-    "dev": "pnpm tsup --watch --onSuccess 'tsup --dts-only --silent' --silent",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
     "build": "pnpm tsup --clean"
   },
-  "main": "./build/index.js",
-  "module": "./build/index.mjs",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
@@ -26,21 +26,20 @@
     "!tsup.config.ts"
   ],
   "exports": {
-    "./fonts/*": "./build/fonts/*",
     ".": {
       "types": "./build/index.d.ts",
-      "import": "./build/index.mjs",
-      "default": "./build/index.js"
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
     },
     "./components": {
       "types": "./build/components/index.d.ts",
-      "import": "./build/components/index.mjs",
-      "default": "./build/components/index.js"
+      "import": "./build/components/index.js",
+      "default": "./build/components/index.cjs"
     },
     "./components/examples": {
       "types": "./build/components/examples/index.d.ts",
-      "import": "./build/components/examples/index.mjs",
-      "default": "./build/components/examples/index.js"
+      "import": "./build/components/examples/index.js",
+      "default": "./build/components/examples/index.cjs"
     }
   },
   "typesVersions": {
@@ -54,6 +53,7 @@
     }
   },
   "dependencies": {
+    "@dango/assets": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/sdk": "workspace:^",
     "@leftcurve/utils": "workspace:^",

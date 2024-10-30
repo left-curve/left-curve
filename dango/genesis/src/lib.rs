@@ -5,6 +5,7 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        lending::{self, MarketUpdates},
         mock_ibc_transfer,
         oracle::{self, GuardianSetInfo},
         taxman, token_factory,
@@ -53,6 +54,7 @@ pub struct Contracts {
     pub bank: Addr,
     pub oracle: Addr,
     pub ibc_transfer: Addr,
+    pub lending: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
 }
@@ -60,12 +62,14 @@ pub struct Contracts {
 #[derive(Clone, Copy)]
 pub struct Codes<T> {
     pub account_factory: T,
+    pub account_margin: T,
     pub account_spot: T,
     pub account_safe: T,
     pub amm: T,
     pub bank: T,
     pub oracle: T,
     pub ibc_transfer: T,
+    pub lending: T,
     pub taxman: T,
     pub token_factory: T,
 }
@@ -78,23 +82,27 @@ pub struct GenesisUser {
 
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
+    let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
+    let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
 
     Ok(Codes {
         account_factory,
+        account_margin,
         account_spot,
         account_safe,
         amm,
         bank,
         oracle,
         ibc_transfer,
+        lending,
         taxman,
         token_factory,
     })
@@ -120,12 +128,14 @@ where
 
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
+    let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
+    let lending_code_hash = upload(&mut msgs, codes.lending);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
 
@@ -145,6 +155,7 @@ where
             code_hashes: btree_map! {
                 AccountType::Spot => account_spot_code_hash,
                 AccountType::Safe => account_safe_code_hash,
+                AccountType::Margin => account_margin_code_hash,
             },
             keys,
             users,
@@ -208,6 +219,19 @@ where
         "dango/amm",
     )?;
 
+    // Instantiate the lending pool contract.
+    let lending = instantiate(
+        &mut msgs,
+        lending_code_hash,
+        &lending::InstantiateMsg {
+            markets: btree_map! {
+                fee_denom.clone() => MarketUpdates {},
+            },
+        },
+        "dango/lending",
+        "dango/lending",
+    )?;
+
     // Create the `balances` map needed for instantiating bank.
     let balances = genesis_users
         .into_iter()
@@ -228,6 +252,7 @@ where
         Part::from_str(amm::NAMESPACE)? => amm,
         Part::from_str(token_factory::NAMESPACE)? => token_factory,
         Part::from_str(mock_ibc_transfer::NAMESPACE)? => ibc_transfer,
+        lending::NAMESPACE.clone() => lending,
     };
 
     // Instantiate the bank contract.
@@ -282,6 +307,7 @@ where
         ibc_transfer,
         taxman,
         token_factory,
+        lending,
     };
 
     let permissions = Permissions {

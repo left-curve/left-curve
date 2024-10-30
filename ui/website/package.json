@@ -10,7 +10,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@dango/shared": "workspace:^",
+    "@dango/assets": "workspace:^",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

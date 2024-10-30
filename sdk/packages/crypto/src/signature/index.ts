@@ -1,1 +1,1 @@
-export { ethHashMessage } from "./ethHashMessage";
+export { ethHashMessage } from "./ethHashMessage.js";

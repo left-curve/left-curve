@@ -5,10 +5,10 @@ import { useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
 import { capitalize } from "@leftcurve/utils";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
-import { AccountCard, Button } from "~/components";
-import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "~/components";
+import { AccountCard, Button } from "../";
+import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
 

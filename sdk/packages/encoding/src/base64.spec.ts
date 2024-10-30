@@ -6,7 +6,7 @@ import {
   decodeBase64Url,
   encodeBase64,
   encodeBase64Url,
-} from "./base64";
+} from "./base64.js";
 
 describe("base64", () => {
   it("encodes to base64", () => {

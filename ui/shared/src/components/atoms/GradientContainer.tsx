@@ -3,7 +3,7 @@
 import type React from "react";
 
 import type { ComponentPropsWithoutRef } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 export const GradientContainer: React.FC<ComponentPropsWithoutRef<"div">> = ({
   className,

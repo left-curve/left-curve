@@ -3,9 +3,9 @@ import {
   type ConnectParameters,
   type ConnectReturnType,
   connect,
-} from "../actions/connect";
-export { type ConnectErrorType } from "../actions/connect";
-import type { Mutate, MutateAsync, MutationOptions } from "./mutation";
+} from "../actions/connect.js";
+export { type ConnectErrorType } from "../actions/connect.js";
+import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
 
 import type { Config } from "@leftcurve/types";
 

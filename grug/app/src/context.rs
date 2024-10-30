@@ -49,7 +49,7 @@ impl<VM, S> AppCtx<VM, S> {
     /// or uploading a code.
     pub fn downcast(self) -> AppCtx<Undefined, S> {
         AppCtx {
-            vm: Undefined::default(),
+            vm: Undefined::new(),
             storage: self.storage,
             gas_tracker: self.gas_tracker,
             chain_id: self.chain_id,

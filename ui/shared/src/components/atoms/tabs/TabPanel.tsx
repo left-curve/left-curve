@@ -4,9 +4,9 @@ import { useTabPanel } from "@react-aria/tabs";
 import { mergeProps } from "@react-aria/utils";
 import type { TabListState } from "@react-stately/tabs";
 import type { Key } from "@react-types/shared";
-import { forwardRef, useDOMRef } from "~/utils/dom";
+import { forwardRef, useDOMRef } from "../../../utils";
 
-import type { As } from "~/types/react";
+import type { As } from "../../../types";
 
 interface Props {
   as?: As;

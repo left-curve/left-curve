@@ -1,6 +1,6 @@
 import { decodeHex, encodeHex, encodeUtf8, isHex } from "@leftcurve/encoding";
 import type { EthPersonalMessage, Hex } from "@leftcurve/types";
-import { keccak256 } from "../sha";
+import { keccak256 } from "../sha.js";
 
 const presignMessagePrefix = "\x19Ethereum Signed Message:\n";
 

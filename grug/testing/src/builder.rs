@@ -1,6 +1,6 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
-    grug_app::AppError,
+    grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
@@ -20,15 +20,15 @@ use {
     tracing::Level,
 };
 
-const DEFAULT_TRACING_LEVEL: Level = Level::INFO;
-const DEFAULT_CHAIN_ID: &str = "dev-1";
-const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
-const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;
-const DEFAULT_BANK_SALT: &str = "bank";
-const DEFAULT_TAXMAN_SALT: &str = "taxman";
-const DEFAULT_FEE_DENOM: &str = "ugrug";
-const DEFAULT_FEE_RATE: &str = "0";
-const DEFAULT_MAX_ORPHAN_AGE: Duration = Duration::from_seconds(7 * 24 * 60 * 60); // 7 days
+pub const DEFAULT_TRACING_LEVEL: Level = Level::INFO;
+pub const DEFAULT_CHAIN_ID: &str = "dev-1";
+pub const DEFAULT_BLOCK_TIME: Duration = Duration::from_millis(250);
+pub const DEFAULT_DEFAULT_GAS_LIMIT: u64 = 1_000_000;
+pub const DEFAULT_BANK_SALT: &str = "bank";
+pub const DEFAULT_TAXMAN_SALT: &str = "taxman";
+pub const DEFAULT_FEE_DENOM: &str = "ugrug";
+pub const DEFAULT_FEE_RATE: &str = "0";
+pub const DEFAULT_MAX_ORPHAN_AGE: Duration = Duration::from_seconds(7 * 24 * 60 * 60); // 7 days
 
 // If the user wishes to use a custom code for account, bank, or taxman, they
 // must provide both the binary code, as well as a function for creating the
@@ -40,6 +40,7 @@ struct CodeOption<B> {
 
 pub struct TestBuilder<
     VM = RustVm,
+    PP = NaiveProposalPreparer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
@@ -47,6 +48,7 @@ pub struct TestBuilder<
     TA = Undefined<TestAccounts>,
 > {
     vm: VM,
+    pp: PP,
     // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
@@ -74,7 +76,7 @@ pub struct TestBuilder<
 #[allow(clippy::new_without_default)]
 impl TestBuilder<RustVm> {
     pub fn new() -> Self {
-        Self::new_with_vm(RustVm::new())
+        Self::new_with_vm_and_pp(RustVm::new(), NaiveProposalPreparer)
     }
 }
 
@@ -83,6 +85,21 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
+        Self::new_with_vm_and_pp(vm, NaiveProposalPreparer)
+    }
+}
+
+impl<PP> TestBuilder<RustVm, PP> {
+    pub fn new_with_pp(pp: PP) -> Self {
+        Self::new_with_vm_and_pp(RustVm::new(), pp)
+    }
+}
+
+impl<VM, PP> TestBuilder<VM, PP>
+where
+    VM: TestVm,
+{
+    pub fn new_with_vm_and_pp(vm: VM, pp: PP) -> Self {
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
@@ -106,14 +123,15 @@ where
                 }),
             },
             vm,
+            pp,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
             block_time: None,
             default_gas_limit: None,
             app_configs: BTreeMap::new(),
-            owner: Undefined::default(),
-            accounts: Undefined::default(),
+            owner: Undefined::new(),
+            accounts: Undefined::new(),
             balances: BTreeMap::new(),
             fee_denom: None,
             fee_rate: None,
@@ -122,13 +140,13 @@ where
     }
 }
 
-impl<VM, M1, M2, M3, OW, TA> TestBuilder<VM, M1, M2, M3, OW, TA>
+impl<VM, PP, M1, M2, M3, OW, TA> TestBuilder<VM, PP, M1, M2, M3, OW, TA>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    OW: MaybeDefined<Inner = Addr>,
-    TA: MaybeDefined<Inner = TestAccounts>,
+    OW: MaybeDefined<Addr>,
+    TA: MaybeDefined<TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -231,13 +249,14 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2A, M3, OW, TA>
+    ) -> TestBuilder<VM, PP, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
     {
         TestBuilder {
             vm: self.vm,
+            pp: self.pp,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -294,13 +313,14 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1, M2, M3A, OW, TA>
+    ) -> TestBuilder<VM, PP, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(Denom, Udec128) -> M3A + 'static,
     {
         TestBuilder {
             vm: self.vm,
+            pp: self.pp,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -326,12 +346,12 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> TestBuilder<VM, M1, M2, M3, OW, Defined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, M1, M2, M3, OW, Defined<TestAccounts>>
     where
         C: TryInto<Coins>,
         C::Error: Debug,
     {
-        let mut accounts = self.accounts.maybe_inner().unwrap_or_default();
+        let mut accounts = self.accounts.maybe_into_inner().unwrap_or_default();
         assert!(
             !accounts.contains_key(name),
             "account with name {name} already exists"
@@ -349,6 +369,7 @@ where
 
         TestBuilder {
             vm: self.vm,
+            pp: self.pp,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -368,12 +389,12 @@ where
     }
 }
 
-impl<VM, M1, M2, M3, OW> TestBuilder<VM, M1, M2, M3, OW, Undefined<TestAccounts>>
+impl<VM, PP, M1, M2, M3, OW> TestBuilder<VM, PP, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    OW: MaybeDefined<Inner = Addr>,
+    OW: MaybeDefined<Addr>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
@@ -412,13 +433,14 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, M1A, M2, M3, OW, Undefined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, M1A, M2, M3, OW, Undefined<TestAccounts>>
     where
         T: Into<Binary>,
         F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
     {
         TestBuilder {
             vm: self.vm,
+            pp: self.pp,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -443,17 +465,18 @@ where
 
 // `set_owner` can only be called if `add_accounts` has been called at least
 // once, and `set_owner` hasn't already been called.
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
+impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
     pub fn set_owner(
         self,
         name: &'static str,
-    ) -> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
+    ) -> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
         let owner = self.accounts.inner().get(name).unwrap_or_else(|| {
             panic!("failed to set owner: can't find account with name `{name}`")
         });
 
         TestBuilder {
             vm: self.vm,
+            pp: self.pp,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -474,15 +497,16 @@ impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Undefined<Addr>, Defined<TestAc
 }
 
 // `build` can only be called if both `owner` and `accounts` have been set.
-impl<VM, M1, M2, M3> TestBuilder<VM, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
+impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
     VM: TestVm + Clone,
-    AppError: From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<VM::Error> + From<PP::Error>,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }
@@ -592,8 +616,10 @@ where
             app_configs: self.app_configs,
         };
 
-        let suite = TestSuite::new_with_vm(
+        let suite = TestSuite::new_with_db_vm_and_pp(
+            MemDb::new(),
             self.vm,
+            self.pp,
             chain_id,
             block_time,
             default_gas_limit,

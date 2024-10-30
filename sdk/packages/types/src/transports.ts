@@ -1,6 +1,6 @@
-import type { Chain } from "./chain";
-import type { CometBftRpcSchema } from "./cometbft";
-import type { RequestFn, RpcSchema } from "./rpc";
+import type { Chain } from "./chain.js";
+import type { CometBftRpcSchema } from "./cometbft.js";
+import type { RequestFn, RpcSchema } from "./rpc.js";
 
 export type TransportConfig<
   type extends string = string,

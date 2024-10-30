@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { twMerge } from "~/utils";
+import { twMerge } from "../../utils";
 
 import { Slot } from "@radix-ui/react-slot";
 

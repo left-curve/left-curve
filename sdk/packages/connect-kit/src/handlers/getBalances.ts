@@ -5,9 +5,9 @@ import {
   type GetBalancesErrorType,
   type GetBalancesReturnType,
   getBalances,
-} from "../actions/getBalances";
+} from "../actions/getBalances.js";
 
-import { type ScopeKeyParameter, filterQueryOptions } from "./query";
+import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
 import type { Config, Prettify } from "@leftcurve/types";
 

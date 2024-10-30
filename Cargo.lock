@@ -405,6 +405,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "atomic-waker"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
+
+[[package]]
 name = "auto_impl"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1277,6 +1283,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-account-margin"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-auth",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-account-safe"
 version = "0.0.0"
 dependencies = [
@@ -1364,6 +1380,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-lending"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-account-factory",
+ "dango-auth",
+ "dango-types",
+ "grug",
+ "grug-storage",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -1379,6 +1407,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "dango-account-factory",
+ "dango-account-margin",
  "dango-account-safe",
  "dango-account-spot",
  "dango-amm",
@@ -1386,6 +1415,7 @@ dependencies = [
  "dango-genesis",
  "dango-ibc-transfer",
  "dango-oracle",
+ "dango-lending",
  "dango-taxman",
  "dango-token-factory",
  "dango-types",
@@ -1950,10 +1980,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d6401deb83407ab3da39eba7e33987a73c3df0c82b4bb5813ee871c19c41d48"
 dependencies = [
  "futures-core",
+ "futures-io",
  "futures-sink",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
+ "slab",
 ]
 
 [[package]]
@@ -2264,9 +2297,12 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "k256",
+ "prost",
  "rand",
+ "reqwest 0.12.9",
  "serde",
  "test-case",
+ "thiserror",
  "tracing",
  "tracing-subscriber",
 ]
@@ -3897,6 +3933,7 @@ dependencies = [
  "base64 0.22.1",
  "bytes",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.6",

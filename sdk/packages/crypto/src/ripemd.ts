@@ -1,6 +1,6 @@
 import { ripemd160 as nobleRipemd160 } from "@noble/hashes/ripemd160";
 
-import type { HashFunction } from "./hash";
+import type { HashFunction } from "./hash.js";
 
 export class Ripemd160 implements HashFunction {
   public readonly blockSize = 512 / 8;

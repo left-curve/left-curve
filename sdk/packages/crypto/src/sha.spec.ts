@@ -1,6 +1,6 @@
 import { encodeHex } from "@leftcurve/encoding";
 import { describe, expect, it } from "vitest";
-import { Sha256, Sha512, sha256, sha512 } from "./sha";
+import { Sha256, Sha512, sha256, sha512 } from "./sha.js";
 
 describe("Sha256", () => {
   it("should initialize with no data", () => {

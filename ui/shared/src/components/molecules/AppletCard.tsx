@@ -3,7 +3,7 @@
 import { useStorage } from "@leftcurve/react";
 import type React from "react";
 
-import type { AppletMetadata } from "~/types";
+import type { AppletMetadata } from "../../types";
 interface Props {
   metadata: AppletMetadata;
   onClick?: (applet: AppletMetadata) => void;

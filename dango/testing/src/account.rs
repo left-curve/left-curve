@@ -1,11 +1,14 @@
 use {
     dango_types::{
-        account_factory::{NewUserSalt, Username},
+        account::single,
+        account_factory::{
+            self, AccountParams, NewUserSalt, QueryNextAccountIndexRequest, Salt, Username,
+        },
         auth::{Credential, Key, Metadata, SignDoc},
     },
     grug::{
-        Addr, Addressable, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt, MaybeDefined,
-        Message, Signer, StdResult, Tx, Undefined,
+        Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
+        MaybeDefined, Message, ResultExt, Signer, StdResult, TestSuite, Tx, Undefined,
     },
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
@@ -22,7 +25,7 @@ pub struct Accounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug)]
-pub struct TestAccount<T: MaybeDefined<Inner = Addr> = Defined<Addr>> {
+pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub username: Username,
     pub key: Key,
     pub key_hash: Hash160,
@@ -53,7 +56,7 @@ impl TestAccount<Undefined<Addr>> {
             key_hash,
             sequence: 0,
             sk,
-            address: Undefined::default(),
+            address: Undefined::new(),
         }
     }
 
@@ -102,15 +105,17 @@ impl TestAccount<Undefined<Addr>> {
 
 impl<T> TestAccount<T>
 where
-    T: MaybeDefined<Inner = Addr>,
+    T: MaybeDefined<Addr>,
 {
     pub fn sign_transaction_with_sequence(
         &self,
+        sender: Addr,
         msgs: Vec<Message>,
         chain_id: &str,
         sequence: u32,
     ) -> StdResult<(Metadata, Credential)> {
         let sign_bytes = SignDoc {
+            sender,
             messages: msgs.clone(),
             chain_id: chain_id.to_string(),
             sequence,
@@ -133,6 +138,57 @@ where
     }
 }
 
+impl<T> TestAccount<T>
+where
+    T: MaybeDefined<Addr>,
+    Self: Signer,
+{
+    /// Register a new account with the username and key of this account and returns a new
+    /// `TestAccount` with the new account's address.
+    pub fn register_new_account(
+        &mut self,
+        test_suite: &mut TestSuite,
+        factory: Addr,
+        code_hash: Hash256,
+        params: AccountParams,
+        funds: Coins,
+    ) -> StdResult<TestAccount<Defined<Addr>>> {
+        // If registering a single account, ensure the supplied username matches this account's username.
+        match &params {
+            AccountParams::Spot(single::Params { owner, .. })
+            | AccountParams::Margin(single::Params { owner, .. }) => {
+                assert_eq!(owner, &self.username);
+            },
+            _ => {},
+        }
+
+        // Derive the new accounts address.
+        let index = test_suite
+            .query_wasm_smart(factory, QueryNextAccountIndexRequest {})
+            .unwrap();
+        let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
+
+        // Create a new account
+        test_suite
+            .execute(
+                &mut *self,
+                factory,
+                &account_factory::ExecuteMsg::RegisterAccount { params },
+                funds,
+            )
+            .should_succeed();
+
+        Ok(TestAccount {
+            username: self.username.clone(),
+            key: self.key,
+            key_hash: self.key_hash,
+            sequence: 0,
+            sk: self.sk.clone(),
+            address: Defined::new(address),
+        })
+    }
+}
+
 impl Addressable for TestAccount<Defined<Addr>> {
     fn address(&self) -> Addr {
         *self.address.inner()
@@ -146,8 +202,12 @@ impl Signer for TestAccount<Defined<Addr>> {
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let (data, credential) =
-            self.sign_transaction_with_sequence(msgs.clone(), chain_id, self.sequence)?;
+        let (data, credential) = self.sign_transaction_with_sequence(
+            self.address(),
+            msgs.clone(),
+            chain_id,
+            self.sequence,
+        )?;
 
         // Increment the internally tracked sequence.
         self.sequence += 1;
@@ -243,7 +303,12 @@ impl<'a> Signer for Safe<'a> {
         let (data, credential) = self
             .signer
             .expect("[Safe]: signer not set")
-            .sign_transaction_with_sequence(msgs.clone(), chain_id, self.sequence)?;
+            .sign_transaction_with_sequence(
+                self.address(),
+                msgs.clone(),
+                chain_id,
+                self.sequence,
+            )?;
 
         // Increment the internally tracked sequence.
         self.sequence += 1;

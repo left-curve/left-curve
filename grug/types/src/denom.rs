@@ -177,6 +177,28 @@ impl Denom {
             None
         }
     }
+
+    /// Prepend a slice of parts to the beginning of the denom.
+    ///
+    /// Fails if the new denom is too long.
+    pub fn prepend(&self, parts: &[&Part]) -> StdResult<Denom> {
+        let mut parts = parts.iter().copied().cloned().collect::<Vec<_>>();
+        parts.extend_from_slice(&self.0);
+        Denom::from_parts(parts)
+    }
+
+    /// Remove the given prefix, return the rest as a new denom.
+    ///
+    /// Return `None` if the `self` does not start with the given prefix.
+    pub fn strip(&self, parts: &[&Part]) -> Option<Denom> {
+        // We don't use `start_with` because it takes a &[Part] instead of &[&Part].
+        // Cloning the parts would be expensive.
+        if self.0.iter().zip(parts).all(|(a, b)| a == *b) {
+            Some(Denom(self.0[parts.len()..].to_vec()))
+        } else {
+            None
+        }
+    }
 }
 
 impl Inner for Denom {

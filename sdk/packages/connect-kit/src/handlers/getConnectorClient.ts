@@ -5,9 +5,9 @@ import {
   type GetConnectorClientParameters,
   type GetConnectorClientReturnType,
   getConnectorClient,
-} from "../actions/getConnectorClient";
+} from "../actions/getConnectorClient.js";
 
-import { type ScopeKeyParameter, filterQueryOptions } from "./query";
+import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
 import type { Config, ExactPartial, Prettify } from "@leftcurve/types";
 

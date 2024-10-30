@@ -1,12 +1,12 @@
 use {
-    grug_app::{App, AppError, AppResult, Db, Vm},
+    grug_app::{App, AppError, AppResult, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, Message, Op,
-        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
+        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
         TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
@@ -106,12 +106,13 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub struct TestSuite<DB = MemDb, VM = RustVm>
+pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer>
 where
     DB: Db,
     VM: Vm,
+    PP: ProposalPreparer,
 {
-    pub app: App<DB, VM>,
+    pub app: App<DB, VM, PP>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -147,12 +148,13 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM>
+impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    /// Create a new test suite with `MemDb` and the given VM.
+    /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
+    /// given VM.
     pub fn new_with_vm(
         vm: VM,
         chain_id: String,
@@ -161,9 +163,10 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        Self::new_with_db_and_vm(
+        Self::new_with_db_vm_and_pp(
             MemDb::new(),
             vm,
+            NaiveProposalPreparer,
             chain_id,
             block_time,
             default_gas_limit,
@@ -173,16 +176,46 @@ where
     }
 }
 
-impl<DB, VM> TestSuite<DB, VM>
+impl<PP> TestSuite<MemDb, RustVm, PP>
+where
+    PP: ProposalPreparer,
+    AppError: From<PP::Error>,
+{
+    /// Create a new test suite with `MemDb`, `RustVm`, and the given proposal
+    /// preparer.
+    pub fn new_with_pp(
+        pp: PP,
+        chain_id: String,
+        block_time: Duration,
+        default_gas_limit: u64,
+        genesis_block: BlockInfo,
+        genesis_state: GenesisState,
+    ) -> Self {
+        Self::new_with_db_vm_and_pp(
+            MemDb::new(),
+            RustVm::new(),
+            pp,
+            chain_id,
+            block_time,
+            default_gas_limit,
+            genesis_block,
+            genesis_state,
+        )
+    }
+}
+
+impl<DB, VM, PP> TestSuite<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     /// Create a new test suite with the given DB and VM.
-    pub fn new_with_db_and_vm(
+    pub fn new_with_db_vm_and_pp(
         db: DB,
         vm: VM,
+        pp: PP,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -190,7 +223,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, u64::MAX);
+        let app = App::new(db, vm, pp, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
@@ -229,11 +262,24 @@ where
 
     /// Make a new block with the given transactions.
     pub fn make_block(&mut self, txs: Vec<Tx>) -> BlockOutcome {
-        let num_txs = txs.len();
-
         // Advance block height and time
         self.block.height += 1;
         self.block.timestamp = self.block.timestamp + self.block_time;
+
+        // Prepare proposal
+        let raw_txs = txs
+            .into_iter()
+            .map(|tx| tx.to_json_vec().unwrap().into())
+            .collect();
+        let txs = self
+            .app
+            .do_prepare_proposal(raw_txs, usize::MAX)
+            .unwrap_or_else(|err| {
+                panic!("fatal error while preparing proposal: {err}");
+            })
+            .into_iter()
+            .map(|raw_tx| raw_tx.deserialize_json().unwrap())
+            .collect();
 
         // Call ABCI `FinalizeBlock` method
         let block_outcome = self
@@ -242,16 +288,6 @@ where
             .unwrap_or_else(|err| {
                 panic!("fatal error while finalizing block: {err}");
             });
-
-        // Sanity check: the number of tx results returned by the app should
-        // equal the number of txs.
-        assert_eq!(
-            num_txs,
-            block_outcome.tx_outcomes.len(),
-            "sent {} txs but received {} tx results; something is wrong",
-            num_txs,
-            block_outcome.tx_outcomes.len()
-        );
 
         // Call ABCI `Commit` method
         self.app.do_commit().unwrap_or_else(|err| {
@@ -264,15 +300,6 @@ where
     /// Execute a single transaction.
     pub fn send_transaction(&mut self, tx: Tx) -> TxOutcome {
         let mut block_outcome = self.make_block(vec![tx]);
-
-        // Sanity check: we sent one transaction, so there should be exactly one
-        // transaction outcome in the block outcome.
-        assert_eq!(
-            block_outcome.tx_outcomes.len(),
-            1,
-            "expecting exactly one transaction outcome, got {}; something is wrong!",
-            block_outcome.tx_outcomes.len()
-        );
 
         block_outcome.tx_outcomes.pop().unwrap()
     }

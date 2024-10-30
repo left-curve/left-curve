@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext } from "react";
-import { GrunnectContext } from "../context";
+import { GrunnectContext } from "../context.js";
 
 import type { Config } from "@leftcurve/types";
 

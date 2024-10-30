@@ -44,6 +44,10 @@ macro_rules! generate_downcast {
                     _ => panic!("AccountParams is not {}", stringify!($id)),
                 }
             }
+
+            pub fn [<is_$id:snake>](self) -> bool {
+                matches!(self, AccountParams::$id(_))
+            }
         }
     };
     ($($id:ident => $ret:ty),+ $(,)?) => {

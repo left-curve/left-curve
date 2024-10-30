@@ -48,9 +48,9 @@ impl Default for MockContext {
             chain_id: MOCK_CHAIN_ID.to_string(),
             block:    MOCK_BLOCK,
             contract: MOCK_CONTRACT,
-            sender:   Undefined::default(),
-            funds:    Undefined::default(),
-            mode:     Undefined::default(),
+            sender:   Undefined::new(),
+            funds:    Undefined::new(),
+            mode:     Undefined::new(),
         }
     }
 }

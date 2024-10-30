@@ -7,7 +7,7 @@ import {
   useRef,
 } from "react";
 
-import type { As, InternalForwardRefRenderFunction, PropsOf, RightJoinProps } from "~/types/react";
+import type { As, InternalForwardRefRenderFunction, PropsOf, RightJoinProps } from "../types/react";
 
 export function useDOMRef<T extends HTMLElement = HTMLElement>(
   ref?: RefObject<T | null> | Ref<T | null>,

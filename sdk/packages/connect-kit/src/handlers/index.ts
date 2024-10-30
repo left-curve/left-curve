@@ -5,7 +5,7 @@ export {
   type ConnectMutateAsync,
   type ConnectErrorType,
   connectMutationOptions,
-} from "./connect";
+} from "./connect.js";
 
 export {
   type DisconnectData,
@@ -14,7 +14,7 @@ export {
   type DisconnectMutateAsync,
   type DisconnectErrorType,
   disconnectMutationOptions,
-} from "./disconnect";
+} from "./disconnect.js";
 
 export {
   type GetBlockData,
@@ -24,7 +24,7 @@ export {
   type GetBlockErrorType,
   getBlockQueryOptions,
   getBlockQueryKey,
-} from "./getBlock";
+} from "./getBlock.js";
 
 export {
   type GetBalancesData,
@@ -34,7 +34,7 @@ export {
   type GetBalancesErrorType,
   getBalancesQueryOptions,
   getBalancesQueryKey,
-} from "./getBalances";
+} from "./getBalances.js";
 
 export {
   type GetConnectorClientData,
@@ -44,4 +44,4 @@ export {
   type GetConnectorClientErrorType,
   getConnectorClientQueryOptions,
   getConnectorClientQueryKey,
-} from "./getConnectorClient";
+} from "./getConnectorClient.js";

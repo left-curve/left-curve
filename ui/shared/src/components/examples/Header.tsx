@@ -2,7 +2,7 @@
 
 import { useAccount } from "@leftcurve/react";
 import { AccountType, ConnectionStatus } from "@leftcurve/types";
-import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "~/components";
+import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "../";
 
 export const ExampleHeader: React.FC = () => {
   const { status } = useAccount();
