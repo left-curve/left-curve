@@ -28,7 +28,6 @@ export function createMipdStore(): MipdStore {
   let providerDetails: readonly EIP6963ProviderDetail[] = [];
 
   const communicate = debounce((providerDetails) => {
-    // biome-ignore lint/complexity/noForEach: <explanation>
     listeners.forEach((listener) => listener(providerDetails));
   }, 300);
 
@@ -46,7 +45,6 @@ export function createMipdStore(): MipdStore {
       return listeners;
     },
     clear() {
-      // biome-ignore lint/complexity/noForEach: <explanation>
       listeners.forEach((listener) => listener([]));
       providerDetails = [];
     },
