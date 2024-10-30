@@ -121,16 +121,16 @@ async fn double_vaas() {
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let (btc, eth) = tokio::try_join!(
+        let (string_json_btc, string_json_eth) = tokio::try_join!(
             get_latest_vaas(PYTH_URL, &[WBTC_USD_ID]),
             get_latest_vaas(PYTH_URL, &[ETH_USD_ID])
         )
         .unwrap();
 
-        let btc_vaa = btc.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
+        let btc_vaa = string_json_btc.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
             .clone()
             .unverified()[0];
-        let eth_vaa = eth.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
+        let eth_vaa = string_json_eth.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
             .clone()
             .unverified()[0];
 
@@ -167,8 +167,8 @@ async fn double_vaas() {
                 contracts.oracle,
                 &RawExecuteMsg::UpdatePriceFeeds {
                     data: vec![
-                        btc.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
-                        eth.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
+                        string_json_btc.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
+                        string_json_eth.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
                     ],
                 },
                 Coins::default(),
