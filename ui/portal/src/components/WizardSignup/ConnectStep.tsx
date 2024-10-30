@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import { useWizard } from "@dango/shared";
+import { ArrowSelectorIcon, ConnectorButtonOptions, twMerge, useWizard } from "@dango/shared";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@leftcurve/react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -12,20 +12,15 @@ import {
 } from "@leftcurve/crypto";
 import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
 import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
+import { AccountType, ConnectionStatus, KeyAlgo } from "@leftcurve/types";
 import { getNavigatorOS, getRootDomain, wait } from "@leftcurve/utils";
 
-import { DangoButton, Select, SelectItem } from "@dango/shared";
+import { DangoButton } from "@dango/shared";
 
-import {
-  AccountType,
-  type Address,
-  ConnectionStatus,
-  type EIP1193Provider,
-  type Key,
-  KeyAlgo,
-} from "@leftcurve/types";
+import type { Address, EIP1193Provider, Key } from "@leftcurve/types";
 
 export const ConnectStep: React.FC = () => {
+  const [connectorLoading, setConnectorLoading] = useState<string>();
   const navigate = useNavigate();
 
   const config = useConfig();
@@ -34,23 +29,18 @@ export const ConnectStep: React.FC = () => {
   const { status } = useAccount();
   const connectors = useConnectors();
 
-  const [connectorId, setConnectorId] = useState<string>("Passkey");
-
   const { data } = useWizard<{ username: string }>();
   const { username } = data;
 
-  const {
-    mutateAsync: createAccount,
-    isPending,
-    isError,
-  } = useMutation({
-    mutationFn: async () => {
+  const { mutateAsync: createAccount, isError } = useMutation({
+    mutationFn: async (connectorId: string) => {
       try {
-        const connector = connectors.find((c) => c.id === connectorId.toLowerCase());
+        setConnectorLoading(connectorId);
+        const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
         const challenge = "Please sign this message to confirm your identity.";
         const { key, keyHash } = await (async () => {
-          if (connectorId === "Passkey") {
+          if (connectorId === "passkey") {
             const { id, getPublicKey } = await createWebAuthnCredential({
               challenge: encodeUtf8(challenge),
               user: {
@@ -74,25 +64,22 @@ export const ConnectStep: React.FC = () => {
             return { key, keyHash };
           }
 
-          if (connectorId === "Metamask") {
-            const provider = await (
-              connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
-            ).getProvider();
+          const provider = await (
+            connector as unknown as { getProvider: () => Promise<EIP1193Provider> }
+          ).getProvider();
 
-            const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
-            const signature = await provider.request({
-              method: "personal_sign",
-              params: [challenge, controllerAddress],
-            });
+          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+          const signature = await provider.request({
+            method: "personal_sign",
+            params: [challenge, controllerAddress],
+          });
 
-            const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
+          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
-            const key: Key = { secp256k1: encodeBase64(pubKey) };
-            const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+          const key: Key = { secp256k1: encodeBase64(pubKey) };
+          const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
 
-            return { key, keyHash };
-          }
-          throw new Error("error: invalid connector");
+          return { key, keyHash };
         })();
 
         const factoryAddr = await client.getAppConfig<Address>({ key: "account_factory" });
@@ -116,6 +103,8 @@ export const ConnectStep: React.FC = () => {
       } catch (err) {
         console.log(err);
         throw err;
+      } finally {
+        setConnectorLoading(undefined);
       }
     },
   });
@@ -125,35 +114,50 @@ export const ConnectStep: React.FC = () => {
     navigate("/");
   }, [navigate, status]);
 
+  const [showOtherSignup, setShowOtherSignup] = useState(false);
+
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton fullWidth onClick={() => createAccount()} isLoading={isPending}>
-        Signup with {connectorId}
+      <DangoButton
+        fullWidth
+        onClick={() => createAccount("passkey")}
+        isLoading={connectorLoading === "passkey"}
+      >
+        Signup with Passkey
       </DangoButton>
       {isError ? (
         <p className="text-typography-rose-600 text-center text-xl">
           We couldn't complete the request
         </p>
       ) : null}
-      <Select
-        label="login-methods"
-        placeholder="Alternative sign up methods"
-        defaultSelectedKey={connectorId}
-        onSelectionChange={(key) => setConnectorId(key.toString())}
+      <div className="flex items-center justify-center">
+        <span className="h-[1px] w-full flex-1 bg-typography-purple-400" />
+        <button
+          className="px-3 flex gap-2 items-center justify-center"
+          type="button"
+          onClick={() => setShowOtherSignup((current) => !current)}
+        >
+          <span>Other wallets </span>
+          <span>
+            <ArrowSelectorIcon
+              className={twMerge("w-4 h-4 transition-all", { "rotate-180": showOtherSignup })}
+            />
+          </span>
+        </button>
+        <span className="h-[1px] w-full flex-1 bg-typography-purple-400" />
+      </div>
+      <div
+        className={twMerge("transition-all w-full flex flex-col gap-2 h-0 overflow-hidden", {
+          "h-fit": showOtherSignup,
+        })}
       >
-        <SelectItem key="Passkey">Passkey</SelectItem>
-        <SelectItem key="Metamask">Metamask</SelectItem>
-      </Select>
-      <DangoButton
-        as={Link}
-        to="/auth/login"
-        variant="ghost"
-        color="sand"
-        className="text-lg"
-        isDisabled={isPending}
-      >
-        Already have an account?
-      </DangoButton>
+        <ConnectorButtonOptions
+          mode="signup"
+          connectors={connectors}
+          selectedConnector={connectorLoading}
+          onClick={createAccount}
+        />
+      </div>
     </div>
   );
 };
