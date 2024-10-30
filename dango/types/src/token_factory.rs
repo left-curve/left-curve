@@ -1,11 +1,11 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Coin, Denom, NonZero, Uint128},
-    std::collections::BTreeMap,
+    grug::{Addr, Coin, Denom, NonZero, Part, Uint128},
+    std::{collections::BTreeMap, sync::LazyLock},
 };
 
 /// The namespace that token factory uses.
-pub const NAMESPACE: &str = "factory";
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("factory"));
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {

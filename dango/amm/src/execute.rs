@@ -4,13 +4,13 @@ use {
     dango_types::{
         amm::{
             ConcentratedPool, ExecuteMsg, InstantiateMsg, Pool, PoolId, PoolParams, XykPool,
-            MINIMUM_LIQUIDITY, NAMESPACE, SUB_NAMESPACE_POOL,
+            MINIMUM_LIQUIDITY, NAMESPACE, SUBNAMESPACE,
         },
         bank, taxman,
     },
     grug::{
-        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Response, StdResult, Uint128,
-        UniqueVec,
+        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Part, Response, StdResult,
+        Uint128, UniqueVec,
     },
 };
 
@@ -248,9 +248,8 @@ fn withdraw_liquidity(ctx: MutableCtx, pool_id: PoolId) -> anyhow::Result<Respon
 /// Returns the LP token denom of the given pool.
 #[inline]
 fn denom_of(pool_id: PoolId) -> StdResult<Denom> {
-    Denom::from_parts([
-        NAMESPACE.to_string(),
-        SUB_NAMESPACE_POOL.to_string(),
-        pool_id.to_string(),
-    ])
+    // A pool ID is necessarily a valid `Part`.
+    let pool_id = Part::new_unchecked(pool_id.to_string());
+
+    Denom::from_parts([NAMESPACE.clone(), SUBNAMESPACE.clone(), pool_id])
 }

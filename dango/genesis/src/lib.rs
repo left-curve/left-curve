@@ -10,11 +10,11 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions,
+        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Permission, Permissions,
         StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
+    std::{collections::BTreeMap, error::Error, fs, io, path::Path},
 };
 
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
@@ -218,10 +218,10 @@ where
     // Token factory gets the "factory" namespace.
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
-        Part::from_str(amm::NAMESPACE)? => amm,
-        Part::from_str(token_factory::NAMESPACE)? => token_factory,
-        Part::from_str(mock_ibc_transfer::NAMESPACE)? => ibc_transfer,
-        lending::NAMESPACE.clone() => lending,
+        amm::NAMESPACE.clone()               => amm,
+        mock_ibc_transfer::NAMESPACE.clone() => ibc_transfer,
+        lending::NAMESPACE.clone()           => lending,
+        token_factory::NAMESPACE.clone()     => token_factory,
     };
 
     // Instantiate the bank contract.
