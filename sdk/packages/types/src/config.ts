@@ -2,7 +2,7 @@ import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
 import type { AnyCoin, Denom } from "./coin.js";
 import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector.js";
-import type { EIP6963ProviderDetail } from "./eip6963.js";
+import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 import type { Transport } from "./transports.js";
 
@@ -85,10 +85,6 @@ export type StoreApi = {
     rehydrate: () => Promise<void> | void;
     hasHydrated: () => boolean;
   };
-};
-
-export type MipdStore = {
-  getProviders: () => EIP6963ProviderDetail[];
 };
 
 type Internal = {

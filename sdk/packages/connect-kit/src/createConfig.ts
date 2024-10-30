@@ -360,7 +360,7 @@ export function createConfig<
     _internal: {
       ssr: ssr ?? false,
       get mipd() {
-        return mipd as unknown as { getProviders: () => EIP6963ProviderDetail[] };
+        return mipd;
       },
       get store() {
         return store as StoreApi;
