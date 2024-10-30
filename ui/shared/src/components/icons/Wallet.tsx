@@ -20,5 +20,7 @@ export const WalletIcon: React.FC<Props> = ({ connectorId, ...props }) => {
       return <BackpackIcon {...props} />;
     case "passkey":
       return <PasskeyIcon {...props} />;
+    default:
+      return <EthereumIcon {...props} />;
   }
 };

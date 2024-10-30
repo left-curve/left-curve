@@ -278,5 +278,5 @@ export { AccountType } from "./account.js";
 export { KeyTag, KeyAlgo } from "./key.js";
 export { Vote } from "./safe.js";
 
-export { ConnectorTypes, ConnectorIdType } from "./connector.js";
+export { ConnectorTypes, ConnectorIds } from "./connector.js";
 export { ConnectionStatus } from "./config.js";

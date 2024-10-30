@@ -9,11 +9,12 @@ import type { Transport } from "./transports.js";
 
 export type ConnectorUId = string;
 
-export type ConnectorId = (typeof ConnectorIdType)[keyof typeof ConnectorIdType] | (string & {});
+export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 
-export const ConnectorIdType = {
+export const ConnectorIds = {
   Metamask: "metamask",
-  Keplr: "keplr",
+  Phantom: "phantom",
+  Backpack: "backpack",
   Passkey: "passkey",
 } as const;
 

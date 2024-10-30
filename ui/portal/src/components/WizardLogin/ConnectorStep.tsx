@@ -1,4 +1,4 @@
-import { DangoButton, WalletIcon, useWizard } from "@dango/shared";
+import { ConnectorButtonOptions, DangoButton, useWizard } from "@dango/shared";
 import { useConfig, useConnectors } from "@leftcurve/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -42,27 +42,12 @@ export const ConnectorStep: React.FC = () => {
         Connect with Passkey
       </DangoButton>
       <div className="flex flex-col gap-2 w-full">
-        {connectors.map((connector) => {
-          if (connector.name === "Passkey") return null;
-          return (
-            <DangoButton
-              type="button"
-              color="purple"
-              key={connector.id}
-              variant="bordered"
-              className="flex gap-2 items-center justify-center"
-              isLoading={connectorLoading === connector.id}
-              disabled={!connector.isSupported || !!connectorLoading}
-              onClick={() => connect(connector.id)}
-            >
-              <WalletIcon
-                connectorId={connector.id}
-                className="w-6 h-6 fill-typography-purple-400"
-              />
-              <span className="min-w-[12rem] text-start">Login with {connector.name}</span>
-            </DangoButton>
-          );
-        })}
+        <ConnectorButtonOptions
+          mode="login"
+          connectors={connectors}
+          selectedConnector={connectorLoading}
+          onClick={connect}
+        />
       </div>
     </div>
   );

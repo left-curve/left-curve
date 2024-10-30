@@ -2,10 +2,9 @@ import { DangoButton, Input, useWizard } from "@dango/shared";
 import { usePublicClient } from "@leftcurve/react";
 import type React from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
 
 export const LoginStep: React.FC = () => {
-  const { nextStep, setData, previousStep, data } = useWizard();
+  const { nextStep, setData, data } = useWizard();
   const { setError, register, watch, setValue, formState } = useForm<{
     username: string;
     retry: boolean;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { ArrowSelectorIcon, WalletIcon, twMerge, useWizard } from "@dango/shared";
+import { ArrowSelectorIcon, ConnectorButtonOptions, twMerge, useWizard } from "@dango/shared";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@leftcurve/react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -151,27 +151,12 @@ export const ConnectStep: React.FC = () => {
           "h-fit": showOtherSignup,
         })}
       >
-        {connectors.map((connector) => {
-          if (connector.name === "Passkey") return null;
-          return (
-            <DangoButton
-              type="button"
-              color="purple"
-              key={connector.id}
-              variant="bordered"
-              className="flex gap-2 items-center justify-center"
-              isLoading={connectorLoading === connector.id}
-              disabled={!connector.isSupported || !!connectorLoading}
-              onClick={() => createAccount(connector.id)}
-            >
-              <WalletIcon
-                connectorId={connector.id}
-                className="w-6 h-6 fill-typography-purple-400"
-              />
-              <span className="min-w-[12rem] text-start">Sign up with {connector.name}</span>
-            </DangoButton>
-          );
-        })}
+        <ConnectorButtonOptions
+          mode="signup"
+          connectors={connectors}
+          selectedConnector={connectorLoading}
+          onClick={createAccount}
+        />
       </div>
     </div>
   );

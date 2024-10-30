@@ -36,6 +36,7 @@ export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
 export { BorrowingBar } from "./molecules/BorrowingBar";
 export { CoinSelector } from "./molecules/CoinSelector";
 export { AccountSearchInput } from "./molecules/AccountSearchInput";
+export { ConnectorButtonOptions } from "./molecules/ConnectorButtonOptions";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

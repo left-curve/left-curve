@@ -4,7 +4,7 @@ import { forwardRef, twMerge } from "../../utils";
 import { Spinner } from "./Spinner";
 
 export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color">,
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color" | "disabled">,
     VariantProps<typeof buttonVariants> {
   as?: As;
   /**
@@ -103,7 +103,7 @@ const buttonVariants = tv(
         true: "w-full",
       },
       isDisabled: {
-        true: "opacity-disabled pointer-events-none",
+        true: "opacity-disabled pointer-events-none cursor-not-allowed",
       },
       isInGroup: {
         true: "[&:not(:first-child):not(:last-child)]:rounded-none",
