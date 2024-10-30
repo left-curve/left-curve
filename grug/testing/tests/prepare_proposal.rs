@@ -115,14 +115,17 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
             .transpose()?
         {
             // Query the prices of a few coins from Coingecko.
-            let prices = reqwest::blocking::get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd")?
-                .json::<BTreeMap<String, Json>>()?
-                .into_iter()
-                .map(|(coingecko_id, vs_currencies)| {
-                    let price = vs_currencies["usd"].as_f64().unwrap();
-                    (coingecko_id, price)
-                })
-                .collect();
+            let prices = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_millis(500))
+                .build()?
+                .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd").send()?
+                    .json::<BTreeMap<String, Json>>()?
+                    .into_iter()
+                    .map(|(coingecko_id, vs_currencies)| {
+                        let price = vs_currencies["usd"].as_f64().unwrap();
+                        (coingecko_id, price)
+                    })
+                    .collect();
 
             // Compose an oracle update transaction.
             let tx = Tx {
