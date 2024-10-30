@@ -2,7 +2,8 @@ use {
     dango_genesis::{build_genesis, read_wasm_files, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
     grug::{
-        btree_map, Coin, Coins, Duration, HashExt, Json, JsonDeExt, JsonSerExt, Udec128, Uint128,
+        btree_map, Coin, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
+        Uint128,
     },
     hex_literal::hex,
     home::home_dir,
@@ -92,7 +93,10 @@ fn main() {
     let map = cometbft_genesis.as_object_mut().unwrap();
     map.insert("genesis_time".into(), args.pop().unwrap().into());
     map.insert("chain_id".into(), args.pop().unwrap().into());
-    map.insert("app_state".into(), genesis_state.to_json_value().unwrap());
+    map.insert(
+        "app_state".into(),
+        genesis_state.to_json_value().unwrap().into_inner(),
+    );
 
     fs::write(
         cometbft_genesis_path,

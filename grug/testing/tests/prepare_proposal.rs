@@ -136,8 +136,8 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
                     &mock_oracle::ExecuteMsg::FeedPrices { prices },
                     Coins::new(),
                 )?],
-                data: Json::Null,
-                credential: Json::Null,
+                data: Json::null(),
+                credential: Json::null(),
             }
             .to_json_vec()?
             .into();

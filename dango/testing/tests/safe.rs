@@ -11,8 +11,8 @@ use {
         ibc_transfer,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, JsonSerExt, Message,
-        NonZero, ResultExt, Signer, Timestamp, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
+        Message, NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
@@ -465,15 +465,15 @@ fn safe() {
             )
             .unwrap();
 
-        tx.data
-            .as_object_mut()
-            .unwrap()
-            .insert("username".to_string(), username.to_json_value().unwrap());
+        tx.data.as_object_mut().unwrap().insert(
+            "username".to_string(),
+            username.to_json_value().unwrap().into_inner(),
+        );
 
-        tx.data
-            .as_object_mut()
-            .unwrap()
-            .insert("key_hash".to_string(), key_hash.to_json_value().unwrap());
+        tx.data.as_object_mut().unwrap().insert(
+            "key_hash".to_string(),
+            key_hash.to_json_value().unwrap().into_inner(),
+        );
 
         suite.send_transaction(tx).should_fail_with_error(error);
     }

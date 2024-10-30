@@ -77,7 +77,7 @@ impl TestAccount {
             sender: self.address,
             gas_limit,
             msgs,
-            data: Json::Null,
+            data: Json::null(),
             credential,
         })
     }

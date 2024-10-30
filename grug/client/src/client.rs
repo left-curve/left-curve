@@ -406,7 +406,7 @@ impl Client {
                     sender: sign_opt.sender,
                     msgs: msgs.clone(),
                     // TODO: allow user to specify this
-                    data: Json::Null,
+                    data: Json::null(),
                 };
                 match self.simulate(&unsigned_tx).await? {
                     TxOutcome {

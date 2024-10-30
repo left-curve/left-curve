@@ -9,9 +9,3 @@ pub use grug_ffi::*;
 // threads, and RNGs.
 #[cfg(not(target_arch = "wasm32"))]
 pub use {grug_client::*, grug_testing::*};
-
-// Dependencies used by the procedural macros.
-#[doc(hidden)]
-pub mod __private {
-    pub use {::borsh, ::serde, ::serde_with};
-}

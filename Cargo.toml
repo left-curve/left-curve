@@ -21,13 +21,8 @@ base64             = "0.22" # TODO: used in dango-auth; replace with data-encodi
 bip32              = "0.5"
 blake2             = "0.10"
 blake3             = "1"
-# Our fork of bnum uses our fork of borsh.
-bnum               = { git = "https://github.com/left-curve/bnum", rev = "2d3a7c4" }
-# Our fork of bnum adds support for `serde_json::Value`.
-# Make sure to enable the `json` feature.
-# TODO: switch to official release once our PR is merged and released.
-# https://github.com/near/borsh-rs/pull/312
-borsh              = { git = "https://github.com/left-curve/borsh-rs", rev = "21df6d0", features = ["json"] }
+bnum               = "0.12"
+borsh              = "1"
 chrono             = "0.4"
 clap               = "4"
 clru               = "0.6"
