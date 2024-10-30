@@ -7,14 +7,17 @@ use {
         query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
         query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
         query_wasm_scan, query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        Shared, Vm, APP_CONFIGS, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        NaiveProposalPreparer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIGS,
+        CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CodeStatus, Duration, Event,
-        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission, Query,
-        QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        GenericResultExt, GenesisState, Hash256, Json, Message, Order, Outcome, Permission,
+        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome,
+        UnsignedTx, GENESIS_SENDER,
     },
+    prost::bytes::Bytes,
 };
 
 /// The ABCI application.
@@ -22,9 +25,10 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM> {
+pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
+    pub pp: PP,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -40,21 +44,23 @@ pub struct App<DB, VM> {
     query_gas_limit: u64,
 }
 
-impl<DB, VM> App<DB, VM> {
-    pub fn new(db: DB, vm: VM, query_gas_limit: u64) -> Self {
+impl<DB, VM, PP> App<DB, VM, PP> {
+    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
+            pp,
             query_gas_limit,
         }
     }
 }
 
-impl<DB, VM> App<DB, VM>
+impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain(
         &self,
@@ -137,6 +143,27 @@ where
         );
 
         Ok(root_hash.unwrap())
+    }
+
+    pub fn do_prepare_proposal(
+        &self,
+        txs: Vec<Bytes>,
+        max_tx_bytes: usize,
+    ) -> AppResult<Vec<Bytes>> {
+        let storage = self.db.state_storage(None)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+        let querier = QuerierProvider::new(AppCtx::new(
+            self.vm.clone(),
+            Box::new(storage),
+            GasTracker::new_limitless(),
+            chain_id,
+            block,
+        ));
+
+        Ok(self
+            .pp
+            .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
@@ -462,11 +489,12 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM> App<DB, VM>
+impl<DB, VM, PP> App<DB, VM, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn do_init_chain_raw(
         &self,

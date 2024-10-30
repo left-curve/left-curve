@@ -28,4 +28,7 @@ tracing-subscriber = { workspace = true }
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
 grug-storage = { workspace = true }
+prost        = { workspace = true }
+reqwest      = { workspace = true, features = ["blocking", "json"] }
 test-case    = { workspace = true }
+thiserror    = { workspace = true }

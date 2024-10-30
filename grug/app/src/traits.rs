@@ -1,8 +1,9 @@
 use {
     crate::{GasTracker, QuerierProvider, StorageProvider},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Batch, Context, Hash256, Storage},
+    grug_types::{Batch, Context, Hash256, QuerierWrapper, Storage},
     ics23::CommitmentProof,
+    prost::bytes::Bytes,
 };
 
 // ------------------------------------ db -------------------------------------
@@ -183,4 +184,22 @@ pub trait Instance {
     where
         P1: AsRef<[u8]>,
         P2: AsRef<[u8]>;
+}
+
+// ----------------------------- proposal preparer -----------------------------
+
+/// Represents a worker that processes the ABCI++ `PrepareProposal` request.
+pub trait ProposalPreparer {
+    type Error: ToString;
+
+    /// Process the ABCI++ `PrepareProposal` request.
+    ///
+    /// The preparer is provided with a querier so that it can do its work based
+    /// on the state of the chain.
+    fn prepare_proposal(
+        &self,
+        querier: QuerierWrapper,
+        txs: Vec<Bytes>,
+        max_tx_bytes: usize,
+    ) -> Result<Vec<Bytes>, Self::Error>;
 }
