@@ -19,14 +19,14 @@ export function Hydrate(parameters: React.PropsWithChildren<HydrateProps>) {
   });
 
   // Hydrate for non-SSR
-  if (!config.ssr) onMount();
+  if (!config._internal.ssr) onMount();
 
   // Hydrate for SSR
   const active = useRef(true);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `queryKey` not required
   useEffect(() => {
     if (!active.current) return;
-    if (!config.ssr) return;
+    if (!config._internal.ssr) return;
     onMount();
     return () => {
       active.current = false;

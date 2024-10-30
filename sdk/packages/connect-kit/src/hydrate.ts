@@ -1,5 +1,6 @@
 import { type Config, ConnectionStatus, type State } from "@leftcurve/types";
 import { reconnect } from "./actions/index.js";
+import { eip6963 } from "./connectors/eip6963.js";
 
 type HydrateParameters = {
   initialState?: State;
@@ -9,7 +10,7 @@ type HydrateParameters = {
 export function hydrate(config: Config, parameters: HydrateParameters) {
   const { initialState, reconnectOnMount } = parameters;
 
-  if (initialState && !config.store.persist.hasHydrated())
+  if (initialState && !config._internal.store.persist.hasHydrated())
     config.setState({
       ...initialState,
       chainId: config.chains.some((x) => x.id === initialState.chainId)
@@ -21,12 +22,34 @@ export function hydrate(config: Config, parameters: HydrateParameters) {
 
   return {
     async onMount() {
-      if (config.ssr) {
-        await config.store.persist.rehydrate();
+      if (config._internal.ssr) {
+        await config._internal.store.persist.rehydrate();
+        if (config._internal.mipd) {
+          config._internal.connectors.setState((connectors) => {
+            const rdnsSet = new Set<string>();
+            for (const connector of connectors ?? []) {
+              if (connector.rdns) rdnsSet.add(connector.rdns);
+            }
+            const mipdConnectors = [];
+            const providers = config._internal.mipd?.getProviders() ?? [];
+            for (const provider of providers) {
+              if (rdnsSet.has(provider.info.rdns)) continue;
+              const connectorFn = eip6963(provider);
+              const connector = config._internal.connectors.setup(connectorFn);
+              mipdConnectors.push(connector);
+            }
+            return [...connectors, ...mipdConnectors];
+          });
+        }
       }
 
       if (reconnectOnMount) {
-        reconnect(config);
+        config.subscribe(
+          (x) => x.isMipdLoaded,
+          (isMipdLoaded) => {
+            if (isMipdLoaded) reconnect(config);
+          },
+        );
       } else if (config.storage)
         // Reset connections that may have been hydrated from storage.
         config.setState((x) => ({
