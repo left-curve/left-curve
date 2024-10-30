@@ -8,7 +8,7 @@ use {
         account_factory::{
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
         },
-        mock_ibc_transfer,
+        ibc_transfer,
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, JsonSerExt, Message,
@@ -37,7 +37,7 @@ fn safe() {
                 .execute(
                     &mut accounts.relayer,
                     contracts.ibc_transfer,
-                    &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
+                    &ibc_transfer::ExecuteMsg::ReceiveTransfer {
                         recipient: user.address(),
                     },
                     Coins::one("uusdc", 100_000_000).unwrap(),

@@ -76,9 +76,11 @@ fn create(
             );
         }
 
-        username.to_string()
+        // A username is necessarily a valid denom part, so use uncheck here.
+        Part::new_unchecked(username.into_inner())
     } else {
-        ctx.sender.to_string()
+        // Same with address - necessarily a valid denom part.
+        Part::new_unchecked(ctx.sender.to_string())
     };
 
     // Ensure the sender has paid the correct amount of fee.
@@ -109,15 +111,7 @@ fn create(
 
     // Ensure the denom hasn't already been created.
     {
-        let denom = {
-            let mut parts = Vec::with_capacity(2 + subdenom.inner().len());
-            parts.push(Part::new_unchecked(NAMESPACE));
-            parts.push(Part::new_unchecked(subnamespace));
-            parts.extend(subdenom.into_inner());
-
-            Denom::from_parts(parts)?
-        };
-
+        let denom = subdenom.prepend(&[&NAMESPACE, &subnamespace])?;
         let admin = admin.unwrap_or(ctx.sender);
 
         ensure!(

@@ -5,16 +5,17 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        ibc_transfer,
         lending::{self, MarketUpdates},
-        mock_ibc_transfer, taxman, token_factory,
+        taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Part, Permission, Permissions,
+        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Permission, Permissions,
         StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
+    std::{collections::BTreeMap, error::Error, fs, io, path::Path},
 };
 
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
@@ -36,8 +37,8 @@ pub struct Contracts {
 pub struct Codes<T> {
     pub account_factory: T,
     pub account_margin: T,
-    pub account_spot: T,
     pub account_safe: T,
+    pub account_spot: T,
     pub amm: T,
     pub bank: T,
     pub ibc_transfer: T,
@@ -55,8 +56,8 @@ pub struct GenesisUser {
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
-    let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
+    let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
@@ -67,8 +68,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     Ok(Codes {
         account_factory,
         account_margin,
-        account_spot,
         account_safe,
+        account_spot,
         amm,
         bank,
         ibc_transfer,
@@ -99,8 +100,8 @@ where
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
     let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
-    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
+    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
@@ -122,9 +123,9 @@ where
         account_factory_code_hash,
         &account_factory::InstantiateMsg {
             code_hashes: btree_map! {
-                AccountType::Spot => account_spot_code_hash,
-                AccountType::Safe => account_safe_code_hash,
                 AccountType::Margin => account_margin_code_hash,
+                AccountType::Safe   => account_safe_code_hash,
+                AccountType::Spot   => account_spot_code_hash,
             },
             keys,
             users,
@@ -152,7 +153,7 @@ where
     let ibc_transfer = instantiate(
         &mut msgs,
         ibc_transfer_code_hash,
-        &mock_ibc_transfer::InstantiateMsg {},
+        &ibc_transfer::InstantiateMsg {},
         "dango/ibc_transfer",
         "dango/ibc_transfer",
     )?;
@@ -218,10 +219,10 @@ where
     // Token factory gets the "factory" namespace.
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
-        Part::from_str(amm::NAMESPACE)? => amm,
-        Part::from_str(token_factory::NAMESPACE)? => token_factory,
-        Part::from_str(mock_ibc_transfer::NAMESPACE)? => ibc_transfer,
-        lending::NAMESPACE.clone() => lending,
+        amm::NAMESPACE.clone()           => amm,
+        ibc_transfer::NAMESPACE.clone()  => ibc_transfer,
+        lending::NAMESPACE.clone()       => lending,
+        token_factory::NAMESPACE.clone() => token_factory,
     };
 
     // Instantiate the bank contract.
