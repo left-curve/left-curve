@@ -241,6 +241,7 @@ async fn multiple_vaas() {
 
         let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
 
+        // Update last price feeds
         for vaa in parsed_vaa {
             for price_feed in vaa.unverified() {
                 let last_price_feed = last_price_feeds
