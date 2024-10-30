@@ -154,6 +154,7 @@ export const tailwindConfig: Partial<Config> = {
       },
       fontFamily: {
         "diatype-rounded": "ABCDiatypeRounded",
+        exposure: "Exposure",
       },
       animation: {
         "rotate-2": "rotate 4s linear infinite",
