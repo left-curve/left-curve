@@ -3,7 +3,7 @@ use {
     dango_types::{
         account_factory,
         config::ACCOUNT_FACTORY_KEY,
-        mock_ibc_transfer::{ExecuteMsg, InstantiateMsg},
+        ibc_transfer::{ExecuteMsg, InstantiateMsg},
     },
     grug::{Addr, Message, MutableCtx, Response, StdResult},
 };

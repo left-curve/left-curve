@@ -5,8 +5,9 @@ use {
         auth::Key,
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        ibc_transfer,
         lending::{self, MarketUpdates},
-        mock_ibc_transfer, taxman, token_factory,
+        taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
@@ -152,7 +153,7 @@ where
     let ibc_transfer = instantiate(
         &mut msgs,
         ibc_transfer_code_hash,
-        &mock_ibc_transfer::InstantiateMsg {},
+        &ibc_transfer::InstantiateMsg {},
         "dango/ibc_transfer",
         "dango/ibc_transfer",
     )?;
@@ -218,10 +219,10 @@ where
     // Token factory gets the "factory" namespace.
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
-        amm::NAMESPACE.clone()               => amm,
-        mock_ibc_transfer::NAMESPACE.clone() => ibc_transfer,
-        lending::NAMESPACE.clone()           => lending,
-        token_factory::NAMESPACE.clone()     => token_factory,
+        amm::NAMESPACE.clone()           => amm,
+        ibc_transfer::NAMESPACE.clone()  => ibc_transfer,
+        lending::NAMESPACE.clone()       => lending,
+        token_factory::NAMESPACE.clone() => token_factory,
     };
 
     // Instantiate the bank contract.
