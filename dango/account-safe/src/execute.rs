@@ -333,7 +333,7 @@ mod tests {
                 }
                 .to_json_value()
                 .unwrap(),
-                credential: Json::Null,
+                credential: Json::null(),
             });
 
             assert!(res.is_err_and(|err| err.to_string().contains(&format!(
@@ -355,7 +355,7 @@ mod tests {
                 }
                 .to_json_value()
                 .unwrap(),
-                credential: Json::Null,
+                credential: Json::null(),
             });
 
             assert!(res.is_err_and(|err| err
@@ -387,7 +387,7 @@ mod tests {
                 }
                 .to_json_value()
                 .unwrap(),
-                credential: Json::Null,
+                credential: Json::null(),
             });
 
             assert!(res.is_err_and(|err| err

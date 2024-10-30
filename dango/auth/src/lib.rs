@@ -144,7 +144,8 @@ pub fn authenticate_tx(
                         "chainId": ctx.chain_id,
                         "sequence": metadata.sequence,
                         "messages": tx.msgs,
-                    }),
+                    })
+                    .into_inner(),
                 };
 
                 // EIP-712 hash used in the signature.

@@ -22,6 +22,7 @@ mod ffi;
 mod hash;
 mod hashers;
 mod imports;
+mod json;
 mod length_bounded;
 mod lengthy;
 mod macros;
@@ -39,9 +40,9 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
-    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, length_bounded::*,
-    lengthy::*, non_zero::*, query::*, response::*, result::*, serializers::*, signer::*, time::*,
-    tx::*, unique_vec::*, utils::*,
+    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
+    length_bounded::*, lengthy::*, non_zero::*, query::*, response::*, result::*, serializers::*,
+    signer::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
@@ -52,6 +53,10 @@ mod testing;
 #[cfg(not(target_arch = "wasm32"))]
 pub use testing::*;
 
-// -------------------------------- re-exports ---------------------------------
+// ---------------------------------- prelude ----------------------------------
 
-pub use serde_json::{json, Value as Json};
+// Dependencies used by the procedural macros.
+#[doc(hidden)]
+pub mod __prelude {
+    pub use {::borsh, ::serde, ::serde_json, ::serde_with};
+}

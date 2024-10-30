@@ -251,8 +251,8 @@ impl Signer for Factory {
             sender: self.address,
             gas_limit,
             msgs,
-            data: Json::Null,
-            credential: Json::Null,
+            data: Json::null(),
+            credential: Json::null(),
         })
     }
 }
