@@ -84,11 +84,18 @@ module apply_super_simple {
       else 
         nodes
     )
-  pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = {
-    batch.fold(tree, (t, op) => {
-      val treeForOldVersion = treeAtVersion(tree, old_version)
-      pure val existing_keys_with_values = treeForOldVersion.keys().fold(Set(), (acc, k) => {
-          match tree.nodes.get(k) {
+  type StateRecord = {
+    t: Tree, 
+    counter: int
+  }
+  pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = 
+    // val initialState : StateRecord = 
+    batch.fold({t: tree, counter: 0  }, (s, op) => {
+      // val treeForOldVersion = treeAtVersion(tree, old_version)
+      val treeForVersion = if(s.counter==0) treeAtVersion(s.t, old_version) else treeAtVersion(s.t, new_version)
+
+      pure val existing_keys_with_values = treeForVersion.keys().fold(Set(), (acc, k) => {
+          match s.t.nodes.get(k) {
             | Leaf(leaf) => acc.union(Set(leaf))
             | _ => acc
           }
@@ -152,14 +159,14 @@ module apply_super_simple {
     })
     
     val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
-                      .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
+                      .fold(s.t.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
                       .removeDuplicateEntries(op.key_hash, new_version, keys_and_values_and_op._2)
                       .updateChildVersions(new_version)
     
-    val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
+    val orphans = extractOrphansFromNewVersion(s.t, { nodes: nodes, orphans: Set() },
                                                old_version, new_version)
       
-    { nodes: nodes, orphans: orphans }
-    })
-  }
+    {t: { nodes: nodes, orphans: orphans }, counter: s.counter + 1}
+    }).t
+  
 }
