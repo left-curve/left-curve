@@ -154,7 +154,17 @@ export type { Signer } from "./signer.js";
 
 export type { EIP1193Provider } from "./eip1193.js";
 
-export type { EIP6963ProviderDetail, EIP6963ProviderInfo } from "./eip6963.js";
+export type {
+  EIP6963ProviderDetail,
+  EIP6963ProviderInfo,
+  EIP6963RequestProviderEvent,
+  EIP6963AnnounceProviderEvent,
+} from "./eip6963.js";
+
+export {
+  MipdStore,
+  MipdStoreListener,
+} from "./mipd.js";
 
 export type {
   Signature,
