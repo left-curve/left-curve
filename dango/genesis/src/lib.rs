@@ -36,8 +36,8 @@ pub struct Contracts {
 pub struct Codes<T> {
     pub account_factory: T,
     pub account_margin: T,
-    pub account_spot: T,
     pub account_safe: T,
+    pub account_spot: T,
     pub amm: T,
     pub bank: T,
     pub ibc_transfer: T,
@@ -55,8 +55,8 @@ pub struct GenesisUser {
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
-    let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
+    let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
@@ -67,8 +67,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     Ok(Codes {
         account_factory,
         account_margin,
-        account_spot,
         account_safe,
+        account_spot,
         amm,
         bank,
         ibc_transfer,
@@ -99,8 +99,8 @@ where
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
     let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
-    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
+    let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
@@ -122,9 +122,9 @@ where
         account_factory_code_hash,
         &account_factory::InstantiateMsg {
             code_hashes: btree_map! {
-                AccountType::Spot => account_spot_code_hash,
-                AccountType::Safe => account_safe_code_hash,
                 AccountType::Margin => account_margin_code_hash,
+                AccountType::Safe   => account_safe_code_hash,
+                AccountType::Spot   => account_spot_code_hash,
             },
             keys,
             users,
