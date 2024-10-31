@@ -203,27 +203,31 @@ export function createConfig<
 
   const store = createStore(subscribeWithSelector(stateCreator));
 
-  // EIP-6963 subscribe for new wallet providers
-  mipd?.subscribe((providerDetails) => {
-    const connectorIdSet = new Set();
-    const connectorRdnsSet = new Set();
-    for (const connector of connectors.getState()) {
-      connectorIdSet.add(connector.id);
-      if (connector.rdns) connectorRdnsSet.add(connector.rdns);
-    }
+  if (multiInjectedProviderDiscovery) {
+    const timeout = setTimeout(() => store.setState((x) => ({ ...x, isMipdLoaded: true })), 500);
+    // EIP-6963 subscribe for new wallet providers
+    mipd?.subscribe((providerDetails) => {
+      clearTimeout(timeout);
+      const connectorIdSet = new Set();
+      const connectorRdnsSet = new Set();
+      for (const connector of connectors.getState()) {
+        connectorIdSet.add(connector.id);
+        if (connector.rdns) connectorRdnsSet.add(connector.rdns);
+      }
 
-    const newConnectors: Connector[] = [];
-    for (const providerDetail of providerDetails) {
-      if (connectorRdnsSet.has(providerDetail.info.rdns)) continue;
-      const connector = setup(eip6963(providerDetail as EIP6963ProviderDetail));
-      if (connectorIdSet.has(connector.id)) continue;
-      newConnectors.push(connector);
-    }
+      const newConnectors: Connector[] = [];
+      for (const providerDetail of providerDetails) {
+        if (connectorRdnsSet.has(providerDetail.info.rdns)) continue;
+        const connector = setup(eip6963(providerDetail as EIP6963ProviderDetail));
+        if (connectorIdSet.has(connector.id)) continue;
+        newConnectors.push(connector);
+      }
 
-    if (storage && !store.persist.hasHydrated()) return;
-    connectors.setState((x) => [...x, ...newConnectors], true);
-    store.setState((x) => ({ ...x, isMipdLoaded: true }));
-  });
+      if (storage && !store.persist.hasHydrated()) return;
+      connectors.setState((x) => [...x, ...newConnectors], true);
+      store.setState((x) => ({ ...x, isMipdLoaded: true }));
+    });
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
