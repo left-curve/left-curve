@@ -1,10 +1,11 @@
 use {
-    crate::PRICE_FEEDS,
-    dango_types::oracle::PythId,
-    grug::{ImmutableCtx, StdResult},
-    pyth_sdk::PriceFeed,
+    crate::PRICE_SOURCES,
+    dango_types::oracle::PrecisionedPrice,
+    grug::{Denom, ImmutableCtx},
 };
 
-pub fn query_price_feed(ctx: ImmutableCtx, id: PythId) -> StdResult<PriceFeed> {
-    PRICE_FEEDS.load(ctx.storage, id)
+pub fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
+    PRICE_SOURCES
+        .load(ctx.storage, &denom)?
+        .get_price(ctx.storage)
 }

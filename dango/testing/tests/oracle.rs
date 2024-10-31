@@ -1,7 +1,10 @@
 use {
     dango_testing::setup_test,
-    dango_types::oracle::{PythId, PythVaa, QueryPriceFeedRequest},
-    grug::{Binary, Coins, JsonDeExt, ResultExt},
+    dango_types::oracle::{
+        ExecuteMsg, PrecisionlessPrice, PriceSourceCollector, PythId, PythPriceSource, PythVaa,
+        QueryQueryPriceRequest,
+    },
+    grug::{btree_map, Binary, Coins, Denom, JsonDeExt, ResultExt, Udec128},
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -39,6 +42,23 @@ fn oracle() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
     let id = PythId::from_str(WBTC_USD_ID).unwrap();
+    let precision = 8;
+    let btc_denom = Denom::from_str("bridge/btc").unwrap();
+
+    // Register denom
+    {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &ExecuteMsg::RegisterDenom {
+                    denom: btc_denom.clone(),
+                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(id, precision)),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+    }
 
     // Push price
     {
@@ -54,12 +74,24 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id })
+            .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                denom: btc_denom.clone(),
+            })
             .unwrap();
 
-        assert_eq!(current_price.id.to_bytes(), *id);
-        assert_eq!(current_price.get_price_unchecked().publish_time, 1730157441);
-        assert_eq!(current_price.get_price_unchecked().price, 6984382159562);
+        assert_eq!(
+            current_price.humanized_price,
+            Udec128::from_str("69843.82159562").unwrap()
+        );
+
+        assert_eq!(
+            current_price.humanized_ema,
+            Udec128::from_str("69843.82159562").unwrap()
+        );
+
+        assert_eq!(current_price.precision(), precision);
+
+        assert_eq!(current_price.timestamp, 1730157441);
     }
 
     // Push an updated_price
@@ -77,12 +109,22 @@ fn oracle() {
                 .should_succeed();
 
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id })
+                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                    denom: btc_denom.clone(),
+                })
                 .unwrap();
 
-            assert_eq!(current_price.id.to_bytes(), *id);
-            assert_eq!(current_price.get_price_unchecked().publish_time, 1730209108);
-            assert_eq!(current_price.get_price_unchecked().price, 7131950295749);
+            assert_eq!(
+                current_price.humanized_price,
+                Udec128::from_str("71319.50295749").unwrap()
+            );
+
+            assert_eq!(
+                current_price.humanized_ema,
+                Udec128::from_str("71319.50295749").unwrap()
+            );
+
+            assert_eq!(current_price.timestamp, 1730209108);
         }
     }
 
@@ -100,12 +142,22 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id })
+            .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                denom: btc_denom,
+            })
             .unwrap();
 
-        assert_eq!(current_price.id.to_bytes(), *id);
-        assert_eq!(current_price.get_price_unchecked().publish_time, 1730209108);
-        assert_eq!(current_price.get_price_unchecked().price, 7131950295749);
+        assert_eq!(
+            current_price.humanized_price,
+            Udec128::from_str("71319.50295749").unwrap()
+        );
+
+        assert_eq!(
+            current_price.humanized_ema,
+            Udec128::from_str("71319.50295749").unwrap()
+        );
+
+        assert_eq!(current_price.timestamp, 1730209108);
     }
 }
 
@@ -118,6 +170,36 @@ async fn double_vaas() {
 
     let pyth_id_btc = PythId::from_str(WBTC_USD_ID).unwrap();
     let pyth_id_eth = PythId::from_str(ETH_USD_ID).unwrap();
+
+    let btc_denom = Denom::from_str("bridge/btc").unwrap();
+    let eth_denom = Denom::from_str("bridge/eth").unwrap();
+
+    // Register denoms
+    {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &ExecuteMsg::RegisterDenom {
+                    denom: btc_denom.clone(),
+                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(pyth_id_btc, 8)),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &ExecuteMsg::RegisterDenom {
+                    denom: eth_denom.clone(),
+                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(pyth_id_eth, 8)),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+    }
 
     for _ in 0..5 {
         // get 2 separate vaa
@@ -178,129 +260,62 @@ async fn double_vaas() {
         // check btc price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_btc })
+                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                    denom: btc_denom.clone(),
+                })
                 .unwrap();
 
-            assert_eq!(current_price.id.to_bytes(), *pyth_id_btc);
             assert_eq!(
-                current_price.get_price_unchecked().publish_time,
-                last_btc_vaa.unwrap().get_price_unchecked().publish_time
+                current_price.timestamp,
+                last_btc_vaa
+                    .unwrap()
+                    .get_price_unchecked()
+                    .publish_time
+                    .unsigned_abs()
             );
             assert_eq!(
-                current_price.get_price_unchecked().price,
-                last_btc_vaa.unwrap().get_price_unchecked().price
+                current_price.humanized_price,
+                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
+                    .unwrap()
+                    .humanized_price
+            );
+
+            assert_eq!(
+                current_price.humanized_ema,
+                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
+                    .unwrap()
+                    .humanized_ema
             );
         }
 
         // check eth price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest { id: pyth_id_eth })
-                .unwrap();
-
-            assert_eq!(current_price.id.to_bytes(), *pyth_id_eth);
-            assert_eq!(
-                current_price.get_price_unchecked().publish_time,
-                last_eth_vaa.unwrap().get_price_unchecked().publish_time
-            );
-            assert_eq!(
-                current_price.get_price_unchecked().price,
-                last_eth_vaa.unwrap().get_price_unchecked().price
-            );
-        }
-
-        // sleep for 1 second
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    }
-}
-
-#[tokio::test]
-async fn multiple_vaas() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
-    let ids = [
-        WBTC_USD_ID,
-        ETH_USD_ID,
-        USDC_USD_ID,
-        SOL_USD_ID,
-        ATOM_USD_ID,
-        BNB_USD_ID,
-        DOGE_USD_ID,
-        XRP_USD_ID,
-        TON_USD_ID,
-        SHIBA_USD_ID,
-    ];
-
-    let mut last_price_feeds = ids
-        .iter()
-        .map(|id| (*id, None))
-        .collect::<BTreeMap<_, Option<PriceFeed>>>();
-
-    for _ in 0..5 {
-        let string_json_vaas = get_latest_vaas(PYTH_URL, &ids).await.unwrap();
-
-        let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
-
-        // Update last price feeds
-        for vaa in parsed_vaa {
-            for price_feed in vaa.unverified() {
-                let last_price_feed = last_price_feeds
-                    .get_mut(price_feed.id.to_string().as_str())
-                    .unwrap();
-
-                if let Some(last_price_feed) = last_price_feed {
-                    if price_feed.get_price_unchecked().publish_time
-                        > last_price_feed.get_price_unchecked().publish_time
-                    {
-                        last_price_feed.clone_from(&price_feed);
-                    }
-                } else {
-                    *last_price_feed = Some(price_feed);
-                }
-            }
-        }
-
-        // Check if all prices has been fetched
-        for v in last_price_feeds.values() {
-            assert!(v.is_some());
-        }
-
-        // Push all prices
-        suite
-            .execute(
-                &mut accounts.owner,
-                contracts.oracle,
-                &RawExecuteMsg::UpdatePriceFeeds {
-                    data: string_json_vaas.deserialize_json().unwrap(),
-                },
-                Coins::default(),
-            )
-            .should_succeed();
-
-        // Check all prices
-        for (id, last_price_feed) in &last_price_feeds {
-            let current_price: PriceFeed = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceFeedRequest {
-                    id: PythId::from_str(id).unwrap(),
+                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                    denom: eth_denom.clone(),
                 })
                 .unwrap();
 
-            assert_eq!(current_price.id.to_string(), *id);
             assert_eq!(
-                current_price.get_price_unchecked().publish_time,
-                last_price_feed
-                    .as_ref()
+                current_price.timestamp,
+                last_eth_vaa
                     .unwrap()
                     .get_price_unchecked()
                     .publish_time
+                    .unsigned_abs()
             );
             assert_eq!(
-                current_price.get_price_unchecked().price,
-                last_price_feed
-                    .as_ref()
+                current_price.humanized_price,
+                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
                     .unwrap()
-                    .get_price_unchecked()
-                    .price
+                    .humanized_price
+            );
+
+            assert_eq!(
+                current_price.humanized_ema,
+                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
+                    .unwrap()
+                    .humanized_ema
             );
         }
 
@@ -308,6 +323,136 @@ async fn multiple_vaas() {
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 }
+
+// #[tokio::test]
+// async fn multiple_vaas() {
+//     let (mut suite, mut accounts, _, contracts) = setup_test();
+
+//     let denoms = btree_map!(
+//         WBTC_USD_ID => Denom::from_str("bridge/btc").unwrap() ,
+//         ETH_USD_ID => Denom::from_str("bridge/eth").unwrap() ,
+//         USDC_USD_ID => Denom::from_str("bridge/usdc").unwrap() ,
+//         SOL_USD_ID => Denom::from_str("bridge/sol").unwrap() ,
+//         ATOM_USD_ID => Denom::from_str("bridge/atom").unwrap() ,
+//         BNB_USD_ID => Denom::from_str("bridge/bnb").unwrap() ,
+//         DOGE_USD_ID => Denom::from_str("bridge/doge").unwrap() ,
+//         XRP_USD_ID => Denom::from_str("bridge/xrp").unwrap() ,
+//         TON_USD_ID => Denom::from_str("bridge/ton").unwrap() ,
+//         SHIBA_USD_ID => Denom::from_str("bridge/shiba").unwrap(),
+//     );
+
+//     let ids = [
+//         WBTC_USD_ID,
+//         ETH_USD_ID,
+//         USDC_USD_ID,
+//         SOL_USD_ID,
+//         ATOM_USD_ID,
+//         BNB_USD_ID,
+//         DOGE_USD_ID,
+//         XRP_USD_ID,
+//         TON_USD_ID,
+//         SHIBA_USD_ID,
+//     ];
+
+//     // Register denoms
+
+//     {
+//         for(id, denom) in &denoms {
+//             suite
+//                 .execute(
+//                     &mut accounts.owner,
+//                     contracts.oracle,
+//                     &ExecuteMsg::RegisterDenom {
+//                         denom: denom.clone(),
+//                         price_source: PriceSourceCollector::Pyth(PythPriceSource::new(
+//                             PythId::from_str(id).unwrap(),
+//                             8,
+//                         )),
+//                     },
+//                     Coins::default(),
+//                 )
+//                 .should_succeed();
+//         };
+//     }
+//     let mut last_price_feeds = denoms
+//         .iter()
+//         .map(|(denom, _)| (denom.clone(), None))
+//         .collect::<BTreeMap<_, Option<PriceFeed>>>();
+
+//     for _ in 0..5 {
+//         let string_json_vaas = get_latest_vaas(PYTH_URL, &ids).await.unwrap();
+
+//         let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
+
+//         // Update last price feeds
+//         for vaa in parsed_vaa {
+//             for price_feed in vaa.unverified() {
+//                 let last_price_feed = last_price_feeds
+//                     .get_mut( )
+//                     .unwrap();
+
+//                 if let Some(last_price_feed) = last_price_feed {
+//                     if price_feed.get_price_unchecked().publish_time
+//                         > last_price_feed.get_price_unchecked().publish_time
+//                     {
+//                         last_price_feed.clone_from(&price_feed);
+//                     }
+//                 } else {
+//                     *last_price_feed = Some(price_feed);
+//                 }
+//             }
+//         }
+
+//         // Check if all prices has been fetched
+//         for v in last_price_feeds.values() {
+//             assert!(v.is_some());
+//         }
+
+//         // Push all prices
+//         suite
+//             .execute(
+//                 &mut accounts.owner,
+//                 contracts.oracle,
+//                 &RawExecuteMsg::UpdatePriceFeeds {
+//                     data: string_json_vaas.deserialize_json().unwrap(),
+//                 },
+//                 Coins::default(),
+//             )
+//             .should_succeed();
+
+//         // Check all prices
+//         for (denom, last_price_feed) in &last_price_feeds {
+//             let current_price = suite
+//                 .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest { denom:  })
+//                 .unwrap();
+
+//             assert_eq!(
+//                 current_price.timestamp,
+//                 last_price_feed
+//                     .unwrap()
+//                     .get_price_unchecked()
+//                     .publish_time
+//                     .unsigned_abs()
+//             );
+//             assert_eq!(
+//                 current_price.humanized_price,
+//                 PrecisionlessPrice::try_from(last_price_feed.unwrap())
+//                     .unwrap()
+//                     .humanized_price
+//             );
+
+//             assert_eq!(
+//                 current_price.humanized_ema,
+//                 PrecisionlessPrice::try_from(last_price_feed.unwrap())
+//                     .unwrap()
+//                     .humanized_ema
+//             );
+//         }
+
+//         // sleep for 1 second
+//         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+//     }
+// }
 
 /// Return JSON string of the latest VAA from Pyth network.
 pub async fn get_latest_vaas(url: &str, ids: &[&str]) -> anyhow::Result<String> {

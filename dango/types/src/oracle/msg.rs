@@ -1,6 +1,6 @@
 use {
-    super::{GuardianSetInfo, PythId, PythVaa},
-    pyth_sdk::PriceFeed,
+    super::{GuardianSetInfo, PrecisionedPrice, PriceSourceCollector, PythVaa},
+    grug::Denom,
     std::collections::BTreeMap,
 };
 
@@ -11,11 +11,17 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    UpdatePriceFeeds { data: Vec<PythVaa> },
+    UpdatePriceFeeds {
+        data: Vec<PythVaa>,
+    },
+    RegisterDenom {
+        denom: Denom,
+        price_source: PriceSourceCollector,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    #[returns(PriceFeed)]
-    PriceFeed { id: PythId },
+    #[returns(PrecisionedPrice)]
+    QueryPrice { denom: Denom },
 }
