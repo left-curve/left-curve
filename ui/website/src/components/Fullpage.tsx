@@ -2,11 +2,7 @@ import ReactFullpage from "@fullpage/react-fullpage";
 import type { PropsWithChildren } from "react";
 import { Hero } from "./Hero";
 
-interface Props {
-  hero: React.FC<any>;
-}
-
-export const Fullpage: React.FC<PropsWithChildren<Props>> = ({ children }) => {
+export const Fullpage: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <ReactFullpage
       licenseKey={"KEY"}
