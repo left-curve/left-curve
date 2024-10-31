@@ -109,59 +109,6 @@ module apply_state_machine {
     activeVersionedTrees.forall(nodeAtCommonPrefix)
   }
 
-  /// Check that for all internal nodes, if they have a hash stored for a child,
-  /// then the hash is the hash of the actualy the subtree for the child
-  val hashInv: bool = {
-    pure def properlyHashed(t: TreeMap): bool = {
-      t.keys().forall(nID => {
-        match t.get(nID) {
-          | Leaf(_) => true
-          | Internal(n) => {
-            match n.left_child {
-              | None => true
-              | Some(c) => c.hash == hash(t.findNode(nID.key_hash.append(0)))
-            }
-            and
-            match n.right_child {
-              | None => true
-              | Some(c) => c.hash == hash(t.findNode(nID.key_hash.append(1)))
-            }
-          }
-        }
-      })
-    }
-
-    activeVersionedTrees.forall(properlyHashed)
-  }
-
-  /// All children in the tree should have different hashes
-  val uniqueHashesInv: bool = {
-    pure def uniqueHashes(t: TreeMap): bool = {
-      pure val hashes = t.values().fold([], (acc, node) => {
-        match node {
-          | Internal(n) => {
-            pure val acc_1 = match n.left_child {
-              | None => acc
-              | Some(c) => acc.append(c.hash)
-            }
-            match n.right_child {
-              | None => acc_1
-              | Some(c) => acc_1.append(c.hash)
-            }
-          }
-         | _ => acc
-        }
-      })
-      pure val uniqueHashes = hashes.foldl(Set(), (acc, hash) => {
-        acc.union(Set(hash))
-      })
-
-      hashes.length() == uniqueHashes.size()
-    }
-
-    activeVersionedTrees.forall(uniqueHashes)
-  }
-
   /// Make sure that the map encodes a tree. In particular, there is no internal node
   /// that has a leaf node as its prefix
   /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
@@ -178,8 +125,7 @@ module apply_state_machine {
     activeVersionedTrees.forall(noLeafInPrefixes)
   }
 
-
-  /// Invariant: All nodes of type Internal have a child which is not None
+  /// All nodes of type Internal have a child which is not None
   val allInternalNodesHaveAChildInv: bool = {
     pure def internalNodeHasAChild(n: InternalNode): bool = {
       n.left_child != None or n.right_child != None
@@ -269,6 +215,59 @@ module apply_state_machine {
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
   }
 
+  /// Check that for all internal nodes, if they have a hash stored for a child,
+  /// then the hash is the hash of the actualy the subtree for the child
+  val hashInv: bool = {
+    pure def properlyHashed(t: TreeMap): bool = {
+      t.keys().forall(nID => {
+        match t.get(nID) {
+          | Leaf(_) => true
+          | Internal(n) => {
+            match n.left_child {
+              | None => true
+              | Some(c) => c.hash == hash(t.findNode(nID.key_hash.append(0)))
+            }
+            and
+            match n.right_child {
+              | None => true
+              | Some(c) => c.hash == hash(t.findNode(nID.key_hash.append(1)))
+            }
+          }
+        }
+      })
+    }
+
+    activeVersionedTrees.forall(properlyHashed)
+  }
+
+  /// All children in the tree should have different hashes
+  val uniqueHashesInv: bool = {
+    pure def uniqueHashes(t: TreeMap): bool = {
+      pure val hashes = t.values().fold([], (acc, node) => {
+        match node {
+          | Internal(n) => {
+            pure val acc_1 = match n.left_child {
+              | None => acc
+              | Some(c) => acc.append(c.hash)
+            }
+            match n.right_child {
+              | None => acc_1
+              | Some(c) => acc_1.append(c.hash)
+            }
+          }
+         | _ => acc
+        }
+      })
+      pure val uniqueHashes = hashes.foldl(Set(), (acc, hash) => {
+        acc.union(Set(hash))
+      })
+
+      hashes.length() == uniqueHashes.size()
+    }
+
+    activeVersionedTrees.forall(uniqueHashes)
+  }
+
   /// The treemaps we use in the invariants should have unique key_hashes
   /// This is a sanity check for the treeAtVersion computation
   val goodTreeMapInv: bool = {
@@ -306,6 +305,7 @@ module apply_state_machine {
     if (versionInv) true else q::debug("versionInv", false),
     if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false)
   }
 }
 
