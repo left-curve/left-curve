@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { useClickAway } from "react-use";
 import { twMerge } from "../../../utils";
 
-import { DangoButton } from "../../";
+import { Button } from "../../";
 import { CloseIcon, SearchIcon } from "../../";
 import { CommandBody } from "./CommandBody";
 
@@ -82,7 +82,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
                 />
                 <p>/</p>
               </div>
-              <DangoButton
+              <Button
                 className={twMerge(
                   "overflow-hidden md:hidden",
                   isOpen ? "w-10 px-2 ml-3" : "w-0 p-0 opacity-0",
@@ -92,7 +92,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
                 radius="lg"
               >
                 <CloseIcon className="h-6 w-6" />
-              </DangoButton>
+              </Button>
             </div>
             <CommandBody
               isOpen={isOpen}

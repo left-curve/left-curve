@@ -29,13 +29,12 @@ export const DisplayConnectors: React.FC<Props> = ({
       {connectors.map((connector) => {
         return (
           <Button
-            variant="flat"
+            color="gray"
             key={`connector-${connector.id}`}
             className={twMerge("p-3 md:p-4 justify-start gap-2 hover:bg-gray-100 w-full", {
               "bg-gray-100": selected?.id === connector.id,
             })}
             onClick={() => onSelect(connector)}
-            size="none"
           >
             {connector.icon ? (
               <img className="h-8 w-8" src={connector.icon} alt={connector.id} />

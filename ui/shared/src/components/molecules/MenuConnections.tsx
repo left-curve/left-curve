@@ -8,7 +8,7 @@ import { useClickAway } from "react-use";
 import { truncateAddress } from "@leftcurve/utils";
 import { twMerge } from "../../utils";
 
-import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "../";
+import { Button, CopyIcon, ProfileIcon, WalletIcon } from "../";
 
 export const MenuConnections: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -27,7 +27,7 @@ export const MenuConnections: React.FC = () => {
 
   return (
     <>
-      <DangoButton
+      <Button
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
@@ -36,7 +36,7 @@ export const MenuConnections: React.FC = () => {
       >
         <ProfileIcon className="h-6 w-6" />
         <p>{username}</p>
-      </DangoButton>
+      </Button>
 
       <div
         ref={menuRef}
@@ -60,7 +60,7 @@ export const MenuConnections: React.FC = () => {
                   <p className="text-md">{truncateAddress(account.address)}</p>
                 </div>
               </div>
-              <DangoButton
+              <Button
                 color="none"
                 size="sm"
                 isIconOnly
@@ -68,15 +68,15 @@ export const MenuConnections: React.FC = () => {
                 className="px-2 bg-black/30 hover:bg-black/70"
               >
                 <CopyIcon className="w-6 h-6" />
-              </DangoButton>
+              </Button>
             </div>
           )}
-          <DangoButton color="purple" variant="bordered" size="sm">
+          <Button color="purple" variant="bordered" size="sm">
             Manage Access
-          </DangoButton>
-          <DangoButton size="sm" onClick={() => disconnect({ connectorUId: connector.uid })}>
+          </Button>
+          <Button size="sm" onClick={() => disconnect({ connectorUId: connector.uid })}>
             Log out
-          </DangoButton>
+          </Button>
         </div>
       </div>
     </>

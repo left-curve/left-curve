@@ -4,7 +4,7 @@ import { Fragment, useRef, useState } from "react";
 import { twMerge } from "../../utils";
 
 import { useClickAway } from "react-use";
-import { BellIcon, Button, CloseIcon, DangoButton } from "../";
+import { BellIcon, Button, CloseIcon } from "../";
 import { NotificationCard } from "./NotificationCard";
 
 const mockNotifications = [
@@ -47,7 +47,7 @@ export const MenuNotifications: React.FC = () => {
 
   return (
     <>
-      <DangoButton
+      <Button
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
@@ -56,7 +56,7 @@ export const MenuNotifications: React.FC = () => {
         className="font-bold"
       >
         <BellIcon className="h-6 w-6" />
-      </DangoButton>
+      </Button>
 
       <div
         ref={menuRef}
@@ -70,9 +70,9 @@ export const MenuNotifications: React.FC = () => {
             Notifications
           </p>
           <div className="flex gap-2">
-            <DangoButton isIconOnly radius="lg" onClick={() => setShowMenu(false)}>
+            <Button isIconOnly radius="lg" onClick={() => setShowMenu(false)}>
               <CloseIcon className="h-6 w-6" />
-            </DangoButton>
+            </Button>
           </div>
         </div>
         <div className="flex flex-col gap-3 relative flex-1 scrollbar-none">

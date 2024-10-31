@@ -7,7 +7,7 @@ import { useClickAway } from "react-use";
 import { capitalize } from "@leftcurve/utils";
 import { twMerge, useDOMRef } from "../../utils";
 
-import { AccountCard, Button, DangoButton } from "../";
+import { AccountCard, Button } from "../";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
@@ -49,7 +49,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
 
   return (
     <>
-      <DangoButton
+      <Button
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
@@ -57,7 +57,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
         className="font-bold px-4 py-2"
       >
         {capitalize(selectedAccount.type)} Account #{selectedAccount.index}
-      </DangoButton>
+      </Button>
       <div
         ref={menuRef}
         className={twMerge(
@@ -72,24 +72,19 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
             Accounts
           </p>
           <div className="flex gap-2">
-            <DangoButton isIconOnly radius="lg" color="green">
+            <Button isIconOnly radius="lg" color="green">
               <PlusIcon className="h-6 w-6" />
-            </DangoButton>
-            <DangoButton
-              color="purple"
-              radius="lg"
-              isIconOnly
-              onClick={() => setExpanded(!expanded)}
-            >
+            </Button>
+            <Button color="purple" radius="lg" isIconOnly onClick={() => setExpanded(!expanded)}>
               {expanded ? (
                 <CollapseIcon className="h-6 w-6" />
               ) : (
                 <ExpandedIcon className="h-6 w-6" />
               )}
-            </DangoButton>
-            <DangoButton onClick={() => setShowMenu(false)} color="rose" radius="lg" isIconOnly>
+            </Button>
+            <Button onClick={() => setShowMenu(false)} color="rose" radius="lg" isIconOnly>
               <CloseIcon className="h-6 w-6" />
-            </DangoButton>
+            </Button>
           </div>
         </div>
         <div

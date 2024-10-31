@@ -1,4 +1,4 @@
-import { Button, DangoButton, Input, Select, SelectItem } from "@dango/shared";
+import { Button, Input, Select, SelectItem } from "@dango/shared";
 import { useConfig } from "@leftcurve/react";
 import { motion } from "framer-motion";
 
@@ -59,9 +59,9 @@ export const TransferStep: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1 w-full items-center justify-center">
-            <DangoButton color="rose" fullWidth>
+            <Button color="rose" fullWidth>
               Connect Wallet
-            </DangoButton>
+            </Button>
             <p className="uppercase text-typography-pink-200 text-xs font-extrabold">
               Powered by IBC/Noble/CCTP
             </p>

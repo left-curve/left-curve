@@ -1,4 +1,4 @@
-import { DangoButton, Input, useWizard } from "@dango/shared";
+import { Button, Input, useWizard } from "@dango/shared";
 import { usePublicClient } from "@leftcurve/react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
@@ -42,9 +42,9 @@ export const CredentialStep: React.FC = () => {
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
         error={errors.username?.message}
       />
-      <DangoButton type="submit" fullWidth isLoading={isSubmitting}>
+      <Button type="submit" fullWidth isLoading={isSubmitting}>
         Choose credentials
-      </DangoButton>
+      </Button>
     </form>
   );
 };

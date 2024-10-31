@@ -4,7 +4,6 @@
 
 export { Button, type ButtonProps } from "./atoms/Button";
 export { Spinner } from "./atoms/Spinner";
-export { DangoButton } from "./atoms/DangoButton";
 export { Input, type InputProps } from "./atoms/Input";
 export { Tabs } from "./atoms/tabs/Tabs";
 export { TabItem as Tab } from "./atoms/tabs/TabItem";

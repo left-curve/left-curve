@@ -1,10 +1,4 @@
-import {
-  AccountSearchInput,
-  CoinSelector,
-  DangoButton,
-  GradientContainer,
-  Input,
-} from "@dango/shared";
+import { AccountSearchInput, Button, CoinSelector, GradientContainer, Input } from "@dango/shared";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";
@@ -112,7 +106,7 @@ export const SendContainer: React.FC = () => {
               />
             </div>
           </div>
-          <DangoButton isLoading={isSubmitting}>Send</DangoButton>
+          <Button isLoading={isSubmitting}>Send</Button>
         </div>
       </GradientContainer>
     </form>

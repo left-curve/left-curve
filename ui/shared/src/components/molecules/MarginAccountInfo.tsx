@@ -1,6 +1,6 @@
 import { useAccount } from "@leftcurve/react";
 import type React from "react";
-import { DangoButton } from "../atoms/DangoButton";
+import { Button } from "../atoms/Button";
 import { BorrowingBar } from "./BorrowingBar";
 
 interface Props {
@@ -46,7 +46,7 @@ export const MarginAccountInfo: React.FC<Props> = ({ avatarUrl }) => {
         <BorrowingBar total={120000} current={85000} threshold={100000} />
       </div>
 
-      <DangoButton variant="light">Edit</DangoButton>
+      <Button variant="light">Edit</Button>
     </div>
   );
 };

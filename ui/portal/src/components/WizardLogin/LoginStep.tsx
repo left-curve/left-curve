@@ -1,4 +1,4 @@
-import { DangoButton, Input, useWizard } from "@dango/shared";
+import { Button, Input, useWizard } from "@dango/shared";
 import { usePublicClient } from "@leftcurve/react";
 import type React from "react";
 import { useForm } from "react-hook-form";
@@ -50,9 +50,9 @@ export const LoginStep: React.FC = () => {
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
         error={errors.username?.message}
       />
-      <DangoButton fullWidth onClick={onSubmit} isLoading={isSubmitting}>
+      <Button fullWidth onClick={onSubmit} isLoading={isSubmitting}>
         {retry ? "Choose credentials" : "Login"}
-      </DangoButton>
+      </Button>
     </div>
   );
 };
