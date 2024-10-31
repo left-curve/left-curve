@@ -51,6 +51,15 @@ export const Default: Store = {
 export const Bordered: Store = {
   args: {
     variant: "bordered",
+    color: "purple",
+    children: "Button",
+  },
+};
+
+export const Light: Store = {
+  args: {
+    variant: "light",
+    color: "rose",
     children: "Button",
   },
 };
