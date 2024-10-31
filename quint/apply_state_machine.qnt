@@ -268,7 +268,6 @@ module apply_state_machine {
   val allInvariants = all {
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
-    if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
     if (hashInv) true else q::debug("hashInv", false),
     if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
     if (densityInv) true else q::debug("densityInv", false),
@@ -282,6 +281,7 @@ module apply_state_machine {
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
     if (versionInv) true else q::debug("versionInv", false),
     if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
+    if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
   }
 }
 
