@@ -309,7 +309,44 @@ impl FunctionMiddleware for FunctionGatekeeper {
             | Operator::I32AtomicRmw16CmpxchgU { .. }
             | Operator::I64AtomicRmw8CmpxchgU { .. }
             | Operator::I64AtomicRmw16CmpxchgU { .. }
-            | Operator::I64AtomicRmw32CmpxchgU { .. } => {
+            | Operator::I64AtomicRmw32CmpxchgU { .. }
+            | Operator::GlobalAtomicGet { .. }
+            | Operator::GlobalAtomicRmwAdd { .. }
+            | Operator::GlobalAtomicRmwAnd { .. }
+            | Operator::GlobalAtomicRmwCmpxchg { .. }
+            | Operator::GlobalAtomicRmwOr { .. }
+            | Operator::GlobalAtomicRmwSub { .. }
+            | Operator::GlobalAtomicRmwXchg { .. }
+            | Operator::GlobalAtomicRmwXor { .. }
+            | Operator::GlobalAtomicSet { .. }
+            | Operator::TableAtomicGet { .. }
+            | Operator::TableAtomicRmwCmpxchg { .. }
+            | Operator::TableAtomicRmwXchg { .. }
+            | Operator::TableAtomicSet { .. }
+            | Operator::StructAtomicGet { .. }
+            | Operator::StructAtomicGetS { .. }
+            | Operator::StructAtomicGetU { .. }
+            | Operator::StructAtomicRmwAdd { .. }
+            | Operator::StructAtomicRmwAnd { .. }
+            | Operator::StructAtomicRmwCmpxchg { .. }
+            | Operator::StructAtomicRmwOr { .. }
+            | Operator::StructAtomicRmwSub { .. }
+            | Operator::StructAtomicRmwXchg { .. }
+            | Operator::StructAtomicRmwXor { .. }
+            | Operator::StructAtomicSet { .. }
+            | Operator::ArrayAtomicGet { .. }
+            | Operator::ArrayAtomicGetS { .. }
+            | Operator::ArrayAtomicGetU { .. }
+            | Operator::ArrayAtomicRmwAdd { .. }
+            | Operator::ArrayAtomicRmwAnd { .. }
+            | Operator::ArrayAtomicRmwCmpxchg { .. }
+            | Operator::ArrayAtomicRmwOr { .. }
+            | Operator::ArrayAtomicRmwSub { .. }
+            | Operator::ArrayAtomicRmwXchg { .. }
+            | Operator::ArrayAtomicRmwXor { .. }
+            | Operator::ArrayAtomicSet { .. }
+            | Operator::RefI31Shared
+            => {
                 if self.config.allow_feature_threads {
                     state.push_operator(operator);
                     Ok(())
@@ -745,7 +782,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
             Operator::MemoryDiscard { .. } => {
                 let msg = format!("Memory control operation detected: {operator:?}. Memory control is not supported.");
                 Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
-            }
+            },
         }
     }
 }
