@@ -1,4 +1,4 @@
-import { ConnectorButtonOptions, DangoButton, useWizard } from "@dango/shared";
+import { Button, ConnectorButtonOptions, useWizard } from "@dango/shared";
 import { useConfig, useConnectors } from "@leftcurve/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -33,14 +33,14 @@ export const ConnectorStep: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton
+      <Button
         fullWidth
         onClick={() => connect("passkey")}
         isDisabled={!!connectorLoading}
         isLoading={connectorLoading === "passkey"}
       >
         Connect with Passkey
-      </DangoButton>
+      </Button>
       <div className="flex flex-col gap-2 w-full">
         <ConnectorButtonOptions
           mode="login"

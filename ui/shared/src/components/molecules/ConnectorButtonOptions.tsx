@@ -1,7 +1,7 @@
 import { ConnectorIds } from "@leftcurve/types";
 import { capitalize } from "@leftcurve/utils";
 
-import { DangoButton } from "../atoms/DangoButton";
+import { Button } from "../atoms/Button";
 
 import type { Connector, ConnectorId } from "@leftcurve/types";
 import { WalletIcon } from "../icons/Wallet";
@@ -25,7 +25,7 @@ export const ConnectorButtonOptions: React.FC<Props> = ({
     const connector = connectors.find((connector) => connector.id === connectorId);
     const prettyName = capitalize(connectorId);
     return (
-      <DangoButton
+      <Button
         type="button"
         color="purple"
         key={connectorId}
@@ -39,7 +39,7 @@ export const ConnectorButtonOptions: React.FC<Props> = ({
         <span className="min-w-[12rem] text-start">
           {connector ? `${text} ${prettyName}` : `${prettyName} is not installed`}
         </span>
-      </DangoButton>
+      </Button>
     );
   });
 };

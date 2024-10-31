@@ -30,8 +30,8 @@ export type InternalForwardRefRenderFunction<
 > = {
   <AsComponent extends As = Component>(
     props: MergeWithAs<
-      React.ComponentPropsWithoutRef<Component>,
-      Omit<React.ComponentPropsWithoutRef<AsComponent>, OmitKeys>,
+      React.ComponentPropsWithRef<Component>,
+      Omit<React.ComponentPropsWithRef<AsComponent>, OmitKeys>,
       Props,
       AsComponent
     >,

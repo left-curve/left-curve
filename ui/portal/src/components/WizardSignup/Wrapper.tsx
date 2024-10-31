@@ -1,4 +1,4 @@
-import { DangoButton, GradientContainer } from "@dango/shared";
+import { Button, GradientContainer } from "@dango/shared";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Link } from "react-router-dom";
@@ -12,16 +12,16 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
         </p>
         {children}
       </GradientContainer>
-      <DangoButton
+      <Button
         type="button"
         as={Link}
         to="/auth/login"
-        variant="ghost"
+        variant="light"
         color="rose"
         className="text-lg italic"
       >
         Already have an account?
-      </DangoButton>
+      </Button>
     </div>
   );
 };

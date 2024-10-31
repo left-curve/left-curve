@@ -83,7 +83,7 @@ export const AccountCard: React.FC<CardProps> = ({
         </div>
       </div>
       {isActive ? (
-        <Button variant="outline" color={color} onClick={() => manageAction?.(account)}>
+        <Button variant="bordered" color="purple" size="sm" onClick={() => manageAction?.(account)}>
           Manage
         </Button>
       ) : null}

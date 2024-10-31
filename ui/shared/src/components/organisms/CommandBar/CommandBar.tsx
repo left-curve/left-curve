@@ -31,6 +31,12 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
     setSearchText("");
   });
 
+  const triggerAction = (applet: AppletMetadata) => {
+    action(applet);
+    setIsOpen(false);
+    setSearchText("");
+  };
+
   const handleInteraction = () => {
     setIsOpen(true);
     inputRef.current?.focus();
@@ -39,12 +45,12 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
   return (
     <>
       <div className="xl:col-span-2  min-w-full md:min-w-0 flex-1 order-3 md:order-2 flex items-center justify-center relative">
-        <div className="relative z-0 rounded-2xl w-full lg:max-w-xl">
+        <div className="relative rounded-2xl w-full lg:max-w-xl">
           <div
             onClick={handleInteraction}
-            className="bg-gray-50 p-1 rounded-2xl border border-white flex items-center justify-center w-full lg:max-w-xl z-10 relative"
+            className="bg-surface-green-200 p-1 rounded-2xl flex items-center justify-center w-full lg:max-w-xl z-10 relative group group-hover:bg-surface-green-300 hover:bg-surface-green-300"
           >
-            <div className="bg-gray-200/50 flex-1 rounded-xl h-9 hover:bg-gray-300/50 transition-all text-gray-400 flex items-center gap-2 px-2 cursor-text text-start">
+            <div className="bg-surface-green-300 flex-1 rounded-xl h-9  group-hover:bg-surface-green-200 hover:bg-surface-green-200 transition-all text-typography-green-300 flex items-center gap-2 px-2 cursor-text text-start">
               <SearchIcon className="h-6 w-6" />
               <p className="flex-1 pt-1">Search for apps and commands</p>
               <p>/</p>
@@ -53,17 +59,17 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
           <motion.div
             ref={menuRef}
             className={twMerge(
-              "absolute w-full h-full top-0 left-0 transition-all bg-gray-50 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2",
+              "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2",
               isOpen
-                ? "z-50 bg-gray-100 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
+                ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
                 : "z-0",
             )}
           >
             <div className="flex">
               <div
                 className={twMerge(
-                  "flex items-center gap-2 px-3 md:px-2 w-full bg-transparent rounded-xl h-9 text-gray-400",
-                  isOpen ? "bg-gray-300/50 h-10" : "",
+                  "flex items-center gap-2 px-3 md:px-2 w-full bg-transparent rounded-xl h-9 text-typography-green-300",
+                  isOpen ? "bg-surface-green-300 h-10" : "",
                 )}
               >
                 <SearchIcon className="h-6 w-6" />
@@ -72,17 +78,18 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   placeholder="Search for apps and commands"
-                  className="flex-1 bg-transparent text-gray-800 placeholder-gray-400 pt-1 outline-none"
+                  className="flex-1 bg-transparent text-typography-green-4 placeholder-typography-green-300 pt-1 outline-none"
                 />
                 <p>/</p>
               </div>
               <Button
                 className={twMerge(
-                  "h-10 rounded-xl transition-all overflow-hidden md:hidden",
-                  isOpen ? "w-10 px-2 ml-3" : "w-0 p-0",
+                  "overflow-hidden md:hidden",
+                  isOpen ? "w-10 px-2 ml-3" : "w-0 p-0 opacity-0",
                 )}
                 onClick={() => setIsOpen(false)}
-                color="danger"
+                isIconOnly
+                radius="lg"
               >
                 <CloseIcon className="h-6 w-6" />
               </Button>
@@ -90,7 +97,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
             <CommandBody
               isOpen={isOpen}
               applets={applets}
-              action={action}
+              action={triggerAction}
               searchText={searchText}
             />
           </motion.div>

@@ -15,7 +15,7 @@ import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk
 import { AccountType, ConnectionStatus, KeyAlgo } from "@leftcurve/types";
 import { getNavigatorOS, getRootDomain, wait } from "@leftcurve/utils";
 
-import { DangoButton } from "@dango/shared";
+import { Button } from "@dango/shared";
 
 import type { Address, EIP1193Provider, Key } from "@leftcurve/types";
 
@@ -118,13 +118,13 @@ export const ConnectStep: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton
+      <Button
         fullWidth
         onClick={() => createAccount("passkey")}
         isLoading={connectorLoading === "passkey"}
       >
         Signup with Passkey
-      </DangoButton>
+      </Button>
       {isError ? (
         <p className="text-typography-rose-600 text-center text-xl">
           We couldn't complete the request
