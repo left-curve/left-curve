@@ -3,6 +3,7 @@
 import { useAccount, useBalances, useConfig } from "@leftcurve/react";
 import { formatNumber, formatUnits } from "@leftcurve/utils";
 import { Button } from "../atoms/Button";
+import { DangoButton } from "../atoms/DangoButton";
 
 interface Props {
   avatarUri?: string;
@@ -46,9 +47,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
           </div>
         </div>
       </div>
-      <Button color="sand" variant="light" className="italic">
-        Edit
-      </Button>
+      <DangoButton variant="light">Edit</DangoButton>
     </div>
   );
 };

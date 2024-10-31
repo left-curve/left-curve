@@ -88,7 +88,7 @@ const buttonVariants = tv({
     {
       variant: "solid",
       color: "green",
-      class: colorVariants.solid.green,
+      class: "bg-green-100 text-green-900",
     },
     {
       variant: "solid",
@@ -98,7 +98,7 @@ const buttonVariants = tv({
     {
       variant: "solid",
       color: "sand",
-      class: colorVariants.solid.sand,
+      class: "bg-sand-100 text-sand-900",
     },
     // shadow / color
     {
@@ -114,7 +114,7 @@ const buttonVariants = tv({
     {
       variant: "shadow",
       color: "green",
-      class: colorVariants.shadow.green,
+      class: "shadow-lg shadow-green-100/50 bg-green-100 text-green-900",
     },
     {
       variant: "shadow",
@@ -160,7 +160,7 @@ const buttonVariants = tv({
     {
       variant: "outline",
       color: "sand",
-      class: colorVariants.outline.sand,
+      class: "bg-transparent border-purple-100 text-purple-900",
     },
     // flat / color
     {
@@ -186,7 +186,7 @@ const buttonVariants = tv({
     {
       variant: "flat",
       color: "sand",
-      class: colorVariants.flat.sand,
+      class: "bg-sand-100/40 hover:bg-sand-100 text-sand-900",
     },
     // faded / color
     {
@@ -254,7 +254,7 @@ const buttonVariants = tv({
     {
       variant: "dark",
       color: "green",
-      class: colorVariants.dark.green,
+      class: "bg-green-800 text-green-100 hover:bg-green-100/20 hover:text-green-900",
     },
     {
       variant: "dark",

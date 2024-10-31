@@ -6,6 +6,7 @@ import { AppRouter } from "./AppRouter";
 
 import "../public/global.css";
 import "@dango/assets/fonts/ABCDiatypeRounded/index.css";
+import "@dango/assets/fonts/Exposure/index.css";
 
 export const App: React.FC = () => {
   return (

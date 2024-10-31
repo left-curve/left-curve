@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Button } from "../atoms/Button";
+
 import { SafeMemberRow } from "./SafeMemberRow";
 
 import type { Account, AccountType } from "@leftcurve/types";
+import { DangoButton } from "../atoms/DangoButton";
 
 interface Props {
   account: Account<typeof AccountType.Safe>;
@@ -36,9 +37,7 @@ export const SafeMembersTable: React.FC<Props> = ({ account }) => {
               />
             ))}
           </div>
-          <Button color="danger" className="flex-1 min-h-11 italic rounded-3xl">
-            New Member
-          </Button>
+          <DangoButton className="flex-1 min-h-11">New Member</DangoButton>
         </div>
       </motion.div>
     </AnimatePresence>

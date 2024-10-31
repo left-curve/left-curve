@@ -3,9 +3,7 @@ import type { As } from "../../types";
 import { forwardRef, twMerge } from "../../utils";
 import { Spinner } from "./Spinner";
 
-export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color" | "disabled">,
-    VariantProps<typeof buttonVariants> {
+export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   as?: As;
   /**
    * When true, the button will be disabled.
@@ -71,24 +69,31 @@ const buttonVariants = tv(
       "select-none",
       "whitespace-nowrap",
       "min-w-max",
-      "font-normal",
+      "font-bold",
       "subpixel-antialiased",
       "overflow-hidden",
       "tap-highlight-transparent",
       "data-[pressed=true]:scale-[0.97]",
+      "italic",
+      "font-exposure",
+      "transition-all",
     ],
     variants: {
       variant: {
         solid: "",
         bordered: "border-2 bg-transparent",
-        ghost: "bg-transparent border-none",
+        light: "bg-transparent border-none",
       },
       color: {
+        none: "",
+        gray: "",
+        sand: "",
+        green: "",
         rose: "",
         purple: "",
       },
       size: {
-        sm: "px-12 py-2 text-xs",
+        sm: "px-12 py-2 text-xs max-h-[2rem]",
         md: "px-12 py-3 max-h-[3rem]",
       },
       radius: {
@@ -129,6 +134,27 @@ const buttonVariants = tv(
         color: "rose",
         class: "bg-surface-pink-200 hover:bg-surface-pink-300 text-surface-rose-200",
       },
+      {
+        variant: "solid",
+        color: "gray",
+        class:
+          "bg-surface-green-200 hover:bg-surface-green-300 text-typography-black-300 not-italic font-diatype-rounded",
+      },
+      {
+        variant: "solid",
+        color: "purple",
+        class: "bg-surface-purple-200 hover:bg-surface-purple-300 text-typography-purple-400",
+      },
+      {
+        variant: "solid",
+        color: "green",
+        class: "bg-surface-green-300 hover:bg-surface-green-400 text-typography-green-400",
+      },
+      {
+        variant: "solid",
+        color: "sand",
+        class: "bg-surface-rose-200 hover:bg-surface-rose-300 text-typography-rose-500",
+      },
       // variant / bordered
       {
         variant: "bordered",
@@ -136,11 +162,11 @@ const buttonVariants = tv(
         class:
           "border-borders-purple-600 bg-surface-purple-100 hover:bg-surface-purple-300 text-typography-purple-400",
       },
-      // variant / ghost
+      // variant / light
       {
-        variant: "ghost",
+        variant: "light",
         color: "rose",
-        class: "text-typography-purple-400 hover:text-typography-rose-600",
+        class: "text-typography-purple-400 hover:text-typography-purple-500 ",
       },
       // variant / iconOnly
       {

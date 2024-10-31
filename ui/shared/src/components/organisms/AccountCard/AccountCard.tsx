@@ -2,7 +2,7 @@
 
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 
-import { Button } from "../../";
+import { Button, DangoButton } from "../../";
 
 import { truncateAddress } from "@leftcurve/utils";
 import { type VariantProps, tv } from "tailwind-variants";
@@ -83,9 +83,14 @@ export const AccountCard: React.FC<CardProps> = ({
         </div>
       </div>
       {isActive ? (
-        <Button variant="outline" color={color} onClick={() => manageAction?.(account)}>
+        <DangoButton
+          variant="bordered"
+          color="purple"
+          size="sm"
+          onClick={() => manageAction?.(account)}
+        >
           Manage
-        </Button>
+        </DangoButton>
       ) : null}
     </div>
   );

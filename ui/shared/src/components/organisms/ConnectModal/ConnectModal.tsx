@@ -4,7 +4,7 @@ import { forwardRef, useRef } from "react";
 import { WizardProvider } from "../../../providers";
 import { mergeRefs } from "../../../utils";
 
-import { Button, Modal, type ModalRef } from "../../";
+import { Button, DangoButton, Modal, type ModalRef } from "../../";
 
 import { DisplayConnect } from "./DisplayConnect";
 import { DisplayIntro } from "./DisplayIntro";
@@ -27,7 +27,7 @@ export const ConnectModal = forwardRef<ModalRef, Props>(({ challenge }, ref) => 
     <Modal ref={mergeRefs(ref, modalRef)}>
       <WizardProvider onFinish={closeModal} onReset={closeModal} wrapper={<WrapperConnect />}>
         <DisplayIntro>
-          <Button>Create Account</Button>
+          <DangoButton>Create Account</DangoButton>
         </DisplayIntro>
         <DisplayConnect />
         <DisplayConnection />

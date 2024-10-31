@@ -9,7 +9,7 @@ import {
 import { AccountType } from "@leftcurve/types";
 
 import { useAccount } from "@leftcurve/react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { applets, popularApplets } from "../../applets";
 
 export const Header: React.FC = () => {
@@ -19,7 +19,13 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 left-0 bg-white md:bg-transparent gap-4 z-50 flex flex-wrap md:flex-nowrap items-center justify-between w-full p-4 xl:grid xl:grid-cols-4">
-        <div className="hidden sm:block h-10 w-10 rounded-full bg-gray-200 order-1" />
+        <Link to="/">
+          <img
+            src="/images/dango.svg"
+            alt="dango.lgoo"
+            className="hidden sm:block h-8 order-1 cursor-pointer"
+          />
+        </Link>
         <CommandBar
           applets={{ all: applets, popular: popularApplets }}
           action={({ path }) => navigate(path)}

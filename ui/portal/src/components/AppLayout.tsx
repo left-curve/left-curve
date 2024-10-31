@@ -30,7 +30,7 @@ export const AppLayout: React.FC = () => {
         <img
           src="/images/background.png"
           alt="bg-image"
-          className="object-cover h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl "
+          className="object-cover drag-none select-none h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl "
         />
       ) : null}
       <Header />

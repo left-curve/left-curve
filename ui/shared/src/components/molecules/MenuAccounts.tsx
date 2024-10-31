@@ -5,9 +5,9 @@ import { useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
 import { capitalize } from "@leftcurve/utils";
-import { twMerge } from "../../utils";
+import { twMerge, useDOMRef } from "../../utils";
 
-import { AccountCard, Button } from "../";
+import { AccountCard, Button, DangoButton } from "../";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
@@ -23,7 +23,7 @@ interface Props {
 
 export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useDOMRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
@@ -49,9 +49,15 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
 
   return (
     <>
-      <Button ref={buttonRef} onClick={() => setShowMenu(!showMenu)}>
+      <DangoButton
+        ref={buttonRef}
+        onClick={() => setShowMenu(!showMenu)}
+        color="gray"
+        radius="lg"
+        className="font-bold px-4 py-2"
+      >
         {capitalize(selectedAccount.type)} Account #{selectedAccount.index}
-      </Button>
+      </DangoButton>
       <div
         ref={menuRef}
         className={twMerge(
@@ -66,27 +72,24 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
             Accounts
           </p>
           <div className="flex gap-2">
-            <Button className="h-10 w-10 px-2 rounded-xl" color="green">
+            <DangoButton isIconOnly radius="lg" color="green">
               <PlusIcon className="h-6 w-6" />
-            </Button>
-            <Button
-              className="h-10 w-10 px-2 rounded-xl"
+            </DangoButton>
+            <DangoButton
+              color="purple"
+              radius="lg"
+              isIconOnly
               onClick={() => setExpanded(!expanded)}
-              color="sand"
             >
               {expanded ? (
                 <CollapseIcon className="h-6 w-6" />
               ) : (
                 <ExpandedIcon className="h-6 w-6" />
               )}
-            </Button>
-            <Button
-              className="h-10 w-10 px-2 rounded-xl"
-              onClick={() => setShowMenu(false)}
-              color="danger"
-            >
+            </DangoButton>
+            <DangoButton onClick={() => setShowMenu(false)} color="rose" radius="lg" isIconOnly>
               <CloseIcon className="h-6 w-6" />
-            </Button>
+            </DangoButton>
           </div>
         </div>
         <div

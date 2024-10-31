@@ -32,14 +32,14 @@ export const AppletCard: React.FC<Props> = ({ metadata, onClick }) => {
 
   return (
     <div
-      className="w-full rounded-3xl bg-surface-rose-200 flex gap-2 cursor-pointer relative group text-black"
+      className="w-full rounded-[1.25rem] bg-surface-rose-200 flex gap-2 cursor-pointer relative group text-black"
       onClick={() => handleOnClick(metadata)}
     >
-      <div className="w-[70px] bg-white absolute h-[70px] rounded-3xl group-hover:w-full transition-all" />
-      <div className="p-2 relative rounded-3xl flex items-center justify-center z-10">
+      <div className="w-[100px] bg-white absolute min-h-[80px] rounded-l-[1.25rem] rounded-r-[3.5rem] group-hover:w-full group-hover:rounded-[1.25rem] transition-all" />
+      <div className="py-2 pl-4 pr-5 relative rounded-[1.25rem] flex items-center justify-center z-10">
         <img src={img} alt={title} className="h-[54px] w-[54px]" />
       </div>
-      <div className="flex flex-col p-2 relative z-10 flex-1">
+      <div className="flex flex-col px-5 py-4 relative z-10 flex-1">
         <p className="text-xl font-bold">{title}</p>
         <p className="text-sm text-gray-500">{description}</p>
       </div>
