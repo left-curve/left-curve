@@ -19,10 +19,10 @@ export const Header: React.FC = () => {
   return (
     <>
       <header className="sticky top-0 left-0 bg-white md:bg-transparent gap-4 z-50 flex flex-wrap md:flex-nowrap items-center justify-between w-full p-4 xl:grid xl:grid-cols-4">
-        <Link to="/">
+        <Link to="/" className="w-fit">
           <img
             src="/images/dango.svg"
-            alt="dango.lgoo"
+            alt="dango logo"
             className="hidden sm:block h-8 order-1 cursor-pointer"
           />
         </Link>
