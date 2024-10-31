@@ -7,7 +7,7 @@ use {
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, time::Duration},
     thiserror::Error,
 };
 
@@ -116,16 +116,17 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
         {
             // Query the prices of a few coins from Coingecko.
             let prices = reqwest::blocking::Client::builder()
-                .timeout(std::time::Duration::from_millis(500))
+                .timeout(Duration::from_millis(500))
                 .build()?
-                .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd").send()?
-                    .json::<BTreeMap<String, Json>>()?
-                    .into_iter()
-                    .map(|(coingecko_id, vs_currencies)| {
-                        let price = vs_currencies["usd"].as_f64().unwrap();
-                        (coingecko_id, price)
-                    })
-                    .collect();
+                .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd")
+                .send()?
+                .json::<BTreeMap<String, Json>>()?
+                .into_iter()
+                .map(|(coingecko_id, vs_currencies)| {
+                    let price = vs_currencies["usd"].as_f64().unwrap();
+                    (coingecko_id, price)
+                })
+                .collect();
 
             // Compose an oracle update transaction.
             let tx = Tx {
