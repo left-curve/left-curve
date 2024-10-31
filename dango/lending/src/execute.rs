@@ -9,13 +9,14 @@ use {
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
     },
     grug::{Addr, BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
+    optional_struct::Applicable,
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, _updates) in msg.markets {
-        MARKETS.save(ctx.storage, &denom, &Market {})?;
+    for (denom, market) in msg.markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
     Ok(Response::new())
@@ -41,8 +42,15 @@ fn update_markets(
         "Only the owner can whitelist denoms"
     );
 
-    for (denom, _updates) in updates {
-        MARKETS.save(ctx.storage, &denom, &Market {})?;
+    for (denom, updates) in updates {
+        if let Some(current_market) = MARKETS.may_load(ctx.storage, &denom)? {
+            let market = updates.build(current_market);
+            MARKETS.save(ctx.storage, &denom, &market)?;
+        } else {
+            let market = Market::try_from(updates)
+                .map_err(|_| anyhow!("Updates must contain all fields to create a new market"))?;
+            MARKETS.save(ctx.storage, &denom, &market)?;
+        }
     }
 
     Ok(Response::new())

@@ -4,9 +4,9 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY, LENDING_KEY},
         ibc_transfer,
-        lending::{self, MarketUpdates},
+        lending::{self, Market},
         oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
         taxman, token_factory,
     },
@@ -201,7 +201,9 @@ where
         lending_code_hash,
         &lending::InstantiateMsg {
             markets: btree_map! {
-                fee_denom.clone() => MarketUpdates {},
+                fee_denom.clone() => Market {
+                    // TODO
+                }
             },
         },
         "dango/lending",
@@ -311,6 +313,7 @@ where
     let app_configs = btree_map! {
         ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
         IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
+        LENDING_KEY.to_string() => lending.to_json_value()?,
     };
 
     let genesis_state = GenesisState {

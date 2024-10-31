@@ -24,5 +24,6 @@ dango-auth            = { workspace = true }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 grug-storage          = { workspace = true }
+optional_struct       = { workspace = true }
 
 [dev-dependencies]

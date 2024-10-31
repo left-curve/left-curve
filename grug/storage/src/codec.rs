@@ -17,6 +17,7 @@ pub trait Codec<T> {
 // ----------------------------------- borsh -----------------------------------
 
 /// Represents the Borsh encoding scheme.
+#[derive(Clone)]
 pub struct Borsh;
 
 impl<T> Codec<T> for Borsh

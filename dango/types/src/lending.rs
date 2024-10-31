@@ -1,5 +1,8 @@
 use {
-    grug::{Addr, Coins, Denom, Part},
+    borsh::{BorshDeserialize, BorshSerialize},
+    grug::{Addr, Bound, Bounded, Bounds, Coins, Denom, NumberConst, Part, Udec128},
+    optional_struct::optional_struct,
+    serde::{Deserialize, Serialize},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -10,21 +13,43 @@ pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("len
 /// Sub-namespace that liquidity share tokens will be minted under.
 pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("pool"));
 
-/// Configurations and state of a market.
-#[grug::derive(Serde, Borsh)]
+// -------------------------------- Bounds -------------------------------------
+
+/// Defines the bounds for a loan-to-value ratio: 0 < LoanToValue < 1.
+#[grug::derive(Serde)]
+pub struct LoanToValueBounds;
+impl Bounds<Udec128> for LoanToValueBounds {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+}
+/// A decimal bounded by the loan-to-value bounds.
+pub type LoanToValue = Bounded<Udec128, LoanToValueBounds>;
+
+/// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
+#[grug::derive(Serde)]
+pub struct CollateralPowerBounds;
+impl Bounds<Udec128> for CollateralPowerBounds {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+}
+/// A decimal bounded by the collateral power bounds.
+pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
+
+// -------------------------------- Market -------------------------------------
+
+/// Configurations and state of a market (borrowable assets).
+#[optional_struct(MarketUpdates)]
+#[derive(
+    Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize,
+)]
 pub struct Market {
     // TODO
 }
 
-/// A set of updates to be applied to a market.
-#[grug::derive(Serde)]
-pub struct MarketUpdates {
-    // TODO
-}
-
+// -------------------------------- Messages -----------------------------------
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub markets: BTreeMap<Denom, MarketUpdates>,
+    pub markets: BTreeMap<Denom, Market>,
 }
 
 #[grug::derive(Serde)]
@@ -62,4 +87,10 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
+    /// Returns all collateral powers.
+    #[returns(BTreeMap<Denom, CollateralPower>)]
+    CollateralPowers {},
+    /// Queries the utilization rate of a margin account.
+    #[returns(Udec128)]
+    UtilizationRate { account: Addr },
 }

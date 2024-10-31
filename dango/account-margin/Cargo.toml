@@ -18,9 +18,10 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow      = { workspace = true }
-dango-auth  = { workspace = true }
-dango-types = { workspace = true }
-grug        = { workspace = true }
+anyhow        = { workspace = true }
+dango-auth    = { workspace = true }
+dango-lending = { workspace = true }
+dango-types   = { workspace = true }
+grug          = { workspace = true }
 
 [dev-dependencies]

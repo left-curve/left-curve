@@ -1,8 +1,17 @@
 use {
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
-    dango_types::{account::InstantiateMsg, config::ACCOUNT_FACTORY_KEY},
-    grug::{Addr, AuthCtx, AuthResponse, MutableCtx, Response, StdResult, Tx},
+    dango_lending::{calculate_utilization_rate, COLLATERAL_POWERS, DEBTS},
+    dango_types::{
+        account::InstantiateMsg,
+        config::{ACCOUNT_FACTORY_KEY, LENDING_KEY},
+        lending::CollateralPower,
+    },
+    grug::{
+        Addr, AuthCtx, AuthResponse, BorshDeExt, Coins, Denom, MutableCtx, NumberConst, Response,
+        StdResult, Tx, Udec128,
+    },
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -22,7 +31,39 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     authenticate_tx(ctx, tx, None, None)?;
 
-    Ok(AuthResponse::new().request_backrun(false))
+    Ok(AuthResponse::new().request_backrun(true))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
+    let lending: Addr = ctx.querier.query_app_config(LENDING_KEY)?;
+
+    // Query all debts for the account.
+    let debts = ctx
+        .querier
+        .query_wasm_raw(lending, DEBTS.path(ctx.contract))?
+        .map(|coins| coins.deserialize_borsh::<Coins>())
+        .transpose()?
+        .unwrap_or_default();
+
+    // Query all collateral powers.
+    let collateral_powers = ctx
+        .querier
+        .query_wasm_raw(lending, COLLATERAL_POWERS.path().clone())?
+        .ok_or_else(|| anyhow!("collateral powers not found"))?
+        .deserialize_borsh::<BTreeMap<Denom, CollateralPower>>()?;
+
+    // Calculate the utilization rate.
+    let utilization_rate =
+        calculate_utilization_rate(&ctx.querier, ctx.contract, debts, collateral_powers)?;
+
+    // If the utilization rate is greater than 1, the account is undercollateralized.
+    ensure!(
+        utilization_rate <= Udec128::ONE,
+        "The action would make the account undercollateralized"
+    );
+
+    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
