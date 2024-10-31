@@ -89,16 +89,7 @@ module apply_state_machine {
       everyNodesParentIsInTheTree(vTree)
     )
 
-  // pure def allInternalwithPrefix(t: Tree) : TreeMap =
-  //     val leafNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isInternal())
-  //     leafNodeIds.mapBy(p => t.nodes.get(p))
-
-  // pure def allLeafswithPrefix(t: Tree) : TreeMap =
-  //     val internalNodeIds = t.nodes.keys().filter(nId => t.nodes.get(nId).isLeaf())
-  //     internalNodeIds.mapBy(p => t.nodes.get(p))
-
   /// Check whether there is a node with the given prefix
-  /// TODO: currently it ignores versions. Instead of Bytes_t it should take a NodeId as input
   pure def existsNode(t: TreeMap, b: Bytes_t): bool =
       t.keys().filter(nId => nId.key_hash == b).size() > 0
 
@@ -112,7 +103,7 @@ module apply_state_machine {
 
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
   /// tree that is the common prefix
-  def nodeAtCommonPrefixInv =
+  val nodeAtCommonPrefixInv =
     activeTreeVersions.forall(v =>
       val vTree = treeAtVersion(tree,v)
       nodeAtCommonPrefix(vTree)
@@ -122,18 +113,22 @@ module apply_state_machine {
   pure def rightChild(t: TreeMap, nId: NodeId): NodeId =
       // there should only be one node for each prefix, but we need to figure out its version
       t.keys().filter(n => n.key_hash == nId.key_hash.append(1))  // filter down to a singleton
-              .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
+              .getOnlyElement()   // pick the one element
 
   /// This computes the prefix of the child.
   pure def leftChild(t: TreeMap, nId: NodeId): NodeId =
       // there should only be one node for each prefix, but we need to figure out its version
       t.keys().filter(n => n.key_hash == nId.key_hash.append(0))  // filter down to a singleton
-              .fold({ version: -1, key_hash: []}, (s, x) => x)    // pick the one element
+              .getOnlyElement()   // pick the one element
 
   /// The treemaps we use in the invariants have unique key_hashes
   pure def goodTreeMap(t: TreeMap): bool =
     t.keys().forall(a =>
       t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
+
+  /// Sanity check for the treeAtVersion computation
+  val goodTreeMapInv =
+    activeTreeVersions.map(v => treeAtVersion(tree, v)).forall(goodTreeMap)
 
   /// Check that for all internal nodes, if they have a hash stored for a child,
   /// then the hash is the hash of the actualy the child
@@ -157,28 +152,26 @@ module apply_state_machine {
       activeTreeVersions.forall(v => properlyHashed(treeAtVersion(tree,v)))
 
   // TODO TreeMap is a bijection: perhaps not with versions
+  // only works on tree map, as trees can have same nodes in different keys/versions
+  // it should catch that bug
+  // t.keys().size() == t.values().size()
 
   /// Make sure that the map encodes a tree. In particular, there is no internal node
   /// that has a leaf node as its prefix
   /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
   /// TODO: versions
-  pure def noInternalChild(t: TreeMap): bool =
+  pure def noLeafInPrefixes(t: TreeMap): bool =
       val leafNodeIds = t.keys().filter(nId => t.get(nId).isLeaf())
-      val internalNodeIds = t.keys().filter(nId => t.get(nId).isInternal())
+      val nodeIds = t.keys()
       val leafPrefixes = leafNodeIds.map(nId => nId.key_hash)
-      val internalPrefixes = internalNodeIds.map(nId => nId.key_hash)
+      val prefixes = nodeIds.map(nId => nId.key_hash)
       not(leafPrefixes.exists(lp =>
-              internalPrefixes.exists(ip =>
-                  isPrefixOf(lp, ip))))
+              prefixes.exists(ip =>
+                  lp != ip and isPrefixOf(lp, ip))))
 
   /// Invariant: there is no internal node  that has a leaf node as its prefix
-  def noInternalChildInv =
-      activeTreeVersions.forall(v => noInternalChild(treeAtVersion(tree,v)))
-
-  /// For the same path there are not multiple version stored within the nodes
-  pure def oneNodePerPath(t: Tree): bool =
-      val paths = t.nodes.keys().map(nId => nId.key_hash)
-      paths.forall(p => t.nodes.keys().filter(nId => nId.key_hash == p).size() == 1)
+  def noLeafInPrefixesInv =
+      activeTreeVersions.forall(v => noLeafInPrefixes(treeAtVersion(tree,v)))
 
   pure def internalNodeHasChildren(n: InternalNode): bool =
       n.left_child != None or n.right_child != None
@@ -199,9 +192,10 @@ module apply_state_machine {
       t.get(key)
 
 
-  /// If a node (different from the root) has one child, the child is an internal node
+  /// If a node has exactly one child, the child is an internal node
+  /// (if it was a leaf, then the node itself would be leaf)
   pure def density(t: TreeMap): bool =
-    t.keys().filter(nId => nId.key_hash != []).forall(nId => match t.get(nId) {
+    t.keys().forall(nId => match t.get(nId) {
         | Internal(n) =>
           if (internalNodeHasChildren(n))
               if (n.left_child == None)
@@ -250,6 +244,7 @@ module apply_state_machine {
       )))
 
   /// Every internal node must have at least one child with the same version
+  /// This doesn't hold when there are deletions
   def denseVersions(t: TreeMap): bool =
     t.keys().forall(nId => match t.get(nId) {
         | Internal(n) =>
@@ -267,6 +262,10 @@ module apply_state_machine {
         | Leaf(_) => true
     })
 
+  val denseVersionsInv =
+    activeTreeVersions.forall(v => denseVersions(treeAtVersion(tree,v)))
+
+  // orphan should not be at one of the version trees after it gets orphaned
   def orphansInNoTreeInv: bool =
     tree.orphans.forall(o =>
       val nodeId = { version: o.version, key_hash: o.key_hash}
@@ -278,7 +277,7 @@ module apply_state_machine {
     everyNodesParentIsInTheTreeInv,
     nodeAtCommonPrefixInv,
     hashInv,
-    noInternalChildInv,
+    noLeafInPrefixesInv,
     allInternalNodesHaveChildrenInv,
     densityInv,
     versionInv,
