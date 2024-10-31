@@ -11,18 +11,19 @@
   },
   "dependencies": {
     "@dango/assets": "workspace:^",
+    "@fullpage/react-fullpage": "^0.1.45",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:",
+    "@astrojs/check": "^0.9.4",
     "@astrojs/react": "^3.6.2",
     "@astrojs/tailwind": "^5.1.1",
+    "@leftcurve/config": "workspace:^",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@astrojs/check": "^0.9.4",
-    "@leftcurve/config": "workspace:^",
     "astro": "^4.15.12",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
 }

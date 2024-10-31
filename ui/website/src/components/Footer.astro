@@ -2,13 +2,14 @@
 interface Props {
   className: string;
 }
-
+import DiscordIcon from "~/public/icons/discord.svg?raw";
+import XIcon from "~/public/icons/x.svg?raw";
 const { className } = Astro.props;
 ---
 
 <footer
   class:list={[
-    "flex flex-col gap-6 md:gap-10 items-center justify-center py-2",
+    "flex flex-col gap-6 md:gap-10 items-center justify-center py-2 pb-12 md:pb-8",
     className,
   ]}
 >
@@ -17,17 +18,17 @@ const { className } = Astro.props;
       href="https://x.com/leftCurveSoft"
       target="_blank"
       rel="noreferrer"
-      class="uppercase"
+      class="text-typography-black-300 hover:bg-typography-purple-300/40 rounded-full p-2 transition-all"
     >
-      twitter
+      <Fragment set:html={XIcon} />
     </a>
     <a
       href="https://discord.gg/4uB9UDzYhz"
       target="_blank"
       rel="noreferrer"
-      class="uppercase"
+      class="text-typography-black-300 hover:bg-typography-purple-300/40 rounded-full p-2 transition-all"
     >
-      discord
+      <Fragment set:html={DiscordIcon} />
     </a>
   </div>
   <div
