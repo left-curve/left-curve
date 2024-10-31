@@ -12,6 +12,11 @@ module apply_state_machine {
   import apply_fancy as fancy from "./apply_fancy"
 
   pure val MAX_OPS = 5
+  // Try to pick values with a balanced chance of collision
+  // Operation will be Delete if value between 16 and 20
+  // Each value has an id so Deletes don't become a single Delete when we construct the set.
+  // We want multiple deletes to preserve probability (for the simulator)
+  pure val VALUES = 2.to(20).map(v => { id: v, op: if (v > 15) Delete else Insert([v]) })
 
   var tree: Tree
   var version: int
@@ -26,15 +31,20 @@ module apply_state_machine {
     ops_history' = [],
   }
 
-  pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH).setOfMaps(Set(0, 1))).powerset()
-  pure def key_hash_map_to_op(km: int -> int): OperationOnKey = {
-    pure val key_hash: Bytes_t = range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km.get(i)))
-    { key_hash: key_hash, op: Insert(key_hash) } // value_hash is equal to key_hash to make things easier
+  pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH - 1).setOfMaps(Set(0, 1))).powerset()
+  pure def key_hash_map_to_op(km: (int -> int, { id: int, op: Operation })): OperationOnKey = {
+    pure val key_hash: Bytes_t = range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km._1.get(i)))
+    { key_hash: key_hash, op: km._2.op }
+  }
+
+  pure def to_operations(nondet_value: (int -> int) -> { id: int, op: Operation }): Set[OperationOnKey] = {
+    nondet_value.mapToTuples().take(MAX_OPS).map(key_hash_map_to_op)
   }
 
   action step_fancy = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
     all {
       tree' = fancy::apply(tree, version - 1, version, ops),
       version' = version + 1,
@@ -45,7 +55,8 @@ module apply_state_machine {
 
   action step_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.take(MAX_OPS).map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
     all {
       tree' = simple::apply(tree, version - 1, version, ops),
       version' = version + 1,
