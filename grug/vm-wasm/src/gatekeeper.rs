@@ -218,7 +218,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
             | Operator::I64Extend32S => {
                 state.push_operator(operator);
                 Ok(())
-            }
+            },
             Operator::RefNull { .. }
             | Operator::RefIsNull
             | Operator::RefFunc { .. }
@@ -242,7 +242,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     let msg = format!("Reference type operation detected: {operator:?}. Reference types are not supported.");
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
+            },
             Operator::MemoryAtomicNotify { .. }
             | Operator::MemoryAtomicWait32 { .. }
             | Operator::MemoryAtomicWait64 { .. }
@@ -354,7 +354,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     let msg = format!("Threads operator detected: {operator:?}. The Wasm Threads extension is not supported.");
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
+            },
             Operator::V128Load { .. }
             | Operator::V128Load8x8S { .. }
             | Operator::V128Load8x8U { .. }
@@ -600,7 +600,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     );
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
+            },
             // Relaxed SIMD operators
             Operator::I8x16RelaxedSwizzle
             | Operator::I32x4RelaxedTruncF32x4S
@@ -626,7 +626,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     "Relaxed SIMD operator detected: {operator:?}. The Wasm Relaxed SIMD extension is not supported."
                 );
                 Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
-            }
+            },
             Operator::F32Load { .. }
             | Operator::F64Load { .. }
             | Operator::F32Store { .. }
@@ -712,7 +712,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     );
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
+            },
             Operator::MemoryInit { .. }
             | Operator::DataDrop { .. }
             | Operator::MemoryCopy { .. }
@@ -727,7 +727,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     let msg = format!("Bulk memory operation detected: {operator:?}. Bulk memory operations are not supported.");
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
+            },
             Operator::Try { .. }
             | Operator::TryTable { .. }
             | Operator::Catch { .. }
@@ -743,39 +743,39 @@ impl FunctionMiddleware for FunctionGatekeeper {
                     let msg = format!("Exception handling operation detected: {operator:?}. Exception handling is not supported.");
                     Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
                 }
-            }
-            Operator::RefEq { .. } |
-            Operator::StructNew { .. } |
-            Operator::StructNewDefault { .. } |
-            Operator::StructGet { .. } |
-            Operator::StructGetS { .. } |
-            Operator::StructGetU { .. } |
-            Operator::StructSet { .. } |
-            Operator::ArrayNew { .. } |
-            Operator::ArrayNewDefault { .. } |
-            Operator::ArrayNewFixed { .. } |
-            Operator::ArrayNewData { .. } |
-            Operator::ArrayNewElem { .. } |
-            Operator::ArrayGet { .. } |
-            Operator::ArrayGetS { .. } |
-            Operator::ArrayGetU { .. } |
-            Operator::ArraySet { .. } |
-            Operator::ArrayLen |
-            Operator::ArrayFill { .. } |
-            Operator::ArrayCopy { .. } |
-            Operator::ArrayInitData { .. } |
-            Operator::ArrayInitElem { .. } |
-            Operator::RefTestNonNull { .. } |
-            Operator::RefTestNullable { .. } |
-            Operator::RefCastNonNull { .. } |
-            Operator::RefCastNullable { .. } |
-            Operator::BrOnCast { .. } |
-            Operator::BrOnCastFail { .. } |
-            Operator::AnyConvertExtern |
-            Operator::ExternConvertAny |
-            Operator::RefI31 |
-            Operator::I31GetS |
-            Operator::I31GetU => {
+            },
+            Operator::RefEq { .. }
+            | Operator::StructNew { .. }
+            | Operator::StructNewDefault { .. }
+            | Operator::StructGet { .. }
+            | Operator::StructGetS { .. }
+            | Operator::StructGetU { .. }
+            | Operator::StructSet { .. }
+            | Operator::ArrayNew { .. }
+            | Operator::ArrayNewDefault { .. }
+            | Operator::ArrayNewFixed { .. }
+            | Operator::ArrayNewData { .. }
+            | Operator::ArrayNewElem { .. }
+            | Operator::ArrayGet { .. }
+            | Operator::ArrayGetS { .. }
+            | Operator::ArrayGetU { .. }
+            | Operator::ArraySet { .. }
+            | Operator::ArrayLen
+            | Operator::ArrayFill { .. }
+            | Operator::ArrayCopy { .. }
+            | Operator::ArrayInitData { .. }
+            | Operator::ArrayInitElem { .. }
+            | Operator::RefTestNonNull { .. }
+            | Operator::RefTestNullable { .. }
+            | Operator::RefCastNonNull { .. }
+            | Operator::RefCastNullable { .. }
+            | Operator::BrOnCast { .. }
+            | Operator::BrOnCastFail { .. }
+            | Operator::AnyConvertExtern
+            | Operator::ExternConvertAny
+            | Operator::RefI31
+            | Operator::I31GetS
+            | Operator::I31GetU => {
                 let msg = format!("GC operation detected: {operator:?}. GC Proposal is not supported.");
                 Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
             },
