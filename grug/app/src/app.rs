@@ -28,7 +28,7 @@ use {
 pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
-    pub pp: PP,
+    pp: PP,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
