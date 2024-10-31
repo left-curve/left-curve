@@ -123,6 +123,16 @@ module apply_state_machine {
     activeVersionedTrees.forall(goodTreeMap)
   }
 
+  /// TreeMap is a bijection: we can map keys to values but also values to keys
+  /// In other words, values are also unique
+  /// Only works on tree map, as trees can have same nodes in different keys/versions
+  val bijectiveTreeMapInv: bool = {
+    pure def bijectiveTreeMap(t: TreeMap): bool =
+      t.keys().size() == t.values().size()
+
+    activeVersionedTrees.forall(bijectiveTreeMap)
+  }
+
   /// Check that for all internal nodes, if they have a hash stored for a child,
   /// then the hash is the hash of the actualy the subtree for the child
   val hashInv: bool = {
@@ -147,11 +157,6 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(properlyHashed)
   }
-
-  // TODO TreeMap is a bijection: perhaps not with versions
-  // only works on tree map, as trees can have same nodes in different keys/versions
-  // it should catch that bug
-  // t.keys().size() == t.values().size()
 
   /// Make sure that the map encodes a tree. In particular, there is no internal node
   /// that has a leaf node as its prefix
@@ -260,17 +265,23 @@ module apply_state_machine {
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
   }
 
-
   val allInvariants = all {
-    everyNodesParentIsInTheTreeInv,
-    nodeAtCommonPrefixInv,
-    goodTreeMapInv,
-    hashInv,
-    noLeafInPrefixesInv,
-    allInternalNodesHaveAChildInv,
-    densityInv,
-    versionInv,
-    orphansInNoTreeInv,
+    if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
+    if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
+    if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+    if (hashInv) true else q::debug("hashInv", false),
+    if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
+    if (densityInv) true else q::debug("densityInv", false),
+    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
+  }
+
+  /// All of the following invariants are broken due to the bug reported in
+  /// https://github.com/left-curve/left-curve/pull/291
+  val brokenInvariants = all {
+    if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
+    if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
+    if (versionInv) true else q::debug("versionInv", false),
+    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
   }
 }
 
