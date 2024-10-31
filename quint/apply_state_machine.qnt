@@ -312,11 +312,9 @@ module apply_state_machine {
 module pruning_state_machine {
   import apply_state_machine.*
 
-
   var unpruned_tree: Tree
 
-// just an idea to investigate pruning separatey agains an unpruned version of the tree
-
-
+  // just an idea to investigate pruning separatey agains an unpruned version of the tree
 
 }
+
