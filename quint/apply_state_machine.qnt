@@ -59,6 +59,7 @@ module apply_state_machine {
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
     all {
+      key_hashes_as_maps != Set(),
       tree' = simple::apply(tree, version - 1, version, ops),
       version' = version + 1,
       smallest_unpruned_version' = smallest_unpruned_version,
@@ -72,13 +73,9 @@ module apply_state_machine {
   val activeTreeVersions: Set[int] =
     smallest_unpruned_version.to(tree.treeVersion())
 
+  /// The set of active tree maps
   val activeVersionedTrees: Set[TreeMap] =
     activeTreeVersions.map(v => treeAtVersion(tree, v))
-
-  pure def findNode(t: TreeMap, key_hash: BitArray): Node = {
-    pure val nodeId = t.keys().filter(n => n.key_hash == key_hash).getOnlyElement()
-    t.get(nodeId)
-  }
 
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
   /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
@@ -96,7 +93,6 @@ module apply_state_machine {
 
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
   /// tree that is the common prefix
-  /// PS: this invariant might be just a case of `everyNodesParentIsInTheTreeInv`
   val nodeAtCommonPrefixInv: bool = {
     // Check whether there is a node with the given prefix
     pure def existsNode(t: TreeMap, b: Bytes_t): bool =
@@ -113,26 +109,6 @@ module apply_state_machine {
     activeVersionedTrees.forall(nodeAtCommonPrefix)
   }
 
-  /// The treemaps we use in the invariants should have unique key_hashes
-  /// This is a sanity check for the treeAtVersion computation
-  val goodTreeMapInv: bool = {
-    pure def goodTreeMap(t: TreeMap): bool =
-      t.keys().forall(a =>
-        t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
-
-    activeVersionedTrees.forall(goodTreeMap)
-  }
-
-  /// TreeMap is a bijection: we can map keys to values but also values to keys
-  /// In other words, values are also unique
-  /// Only works on tree map, as trees can have same nodes in different keys/versions
-  val bijectiveTreeMapInv: bool = {
-    pure def bijectiveTreeMap(t: TreeMap): bool =
-      t.keys().size() == t.values().size()
-
-    activeVersionedTrees.forall(bijectiveTreeMap)
-  }
-
   /// Check that for all internal nodes, if they have a hash stored for a child,
   /// then the hash is the hash of the actualy the subtree for the child
   val hashInv: bool = {
@@ -140,7 +116,7 @@ module apply_state_machine {
       t.keys().forall(nID => {
         match t.get(nID) {
           | Leaf(_) => true
-          | Internal(n) =>  {
+          | Internal(n) => {
             match n.left_child {
               | None => true
               | Some(c) => c.hash == hash(t.findNode(nID.key_hash.append(0)))
@@ -156,6 +132,34 @@ module apply_state_machine {
     }
 
     activeVersionedTrees.forall(properlyHashed)
+  }
+
+  /// All children in the tree should have different hashes
+  val uniqueHashesInv: bool = {
+    pure def uniqueHashes(t: TreeMap): bool = {
+      pure val hashes = t.values().fold([], (acc, node) => {
+        match node {
+          | Internal(n) => {
+            pure val acc_1 = match n.left_child {
+              | None => acc
+              | Some(c) => acc.append(c.hash)
+            }
+            match n.right_child {
+              | None => acc_1
+              | Some(c) => acc_1.append(c.hash)
+            }
+          }
+         | _ => acc
+        }
+      })
+      pure val uniqueHashes = hashes.foldl(Set(), (acc, hash) => {
+        acc.union(Set(hash))
+      })
+
+      hashes.length() == uniqueHashes.size()
+    }
+
+    activeVersionedTrees.forall(uniqueHashes)
   }
 
   /// Make sure that the map encodes a tree. In particular, there is no internal node
@@ -263,6 +267,26 @@ module apply_state_machine {
       val nodeId = { version: o.version, key_hash: o.key_hash }
       o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
+  }
+
+  /// The treemaps we use in the invariants should have unique key_hashes
+  /// This is a sanity check for the treeAtVersion computation
+  val goodTreeMapInv: bool = {
+    pure def goodTreeMap(t: TreeMap): bool =
+      t.keys().forall(a =>
+        t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
+
+    activeVersionedTrees.forall(goodTreeMap)
+  }
+
+  /// TreeMap is a bijection: we can map keys to values but also values to keys
+  /// In other words, values are also unique
+  /// Only works on tree map, as trees can have same nodes in different keys/versions
+  val bijectiveTreeMapInv: bool = {
+    pure def bijectiveTreeMap(t: TreeMap): bool =
+      t.keys().size() == t.values().size()
+
+    activeVersionedTrees.forall(bijectiveTreeMap)
   }
 
   val allInvariants = all {
