@@ -23,7 +23,7 @@ pub trait PriceSource {
     fn get_price(&self, storage: &dyn Storage) -> anyhow::Result<PrecisionedPrice>;
 }
 
-// ---------------------------------------------- Pyth ---------------------------------------------
+// ------------------------------------ Pyth -----------------------------------
 
 pub const PRICE_FEEDS: Map<PythId, PrecisionlessPrice> = Map::new("price_feeds");
 
