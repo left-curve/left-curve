@@ -27,5 +27,6 @@
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
     }
-  }
+  },
+  "globalEnv": ["PUBLIC_FULLPAGE_KEY"]
 }
