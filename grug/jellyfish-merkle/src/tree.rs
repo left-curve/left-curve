@@ -1012,7 +1012,7 @@ mod tests {
         // We check that the expected error is emitted.
         TREE.prove(&storage, b"foo".hash256(), 0)
             .should_fail_with_error(StdError::data_not_found::<Node>(
-                TREE.nodes.path((0, &ROOT_BITS)).as_path().storage_key(),
+                TREE.nodes.path((0, &ROOT_BITS)).storage_key(),
             ));
     }
 
