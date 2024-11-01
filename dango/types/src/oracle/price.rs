@@ -55,7 +55,3 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
         })
     }
 }
-#[test]
-fn lol() {
-    println!("{}", -8_i32 as u32)
-}
