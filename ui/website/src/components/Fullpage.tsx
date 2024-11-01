@@ -2,10 +2,17 @@ import ReactFullpage from "@fullpage/react-fullpage";
 import type { PropsWithChildren } from "react";
 import { Hero } from "./Hero";
 
+const licenseKey = () =>
+  new TextDecoder("utf-8", { fatal: true }).decode(
+    Uint8Array.from(atob(import.meta.env.PUBLIC_FULLPAGE_KEY || "FALLBACK"), (c) =>
+      c.charCodeAt(0),
+    ),
+  );
+
 export const Fullpage: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <ReactFullpage
-      licenseKey={"KEY"}
+      licenseKey={licenseKey()}
       scrollingSpeed={1000}
       credits={{ enabled: false }}
       render={({ fullpageApi }) => {
