@@ -103,7 +103,7 @@ where
         let ctx = AppCtx::new(
             self.vm.clone(),
             buffer,
-            GasTracker::new_limitless(),
+            gas_tracker.clone(),
             chain_id.clone(),
             block,
         );
