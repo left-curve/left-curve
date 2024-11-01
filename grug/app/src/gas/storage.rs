@@ -117,7 +117,7 @@ where
         gas_tracker: GasTracker,
         key: K,
     ) -> StdResult<T> {
-        let data_raw = self.path(key).as_path().load_raw(storage)?;
+        let data_raw = self.path(key).load_raw(storage)?;
 
         gas_tracker.consume(GAS_COSTS.db_read.cost(data_raw.len()), "db_read/found")?;
 
@@ -130,7 +130,7 @@ where
         gas_tracker: GasTracker,
         key: K,
     ) -> StdResult<bool> {
-        match self.path(key).as_path().may_load_raw(storage) {
+        match self.path(key).may_load_raw(storage) {
             Some(data) => {
                 gas_tracker.consume(GAS_COSTS.db_read.cost(data.len()), "db_read/found")?;
                 Ok(true)
@@ -181,13 +181,13 @@ where
 
         let gas_cost = GAS_COSTS
             .db_write
-            .cost(data_raw.len() + path.as_path().storage_key().len());
+            .cost(data_raw.len() + path.storage_key().len());
 
         // Charge gas before writing the data, such that if run out of gas,
         // the data isn't written.
         gas_tracker.consume(gas_cost, "db_write")?;
 
-        path.as_path().save_raw(storage, &data_raw);
+        path.save_raw(storage, &data_raw);
 
         Ok(())
     }
