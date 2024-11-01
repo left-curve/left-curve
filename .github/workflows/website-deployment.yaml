@@ -42,11 +42,10 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm build:pkg
-
       - name: Build Website
         run: pnpm build:website
+        env:
+          PUBLIC_FULLPAGE_KEY: ${{secrets.PUBLIC_FULLPAGE_KEY}}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
