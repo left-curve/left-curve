@@ -324,140 +324,137 @@ async fn double_vaas() {
     }
 }
 
-// #[tokio::test]
-// async fn multiple_vaas() {
-//     let (mut suite, mut accounts, _, contracts) = setup_test();
+#[tokio::test]
+async fn multiple_vaas() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
 
-//     let denoms = btree_map!(
-//         WBTC_USD_ID => Denom::from_str("bridge/btc").unwrap() ,
-//         ETH_USD_ID => Denom::from_str("bridge/eth").unwrap() ,
-//         USDC_USD_ID => Denom::from_str("bridge/usdc").unwrap() ,
-//         SOL_USD_ID => Denom::from_str("bridge/sol").unwrap() ,
-//         ATOM_USD_ID => Denom::from_str("bridge/atom").unwrap() ,
-//         BNB_USD_ID => Denom::from_str("bridge/bnb").unwrap() ,
-//         DOGE_USD_ID => Denom::from_str("bridge/doge").unwrap() ,
-//         XRP_USD_ID => Denom::from_str("bridge/xrp").unwrap() ,
-//         TON_USD_ID => Denom::from_str("bridge/ton").unwrap() ,
-//         SHIBA_USD_ID => Denom::from_str("bridge/shiba").unwrap(),
-//     );
+    let id_denoms = btree_map!(
+        WBTC_USD_ID => Denom::from_str("bridge/btc").unwrap() ,
+        ETH_USD_ID => Denom::from_str("bridge/eth").unwrap() ,
+        USDC_USD_ID => Denom::from_str("bridge/usdc").unwrap() ,
+        SOL_USD_ID => Denom::from_str("bridge/sol").unwrap() ,
+        ATOM_USD_ID => Denom::from_str("bridge/atom").unwrap() ,
+        BNB_USD_ID => Denom::from_str("bridge/bnb").unwrap() ,
+        DOGE_USD_ID => Denom::from_str("bridge/doge").unwrap() ,
+        XRP_USD_ID => Denom::from_str("bridge/xrp").unwrap() ,
+        TON_USD_ID => Denom::from_str("bridge/ton").unwrap() ,
+        SHIBA_USD_ID => Denom::from_str("bridge/shiba").unwrap(),
+    );
 
-//     let ids = [
-//         WBTC_USD_ID,
-//         ETH_USD_ID,
-//         USDC_USD_ID,
-//         SOL_USD_ID,
-//         ATOM_USD_ID,
-//         BNB_USD_ID,
-//         DOGE_USD_ID,
-//         XRP_USD_ID,
-//         TON_USD_ID,
-//         SHIBA_USD_ID,
-//     ];
+    // Register denoms
+    {
+        for (id, denom) in &id_denoms {
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.oracle,
+                    &ExecuteMsg::RegisterDenom {
+                        denom: denom.clone(),
+                        price_source: PriceSourceCollector::Pyth(PythPriceSource::new(
+                            PythId::from_str(id).unwrap(),
+                            8,
+                        )),
+                    },
+                    Coins::default(),
+                )
+                .should_succeed();
+        }
+    }
+    let mut last_price_feeds = id_denoms
+        .keys()
+        .map(|id| (*id, None))
+        .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
-//     // Register denoms
+    for _ in 0..5 {
+        let string_json_vaas = get_latest_vaas(PYTH_URL, id_denoms.keys()).await.unwrap();
 
-//     {
-//         for(id, denom) in &denoms {
-//             suite
-//                 .execute(
-//                     &mut accounts.owner,
-//                     contracts.oracle,
-//                     &ExecuteMsg::RegisterDenom {
-//                         denom: denom.clone(),
-//                         price_source: PriceSourceCollector::Pyth(PythPriceSource::new(
-//                             PythId::from_str(id).unwrap(),
-//                             8,
-//                         )),
-//                     },
-//                     Coins::default(),
-//                 )
-//                 .should_succeed();
-//         };
-//     }
-//     let mut last_price_feeds = denoms
-//         .iter()
-//         .map(|(denom, _)| (denom.clone(), None))
-//         .collect::<BTreeMap<_, Option<PriceFeed>>>();
+        let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
 
-//     for _ in 0..5 {
-//         let string_json_vaas = get_latest_vaas(PYTH_URL, &ids).await.unwrap();
+        // Update last price feeds
+        for vaa in parsed_vaa {
+            for price_feed in vaa.unverified() {
+                let last_price_feed = last_price_feeds
+                    .get_mut(price_feed.id.to_string().as_str())
+                    .unwrap();
 
-//         let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
+                if let Some(last_price_feed) = last_price_feed {
+                    if price_feed.get_price_unchecked().publish_time
+                        > last_price_feed.get_price_unchecked().publish_time
+                    {
+                        last_price_feed.clone_from(&price_feed);
+                    }
+                } else {
+                    *last_price_feed = Some(price_feed);
+                }
+            }
+        }
 
-//         // Update last price feeds
-//         for vaa in parsed_vaa {
-//             for price_feed in vaa.unverified() {
-//                 let last_price_feed = last_price_feeds
-//                     .get_mut( )
-//                     .unwrap();
+        // Check if all prices has been fetched
+        for v in last_price_feeds.values() {
+            assert!(v.is_some());
+        }
 
-//                 if let Some(last_price_feed) = last_price_feed {
-//                     if price_feed.get_price_unchecked().publish_time
-//                         > last_price_feed.get_price_unchecked().publish_time
-//                     {
-//                         last_price_feed.clone_from(&price_feed);
-//                     }
-//                 } else {
-//                     *last_price_feed = Some(price_feed);
-//                 }
-//             }
-//         }
+        // Push all prices
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &RawExecuteMsg::UpdatePriceFeeds {
+                    data: string_json_vaas.deserialize_json().unwrap(),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
 
-//         // Check if all prices has been fetched
-//         for v in last_price_feeds.values() {
-//             assert!(v.is_some());
-//         }
+        // Check all prices
+        for (denom, last_price_feed) in &last_price_feeds {
+            let denom = id_denoms.get(denom).unwrap();
 
-//         // Push all prices
-//         suite
-//             .execute(
-//                 &mut accounts.owner,
-//                 contracts.oracle,
-//                 &RawExecuteMsg::UpdatePriceFeeds {
-//                     data: string_json_vaas.deserialize_json().unwrap(),
-//                 },
-//                 Coins::default(),
-//             )
-//             .should_succeed();
+            let current_price = suite
+                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                    denom: denom.clone(),
+                })
+                .unwrap();
 
-//         // Check all prices
-//         for (denom, last_price_feed) in &last_price_feeds {
-//             let current_price = suite
-//                 .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest { denom:  })
-//                 .unwrap();
+            assert_eq!(
+                current_price.timestamp,
+                last_price_feed
+                    .unwrap()
+                    .get_price_unchecked()
+                    .publish_time
+                    .unsigned_abs()
+            );
+            assert_eq!(
+                current_price.humanized_price,
+                PrecisionlessPrice::try_from(last_price_feed.unwrap())
+                    .unwrap()
+                    .humanized_price
+            );
 
-//             assert_eq!(
-//                 current_price.timestamp,
-//                 last_price_feed
-//                     .unwrap()
-//                     .get_price_unchecked()
-//                     .publish_time
-//                     .unsigned_abs()
-//             );
-//             assert_eq!(
-//                 current_price.humanized_price,
-//                 PrecisionlessPrice::try_from(last_price_feed.unwrap())
-//                     .unwrap()
-//                     .humanized_price
-//             );
+            assert_eq!(
+                current_price.humanized_ema,
+                PrecisionlessPrice::try_from(last_price_feed.unwrap())
+                    .unwrap()
+                    .humanized_ema
+            );
+        }
 
-//             assert_eq!(
-//                 current_price.humanized_ema,
-//                 PrecisionlessPrice::try_from(last_price_feed.unwrap())
-//                     .unwrap()
-//                     .humanized_ema
-//             );
-//         }
-
-//         // sleep for 1 second
-//         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-//     }
-// }
+        // sleep for 1 second
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+}
 
 /// Return JSON string of the latest VAA from Pyth network.
-pub async fn get_latest_vaas(url: &str, ids: &[&str]) -> anyhow::Result<String> {
+pub async fn get_latest_vaas<'a, T>(url: &str, ids: T) -> anyhow::Result<String>
+where
+    T: IntoIterator,
+    T::Item: AsRef<str>,
+{
     let url = format!("{url}/api/latest_vaas");
-    let ids = ids.iter().map(|id| ("ids[]", id)).collect::<Vec<_>>();
+    let ids = ids
+        .into_iter()
+        .map(|id| ("ids[]", id.as_ref().to_string()))
+        .collect::<Vec<_>>();
     let client = reqwest::Client::new();
     let response = client.get(url).query(&ids).send().await?;
     Ok(response.text().await?)
