@@ -286,14 +286,22 @@ where
         &mut msgs,
         oracle_code_hash,
         &oracle::InstantiateMsg {
-            guardian_set: btree_map!(
+            guardian_set: btree_map! {
                 GUARDIAN_INDEX => GuardianSetInfo {
-                        expiration_time: 0,
-                        addresses: GUARDIANS_ADDRESSES.into_iter().map(|addr| {
-                            Hash160::from_inner(Binary::from_str(addr)
-                            .unwrap().into_inner().try_into().unwrap())
-                        }).collect() }
-            ),
+                    expiration_time: 0,
+                    addresses: GUARDIANS_ADDRESSES
+                        .into_iter()
+                        .map(|addr| {
+                            let bytes = Binary::from_str(addr)
+                                .unwrap()
+                                .into_inner()
+                                .try_into()
+                                .unwrap();
+                            Hash160::from_inner(bytes)
+                        })
+                        .collect(),
+                },
+            },
         },
         "dango/oracle",
         "dango/oracle",
