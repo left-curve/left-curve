@@ -1,10 +1,10 @@
 use {
-    crate::{query_price, state::GUARDIAN_SETS, PRICE_SOURCES},
+    crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
     anyhow::ensure,
     dango_types::oracle::{
-        ExecuteMsg, InstantiateMsg, PriceSourceCollector, PythId, PythVaa, QueryMsg, PRICE_FEEDS,
+        ExecuteMsg, InstantiateMsg, PriceSourceCollector, PythId, PythVaa, PRICE_FEEDS,
     },
-    grug::{Attribute, Denom, ImmutableCtx, Json, JsonSerExt, MutableCtx, Response},
+    grug::{Attribute, Denom, JsonSerExt, MutableCtx, Response},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -14,16 +14,6 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     }
 
     Ok(Response::new())
-}
-
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
-    match msg {
-        QueryMsg::QueryPrice { denom } => {
-            let res = query_price(ctx, denom)?;
-            Ok(res.to_json_value()?)
-        },
-    }
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
