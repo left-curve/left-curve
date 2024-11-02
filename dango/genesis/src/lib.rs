@@ -52,9 +52,9 @@ pub struct Contracts {
     pub account_factory: Addr,
     pub amm: Addr,
     pub bank: Addr,
-    pub oracle: Addr,
     pub ibc_transfer: Addr,
     pub lending: Addr,
+    pub oracle: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
 }
@@ -67,9 +67,9 @@ pub struct Codes<T> {
     pub account_safe: T,
     pub amm: T,
     pub bank: T,
-    pub oracle: T,
     pub ibc_transfer: T,
     pub lending: T,
+    pub oracle: T,
     pub taxman: T,
     pub token_factory: T,
 }
@@ -87,9 +87,9 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
-    let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
+    let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
 
@@ -100,9 +100,9 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_safe,
         amm,
         bank,
-        oracle,
         ibc_transfer,
         lending,
+        oracle,
         taxman,
         token_factory,
     })
@@ -133,9 +133,9 @@ where
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
-    let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
+    let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
 
@@ -303,11 +303,11 @@ where
         account_factory,
         amm,
         bank,
-        oracle,
         ibc_transfer,
+        lending,
+        oracle,
         taxman,
         token_factory,
-        lending,
     };
 
     let permissions = Permissions {
