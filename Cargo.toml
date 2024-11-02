@@ -48,7 +48,7 @@ proc-macro2        = "1"
 proptest           = "1"
 prost              = "0.13"
 pyth-sdk           = "0.8.0"
-pyth-wormhole      = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-wormhole-attester-sdk"}
+pyth-wormhole      = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-wormhole-attester-sdk" }
 pythnet-sdk        = "2"
 quote              = "1"
 rand               = "0.8"
