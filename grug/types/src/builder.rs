@@ -3,11 +3,10 @@
 //!
 //! See [this video](https://youtu.be/pwmIQzLuYl0) for context.
 
-use std::{fmt::Debug, marker::PhantomData};
-
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
+    std::{fmt::Debug, marker::PhantomData},
 };
 
 /// Represents a builder parameter that has not yet been provided.
