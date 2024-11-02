@@ -1,20 +1,20 @@
-import { DangoButton, Select, SelectItem, useWizard } from "@dango/shared";
+import { Button, ConnectorButtonOptions, useWizard } from "@dango/shared";
 import { useConfig, useConnectors } from "@leftcurve/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export const ConnectorStep: React.FC = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [connectorId, setConnectorId] = useState<string>("Passkey");
+  const [connectorLoading, setConnectorLoading] = useState<string>();
+
   const connectors = useConnectors();
   const { chains } = useConfig();
   const navigate = useNavigate();
   const { previousStep, data, setData } = useWizard<{ username: string; retry: boolean }>();
   const { username } = data;
 
-  const onSubmit = async () => {
-    setIsLoading(true);
-    const connector = connectors.find((connector) => connector.id === connectorId.toLowerCase());
+  const connect = async (connectorId: string) => {
+    setConnectorLoading(connectorId);
+    const connector = connectors.find((connector) => connector.id === connectorId);
     if (!connector) throw new Error("error: missing connector");
     try {
       await connector.connect({
@@ -25,6 +25,7 @@ export const ConnectorStep: React.FC = () => {
       navigate("/");
     } catch (err) {
       console.error(err);
+      setConnectorLoading(undefined);
       setData({ retry: true });
       previousStep();
     }
@@ -32,27 +33,22 @@ export const ConnectorStep: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full gap-3 md:gap-6">
-      <DangoButton fullWidth onClick={onSubmit} isLoading={isLoading}>
-        Connect with {connectorId}
-      </DangoButton>
-      <Select
-        label="login-methods"
-        placeholder="Alternative sign up methods"
-        defaultSelectedKey={connectorId}
-        onSelectionChange={(key) => setConnectorId(key.toString())}
+      <Button
+        fullWidth
+        onClick={() => connect("passkey")}
+        isDisabled={!!connectorLoading}
+        isLoading={connectorLoading === "passkey"}
       >
-        <SelectItem key="Passkey">Passkey</SelectItem>
-        <SelectItem key="Metamask">Metamask</SelectItem>
-      </Select>
-      <DangoButton
-        onClick={previousStep}
-        variant="ghost"
-        color="sand"
-        className="text-lg"
-        isDisabled={isLoading}
-      >
-        Back
-      </DangoButton>
+        Connect with Passkey
+      </Button>
+      <div className="flex flex-col gap-2 w-full">
+        <ConnectorButtonOptions
+          mode="login"
+          connectors={connectors}
+          selectedConnector={connectorLoading}
+          onClick={connect}
+        />
+      </div>
     </div>
   );
 };

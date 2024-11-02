@@ -880,7 +880,7 @@ mod tests {
     )]
     #[test_case(
         "bar",
-        GenericResult::Err("data not found! type: serde_json::value::Value, storage key: AAphcHBfY29uZmlnYmFy".to_string());
+        GenericResult::Err("data not found! type: grug_types::json::Json, storage key: AAphcHBfY29uZmlnYmFy".to_string());
         "fails"
     )]
     fn query_chain_works(key: &str, value: GenericResult<QueryResponse>) {

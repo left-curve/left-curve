@@ -46,9 +46,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
           </div>
         </div>
       </div>
-      <Button color="sand" variant="light" className="italic">
-        Edit
-      </Button>
+      <Button variant="light">Edit</Button>
     </div>
   );
 };

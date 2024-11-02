@@ -1,5 +1,5 @@
-import { useConfig } from "@leftcurve/react";
 import { Button, Input, Select, SelectItem } from "@dango/shared";
+import { useConfig } from "@leftcurve/react";
 import { motion } from "framer-motion";
 
 import type { NativeCoin } from "@leftcurve/types";
@@ -59,7 +59,7 @@ export const TransferStep: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1 w-full items-center justify-center">
-            <Button color="danger" className="w-full">
+            <Button color="rose" fullWidth>
               Connect Wallet
             </Button>
             <p className="uppercase text-typography-pink-200 text-xs font-extrabold">

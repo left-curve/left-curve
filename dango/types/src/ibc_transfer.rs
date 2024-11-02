@@ -1,6 +1,9 @@
-use grug::{Addr, Empty};
+use {
+    grug::{Addr, Empty, Part},
+    std::sync::LazyLock,
+};
 
-pub const NAMESPACE: &str = "ibc";
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("ibc"));
 
 pub type InstantiateMsg = Empty;
 

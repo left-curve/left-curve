@@ -9,11 +9,12 @@ import type { Transport } from "./transports.js";
 
 export type ConnectorUId = string;
 
-export type ConnectorId = (typeof ConnectorIdType)[keyof typeof ConnectorIdType];
+export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 
-export const ConnectorIdType = {
+export const ConnectorIds = {
   Metamask: "metamask",
-  Keplr: "keplr",
+  Phantom: "phantom",
+  Backpack: "backpack",
   Passkey: "passkey",
 } as const;
 
@@ -75,9 +76,10 @@ export type CreateConnectorFn<
   transports: Record<string, Transport>;
 }) => properties & {
   readonly id: ConnectorId;
-  readonly icon?: string | undefined;
   readonly name: string;
   readonly type: ConnectorType;
+  readonly icon?: string;
+  readonly rdns?: string;
   setup?(): Promise<void>;
   connect(parameters: {
     username: string;

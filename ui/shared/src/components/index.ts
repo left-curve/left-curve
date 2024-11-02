@@ -4,7 +4,6 @@
 
 export { Button, type ButtonProps } from "./atoms/Button";
 export { Spinner } from "./atoms/Spinner";
-export { DangoButton } from "./atoms/DangoButton";
 export { Input, type InputProps } from "./atoms/Input";
 export { Tabs } from "./atoms/tabs/Tabs";
 export { TabItem as Tab } from "./atoms/tabs/TabItem";
@@ -36,6 +35,7 @@ export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
 export { BorrowingBar } from "./molecules/BorrowingBar";
 export { CoinSelector } from "./molecules/CoinSelector";
 export { AccountSearchInput } from "./molecules/AccountSearchInput";
+export { ConnectorButtonOptions } from "./molecules/ConnectorButtonOptions";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

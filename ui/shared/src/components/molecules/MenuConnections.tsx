@@ -8,7 +8,7 @@ import { useClickAway } from "react-use";
 import { truncateAddress } from "@leftcurve/utils";
 import { twMerge } from "../../utils";
 
-import { Button, CopyIcon, DangoButton, ProfileIcon, WalletIcon } from "../";
+import { Button, CopyIcon, ProfileIcon, WalletIcon } from "../";
 
 export const MenuConnections: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -29,8 +29,10 @@ export const MenuConnections: React.FC = () => {
     <>
       <Button
         ref={buttonRef}
-        className="items-center flex gap-2"
         onClick={() => setShowMenu(!showMenu)}
+        color="gray"
+        radius="lg"
+        className="font-bold px-4 py-2 gap-2"
       >
         <ProfileIcon className="h-6 w-6" />
         <p>{username}</p>
@@ -48,7 +50,7 @@ export const MenuConnections: React.FC = () => {
             CONNECTED WITH
           </p>
           {connector && (
-            <div className="flex items-end justify-between py-4 px-4 rounded-2xl bg-green text-white">
+            <div className="flex items-end justify-between py-4 px-4 rounded-2xl bg-green/80 text-white">
               <div className="flex gap-2">
                 <div className="flex justify-center items-center h-12 w-12 rounded-2xl bg-sand-100/50">
                   <WalletIcon connectorId={connector.id} className="h-8 w-8" />
@@ -58,17 +60,23 @@ export const MenuConnections: React.FC = () => {
                   <p className="text-md">{truncateAddress(account.address)}</p>
                 </div>
               </div>
-              <Button color="green" variant="dark" size="icon" className="p-1 h-8 w-8 rounded-lg">
-                <CopyIcon />
+              <Button
+                color="none"
+                size="sm"
+                isIconOnly
+                radius="md"
+                className="px-2 bg-black/30 hover:bg-black/70"
+              >
+                <CopyIcon className="w-6 h-6" />
               </Button>
             </div>
           )}
-          <Button color="sand" variant="flat">
+          <Button color="purple" variant="bordered" size="sm">
             Manage Access
           </Button>
-          <DangoButton size="md" onClick={() => disconnect({ connectorUId: connector.uid })}>
+          <Button size="sm" onClick={() => disconnect({ connectorUId: connector.uid })}>
             Log out
-          </DangoButton>
+          </Button>
         </div>
       </div>
     </>

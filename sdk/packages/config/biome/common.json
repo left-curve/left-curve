@@ -16,6 +16,9 @@
       "performance": {
         "noDelete": "off"
       },
+      "complexity": {
+        "noForEach": "off"
+      },
       "recommended": true,
       "style": {
         "noNonNullAssertion": "off",

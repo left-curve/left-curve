@@ -1,5 +1,5 @@
 import type React from "react";
-import { DangoButton } from "../atoms/DangoButton";
+import { Button } from "../atoms/Button";
 import { PortfolioTable } from "./PortfolioTable";
 
 interface Props {
@@ -13,12 +13,12 @@ export const SpotPortfolioTable: React.FC<Props> = ({ navigate, sendUrl, receive
     <PortfolioTable
       topComponent={
         <div className="flex flex-col gap-3 sm:flex-row w-full">
-          <DangoButton className="flex-1" onClick={() => navigate(sendUrl)}>
+          <Button className="flex-1" onClick={() => navigate(sendUrl)}>
             Send
-          </DangoButton>
-          <DangoButton className="flex-1" onClick={() => navigate(receiveUrl)}>
+          </Button>
+          <Button className="flex-1" onClick={() => navigate(receiveUrl)}>
             Receive
-          </DangoButton>
+          </Button>
         </div>
       }
     />

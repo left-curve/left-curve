@@ -1,6 +1,7 @@
 use {
     crate::{Json, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
 };
@@ -39,7 +40,9 @@ where
     }
 
     fn to_json_value(&self) -> StdResult<Json> {
-        serde_json::to_value(self).map_err(|err| StdError::serialize::<T, _>("json", err))
+        serde_json::to_value(self)
+            .map(Json::from_inner)
+            .map_err(|err| StdError::serialize::<T, _>("json", err))
     }
 }
 
@@ -69,7 +72,8 @@ impl JsonDeExt for Json {
     where
         D: DeserializeOwned,
     {
-        serde_json::from_value(self).map_err(|err| StdError::deserialize::<D, _>("json", err))
+        serde_json::from_value(self.into_inner())
+            .map_err(|err| StdError::deserialize::<D, _>("json", err))
     }
 }
 

@@ -4,7 +4,7 @@ use {
         account::single,
         account_factory::{self, Account, AccountParams, Username},
         auth::Key,
-        mock_ibc_transfer,
+        ibc_transfer,
     },
     grug::{
         btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, ResultExt, Tx,
@@ -32,7 +32,7 @@ fn user_onboarding() {
         .execute(
             &mut accounts.relayer,
             contracts.ibc_transfer,
-            &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
+            &ibc_transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
             },
             Coins::one("uusdc", 123).unwrap(),
@@ -109,7 +109,7 @@ fn onboarding_existing_user() {
             .execute(
                 &mut accounts.relayer,
                 contracts.ibc_transfer,
-                &mock_ibc_transfer::ExecuteMsg::ReceiveTransfer {
+                &ibc_transfer::ExecuteMsg::ReceiveTransfer {
                     recipient: user.address(),
                 },
                 Coins::one("uusdc", 123).unwrap(),
@@ -130,8 +130,8 @@ fn onboarding_existing_user() {
                 Coins::new(),
             )
             .unwrap()],
-            data: Json::Null,
-            credential: Json::Null,
+            data: Json::null(),
+            credential: Json::null(),
         };
 
         suite.send_transaction(tx.clone()).should_succeed();
@@ -173,8 +173,8 @@ fn onboarding_without_deposit() {
                 Coins::new(),
             )
             .unwrap()],
-            data: Json::Null,
-            credential: Json::Null,
+            data: Json::null(),
+            credential: Json::null(),
         })
         .should_fail_with_error("data not found!");
 }

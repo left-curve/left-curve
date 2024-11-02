@@ -28,7 +28,7 @@ use {
 pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
-    pub pp: PP,
+    pp: PP,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -469,7 +469,7 @@ where
             gas_limit: self.query_gas_limit,
             msgs: unsigned_tx.msgs,
             data: unsigned_tx.data,
-            credential: Json::Null,
+            credential: Json::null(),
         };
 
         // Run the transaction with `simulate` as `true`. Track how much gas was

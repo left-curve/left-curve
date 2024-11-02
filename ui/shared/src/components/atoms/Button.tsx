@@ -1,296 +1,192 @@
-import { forwardRef } from "react";
-import { twMerge } from "../../utils";
-
-import { Slot } from "@radix-ui/react-slot";
-
-import { colorVariants } from "@leftcurve/config/tailwind/colorVariants";
 import { type VariantProps, tv } from "tailwind-variants";
+import type { As } from "../../types";
+import { forwardRef, twMerge } from "../../utils";
+import { Spinner } from "./Spinner";
 
-export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color">,
-    VariantProps<typeof buttonVariants> {
-  /**
-   * When true, the button will render as a `Slot` component.
-   * @default false
-   */
-  asChild?: boolean;
+export interface ButtonProps extends VariantProps<typeof buttonVariants> {
+  as?: As;
   /**
    * When true, the button will be disabled.
    * @default false
    */
+  isLoading?: boolean;
   isDisabled?: boolean;
 }
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    return <Comp className={twMerge(buttonVariants(props), className)} ref={ref} {...props} />;
+export const Button = forwardRef<"button", ButtonProps>(
+  (
+    {
+      as,
+      fullWidth,
+      variant,
+      color,
+      size,
+      radius,
+      isInGroup,
+      isDisabled,
+      isLoading,
+      isIconOnly,
+      className,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
+    const Component = as ?? "button";
+    const styles = buttonVariants({
+      variant,
+      color,
+      size,
+      radius,
+      fullWidth,
+      isDisabled,
+      isInGroup,
+      isIconOnly,
+    });
+
+    const disabled = isDisabled || isLoading;
+
+    return (
+      <Component className={twMerge(styles, className)} ref={ref} {...props} disabled={disabled}>
+        {isLoading ? <Spinner size={size} /> : children}
+      </Component>
+    );
   },
 );
 
-Button.displayName = "Button";
-
-export { Button, buttonVariants };
-
-const buttonVariants = tv({
-  base: "inline-flex items-center justify-center whitespace-nowrap rounded-2xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 font-bold",
-  variants: {
-    variant: {
-      solid: "hover:brightness-95",
-      outline: "border bg-transparent",
-      light: "bg-transparent",
-      flat: "",
-      faded: "border",
-      shadow: "",
-      dark: "",
-      ghost: "border bg-transparent",
+const buttonVariants = tv(
+  {
+    base: [
+      "z-0",
+      "group",
+      "relative",
+      "inline-flex",
+      "items-center",
+      "justify-center",
+      "box-border",
+      "appearance-none",
+      "outline-none",
+      "select-none",
+      "whitespace-nowrap",
+      "min-w-max",
+      "font-bold",
+      "subpixel-antialiased",
+      "overflow-hidden",
+      "tap-highlight-transparent",
+      "data-[pressed=true]:scale-[0.97]",
+      "italic",
+      "font-exposure",
+      "transition-all",
+    ],
+    variants: {
+      variant: {
+        solid: "",
+        bordered: "border-2 bg-transparent",
+        light: "bg-transparent border-none",
+      },
+      color: {
+        none: "",
+        gray: "",
+        sand: "",
+        green: "",
+        rose: "",
+        purple: "",
+      },
+      size: {
+        sm: "px-12 py-2 text-xs max-h-[2rem]",
+        md: "px-12 py-3 max-h-[3rem]",
+      },
+      radius: {
+        none: "rounded-none",
+        sm: "rounded-small",
+        md: "rounded-medium",
+        lg: "rounded-large",
+        xl: "rounded-[48px]",
+        full: "rounded-full",
+      },
+      fullWidth: {
+        true: "w-full",
+      },
+      isDisabled: {
+        true: "opacity-disabled pointer-events-none cursor-not-allowed",
+      },
+      isInGroup: {
+        true: "[&:not(:first-child):not(:last-child)]:rounded-none",
+      },
+      isIconOnly: {
+        true: "px-0 !gap-0",
+        false: "[&>svg]:max-w-[theme(spacing.8)]",
+      },
     },
-    color: {
-      default: "",
-      white: "",
-      purple: "",
-      green: "",
-      rose: "",
-      yellow: "",
-      danger: "",
-      sand: "",
-    },
-    size: {
-      default: "h-10 px-4 py-2",
-      sm: "h-9 px-3",
-      lg: "h-11 px-8",
-      icon: "h-6 w-6",
-      none: "h-fit w-fit p-0",
-    },
-  },
-  defaultVariants: {
-    variant: "solid",
-    color: "default",
-    size: "default",
-  },
-  compoundVariants: [
-    // solid / color
-    {
-      variant: "solid",
-      color: "default",
-      class: colorVariants.solid.default,
-    },
-    {
-      variant: "solid",
-      color: "white",
-      class: colorVariants.solid.default,
-    },
-    {
-      variant: "solid",
-      color: "purple",
-      class: colorVariants.solid.purple,
-    },
-    {
-      variant: "solid",
-      color: "green",
-      class: colorVariants.solid.green,
-    },
-    {
-      variant: "solid",
-      color: "danger",
-      class: colorVariants.solid.danger,
-    },
-    {
-      variant: "solid",
-      color: "sand",
-      class: colorVariants.solid.sand,
-    },
-    // shadow / color
-    {
-      variant: "shadow",
-      color: "default",
-      class: colorVariants.shadow.default,
-    },
-    {
-      variant: "shadow",
-      color: "purple",
-      class: colorVariants.shadow.purple,
-    },
-    {
-      variant: "shadow",
-      color: "green",
-      class: colorVariants.shadow.green,
-    },
-    {
-      variant: "shadow",
-      color: "danger",
-      class: colorVariants.shadow.danger,
-    },
-    {
-      variant: "shadow",
-      color: "sand",
-      class: colorVariants.shadow.sand,
-    },
-    // outline / color
-    {
-      variant: "outline",
-      color: "default",
-      class: colorVariants.outline.default,
-    },
-    {
-      variant: "outline",
-      color: "purple",
-      class: colorVariants.outline.purple,
-    },
-    {
-      variant: "outline",
-      color: "green",
-      class: colorVariants.outline.green,
-    },
-    {
-      variant: "outline",
+    defaultVariants: {
+      size: "md",
+      radius: "xl",
       color: "rose",
-      class: colorVariants.outline.rose,
+      variant: "solid",
+      fullWidth: false,
+      isDisabled: false,
+      isInGroup: false,
     },
-    {
-      variant: "outline",
-      color: "yellow",
-      class: colorVariants.outline.yellow,
-    },
-    {
-      variant: "outline",
-      color: "danger",
-      class: colorVariants.outline.danger,
-    },
-    {
-      variant: "outline",
-      color: "sand",
-      class: colorVariants.outline.sand,
-    },
-    // flat / color
-    {
-      variant: "flat",
-      color: "default",
-      class: colorVariants.flat.default,
-    },
-    {
-      variant: "flat",
-      color: "purple",
-      class: colorVariants.flat.purple,
-    },
-    {
-      variant: "flat",
-      color: "green",
-      class: colorVariants.flat.green,
-    },
-    {
-      variant: "flat",
-      color: "danger",
-      class: colorVariants.flat.danger,
-    },
-    {
-      variant: "flat",
-      color: "sand",
-      class: colorVariants.flat.sand,
-    },
-    // faded / color
-    {
-      variant: "faded",
-      color: "default",
-      class: colorVariants.faded.default,
-    },
-    {
-      variant: "faded",
-      color: "purple",
-      class: colorVariants.faded.purple,
-    },
-    {
-      variant: "faded",
-      color: "green",
-      class: colorVariants.faded.green,
-    },
-    {
-      variant: "faded",
-      color: "danger",
-      class: colorVariants.faded.danger,
-    },
-    {
-      variant: "faded",
-      color: "sand",
-      class: colorVariants.faded.sand,
-    },
-    // light / color
-    {
-      variant: "light",
-      color: "default",
-      class: colorVariants.light.default,
-    },
-    {
-      variant: "light",
-      color: "purple",
-      class: colorVariants.light.purple,
-    },
-    {
-      variant: "light",
-      color: "green",
-      class: colorVariants.light.green,
-    },
-    {
-      variant: "light",
-      color: "danger",
-      class: colorVariants.light.danger,
-    },
-    {
-      variant: "light",
-      color: "sand",
-      class: colorVariants.light.sand,
-    },
-    // dark / color
-    {
-      variant: "dark",
-      color: "default",
-      class: colorVariants.dark.default,
-    },
-    {
-      variant: "dark",
-      color: "purple",
-      class: colorVariants.dark.purple,
-    },
-    {
-      variant: "dark",
-      color: "green",
-      class: colorVariants.dark.green,
-    },
-    {
-      variant: "dark",
-      color: "danger",
-      class: colorVariants.dark.danger,
-    },
-    {
-      variant: "dark",
-      color: "sand",
-      class: colorVariants.dark.sand,
-    },
-    // ghost / color
-    {
-      variant: "ghost",
-      color: "default",
-      class: colorVariants.ghost.default,
-    },
-    {
-      variant: "ghost",
-      color: "purple",
-      class: colorVariants.ghost.purple,
-    },
-    {
-      variant: "ghost",
-      color: "green",
-      class: colorVariants.ghost.green,
-    },
-    {
-      variant: "ghost",
-      color: "danger",
-      class: colorVariants.ghost.danger,
-    },
-    {
-      variant: "ghost",
-      color: "sand",
-      class: colorVariants.ghost.sand,
-    },
-  ],
-});
+    compoundVariants: [
+      // variant / solid
+      {
+        variant: "solid",
+        color: "rose",
+        class: "bg-surface-pink-200 hover:bg-surface-pink-300 text-surface-rose-200",
+      },
+      {
+        variant: "solid",
+        color: "gray",
+        class:
+          "bg-surface-green-200 hover:bg-surface-green-300 text-typography-black-300 not-italic font-diatype-rounded",
+      },
+      {
+        variant: "solid",
+        color: "purple",
+        class: "bg-surface-purple-200 hover:bg-surface-purple-300 text-typography-purple-400",
+      },
+      {
+        variant: "solid",
+        color: "green",
+        class: "bg-surface-green-300 hover:bg-surface-green-400 text-typography-green-400",
+      },
+      {
+        variant: "solid",
+        color: "sand",
+        class: "bg-surface-rose-200 hover:bg-surface-rose-300 text-typography-rose-500",
+      },
+      // variant / bordered
+      {
+        variant: "bordered",
+        color: "purple",
+        class:
+          "border-borders-purple-600 bg-surface-purple-100 hover:bg-surface-purple-300 text-typography-purple-400",
+      },
+      // variant / light
+      {
+        variant: "light",
+        color: "rose",
+        class: "text-typography-purple-400 hover:text-typography-purple-500 ",
+      },
+      // variant / iconOnly
+      {
+        isIconOnly: true,
+        size: "sm",
+        class: "min-w-8 w-8 h-8",
+      },
+      {
+        isIconOnly: true,
+        size: "md",
+        class: "min-w-10 w-10 h-10",
+      },
+      // variant / hover
+      {
+        variant: ["solid", "bordered"],
+        class: "data-[hover=true]:opacity-hover",
+      },
+    ],
+  },
+  {
+    twMerge: true,
+  },
+);

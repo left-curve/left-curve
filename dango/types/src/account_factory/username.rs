@@ -1,6 +1,6 @@
 use {
     core::str,
-    grug::{Prefixer, PrimaryKey, StdError, StdResult},
+    grug::{Inner, Prefixer, PrimaryKey, StdError, StdResult},
     serde::{de, Serialize},
     std::{borrow::Cow, fmt, str::FromStr},
 };
@@ -28,6 +28,18 @@ impl Username {
         );
 
         self.0.len() as _
+    }
+}
+
+impl Inner for Username {
+    type U = String;
+
+    fn inner(&self) -> &Self::U {
+        &self.0
+    }
+
+    fn into_inner(self) -> Self::U {
+        self.0
     }
 }
 
