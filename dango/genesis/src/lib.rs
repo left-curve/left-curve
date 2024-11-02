@@ -12,18 +12,14 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, NonZero, Part, Permission,
-        Permissions, StdResult, Udec128, Uint128, GENESIS_SENDER,
+        Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, NonZero, Permission, Permissions,
+        StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, fs, io, path::Path},
+    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
 
-pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
-
-pub type Addresses = BTreeMap<Username, Addr>;
-
-const GUARDIANS_ADDRESSES: [&str; 19] = [
+pub const GUARDIANS_ADDRESSES: [&str; 19] = [
     "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
     "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
     "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
@@ -45,7 +41,11 @@ const GUARDIANS_ADDRESSES: [&str; 19] = [
     "b768iY9APkdz6V/rFegMmpnINI0=",
 ];
 
-const GUARDIAN_INDEX: u32 = 4;
+pub const GUARDIAN_INDEX: u32 = 4;
+
+pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
+
+pub type Addresses = BTreeMap<Username, Addr>;
 
 #[grug::derive(Serde)]
 pub struct Contracts {
