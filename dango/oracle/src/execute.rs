@@ -1,9 +1,7 @@
 use {
     crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
     anyhow::ensure,
-    dango_types::oracle::{
-        ExecuteMsg, InstantiateMsg, PriceSourceCollector, PythId, PythVaa, PRICE_FEEDS,
-    },
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
     grug::{Denom, MutableCtx, Response},
 };
 
@@ -39,13 +37,11 @@ fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Res
     for new_feed in feeds {
         let hash = PythId::from_inner(new_feed.id.to_bytes());
 
-        let mut updated: bool = true;
-        PRICE_FEEDS.may_update(ctx.storage, hash, |a| -> anyhow::Result<_> {
+        PRICES.may_update(ctx.storage, hash, |a| -> anyhow::Result<_> {
             if let Some(current_feed) = a {
                 if current_feed.timestamp < new_feed.get_price_unchecked().publish_time as u64 {
                     new_feed.try_into()
                 } else {
-                    updated = false;
                     Ok(current_feed)
                 }
             } else {
@@ -60,7 +56,7 @@ fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Res
 fn register_denom(
     ctx: MutableCtx,
     denom: Denom,
-    price_source: PriceSourceCollector,
+    price_source: PriceSource,
 ) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 

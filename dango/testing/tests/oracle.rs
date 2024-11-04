@@ -1,8 +1,7 @@
 use {
     dango_testing::setup_test,
     dango_types::oracle::{
-        ExecuteMsg, PrecisionlessPrice, PriceSourceCollector, PythId, PythPriceSource, PythVaa,
-        QueryQueryPriceRequest,
+        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryQueryPriceRequest,
     },
     grug::{btree_map, Binary, Coins, Denom, JsonDeExt, ResultExt, Udec128},
     pyth_sdk::PriceFeed,
@@ -53,7 +52,7 @@ fn oracle() {
                 contracts.oracle,
                 &ExecuteMsg::RegisterDenom {
                     denom: btc_denom.clone(),
-                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(id, precision)),
+                    price_source: PriceSource::Pyth { id, precision },
                 },
                 Coins::default(),
             )
@@ -182,7 +181,10 @@ async fn double_vaas() {
                 contracts.oracle,
                 &ExecuteMsg::RegisterDenom {
                     denom: btc_denom.clone(),
-                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(pyth_id_btc, 8)),
+                    price_source: PriceSource::Pyth {
+                        id: pyth_id_btc,
+                        precision: 8,
+                    },
                 },
                 Coins::default(),
             )
@@ -194,7 +196,10 @@ async fn double_vaas() {
                 contracts.oracle,
                 &ExecuteMsg::RegisterDenom {
                     denom: eth_denom.clone(),
-                    price_source: PriceSourceCollector::Pyth(PythPriceSource::new(pyth_id_eth, 8)),
+                    price_source: PriceSource::Pyth {
+                        id: pyth_id_eth,
+                        precision: 8,
+                    },
                 },
                 Coins::default(),
             )
@@ -329,15 +334,15 @@ async fn multiple_vaas() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
     let id_denoms = btree_map!(
-        WBTC_USD_ID => Denom::from_str("bridge/btc").unwrap() ,
-        ETH_USD_ID => Denom::from_str("bridge/eth").unwrap() ,
-        USDC_USD_ID => Denom::from_str("bridge/usdc").unwrap() ,
-        SOL_USD_ID => Denom::from_str("bridge/sol").unwrap() ,
-        ATOM_USD_ID => Denom::from_str("bridge/atom").unwrap() ,
-        BNB_USD_ID => Denom::from_str("bridge/bnb").unwrap() ,
-        DOGE_USD_ID => Denom::from_str("bridge/doge").unwrap() ,
-        XRP_USD_ID => Denom::from_str("bridge/xrp").unwrap() ,
-        TON_USD_ID => Denom::from_str("bridge/ton").unwrap() ,
+        WBTC_USD_ID  => Denom::from_str("bridge/btc").unwrap() ,
+        ETH_USD_ID   => Denom::from_str("bridge/eth").unwrap() ,
+        USDC_USD_ID  => Denom::from_str("bridge/usdc").unwrap() ,
+        SOL_USD_ID   => Denom::from_str("bridge/sol").unwrap() ,
+        ATOM_USD_ID  => Denom::from_str("bridge/atom").unwrap() ,
+        BNB_USD_ID   => Denom::from_str("bridge/bnb").unwrap() ,
+        DOGE_USD_ID  => Denom::from_str("bridge/doge").unwrap() ,
+        XRP_USD_ID   => Denom::from_str("bridge/xrp").unwrap() ,
+        TON_USD_ID   => Denom::from_str("bridge/ton").unwrap() ,
         SHIBA_USD_ID => Denom::from_str("bridge/shiba").unwrap(),
     );
 
@@ -350,10 +355,10 @@ async fn multiple_vaas() {
                     contracts.oracle,
                     &ExecuteMsg::RegisterDenom {
                         denom: denom.clone(),
-                        price_source: PriceSourceCollector::Pyth(PythPriceSource::new(
-                            PythId::from_str(id).unwrap(),
-                            8,
-                        )),
+                        price_source: PriceSource::Pyth {
+                            id: PythId::from_str(id).unwrap(),
+                            precision: 8,
+                        },
                     },
                     Coins::default(),
                 )

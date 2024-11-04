@@ -1,6 +1,6 @@
 use {
     crate::PRICE_SOURCES,
-    dango_types::oracle::{PrecisionedPrice, PriceSourceCollector, QueryMsg},
+    dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     grug::{Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
@@ -31,7 +31,7 @@ fn query_price_sources(
     ctx: ImmutableCtx,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Denom, PriceSourceCollector>> {
+) -> StdResult<BTreeMap<Denom, PriceSource>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     PRICE_SOURCES

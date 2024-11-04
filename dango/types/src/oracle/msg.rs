@@ -1,5 +1,5 @@
 use {
-    super::{GuardianSetInfo, PrecisionedPrice, PriceSourceCollector, PythVaa},
+    super::{GuardianSetInfo, PrecisionedPrice, PriceSource, PythVaa},
     grug::Denom,
     std::collections::BTreeMap,
 };
@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     },
     RegisterDenom {
         denom: Denom,
-        price_source: PriceSourceCollector,
+        price_source: PriceSource,
     },
 }
 
@@ -25,7 +25,7 @@ pub enum QueryMsg {
     #[returns(PrecisionedPrice)]
     QueryPrice { denom: Denom },
 
-    #[returns(BTreeMap<Denom, PriceSourceCollector>)]
+    #[returns(BTreeMap<Denom, PriceSource>)]
     QueryPriceSources {
         start_after: Option<Denom>,
         limit: Option<u32>,
