@@ -21,7 +21,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
-        ExecuteMsg::FeedPrices(vaas) => update_price_feeds(ctx, vaas),
+        ExecuteMsg::FeedPrices(vaas) => feed_prices(ctx, vaas),
     }
 }
 
@@ -44,7 +44,7 @@ fn register_price_sources(
     Ok(Response::new())
 }
 
-fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Response> {
+fn feed_prices(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Response> {
     for vaa in vaas {
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
             let hash = PythId::from_inner(feed.id.to_bytes());
