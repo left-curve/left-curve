@@ -1,7 +1,7 @@
 use {
     dango_testing::setup_test,
     dango_types::oracle::{
-        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryQueryPriceRequest,
+        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
     },
     grug::{btree_map, Binary, Coins, Denom, JsonDeExt, ResultExt, Udec128},
     pyth_sdk::PriceFeed,
@@ -70,7 +70,7 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
                 denom: btc_denom.clone(),
             })
             .unwrap();
@@ -102,7 +102,7 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
                 denom: btc_denom.clone(),
             })
             .unwrap();
@@ -132,9 +132,7 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
-                denom: btc_denom,
-            })
+            .query_wasm_smart(contracts.oracle, QueryPriceRequest { denom: btc_denom })
             .unwrap();
 
         assert_eq!(
@@ -234,7 +232,7 @@ async fn double_vaas() {
         // check btc price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
                     denom: btc_denom.clone(),
                 })
                 .unwrap();
@@ -265,7 +263,7 @@ async fn double_vaas() {
         // check eth price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
                     denom: eth_denom.clone(),
                 })
                 .unwrap();
@@ -384,7 +382,7 @@ async fn multiple_vaas() {
             let denom = id_denoms.get(denom).unwrap();
 
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryQueryPriceRequest {
+                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
                     denom: denom.clone(),
                 })
                 .unwrap();
