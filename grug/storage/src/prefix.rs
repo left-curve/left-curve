@@ -11,7 +11,7 @@ pub struct Prefix<K, T, C>
 where
     C: Codec<T>,
 {
-    namespace: Vec<u8>,
+    pub(crate) namespace: Vec<u8>,
     suffix: PhantomData<K>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
@@ -310,7 +310,7 @@ where
     }
 }
 
-fn range_bounds<K>(
+pub(crate) fn range_bounds<K>(
     namespace: &[u8],
     min: Option<Bound<K>>,
     max: Option<Bound<K>>,
