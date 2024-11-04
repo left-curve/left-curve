@@ -56,6 +56,13 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Apply updates to markets.
     UpdateMarkets(BTreeMap<Denom, MarketUpdates>),
+    /// Set the collateral power for a denom.
+    SetCollateralPower {
+        denom: Denom,
+        power: CollateralPower,
+    },
+    /// Delist a collateral token. Removes it from the collateral power map.
+    DelistCollateral { denom: Denom },
     /// Deposit tokens into the lending pool.
     /// Sender must attach one or more supported tokens and nothing else.
     Deposit {},

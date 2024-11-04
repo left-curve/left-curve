@@ -1,12 +1,15 @@
 use {
-    crate::{DEBTS, MARKETS},
+    crate::{COLLATERAL_POWERS, DEBTS, MARKETS},
     anyhow::{anyhow, bail, ensure, Ok},
     dango_account_factory::ACCOUNTS,
     dango_types::{
         account_factory::Account,
         bank,
         config::ACCOUNT_FACTORY_KEY,
-        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
+        lending::{
+            CollateralPower, ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE,
+            SUBNAMESPACE,
+        },
     },
     grug::{Addr, BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
     optional_struct::Applicable,
@@ -26,13 +29,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::UpdateMarkets(updates) => update_markets(ctx, updates),
+        ExecuteMsg::SetCollateralPower { denom, power } => set_collateral_power(ctx, denom, power),
+        ExecuteMsg::DelistCollateral { denom } => delist_collateral(ctx, denom),
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
     }
 }
 
-fn update_markets(
+pub fn update_markets(
     ctx: MutableCtx,
     updates: BTreeMap<Denom, MarketUpdates>,
 ) -> anyhow::Result<Response> {
@@ -52,6 +57,38 @@ fn update_markets(
             MARKETS.save(ctx.storage, &denom, &market)?;
         }
     }
+
+    Ok(Response::new())
+}
+
+pub fn set_collateral_power(
+    ctx: MutableCtx,
+    denom: Denom,
+    power: CollateralPower,
+) -> anyhow::Result<Response> {
+    // Ensure only chain owner can update collateral powers.
+    ensure!(
+        ctx.sender == ctx.querier.query_config()?.owner,
+        "Only the owner can update collateral powers"
+    );
+
+    let mut collateral_powers = COLLATERAL_POWERS.load(ctx.storage)?;
+    collateral_powers.insert(denom, power);
+    COLLATERAL_POWERS.save(ctx.storage, &collateral_powers)?;
+
+    Ok(Response::new())
+}
+
+pub fn delist_collateral(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
+    // Ensure only chain owner can delist collateral.
+    ensure!(
+        ctx.sender == ctx.querier.query_config()?.owner,
+        "Only the owner can delist collateral tokens"
+    );
+
+    let mut collateral_powers = COLLATERAL_POWERS.load(ctx.storage)?;
+    collateral_powers.remove(&denom);
+    COLLATERAL_POWERS.save(ctx.storage, &collateral_powers)?;
 
     Ok(Response::new())
 }
