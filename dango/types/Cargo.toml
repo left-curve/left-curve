@@ -12,12 +12,12 @@ categories    = { workspace = true }
 [dependencies]
 anyhow                     = { workspace = true }
 borsh                      = { workspace = true, features = ["derive"] }
-byteorder                  = { workspace = true}
+byteorder                  = { workspace = true }
+data-encoding              = { workspace = true }
 grug                       = { workspace = true }
-k256                       = { workspace = true}
-pyth-sdk                   = { workspace = true}
-pyth-wormhole-attester-sdk = { workspace = true}
-pythnet-sdk                = { workspace = true}
+pyth-sdk                   = { workspace = true }
+pyth-wormhole-attester-sdk = { workspace = true }
+pythnet-sdk                = { workspace = true }
 paste                      = { workspace = true }
 serde                      = { workspace = true, features = ["derive"] }
 serde_json                 = { workspace = true }

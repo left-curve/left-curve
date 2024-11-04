@@ -1,13 +1,10 @@
 use {
     super::BytesAnalyzer,
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, ensure},
+    data_encoding::BASE64,
     grug::{
-        Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, NonZero, Storage,
+        Api, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, NonZero, Storage,
         Timestamp,
-    },
-    k256::{
-        elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
-        AffinePoint, EncodedPoint,
     },
     serde::{
         de::{self, Visitor},
@@ -107,6 +104,7 @@ impl WormholeVaa {
             .map(|_| {
                 let index = bytes.next_u8();
                 let signature = bytes.next_chunk::<{ WormholeVaa::SIGNATURE_LEN }>()?;
+
                 Ok((index, GuardianSignature::new(signature)?))
             })
             .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
@@ -125,6 +123,7 @@ impl WormholeVaa {
         let emitter_address = bytes.next_chunk::<32>()?;
         let sequence = bytes.next_u64()?;
         let consistency_level = bytes.next_u8();
+        let payload = bytes.consume();
 
         Ok(WormholeVaa {
             version,
@@ -137,7 +136,7 @@ impl WormholeVaa {
             emitter_address,
             sequence,
             consistency_level,
-            payload: bytes.consume(),
+            payload,
         })
     }
 
@@ -148,45 +147,49 @@ impl WormholeVaa {
         block: BlockInfo,
         guardian_sets: Map<u32, GuardianSet>,
     ) -> anyhow::Result<()> {
-        ensure!(self.version == 1, "Invalid VAA version");
+        ensure!(
+            self.version == 1,
+            "invalid VAA version: {} != 1",
+            self.version
+        );
 
         let guardian_set = guardian_sets.load(storage, self.guardian_set_index)?;
 
         if let Some(expiry) = guardian_set.expiration_time {
             ensure!(
-                expiry.into_inner() > block.timestamp,
-                "Guardian set expired"
+                block.timestamp < expiry.into_inner(),
+                "guardian set expired! {} >= {}",
+                block.timestamp.into_seconds(),
+                expiry.inner().into_seconds()
             );
         }
 
         ensure!(
-            guardian_set.quorum() <= self.signatures.len(),
-            "Not enough signatures"
+            self.signatures.len() >= guardian_set.quorum(),
+            "not enough signatures: {} < {}",
+            self.signatures.len(),
+            guardian_set.quorum()
         );
 
-        for (index, sign) in self.signatures {
-            let pk =
-                api.secp256k1_pubkey_recover(&self.hash, &sign.signature, sign.id_recover, true)?;
-
-            let affine_point_option =
-                AffinePoint::from_encoded_point(&EncodedPoint::from_bytes(pk)?);
-            let affine_point = if affine_point_option.is_some().into() {
-                affine_point_option.unwrap()
-            } else {
-                bail!("Encoded point not on the curve");
-            };
-
-            let decompressed_point = affine_point.to_encoded_point(false);
-            let prehash = &decompressed_point.as_bytes()[1..];
-            let addr = &prehash.keccak256()[12..];
+        for (index, sig) in self.signatures {
+            let decompressed_point =
+                api.secp256k1_pubkey_recover(&self.hash, &sig.signature, sig.id_recover, false)?;
+            let prehash = &decompressed_point[1..];
+            let hash = api.keccak256(prehash);
+            let addr = &hash[12..];
 
             let info = guardian_set
                 .addresses
                 .get(index as usize)
-                .ok_or_else(|| anyhow::anyhow!("Guardian not found in the guardian set"))?
+                .ok_or_else(|| anyhow!("Guardian not found in the guardian set"))?
                 .into_inner();
 
-            ensure!(addr == info, "Invalid signature");
+            ensure!(
+                addr == info,
+                "recovered guardian address does not match: {} != {}",
+                BASE64.encode(addr),
+                BASE64.encode(&info),
+            );
         }
 
         Ok(())
@@ -197,7 +200,7 @@ impl FromStr for WormholeVaa {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::new(Binary::from_str(s)?.into_inner())
+        Self::new(BASE64.decode(s.as_bytes())?)
     }
 }
 

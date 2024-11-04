@@ -2,7 +2,8 @@ use {
     super::{GuardianSet, WormholeVaa},
     anyhow::bail,
     byteorder::BigEndian,
-    grug::{AddrEncoder, Api, Binary, BlockInfo, EncodedBytes, Inner, Map, Storage},
+    data_encoding::BASE64,
+    grug::{AddrEncoder, Api, BlockInfo, EncodedBytes, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
     pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
     pythnet_sdk::{
@@ -172,7 +173,7 @@ impl FromStr for PythVaa {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
-        PythVaa::new(Binary::from_str(s)?.into_inner())
+        PythVaa::new(BASE64.decode(s.as_bytes())?)
     }
 }
 
