@@ -1,9 +1,10 @@
 use {
     crate::{COLLATERAL_POWERS, DEBTS, MARKETS},
-    dango_types::lending::{CollateralPower, Market, QueryMsg},
+    anyhow::bail,
+    dango_types::lending::{CollateralPower, HealthResponse, Market, QueryMsg},
     grug::{
-        Addr, Bound, Coins, Denom, ImmutableCtx, Inner, Json, JsonSerExt, NumberConst, Order,
-        QuerierWrapper, StdResult, Storage, Udec128,
+        Addr, Bound, Coins, Denom, ImmutableCtx, Inner, IsZero, Json, JsonSerExt, NumberConst,
+        Order, QuerierWrapper, StdResult, Storage, Udec128,
     },
     std::collections::BTreeMap,
 };
@@ -11,7 +12,7 @@ use {
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Market { denom } => {
             let res = query_market(ctx.storage, denom)?;
@@ -33,11 +34,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_collateral_powers(ctx.storage)?;
             res.to_json_value()
         },
-        QueryMsg::UtilizationRate { account } => {
-            let res = query_utilization_rate(ctx, account)?;
+        QueryMsg::Health { account } => {
+            let res = query_account_health(ctx, account)?;
             res.to_json_value()
         },
     }
+    .map_err(Into::into)
 }
 
 pub fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
@@ -87,16 +89,16 @@ pub fn query_collateral_powers(
 // Perhaps we want to make a "oracle querier" that has a cache? So that we don't
 // have to query the price for the same denom twice.
 pub fn query_oracle_price(_querier: &QuerierWrapper, _denom: &Denom) -> StdResult<Udec128> {
-    Ok(Udec128::ZERO)
+    Ok(Udec128::ONE)
 }
 
-/// Calculates the utilization rate of a margin account.
-pub fn calculate_utilization_rate(
+/// Calculates the health of a margin account.
+pub fn calculate_account_health(
     querier: &QuerierWrapper,
     margin_account: Addr,
     debts: Coins,
     collateral_powers: BTreeMap<Denom, CollateralPower>,
-) -> StdResult<Udec128> {
+) -> anyhow::Result<HealthResponse> {
     // Calculate the total value of the debts.
     let mut total_debt_value = Udec128::ZERO;
     for coin in debts {
@@ -113,18 +115,26 @@ pub fn calculate_utilization_rate(
         total_adjusted_collateral_value += collateral_value * power.into_inner();
     }
 
+    if total_adjusted_collateral_value.is_zero() {
+        bail!("The account has no collateral");
+    }
+
     // Calculate the utilization rate.
     let utilization_rate = total_debt_value / total_adjusted_collateral_value;
 
-    Ok(utilization_rate)
+    Ok(HealthResponse {
+        utilization_rate,
+        total_debt_value,
+        total_adjusted_collateral_value,
+    })
 }
 
-pub fn query_utilization_rate(ctx: ImmutableCtx, account: Addr) -> StdResult<Udec128> {
+pub fn query_account_health(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<HealthResponse> {
     // Query all debts for the account.
     let debts = query_debt(ctx.storage, account)?;
 
     // Query all collateral powers.
     let collateral_powers = query_collateral_powers(ctx.storage)?;
 
-    calculate_utilization_rate(&ctx.querier, account, debts, collateral_powers)
+    calculate_account_health(&ctx.querier, account, debts, collateral_powers)
 }

@@ -1,7 +1,7 @@
 use {
     anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
-    dango_lending::{calculate_utilization_rate, COLLATERAL_POWERS, DEBTS},
+    dango_lending::{calculate_account_health, COLLATERAL_POWERS, DEBTS},
     dango_types::{
         account::InstantiateMsg,
         config::{ACCOUNT_FACTORY_KEY, LENDING_KEY},
@@ -54,13 +54,15 @@ pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
         .deserialize_borsh::<BTreeMap<Denom, CollateralPower>>()?;
 
     // Calculate the utilization rate.
-    let utilization_rate =
-        calculate_utilization_rate(&ctx.querier, ctx.contract, debts, collateral_powers)?;
+    let health = calculate_account_health(&ctx.querier, ctx.contract, debts, collateral_powers)?;
 
     // If the utilization rate is greater than 1, the account is undercollateralized.
     ensure!(
-        utilization_rate <= Udec128::ONE,
-        "The action would make the account undercollateralized"
+        health.utilization_rate <= Udec128::ONE,
+        "The action would make the account undercollateralized. Utilization rate after action: {}. Total debt: {}. Total collateral: {}",
+        health.utilization_rate,
+        health.total_debt_value,
+        health.total_adjusted_collateral_value
     );
 
     Ok(Response::new())

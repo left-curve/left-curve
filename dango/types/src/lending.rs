@@ -74,6 +74,17 @@ pub enum ExecuteMsg {
     Borrow(Coins),
 }
 
+#[grug::derive(Serde)]
+pub struct HealthResponse {
+    /// The margin account's utilization rate.
+    pub utilization_rate: Udec128,
+    /// The total value of the margin account's debt.
+    pub total_debt_value: Udec128,
+    /// The total value of the margin account's collateral, adjusted for
+    /// the collateral power of each denom.
+    pub total_adjusted_collateral_value: Udec128,
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the lending market of a single token.
@@ -97,7 +108,7 @@ pub enum QueryMsg {
     /// Returns all collateral powers.
     #[returns(BTreeMap<Denom, CollateralPower>)]
     CollateralPowers {},
-    /// Queries the utilization rate of a margin account.
-    #[returns(Udec128)]
-    UtilizationRate { account: Addr },
+    /// Queries the health of a margin account.
+    #[returns(HealthResponse)]
+    Health { account: Addr },
 }

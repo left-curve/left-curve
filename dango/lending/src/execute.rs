@@ -22,6 +22,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
+    // Initialize collateral powers
+    COLLATERAL_POWERS.save(ctx.storage, &BTreeMap::new())?;
+
     Ok(Response::new())
 }
 
