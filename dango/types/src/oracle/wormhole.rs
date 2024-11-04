@@ -146,11 +146,11 @@ impl WormholeVaa {
         storage: &dyn Storage,
         api: &dyn Api,
         block: BlockInfo,
-        guardian_set: Map<u32, GuardianSet>,
+        guardian_sets: Map<u32, GuardianSet>,
     ) -> anyhow::Result<()> {
         ensure!(self.version == 1, "Invalid VAA version");
 
-        let guardian_set = guardian_set.load(storage, self.guardian_set_index)?;
+        let guardian_set = guardian_sets.load(storage, self.guardian_set_index)?;
 
         if let Some(expiry) = guardian_set.expiration_time {
             ensure!(
