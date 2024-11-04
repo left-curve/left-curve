@@ -384,7 +384,7 @@ impl<'a> MerkleTree<'a> {
             // The subtree to be created contains exactly one node, which is a
             // new leaf node.
             // This case requires special attention: we don't save the node yet,
-            // because it the path may be collapsed if it's sibling gets deleted.
+            // because the path may be collapsed if its sibling gets deleted.
             (1, None) => {
                 let (key_hash, value_hash) = only_item(batch);
                 Ok(Outcome::Updated(Node::Leaf(LeafNode {
