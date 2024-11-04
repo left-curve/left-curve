@@ -1,35 +1,11 @@
-use {anyhow::bail, paste::paste, std::ops::Deref};
+use {anyhow::bail, std::ops::Deref};
 
 pub struct BytesAnalyzer {
     bytes: Vec<u8>,
     index: usize,
 }
 
-macro_rules! impl_bytes {
-    ($n:ty => $size:expr) => {
-        paste! {
-            #[doc = "Read the next {size} bytes as a `{n}` in big endian encoding."]
-            pub fn [<next_ $n>](&mut self) -> anyhow::Result<$n> {
-                if self.index + $size <= self.bytes.len() {
-                    let bytes = &self.bytes[self.index..self.index + $size];
-                    self.index += $size;
-                    Ok(<$n>::from_be_bytes(bytes.try_into()?))
-                } else {
-                    bail!("Not enough bytes")
-                }
-            }
-        }
-    };
-    ($($n:ty => $size:expr),+) => {
-        $(
-            impl_bytes! { $n => $size }
-        )*
-    };
-}
-
 impl BytesAnalyzer {
-    impl_bytes! { u16 => 2, u32 => 4, u64 => 8 }
-
     pub fn new(bytes: Vec<u8>) -> Self {
         Self { bytes, index: 0 }
     }
@@ -40,16 +16,35 @@ impl BytesAnalyzer {
         self.bytes[self.index - 1]
     }
 
+    /// Read the next 2 bytes as a `u16` in big endian encoding.
+    pub fn next_u16(&mut self) -> anyhow::Result<u16> {
+        self.next_chunk::<2>().map(u16::from_be_bytes)
+    }
+
+    /// Read the next 4 bytes as a `u32` in big endian encoding.
+    pub fn next_u32(&mut self) -> anyhow::Result<u32> {
+        self.next_chunk::<4>().map(u32::from_be_bytes)
+    }
+
+    /// Read the next 8 bytes as a `u64` in big endian encoding.
+    pub fn next_u64(&mut self) -> anyhow::Result<u64> {
+        self.next_chunk::<8>().map(u64::from_be_bytes)
+    }
+
     /// Read the next `S` bytes as an array.
     pub fn next_chunk<const S: usize>(&mut self) -> anyhow::Result<[u8; S]> {
-        if self.index + S <= self.bytes.len() {
-            let mut bytes: [u8; S] = [0; S];
-            bytes.copy_from_slice(&self.bytes[self.index..self.index + S]);
-            self.index += S;
-            Ok(bytes)
-        } else {
-            bail!("Not enough bytes")
-        }
+        let Some(bytes) = self.bytes.get(self.index..self.index + S) else {
+            bail!(
+                "not enough bytes left! len: {}, index: {}, chunk size: {}",
+                self.bytes.len(),
+                self.index,
+                S
+            );
+        };
+
+        self.index += S;
+
+        Ok(bytes.try_into()?)
     }
 
     /// Consume the analyzer, return the remaining, unread bytes as a vector.
