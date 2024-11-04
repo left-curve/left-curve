@@ -2,7 +2,7 @@ use {
     crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
     anyhow::ensure,
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
-    grug::{Denom, MutableCtx, Response},
+    grug::{Binary, Denom, Inner, MutableCtx, Response},
     std::collections::BTreeMap,
 };
 
@@ -44,8 +44,12 @@ fn register_price_sources(
     Ok(Response::new())
 }
 
-fn feed_prices(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Response> {
+fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
     for vaa in vaas {
+        // Deserialize the Pyth VAA from binary.
+        let vaa = PythVaa::new(vaa.into_inner())?;
+
+        // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
             let hash = PythId::from_inner(feed.id.to_bytes());
 

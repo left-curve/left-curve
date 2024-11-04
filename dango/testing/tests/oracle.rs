@@ -8,11 +8,6 @@ use {
     std::{collections::BTreeMap, str::FromStr},
 };
 
-#[grug::derive(Serde)]
-enum RawExecuteMsg {
-    FeedPrices(Vec<Binary>),
-}
-
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
 /// - price: **6984382159562**
 /// - publish_time: **1730157441**
@@ -45,18 +40,16 @@ fn oracle() {
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
 
     // Register price source
-    {
-        suite
-            .execute(
-                &mut accounts.owner,
-                contracts.oracle,
-                &ExecuteMsg::RegisterPriceSources(btree_map! {
-                    btc_denom.clone() => PriceSource::Pyth { id, precision }
-                }),
-                Coins::default(),
-            )
-            .should_succeed();
-    }
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &ExecuteMsg::RegisterPriceSources(btree_map! {
+                btc_denom.clone() => PriceSource::Pyth { id, precision }
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
 
     // Push price
     {
@@ -64,7 +57,7 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &RawExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
+                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
@@ -96,7 +89,7 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &RawExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_2).unwrap()]),
+                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_2).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
@@ -126,7 +119,7 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &RawExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
+                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
@@ -221,7 +214,7 @@ async fn double_vaas() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &RawExecuteMsg::FeedPrices(vec![
+                &ExecuteMsg::FeedPrices(vec![
                     string_json_btc.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
                     string_json_eth.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
                 ]),
@@ -372,7 +365,7 @@ async fn multiple_vaas() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &RawExecuteMsg::FeedPrices(string_json_vaas.deserialize_json().unwrap()),
+                &ExecuteMsg::FeedPrices(string_json_vaas.deserialize_json().unwrap()),
                 Coins::default(),
             )
             .should_succeed();

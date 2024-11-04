@@ -43,7 +43,7 @@ macro_rules! uncast_enum {
 
 pub type PythId = EncodedBytes<[u8; 32], AddrEncoder>;
 
-#[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PythVaa {
     vaa: WormholeVaa,
     feeds: Vec<PriceFeed>,
