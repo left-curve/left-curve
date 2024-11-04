@@ -4,7 +4,7 @@ use {
     byteorder::BigEndian,
     grug::{AddrEncoder, Api, Binary, BlockInfo, EncodedBytes, Inner, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
-    pyth_wormhole::{BatchPriceAttestation, PriceStatus},
+    pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
     pythnet_sdk::{
         accumulators::merkle::MerkleRoot,
         hashers::keccak256_160::Keccak160,
