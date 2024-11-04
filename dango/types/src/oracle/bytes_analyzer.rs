@@ -11,9 +11,8 @@ impl BytesAnalyzer {
     }
 
     /// Read the next byte.
-    pub fn next_u8(&mut self) -> u8 {
-        self.index += 1;
-        self.bytes[self.index - 1]
+    pub fn next_u8(&mut self) -> anyhow::Result<u8> {
+        self.next_chunk::<1>().map(|array| array[0])
     }
 
     /// Read the next 2 bytes as a `u16` in big endian encoding.
@@ -73,7 +72,7 @@ mod test {
         let mut analyzer = BytesAnalyzer::new(raw);
 
         // next u8
-        assert_eq!(analyzer.next_u8(), 1);
+        assert_eq!(analyzer.next_u8().unwrap(), 1);
 
         // next u16
         assert_eq!(analyzer.next_u16().unwrap(), u16::from_be_bytes([2, 3]));

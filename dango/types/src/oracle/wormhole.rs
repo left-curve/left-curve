@@ -62,7 +62,7 @@ impl GuardianSignature {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
         let signature = bytes.next_chunk::<{ WormholeVaa::SIGNATURE_LEN - 1 }>()?;
-        let id_recover = bytes.next_u8();
+        let id_recover = bytes.next_u8()?;
 
         Ok(GuardianSignature {
             id_recover,
@@ -96,13 +96,13 @@ impl WormholeVaa {
     {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
-        let version = bytes.next_u8();
+        let version = bytes.next_u8()?;
         let guardian_set_index = bytes.next_u32()?;
-        let len_signers = bytes.next_u8();
+        let len_signers = bytes.next_u8()?;
 
         let signatures = (0..len_signers)
             .map(|_| {
-                let index = bytes.next_u8();
+                let index = bytes.next_u8()?;
                 let signature = bytes.next_chunk::<{ WormholeVaa::SIGNATURE_LEN }>()?;
 
                 Ok((index, GuardianSignature::new(signature)?))
@@ -122,7 +122,7 @@ impl WormholeVaa {
         let emitter_chain = bytes.next_u16()?;
         let emitter_address = bytes.next_chunk::<32>()?;
         let sequence = bytes.next_u64()?;
-        let consistency_level = bytes.next_u8();
+        let consistency_level = bytes.next_u8()?;
         let payload = bytes.consume();
 
         Ok(WormholeVaa {
