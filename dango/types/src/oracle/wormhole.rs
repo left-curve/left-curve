@@ -2,15 +2,8 @@ use {
     super::BytesAnalyzer,
     anyhow::{anyhow, ensure},
     data_encoding::BASE64,
-    grug::{
-        Api, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, NonZero, Storage,
-        Timestamp,
-    },
-    serde::{
-        de::{self, Visitor},
-        Deserialize, Deserializer,
-    },
-    std::{collections::BTreeMap, fmt, ops::Deref, str::FromStr},
+    grug::{Api, BlockInfo, ByteArray, Hash160, Hash256, Inner, Map, NonZero, Storage, Timestamp},
+    std::{collections::BTreeMap, ops::Deref},
 };
 
 /// Addresses of the Wormhole guardian set as of November 4, 2024.
@@ -90,7 +83,7 @@ impl WormholeVaa {
     pub const HEADER_LEN: usize = 6;
     pub const SIGNATURE_LEN: usize = 65;
 
-    pub fn new<T>(raw_bytes: T) -> anyhow::Result<Self>
+    pub fn new<T>(api: &dyn Api, raw_bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
     {
@@ -109,13 +102,7 @@ impl WormholeVaa {
             })
             .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
 
-        // save some gas in wasm32
-        #[cfg(not(target_arch = "wasm32"))]
-        let hash = bytes.deref().keccak256().keccak256();
-        #[cfg(target_arch = "wasm32")]
-        let hash = Hash256::from_inner(
-            grug::ExternalApi.keccak256(&grug::ExternalApi.keccak256(bytes.deref())),
-        );
+        let hash = Hash256::from_inner(api.keccak256(&api.keccak256(bytes.deref())));
 
         let timestamp = bytes.next_u32()?;
         let nonce = bytes.next_u32()?;
@@ -193,39 +180,5 @@ impl WormholeVaa {
         }
 
         Ok(())
-    }
-}
-
-impl FromStr for WormholeVaa {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::new(BASE64.decode(s.as_bytes())?)
-    }
-}
-
-impl<'de> Deserialize<'de> for WormholeVaa {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(WormholeVaaVisitor {})
-    }
-}
-
-pub struct WormholeVaaVisitor;
-
-impl<'de> Visitor<'de> for WormholeVaaVisitor {
-    type Value = WormholeVaa;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("wormhole-vaa")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        WormholeVaa::from_str(v).map_err(E::custom)
     }
 }

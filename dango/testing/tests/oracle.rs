@@ -3,7 +3,7 @@ use {
     dango_types::oracle::{
         ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
     },
-    grug::{btree_map, Binary, Coins, Denom, JsonDeExt, ResultExt, Udec128},
+    grug::{btree_map, Binary, Coins, Denom, Inner, MockApi, ResultExt, Udec128},
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr},
 };
@@ -170,17 +170,17 @@ async fn double_vaas() {
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let (string_json_btc, string_json_eth) = tokio::try_join!(
+        let (btc_vaas_raw, eth_vaas_raw) = tokio::try_join!(
             get_latest_vaas(&[WBTC_USD_ID]),
             get_latest_vaas(&[ETH_USD_ID])
         )
         .unwrap();
 
-        let btc_vaa = string_json_btc.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
-            .clone()
+        let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
+            .unwrap()
             .unverified()[0];
-        let eth_vaa = string_json_eth.deserialize_json::<Vec<PythVaa>>().unwrap()[0]
-            .clone()
+        let eth_vaa = PythVaa::new(&MockApi, eth_vaas_raw[0].clone().into_inner())
+            .unwrap()
             .unverified()[0];
 
         // update last btc vaa
@@ -214,10 +214,7 @@ async fn double_vaas() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &ExecuteMsg::FeedPrices(vec![
-                    string_json_btc.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
-                    string_json_eth.deserialize_json::<Vec<Binary>>().unwrap()[0].clone(),
-                ]),
+                &ExecuteMsg::FeedPrices([btc_vaas_raw, eth_vaas_raw].concat()),
                 Coins::default(),
             )
             .should_succeed();
@@ -332,12 +329,15 @@ async fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let string_json_vaas = get_latest_vaas(id_denoms.keys()).await.unwrap();
+        let vaas_raw = get_latest_vaas(id_denoms.keys()).await.unwrap();
 
-        let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
+        let vaas = vaas_raw
+            .iter()
+            .map(|vaa_raw| PythVaa::new(&MockApi, vaa_raw.clone().into_inner()).unwrap())
+            .collect::<Vec<_>>();
 
         // Update last price feeds
-        for vaa in parsed_vaa {
+        for vaa in vaas {
             for price_feed in vaa.unverified() {
                 let last_price_feed = last_price_feeds
                     .get_mut(price_feed.id.to_string().as_str())
@@ -365,7 +365,7 @@ async fn multiple_vaas() {
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &ExecuteMsg::FeedPrices(string_json_vaas.deserialize_json().unwrap()),
+                &ExecuteMsg::FeedPrices(vaas_raw),
                 Coins::default(),
             )
             .should_succeed();
@@ -409,7 +409,7 @@ async fn multiple_vaas() {
 }
 
 /// Return JSON string of the latest VAA from Pyth network.
-async fn get_latest_vaas<I>(ids: I) -> reqwest::Result<String>
+async fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
 where
     I: IntoIterator,
     I::Item: AsRef<str>,
@@ -424,6 +424,6 @@ where
         .query(&ids)
         .send()
         .await?
-        .text()
+        .json()
         .await
 }

@@ -2,7 +2,6 @@ use {
     super::{GuardianSet, WormholeVaa},
     anyhow::{anyhow, bail},
     byteorder::BigEndian,
-    data_encoding::BASE64,
     grug::{AddrEncoder, Api, BlockInfo, EncodedBytes, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
     pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
@@ -15,11 +14,6 @@ use {
             v1::{AccumulatorUpdateData, Proof, WormholeMessage, WormholePayload},
         },
     },
-    serde::{
-        de::{self, Visitor},
-        Deserialize, Deserializer,
-    },
-    std::{fmt, str::FromStr},
 };
 
 pub const PYTHNET_ACCUMULATOR_UPDATE_MAGIC: &[u8; 4] = b"PNAU";
@@ -66,7 +60,7 @@ impl PythVaa {
         self.feeds
     }
 
-    pub fn new<T>(bytes: T) -> anyhow::Result<Self>
+    pub fn new<T>(api: &dyn Api, bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
     {
@@ -77,7 +71,7 @@ impl PythVaa {
 
             let (vaa, updates) = uncast_enum!(res.proof, Proof::WormholeMerkle, vaa, updates);
 
-            let parsed_vaa = WormholeVaa::new(Vec::from(vaa))?;
+            let parsed_vaa = WormholeVaa::new(api, Vec::from(vaa))?;
             let msg = WormholeMessage::try_from_bytes(parsed_vaa.payload.clone())?;
 
             let root = MerkleRoot::<Keccak160>::new(
@@ -120,7 +114,7 @@ impl PythVaa {
 
             (parsed_vaa, feeds)
         } else {
-            let vaa = WormholeVaa::new(bytes)?;
+            let vaa = WormholeVaa::new(api, bytes)?;
 
             let feeds = BatchPriceAttestation::deserialize(&vaa.payload[..])
                 .map_err(|err| anyhow!("failed to deserialize batch attestation: {:?}", err))?
@@ -167,40 +161,6 @@ impl PythVaa {
     }
 }
 
-impl FromStr for PythVaa {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> anyhow::Result<Self> {
-        PythVaa::new(BASE64.decode(s.as_bytes())?)
-    }
-}
-
-pub struct PythVaaVisitor;
-
-impl<'de> Visitor<'de> for PythVaaVisitor {
-    type Value = PythVaa;
-
-    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("pyth-vaa")
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        PythVaa::from_str(v).map_err(E::custom)
-    }
-}
-
-impl<'de> Deserialize<'de> for PythVaa {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_str(PythVaaVisitor)
-    }
-}
-
 // ------------------------------------ test -----------------------------------
 
 #[cfg(test)]
@@ -208,8 +168,8 @@ mod tests {
     use {
         crate::oracle::{GuardianSet, PythVaa, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
         grug::{
-            json, Binary, BlockInfo, Duration, Hash160, Hash256, Inner, JsonDeExt, Map, MockApi,
-            MockStorage, NonZero, ResultExt, Timestamp,
+            Binary, BlockInfo, Duration, Hash160, Hash256, Inner, Map, MockApi, MockStorage,
+            NonZero, Timestamp,
         },
         std::str::FromStr,
     };
@@ -219,12 +179,7 @@ mod tests {
     const GUARDIAN_SETS: Map<u32, GuardianSet> = Map::new("guardian_sets");
 
     #[test]
-    fn des_pyth_vaa() {
-        json!(VAA).deserialize_json::<PythVaa>().should_succeed();
-    }
-
-    #[test]
-    fn validate_vaa() {
+    fn from_raw() {
         let mut storage = MockStorage::new();
 
         let block = BlockInfo {
@@ -247,7 +202,7 @@ mod tests {
             })
             .unwrap();
 
-        PythVaa::from_str(VAA)
+        PythVaa::new(&MockApi, VAA)
             .unwrap()
             .vaa
             .verify(&storage, &MockApi, block, GUARDIAN_SETS)
