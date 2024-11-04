@@ -13,6 +13,7 @@ use {
     std::{collections::BTreeMap, fmt, ops::Deref, str::FromStr},
 };
 
+/// Addresses of the Wormhole guardian set as of November 4, 2024.
 pub const GUARDIANS_ADDRESSES: [&str; 19] = [
     "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
     "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
@@ -35,6 +36,7 @@ pub const GUARDIANS_ADDRESSES: [&str; 19] = [
     "b768iY9APkdz6V/rFegMmpnINI0=",
 ];
 
+/// Index of the Wormhole guardian set as of November 4, 2024.
 pub const GUARDIAN_SETS_INDEX: u32 = 4;
 
 #[grug::derive(Serde, Borsh)]
