@@ -160,7 +160,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d:  Dec<_>, samples| {
+        method = |_0d:  Dec<_, 18>, samples| {
             for (current, next) in samples {
                 // let current = bt(_0, Dec::new(current));
                 dt(_0d, current);

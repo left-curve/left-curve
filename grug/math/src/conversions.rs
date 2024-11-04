@@ -2,21 +2,25 @@ use crate::{Dec, FixedPoint, Int, MathError, MathResult, Number};
 
 // -------------------------------- int -> dec ---------------------------------
 
-impl<U> Int<U>
+pub trait IntoDec<U, const S: u32> {
+    fn checked_into_dec(self) -> MathResult<Dec<U, S>>;
+}
+
+impl<U, const S: u32> IntoDec<U, S> for Int<U>
 where
     Self: Number + Copy + ToString,
-    Dec<U>: FixedPoint<U>,
+    Dec<U, S>: FixedPoint<U>,
 {
-    pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
-        self.checked_mul(Dec::<U>::PRECISION)
+    fn checked_into_dec(self) -> MathResult<Dec<U, S>> {
+        self.checked_mul(Dec::<U, S>::PRECISION)
             .map(Dec::raw)
-            .map_err(|_| MathError::overflow_conversion::<_, Dec<U>>(self))
+            .map_err(|_| MathError::overflow_conversion::<_, Dec<U, S>>(self))
     }
 }
 
 // -------------------------------- dec -> int ---------------------------------
 
-impl<U> Dec<U>
+impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
     Int<U>: Number,
@@ -33,7 +37,7 @@ where
 mod int_tests {
     use {
         crate::{
-            int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError,
+            conversions::IntoDec, int_test, test_utils::bt, Dec128, Dec256, Int, Int256, MathError,
             NumberConst, Udec128, Udec256, Uint256,
         },
         bnum::types::{I256, U256},
@@ -162,7 +166,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, samples| {
+        method = |_0d: Dec<_, 18>, samples| {
             for (dec, expected) in samples {
                 let expected = bt(_0d.0, Int::new(expected));
                 dt(_0d, dec);

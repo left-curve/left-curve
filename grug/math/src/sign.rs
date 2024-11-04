@@ -61,7 +61,7 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U> Sign for Dec<U>
+impl<U, const S: u32> Sign for Dec<U, S>
 where
     U: Sign,
 {
@@ -242,7 +242,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (base, sign, abs) in passing {
                 dt(_0d, base);
                 assert_eq!(base.is_negative(), sign);

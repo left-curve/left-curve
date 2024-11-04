@@ -228,8 +228,8 @@ macro_rules! dec_test {
         inputs = {
             $(udec128 = [$($pu128:expr),*] $(,)?)?
             $(udec256 = [$($pu256:expr),*] $(,)?)?
-            $(dec128 = [$($pi128:expr),*] $(,)?)?
-            $(dec256 = [$($pi256:expr),*] $(,)?)?
+            $(dec128 =  [$($pi128:expr),*] $(,)?)?
+            $(dec256 =  [$($pi256:expr),*] $(,)?)?
         } $(,)?
         attrs = $(#[$meta:meta])* $(,)?
         method = $test_fn:expr
@@ -364,10 +364,10 @@ where
 }
 
 /// Shortcut for create a `Dec` from a string.
-pub fn dec<U>(val: &str) -> Dec<U>
+pub fn dec<U, const S: u32>(val: &str) -> Dec<U, S>
 where
-    Dec<U>: FromStr,
-    <Dec<U> as FromStr>::Err: Debug,
+    Dec<U, S>: FromStr,
+    <Dec<U, S> as FromStr>::Err: Debug,
 {
     Dec::from_str(val).unwrap()
 }

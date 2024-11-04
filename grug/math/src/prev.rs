@@ -185,7 +185,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (current, prev) in passing {
                 let current = bt(_0d, Dec::raw(bt(_0d.0, Int::new(current))));
                 assert_eq!(current.checked_into_prev().unwrap(), Dec::raw(Int::new(prev)));

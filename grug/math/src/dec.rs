@@ -22,9 +22,11 @@ use {
 #[derive(
     BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
 )]
-pub struct Dec<U>(pub(crate) Int<U>);
+pub struct Dec<U, const S: u32>(pub(crate) Int<U>);
 
-impl<U> Dec<U> {
+impl<U, const S: u32> Dec<U, S> {
+    pub const DECIMAL_PLACES: u32 = S;
+
     /// Create a new [`Dec`] _without_ adding decimal places.
     ///
     /// ```rust
@@ -42,9 +44,8 @@ impl<U> Dec<U> {
     }
 }
 
-impl<U> Dec<U>
+impl<U, const S: u32> Dec<U, S>
 where
-    Self: FixedPoint<U>,
     Int<U>: NumberConst + Number,
 {
     pub fn checked_from_atomics<T>(atomics: T, decimal_places: u32) -> MathResult<Self>
@@ -53,17 +54,17 @@ where
     {
         let atomics = atomics.into();
 
-        let inner = match decimal_places.cmp(&Self::DECIMAL_PLACES) {
+        let inner = match decimal_places.cmp(&S) {
             Ordering::Less => {
                 // No overflow because decimal_places < S
-                let digits = Self::DECIMAL_PLACES - decimal_places;
+                let digits = S - decimal_places;
                 let factor = Int::<U>::TEN.checked_pow(digits)?;
                 atomics.checked_mul(factor)?
             },
             Ordering::Equal => atomics,
             Ordering::Greater => {
                 // No overflow because decimal_places > S
-                let digits = decimal_places - Self::DECIMAL_PLACES;
+                let digits = decimal_places - S;
                 if let Ok(factor) = Int::<U>::TEN.checked_pow(digits) {
                     // Safe because factor cannot be zero
                     atomics.checked_div(factor).unwrap()
@@ -80,7 +81,7 @@ where
     }
 }
 
-impl<U> Dec<U>
+impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
     Int<U>: MultiplyRatio,
@@ -125,7 +126,7 @@ where
     }
 }
 
-impl<U> Neg for Dec<U>
+impl<U, const S: u32> Neg for Dec<U, S>
 where
     U: Neg<Output = U>,
 {
@@ -136,7 +137,7 @@ where
     }
 }
 
-impl<U> Display for Dec<U>
+impl<U, const S: u32> Display for Dec<U, S>
 where
     Self: FixedPoint<U>,
     U: Number + IsZero + Display,
@@ -157,7 +158,7 @@ where
             let fractional_string = format!(
                 "{:0>padding$}",
                 fractional.checked_abs().unwrap().0,
-                padding = Self::DECIMAL_PLACES as usize
+                padding = S as usize
             );
             if whole.is_negative() || fractional.is_negative() {
                 f.write_char('-')?;
@@ -171,7 +172,7 @@ where
     }
 }
 
-impl<U> FromStr for Dec<U>
+impl<U, const S: u32> FromStr for Dec<U, S>
 where
     Self: FixedPoint<U>,
     Int<U>: NumberConst + Number + Sign + Display + FromStr,
@@ -207,19 +208,17 @@ where
                 ));
             }
 
-            let exp = (Self::DECIMAL_PLACES.checked_sub(fractional_part.len() as u32)).ok_or_else(
-                || {
-                    MathError::parse_number::<Self, _, _>(
-                        input,
-                        format!(
-                            "cannot parse more than {} fractional digits",
-                            Self::PRECISION
-                        ),
-                    )
-                },
-            )?;
+            let exp = (S.checked_sub(fractional_part.len() as u32)).ok_or_else(|| {
+                MathError::parse_number::<Self, _, _>(
+                    input,
+                    format!(
+                        "cannot parse more than {} fractional digits",
+                        Self::PRECISION
+                    ),
+                )
+            })?;
 
-            debug_assert!(exp <= Self::DECIMAL_PLACES);
+            debug_assert!(exp <= S);
 
             let fractional_factor = Int::TEN.checked_pow(exp).unwrap();
 
@@ -248,22 +247,22 @@ where
     }
 }
 
-impl<U> ser::Serialize for Dec<U>
+impl<U, const S: u32> ser::Serialize for Dec<U, S>
 where
     Self: Display,
 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<SE>(&self, serializer: SE) -> Result<SE::Ok, SE::Error>
     where
-        S: ser::Serializer,
+        SE: ser::Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
 }
 
-impl<'de, U> de::Deserialize<'de> for Dec<U>
+impl<'de, U, const S: u32> de::Deserialize<'de> for Dec<U, S>
 where
-    Dec<U>: FromStr,
-    <Dec<U> as FromStr>::Err: Display,
+    Dec<U, S>: FromStr,
+    <Dec<U, S> as FromStr>::Err: Display,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -273,11 +272,11 @@ where
     }
 }
 
-struct DecVisitor<U> {
+struct DecVisitor<U, const S: u32> {
     _marker: PhantomData<U>,
 }
 
-impl<U> DecVisitor<U> {
+impl<U, const S: u32> DecVisitor<U, S> {
     pub fn new() -> Self {
         Self {
             _marker: PhantomData,
@@ -285,12 +284,12 @@ impl<U> DecVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for DecVisitor<U>
+impl<'de, U, const S: u32> de::Visitor<'de> for DecVisitor<U, S>
 where
-    Dec<U>: FromStr,
-    <Dec<U> as FromStr>::Err: Display,
+    Dec<U, S>: FromStr,
+    <Dec<U, S> as FromStr>::Err: Display,
 {
-    type Value = Dec<U>;
+    type Value = Dec<U, S>;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str("string-encoded decimal")
@@ -304,7 +303,7 @@ where
     }
 }
 
-impl<U> Add for Dec<U>
+impl<U, const S: u32> Add for Dec<U, S>
 where
     Self: Number,
 {
@@ -315,7 +314,7 @@ where
     }
 }
 
-impl<U> Sub for Dec<U>
+impl<U, const S: u32> Sub for Dec<U, S>
 where
     Self: Number,
 {
@@ -326,7 +325,7 @@ where
     }
 }
 
-impl<U> Mul for Dec<U>
+impl<U, const S: u32> Mul for Dec<U, S>
 where
     Self: Number,
 {
@@ -337,7 +336,7 @@ where
     }
 }
 
-impl<U> Div for Dec<U>
+impl<U, const S: u32> Div for Dec<U, S>
 where
     Self: Number,
 {
@@ -348,7 +347,7 @@ where
     }
 }
 
-impl<U> Rem for Dec<U>
+impl<U, const S: u32> Rem for Dec<U, S>
 where
     Self: Number,
 {
@@ -359,7 +358,7 @@ where
     }
 }
 
-impl<U> AddAssign for Dec<U>
+impl<U, const S: u32> AddAssign for Dec<U, S>
 where
     Self: Number + Copy,
 {
@@ -368,7 +367,7 @@ where
     }
 }
 
-impl<U> SubAssign for Dec<U>
+impl<U, const S: u32> SubAssign for Dec<U, S>
 where
     Self: Number + Copy,
 {
@@ -377,7 +376,7 @@ where
     }
 }
 
-impl<U> MulAssign for Dec<U>
+impl<U, const S: u32> MulAssign for Dec<U, S>
 where
     Self: Number + Copy,
 {
@@ -386,7 +385,7 @@ where
     }
 }
 
-impl<U> DivAssign for Dec<U>
+impl<U, const S: u32> DivAssign for Dec<U, S>
 where
     Self: Number + Copy,
 {
@@ -395,7 +394,7 @@ where
     }
 }
 
-impl<U> RemAssign for Dec<U>
+impl<U, const S: u32> RemAssign for Dec<U, S>
 where
     Self: Number + Copy,
 {
@@ -409,6 +408,7 @@ where
 macro_rules! generate_decimal {
     (
         name              = $name:ident,
+        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
         base_constructor  = $base_constructor:expr,
@@ -416,7 +416,7 @@ macro_rules! generate_decimal {
     ) => {
         paste::paste! {
             #[doc = $doc]
-            pub type $name = Dec<$inner>;
+            pub type $name = Dec<$inner, $precision>;
 
             impl $name {
                 /// Create a new [`Dec`] adding decimal places.
@@ -431,19 +431,19 @@ macro_rules! generate_decimal {
                 /// assert_eq!(decimal, Udec128::from_str("100.0").unwrap());
                 /// ```
                 pub const fn new(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES)))
+                    Self($constructor(x * [<10_$base_constructor>].pow($precision)))
                 }
 
                 pub const fn new_percent(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 2)))
+                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 2)))
                 }
 
                 pub const fn new_permille(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 3)))
+                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 3)))
                 }
 
                 pub const fn new_bps(x: $base_constructor) -> Self {
-                    Self($constructor(x * [<10_$base_constructor>].pow(Self::DECIMAL_PLACES - 4)))
+                    Self($constructor(x * [<10_$base_constructor>].pow($precision - 4)))
                 }
             }
 
@@ -452,12 +452,14 @@ macro_rules! generate_decimal {
     (
         type              = Signed,
         name              = $name:ident,
+        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
         doc               = $doc:literal,
     ) => {
         generate_decimal! {
             name              = $name,
+            precision         = $precision,
             inner_type        = $inner,
             inner_constructor = $constructor,
             base_constructor  = i128,
@@ -467,12 +469,14 @@ macro_rules! generate_decimal {
     (
         type              = Unsigned,
         name              = $name:ident,
+        precision         = $precision:expr,
         inner_type        = $inner:ty,
         inner_constructor = $constructor:expr,
         doc               = $doc:literal,
     ) => {
         generate_decimal! {
             name              = $name,
+            precision         = $precision,
             inner_type        = $inner,
             inner_constructor = $constructor,
             base_constructor  = u128,
@@ -484,6 +488,7 @@ macro_rules! generate_decimal {
 generate_decimal! {
     type              = Unsigned,
     name              = Udec128,
+    precision         = 18,
     inner_type        = u128,
     inner_constructor = Uint128::new,
     doc               = "128-bit unsigned fixed-point number with 18 decimal places.",
@@ -492,6 +497,7 @@ generate_decimal! {
 generate_decimal! {
     type              = Unsigned,
     name              = Udec256,
+    precision         = 18,
     inner_type        = U256,
     inner_constructor = Uint256::new_from_u128,
     doc               = "256-bit unsigned fixed-point number with 18 decimal places.",
@@ -500,6 +506,7 @@ generate_decimal! {
 generate_decimal! {
     type              = Signed,
     name              = Dec128,
+    precision         = 18,
     inner_type        = i128,
     inner_constructor = Int128::new,
     doc               = "128-bit signed fixed-point number with 18 decimal places.",
@@ -508,6 +515,7 @@ generate_decimal! {
 generate_decimal! {
     type              = Signed,
     name              = Dec256,
+    precision         = 18,
     inner_type        = I256,
     inner_constructor = Int256::new_from_i128,
     doc               = "256-bit signed fixed-point number with 18 decimal places.",
@@ -662,7 +670,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d, passing, failing| {
             for (input, expected) in passing {
                 assert_eq!(bt(_0d, Dec::from_str(input).unwrap()), expected);
             }
@@ -740,7 +748,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d, passing| {
             for base in passing {
                 let dec = bt(_0d, dec(base));
                 assert_eq!(dec.to_string(), base);
@@ -815,7 +823,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for base in passing {
                 let dec = bt(_0d, dec(base));
 
@@ -825,10 +833,10 @@ mod tests {
                 let serialized_vec = serde_json::to_vec(&dec).unwrap();
                 assert_eq!(serialized_vec, format!("\"{}\"", base).as_bytes());
 
-                let parsed: Dec::<_> = serde_json::from_str(&serialized_str).unwrap();
+                let parsed: Dec::<_, 18> = serde_json::from_str(&serialized_str).unwrap();
                 assert_eq!(parsed, dec);
 
-                let parsed: Dec::<_> = serde_json::from_slice(&serialized_vec).unwrap();
+                let parsed: Dec::<_, 18> = serde_json::from_slice(&serialized_vec).unwrap();
                 assert_eq!(parsed, dec);
             }
         }
@@ -913,7 +921,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (left, cmp, right) in passing {
                dts!(_0d, left, right);
                 assert_eq!(left.cmp(&right), cmp);
@@ -1027,7 +1035,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (lhs, rhs) in passing {
                 dts!(_0d, lhs, rhs);
                 assert!(lhs == rhs);
@@ -1069,7 +1077,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (input, expected) in passing {
                 dts!(_0d, input);
                 assert_eq!(-input, expected);
@@ -1134,7 +1142,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (atomics, decimal_places, expect) in passing {
                 dt(_0d.0, atomics);
                 dt(_0d, expect);
@@ -1210,7 +1218,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (num, div, expect) in passing {
                 dts!(_0d.0, num, div);
                 dt(_0d, expect);
@@ -1252,7 +1260,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (num, div, expect) in passing {
                 dts!(_0d.0, num, div);
                 dt(_0d, expect);
@@ -1289,7 +1297,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (num, div, expect) in passing {
                 dts!(_0d.0, num, div);
                 dt(_0d, expect);

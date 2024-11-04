@@ -4,7 +4,7 @@ use {
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
-    grug_math::{Bytable, Dec, Fraction, Inner, Int},
+    grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
         nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part, StdError,
         StdResult,
@@ -410,9 +410,8 @@ where
     }
 }
 
-impl<U> PrimaryKey for Dec<U>
+impl<U, const S: u32> PrimaryKey for Dec<U, S>
 where
-    Dec<U>: Fraction<U>,
     U: PrimaryKey<Output = U>,
 {
     type Output = Self;

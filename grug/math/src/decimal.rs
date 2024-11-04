@@ -20,7 +20,7 @@ pub trait Decimal: Sized + Copy {
     }
 }
 
-impl<U> Decimal for Dec<U>
+impl<U, const S: u32> Decimal for Dec<U, S>
 where
     Self: FixedPoint<U>,
     U: Number + NumberConst + Sign + IsZero + Copy + PartialEq,
@@ -111,7 +111,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (base, expect) in passing {
                 dts!(_0d, base, expect);
                 assert_eq!(base.checked_floor().unwrap(), expect);
@@ -174,7 +174,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (base, expect) in passing {
                 dts!(_0d, base, expect);
                 assert_eq!(base.checked_ceil().unwrap(), expect);
