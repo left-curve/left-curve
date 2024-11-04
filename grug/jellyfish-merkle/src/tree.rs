@@ -395,7 +395,7 @@ impl<'a> MerkleTree<'a> {
             // The subtree to be created contains more 2 or more nodes.
             // Recursively create the tree. Return the subtree's root, an
             // internal node.
-            // Note that in this scenario, we certain don't need to collapse the
+            // Note that in this scenario, we certainly don't need to collapse the
             // path.
             (_, existing_leaf) => {
                 // Split the batch for left and right children.
