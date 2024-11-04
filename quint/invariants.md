@@ -1,8 +1,8 @@
 # Invariants
 
-This document describes invariants of grug's jellyfish merkle tree manipulation.
+This document describes invariants of grug's jellyfish merkle tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
-<!-- 
+<!--
 ```bluespec apply_state_machine.qnt +=
 // -*- mode: Bluespec; -*-
 
@@ -98,11 +98,11 @@ type LeafNode = {
     // In the implementation it is a hash of a key but in the Radix tree it is
     // just used as a key, so we use a list of bits and we treat it here just as
     // bytes
-    key_hash: Bytes_t, 
+    key_hash: Bytes_t,
     value_hash: Bytes_t,
 }
 
-type Node = 
+type Node =
     | Internal(InternalNode)
     | Leaf(LeafNode)
 
@@ -156,7 +156,7 @@ We also keep track of the smallest unpruned version, so we check the invariant f
     activeTreeVersions.map(v => treeAtVersion(tree, v))
 ```
 
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -186,7 +186,7 @@ In a tree, all nodes except from the root should have a parent. There should be 
     activeVersionedTrees.forall(everyNodesParentIsInTheTree)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -218,7 +218,7 @@ For any pair of leafs on the tree, there should be another node such that its ke
     activeVersionedTrees.forall(nodeAtCommonPrefix)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -248,7 +248,7 @@ Leafs should never be in the middle of a tree. If a there is a node with a key h
     activeVersionedTrees.forall(noLeafInPrefixes)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -280,14 +280,14 @@ Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a
     activeVersionedTrees.forall(allInternalNodesHaveAChild)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
 ```
 -->
 
-### Only children are internal nodes 
+### Only children are internal nodes
 
 This checks that collapsing works properly: there should never be an internal node with a single child where that child is a leaf. If it was a leaf, since there is no sibling, we should have collapsed it and make the internal node the leaf itself.
 
@@ -320,7 +320,7 @@ This also means that the three is dense, not sparse.
     activeVersionedTrees.forall(isDense)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -347,7 +347,7 @@ When nodes are updated (inserted, deleted) they are given a new version, and so 
           p == b.key_hash and b.version >= a.version)))
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -388,7 +388,7 @@ Given the explanation around `versionInv` from above, we had the (wrong) intuiti
     activeVersionedTrees.forall(denseVersions)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -410,7 +410,7 @@ Orphans are used for state pruning. The implicit intuition is that orphaned node
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -449,7 +449,7 @@ For all internal nodes, for each existing child, the hash should match the resul
     activeVersionedTrees.forall(properlyHashed)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -491,7 +491,7 @@ We use an implementation of hashes that ensure no collision, since no collision 
     activeVersionedTrees.forall(uniqueHashes)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -515,7 +515,7 @@ While the overall tree receives an entry for the same `key_hash` whenever the co
     activeVersionedTrees.forall(goodTreeMap)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
@@ -540,14 +540,14 @@ We can simply check that the sizes of keys and values is the same, since keys ar
     activeVersionedTrees.forall(bijectiveTreeMap)
   }
 ```
-<!-- 
+<!--
 This inserts a line break that is not rendered in the markdown
 ```bluespec apply_state_machine.qnt +=
 
 ```
 -->
 
-<!-- 
+<!--
 ```bluespec apply_state_machine.qnt +=
   val allInvariants = all {
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
