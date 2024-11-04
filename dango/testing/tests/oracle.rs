@@ -180,8 +180,8 @@ async fn double_vaas() {
     for _ in 0..5 {
         // get 2 separate vaa
         let (string_json_btc, string_json_eth) = tokio::try_join!(
-            get_latest_vaas(PYTH_URL, &[WBTC_USD_ID]),
-            get_latest_vaas(PYTH_URL, &[ETH_USD_ID])
+            get_latest_vaas(&[WBTC_USD_ID]),
+            get_latest_vaas(&[ETH_USD_ID])
         )
         .unwrap();
 
@@ -341,7 +341,7 @@ async fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let string_json_vaas = get_latest_vaas(PYTH_URL, id_denoms.keys()).await.unwrap();
+        let string_json_vaas = get_latest_vaas(id_denoms.keys()).await.unwrap();
 
         let parsed_vaa: Vec<PythVaa> = string_json_vaas.deserialize_json().unwrap();
 
@@ -418,17 +418,21 @@ async fn multiple_vaas() {
 }
 
 /// Return JSON string of the latest VAA from Pyth network.
-pub async fn get_latest_vaas<'a, T>(url: &str, ids: T) -> anyhow::Result<String>
+async fn get_latest_vaas<I>(ids: I) -> reqwest::Result<String>
 where
-    T: IntoIterator,
-    T::Item: AsRef<str>,
+    I: IntoIterator,
+    I::Item: AsRef<str>,
 {
-    let url = format!("{url}/api/latest_vaas");
     let ids = ids
         .into_iter()
         .map(|id| ("ids[]", id.as_ref().to_string()))
         .collect::<Vec<_>>();
-    let client = reqwest::Client::new();
-    let response = client.get(url).query(&ids).send().await?;
-    Ok(response.text().await?)
+
+    reqwest::Client::new()
+        .get(format!("{PYTH_URL}/api/latest_vaas"))
+        .query(&ids)
+        .send()
+        .await?
+        .text()
+        .await
 }
