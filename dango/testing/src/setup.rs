@@ -90,6 +90,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 
     let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
         .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_backrun(Box::new(dango_account_margin::backrun))
         .with_receive(Box::new(dango_account_margin::receive))
         .with_query(Box::new(dango_account_margin::query))
         .build();

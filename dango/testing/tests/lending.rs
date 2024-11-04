@@ -4,14 +4,14 @@ use {
         account::single,
         account_factory::AccountParams,
         lending::{
-            self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
-            NAMESPACE, SUBNAMESPACE,
+            self, CollateralPower, MarketUpdates, QueryCollateralPowersRequest, QueryDebtRequest,
+            QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
         },
         token_factory,
     },
     grug::{
         btree_map, Addressable, Coin, Coins, Denom, HashExt, Message, MsgTransfer, NumberConst,
-        ResultExt, Uint128,
+        ResultExt, Udec128, Uint128,
     },
     grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
@@ -77,6 +77,66 @@ fn update_markets_works() {
             start_after: None,
         })
         .should_succeed_and(|markets| markets.contains_key(&ATOM));
+}
+
+#[test]
+fn only_owner_can_update_collateral_powers() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Try to set collateral power from non-owner, should fail.
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(80)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("Only the owner can update collateral powers");
+}
+
+#[test]
+fn only_owner_can_delist_collateral() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Try to delist collateral from non-owner, should fail.
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::DelistCollateral {
+                denom: USDC.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("Only the owner can delist collateral tokens");
+}
+
+#[test]
+fn set_collateral_power_works() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    // Set collateral power from owner, should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(80)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure collateral power was set.
+    suite
+        .query_wasm_smart(contracts.lending, QueryCollateralPowersRequest {})
+        .should_succeed_and_equal(btree_map! {
+            USDC.clone() => CollateralPower::new(Udec128::new_percent(80)).unwrap(),
+        });
 }
 
 #[test]
