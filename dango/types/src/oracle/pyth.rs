@@ -44,22 +44,7 @@ pub struct PythVaa {
 }
 
 impl PythVaa {
-    pub fn verify(
-        self,
-        storage: &dyn Storage,
-        api: &dyn Api,
-        block: BlockInfo,
-        guardian_set: Map<u32, GuardianSet>,
-    ) -> anyhow::Result<Vec<PriceFeed>> {
-        self.vaa.verify(storage, api, block, guardian_set)?;
-
-        Ok(self.feeds)
-    }
-
-    pub fn unverified(self) -> Vec<PriceFeed> {
-        self.feeds
-    }
-
+    /// Create a new Pyth VAA from raw bytes.
     pub fn new<T>(api: &dyn Api, bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
@@ -158,6 +143,24 @@ impl PythVaa {
         };
 
         Ok(PythVaa { vaa, feeds })
+    }
+
+    /// Verify the Wormhole VAA and return the price feeds.
+    pub fn verify(
+        self,
+        storage: &dyn Storage,
+        api: &dyn Api,
+        block: BlockInfo,
+        guardian_set: Map<u32, GuardianSet>,
+    ) -> anyhow::Result<Vec<PriceFeed>> {
+        self.vaa.verify(storage, api, block, guardian_set)?;
+
+        Ok(self.feeds)
+    }
+
+    /// Return the price feeds without verifying the Wormhole VAA.
+    pub fn unverified(self) -> Vec<PriceFeed> {
+        self.feeds
     }
 }
 

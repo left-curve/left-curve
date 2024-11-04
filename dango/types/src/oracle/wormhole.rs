@@ -83,6 +83,7 @@ impl WormholeVaa {
     pub const HEADER_LEN: usize = 6;
     pub const SIGNATURE_LEN: usize = 65;
 
+    /// Create a new Wormhole VAA from raw bytes.
     pub fn new<T>(api: &dyn Api, raw_bytes: T) -> anyhow::Result<Self>
     where
         T: Into<Vec<u8>>,
@@ -127,6 +128,7 @@ impl WormholeVaa {
         })
     }
 
+    /// Verify the Wormhole VAA.
     pub fn verify(
         self,
         storage: &dyn Storage,
