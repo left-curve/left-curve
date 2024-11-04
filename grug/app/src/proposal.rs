@@ -1,3 +1,5 @@
+#[cfg(feature = "tracing")]
+use tracing::info;
 use {
     crate::{AppError, ProposalPreparer},
     grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdResult},
@@ -6,7 +8,6 @@ use {
         convert::Infallible,
         fmt::{self, Display},
     },
-    tracing::info,
 };
 
 /// A proposal preparer that implements a naive strategy of simply removing
