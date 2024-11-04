@@ -45,28 +45,24 @@ fn register_price_sources(
 }
 
 fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Response> {
-    let feeds =
-        vaas.into_iter()
-            .try_fold(vec![], |mut feeds, pyth_vaa| -> anyhow::Result<Vec<_>> {
-                // In case one vaa is not valid, should we skip it or abort the whole transaction?
-                feeds.extend(pyth_vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)?);
-                Ok(feeds)
-            })?;
+    for vaa in vaas {
+        for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
+            let hash = PythId::from_inner(feed.id.to_bytes());
 
-    for new_feed in feeds {
-        let hash = PythId::from_inner(new_feed.id.to_bytes());
-
-        PRICES.may_update(ctx.storage, hash, |a| -> anyhow::Result<_> {
-            if let Some(current_feed) = a {
-                if current_feed.timestamp < new_feed.get_price_unchecked().publish_time as u64 {
-                    new_feed.try_into()
+            // Save the price if there isn't already a price saved, or if there
+            // is but it's older.
+            PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
+                if let Some(price) = maybe_price {
+                    if price.timestamp < feed.get_price_unchecked().publish_time as u64 {
+                        feed.try_into()
+                    } else {
+                        Ok(price)
+                    }
                 } else {
-                    Ok(current_feed)
+                    feed.try_into()
                 }
-            } else {
-                new_feed.try_into()
-            }
-        })?;
+            })?;
+        }
     }
 
     Ok(Response::new())

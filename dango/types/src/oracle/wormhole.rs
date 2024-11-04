@@ -181,7 +181,7 @@ impl WormholeVaa {
             let info = guardian_set
                 .addresses
                 .get(index as usize)
-                .ok_or_else(|| anyhow!("Guardian not found in the guardian set"))?
+                .ok_or_else(|| anyhow!("guardian not found in the guardian set"))?
                 .into_inner();
 
             ensure!(

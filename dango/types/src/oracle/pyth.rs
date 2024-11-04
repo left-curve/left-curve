@@ -1,6 +1,6 @@
 use {
     super::{GuardianSet, WormholeVaa},
-    anyhow::bail,
+    anyhow::{anyhow, bail},
     byteorder::BigEndian,
     data_encoding::BASE64,
     grug::{AddrEncoder, Api, BlockInfo, EncodedBytes, Map, Storage},
@@ -58,6 +58,7 @@ impl PythVaa {
         guardian_set: Map<u32, GuardianSet>,
     ) -> anyhow::Result<Vec<PriceFeed>> {
         self.vaa.verify(storage, api, block, guardian_set)?;
+
         Ok(self.feeds)
     }
 
@@ -120,12 +121,9 @@ impl PythVaa {
             (parsed_vaa, feeds)
         } else {
             let vaa = WormholeVaa::new(bytes)?;
-            let batch_attestation =
-                BatchPriceAttestation::deserialize(&vaa.payload[..]).map_err(|err| {
-                    anyhow::anyhow!("Failed to deserialize batch attestation: {:?}", err)
-                })?;
 
-            let feeds: Vec<_> = batch_attestation
+            let feeds = BatchPriceAttestation::deserialize(&vaa.payload[..])
+                .map_err(|err| anyhow!("failed to deserialize batch attestation: {:?}", err))?
                 .price_attestations
                 .into_iter()
                 .map(|price_attestation| match price_attestation.status {
@@ -160,7 +158,7 @@ impl PythVaa {
                         },
                     ),
                 })
-                .collect();
+                .collect::<Vec<_>>();
 
             (vaa, feeds)
         };
