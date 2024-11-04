@@ -109,8 +109,14 @@ pub fn calculate_account_health(
     // Calculate the total value of the account's collateral adjusted for the collateral power.
     let mut total_adjusted_collateral_value = Udec128::ZERO;
     for (denom, power) in collateral_powers {
+        let collateral_balance = querier.query_balance(margin_account, denom.clone())?;
+
+        // As an optimization, don't query the price if the collateral balance is zero.
+        if collateral_balance.is_zero() {
+            continue;
+        }
+
         let price = query_oracle_price(querier, &denom)?;
-        let collateral_balance = querier.query_balance(margin_account, denom)?;
         let collateral_value = collateral_balance.checked_into_dec()? * price;
         total_adjusted_collateral_value += collateral_value * power.into_inner();
     }

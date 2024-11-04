@@ -75,9 +75,10 @@ pub fn set_collateral_power(
         "Only the owner can update collateral powers"
     );
 
-    let mut collateral_powers = COLLATERAL_POWERS.load(ctx.storage)?;
-    collateral_powers.insert(denom, power);
-    COLLATERAL_POWERS.save(ctx.storage, &collateral_powers)?;
+    COLLATERAL_POWERS.update(ctx.storage, |mut collateral_powers| {
+        collateral_powers.insert(denom, power);
+        Ok(collateral_powers)
+    })?;
 
     Ok(Response::new())
 }
@@ -89,9 +90,10 @@ pub fn delist_collateral(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Respon
         "Only the owner can delist collateral tokens"
     );
 
-    let mut collateral_powers = COLLATERAL_POWERS.load(ctx.storage)?;
-    collateral_powers.remove(&denom);
-    COLLATERAL_POWERS.save(ctx.storage, &collateral_powers)?;
+    COLLATERAL_POWERS.update(ctx.storage, |mut collateral_powers| {
+        collateral_powers.remove(&denom);
+        Ok(collateral_powers)
+    })?;
 
     Ok(Response::new())
 }
