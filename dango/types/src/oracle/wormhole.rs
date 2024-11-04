@@ -40,12 +40,12 @@ pub const GUARDIANS_ADDRESSES: [&str; 19] = [
 pub const GUARDIAN_SETS_INDEX: u32 = 4;
 
 #[grug::derive(Serde, Borsh)]
-pub struct GuardianSetInfo {
+pub struct GuardianSet {
     pub addresses: Vec<Hash160>,
     pub expiration_time: u32,
 }
 
-impl GuardianSetInfo {
+impl GuardianSet {
     pub fn quorum(&self) -> usize {
         ((self.addresses.len() * 10 / 3) * 2) / 10 + 1
     }
@@ -143,7 +143,7 @@ impl WormholeVaa {
         storage: &dyn Storage,
         api: &dyn Api,
         block: BlockInfo,
-        guardian_set: Map<u32, GuardianSetInfo>,
+        guardian_set: Map<u32, GuardianSet>,
     ) -> anyhow::Result<()> {
         ensure!(self.version == 1, "Invalid VAA version");
 

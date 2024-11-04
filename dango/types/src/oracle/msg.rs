@@ -1,12 +1,12 @@
 use {
-    super::{GuardianSetInfo, PrecisionedPrice, PriceSource, PythVaa},
+    super::{GuardianSet, PrecisionedPrice, PriceSource, PythVaa},
     grug::Denom,
     std::collections::BTreeMap,
 };
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub guardian_sets: BTreeMap<u32, GuardianSetInfo>,
+    pub guardian_sets: BTreeMap<u32, GuardianSet>,
     // TODO: set up price sources during instantiation
 }
 
@@ -39,10 +39,10 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Query the guardian set of the given index.
-    #[returns(GuardianSetInfo)]
+    #[returns(GuardianSet)]
     GuardianSet { index: u32 },
     /// Enumerate the guardian set of all known indexed.
-    #[returns(BTreeMap<u32, GuardianSetInfo>)]
+    #[returns(BTreeMap<u32, GuardianSet>)]
     GuardianSets {
         start_after: Option<u32>,
         limit: Option<u32>,

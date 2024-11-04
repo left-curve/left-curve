@@ -7,7 +7,7 @@ use {
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
         ibc_transfer,
         lending::{self, MarketUpdates},
-        oracle::{self, GuardianSetInfo, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+        oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
         taxman, token_factory,
     },
     grug::{
@@ -263,7 +263,7 @@ where
         oracle_code_hash,
         &oracle::InstantiateMsg {
             guardian_sets: btree_map! {
-                GUARDIAN_SETS_INDEX => GuardianSetInfo {
+                GUARDIAN_SETS_INDEX => GuardianSet {
                     addresses: GUARDIANS_ADDRESSES
                         .into_iter()
                         .map(|addr| {
