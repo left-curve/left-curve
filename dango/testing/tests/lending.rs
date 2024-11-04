@@ -229,6 +229,97 @@ fn non_margin_accounts_cant_borrow() {
 }
 
 #[test]
+fn cant_borrow_if_no_collateral() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test();
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Deposit some USDC into the lending pool
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Try to borrow without collateral, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            Coins::new(),
+        )
+        .should_fail_with_error("The account has no collateral");
+}
+
+#[test]
+fn cant_borrow_if_undercollateralized() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test();
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Deposit some USDC into the lending pool
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Whitelist USDC as collateral at 90% power
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(90)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to borrow, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            Coins::new(),
+        )
+        .should_fail_with_error("The action would make the account undercollateralized");
+}
+
+#[test]
 fn borrowing_works() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
@@ -263,6 +354,19 @@ fn borrowing_works() {
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Whitelist USDC as collateral
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+            },
+            Coins::new(),
         )
         .should_succeed();
 
