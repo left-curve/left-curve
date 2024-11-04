@@ -96,7 +96,7 @@ type InternalNode = {
 
 type LeafNode = {
     // In the implementation it is a hash of a key but in the Radix tree it is
-    // just used as a key, so we use a list of bit and we treat it here just as
+    // just used as a key, so we use a list of bits and we treat it here just as
     // bytes
     key_hash: Bytes_t, 
     value_hash: Bytes_t,
@@ -195,7 +195,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Two leafs have a node with a common prefix
 
-For any pair of leafs on the tree, there should be another node such that its key hash is a prefix of the key hashes of both leafs.
+For any pair of leafs on the tree, there should be another node such that its key hash is the common prefix of the key hashes of both leafs.
 
 *Status:* TRUE
 
@@ -287,7 +287,7 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
-### Single childs are internal nodes 
+### Only children are internal nodes 
 
 This checks that collapsing works properly: there should never be an internal node with a single child where that child is a leaf. If it was a leaf, since there is no sibling, we should have collapsed it and make the internal node the leaf itself.
 
@@ -329,7 +329,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Versions of predecessors in path should be >= node version
 
-TODO: Describe
+When nodes are updated (inserted, deleted) they are given a new version, and so are all the predecessors in the tree. At the same time, subtrees that are not touched by an update maintain their version. As a result, if the tree is properly maintained, the parent of a node, should have a version that is greater than or equal to the version of the node.
 
 *Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
 
@@ -356,7 +356,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Internal nodes share the version with at least one child
 
-TODO: Describe
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
 *Status:* FALSE, might not be an invariant at all
 
@@ -397,7 +397,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Orphans should not appear in trees after they are orphaned
 
-TODO: Describe
+Orphans are used for state pruning. The implicit intuition is that orphaned nodes can be pruned as they are not needed for any tree operation (including proof construction or verification) for versions after they became orphans. This invariant makes it explicit why it is safe to prune orphans: No orphan is part of a tree at a version after it became orphaned.
 
 *Status:* TRUE
 
@@ -500,7 +500,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Node ids for tree maps have unique key hashes
 
-TODO: Describe
+While the overall tree, for each `key_hash`, contains an entry whenever the corresponding value changed in a new version, in the versioned tree, each node should contain at most one entry.
 
 *Status:* TRUE
 
