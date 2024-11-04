@@ -550,23 +550,17 @@ This inserts a line break that is not rendered in the markdown
 <!--
 ```bluespec apply_state_machine.qnt +=
   val allInvariants = all {
-    if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
-    if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
-    if (hashInv) true else q::debug("hashInv", false),
-    if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
-    if (densityInv) true else q::debug("densityInv", false),
-    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
-  }
-
-  /// All of the following invariants are broken due to the bug reported in
-  /// https://github.com/left-curve/left-curve/pull/291
-  val brokenInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
+    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false),
+    if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
+    if (densityInv) true else q::debug("densityInv", false),
     if (versionInv) true else q::debug("versionInv", false),
-    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
+    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
+    if (hashInv) true else q::debug("hashInv", false),
+    if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
+    if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
-    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false)
   }
 }
 
