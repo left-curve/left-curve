@@ -6,7 +6,7 @@ use {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub guardian_set: BTreeMap<u32, GuardianSetInfo>,
+    pub guardian_sets: BTreeMap<u32, GuardianSetInfo>,
 }
 
 #[grug::derive(Serde)]

@@ -9,7 +9,7 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (i, guardian_set) in msg.guardian_set {
+    for (i, guardian_set) in msg.guardian_sets {
         GUARDIAN_SETS.save(ctx.storage, i, &guardian_set)?;
     }
 

@@ -262,9 +262,8 @@ where
         &mut msgs,
         oracle_code_hash,
         &oracle::InstantiateMsg {
-            guardian_set: btree_map! {
+            guardian_sets: btree_map! {
                 GUARDIAN_SETS_INDEX => GuardianSetInfo {
-                    expiration_time: 0,
                     addresses: GUARDIANS_ADDRESSES
                         .into_iter()
                         .map(|addr| {
@@ -276,6 +275,7 @@ where
                             Hash160::from_inner(bytes)
                         })
                         .collect(),
+                    expiration_time: 0,
                 },
             },
         },
