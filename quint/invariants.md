@@ -458,7 +458,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Stored hashes are unique
 
-TODO: Describe
+We use an implementation of hashes that ensure no collision, since no collision of hashes is an assumption we can make. This invariant is a sanity check that the hashes that get saved in the child nodes are unique.
 
 *Status:* TRUE
 
@@ -500,7 +500,7 @@ This inserts a line break that is not rendered in the markdown
 
 ### Node ids for tree maps have unique key hashes
 
-While the overall tree, for each `key_hash`, contains an entry whenever the corresponding value changed in a new version, in the versioned tree, each node should contain at most one entry.
+While the overall tree receives an entry for the same `key_hash` whenever the corresponding value changes in a new version; in the versioned tree, each node should contain at most one entry for each `key_hash`.
 
 *Status:* TRUE
 
@@ -524,9 +524,10 @@ This inserts a line break that is not rendered in the markdown
 
 ### Tree maps are bijective
 
-TODO: Describe
+Just as `key_hashes` in the invariant above, all nodes saved in the values of a tree map should be unique. This also mean that the mapping between node ids and nodes is bijective.
+We can simply check that the sizes of keys and values is the same, since keys are already guaranteed to be unique by Quint's `Map` data structure.
 
-*Status:* TRUE
+*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
 
 ```bluespec apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
