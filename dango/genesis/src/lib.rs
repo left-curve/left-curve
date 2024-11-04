@@ -275,7 +275,7 @@ where
                             Hash160::from_inner(bytes)
                         })
                         .collect(),
-                    expiration_time: 0,
+                    expiration_time: None,
                 },
             },
         },

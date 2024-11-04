@@ -1,7 +1,10 @@
 use {
     super::BytesAnalyzer,
     anyhow::{bail, ensure},
-    grug::{Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, Storage},
+    grug::{
+        Api, Binary, BlockInfo, ByteArray, Hash160, Hash256, HashExt, Inner, Map, NonZero, Storage,
+        Timestamp,
+    },
     k256::{
         elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
         AffinePoint, EncodedPoint,
@@ -42,7 +45,7 @@ pub const GUARDIAN_SETS_INDEX: u32 = 4;
 #[grug::derive(Serde, Borsh)]
 pub struct GuardianSet {
     pub addresses: Vec<Hash160>,
-    pub expiration_time: u32,
+    pub expiration_time: Option<NonZero<Timestamp>>,
 }
 
 impl GuardianSet {
@@ -149,11 +152,12 @@ impl WormholeVaa {
 
         let guardian_set = guardian_set.load(storage, self.guardian_set_index)?;
 
-        ensure!(
-            guardian_set.expiration_time == 0
-                || guardian_set.expiration_time as u128 > block.timestamp.into_inner().into_inner(),
-            "Guardian set expired"
-        );
+        if let Some(expiry) = guardian_set.expiration_time {
+            ensure!(
+                expiry.into_inner() > block.timestamp,
+                "Guardian set expired"
+            );
+        }
 
         ensure!(
             guardian_set.quorum() <= self.signatures.len(),
