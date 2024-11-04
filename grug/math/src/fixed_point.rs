@@ -1,5 +1,8 @@
 use {
-    crate::{Dec128, Dec256, Int, Int128, Int256, NumberConst, Udec128, Udec256, Uint128, Uint256},
+    crate::{
+        Dec128, Dec256, Int, Int128, Int256, NumberConst, Udec128, Udec128_6, Udec256, Uint128,
+        Uint256,
+    },
     bnum::types::{I256, U256},
 };
 
@@ -15,6 +18,11 @@ pub trait FixedPoint<U> {
     ///
     /// For `Dec<U>`, this is typically `Dec::raw(Int::<U>::ONE)`.
     const TICK: Self;
+}
+
+impl FixedPoint<u128> for Udec128_6 {
+    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
+    const TICK: Self = Self::raw(Uint128::ONE);
 }
 
 impl FixedPoint<u128> for Udec128 {

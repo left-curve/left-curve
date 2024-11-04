@@ -487,6 +487,15 @@ macro_rules! generate_decimal {
 
 generate_decimal! {
     type              = Unsigned,
+    name              = Udec128_6,
+    precision         = 6,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    doc               = "128-bit unsigned fixed-point number with 6 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
     name              = Udec128,
     precision         = 18,
     inner_type        = u128,
@@ -1228,7 +1237,7 @@ mod tests {
             let one = int("1");
             let zero = int("0");
             dts!(_0d.0, one, zero);
-            assert!(matches!(Dec::checked_from_ratio(one, zero), Err(MathError::DivisionByZero { .. })))
+            assert!(matches!(Dec::<_, 18>::checked_from_ratio(one, zero), Err(MathError::DivisionByZero { .. })))
         }
     );
 

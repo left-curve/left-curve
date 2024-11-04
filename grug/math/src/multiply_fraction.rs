@@ -419,7 +419,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec(_0d), Err(MathError::DivisionByZero { .. })));
         }
@@ -491,7 +491,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec_floor(_0d), Err(MathError::DivisionByZero { .. })));
         }
@@ -563,7 +563,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec_ceil(_0d), Err(MathError::DivisionByZero { .. })));
         }
