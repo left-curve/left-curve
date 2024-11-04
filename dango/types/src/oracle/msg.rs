@@ -24,4 +24,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(PrecisionedPrice)]
     QueryPrice { denom: Denom },
+
+    #[returns(BTreeMap<Denom, PriceSourceCollector>)]
+    QueryPriceSources {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
 }
