@@ -6,9 +6,36 @@ use {
         elliptic_curve::sec1::{FromEncodedPoint, ToEncodedPoint},
         AffinePoint, EncodedPoint,
     },
-    serde::{de::Visitor, Deserialize},
-    std::{collections::BTreeMap, ops::Deref, str::FromStr},
+    serde::{
+        de::{self, Visitor},
+        Deserialize, Deserializer,
+    },
+    std::{collections::BTreeMap, fmt, ops::Deref, str::FromStr},
 };
+
+pub const GUARDIANS_ADDRESSES: [&str; 19] = [
+    "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
+    "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
+    "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
+    "EHoAhrMtegl3kmogUTHYcx05y+s=",
+    "jIKy/YL67ScR1Zrw8kmdFucm9rI=",
+    "EbOXVsBCRBvm2GULabVOvnFeI0M=",
+    "VM5bTTSPt0uVjolm4uw9vUlYp80=",
+    "FefK8HxOPcjnxGn5LIzYj7gAWiA=",
+    "dKO/kTlT1pUmDYi8GqJaTu42PvA=",
+    "AArAB2cns1++otrCj+5cyw/qdo4=",
+    "r0XO0Ta52eJJA0ZK6In1yKcj/BQ=",
+    "+TEkt8c4hDy7iehkyGLDjN3Mz5U=",
+    "0sw3pNwDao0jK0j2LN1HMUEvSJA=",
+    "2nmPaJajMx9ktIwS0dV/2cvnCBE=",
+    "caob4dNsr+OGeRD5nAnjR4mcGcM=",
+    "gZK25zh8zXaCd8F9qxt6UCfAs88=",
+    "F44hrS53rgZxFUnPux+cep2Alug=",
+    "XhSH81UV0CqSdTUEqNdUcbn0nts=",
+    "b768iY9APkdz6V/rFegMmpnINI0=",
+];
+
+pub const GUARDIAN_SETS_INDEX: u32 = 4;
 
 #[grug::derive(Serde, Borsh)]
 pub struct GuardianSetInfo {
@@ -25,14 +52,14 @@ impl GuardianSetInfo {
 #[grug::derive(Serde)]
 pub struct GuardianSignature {
     pub id_recover: u8,
-    pub signature: ByteArray<{ WormholeVAA::SIGNATURE_LEN - 1 }>,
+    pub signature: ByteArray<{ WormholeVaa::SIGNATURE_LEN - 1 }>,
 }
 
 impl GuardianSignature {
-    pub fn new(raw_bytes: [u8; WormholeVAA::SIGNATURE_LEN]) -> anyhow::Result<Self> {
+    pub fn new(raw_bytes: [u8; WormholeVaa::SIGNATURE_LEN]) -> anyhow::Result<Self> {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
-        let signature = bytes.next_bytes::<{ WormholeVAA::SIGNATURE_LEN - 1 }>()?;
+        let signature = bytes.next_bytes::<{ WormholeVaa::SIGNATURE_LEN - 1 }>()?;
         let id_recover = bytes.next_u8();
 
         Ok(GuardianSignature {
@@ -43,7 +70,7 @@ impl GuardianSignature {
 }
 
 #[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
-pub struct WormholeVAA {
+pub struct WormholeVaa {
     pub version: u8,
     pub guardian_set_index: u32,
     pub hash: Hash256,
@@ -57,7 +84,7 @@ pub struct WormholeVAA {
     pub payload: Vec<u8>,
 }
 
-impl WormholeVAA {
+impl WormholeVaa {
     pub const HEADER_LEN: usize = 6;
     pub const SIGNATURE_LEN: usize = 65;
 
@@ -74,7 +101,7 @@ impl WormholeVAA {
         let signatures = (0..len_signers)
             .map(|_| {
                 let index = bytes.next_u8();
-                let signature = bytes.next_bytes::<{ WormholeVAA::SIGNATURE_LEN }>()?;
+                let signature = bytes.next_bytes::<{ WormholeVaa::SIGNATURE_LEN }>()?;
                 Ok((index, GuardianSignature::new(signature)?))
             })
             .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
@@ -94,7 +121,7 @@ impl WormholeVAA {
         let sequence = bytes.next_u64()?;
         let consistency_level = bytes.next_u8();
 
-        Ok(WormholeVAA {
+        Ok(WormholeVaa {
             version,
             guardian_set_index,
             signatures,
@@ -160,7 +187,7 @@ impl WormholeVAA {
     }
 }
 
-impl FromStr for WormholeVAA {
+impl FromStr for WormholeVaa {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -168,87 +195,28 @@ impl FromStr for WormholeVAA {
     }
 }
 
-impl<'de> Deserialize<'de> for WormholeVAA {
+impl<'de> Deserialize<'de> for WormholeVaa {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
-        deserializer.deserialize_str(WormholeVAAVisitor {})
+        deserializer.deserialize_str(WormholeVaaVisitor {})
     }
 }
 
-pub struct WormholeVAAVisitor;
+pub struct WormholeVaaVisitor;
 
-impl<'de> Visitor<'de> for WormholeVAAVisitor {
-    type Value = WormholeVAA;
+impl<'de> Visitor<'de> for WormholeVaaVisitor {
+    type Value = WormholeVaa;
 
-    fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str("wormhole-vaa")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
-        E: serde::de::Error,
+        E: de::Error,
     {
-        WormholeVAA::from_str(v).map_err(E::custom)
-    }
-}
-
-#[cfg(test)]
-pub use tests::*;
-
-#[cfg(test)]
-mod tests {
-
-    use {super::*, grug::MockStorage};
-
-    pub const VAA: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn";
-
-    pub const GUARDIAN_SETS: Map<u32, GuardianSetInfo> = Map::new("guardian_sets");
-
-    pub const GUARDIANS_ADDRESSES: [&str; 19] = [
-        "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
-        "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
-        "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
-        "EHoAhrMtegl3kmogUTHYcx05y+s=",
-        "jIKy/YL67ScR1Zrw8kmdFucm9rI=",
-        "EbOXVsBCRBvm2GULabVOvnFeI0M=",
-        "VM5bTTSPt0uVjolm4uw9vUlYp80=",
-        "FefK8HxOPcjnxGn5LIzYj7gAWiA=",
-        "dKO/kTlT1pUmDYi8GqJaTu42PvA=",
-        "AArAB2cns1++otrCj+5cyw/qdo4=",
-        "r0XO0Ta52eJJA0ZK6In1yKcj/BQ=",
-        "+TEkt8c4hDy7iehkyGLDjN3Mz5U=",
-        "0sw3pNwDao0jK0j2LN1HMUEvSJA=",
-        "2nmPaJajMx9ktIwS0dV/2cvnCBE=",
-        "caob4dNsr+OGeRD5nAnjR4mcGcM=",
-        "gZK25zh8zXaCd8F9qxt6UCfAs88=",
-        "F44hrS53rgZxFUnPux+cep2Alug=",
-        "XhSH81UV0CqSdTUEqNdUcbn0nts=",
-        "b768iY9APkdz6V/rFegMmpnINI0=",
-    ];
-
-    pub const GUARDIAN_SETS_INDEX: u32 = 4;
-
-    pub fn populate_guardian_set() -> MockStorage {
-        let mut storage = MockStorage::new();
-
-        let guardian_set = GuardianSetInfo {
-            addresses: GUARDIANS_ADDRESSES
-                .into_iter()
-                .map(|val| {
-                    let b = Binary::from_str(val).unwrap().into_inner();
-
-                    Hash160::from_inner(b.try_into().unwrap())
-                })
-                .collect(),
-            expiration_time: 100,
-        };
-
-        GUARDIAN_SETS
-            .save(&mut storage, GUARDIAN_SETS_INDEX, &guardian_set)
-            .unwrap();
-
-        storage
+        WormholeVaa::from_str(v).map_err(E::custom)
     }
 }

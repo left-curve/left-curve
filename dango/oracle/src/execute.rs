@@ -4,7 +4,7 @@ use {
     dango_types::oracle::{
         ExecuteMsg, InstantiateMsg, PriceSourceCollector, PythId, PythVaa, PRICE_FEEDS,
     },
-    grug::{Attribute, Denom, JsonSerExt, MutableCtx, Response},
+    grug::{Denom, MutableCtx, Response},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -23,7 +23,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterDenom {
             denom,
             price_source,
-        } => register_price_source(ctx, denom, price_source),
+        } => register_denom(ctx, denom, price_source),
     }
 }
 
@@ -36,40 +36,28 @@ fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Res
                 Ok(feeds)
             })?;
 
-    let attrs =
-        feeds
-            .into_iter()
-            .try_fold(vec![], |mut attrs, new_feed| -> anyhow::Result<Vec<_>> {
-                let hash = PythId::from_inner(new_feed.id.to_bytes());
+    for new_feed in feeds {
+        let hash = PythId::from_inner(new_feed.id.to_bytes());
 
-                let mut updated: bool = true;
-
-                PRICE_FEEDS.may_update(ctx.storage, hash, |a| -> anyhow::Result<_> {
-                    if let Some(current_feed) = a {
-                        if current_feed.timestamp
-                            < new_feed.get_price_unchecked().publish_time as u64
-                        {
-                            new_feed.try_into()
-                        } else {
-                            updated = false;
-                            Ok(current_feed)
-                        }
-                    } else {
-                        new_feed.try_into()
-                    }
-                })?;
-
-                if updated {
-                    attrs.push(Attribute::new(hash, new_feed.to_json_string_pretty()?));
+        let mut updated: bool = true;
+        PRICE_FEEDS.may_update(ctx.storage, hash, |a| -> anyhow::Result<_> {
+            if let Some(current_feed) = a {
+                if current_feed.timestamp < new_feed.get_price_unchecked().publish_time as u64 {
+                    new_feed.try_into()
+                } else {
+                    updated = false;
+                    Ok(current_feed)
                 }
+            } else {
+                new_feed.try_into()
+            }
+        })?;
+    }
 
-                Ok(attrs)
-            })?;
-
-    Ok(Response::new().add_attributes(attrs))
+    Ok(Response::new())
 }
 
-fn register_price_source(
+fn register_denom(
     ctx: MutableCtx,
     denom: Denom,
     price_source: PriceSourceCollector,
