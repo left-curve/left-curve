@@ -11,13 +11,10 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    UpdatePriceFeeds {
-        data: Vec<PythVaa>,
-    },
-    RegisterDenom {
-        denom: Denom,
-        price_source: PriceSource,
-    },
+    /// Set the price sources for the given denoms.
+    RegisterPriceSources(BTreeMap<Denom, PriceSource>),
+    /// Submit price data from Pyth Network.
+    FeedPrices(Vec<PythVaa>),
 }
 
 #[grug::derive(Serde, QueryRequest)]

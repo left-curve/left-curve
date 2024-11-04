@@ -3,6 +3,7 @@ use {
     anyhow::ensure,
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
     grug::{Denom, MutableCtx, Response},
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -17,12 +18,30 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::UpdatePriceFeeds { data } => update_price_feeds(ctx, data),
-        ExecuteMsg::RegisterDenom {
-            denom,
-            price_source,
-        } => register_denom(ctx, denom, price_source),
+        ExecuteMsg::RegisterPriceSources(price_sources) => {
+            register_price_sources(ctx, price_sources)
+        },
+        ExecuteMsg::FeedPrices(vaas) => update_price_feeds(ctx, vaas),
     }
+}
+
+fn register_price_sources(
+    ctx: MutableCtx,
+    price_sources: BTreeMap<Denom, PriceSource>,
+) -> anyhow::Result<Response> {
+    let cfg = ctx.querier.query_config()?;
+
+    // Only chain owner can register a denom.
+    ensure!(
+        ctx.sender == cfg.owner,
+        "you don't have the right, O you don't have the right"
+    );
+
+    for (denom, price_source) in price_sources {
+        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    }
+
+    Ok(Response::new())
 }
 
 fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Response> {
@@ -49,24 +68,6 @@ fn update_price_feeds(ctx: MutableCtx, vaas: Vec<PythVaa>) -> anyhow::Result<Res
             }
         })?;
     }
-
-    Ok(Response::new())
-}
-
-fn register_denom(
-    ctx: MutableCtx,
-    denom: Denom,
-    price_source: PriceSource,
-) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
-    // Only chain owner can register a denom.
-    ensure!(
-        ctx.sender == cfg.owner,
-        "you don't have the right, O you don't have the right"
-    );
-
-    PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
 
     Ok(Response::new())
 }
