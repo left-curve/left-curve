@@ -61,7 +61,7 @@ impl GuardianSignature {
     pub fn new(raw_bytes: [u8; WormholeVaa::SIGNATURE_LEN]) -> anyhow::Result<Self> {
         let mut bytes = BytesAnalyzer::new(raw_bytes.into());
 
-        let signature = bytes.next_bytes::<{ WormholeVaa::SIGNATURE_LEN - 1 }>()?;
+        let signature = bytes.next_chunk::<{ WormholeVaa::SIGNATURE_LEN - 1 }>()?;
         let id_recover = bytes.next_u8();
 
         Ok(GuardianSignature {
@@ -103,7 +103,7 @@ impl WormholeVaa {
         let signatures = (0..len_signers)
             .map(|_| {
                 let index = bytes.next_u8();
-                let signature = bytes.next_bytes::<{ WormholeVaa::SIGNATURE_LEN }>()?;
+                let signature = bytes.next_chunk::<{ WormholeVaa::SIGNATURE_LEN }>()?;
                 Ok((index, GuardianSignature::new(signature)?))
             })
             .collect::<anyhow::Result<BTreeMap<u8, GuardianSignature>>>()?;
@@ -119,7 +119,7 @@ impl WormholeVaa {
         let timestamp = bytes.next_u32()?;
         let nonce = bytes.next_u32()?;
         let emitter_chain = bytes.next_u16()?;
-        let emitter_address = bytes.next_bytes::<32>()?;
+        let emitter_address = bytes.next_chunk::<32>()?;
         let sequence = bytes.next_u64()?;
         let consistency_level = bytes.next_u8();
 

@@ -41,7 +41,7 @@ impl BytesAnalyzer {
     }
 
     /// Read the next `S` bytes as an array.
-    pub fn next_bytes<const S: usize>(&mut self) -> anyhow::Result<[u8; S]> {
+    pub fn next_chunk<const S: usize>(&mut self) -> anyhow::Result<[u8; S]> {
         if self.index + S <= self.bytes.len() {
             let mut bytes: [u8; S] = [0; S];
             bytes.copy_from_slice(&self.bytes[self.index..self.index + S]);
@@ -93,7 +93,7 @@ mod test {
         assert_eq!(analyzer.deref(), &[8, 9, 10, 11, 12, 13, 14, 15]);
 
         // next chunk
-        assert_eq!(analyzer.next_bytes::<4>().unwrap(), [8, 9, 10, 11]);
+        assert_eq!(analyzer.next_chunk::<4>().unwrap(), [8, 9, 10, 11]);
 
         // consume
         assert_eq!(analyzer.consume(), vec![12, 13, 14, 15]);
