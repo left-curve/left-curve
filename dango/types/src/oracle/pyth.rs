@@ -170,6 +170,7 @@ impl PythVaa {
 mod tests {
     use {
         crate::oracle::{GuardianSet, PythVaa, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+        data_encoding::BASE64,
         grug::{
             Binary, BlockInfo, Duration, Hash160, Hash256, Inner, Map, MockApi, MockStorage,
             NonZero, Timestamp,
@@ -205,7 +206,7 @@ mod tests {
             })
             .unwrap();
 
-        PythVaa::new(&MockApi, VAA)
+        PythVaa::new(&MockApi, BASE64.decode(VAA.as_bytes()).unwrap())
             .unwrap()
             .vaa
             .verify(&storage, &MockApi, block, GUARDIAN_SETS)

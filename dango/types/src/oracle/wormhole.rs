@@ -64,7 +64,7 @@ impl GuardianSignature {
     }
 }
 
-#[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WormholeVaa {
     pub version: u8,
     pub guardian_set_index: u32,
