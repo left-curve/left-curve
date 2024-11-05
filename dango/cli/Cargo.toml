@@ -1,5 +1,5 @@
 [package]
-name          = "grug-cli"
+name          = "dango-cli"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -10,7 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [[bin]]
-name = "grug"
+name = "dango"
 path = "src/main.rs"
 
 [dependencies]
@@ -28,7 +28,6 @@ grug-vm-wasm       = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
 serde              = { workspace = true }
-tendermint-rpc     = { workspace = true, features = ["http-client"] }
 tokio              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

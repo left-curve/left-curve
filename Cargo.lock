@@ -1476,6 +1476,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-cli"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "colored",
+ "colored_json",
+ "dialoguer",
+ "grug-app",
+ "grug-client",
+ "grug-db-disk",
+ "grug-jmt",
+ "grug-types",
+ "grug-vm-wasm",
+ "hex",
+ "home",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
@@ -2260,30 +2283,6 @@ dependencies = [
  "tendermint-proto",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "grug-cli"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "clap",
- "colored",
- "colored_json",
- "dialoguer",
- "grug-app",
- "grug-client",
- "grug-db-disk",
- "grug-jmt",
- "grug-types",
- "grug-vm-wasm",
- "hex",
- "home",
- "serde",
- "tendermint-rpc",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
