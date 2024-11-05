@@ -41,7 +41,7 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
             price_unchecked.expo.unsigned_abs(),
         )?;
 
-        let ema_unchecked = value.get_price_unchecked();
+        let ema_unchecked = value.get_ema_price_unchecked();
         let ema = Udec128::checked_from_atomics(
             ema_unchecked.price.unsigned_abs() as u128,
             ema_unchecked.expo.unsigned_abs(),
