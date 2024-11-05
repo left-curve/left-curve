@@ -120,6 +120,14 @@ Storybook:
 pnpm storybook
 ```
 
+Book:
+
+```shell
+cargo install mdbook
+cargo install mdbook-katex
+mdbook build
+```
+
 ## Acknowledgement
 
 > TODO

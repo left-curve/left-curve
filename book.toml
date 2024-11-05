@@ -14,3 +14,6 @@ build-dir = "target/book/"
 
 [rust]
 edition = "2021"
+
+# This is for Latex support, install with: `cargo install mdbook-katex`
+[preprocessor.katex]

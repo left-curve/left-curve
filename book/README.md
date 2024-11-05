@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://left-curve.github.io/homepage/grug.jpg" alt="grug" width="300" style="margin: 1em 0;">
+  <img src="left-curve.svg" alt="grug" width="300" style="margin: 1em 0;">
 </div>
 
 Welcome, stranger!
