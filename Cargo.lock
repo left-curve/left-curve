@@ -1454,6 +1454,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "grug-types",
+ "prost",
+ "reqwest 0.12.9",
+ "thiserror",
+]
+
+[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
