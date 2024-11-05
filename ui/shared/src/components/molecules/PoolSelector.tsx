@@ -1,5 +1,5 @@
-import { Button, GradientContainer, Input, PoolCard, SearchIcon } from "@dango/shared";
 import type React from "react";
+import { Button, GradientContainer, Input, PoolCard, SearchIcon } from "../";
 
 import type { Pool, PoolId } from "@leftcurve/types";
 

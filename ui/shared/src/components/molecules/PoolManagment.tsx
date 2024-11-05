@@ -1,6 +1,7 @@
-import { Button, GradientContainer, Input, twMerge } from "@dango/shared";
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 import type React from "react";
+import { Button, GradientContainer, Input } from "../";
+import { twMerge } from "../../utils";
 
 import type { PoolId } from "@leftcurve/types";
 
