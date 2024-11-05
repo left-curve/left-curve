@@ -1,5 +1,5 @@
 use {
-    crate::GasTracker,
+    crate::{ConfigBuffer, GasTracker},
     grug_types::{BlockInfo, Storage, Undefined},
     std::mem,
 };
@@ -13,6 +13,7 @@ pub struct AppCtx<VM = Undefined, S = Box<dyn Storage>> {
     pub vm: VM,
     pub storage: S,
     pub gas_tracker: GasTracker,
+    pub cfg: ConfigBuffer,
     pub chain_id: String,
     pub block: BlockInfo,
 }
@@ -23,6 +24,7 @@ impl<VM, S> AppCtx<VM, S> {
         vm: VM,
         storage: S,
         gas_tracker: GasTracker,
+        cfg: ConfigBuffer,
         chain_id: C,
         block: BlockInfo,
     ) -> Self
@@ -33,6 +35,7 @@ impl<VM, S> AppCtx<VM, S> {
             vm,
             storage,
             gas_tracker,
+            cfg,
             chain_id: chain_id.into(),
             block,
         }
@@ -52,6 +55,7 @@ impl<VM, S> AppCtx<VM, S> {
             vm: Undefined::new(),
             storage: self.storage,
             gas_tracker: self.gas_tracker,
+            cfg: self.cfg,
             chain_id: self.chain_id,
             block: self.block,
         }
@@ -68,6 +72,7 @@ where
             vm: self.vm.clone(),
             storage,
             gas_tracker: self.gas_tracker.clone(),
+            cfg: self.cfg.clone(),
             chain_id: self.chain_id.clone(),
             block: self.block,
         }
@@ -85,6 +90,7 @@ where
             vm: self.vm.clone(),
             storage: Box::new(self.storage.clone()),
             gas_tracker: self.gas_tracker.clone(),
+            cfg: self.cfg.clone(),
             chain_id: self.chain_id.clone(),
             block: self.block,
         }

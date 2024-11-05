@@ -271,6 +271,7 @@ where
             .into_iter()
             .map(|tx| tx.to_json_vec().unwrap().into())
             .collect();
+
         let txs = self
             .app
             .do_prepare_proposal(raw_txs, usize::MAX)

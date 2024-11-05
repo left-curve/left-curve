@@ -1,10 +1,10 @@
 use {
     crate::{
-        call_in_1_out_1, AppCtx, AppError, AppResult, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        call_in_1_out_1, AppCtx, AppError, AppResult, MeteredMap, MeteredStorage, StorageProvider,
+        Vm, APP_CONFIGS, CODES, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config, Context,
+        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Context,
         ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
         QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
         QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest,
@@ -15,10 +15,6 @@ use {
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
-
-pub fn query_config(ctx: AppCtx) -> StdResult<Config> {
-    CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker)
-}
 
 pub fn query_app_config(ctx: AppCtx, req: QueryAppConfigRequest) -> StdResult<Json> {
     APP_CONFIGS.load_with_gas(&ctx.storage, ctx.gas_tracker, &req.key)
@@ -94,13 +90,14 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&app_ctx.storage)?;
-    let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
+    let code_hash = CONTRACTS
+        .load(&app_ctx.storage, app_ctx.cfg.bank)?
+        .code_hash;
 
     let ctx = Context {
         chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
-        contract: cfg.bank,
+        contract: app_ctx.cfg.bank,
         sender: None,
         funds: None,
         mode: None,
