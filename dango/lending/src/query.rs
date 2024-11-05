@@ -84,14 +84,6 @@ pub fn query_collateral_powers(
     COLLATERAL_POWERS.load(storage)
 }
 
-// Mock oracle price for now.
-// TODO: Update once we finish oracle implementation.
-// Perhaps we want to make a "oracle querier" that has a cache? So that we don't
-// have to query the price for the same denom twice.
-pub fn query_oracle_price(_querier: &QuerierWrapper, _denom: &Denom) -> StdResult<Udec128> {
-    Ok(Udec128::ONE)
-}
-
 /// Calculates the health of a margin account.
 pub fn calculate_account_health(
     querier: &QuerierWrapper,
@@ -102,8 +94,8 @@ pub fn calculate_account_health(
     // Calculate the total value of the debts.
     let mut total_debt_value = Udec128::ZERO;
     for coin in debts {
-        let price = query_oracle_price(querier, &coin.denom)?;
-        total_debt_value += coin.amount.checked_into_dec()? * price;
+        let price = dango_oracle::raw_query_price(querier, &coin.denom)?;
+        total_debt_value += price.value_of_unit_amount(coin.amount);
     }
 
     // Calculate the total value of the account's collateral adjusted for the collateral power.
@@ -116,8 +108,8 @@ pub fn calculate_account_health(
             continue;
         }
 
-        let price = query_oracle_price(querier, &denom)?;
-        let collateral_value = collateral_balance.checked_into_dec()? * price;
+        let price = dango_oracle::raw_query_price(querier, &denom)?;
+        let collateral_value = price.value_of_unit_amount(collateral_balance);
         total_adjusted_collateral_value += collateral_value * power.into_inner();
     }
 

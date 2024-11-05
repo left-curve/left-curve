@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY, LENDING_KEY},
+        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY, LENDING_KEY, ORACLE_KEY},
         ibc_transfer,
         lending::{self, Market},
         oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
@@ -314,6 +314,7 @@ where
         ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
         IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
         LENDING_KEY.to_string() => lending.to_json_value()?,
+        ORACLE_KEY.to_string() => oracle.to_json_value()?,
     };
 
     let genesis_state = GenesisState {
