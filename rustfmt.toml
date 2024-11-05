@@ -1,14 +1,15 @@
 # https://rust-lang.github.io/rustfmt/
-condense_wildcard_suffixes     = true  # unstable
-format_macro_bodies            = false # unstable
-format_macro_matchers          = false # unstable
-imports_granularity            = "One" # unstable
+condense_wildcard_suffixes     = true       # unstable
+format_macro_bodies            = false      # unstable
+format_macro_matchers          = false      # unstable
+group_imports                  = "Preserve" # unstable
+imports_granularity            = "One"      # unstable
 match_block_trailing_comma     = true
-normalize_comments             = true  # unstable
-normalize_doc_attributes       = true  # unstable
-overflow_delimited_expr        = true  # unstable
-reorder_impl_items             = true  # unstable
-single_line_if_else_max_width  = 0     # unstable
-single_line_let_else_max_width = 0     # unstable
+normalize_comments             = true       # unstable
+normalize_doc_attributes       = true       # unstable
+overflow_delimited_expr        = true       # unstable
+reorder_impl_items             = true       # unstable
+single_line_if_else_max_width  = 0          # unstable
+single_line_let_else_max_width = 0          # unstable
 use_field_init_shorthand       = true
 use_try_shorthand              = true
