@@ -8,7 +8,6 @@ src          = "book/"
 
 [output.html]
 git-repository-url = "https://github.com/left-curve/grug"
-mathjax-support = true
 
 [build]
 build-dir = "target/book/"
