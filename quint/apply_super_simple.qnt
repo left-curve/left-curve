@@ -37,10 +37,11 @@ module apply_super_simple {
     pure val unpackedOld = internalOldVersion.unpackInternalNode()
     unpackedNew.left.hash == unpackedOld.left.hash and unpackedNew.right.hash == unpackedOld.right.hash
   
-  pure def updateChildVersions(nodes: NodeId->Node, new_version: Version) : NodeId->Node = 
+  pure def updateChildVersions(nodes: NodeId->Node, old_version_nodes: TreeMap, new_version: Version) : NodeId->Node = 
     val internalNodes = allInternals(nodes)
+    val internalNodesOld = allInternals(old_version_nodes)
     
-    internalNodes.keys().fold(nodes, (nodes, key) =>
+    internalNodesOld.keys().fold(nodes, (nodes, key) =>
         if (new_version > key.version and internalNodes.has({...key, version: new_version}))
           val internalOld = internalNodes.get(key)
           val internalNew = internalNodes.get({ ...key, version: new_version })
@@ -205,7 +206,7 @@ module apply_super_simple {
     val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
                       .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
                       .removeDuplicateEntries(treeAtVersion(tree, old_version), new_version)
-                      .updateChildVersions(new_version)
+                      .updateChildVersions(treeAtVersion(tree, old_version), new_version)
     // val updatedNodes = batch.fold(nodes, (nodes, operation) => 
     //                   nodes.removeDuplicateEntries(operation.key_hash, new_version)
     //                   )
