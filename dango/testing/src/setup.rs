@@ -1,12 +1,13 @@
 use {
     crate::{Accounts, TestAccount},
+    dango_app::PythProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
+        btree_map, Addressable, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper,
+        Duration, NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
+    grug_app::{AppError, Db, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
@@ -14,12 +15,19 @@ use {
     std::{env, path::PathBuf},
 };
 
+const CHAIN_ID: &str = "dev-1";
+
 /// Set up a test with the given DB, VM, and codes.
 fn setup_suite_with_db_and_vm<DB, VM, T>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
-) -> (TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)
+) -> (
+    TestSuite<DB, VM, PythProposalPreparer>,
+    Accounts,
+    Codes<T>,
+    Contracts,
+)
 where
     T: Clone + Into<Binary>,
     DB: Db,
@@ -28,6 +36,7 @@ where
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");
+    let feeder = TestAccount::new_random("feeder");
 
     let (genesis_state, contracts, addresses) = build_genesis(
         codes.clone(),
@@ -48,6 +57,11 @@ where
                 .try_into()
                 .unwrap(),
             },
+            feeder.username.clone() => GenesisUser {
+                key: feeder.key,
+                key_hash: feeder.key_hash,
+                balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
+            },
         },
         &owner.username,
         "uusdc",
@@ -57,11 +71,19 @@ where
     )
     .unwrap();
 
+    let feeder = feeder.set_address(&addresses);
+
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        NaiveProposalPreparer,
-        "dev-1".to_string(),
+        PythProposalPreparer::new(
+            CHAIN_ID.to_string(),
+            feeder.address(),
+            &feeder.sk.to_bytes(),
+            feeder.username.to_string(),
+        )
+        .unwrap(),
+        CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -81,7 +103,12 @@ where
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, and `ContractWrapper` codes.
-pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
+pub fn setup_test() -> (
+    TestSuite<MemDb, RustVm, PythProposalPreparer>,
+    Accounts,
+    Codes<ContractWrapper>,
+    Contracts,
+) {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
         .with_query(Box::new(dango_account_factory::query))
@@ -167,7 +194,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<DiskDb, WasmVm>,
+    TestSuite<DiskDb, WasmVm, PythProposalPreparer>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,

@@ -9,22 +9,12 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[features]
-# If enabled, Wasm exports won't be created. This allows this contract to be
-# imported into other contracts as a library.
-library = []
-
 [dependencies]
 anyhow      = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
 grug-app    = { workspace = true }
-grug-types  = { workspace = true }
+k256        = { workspace = true }
 prost       = { workspace = true }
 reqwest     = { workspace = true, features = ["blocking", "json"] }
 thiserror   = { workspace = true }
-
-[dev-dependencies]

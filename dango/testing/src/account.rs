@@ -1,4 +1,5 @@
 use {
+    dango_app::PythProposalPreparer,
     dango_types::{
         account::single,
         account_factory::{
@@ -10,6 +11,8 @@ use {
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, ResultExt, Signer, StdResult, TestSuite, Tx, Undefined,
     },
+    grug_db_memory::MemDb,
+    grug_vm_rust::RustVm,
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
         elliptic_curve::rand_core::OsRng,
@@ -30,7 +33,7 @@ pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub key: Key,
     pub key_hash: Hash160,
     pub sequence: u32,
-    sk: SigningKey,
+    pub sk: SigningKey,
     address: T,
 }
 
@@ -147,7 +150,7 @@ where
     /// `TestAccount` with the new account's address.
     pub fn register_new_account(
         &mut self,
-        test_suite: &mut TestSuite,
+        test_suite: &mut TestSuite<MemDb, RustVm, PythProposalPreparer>,
         factory: Addr,
         code_hash: Hash256,
         params: AccountParams,

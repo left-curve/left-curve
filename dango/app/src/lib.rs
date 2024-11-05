@@ -1,3 +1,3 @@
-mod proposal;
+mod proposal_pyth;
 
-pub use proposal::*;
+pub use proposal_pyth::*;
