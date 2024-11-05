@@ -12,6 +12,7 @@ const SignupView = lazy(() => import(/* webpackPrefetch: true */ "./views/Signup
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
 const TransferView = lazy(() => import(/* webpackPrefetch: true */ "./views/Transfer"));
 const SwapView = lazy(() => import(/* webpackPrefetch: true */ "./views/Swap"));
+const PoolView = lazy(() => import(/* webpackPrefetch: true */ "./views/Pool"));
 
 export const AppRouter: React.FC = () => {
   return (
@@ -31,6 +32,7 @@ export const AppRouter: React.FC = () => {
           <Route path="accounts/:index" element={<AccountView />} />ç
           <Route path="/transfer" element={<TransferView />} />
           <Route path="/swap" element={<SwapView />} />
+          <Route path="/pools" element={<PoolView />} />
           <Route
             path="*"
             element={
