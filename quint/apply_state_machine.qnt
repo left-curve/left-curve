@@ -181,11 +181,25 @@ module apply_state_machine {
       not(leafPrefixes.exists(lp =>
               internalPrefixes.exists(ip =>
                   isPrefixOf(lp, ip))))
-
+/// The set of active tree maps
+  val activeVersionedTrees: Set[TreeMap] =
+    activeTreeVersions.map(v => treeAtVersion(tree, v))
   /// Invariant: there is no internal node  that has a leaf node as its prefix
-  def noInternalChildInv =
-      activeTreeVersions.forall(v => noInternalChild(treeAtVersion(tree,v)))
+  /// Make sure that the map encodes a tree. In particular, there is no internal node
+  /// that has a leaf node as its prefix
+  /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
+  val noLeafInPrefixesInv: bool = {
+    pure def noLeafInPrefixes(t: TreeMap): bool = {
+      val nodes = t.keys().map(nId => nId.key_hash)
+      val leafs = t.keys().filter(nId => t.get(nId).isLeaf()).map(nId => nId.key_hash)
 
+      nodes.forall(node => {
+        not(leafs.exists(leaf => node != leaf and leaf.prefix_of(node)))
+      })
+    }
+
+    activeVersionedTrees.forall(noLeafInPrefixes)
+  }
   /// For the same path there are not multiple version stored within the nodes
   pure def oneNodePerPath(t: Tree): bool =
       val paths = t.nodes.keys().map(nId => nId.key_hash)
@@ -284,16 +298,32 @@ module apply_state_machine {
       o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
 
-  val allInvariants = all {
+  val allInvariants1 = all {
     everyNodesParentIsInTheTreeInv,
     nodeAtCommonPrefixInv,
     hashInv,
-    noInternalChildInv,
+    // noInternalChildInv,
     allInternalNodesHaveChildrenInv,
     densityInv,
     versionInv,
     orphansInNoTreeInv,
   }
+
+  val allInvariants = all {
+    // if(true) q::debug("\n", true) else q::debug("\n", true),
+    if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
+    if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
+    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false),
+    if (allInternalNodesHaveChildrenInv) true else q::debug("allInternalNodesHaveAChild", false),
+    if (densityInv) true else q::debug("densityInv", false),
+    if (versionInv) true else q::debug("versionInv", false),
+    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
+    if (hashInv) true else q::debug("hashInv", false),
+    // if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
+    // if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
+    // if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+  }
+
 }
 
 
