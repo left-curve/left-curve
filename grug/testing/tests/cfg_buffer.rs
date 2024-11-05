@@ -50,7 +50,7 @@ mod tester {
 }
 
 #[test]
-fn prepare_proposal_works() {
+fn update_cfg() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("rhaki", Coins::new())
         .add_account("larry", Coins::new())
@@ -71,8 +71,7 @@ fn prepare_proposal_works() {
         .should_succeed()
         .code_hash;
 
-    // Change owner and init tester. During init tester contract query the config.
-    // And append it to the response attributes.
+    // Change owner and init tester. During init tester contract query the config and save it.
     // The cfg should not be changed until end of block.
     let new_owner_addr = accounts["larry"].address;
     let tester_addr = Addr::derive(accounts["rhaki"].address, code_hash, b"salt");
