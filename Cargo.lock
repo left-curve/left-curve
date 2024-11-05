@@ -1493,7 +1493,6 @@ dependencies = [
  "hex",
  "home",
  "serde",
- "tendermint-rpc",
  "tokio",
  "tracing",
  "tracing-subscriber",

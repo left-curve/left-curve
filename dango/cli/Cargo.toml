@@ -28,7 +28,6 @@ grug-vm-wasm       = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
 serde              = { workspace = true }
-tendermint-rpc     = { workspace = true, features = ["http-client"] }
 tokio              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
