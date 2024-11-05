@@ -158,6 +158,21 @@ fn safe() {
         )
         .should_succeed();
 
+    // Try to execute the safe sign with another random account.
+    suite
+        .execute(
+            &mut accounts.relayer,
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: member2.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::default(),
+        )
+        .should_fail_with_error("only the Safe account itself can execute its own transactions");
+
     // Member 2 votes YES.
     suite
         .execute(
