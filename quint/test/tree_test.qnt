@@ -3,6 +3,7 @@
 module tree_test {
   import tree.* from "../tree"
   import node.* from "../node"
+  import utils.* from "../utils"
   import basicSpells.* from "../spells/basicSpells"
   import apply_state_machine.* from "../apply_state_machine"
   import apply_simple as simple from "../apply_simple"
@@ -159,7 +160,8 @@ module tree_test {
   run simpleVsFancyTestSkipped = {
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
 
     pure val reference = simple::apply(empty_tree, 0, 0, ops)
     pure val result = fancy::apply(empty_tree, 0, 0, ops)
@@ -169,7 +171,8 @@ module tree_test {
   run superSimpleVsFancyTest = {
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
 
     pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
     pure val result = fancy::apply(empty_tree, 0, 0, ops)
@@ -180,7 +183,8 @@ module tree_test {
   run superSimpleVsSimpleTestSkipped = {
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    pure val ops = key_hashes_as_maps.map(key_hash_map_to_op)
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
 
     pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
     pure val result = simple::apply(empty_tree, 0, 0, ops)
