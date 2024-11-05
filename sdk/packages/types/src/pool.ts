@@ -1,4 +1,4 @@
-import type { Coins } from "./coin.js";
+import type { Coin } from "./coin.js";
 
 export type PoolId = number;
 
@@ -22,7 +22,7 @@ export type XykPool = {
   /** The pool's parameters. */
   readonly params: XykParams;
   /**  The amount of liquidity provided to this pool. */
-  readonly liquidity: Coins;
+  readonly liquidity: [Coin, Coin];
   /** The total amount of liquidity shares outstanding. */
   readonly shares: string;
 };
@@ -37,7 +37,7 @@ export type ConcentratedPool = {
   /** The pool's parameters. */
   readonly params: ConcentratedParams;
   /**  The amount of liquidity provided to this pool. */
-  readonly liquidity: Coins;
+  readonly liquidity: [Coin, Coin];
   /** The total amount of liquidity shares outstanding. */
   readonly shares: string;
 };
