@@ -222,4 +222,34 @@ module apply_fancy_test {
       }))
     }
   }
+
+  run insertAndUpdateOnSameSubtreeTest = {
+    // This is a regression test for a bug in prepare_batch_for_subtree
+    pure val ops = [
+      Set(
+        { key_hash: [0, 0, 0, 1], op: Insert([6]) },
+        { key_hash: [0, 0, 1, 0], op: Insert([5]) },
+        { key_hash: [0, 1, 0, 1], op: Insert([6]) },
+        { key_hash: [0, 1, 1, 0], op: Insert([11]) },
+        { key_hash: [1, 0, 0, 1], op: Insert([12]) }
+      ),
+      Set(
+        { key_hash: [0, 0, 0, 0], op: Insert([7]) },
+        { key_hash: [0, 0, 0, 1], op: Insert([3]) },
+        { key_hash: [0, 1, 0, 0], op: Insert([3]) },
+        { key_hash: [1, 0, 0, 1], op: Insert([12]) },
+        { key_hash: [1, 1, 0, 0], op: Insert([7]) }
+      ),
+    ]
+
+    val t1 = apply(empty_tree, 0, 1, ops[0])
+    val t2 = apply(t1, 1, 2, ops[1])
+
+    // We inserted { key_hash: [1, 1, 0, 0], op: Insert([7]) }
+    // so there must be a leaf with it
+    assert(t2.nodes.values().exists(n => match n {
+      | Leaf(l) => l.key_hash == [1, 1, 0, 0] and l.value_hash == [7]
+      | _ => false
+    }))
+  }
 }
