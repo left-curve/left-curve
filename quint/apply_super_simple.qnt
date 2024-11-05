@@ -49,7 +49,16 @@ module apply_super_simple {
           val unpackedNew = internalNew.unpackInternalNode()
           // At most one children will have the same hash because, if they both had same hashes
           // we would have removed the new_node in `removeDuplicateEntries`
-          if( unpackedNew.left.hash == unpackedOld.left.hash and  unpackedNew.left.version != unpackedOld.left.version )
+          // !!!!!!! THE COMMENT ABOVE IS INCORRECT
+          // because we don't call removeDuplicateEntries for the root
+          // therefore, the following condition can be true for the root node :O
+          // This was found by heavy simulation, NICE
+          if(
+              (unpackedNew.left.hash == unpackedOld.left.hash and unpackedNew.left.version != unpackedOld.left.version)
+              and (unpackedNew.right.hash == unpackedOld.right.hash and unpackedNew.right.version != unpackedOld.right.version)
+            )
+            nodes.set({ ...key, version: new_version }, Internal({ left_child: Some(unpackedOld.left), right_child: Some(unpackedOld.right) }))
+          else if( unpackedNew.left.hash == unpackedOld.left.hash and  unpackedNew.left.version != unpackedOld.left.version )
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, left_child: Some( unpackedOld.left ) }))
           else if ( unpackedNew.right.hash == unpackedOld.right.hash and unpackedNew.right.version != unpackedOld.right.version )
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, right_child: Some( unpackedOld.right) }))
