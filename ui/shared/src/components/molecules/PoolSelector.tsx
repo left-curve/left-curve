@@ -1,11 +1,14 @@
 import { Button, GradientContainer, Input, PoolCard, SearchIcon } from "@dango/shared";
 import type React from "react";
 
+import type { Pool, PoolId } from "@leftcurve/types";
+
 interface Props {
-  onPoolSelection: (id: string) => void;
+  onPoolSelection: (id: PoolId) => void;
 }
 
 export const PoolSelector: React.FC<Props> = ({ onPoolSelection }) => {
+  const pools = {} as Record<PoolId, Pool>;
   return (
     <GradientContainer className="w-full flex flex-col gap-9">
       <h2 className="font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest mb-1">
@@ -36,7 +39,9 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelection }) => {
               APR
             </p>
           </div>
-          <PoolCard onClickPool={onPoolSelection} />
+          {Object.entries(pools).map(([id, pool]) => (
+            <PoolCard key={id} poolId={Number(id)} pool={pool} onClickPool={onPoolSelection} />
+          ))}
         </div>
       </div>
       <Button variant="light">Show all</Button>

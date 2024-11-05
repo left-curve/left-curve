@@ -11,12 +11,10 @@ const PoolView: React.FC = () => {
   const poolId = searchParams.get("id");
 
   const [showPoolSelector, setShowPoolSelector] = useState(false);
-  const [activePoolId, setActivePoolId] = useState<string>(poolId || "1");
+  const [activePoolId, setActivePoolId] = useState<number>(Number.parseInt(poolId || "1"));
   const [activeAction, setActiveAction] = useState<string>(
     actions.includes(action) ? action : "deposit",
   );
-
-  const pool = activePoolId;
 
   return (
     <div className="min-h-full w-full flex-1 flex items-center justify-center z-10 relative p-4">
@@ -49,10 +47,15 @@ const PoolView: React.FC = () => {
         </div>
         {showPoolSelector ? (
           <PoolSelector
-            onPoolSelection={(id) => [setActivePoolId(id), setShowPoolSelector(false)]}
+            onPoolSelection={(id) => [
+              setActivePoolId(id),
+              setShowPoolSelector(false),
+              setSearchParam({ id: id.toString() }),
+            ]}
           />
         ) : (
           <PoolManagment
+            poolId={activePoolId}
             action={activeAction}
             onRequestPoolSelection={() => setShowPoolSelector(true)}
           />

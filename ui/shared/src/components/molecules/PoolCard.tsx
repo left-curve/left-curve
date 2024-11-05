@@ -1,11 +1,12 @@
 import { useChainId, useConfig, usePrices } from "@leftcurve/react";
-import type { Pool } from "@leftcurve/types";
 import { formatUnits } from "@leftcurve/utils";
 
+import type { Pool, PoolId } from "@leftcurve/types";
+
 interface Props {
-  poolId: number;
+  poolId: PoolId;
   pool: Pool;
-  onClickPool: (id: number) => void;
+  onClickPool: (id: PoolId) => void;
 }
 
 export const PoolCard: React.FC<Props> = ({ onClickPool, poolId, pool }) => {

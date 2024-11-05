@@ -2,8 +2,11 @@ import { Button, GradientContainer, Input, twMerge } from "@dango/shared";
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 import type React from "react";
 
+import type { PoolId } from "@leftcurve/types";
+
 interface Props {
   action: string;
+  poolId: PoolId;
   onRequestPoolSelection?: () => void;
 }
 
@@ -33,7 +36,7 @@ export const PoolManagment: React.FC<Props> = ({ action, onRequestPoolSelection 
           >
             <Button
               variant="bordered"
-              className="bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic"
+              className="bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic px-4 min-w-40"
               onClick={onRequestPoolSelection}
             >
               stETH - USDC
@@ -54,7 +57,7 @@ export const PoolManagment: React.FC<Props> = ({ action, onRequestPoolSelection 
             <Button
               variant="bordered"
               className={twMerge(
-                "w-full sm:w-auto bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic capitalize",
+                "bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic capitalize px-4 min-w-40",
               )}
             >
               {account?.type} #{account?.index}

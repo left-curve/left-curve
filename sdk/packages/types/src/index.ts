@@ -217,6 +217,7 @@ export type {
 
 export type {
   Pool,
+  PoolId,
   PoolInfo,
   XykPool,
   XykParams,
