@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { PoolManagment, Tab, Tabs } from "@dango/shared";
+import { PoolManagment, PoolSelector, Tab, Tabs } from "@dango/shared";
 
 const actions = ["deposit", "withdraw"];
 
 const PoolView: React.FC = () => {
   const [searchParams, setSearchParam] = useSearchParams();
   const action = searchParams.get("action") || "deposit";
+  const poolId = searchParams.get("id");
 
+  const [showPoolSelector, setShowPoolSelector] = useState(false);
+  const [activePoolId, setActivePoolId] = useState<string>(poolId || "1");
   const [activeAction, setActiveAction] = useState<string>(
     actions.includes(action) ? action : "deposit",
   );
+
+  const pool = activePoolId;
 
   return (
     <div className="min-h-full w-full flex-1 flex items-center justify-center z-10 relative p-4">
@@ -42,7 +47,16 @@ const PoolView: React.FC = () => {
             ))}
           </Tabs>
         </div>
-        <PoolManagment action={activeAction} />
+        {showPoolSelector ? (
+          <PoolSelector
+            onPoolSelection={(id) => [setActivePoolId(id), setShowPoolSelector(false)]}
+          />
+        ) : (
+          <PoolManagment
+            action={activeAction}
+            onRequestPoolSelection={() => setShowPoolSelector(true)}
+          />
+        )}
       </div>
     </div>
   );

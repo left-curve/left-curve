@@ -38,6 +38,7 @@ export { AccountSearchInput } from "./molecules/AccountSearchInput";
 export { ConnectorButtonOptions } from "./molecules/ConnectorButtonOptions";
 export { PoolSelector } from "./molecules/PoolSelector";
 export { PoolManagment } from "./molecules/PoolManagment";
+export { PoolCard } from "./molecules/PoolCard";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */

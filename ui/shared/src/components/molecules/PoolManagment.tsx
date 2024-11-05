@@ -4,9 +4,10 @@ import type React from "react";
 
 interface Props {
   action: string;
+  onRequestPoolSelection?: () => void;
 }
 
-export const PoolManagment: React.FC<Props> = ({ action }) => {
+export const PoolManagment: React.FC<Props> = ({ action, onRequestPoolSelection }) => {
   const { account } = useAccount();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
@@ -33,6 +34,7 @@ export const PoolManagment: React.FC<Props> = ({ action }) => {
             <Button
               variant="bordered"
               className="bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic"
+              onClick={onRequestPoolSelection}
             >
               stETH - USDC
             </Button>
