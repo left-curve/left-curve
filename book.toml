@@ -8,9 +8,13 @@ src          = "book/"
 
 [output.html]
 git-repository-url = "https://github.com/left-curve/grug"
+mathjax-support = true
 
 [build]
 build-dir = "target/book/"
 
 [rust]
 edition = "2021"
+
+# This is for Latex support, install with: `cargo install mdbook-katex`
+[preprocessor.katex]

@@ -57,7 +57,7 @@ To find all orders whose limit prices are below the oracle price:
 ```rust
 fn find_fillable_orders(
     storage: &dyn Storage,
-    oracle_price: Udec256.
+    oracle_price: Udec256,
 ) -> StdResult<Vec<(OrderId, Order)>> {
     ORDERS
         .idx

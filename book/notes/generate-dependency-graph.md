@@ -1,5 +1,9 @@
 # Generate dependency graph
 
+<div align="center">
+  <img src="dependency.svg">
+</div>
+
 Dependency relations of the crates in this repository are described by the following [Graphviz](https://graphviz.org/) code:
 
 ```graphviz
