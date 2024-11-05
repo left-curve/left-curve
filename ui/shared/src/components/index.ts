@@ -36,6 +36,8 @@ export { BorrowingBar } from "./molecules/BorrowingBar";
 export { CoinSelector } from "./molecules/CoinSelector";
 export { AccountSearchInput } from "./molecules/AccountSearchInput";
 export { ConnectorButtonOptions } from "./molecules/ConnectorButtonOptions";
+export { PoolSelector } from "./molecules/PoolSelector";
+export { PoolManagment } from "./molecules/PoolManagment";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Organisms                                 */
