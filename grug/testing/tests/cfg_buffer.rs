@@ -1,6 +1,8 @@
 use {
-    grug_testing::TestBuilder,
-    grug_types::{Addr, Coins, ConfigUpdates, Empty, Message, ResultExt},
+    grug_testing::{TestBuilder, DEFAULT_MAX_ORPHAN_AGE},
+    grug_types::{
+        btree_map, json, Addr, Coins, Config, ConfigUpdates, Empty, Message, Op, ResultExt,
+    },
     grug_vm_rust::ContractBuilder,
     std::collections::BTreeMap,
     tester::QueryConfigRequest,
@@ -50,7 +52,7 @@ mod tester {
 }
 
 #[test]
-fn update_cfg() {
+fn cfg_update_at_the_end_of_a_block() {
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("rhaki", Coins::new())
         .add_account("larry", Coins::new())
@@ -111,4 +113,70 @@ fn update_cfg() {
     let cfg = suite.query_config().should_succeed();
 
     assert_eq!(cfg.owner, new_owner_addr);
+}
+
+#[test]
+fn multiple_updates_in_the_same_block() {
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .add_account("rhaki", Coins::new())
+        .add_account("larry", Coins::new())
+        .set_owner("rhaki")
+        .build();
+
+    let cfg = suite.query_config().should_succeed();
+    let new_owner_addr = accounts["larry"].address;
+
+    suite
+        .send_messages(&mut accounts["rhaki"], vec![
+            Message::configure(
+                ConfigUpdates {
+                    owner: Some(new_owner_addr),
+                    bank: Some(Addr::mock(1)),
+                    taxman: Some(cfg.taxman),
+                    cronjobs: Some(cfg.cronjobs.clone()),
+                    permissions: Some(cfg.permissions.clone()),
+                },
+                btree_map!(
+                    "1".to_string() => Op::Insert(json!(1)),
+                    "2".to_string() => Op::Insert(json!(2)),
+                    "3".to_string() => Op::Insert(json!(3)),
+                ),
+            ),
+            Message::configure(
+                ConfigUpdates {
+                    owner: None,
+                    bank: Some(Addr::mock(2)),
+                    taxman: Some(cfg.taxman),
+                    cronjobs: Some(cfg.cronjobs.clone()),
+                    permissions: Some(cfg.permissions.clone()),
+                },
+                btree_map!(
+                    "1".to_string() => Op::Delete,
+                    "2".to_string() => Op::Insert(json!(20)),
+                    "4".to_string() => Op::Insert(json!(4)),
+                ),
+            ),
+        ])
+        .should_succeed();
+
+    let updated_cfg = suite.query_config().should_succeed();
+    assert_eq!(updated_cfg, Config {
+        owner: new_owner_addr,
+        bank: Addr::mock(2),
+        taxman: cfg.taxman,
+        cronjobs: cfg.cronjobs,
+        permissions: cfg.permissions,
+        max_orphan_age: DEFAULT_MAX_ORPHAN_AGE
+    });
+
+    let app_cfgs = suite.query_app_configs().should_succeed();
+
+    assert_eq!(
+        app_cfgs,
+        btree_map!(
+            "2".to_string() => json!(20),
+            "3".to_string() => json!(3),
+            "4".to_string() => json!(4),
+        )
+    );
 }
