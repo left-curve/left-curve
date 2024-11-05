@@ -207,6 +207,15 @@ impl Coins {
         Ok(())
     }
 
+    /// Deduct all coins from another `Coins`.
+    pub fn deduct_many(&mut self, coins: Self) -> StdResult<()> {
+        for coin in coins.into_iter() {
+            self.deduct(coin)?;
+        }
+
+        Ok(())
+    }
+
     /// Take a coin of the given denom out of the `Coins`.
     /// Return a coin of zero amount if the denom doesn't exist in this `Coins`.
     pub fn take(&mut self, denom: Denom) -> Coin {

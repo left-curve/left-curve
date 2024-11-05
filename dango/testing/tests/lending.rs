@@ -293,6 +293,20 @@ fn non_margin_accounts_cant_borrow() {
 }
 
 #[test]
+fn non_margin_accounts_cant_repay() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::Repay {},
+            Coins::new(),
+        )
+        .should_fail_with_error("Only margin accounts can borrow and repay");
+}
+
+#[test]
 fn cant_borrow_if_no_collateral() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
@@ -558,4 +572,203 @@ fn composite_denom() {
     suite
         .query_balance(&accounts.owner.address(), denom)
         .should_succeed_and_equal(amount);
+}
+
+#[test]
+fn cant_repay_if_no_debts() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test();
+
+    feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Send some USDC to the margin account
+    suite
+        .transfer(
+            &mut accounts.relayer,
+            margin_account.address(),
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Whitelist USDC as collateral
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to repay, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Repay {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_fail_with_error("Cannot repay more than the debts");
+}
+
+#[test]
+fn cant_repay_more_than_debts() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test();
+
+    feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Send some USDC to the margin account
+    suite
+        .transfer(
+            &mut accounts.relayer,
+            margin_account.address(),
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Whitelist USDC as collateral
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit some USDC
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Borrow some USDC
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 50).unwrap()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to repay more than the debts, should fail
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Repay {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_fail_with_error("Cannot repay more than the debts");
+}
+
+#[test]
+fn repay_works() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test();
+
+    feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .relayer
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            codes.account_margin.to_bytes().hash256(),
+            AccountParams::Margin(single::Params {
+                owner: accounts.relayer.username.clone(),
+            }),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Send some USDC to the margin account
+    suite
+        .transfer(
+            &mut accounts.relayer,
+            margin_account.address(),
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Whitelist USDC as collateral
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::SetCollateralPower {
+                denom: USDC.clone(),
+                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Deposit some USDC
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Borrow some USDC
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to repay, should succeed
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Repay {},
+            Coins::one(USDC.clone(), 100).unwrap(),
+        )
+        .should_succeed();
 }

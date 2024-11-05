@@ -72,6 +72,9 @@ pub enum ExecuteMsg {
     /// Borrow coins from the lending pool.
     /// Sender must be a margin account.
     Borrow(Coins),
+    /// Repay debt.
+    /// Sender must be a margin account.
+    Repay {},
 }
 
 #[grug::derive(Serde)]

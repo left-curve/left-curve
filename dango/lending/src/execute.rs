@@ -37,6 +37,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
+        ExecuteMsg::Repay {} => repay(ctx),
     }
 }
 
@@ -199,4 +200,44 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Transfer the coins to the caller
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
+}
+
+pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+
+    // Ensure sender is a margin account.
+    // An an optimization, use raw instead of smart query.
+    ensure!(
+        ctx.querier
+            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
+            .ok_or_else(|| anyhow!(
+                "account {} is not registered in account factory",
+                ctx.sender
+            ))?
+            .deserialize_borsh::<Account>()?
+            .params
+            .is_margin(),
+        "Only margin accounts can borrow and repay"
+    );
+
+    // Ensure all sent coins are whitelisted
+    for coin in &ctx.funds {
+        ensure!(
+            MARKETS.has(ctx.storage, coin.denom),
+            "Invalid denom. Only whitelisted denoms can be repaid."
+        );
+    }
+
+    // Update the sender's liabilities
+    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
+        let mut debts = maybe_debts.unwrap_or_default();
+
+        debts
+            .deduct_many(ctx.funds)
+            .map_err(|_| anyhow!("Cannot repay more than the debts"))?;
+
+        Ok(debts)
+    })?;
+
+    Ok(Response::new())
 }
