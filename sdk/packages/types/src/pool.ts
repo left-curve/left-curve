@@ -9,10 +9,10 @@ export const PoolType = {
   Concentrated: "concentrated",
 } as const;
 
-export type PoolParams = {
-  Xyk: XykParams;
-  Concentrated: ConcentratedParams;
-};
+export type PoolParams =
+  | { xyk: XykParams }
+  // break
+  | { concentrated: ConcentratedParams };
 
 export type Pool<T = PoolInfo> = Record<PoolTypes, T>;
 
