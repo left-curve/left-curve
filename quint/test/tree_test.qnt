@@ -175,12 +175,13 @@ module tree_test {
 
     val reference = super_simple::apply(tree, version - 1, version, ops)
     val result = fancy::apply(tree, version - 1, version, ops)
+    val failure = reference != result
     all {
       tree' = result,
       version' = version + 1,
-      ops_history' = q::debug("ops_history", ops_history.append(ops)),
+      ops_history' = if (failure) q::debug("ops_history", ops_history.append(ops)) else ops_history.append(ops),
       smallest_unpruned_version' = smallest_unpruned_version,
-      if (reference != result) assert(q::debug("super_simple", reference) == q::debug("fancy", result)) else true,
+      if (failure) assert(q::debug("super_simple", reference) == q::debug("fancy", result)) else true,
     }
   }))
 
