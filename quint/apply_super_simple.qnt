@@ -109,8 +109,7 @@ module apply_super_simple {
             | Insert(value_hash) => kv_set.union(Set({key_hash: op.key_hash, value_hash: value_hash}))
             | Delete => kv_set
           })
-      // pure val result = range(0, MAX_HASH_LENGTH).foldr((Set(), keys_and_values_and_op.map(kv => { key_hash: kv.key_hash, node: Leaf(kv) })), (i, acc) => {
-      // We will construct the three from the leafs up until the root
+    // We will construct the three from the leafs up until the root
     // Say we want to construct a tree with nodes: 0000, 0001, 1111
     // We start from MAX_HASH_LENGTH - 1, which is 3 (i = 3)
     // We then find all prefixes of lenght 3 in the current nodes: 000 and 111
