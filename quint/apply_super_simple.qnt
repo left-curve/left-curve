@@ -69,14 +69,11 @@ module apply_super_simple {
 
 
   pure def removeDuplicateEntries(nodes: TreeMap, old_version_nodes: TreeMap, current_version: Version) : NodeId->Node = 
-    // val keyPrefixes = allPrefixesForKey(nodeKeyHash)
-    // val treeAtCurrentVersion = tree.treeAtVersion(current_version)
     old_version_nodes.keys().fold(nodes, (nodes, key) => 
       if(current_version > key.version and nodes.keys().contains({...key, version: current_version}))
         val nodeForKey = nodes.get(key)
         val nodeForKeyWithNewVersion = nodes.get({...key, version: current_version})
-        // add check to see if node was mutated somewhere between those versions
-        if (nodeForKey == nodeForKeyWithNewVersion ) //and (isInsert or not(keyPrefixes.contains(key.key_hash))))
+        if (nodeForKey == nodeForKeyWithNewVersion )
           nodes.mapRemove({...key, version: current_version})
         else
             match nodeForKeyWithNewVersion {
@@ -96,10 +93,6 @@ module apply_super_simple {
     )
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = 
-    // val initialState : StateRecord = 
-    // batch.fold({tree: tree, counter: 0 , local_version: 0 }, (s, operation) => {
-      // val treeForOldVersion = treeAtVersion(tree, old_version)
-      // val treeForVersion = if(s.counter == 0) treeAtVersion(s.tree, old_version) else s.tree.nodes
       val treeForVersion = tree.treeAtVersion(old_version)
       pure val existing_keys_with_values = treeForVersion.keys().fold(Set(), (acc, k) => {
           match tree.nodes.get(k) {
@@ -216,16 +209,9 @@ module apply_super_simple {
                       .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
                       .removeDuplicateEntries(treeAtVersion(tree, old_version), new_version)
                       .updateChildVersions(treeAtVersion(tree, old_version), new_version)
-    // val updatedNodes = batch.fold(nodes, (nodes, operation) => 
-    //                   nodes.removeDuplicateEntries(operation.key_hash, new_version)
-    //                   )
-                      // .removeDuplicateEntries(operation.key_hash, new_version, keys_and_values_and_op._2)
-                      //
     
     val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
                                                old_version, new_version)
       
     { nodes: nodes, orphans: orphans }
-    // }).tree
-  
 }
