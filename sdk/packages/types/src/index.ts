@@ -219,6 +219,8 @@ export type {
   Pool,
   PoolId,
   PoolInfo,
+  PoolTypes,
+  PoolParams,
   XykPool,
   XykParams,
   ConcentratedPool,
