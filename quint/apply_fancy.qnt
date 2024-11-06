@@ -29,7 +29,7 @@ module apply_fancy {
     range(0, new_version).foldl(Map(), (memo, old_version) => {
       sorted_nodes(tree).foldr(memo, (node_id, memo) => {
         pure val bits = node_id.key_hash
-        pure val batch_here = batch.filter(o => bits.isPrefixOf(o.key_hash))
+        pure val batch_here = batch.filter(o => bits.prefix_of(o.key_hash))
 
         pure val memo_key = (new_version, old_version, bits, batch_here)
         pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
@@ -342,10 +342,10 @@ module apply_fancy {
             if (op.key_hash == leaf.key_hash) {
               Some(op)
             } else {
-              acc._2
+              None
             }
           }
-        | None => acc._2
+        | None => None
       }
 
       if (is_leaf_op != None) {
@@ -353,8 +353,8 @@ module apply_fancy {
         (batch, is_leaf_op)
       } else {
         match op.op {
-          | Insert(value_hash) => (batch.union(Set({ key_hash: op.key_hash, value_hash: value_hash })), None)
-          | Delete => (batch, None)
+          | Insert(value_hash) => (batch.union(Set({ key_hash: op.key_hash, value_hash: value_hash })), acc._2)
+          | Delete => (batch, acc._2)
         }
       }
     })
@@ -386,7 +386,7 @@ module apply_fancy {
        // The subtree to be created contains exactly one node, which is an
        // existing leaf node.
        pure val node = Leaf(existing_leaf_now.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
-       { outcome: Updated(node), nodes_to_add: Set(({ version: version, key_hash: bits_now }, node)) }
+       { outcome: Updated(node), nodes_to_add: Set() }
 
      } else if (batch_now.size() == 1 and existing_leaf_now == None) {
        // The subtree to be created contains exactly one node, which is a

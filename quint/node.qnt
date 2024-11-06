@@ -5,7 +5,7 @@ module node {
     import basicSpells.* from "./spells/basicSpells"
 
 type Child = {
-    version: int, //u64 //TODO: Version not hashed
+    version: int,
     hash: Term_t,
 }
 
@@ -15,10 +15,9 @@ type InternalNode = {
 }
 
 type LeafNode = {
-        // In the implementation it is a hash of a key but in the
-        // Radix tree it is just used as a key, so we use a list
-        // of bit and
-        // we treat it here just as bytes    
+    // In the implementation it is a hash of a key but in the Radix tree it is
+    // just used as a key, so we use a list of bit and we treat it here just as
+    // bytes
     key_hash: Bytes_t, 
     value_hash: Bytes_t,
 }
