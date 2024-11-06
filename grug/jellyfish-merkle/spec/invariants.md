@@ -169,7 +169,7 @@ This inserts a line break that is not rendered in the markdown
 
 In a tree, all nodes except from the root should have a parent. There should be no dangling nodes. If we find a node with key 1001, there should be a node for 100. At some other iteration, we'll also check that 100 has a parent (that is, 10), and so on.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
@@ -229,7 +229,7 @@ This inserts a line break that is not rendered in the markdown
 
 Leafs should never be in the middle of a tree. If a there is a node with a key hash that is a prefix of the key hash of a leaf, then this is not a proper tree.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Make sure that the map encodes a tree. In particular, there is no internal node
@@ -331,7 +331,7 @@ This inserts a line break that is not rendered in the markdown
 
 When nodes are updated (inserted, deleted) they are given a new version, and so are all the predecessors in the tree. At the same time, subtrees that are not touched by an update maintain their version. As a result, if the tree is properly maintained, the parent of a node, should have a version that is greater than or equal to the version of the node.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Invariant: For every node has predecessors with higer (or equal) version
@@ -361,7 +361,7 @@ Given the explanation around `versionInv` from above, we had the (wrong) intuiti
 - in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
 However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
-*Status:* FALSE, might not be an invariant at all
+*Status:* FALSE
 
 ```bluespec apply_state_machine.qnt +=
   /// Every internal node must have at least one child with the same version
@@ -530,7 +530,7 @@ This inserts a line break that is not rendered in the markdown
 Just as `key_hashes` in the invariant above, all nodes saved in the values of a tree map should be unique. This also mean that the mapping between node ids and nodes is bijective.
 We can simply check that the sizes of keys and values is the same, since keys are already guaranteed to be unique by Quint's `Map` data structure.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
@@ -553,23 +553,17 @@ This inserts a line break that is not rendered in the markdown
 <!--
 ```bluespec apply_state_machine.qnt +=
   val allInvariants = all {
-    if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
-    if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
-    if (hashInv) true else q::debug("hashInv", false),
-    if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
-    if (densityInv) true else q::debug("densityInv", false),
-    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
-  }
-
-  /// All of the following invariants are broken due to the bug reported in
-  /// https://github.com/left-curve/left-curve/pull/291
-  val brokenInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
+    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false),
+    if (allInternalNodesHaveAChildInv) true else q::debug("allInternalNodesHaveAChild", false),
+    if (densityInv) true else q::debug("densityInv", false),
     if (versionInv) true else q::debug("versionInv", false),
-    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
+    if (orphansInNoTreeInv) true else q::debug("orphansInNoTreeInv", false),
+    if (hashInv) true else q::debug("hashInv", false),
+    if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
+    if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
-    if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false)
   }
 }
 
