@@ -29,7 +29,7 @@ module apply_fancy {
     range(0, new_version).foldl(Map(), (memo, old_version) => {
       sorted_nodes(tree).foldr(memo, (node_id, memo) => {
         pure val bits = node_id.key_hash
-        pure val batch_here = batch.filter(o => bits.isPrefixOf(o.key_hash))
+        pure val batch_here = batch.filter(o => bits.prefix_of(o.key_hash))
 
         pure val memo_key = (new_version, old_version, bits, batch_here)
         pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
@@ -342,10 +342,10 @@ module apply_fancy {
             if (op.key_hash == leaf.key_hash) {
               Some(op)
             } else {
-              acc._2
+              None
             }
           }
-        | None => acc._2
+        | None => None
       }
 
       if (is_leaf_op != None) {
@@ -353,8 +353,8 @@ module apply_fancy {
         (batch, is_leaf_op)
       } else {
         match op.op {
-          | Insert(value_hash) => (batch.union(Set({ key_hash: op.key_hash, value_hash: value_hash })), None)
-          | Delete => (batch, None)
+          | Insert(value_hash) => (batch.union(Set({ key_hash: op.key_hash, value_hash: value_hash })), acc._2)
+          | Delete => (batch, acc._2)
         }
       }
     })
@@ -379,33 +379,61 @@ module apply_fancy {
      }
 
      pure val result = if (batch_now.size() == 0 and existing_leaf_now == None) {
-       // early return
+       // The subtree to be created is empty: do nothing.
        { outcome: Unchanged(None), nodes_to_add: Set() }
+
+     } else if (batch_now.size() == 0) {
+       // The subtree to be created contains exactly one node, which is an
+       // existing leaf node.
+       pure val node = Leaf(existing_leaf_now.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
+       { outcome: Updated(node), nodes_to_add: Set() }
+
+     } else if (batch_now.size() == 1 and existing_leaf_now == None) {
+       // The subtree to be created contains exactly one node, which is a
+       // new leaf node.
+       // This case requires special attention: we don't save the node yet,
+       // because the path may be collapsed if it's sibling gets deleted.
+       pure val node = Leaf(batch_now.getOnlyElement())
+       { outcome: Updated(node), nodes_to_add: Set() }
+
      } else {
-       if (batch_now.size() == 0) {
-         // existing_leaf_now is Some for sure, since we didn't return early
-         pure val node = Leaf(existing_leaf_now.unwrap())
-         { outcome: Updated(node), nodes_to_add: Set(({ version: version, key_hash: bits_now }, node)) }
+       // The subtree to be created contains more 2 or more nodes.
+       // Recursively create the tree. Return the subtree's root, an
+       // internal node.
+       // Note that in this scenario, we certainly don't need to collapse the
+       // path.
+       pure val left_bits = bits_now.append(0)
+       pure val left = memo.get(left_bits)
 
-       } else if (batch_now.size() == 1 and existing_leaf_now == None) {
-         pure val node = Leaf(batch_now.getOnlyElement())
-         { outcome: Updated(node), nodes_to_add: Set(({ version: version, key_hash: bits_now }, node)) }
+       pure val right_bits = bits_now.append(1)
+       pure val right = memo.get(right_bits)
 
-       } else {
-         pure val left = memo.get(bits_now.append(0))
-         pure val right = memo.get(bits_now.append(1))
-
-         pure val node = Internal({
-           left_child: into_child(version, left.outcome),
-           right_child: into_child(version, right.outcome),
+       pure val nodes_to_add =
+         left.nodes_to_add
+         .union(right.nodes_to_add)
+         .union(match left.outcome {
+           | Updated(node) => Set(({ version: version, key_hash: left_bits }, node))
+           | Unchanged(option) => match option {
+              | Some(node) => Set(({ version: version, key_hash: left_bits }, node))
+              | _ => Set()
+             }
+          | _ => Set()
          })
-         pure val nodes_to_add =
-           left.nodes_to_add
-           .union(right.nodes_to_add)
-           .union(Set(({ version: version, key_hash: bits_now }, node)))
+         .union(match right.outcome {
+           | Updated(node) => Set(({ version: version, key_hash: right_bits }, node))
+           | Unchanged(option) => match option {
+              | Some(node) => Set(({ version: version, key_hash: right_bits }, node))
+              | _ => Set()
+             }
+          | _ => Set()
+         })
 
-         { outcome: Updated(node), nodes_to_add: nodes_to_add }
-       }
+       pure val node = Internal({
+         left_child: into_child(version, left.outcome),
+         right_child: into_child(version, right.outcome),
+       })
+
+       { outcome: Updated(node), nodes_to_add: nodes_to_add }
      }
 
       memo.put(bits_now, result)
