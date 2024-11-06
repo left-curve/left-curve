@@ -356,7 +356,10 @@ This inserts a line break that is not rendered in the markdown
 
 ### Internal nodes share the version with at least one child
 
-Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. However, for reference, we keep the formula here as it might be useful for understanding in the future.
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading 
+- in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. 
+- in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
+However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
 *Status:* FALSE, might not be an invariant at all
 
