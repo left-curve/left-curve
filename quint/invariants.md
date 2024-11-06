@@ -1,3 +1,9 @@
+# Invariants
+
+This document describes invariants of grug's jellyfish merkle tree manipulation. The snippets in here get tangled into a Quint file for verification.
+
+<!--
+```bluespec apply_state_machine.qnt +=
 // -*- mode: Bluespec; -*-
 
 module apply_state_machine {
@@ -10,7 +16,6 @@ module apply_state_machine {
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
-  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
@@ -68,20 +73,80 @@ module apply_state_machine {
     }
   }
 
-  action step_super_simple = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      tree' = super_simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops)
-    }
-  }
-
   /********* INVARIANTS ***********/
 
+```
+-->
+
+## Data structures
+
+The main data structures are trees and nodes, defined below.
+
+### Nodes
+```bluespec
+type Child = {
+    version: int,
+    hash: Term_t,
+}
+
+type InternalNode = {
+    left_child: Option[Child],
+    right_child: Option[Child],
+}
+
+type LeafNode = {
+    // In the implementation it is a hash of a key but in the Radix tree it is
+    // just used as a key, so we use a list of bits and we treat it here just as
+    // bytes
+    key_hash: Bytes_t,
+    value_hash: Bytes_t,
+}
+
+type Node =
+    | Internal(InternalNode)
+    | Leaf(LeafNode)
+
+```
+
+### Trees
+```bluespec
+type BitArray = List[int]
+type Version = int
+type NodeId = { version: Version, key_hash: BitArray }
+
+type OrphanId = {
+  orphaned_since_version: Version,
+  version: Version,
+  key_hash: BitArray
+}
+
+type TreeMap = NodeId -> Node
+
+type Tree = {
+  nodes: TreeMap,
+  orphans: Set[OrphanId]
+}
+```
+
+## Projections of trees at versions
+
+Some invariants can consider the entire tree with all the different versions living on it, but most invariants need to work with a single tree (as per the standard tree definition) at a time. Therefore, we need some auxiliary definitions to help getting a single tree's state at a given version, which we call a tree map.
+
+```bluespec
+  pure def treeAtVersion(t: Tree, version: int): TreeMap = {
+    // take the nodes for the current version...
+    val startingNodes = nodesAtVersion(t.nodes, version)
+    // ... and grow the tree by adding direct children
+    val nodePool = nodesUpToVersion(t.nodes, version)
+    0.to(MAX_HASH_LENGTH).fold(startingNodes, (treeNodes, _) => {
+      addDirectChildren(treeNodes, nodePool)
+    })
+  }
+```
+
+We also keep track of the smallest unpruned version, so we check the invariant for the trees at all versions from that until the current one.
+
+```bluespec apply_state_machine.qnt +=
   /// The set of unpruned tree versions that should be complete in the tree
   val activeTreeVersions: Set[int] =
     smallest_unpruned_version.to(tree.treeVersion())
@@ -89,7 +154,24 @@ module apply_state_machine {
   /// The set of active tree maps
   val activeVersionedTrees: Set[TreeMap] =
     activeTreeVersions.map(v => treeAtVersion(tree, v))
+```
 
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
+
+```
+-->
+
+## Invariants
+
+### Parents of nodes exist in the tree
+
+In a tree, all nodes except from the root should have a parent. There should be no dangling nodes. If we find a node with key 1001, there should be a node for 100. At some other iteration, we'll also check that 100 has a parent (that is, 10), and so on.
+
+*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+
+```bluespec apply_state_machine.qnt +=
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
   /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
   val everyNodesParentIsInTheTreeInv: bool = {
@@ -103,7 +185,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(everyNodesParentIsInTheTree)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Two leafs have a node with a common prefix
+
+For any pair of leafs on the tree, there should be another node such that its key hash is the common prefix of the key hashes of both leafs.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
   /// tree that is the common prefix
   val nodeAtCommonPrefixInv: bool = {
@@ -121,7 +217,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(nodeAtCommonPrefix)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Leaf nodes should not be prefixes of any other node
+
+Leafs should never be in the middle of a tree. If a there is a node with a key hash that is a prefix of the key hash of a leaf, then this is not a proper tree.
+
+*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+
+```bluespec apply_state_machine.qnt +=
   /// Make sure that the map encodes a tree. In particular, there is no internal node
   /// that has a leaf node as its prefix
   /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
@@ -137,7 +247,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(noLeafInPrefixes)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Internal nodes have at least one child
+
+Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a leaf with no value.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// All nodes of type Internal have a child which is not None
   val allInternalNodesHaveAChildInv: bool = {
     pure def internalNodeHasAChild(n: InternalNode): bool = {
@@ -155,7 +279,23 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(allInternalNodesHaveAChild)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Only children are internal nodes
+
+This checks that collapsing works properly: there should never be an internal node with a single child where that child is a leaf. If it was a leaf, since there is no sibling, we should have collapsed it and make the internal node the leaf itself.
+
+This also means that the three is dense, not sparse.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// If a node has exactly one child, the child is an internal node
   /// (if it was a leaf, then the node itself would be the leaf)
   val densityInv: bool = {
@@ -179,7 +319,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(isDense)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Versions of predecessors in path should be >= node version
+
+When nodes are updated (inserted, deleted) they are given a new version, and so are all the predecessors in the tree. At the same time, subtrees that are not touched by an update maintain their version. As a result, if the tree is properly maintained, the parent of a node, should have a version that is greater than or equal to the version of the node.
+
+*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+
+```bluespec apply_state_machine.qnt +=
   /// Invariant: For every node has predecessors with higer (or equal) version
   /// (This could be rewritten to talk about direct predecessors only)
   val versionInv: bool = {
@@ -192,7 +346,21 @@ module apply_state_machine {
         tree.nodes.keys().exists(b =>
           p == b.key_hash and b.version >= a.version)))
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Internal nodes share the version with at least one child
+
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. However, for reference, we keep the formula here as it might be useful for understanding in the future.
+
+*Status:* FALSE, might not be an invariant at all
+
+```bluespec apply_state_machine.qnt +=
   /// Every internal node must have at least one child with the same version
   /// This doesn't hold - should it?
   /// TODO: check why this doesn't hold even when there are no deletions (seed 0x61ec6acbe4eda)
@@ -219,7 +387,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(denseVersions)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Orphans should not appear in trees after they are orphaned
+
+Orphans are used for state pruning. The implicit intuition is that orphaned nodes can be pruned as they are not needed for any tree operation (including proof construction or verification) for versions after they became orphans. This invariant makes it explicit why it is safe to prune orphans: No orphan is part of a tree at a version after it became orphaned.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// Orphan should not be at one of the version trees after it gets orphaned
   val orphansInNoTreeInv: bool = {
     tree.orphans.forall(o =>
@@ -227,7 +409,21 @@ module apply_state_machine {
       o.orphaned_since_version.to(tree.treeVersion()).forall(ver =>
         not(tree.treeAtVersion(ver).keys().contains(nodeId))))
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Stored hashes are actual hashes
+
+For all internal nodes, for each existing child, the hash should match the result of hashing the subtree under that child's key hash.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// Check that for all internal nodes, if they have a hash stored for a child,
   /// then the hash is the hash of the actualy the subtree for the child
   val hashInv: bool = {
@@ -252,7 +448,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(properlyHashed)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Stored hashes are unique
+
+We use an implementation of hashes that ensure no collision, since no collision of hashes is an assumption we can make. This invariant is a sanity check that the hashes that get saved in the child nodes are unique.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// All children in the tree should have different hashes
   val uniqueHashesInv: bool = {
     pure def uniqueHashes(t: TreeMap): bool = {
@@ -280,7 +490,21 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(uniqueHashes)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Node ids for tree maps have unique key hashes
+
+While the overall tree receives an entry for the same `key_hash` whenever the corresponding value changes in a new version; in the versioned tree, each node should contain at most one entry for each `key_hash`.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
   /// The treemaps we use in the invariants should have unique key_hashes
   /// This is a sanity check for the treeAtVersion computation
   val goodTreeMapInv: bool = {
@@ -290,7 +514,22 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(goodTreeMap)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+### Tree maps are bijective
+
+Just as `key_hashes` in the invariant above, all nodes saved in the values of a tree map should be unique. This also mean that the mapping between node ids and nodes is bijective.
+We can simply check that the sizes of keys and values is the same, since keys are already guaranteed to be unique by Quint's `Map` data structure.
+
+*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+
+```bluespec apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
   /// In other words, values are also unique
   /// Only works on tree map, as trees can have same nodes in different keys/versions
@@ -300,7 +539,16 @@ module apply_state_machine {
 
     activeVersionedTrees.forall(bijectiveTreeMap)
   }
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
 
+```
+-->
+
+<!--
+```bluespec apply_state_machine.qnt +=
   val allInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
@@ -314,10 +562,6 @@ module apply_state_machine {
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
   }
-
-  val brokenInvariants = all {
-    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
-  }
 }
 
 module pruning_state_machine {
@@ -329,3 +573,5 @@ module pruning_state_machine {
 
 }
 
+```
+-->
