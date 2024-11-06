@@ -164,23 +164,22 @@ where
             block,
         ));
 
-        match self
+        let txs = self
             .pp
             .prepare_proposal(QuerierWrapper::new(&querier), txs.clone(), max_tx_bytes)
-        {
-            Ok(txs) => Ok(txs),
-            Err(err) => {
+            .unwrap_or_else(|err| {
                 #[cfg(feature = "tracing")]
                 error!(
                     err = err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
+                txs
+            });
 
-                NaiveProposalPreparer
-                    .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
-                    .map_err(Into::into)
-            },
-        }
+        // call naive proposal preparer to check the max_tx_bytes
+        NaiveProposalPreparer
+            .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
+            .map_err(Into::into)
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
