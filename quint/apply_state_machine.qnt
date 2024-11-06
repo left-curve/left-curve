@@ -10,6 +10,7 @@ module apply_state_machine {
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
+  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
@@ -66,7 +67,17 @@ module apply_state_machine {
       ops_history' = ops_history.append(ops),
     }
   }
-
+  action step_super_simple = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    all {
+      tree' = super_simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops)
+    }
+  }
   /********* INVARIANTS ***********/
 
   /// The set of unpruned tree versions that should be complete in the tree
@@ -300,10 +311,6 @@ module apply_state_machine {
     if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
-  }
-
-  val brokenInvariants = all {
-    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
   }
 }
 
