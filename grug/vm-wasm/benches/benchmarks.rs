@@ -1,11 +1,11 @@
 use {
     criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion},
-    grug_app::{AppCtx, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{AppCtx, ConfigBuffer, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
-        Addr, BlockInfo, BorshSerExt, Context, GenericResult, Hash, JsonSerExt, MockStorage,
-        Timestamp,
+        Addr, BlockInfo, BorshSerExt, Config, Context, GenericResult, Hash, JsonSerExt,
+        MockStorage, Permission, Permissions, Timestamp,
     },
     grug_vm_wasm::WasmVm,
     std::time::Duration,
@@ -51,6 +51,17 @@ fn looping(c: &mut Criterion) {
                             vm.clone(),
                             storage.clone(),
                             gas_tracker.clone(),
+                            ConfigBuffer::new(Config {
+                                owner: Addr::mock(0),
+                                bank: Addr::mock(1),
+                                taxman: Addr::mock(2),
+                                cronjobs: Default::default(),
+                                permissions: Permissions {
+                                    upload: Permission::Everybody,
+                                    instantiate: Permission::Everybody,
+                                },
+                                max_orphan_age: Default::default(),
+                            }),
                             "dev-1",
                             MOCK_BLOCK,
                         ));

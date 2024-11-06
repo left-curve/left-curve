@@ -268,10 +268,13 @@ impl Instance for RustInstance {
 mod tests {
     use {
         crate::{ContractBuilder, RustVm},
-        grug_app::{AppCtx, GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
+        grug_app::{
+            AppCtx, ConfigBuffer, GasTracker, Instance, QuerierProvider, Shared, StorageProvider,
+            Vm,
+        },
         grug_types::{
-            Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
-            Storage, Timestamp,
+            Addr, Binary, BlockInfo, BorshSerExt, Coins, Config, Context, Hash, JsonSerExt,
+            MockStorage, Permission, Permissions, Storage, Timestamp,
         },
         test_case::test_case,
     };
@@ -331,6 +334,17 @@ mod tests {
             vm.clone(),
             Box::new(db.clone()),
             gas_tracker.clone(),
+            ConfigBuffer::new(Config {
+                owner: Addr::mock(0),
+                bank: Addr::mock(1),
+                taxman: Addr::mock(2),
+                cronjobs: Default::default(),
+                permissions: Permissions {
+                    upload: Permission::Everybody,
+                    instantiate: Permission::Everybody,
+                },
+                max_orphan_age: Default::default(),
+            }),
             "dev-1".to_string(),
             block,
         ));

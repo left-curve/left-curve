@@ -280,8 +280,11 @@ impl Environment {
 mod test {
     use {
         crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
-        grug_app::{AppCtx, GasTracker, QuerierProvider, Shared, StorageProvider},
-        grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
+        grug_app::{AppCtx, ConfigBuffer, GasTracker, QuerierProvider, Shared, StorageProvider},
+        grug_types::{
+            Addr, BlockInfo, Config, Hash256, MockStorage, Order, Permission, Permissions,
+            StdError, Storage, Timestamp,
+        },
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -337,6 +340,17 @@ mod test {
                 WasmVm::new(0),
                 Box::new(storage),
                 gas_tracker.clone(),
+                ConfigBuffer::new(Config {
+                    owner: Addr::mock(0),
+                    bank: Addr::mock(1),
+                    taxman: Addr::mock(2),
+                    cronjobs: Default::default(),
+                    permissions: Permissions {
+                        upload: Permission::Everybody,
+                        instantiate: Permission::Everybody,
+                    },
+                    max_orphan_age: Default::default(),
+                }),
                 "dev-1",
                 MOCK_BLOCK,
             ));
