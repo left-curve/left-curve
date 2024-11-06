@@ -173,6 +173,24 @@ module apply_state_machine {
               // Has two children or none
               true
             }
+
+  /// If a node has exactly one child, the child is an internal node
+  /// (if it was a leaf, then the node itself would be the leaf)
+  val densityInv: bool = {
+    pure def isDense(t: TreeMap): bool =
+      t.keys().forall(nId => {
+        match t.get(nId) {
+          | Internal(n) =>
+            if (n.left_child == None and n.right_child != None) {
+              // Only has right child, right child should be internal
+              findNode(t, nId.key_hash.append(1)).isInternal()
+            } else if (n.right_child == None and n.left_child != None) {
+              // Only has left child, left child should be internal
+              findNode(t, nId.key_hash.append(0)).isInternal()
+            } else {
+              // Has two children or none
+              true
+            }
           | Leaf(_) => true
         }
       })
@@ -314,10 +332,6 @@ module apply_state_machine {
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
   }
-
-  val brokenInvariants = all {
-    if (denseVersionsInv) true else q::debug("denseVersionsInv", false),
-  }
 }
 
 module pruning_state_machine {
@@ -328,4 +342,3 @@ module pruning_state_machine {
   // just an idea to investigate pruning separatey agains an unpruned version of the tree
 
 }
-

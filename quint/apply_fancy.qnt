@@ -386,7 +386,7 @@ module apply_fancy {
        // The subtree to be created contains exactly one node, which is an
        // existing leaf node.
        pure val node = Leaf(existing_leaf_now.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
-       { outcome: Updated(node), nodes_to_add: Set(({ version: version, key_hash: bits_now }, node)) }
+       { outcome: Updated(node), nodes_to_add: Set() }
 
      } else if (batch_now.size() == 1 and existing_leaf_now == None) {
        // The subtree to be created contains exactly one node, which is a

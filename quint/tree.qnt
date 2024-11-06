@@ -91,13 +91,13 @@ module tree {
   
   pure def treeVersion(t: Tree): int =
     t.nodes.keys()
-      .filter(nId => nId.key_hash == [])
-      .fold(-1, (s, x) => {
-        if (x.version > s)
-          x.version
-        else
-          s
-      })
+     .filter(nId => nId.key_hash == [])
+     .fold(-1, (s, x) => {
+       if (x.version > s)
+         x.version
+       else
+         s
+     })
 
   /// return the prefixes of all children from nodes at the given version
   pure def childrenPrefixes(nodes: TreeMap): Set[BitArray] = {
@@ -119,53 +119,54 @@ module tree {
     allChildren.exclude(nodes.keys().map(nId => nId.key_hash))
   }
 
-  /// return the NodeId for the given prefix with the largest version less than the given version
-  pure def getnodeIdforMaxVersion(nodes: TreeMap, key: BitArray): Option[NodeId] = {
+  /// return the NodeId for the given prefix with the largest version
+  pure def mostRecentNodeId(nodes: TreeMap, key: BitArray): Option[NodeId] = {
     val default = { version: -1, key_hash: key }
     val result = nodes.keys()
       .filter(nId => nId.key_hash == key)
-      .fold(default, (s, x) =>
-        if (x.version > s.version)
-          x
-        else
-          s
-      )
+      .fold(default, (acc, e) =>
+        if (e.version > acc.version) e else acc)
+
     if (result == default)
       None
     else
       Some(result)
   }
 
-  pure def nodesUpdatedAtVersion(t: TreeMap, version: int): TreeMap =
+  pure def nodesAtVersion(t: TreeMap, version: int): TreeMap =
     t.keys()
-      .filter(nId => nId.version == version)
-      .mapBy(nId => t.get(nId))
+     .filter(nId => nId.version == version)
+     .mapBy(nId => t.get(nId))
 
-  pure def nodesUpdatedByVersion(t: TreeMap, version: int): TreeMap =
+  pure def nodesUpToVersion(t: TreeMap, version: int): TreeMap =
     t.keys()
-      .filter(nId => nId.version <= version)
-      .mapBy(nId => t.get(nId))
+     .filter(nId => nId.version <= version)
+     .mapBy(nId => t.get(nId))
 
   pure def addDirectChildren(t: TreeMap, pool: TreeMap): TreeMap =
-    childrenPrefixes(t)
-      .fold(t, (treeNodes, prefix) =>
-        match getnodeIdforMaxVersion(pool, prefix) {
-          | Some(nodeId) => treeNodes.put(nodeId, pool.get(nodeId))
-          | None => treeNodes
-        }
-      )
+    childrenPrefixes(t).fold(t, (treeNodes, prefix) => {
+      match mostRecentNodeId(pool, prefix) {
+        | Some(nodeId) => treeNodes.put(nodeId, pool.get(nodeId))
+        | None => treeNodes
+      }
+    })
 
   /// compute the tree at the given version
   /// TODO: check/re-check/double check. write tests
-  pure def treeAtVersion(t: Tree, version: int): TreeMap =
-    // first check if there is a root at this version
-    if (t.nodes.keys().contains({ version: version, key_hash: [] })) {
-      val nodesUpToVersion = nodesUpdatedByVersion(t.nodes, version)
-      val nodesAtVersion = nodesUpdatedAtVersion(t.nodes, version)  // take the nodes for the current version...
-      0.to(MAX_HASH_LENGTH).fold(nodesAtVersion, (treeNodes, _) =>  // ... and grow the tree by adding direct children
-        addDirectChildren(treeNodes, nodesUpToVersion))
-    } else
-      Map()
+  pure def treeAtVersion(t: Tree, version: int): TreeMap = {
+    // take the nodes for the current version...
+    val startingNodes = nodesAtVersion(t.nodes, version)
+    // ... and grow the tree by adding direct children
+    val nodePool = nodesUpToVersion(t.nodes, version)
+    0.to(MAX_HASH_LENGTH).fold(startingNodes, (treeNodes, _) => {
+      addDirectChildren(treeNodes, nodePool)
+    })
+  }
+
+  pure def findNode(t: TreeMap, key_hash: BitArray): Node = {
+    pure val nodeId = t.keys().filter(n => n.key_hash == key_hash).getOnlyElement()
+    t.get(nodeId)
+  }
 
   /// Is the node an internal node?
   pure def isInternal(n: Node): bool =
