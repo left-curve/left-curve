@@ -1,11 +1,18 @@
 use {
-    dango_testing::setup_test,
+    dango_app::PythProposalPreparer,
+    dango_testing::{setup_test, Accounts},
     dango_types::oracle::{
-        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
+        self, ExecuteMsg, GuardianSet, PrecisionlessPrice, PriceSource, PythId, PythVaa,
+        QueryPriceRequest, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
     },
-    grug::{btree_map, Binary, Coins, Denom, Inner, MockApi, ResultExt, Udec128},
+    grug::{
+        btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, ResultExt, TestSuite,
+        Udec128,
+    },
+    grug_db_memory::MemDb,
+    grug_vm_rust::RustVm,
     pyth_sdk::PriceFeed,
-    std::{collections::BTreeMap, str::FromStr},
+    std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
@@ -31,39 +38,83 @@ pub const SHIBA_USD_ID: &str = "0xf0d57deca57b3da2fe63a493f4c25925fdfd8edf834b20
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-#[test]
-fn oracle() {
+fn setup_oracle_test(
+    denoms: BTreeMap<Denom, PriceSource>,
+) -> (
+    TestSuite<MemDb, RustVm, PythProposalPreparer>,
+    Accounts,
+    Addr,
+) {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
+    // init a new oracle
+    let code_hash = suite.query_contract(&contracts.oracle).unwrap().code_hash;
+
+    let oracle = suite
+        .instantiate(
+            &mut accounts.owner,
+            code_hash,
+            &oracle::InstantiateMsg {
+                guardian_sets: btree_map! {
+                    GUARDIAN_SETS_INDEX => GuardianSet {
+                        addresses: GUARDIANS_ADDRESSES
+                            .into_iter()
+                            .map(|addr| {
+                                let bytes = Binary::from_str(addr)
+                                    .unwrap()
+                                    .into_inner()
+                                    .try_into()
+                                    .unwrap();
+                                Hash160::from_inner(bytes)
+                            })
+                            .collect(),
+                        expiration_time: None,
+                    },
+                },
+            },
+            "salt",
+            None,
+            None,
+            Coins::default(),
+        )
+        .should_succeed()
+        .address;
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RegisterPriceSources(denoms),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    (suite, accounts, oracle)
+}
+
+#[test]
+fn oracle() {
     let id = PythId::from_str(WBTC_USD_ID).unwrap();
     let precision = 8;
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
 
-    // Register price source
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc_denom.clone() => PriceSource::Pyth { id, precision }
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
+    let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
+        btc_denom.clone() => PriceSource::Pyth { id, precision }
+    });
 
     // Push price
     {
         suite
             .execute(
                 &mut accounts.owner,
-                contracts.oracle,
+                oracle,
                 &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+            .query_wasm_smart(oracle, QueryPriceRequest {
                 denom: btc_denom.clone(),
             })
             .unwrap();
@@ -88,14 +139,14 @@ fn oracle() {
         suite
             .execute(
                 &mut accounts.owner,
-                contracts.oracle,
+                oracle,
                 &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_2).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+            .query_wasm_smart(oracle, QueryPriceRequest {
                 denom: btc_denom.clone(),
             })
             .unwrap();
@@ -118,14 +169,14 @@ fn oracle() {
         suite
             .execute(
                 &mut accounts.owner,
-                contracts.oracle,
+                oracle,
                 &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
                 Coins::default(),
             )
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(contracts.oracle, QueryPriceRequest { denom: btc_denom })
+            .query_wasm_smart(oracle, QueryPriceRequest { denom: btc_denom })
             .unwrap();
 
         assert_eq!(
@@ -142,10 +193,8 @@ fn oracle() {
     }
 }
 
-#[tokio::test]
-async fn double_vaas() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
+#[test]
+fn double_vaas() {
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
 
@@ -155,26 +204,15 @@ async fn double_vaas() {
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
     let eth_denom = Denom::from_str("bridge/eth").unwrap();
 
-    // Register price sources
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc_denom.clone() => PriceSource::Pyth { id: pyth_id_btc, precision: 8 },
-                eth_denom.clone() => PriceSource::Pyth { id: pyth_id_eth, precision: 8 },
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
+    let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
+        btc_denom.clone() => PriceSource::Pyth { id: pyth_id_btc, precision: 8 },
+        eth_denom.clone() => PriceSource::Pyth { id: pyth_id_eth, precision: 8 },
+    });
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let (btc_vaas_raw, eth_vaas_raw) = tokio::try_join!(
-            get_latest_vaas(&[WBTC_USD_ID]),
-            get_latest_vaas(&[ETH_USD_ID])
-        )
-        .unwrap();
+        let btc_vaas_raw = get_latest_vaas(&[WBTC_USD_ID]).unwrap();
+        let eth_vaas_raw = get_latest_vaas(&[ETH_USD_ID]).unwrap();
 
         let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
             .unwrap()
@@ -213,7 +251,7 @@ async fn double_vaas() {
         suite
             .execute(
                 &mut accounts.owner,
-                contracts.oracle,
+                oracle,
                 &ExecuteMsg::FeedPrices([btc_vaas_raw, eth_vaas_raw].concat()),
                 Coins::default(),
             )
@@ -222,7 +260,7 @@ async fn double_vaas() {
         // check btc price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                .query_wasm_smart(oracle, QueryPriceRequest {
                     denom: btc_denom.clone(),
                 })
                 .unwrap();
@@ -253,7 +291,7 @@ async fn double_vaas() {
         // check eth price
         {
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                .query_wasm_smart(oracle, QueryPriceRequest {
                     denom: eth_denom.clone(),
                 })
                 .unwrap();
@@ -282,14 +320,12 @@ async fn double_vaas() {
         }
 
         // sleep for 1 second
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        thread::sleep(Duration::from_secs(1));
     }
 }
 
-#[tokio::test]
-async fn multiple_vaas() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
+#[test]
+fn multiple_vaas() {
     let id_denoms = btree_map! {
         WBTC_USD_ID  => Denom::from_str("bridge/btc").unwrap() ,
         ETH_USD_ID   => Denom::from_str("bridge/eth").unwrap() ,
@@ -313,15 +349,7 @@ async fn multiple_vaas() {
         })
         .collect();
 
-    // Register price sources
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &ExecuteMsg::RegisterPriceSources(denom_price_sources),
-            Coins::default(),
-        )
-        .should_succeed();
+    let (mut suite, mut accounts, oracle) = setup_oracle_test(denom_price_sources);
 
     let mut last_price_feeds = id_denoms
         .keys()
@@ -329,7 +357,7 @@ async fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let vaas_raw = get_latest_vaas(id_denoms.keys()).await.unwrap();
+        let vaas_raw = get_latest_vaas(id_denoms.keys()).unwrap();
 
         let vaas = vaas_raw
             .iter()
@@ -364,7 +392,7 @@ async fn multiple_vaas() {
         suite
             .execute(
                 &mut accounts.owner,
-                contracts.oracle,
+                oracle,
                 &ExecuteMsg::FeedPrices(vaas_raw),
                 Coins::default(),
             )
@@ -375,7 +403,7 @@ async fn multiple_vaas() {
             let denom = id_denoms.get(denom).unwrap();
 
             let current_price = suite
-                .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                .query_wasm_smart(oracle, QueryPriceRequest {
                     denom: denom.clone(),
                 })
                 .unwrap();
@@ -404,12 +432,12 @@ async fn multiple_vaas() {
         }
 
         // sleep for 1 second
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        thread::sleep(Duration::from_secs(1));
     }
 }
 
 /// Return JSON string of the latest VAA from Pyth network.
-async fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
+fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
 where
     I: IntoIterator,
     I::Item: AsRef<str>,
@@ -419,11 +447,9 @@ where
         .map(|id| ("ids[]", id.as_ref().to_string()))
         .collect::<Vec<_>>();
 
-    reqwest::Client::new()
+    reqwest::blocking::Client::new()
         .get(format!("{PYTH_URL}/api/latest_vaas"))
         .query(&ids)
-        .send()
-        .await?
+        .send()?
         .json()
-        .await
 }
