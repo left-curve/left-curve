@@ -844,5 +844,30 @@ module apply_super_simple_test {
           // version 4 after deleting "a"
            { key_hash: [], version: 4 } -> Leaf({ key_hash: [1, 1, 0, 0], value_hash: [0, 0, 0, 0] })
          )
-    )   
+    )
+  run gabrielaTest = 
+    val op1 = Set({ key_hash: [0, 0, 1, 0], op: Delete }, 
+                              { key_hash: [0, 1, 1, 0], op: Delete }, 
+                              { key_hash: [1, 0, 0, 0], op: Insert([13]) }, 
+                              { key_hash: [1, 0, 0, 1], op: Delete }, 
+                              { key_hash: [1, 0, 1, 1], op: Delete })
+    val op2 = Set({ key_hash: [0, 0, 0, 0], op: Delete }, 
+                              { key_hash: [0, 0, 1, 1], op: Delete }, 
+                              { key_hash: [1, 0, 1, 0], op: Delete }, 
+                              { key_hash: [1, 1, 0, 0], op: Delete }, 
+                              { key_hash: [1, 1, 0, 1], op: Delete })
+    val t1 = empty_tree.apply(0,1,op1)
+    val t2 = t1.apply(1,2, op2)
+
+    val super_simple =  { nodes: Map(
+                                  { key_hash: [], version: 1 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] })), 
+                          orphans: Set({ key_hash: [], orphaned_since_version: 2, version: 1 }) 
+                        }
+  val fancy = { nodes: Map(
+                        { key_hash: [], version: 1 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] }), 
+                        { key_hash: [], version: 2 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] })),
+                orphans: Set({ key_hash: [], orphaned_since_version: 2, version: 1 })
+  }
+
+  assert(t2==fancy)
 }

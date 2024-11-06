@@ -73,15 +73,15 @@ module apply_super_simple {
       if(current_version > key.version and nodes.keys().contains({...key, version: current_version}))
         val nodeForKey = nodes.get(key)
         val nodeForKeyWithNewVersion = nodes.get({...key, version: current_version})
-        if (nodeForKey == nodeForKeyWithNewVersion )
+        if (nodeForKey == nodeForKeyWithNewVersion and not(key.isRoot()))
           nodes.mapRemove({...key, version: current_version})
         else
             match nodeForKeyWithNewVersion {
              | Internal(internalNewVersion) 
                 => match nodeForKey {
                   | Internal(internalOldVersion) =>  
-                    if(cmpInternalAndNode(internalNewVersion, internalOldVersion) 
-                        and not(key.isRoot())) // and (isInsert or not(keyPrefixes.contains(key.key_hash))))
+                    if(cmpInternalAndNode(internalNewVersion, internalOldVersion)
+                        and not(key.isRoot()))
                       nodes.mapRemove({...key, version: current_version})
                     else nodes
                   | Leaf(_) => nodes
