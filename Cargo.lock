@@ -1497,6 +1497,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
+ "dango-app",
  "dialoguer",
  "grug-app",
  "grug-client",

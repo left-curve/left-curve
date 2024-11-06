@@ -19,6 +19,7 @@ clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
 dialoguer          = { workspace = true }
+dango-app          = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-client        = { workspace = true }
 grug-db-disk       = { workspace = true }
