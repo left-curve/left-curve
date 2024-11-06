@@ -1,11 +1,17 @@
 module proofs {
   
   import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
   export tree.*
   import node.* from "./node"
   import utils.* from "./utils"
+
+  type InnerOp = {
+    prefix: Term_t,
+    suffix: Term_t
+  }
   
   /// Return leaf with the largest key_hash smaller than k
   pure def leftNeighbor(t: TreeMap, k: BitArray): LeafNode =
@@ -53,5 +59,31 @@ module proofs {
       }
     )
 
+  pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) : List[InnerOp] = 
+    val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
+    // fold over prefixes created from key_hash
+    // i - index of current fold
+    val path = prefixes_list.foldl({ path: List(), i: 0, found: false}, (result, key_prefix) => 
+        val node = t.nodes.get({key_hash: key_prefix, version: version})
+        match node {
+          | Internal(internal) => 
+            val next_bit_0 = key_prefix.append(0)
+            val innerOp = if(prefixes_list[result.i+1] == next_bit_0) 
+              { prefix: InternalNodeHashPrefix, suffix: match internal.right_child {
+              | None => Map()
+              | Some(c) => c.hash
+              } }
+            else { 
+              prefix: InternalNodeHashPrefix.termConcat(
+                match internal.left_child {
+                  | None => Map()
+                  | Some(c) => c.hash
+                }), 
+              suffix: Map() }
+            {path: result.path.append(innerOp),  i: result.i+1, found: false }
+          | Leaf(l) => { ...result, i: result.i+1, found: l.key_hash == key_hash }
+        }
 
+    )
+    path.path.foldr(List(), (path_element, reversed_path ) => reversed_path.append(path_element))    
 }

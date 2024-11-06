@@ -101,7 +101,7 @@ module apply_simple {
       val prefixCombos = 1.to(longestCommonPrefixBetweenLeaves.length())
         .map(i => longestCommonPrefixBetweenLeaves.slice(0, i))
       val nodesToCreatePrefixList = prefixCombos.filter(prefix =>
-        prefix.length() >= existingLeafNodeId.key_hash.length()).toList(listCompare)
+        prefix.length() >= existingLeafNodeId.key_hash.length()).toList(listCompareAsc)
       val lowestInternalNode = createInternalOutOfLeafs(longestCommonPrefixBetweenLeaves, existingLeaf, newLeaf)
       val updatedNodes = t.nodes.put({ version: 0, key_hash: longestCommonPrefixBetweenLeaves }, Internal(lowestInternalNode))
         .addTwoLeaves(existingNodeNewPrefix, existingLeaf, newNodePrefix, newLeaf)

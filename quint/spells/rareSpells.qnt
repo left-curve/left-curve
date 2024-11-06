@@ -41,11 +41,19 @@ module rareSpells {
     else
       { EQ }
   }
-    pure def listCompare(__a: List[int], __b: List[int]): Ordering = {
+  pure def listCompareAsc(__a: List[int], __b: List[int]): Ordering = {
     if (__a.length() < __b.length())
       { GT }
     else if (__a.length() > __b.length())
       { LT }
+    else
+      { EQ }
+  }
+  pure def listCompare(__a: List[int], __b: List[int]): Ordering = {
+    if (__a.length() < __b.length())
+      { LT }
+    else if (__a.length() > __b.length())
+      { GT }
     else
       { EQ }
   }
