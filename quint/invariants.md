@@ -16,6 +16,7 @@ module apply_state_machine {
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
+  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
@@ -70,6 +71,18 @@ module apply_state_machine {
       version' = version + 1,
       smallest_unpruned_version' = smallest_unpruned_version,
       ops_history' = ops_history.append(ops),
+    }
+  }
+
+  action step_super_simple = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    all {
+      tree' = super_simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops)
     }
   }
 
@@ -169,7 +182,7 @@ This inserts a line break that is not rendered in the markdown
 
 In a tree, all nodes except from the root should have a parent. There should be no dangling nodes. If we find a node with key 1001, there should be a node for 100. At some other iteration, we'll also check that 100 has a parent (that is, 10), and so on.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
@@ -229,7 +242,7 @@ This inserts a line break that is not rendered in the markdown
 
 Leafs should never be in the middle of a tree. If a there is a node with a key hash that is a prefix of the key hash of a leaf, then this is not a proper tree.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Make sure that the map encodes a tree. In particular, there is no internal node
@@ -331,7 +344,7 @@ This inserts a line break that is not rendered in the markdown
 
 When nodes are updated (inserted, deleted) they are given a new version, and so are all the predecessors in the tree. At the same time, subtrees that are not touched by an update maintain their version. As a result, if the tree is properly maintained, the parent of a node, should have a version that is greater than or equal to the version of the node.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// Invariant: For every node has predecessors with higer (or equal) version
@@ -356,9 +369,12 @@ This inserts a line break that is not rendered in the markdown
 
 ### Internal nodes share the version with at least one child
 
-Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. However, for reference, we keep the formula here as it might be useful for understanding in the future.
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading 
+- in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. 
+- in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
+However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
-*Status:* FALSE, might not be an invariant at all
+*Status:* FALSE
 
 ```bluespec apply_state_machine.qnt +=
   /// Every internal node must have at least one child with the same version
@@ -527,7 +543,7 @@ This inserts a line break that is not rendered in the markdown
 Just as `key_hashes` in the invariant above, all nodes saved in the values of a tree map should be unique. This also mean that the mapping between node ids and nodes is bijective.
 We can simply check that the sizes of keys and values is the same, since keys are already guaranteed to be unique by Quint's `Map` data structure.
 
-*Status:* FALSE due to https://github.com/left-curve/left-curve/pull/291
+*Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
