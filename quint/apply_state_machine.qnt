@@ -67,6 +67,7 @@ module apply_state_machine {
       ops_history' = ops_history.append(ops),
     }
   }
+
   action step_super_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
@@ -78,6 +79,7 @@ module apply_state_machine {
       ops_history' = ops_history.append(ops)
     }
   }
+
   /********* INVARIANTS ***********/
 
   /// The set of unpruned tree versions that should be complete in the tree

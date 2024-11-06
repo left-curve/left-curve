@@ -168,16 +168,22 @@ module tree_test {
     assert(reference == result)
   }
 
-  run superSimpleVsFancyTest = {
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
+  run superSimpleVsFancyTest = init.then(3.reps(_ => {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
 
-    pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
-    pure val result = fancy::apply(empty_tree, 0, 0, ops)
-    assert(reference == result)
-  }
+    val reference = super_simple::apply(tree, version - 1, version, ops)
+    val result = fancy::apply(tree, version - 1, version, ops)
+    val failure = reference != result
+    all {
+      tree' = result,
+      version' = version + 1,
+      ops_history' = if (failure) q::debug("ops_history", ops_history.append(ops)) else ops_history.append(ops),
+      smallest_unpruned_version' = smallest_unpruned_version,
+      if (failure) assert(q::debug("super_simple", reference) == q::debug("fancy", result)) else true,
+    }
+  }))
 
   // FIXME: this test fails and is skipped
   run superSimpleVsSimpleTestSkipped = {
