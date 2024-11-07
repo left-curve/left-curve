@@ -6,6 +6,7 @@ pub enum Block {
     Table,
     Id,
     CreatedAt,
+    #[allow(clippy::enum_variant_names)]
     BlockHeight,
 }
 
