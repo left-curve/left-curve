@@ -81,7 +81,7 @@ pub struct ContractBuilder<
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    authenticate_fn: Option<AuthenticateFn<E7, C, D>>,
+    authenticate_fn: Option<AuthenticateFn<D, C, E7>>,
     backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
@@ -388,9 +388,9 @@ where
         }
     }
 
-    pub fn with_authenticate<E7A, C1, D1>(
+    pub fn with_authenticate<DA, CA, E7A>(
         self,
-        authenticate_fn: AuthenticateFn<E7A, C1, D1>,
+        authenticate_fn: AuthenticateFn<DA, CA, E7A>,
     ) -> ContractBuilder<
         M1,
         E1,
@@ -410,8 +410,8 @@ where
         E11,
         E12,
         E13,
-        C1,
-        D1,
+        CA,
+        DA,
     > {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -735,7 +735,7 @@ struct ContractImpl<
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    authenticate_fn: Option<AuthenticateFn<E7, C, D>>,
+    authenticate_fn: Option<AuthenticateFn<D, C, E7>>,
     backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
