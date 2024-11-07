@@ -11,8 +11,8 @@
 - [Generating dependency graph](notes/generate-dependency-graph.md)
 - [Indexed map](notes/indexed-map.md)
 - [Liquidity provision](notes/liquidity-provision.md)
-- [Math](notes/math.md)
 - [Margin account: health](notes/margin-account-health.md)
+- [Math](notes/math.md)
 - [Transaction lifecycle](notes/transaction-lifecycle.md)
 
 ---
