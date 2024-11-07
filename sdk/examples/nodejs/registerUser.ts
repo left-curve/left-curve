@@ -1,6 +1,7 @@
 import { Secp256k1 } from "@leftcurve/crypto";
 import { encodeBase64 } from "@leftcurve/encoding";
 import { http, computeAddress, createAccountSalt, createUserClient } from "@leftcurve/sdk";
+import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import { AccountType, type Address } from "@leftcurve/types";
 
@@ -11,7 +12,7 @@ async function registerUser() {
   const userClient = createUserClient({
     username: "owner",
     signer: PrivateKeySigner.fromMnemonic(process.env.MNEMONIC),
-    transport: http("http://localhost:26657"),
+    transport: http(devnet.rpcUrls.default.http.at(0)),
   });
 
   const factoryAddr = await userClient.getAppConfig<Address>({ key: "account_factory" });
