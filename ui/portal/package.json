@@ -21,7 +21,8 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
-    "react-router-dom": "catalog:"
+    "react-router-dom": "catalog:",
+    "nuqs": "catalog:"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
