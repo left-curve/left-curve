@@ -16,10 +16,6 @@ module apply_fancy {
   /// Result of apply_at calls, for emulating recursion
   type ApplyAtMemo = (Version, Version, BitArray, Set[OperationOnKey]) -> ApplyResult
 
-  pure val bits_to_compute = Set(0,1)
-    .allListsUpTo(MAX_HASH_LENGTH)
-    .toList((a, b) => intCompare(a.length(), b.length()))
-
   pure def sorted_nodes(tree: Tree): List[NodeId] = {
     tree.nodes.keys().toList((a, b) => intCompare(a.key_hash.length(), b.key_hash.length()))
   }
@@ -361,6 +357,10 @@ module apply_fancy {
   }
 
   type CreateSubtreeMemo = BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
+
+  pure val bits_to_compute = Set(0,1)
+    .allListsUpTo(MAX_HASH_LENGTH)
+    .toList((a, b) => intCompare(a.length(), b.length()))
 
   pure def pre_compute_create_subtree(
     tree: Tree,
