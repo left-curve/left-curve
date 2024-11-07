@@ -5,15 +5,14 @@ use {
     dango_types::{
         account::{
             multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
-            InstantiateMsg,
+            InstantiateMsg, Tx,
         },
         account_factory::{QueryAccountRequest, Username},
-        auth::Metadata,
         config::ACCOUNT_FACTORY_KEY,
     },
     grug::{
         Addr, AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
-        StdResult, Tx,
+        StdResult,
     },
 };
 
@@ -32,8 +31,6 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    let metadata: Metadata = tx.data.clone().deserialize_json()?;
-
     // The only type of transaction a Safe account is allowed to emit is to
     // execute itself. Everything else needs to be done through proposals.
     // Additionally, if the action is proposing or voting, the proposer/voter's
@@ -43,7 +40,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 if let ExecuteMsg::Vote { voter, .. } = msg.clone().deserialize_json()? {
                     ensure!(
-                        voter == metadata.username,
+                        voter == tx.data.username,
                         "can't vote with a different username"
                     );
                 }
@@ -52,7 +49,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         }
     }
 
-    authenticate_tx(ctx, tx, None, Some(metadata))?;
+    authenticate_tx(ctx, tx, None)?;
 
     Ok(AuthResponse::new().request_backrun(false))
 }
@@ -251,11 +248,12 @@ mod tests {
         dango_types::{
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
+            auth::{Credential, Metadata},
             config::ACCOUNT_FACTORY_KEY,
         },
         grug::{
-            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
-            Json, JsonSerExt, MockContext, MockQuerier, NonZero, ResultExt, Timestamp, MOCK_BLOCK,
+            btree_map, Addr, AuthMode, ByteArray, Coins, Duration, GenericResult, GenericResultExt,
+            Hash, JsonSerExt, MockContext, MockQuerier, NonZero, ResultExt, Timestamp, MOCK_BLOCK,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -266,6 +264,9 @@ mod tests {
 
     /// Address of the Safe for use in the following tests.
     const SAFE: Addr = Addr::mock(255);
+
+    /// Mock credential for where it doesn't matter what the actual value is.
+    const MOCK_CREDENTIAL: Credential = Credential::Secp256k1(ByteArray::from_inner([0; 64]));
 
     #[test]
     fn only_factory_can_instantiate() {
@@ -330,10 +331,8 @@ mod tests {
                     // reach the signature verification step.
                     key_hash: Hash::ZERO,
                     sequence: 0,
-                }
-                .to_json_value()
-                .unwrap(),
-                credential: Json::null(),
+                },
+                credential: MOCK_CREDENTIAL,
             });
 
             assert!(res.is_err_and(|err| err.to_string().contains(&format!(
@@ -352,10 +351,8 @@ mod tests {
                     username: member1,
                     key_hash: Hash::ZERO,
                     sequence: 0,
-                }
-                .to_json_value()
-                .unwrap(),
-                credential: Json::null(),
+                },
+                credential: MOCK_CREDENTIAL,
             });
 
             assert!(res.is_err_and(|err| err
@@ -384,10 +381,8 @@ mod tests {
                     username: member3,
                     key_hash: Hash::ZERO,
                     sequence: 0,
-                }
-                .to_json_value()
-                .unwrap(),
-                credential: Json::null(),
+                },
+                credential: MOCK_CREDENTIAL,
             });
 
             assert!(res.is_err_and(|err| err

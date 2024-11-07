@@ -146,7 +146,7 @@ pub type ReplyFn<M, E> = Box<dyn Fn(SudoCtx, M, SubMsgResult) -> Result<Response
 
 pub type QueryFn<M, E> = Box<dyn Fn(ImmutableCtx, M) -> Result<Json, E> + Send + Sync>;
 
-pub type AuthenticateFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E> + Send + Sync>;
+pub type AuthenticateFn<D, C, E> = Box<dyn Fn(AuthCtx, Tx<D, C>) -> Result<AuthResponse, E> + Send + Sync>;
 
 pub type BackrunFn<E> = Box<dyn Fn(AuthCtx, Tx) -> Result<Response, E> + Send + Sync>;
 
