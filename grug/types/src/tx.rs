@@ -23,12 +23,12 @@ pub type Label = LengthBounded<String, 1, 128>;
 
 /// A transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Tx<D = Json, C = Json> {
+pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
     pub msgs: Vec<Message>,
-    pub data: D,
-    pub credential: C,
+    pub data: Json,
+    pub credential: Json,
 }
 
 /// A transaction but without a gas limit or credential.

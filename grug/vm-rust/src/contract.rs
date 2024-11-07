@@ -72,8 +72,6 @@ pub struct ContractBuilder<
     E11 = StdError,
     E12 = StdError,
     E13 = StdError,
-    C = Json,
-    D = Json,
 > {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
@@ -81,7 +79,7 @@ pub struct ContractBuilder<
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    authenticate_fn: Option<AuthenticateFn<D, C, E7>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
     backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
@@ -114,29 +112,8 @@ where
     }
 }
 
-impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, C, D>
-    ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+impl<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
+    ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
 where
     M1: DeserializeOwned + 'static,
     M2: DeserializeOwned + 'static,
@@ -156,34 +133,11 @@ where
     E11: ToString + 'static,
     E12: ToString + 'static,
     E13: ToString + 'static,
-    C: DeserializeOwned + 'static,
-    D: DeserializeOwned + 'static,
 {
     pub fn with_execute<M2A, E2A>(
         self,
         execute_fn: ExecuteFn<M2A, E2A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2A,
-        M3,
-        M5,
-        M6,
-        E2A,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+    ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M2A: DeserializeOwned + 'static,
         E2A: ToString + 'static,
@@ -208,28 +162,7 @@ where
     pub fn with_migrate<M3A, E3A>(
         self,
         migrate_fn: MigrateFn<M3A, E3A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3A,
-        M5,
-        M6,
-        E2,
-        E3A,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+    ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M3A: DeserializeOwned + 'static,
         E3A: ToString + 'static,
@@ -254,28 +187,7 @@ where
     pub fn with_receive<E4A>(
         self,
         receive_fn: ReceiveFn<E4A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4A,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         E4A: ToString + 'static,
     {
@@ -299,28 +211,7 @@ where
     pub fn with_reply<M5A, E5A>(
         self,
         reply_fn: ReplyFn<M5A, E5A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5A,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5A,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+    ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M5A: DeserializeOwned + 'static,
         E5A: ToString + 'static,
@@ -345,28 +236,7 @@ where
     pub fn with_query<M6A, E6A>(
         self,
         query_fn: QueryFn<M6A, E6A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6A,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6A,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12, E13>
     where
         M6A: DeserializeOwned + 'static,
         E6A: ToString + 'static,
@@ -388,31 +258,11 @@ where
         }
     }
 
-    pub fn with_authenticate<DA, CA, E7A>(
+    pub fn with_authenticate<E7A>(
         self,
-        authenticate_fn: AuthenticateFn<DA, CA, E7A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7A,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        CA,
-        DA,
-    > {
+        authenticate_fn: AuthenticateFn<E7A>,
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7A, E8, E9, E10, E11, E12, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -433,28 +283,8 @@ where
     pub fn with_backrun<E8A>(
         self,
         backrun_fn: BackrunFn<E8A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8A,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8A, E9, E10, E11, E12, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -475,28 +305,8 @@ where
     pub fn with_bank_execute<E9A>(
         self,
         bank_execute_fn: BankExecuteFn<E9A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9A,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9A, E10, E11, E12, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -517,28 +327,8 @@ where
     pub fn with_bank_query<E10A>(
         self,
         bank_query_fn: BankQueryFn<E10A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10A,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10A, E11, E12, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -559,28 +349,8 @@ where
     pub fn with_withhold_fee<E11A>(
         self,
         withhold_fee_fn: WithholdFeeFn<E11A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11A,
-        E12,
-        E13,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11A, E12, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -601,28 +371,8 @@ where
     pub fn with_finalize_fee<E12A>(
         self,
         finalize_fee_fn: FinalizeFeeFn<E12A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12A,
-        E13,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12A, E13>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -643,28 +393,8 @@ where
     pub fn with_cron_execute<E13A>(
         self,
         cron_execute_fn: CronExecuteFn<E13A>,
-    ) -> ContractBuilder<
-        M1,
-        E1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13A,
-        C,
-        D,
-    > {
+    ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13A>
+    {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
             execute_fn: self.execute_fn,
@@ -707,35 +437,14 @@ where
 
 // ----------------------------------- impl ------------------------------------
 
-struct ContractImpl<
-    M1,
-    M2,
-    M3,
-    M5,
-    M6,
-    E1,
-    E2,
-    E3,
-    E4,
-    E5,
-    E6,
-    E7,
-    E8,
-    E9,
-    E10,
-    E11,
-    E12,
-    E13,
-    C,
-    D,
-> {
+struct ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13> {
     instantiate_fn: InstantiateFn<M1, E1>,
     execute_fn: Option<ExecuteFn<M2, E2>>,
     migrate_fn: Option<MigrateFn<M3, E3>>,
     receive_fn: Option<ReceiveFn<E4>>,
     reply_fn: Option<ReplyFn<M5, E5>>,
     query_fn: Option<QueryFn<M6, E6>>,
-    authenticate_fn: Option<AuthenticateFn<D, C, E7>>,
+    authenticate_fn: Option<AuthenticateFn<E7>>,
     backrun_fn: Option<BackrunFn<E8>>,
     bank_execute_fn: Option<BankExecuteFn<E9>>,
     bank_query_fn: Option<BankQueryFn<E10>>,
@@ -744,29 +453,8 @@ struct ContractImpl<
     cron_execute_fn: Option<CronExecuteFn<E13>>,
 }
 
-impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13, C, D> Contract
-    for ContractImpl<
-        M1,
-        M2,
-        M3,
-        M5,
-        M6,
-        E1,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        C,
-        D,
-    >
+impl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13> Contract
+    for ContractImpl<M1, M2, M3, M5, M6, E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
 where
     M1: DeserializeOwned,
     M2: DeserializeOwned,
@@ -786,8 +474,6 @@ where
     E11: ToString,
     E12: ToString,
     E13: ToString,
-    C: DeserializeOwned,
-    D: DeserializeOwned,
 {
     fn instantiate(
         &self,
@@ -911,15 +597,6 @@ where
         };
 
         let auth_ctx = make_auth_ctx!(ctx, storage, api, querier);
-
-        let tx = Tx {
-            sender: tx.sender,
-            gas_limit: tx.gas_limit,
-            msgs: tx.msgs,
-            data: tx.data.deserialize_json()?,
-            credential: tx.credential.deserialize_json()?,
-        };
-
         let res = authenticate_fn(auth_ctx, tx);
 
         Ok(res.into_generic_result())
