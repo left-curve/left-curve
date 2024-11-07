@@ -265,7 +265,7 @@ mod tests {
     /// Address of the Safe for use in the following tests.
     const SAFE: Addr = Addr::mock(255);
 
-    /// Mock credential where is doesn't matter what the actual value is.
+    /// Mock credential for where it doesn't matter what the actual value is.
     const MOCK_CREDENTIAL: Credential = Credential::Secp256k1(ByteArray::from_inner([0; 64]));
 
     #[test]
