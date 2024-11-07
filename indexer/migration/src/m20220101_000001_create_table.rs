@@ -1,5 +1,7 @@
-use crate::idens::{Block, Message, Transaction};
-use sea_orm_migration::{prelude::*, schema::*};
+use {
+    crate::idens::{Block, Message, Transaction},
+    sea_orm_migration::{prelude::*, schema::*},
+};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
