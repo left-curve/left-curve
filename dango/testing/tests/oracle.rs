@@ -343,7 +343,7 @@ fn multiple_vaas() {
         for vaa in vaas {
             for price_feed in vaa.unverified() {
                 let last_price_feed = last_price_feeds
-                    .get_mut(&PythId::from_str(&price_feed.id.to_hex()).unwrap())
+                    .get_mut(&PythId::from_str(&price_feed.id.to_string()).unwrap())
                     .unwrap();
 
                 if let Some(last_price_feed) = last_price_feed {
