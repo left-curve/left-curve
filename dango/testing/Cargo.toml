@@ -15,7 +15,7 @@ dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
 dango-amm             = { workspace = true, features = ["library"] }
-dango-app             = { workspace = true}
+dango-app             = { workspace = true }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
 dango-ibc-transfer    = { workspace = true, features = ["library"] }

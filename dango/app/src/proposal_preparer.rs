@@ -9,7 +9,6 @@ use {
     grug::{
         Addr, Binary, Coins, Hash160, HashExt, JsonSerExt, Message, QuerierWrapper, StdError, Tx,
     },
-    grug_app::ProposalPreparer,
     k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey},
     prost::bytes::Bytes,
     std::{ops::Deref, str::FromStr, time},
@@ -21,7 +20,7 @@ const DEFAULT_TIMEOUT: time::Duration = time::Duration::from_millis(500);
 const GAS_LIMIT: u64 = 5_000_000;
 
 #[derive(Debug, Error)]
-pub enum PythError {
+pub enum ProposerError {
     #[error(transparent)]
     Std(#[from] StdError),
 
@@ -32,14 +31,14 @@ pub enum PythError {
     Signature(#[from] k256::ecdsa::Error),
 }
 
-impl From<PythError> for grug_app::AppError {
-    fn from(value: PythError) -> Self {
+impl From<ProposerError> for grug_app::AppError {
+    fn from(value: ProposerError) -> Self {
         grug_app::AppError::PrepareProposal(value.to_string())
     }
 }
 
 #[derive(Clone)]
-pub struct PythProposalPreparer {
+pub struct ProposalPreparer {
     chain_id: String,
     feeder_addr: Addr,
     feeder_sk: SigningKey,
@@ -47,13 +46,13 @@ pub struct PythProposalPreparer {
     username: Username,
 }
 
-impl PythProposalPreparer {
+impl ProposalPreparer {
     pub fn new(
         chain_id: String,
         feeder_addr: Addr,
         feeder_sk: &[u8],
         username: String,
-    ) -> Result<Self, PythError> {
+    ) -> Result<Self, ProposerError> {
         let feeder_sk = SigningKey::from_slice(feeder_sk)?;
         let key_hash = VerifyingKey::from(&feeder_sk)
             .to_sec1_bytes()
@@ -70,7 +69,7 @@ impl PythProposalPreparer {
         })
     }
 
-    pub fn sign_tx(&self, sequence: u32, messages: Vec<Message>) -> Result<Tx, PythError> {
+    pub fn sign_tx(&self, sequence: u32, messages: Vec<Message>) -> Result<Tx, ProposerError> {
         let sign_bytes = SignDoc {
             sender: self.feeder_addr,
             messages: messages.clone(),
@@ -99,8 +98,8 @@ impl PythProposalPreparer {
     }
 }
 
-impl ProposalPreparer for PythProposalPreparer {
-    type Error = PythError;
+impl grug_app::ProposalPreparer for ProposalPreparer {
+    type Error = ProposerError;
 
     fn prepare_proposal(
         &self,
@@ -110,32 +109,25 @@ impl ProposalPreparer for PythProposalPreparer {
     ) -> Result<Vec<Bytes>, Self::Error> {
         let oracle = querier.query_app_config(ORACLE_KEY)?;
 
-        let mut params = vec![];
-        let mut start_after = None;
-
-        // Keep collecting price ids from oracle contract until there are no more
-        loop {
-            let price_ids = querier.query_wasm_smart(oracle, QueryPriceSourcesRequest {
-                start_after,
-                limit: None,
-            })?;
-
-            if let Some((key, _)) = price_ids.last_key_value() {
-                start_after = Some(key.clone());
-            } else {
-                break;
-            }
-
-            for price_id in price_ids.into_values() {
+        // Retrieve the price ids from the oracle and prepare the query params.
+        let params = querier
+            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: Some(u32::MAX),
+            })?
+            .into_values()
+            .filter_map(|price_id| {
+                // For now there is only Pyth as PriceSource, but there could be more.
                 #[allow(irrefutable_let_patterns)]
-                // For now there is only Pyth as PriceSource, but there could be more
                 if let PriceSource::Pyth { id, .. } = price_id {
-                    params.push(("ids[]", id.to_string()));
+                    Some(("ids[]", id.to_string()))
+                } else {
+                    None
                 }
-            }
-        }
+            })
+            .collect::<Vec<_>>();
 
-        // Retrive prices from pyth node
+        // Retrieve prices from pyth node.
         let prices = reqwest::blocking::Client::builder()
             .timeout(DEFAULT_TIMEOUT)
             .build()?
@@ -144,7 +136,7 @@ impl ProposalPreparer for PythProposalPreparer {
             .send()?
             .json::<Vec<Binary>>()?;
 
-        // build the tx
+        // Build the tx.
         let sequence = querier.query_wasm_smart(self.feeder_addr, QuerySequenceRequest {})?;
 
         let msgs = vec![Message::execute(

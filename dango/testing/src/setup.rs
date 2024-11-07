@@ -1,10 +1,10 @@
 use {
     crate::{Accounts, TestAccount},
-    dango_app::PythProposalPreparer,
+    dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
         btree_map, Addressable, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper,
-        Duration, NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
+        Duration, NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Vm},
@@ -17,17 +17,14 @@ use {
 
 const CHAIN_ID: &str = "dev-1";
 
+pub type TestSuite<DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, ProposalPreparer>;
+
 /// Set up a test with the given DB, VM, and codes.
 fn setup_suite_with_db_and_vm<DB, VM, T>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
-) -> (
-    TestSuite<DB, VM, PythProposalPreparer>,
-    Accounts,
-    Codes<T>,
-    Contracts,
-)
+) -> (TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
@@ -76,7 +73,7 @@ where
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        PythProposalPreparer::new(
+        ProposalPreparer::new(
             CHAIN_ID.to_string(),
             feeder.address(),
             &feeder.sk.to_bytes(),
@@ -103,12 +100,7 @@ where
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, and `ContractWrapper` codes.
-pub fn setup_test() -> (
-    TestSuite<MemDb, RustVm, PythProposalPreparer>,
-    Accounts,
-    Codes<ContractWrapper>,
-    Contracts,
-) {
+pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
         .with_query(Box::new(dango_account_factory::query))
@@ -194,7 +186,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<DiskDb, WasmVm, PythProposalPreparer>,
+    TestSuite<DiskDb, WasmVm>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,

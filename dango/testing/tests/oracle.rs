@@ -1,16 +1,12 @@
 use {
-    dango_app::PythProposalPreparer,
-    dango_testing::{setup_test, Accounts},
+    dango_testing::{setup_test, Accounts, TestSuite},
     dango_types::oracle::{
         self, ExecuteMsg, GuardianSet, PrecisionlessPrice, PriceSource, PythId, PythVaa,
-        QueryPriceRequest, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
+        QueryPriceRequest, ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, GUARDIANS_ADDRESSES,
+        GUARDIAN_SETS_INDEX, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID, USDC_USD_ID, WBTC_USD_ID,
+        XRP_USD_ID,
     },
-    grug::{
-        btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, ResultExt, TestSuite,
-        Udec128,
-    },
-    grug_db_memory::MemDb,
-    grug_vm_rust::RustVm,
+    grug::{btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, ResultExt, Udec128},
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
@@ -25,26 +21,9 @@ const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InI
 /// - publish_time: **1730209108**
 const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw/qtQ/jX44qUBV+Du+woo5lWLrE1ttnAPfwv9aftKy/r0pz0OdAQP25Bjy5Hx3MaOEF49sx+OrA6fxSNtBIxEkZ/wqznQAvlNE86loIz2osKoAWYeCg9FjU/8A2CmZZhcyXb4Cf+beAQSN829+7wKOw6tdMnKwtiYKdXL1yo1uP10iZ3EhU2M4cxrD0xYKA0pkb9hmhRo+zHrOY9pyTGXAsz7FjlI+gvgCAQa5MiGBgMRLFGW0fTd+bqc+isCQDbhgm/99yNkVaDt40ASST8CfH5zp4Xim5l5Yhs+/HMpeFSuTNULeDXsTO2FaAAjaPzeC8Bie6n154BaKA+45xn0lDa0epmVZs16zVCkKczSUNVG5e5VZe6N8edT+dVicoZYT9tgHJn2WDIjcpRv7AAsc0fdXE42zolp1Dhg1XVL5oe6NeTZi2Beu2ecv5FkvtCwm9dytTv6C359wJqUZLbZVaqOU9CEVbBvTzbKAm/tQAAx12qSCdkLtlJZAmhhrCvW56375q1Dy74L417r+GhDgYRqPCNWyaY7azRFfOwahxc9ECZgHj1aJg0bk395+JhTnAQ2K/IC6aRcSpPd+SfbWnfPtdJTdJFw5QCS50FbBfxxmqBTcG8E8fyYyCz5SGC8rtXgrBi+cQZe8FgW4CoLXXxC+AQ7TotPy0p9aHpwlIrXvu9B2nThByrwd4icwnOfQsUDHcG65PXWvu9nc1o5EK6SImnv+AmIu+RID2MnyTavsGEMpAA/XdQHG8mkgdWlZ1w7fg2MBs3fa0VxIlKc1DuaBdZVZEjrnB4gE15oqMZ21Bt8ji6r6J+ar/9K46EUeYC2t6CuBARDpRTI9ZZlh0MvxIbxRkuAgtRTv8oNrSz4sQJMNbhWdswTmqQQMZjtdJwGWepaAGhnEiuF/JgIr20AnDxCWbolgABGwVILVFDCHnLV54/bIdXUEiigPZvsKcDxLpOoJ722xZT1cXwXoBmwQ2lXQxGOjyj8VvgAt2kZJNbGc77+pmsqdABIFwK9Dc5BLxz+dXztA5bPMcEKkfZ18t7HPZ9BVQN7f1Cw4XcBZDSRR0MM6tqeBYvLJZhDMbt2Ax0m0+RlzQTZyAWcg5VQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFWSo1AUFVV1YAAAAAAApl86sAACcQTdtYrFsURmdX9JeZM/nLGOdGy18BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZ8iV0qxQAAAAIvYnVX////+AAAAABnIOVUAAAAAGcg5VQAAAZ3rChYAAAAAAIykC3MCknCJZOvI3H3Ijt5NftDL77S253kTxg9ywpWvf3kzbZeQqXixw7K/fcAEWCww773jqhfS4CdRyUc38SMv+DhHywJbnUSyzFEWOTBVmVuvEtt6xWOTDMifAi8cAX0cBtZOyeIeLytWSqkMVYhtbm0gKCLnjtBEKLg/zEHSL48Ndm9VTihIpe8REto4Pf2MjlxRY6Smgw2TMZCJTCEj2869KzQsQhVSH4VmOJNJpevlYaqeFmJ7WDOC1tFWrVulGSZ/nIt63NKB+JP";
 
-pub const WBTC_USD_ID: &str = "0xc9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33";
-pub const ETH_USD_ID: &str = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
-pub const USDC_USD_ID: &str = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
-pub const SOL_USD_ID: &str = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
-pub const ATOM_USD_ID: &str = "0xb00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819";
-pub const BNB_USD_ID: &str = "0x2f95862b045670cd22bee3114c39763a4a08beeb663b145d283c31d7d1101c4f";
-pub const DOGE_USD_ID: &str = "0xdcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c";
-pub const XRP_USD_ID: &str = "0xec5d399846a9209f3fe5881d70aae9268c94339ff9817e8d18ff19fa05eea1c8";
-pub const TON_USD_ID: &str = "0x8963217838ab4cf5cadc172203c1f0b763fbaa45f346d8ee50ba994bbcac3026";
-pub const SHIBA_USD_ID: &str = "0xf0d57deca57b3da2fe63a493f4c25925fdfd8edf834b20f93e1f84dbd1504d4a";
-
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-fn setup_oracle_test(
-    denoms: BTreeMap<Denom, PriceSource>,
-) -> (
-    TestSuite<MemDb, RustVm, PythProposalPreparer>,
-    Accounts,
-    Addr,
-) {
+fn setup_oracle_test(denoms: BTreeMap<Denom, PriceSource>) -> (TestSuite, Accounts, Addr) {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
     // init a new oracle
@@ -94,12 +73,11 @@ fn setup_oracle_test(
 
 #[test]
 fn oracle() {
-    let id = PythId::from_str(WBTC_USD_ID).unwrap();
     let precision = 8;
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
 
     let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
-        btc_denom.clone() => PriceSource::Pyth { id, precision }
+        btc_denom.clone() => PriceSource::Pyth { id: WBTC_USD_ID, precision }
     });
 
     // Push price
@@ -198,21 +176,18 @@ fn double_vaas() {
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
 
-    let pyth_id_btc = PythId::from_str(WBTC_USD_ID).unwrap();
-    let pyth_id_eth = PythId::from_str(ETH_USD_ID).unwrap();
-
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
     let eth_denom = Denom::from_str("bridge/eth").unwrap();
 
     let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
-        btc_denom.clone() => PriceSource::Pyth { id: pyth_id_btc, precision: 8 },
-        eth_denom.clone() => PriceSource::Pyth { id: pyth_id_eth, precision: 8 },
+        btc_denom.clone() => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
+        eth_denom.clone() => PriceSource::Pyth { id: ETH_USD_ID, precision: 8 },
     });
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let btc_vaas_raw = get_latest_vaas(&[WBTC_USD_ID]).unwrap();
-        let eth_vaas_raw = get_latest_vaas(&[ETH_USD_ID]).unwrap();
+        let btc_vaas_raw = get_latest_vaas([WBTC_USD_ID]).unwrap();
+        let eth_vaas_raw = get_latest_vaas([ETH_USD_ID]).unwrap();
 
         let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
             .unwrap()
@@ -343,7 +318,7 @@ fn multiple_vaas() {
         .iter()
         .map(|(id, denom)| {
             (denom.clone(), PriceSource::Pyth {
-                id: PythId::from_str(id).unwrap(),
+                id: *id,
                 precision: 8,
             })
         })
@@ -368,7 +343,7 @@ fn multiple_vaas() {
         for vaa in vaas {
             for price_feed in vaa.unverified() {
                 let last_price_feed = last_price_feeds
-                    .get_mut(price_feed.id.to_string().as_str())
+                    .get_mut(&PythId::from_str(&price_feed.id.to_hex()).unwrap())
                     .unwrap();
 
                 if let Some(last_price_feed) = last_price_feed {
@@ -440,11 +415,11 @@ fn multiple_vaas() {
 fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
 where
     I: IntoIterator,
-    I::Item: AsRef<str>,
+    I::Item: ToString,
 {
     let ids = ids
         .into_iter()
-        .map(|id| ("ids[]", id.as_ref().to_string()))
+        .map(|id| ("ids[]", id.to_string()))
         .collect::<Vec<_>>();
 
     reqwest::blocking::Client::new()

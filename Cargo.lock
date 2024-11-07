@@ -1620,6 +1620,7 @@ dependencies = [
  "byteorder",
  "data-encoding",
  "grug",
+ "hex-literal",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",

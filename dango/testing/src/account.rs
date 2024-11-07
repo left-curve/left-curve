@@ -1,5 +1,5 @@
 use {
-    dango_app::PythProposalPreparer,
+    crate::TestSuite,
     dango_types::{
         account::single,
         account_factory::{
@@ -9,10 +9,8 @@ use {
     },
     grug::{
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, ResultExt, Signer, StdResult, TestSuite, Tx, Undefined,
+        MaybeDefined, Message, ResultExt, Signer, StdResult, Tx, Undefined,
     },
-    grug_db_memory::MemDb,
-    grug_vm_rust::RustVm,
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
         elliptic_curve::rand_core::OsRng,
@@ -150,7 +148,7 @@ where
     /// `TestAccount` with the new account's address.
     pub fn register_new_account(
         &mut self,
-        test_suite: &mut TestSuite<MemDb, RustVm, PythProposalPreparer>,
+        test_suite: &mut TestSuite,
         factory: Addr,
         code_hash: Hash256,
         params: AccountParams,

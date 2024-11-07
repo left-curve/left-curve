@@ -79,9 +79,7 @@ where
 
     fn prepare_proposal(&self, req: RequestPrepareProposal) -> ResponsePrepareProposal {
         let max_tx_bytes = req.max_tx_bytes.try_into().unwrap_or(0);
-        let txs = self
-            .do_prepare_proposal(req.txs.clone(), max_tx_bytes)
-            .unwrap();
+        let txs = self.do_prepare_proposal(req.txs, max_tx_bytes);
 
         ResponsePrepareProposal { txs }
     }

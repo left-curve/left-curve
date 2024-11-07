@@ -1,8 +1,8 @@
 use {
     anyhow::bail,
     clap::Parser,
-    dango_app::{PythError, PythProposalPreparer},
-    grug_app::{App, NaiveError, NaiveProposalPreparer, ProposalPreparer},
+    dango_app::ProposalPreparer,
+    grug_app::{App, NaiveProposalPreparer},
     grug_db_disk::DiskDb,
     grug_types::Addr,
     grug_vm_wasm::WasmVm,
@@ -56,7 +56,7 @@ impl StartCmd {
             &self.feeder_sk,
         ) {
             (Some(chain_id), Some(feeder_username), Some(feeder_addr), Some(feeder_sk)) => {
-                let pp = PythProposalPreparer::new(
+                let pp = ProposalPreparer::new(
                     chain_id.clone(),
                     Addr::from_str(feeder_addr)?,
                     &hex::decode(feeder_sk)?,
@@ -78,10 +78,10 @@ impl StartCmd {
                 Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
             },
             _ => bail!(
-                "Not all pyth feeder parameters are provided: 
-                chain_id: {:?}, 
-                feeder_username: {:?}, 
-                feeder_addr: {:?}, 
+                "Not all pyth feeder parameters are provided:
+                chain_id: {:?},
+                feeder_username: {:?},
+                feeder_addr: {:?},
                 feeder_sk: {:?}",
                 self.chain_id,
                 self.feeder_username,
