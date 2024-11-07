@@ -1,6 +1,5 @@
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
-
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -156,15 +155,17 @@ where
                     err = err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
+
                 txs
             });
 
-        // Call naive proposal preparer to check the max_tx_bytes.
+        // Call naive proposal preparer to check the `max_tx_bytes`.
         NaiveProposalPreparer
             .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
             .unwrap()
     }
 
+    #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let chain_id = CHAIN_ID.load(&storage)?;
@@ -177,9 +178,9 @@ where
             block,
         ));
 
-        self.pp
-            .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)
-            .map_err(Into::into)
+        Ok(self
+            .pp
+            .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
     }
 
     pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
