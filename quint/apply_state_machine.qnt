@@ -363,12 +363,12 @@ module pruning_state_machine {
     }
   }
   action prune_action = {
-    val pruned_tree = tree.prune(version - 1)
-    all{
-      tree' = pruned_tree,
+    nondet version_to_prune = smallest_unpruned_version.to(version - 1).oneOf()
+    all {
+      tree' = tree.prune(version_to_prune),
       unpruned_tree' = unpruned_tree,
       version' = version,
-      smallest_unpruned_version' = version,
+      smallest_unpruned_version' = version_to_prune + 1,
       ops_history' = ops_history,
     }
   }
