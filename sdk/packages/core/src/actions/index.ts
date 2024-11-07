@@ -196,49 +196,49 @@ export {
   type ExecuteParameters,
   type ExecuteReturnType,
   execute,
-} from "./user/execute.js";
+} from "./signer/execute.js";
 
 export {
   type MigrateParameters,
   type MigrateReturnType,
   migrate,
-} from "./user/migrate.js";
+} from "./signer/migrate.js";
 
 export {
   type TransferParameters,
   type TransferReturnType,
   transfer,
-} from "./user/transfer.js";
+} from "./signer/transfer.js";
 
 export {
   type StoreCodeParameters,
   type StoreCodeReturnType,
   storeCode,
-} from "./user/storeCode.js";
+} from "./signer/storeCode.js";
 
 export {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./user/instantiate.js";
+} from "./signer/instantiate.js";
 
 export {
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
   registerAccount,
-} from "./user/registerAccount.js";
+} from "./signer/registerAccount.js";
 
 export {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./user/storeCodeAndInstantiate.js";
+} from "./signer/storeCodeAndInstantiate.js";
 
 export {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./user/signAndBroadcastTx.js";
+} from "./signer/signAndBroadcastTx.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                Safe Actions                                */
@@ -296,9 +296,9 @@ export {
 } from "./publicActions.js";
 
 export {
-  type UserActions,
-  userActions,
-} from "./userActions.js";
+  type SignerActions,
+  signerActions,
+} from "./signerActions.js";
 
 export {
   type SafeActions,

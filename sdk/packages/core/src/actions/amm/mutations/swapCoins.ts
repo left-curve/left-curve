@@ -10,7 +10,7 @@ import type {
   TypedDataParameter,
 } from "@leftcurve/types";
 import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../user/execute.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type SwapCoinsParameters = {
   sender: Address;

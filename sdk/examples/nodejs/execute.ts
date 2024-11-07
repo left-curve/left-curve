@@ -1,9 +1,9 @@
-import { http, createUserClient } from "@leftcurve/sdk";
+import { http, createSignerClient } from "@leftcurve/sdk";
 import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 
 async function execute() {
-  const client = createUserClient({
+  const client = createSignerClient({
     chain: devnet, // Its optional
     username: "owner",
     signer: PrivateKeySigner.fromRandomKey(),
