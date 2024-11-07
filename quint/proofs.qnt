@@ -30,8 +30,8 @@ module proofs {
 
   type NonExistenceProof = {
     key: BitArray,
-    left: ExistenceProof,
-    right: ExistenceProof,
+    left: Option[ExistenceProof],
+    right: Option[ExistenceProof],
   }
 
 
@@ -41,50 +41,52 @@ module proofs {
 
   
   /// Return leaf with the largest key_hash smaller than k
-  pure def leftNeighbor(t: TreeMap, k: BitArray): LeafNode =
+  pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
     val smallerKeyNodes = t.values().filter(n => match n {
       | Leaf(l) => lessThan(l.key_hash, k)
       | Internal(_) => false
     }) 
-    val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
-     match x {
-      | Leaf(l) =>  
-            l
-      | Internal(_) => s
-      })
-    smallerKeyNodes.fold( someLeaf, (s,x) =>
-      match x {
-      | Leaf(l) =>  
-          if (lessThan(s.key_hash, l.key_hash) )
-            l
-          else 
-            s
-      | Internal(_) => s
-      }
-    )
+    if(smallerKeyNodes.empty()) None else 
+      val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
+        match x {
+          | Leaf(l) =>  
+                l
+          | Internal(_) => s
+          })
+      Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
+        match x {
+        | Leaf(l) =>  
+            if (lessThan(s.key_hash, l.key_hash) )
+              l
+            else 
+              s
+        | Internal(_) => s
+        }
+      ))
 
   /// Return leaf with the smallest key_hash larger than k
-  pure def rightNeighbor(t: TreeMap, k: BitArray): LeafNode =
+  pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
     val largerKeyNodes = t.values().filter(n => match n {
       | Leaf(l) => lessThan(k, l.key_hash)
       | Internal(_) => false
     }) 
-    val someLeaf = largerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
-     match x {
-      | Leaf(l) =>  
-            l
-      | Internal(_) => s
-      })
-    largerKeyNodes.fold( someLeaf, (s,x) =>
+    if(largerKeyNodes.empty()) None else 
+      val someLeaf = largerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
       match x {
-      | Leaf(l) =>  
-          if (lessThan(l.key_hash, s.key_hash) )
-            l
-          else 
-            s
-      | Internal(_) => s
-      }
-    )
+        | Leaf(l) =>  
+              l
+        | Internal(_) => s
+        })
+      Some(largerKeyNodes.fold( someLeaf, (s,x) =>
+        match x {
+        | Leaf(l) =>  
+            if (lessThan(l.key_hash, s.key_hash) )
+              l
+            else 
+              s
+        | Internal(_) => s
+        }
+      ))
 
   pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) : Option[List[InnerOp]] = 
     val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
@@ -119,7 +121,8 @@ module proofs {
                                           reversed_path.append(path_element)))    
     else
       None
-
+  pure def makeExistenceProof(key: BitArray, value: BitArray, leaf: Leaf_t, path: List[InnerOp]) : ExistenceProof = 
+    { key: key, value: value, leaf: leaf, path: path }
   // in implementation the key is passed instead of the key_hash
   pure def ics23_prove (t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
     val state_storage_read = t.treeAtVersion(version)
@@ -137,24 +140,50 @@ module proofs {
         val p = ics23_prove_existence(t, version, key_hash)
         match p {
           | Some(path) =>
-            Some(Exist( {  key: key_hash,
+            Some(Exist(
+              {  key: key_hash,
                     value: value,
                     leaf: {prefix: hashLeafNode({ key_hash: key_hash, value_hash: value})},
                     // not sure about the hash function. check with Rust
-                    path: path }))
+                    path: path }
+                ))
           | None => None 
         }
       | None => 
-        val lneighbor = leftNeighbor(t.treeAtVersion(version), key_hash)
-        val rneighbor = rightNeighbor(t.treeAtVersion(version), key_hash)
-        val nep = { key: key_hash,
-                    left: ics23_prove_existence(t, version, lneighbor.key_hash),
-                    right: ics23_prove_existence(t, version, rneighbor.key_hash),}
+        val lneighborOption: Option[LeafNode] = leftNeighbor(t.treeAtVersion(version), key_hash)
+        val leftNeighborExistenceProof: Option[ExistenceProof] = match lneighborOption {
+          | Some(lneighbor) => 
+            val pathOption = ics23_prove_existence(t, version, lneighbor.key_hash)
+            match pathOption {
+              | Some(path) => Some({
+                key: lneighbor.key_hash,
+                value: lneighbor.value_hash,
+                leaf: { prefix: hashLeafNode({ key_hash: lneighbor.key_hash, value_hash: lneighbor.value_hash}) },
+                path: path
+              })
+              | None => None
+            }
+          | None => None
+        }
+        val rneighborOption: Option[LeafNode]  = rightNeighbor(t.treeAtVersion(version), key_hash)
+        val rightNeighborExistenceProof: Option[ExistenceProof] = match rneighborOption {
+          | Some(rneighbor) => 
+            val pathOption = ics23_prove_existence(t, version, rneighbor.key_hash)
+            match pathOption {
+              | Some(path) => Some({
+                key: rneighbor.key_hash,
+                value: rneighbor.value_hash,
+                leaf: { prefix: hashLeafNode({ key_hash: rneighbor.key_hash, value_hash: rneighbor.value_hash}) },
+                path: path
+              })
+              | None => None
+            }
+          | None => None
+        }
+        val nep : NonExistenceProof = { key: key_hash,
+                                        left: leftNeighborExistenceProof,
+                                        right: rightNeighborExistenceProof }
         Some(NonExist(nep))
-        // TODO: figure out what Rust is doing if left neighbor or right neigbor doesn't exist
-        // Then we need to update the leftNeighbor and rightNeighbor functions accordingly
-        // Then we need to figure out what goes into left and right of the non-existence proofs 
-        // (I guess the type should be changed to Option[ExistenceProof])
     }
     proof
 
