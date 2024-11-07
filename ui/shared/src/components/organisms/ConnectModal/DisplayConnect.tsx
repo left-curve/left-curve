@@ -48,7 +48,9 @@ export const DisplayConnect: React.FC = () => {
         animate={{ opacity: 1, translateY: 0 }}
         exit={{ opacity: 0, translateY: 100 }}
       >
-        <h2 className="text-2xl font-semibold py-4">Connect with {connector.name}</h2>
+        <h2 className="text-2xl font-semibold py-4 text-typography-rose-500">
+          Connect with {connector.name}
+        </h2>
         <div className="flex items-center justify-center relative">
           {connector.icon ? (
             <img

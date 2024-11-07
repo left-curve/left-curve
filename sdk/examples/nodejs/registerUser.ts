@@ -1,6 +1,7 @@
 import { Secp256k1 } from "@leftcurve/crypto";
 import { encodeBase64 } from "@leftcurve/encoding";
-import { http, computeAddress, createAccountSalt, createUserClient } from "@leftcurve/sdk";
+import { http, computeAddress, createAccountSalt, createSignerClient } from "@leftcurve/sdk";
+import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import { AccountType, type Address } from "@leftcurve/types";
 
@@ -8,15 +9,15 @@ async function registerUser() {
   if (!process.env.MNEMONIC) throw new Error("Please set the MNEMONIC environment variable");
 
   // Instantiate the user client
-  const userClient = createUserClient({
+  const signerClient = createSignerClient({
     username: "owner",
     signer: PrivateKeySigner.fromMnemonic(process.env.MNEMONIC),
-    transport: http("http://localhost:26657"),
+    transport: http(devnet.rpcUrls.default.http.at(0)),
   });
 
-  const factoryAddr = await userClient.getAppConfig<Address>({ key: "account_factory" });
-  const ibcTransferAddr = await userClient.getAppConfig<Address>({ key: "ibc_transfer" });
-  const accountCodeHash = await userClient.getAccountTypeCodeHash({
+  const factoryAddr = await signerClient.getAppConfig<Address>({ key: "account_factory" });
+  const ibcTransferAddr = await signerClient.getAppConfig<Address>({ key: "ibc_transfer" });
+  const accountCodeHash = await signerClient.getAccountTypeCodeHash({
     accountType: AccountType.Spot,
   });
 
@@ -40,7 +41,7 @@ async function registerUser() {
   const userAddress = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
 
   // Send funds to ibc-transfer contract
-  await userClient.execute({
+  await signerClient.execute({
     contract: ibcTransferAddr,
     sender: "0x570f0f3f50024058b966e4a7913564be968ede7a",
     msg: {
@@ -52,13 +53,13 @@ async function registerUser() {
   });
 
   // Register user
-  await userClient.registerUser({
+  await signerClient.registerUser({
     keyHash: userKeyHash,
     key: userKey,
     username: username,
   });
 
-  const balance = await userClient.getBalance({ address: userAddress, denom: "uusdc" });
+  const balance = await signerClient.getBalance({ address: userAddress, denom: "uusdc" });
   console.log(balance);
 }
 

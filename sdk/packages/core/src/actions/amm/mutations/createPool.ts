@@ -11,7 +11,7 @@ import type {
   TypedDataProperty,
 } from "@leftcurve/types";
 import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../user/execute.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type CreatePoolParameters = {
   sender: Address;

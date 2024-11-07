@@ -1,16 +1,16 @@
 import type { Chain, Client, ClientConfig, RequiredBy, Signer, Transport } from "@leftcurve/types";
 
 import { type PublicActions, publicActions } from "../actions/publicActions.js";
-import { type UserActions, userActions } from "../actions/userActions.js";
+import { type SignerActions, signerActions } from "../actions/signerActions.js";
 import { createBaseClient } from "./baseClient.js";
 
-export type UserClientConfig<
+export type SignerClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer = Signer,
 > = RequiredBy<ClientConfig<transport, chain, signer>, "signer" | "username">;
 
-export type UserClient<
+export type SignerClient<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer = Signer,
@@ -18,14 +18,16 @@ export type UserClient<
   transport,
   chain,
   signer,
-  PublicActions<transport, chain> & UserActions<transport, chain>
+  PublicActions<transport, chain> & SignerActions<transport, chain>
 >;
 
-export function createUserClient<
+export function createSignerClient<
   transport extends Transport,
   chain extends Chain | undefined = undefined,
   signer extends Signer = Signer,
->(parameters: UserClientConfig<transport, chain, signer>): UserClient<transport, chain, signer> {
+>(
+  parameters: SignerClientConfig<transport, chain, signer>,
+): SignerClient<transport, chain, signer> {
   const { name = "Wallet Client" } = parameters;
 
   const client = createBaseClient({
@@ -34,5 +36,5 @@ export function createUserClient<
     type: "user",
   });
 
-  return client.extend(publicActions).extend(userActions);
+  return client.extend(publicActions).extend(signerActions);
 }

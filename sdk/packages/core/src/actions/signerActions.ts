@@ -1,38 +1,42 @@
 import type { Chain, Client, Signer, Transport, TxParameters } from "@leftcurve/types";
 
-import { type ExecuteParameters, type ExecuteReturnType, execute } from "./user/execute.js";
+import { type ExecuteParameters, type ExecuteReturnType, execute } from "./signer/execute.js";
 
-import { type MigrateParameters, type MigrateReturnType, migrate } from "./user/migrate.js";
+import { type MigrateParameters, type MigrateReturnType, migrate } from "./signer/migrate.js";
 
-import { type TransferParameters, type TransferReturnType, transfer } from "./user/transfer.js";
+import { type TransferParameters, type TransferReturnType, transfer } from "./signer/transfer.js";
 
-import { type StoreCodeParameters, type StoreCodeReturnType, storeCode } from "./user/storeCode.js";
+import {
+  type StoreCodeParameters,
+  type StoreCodeReturnType,
+  storeCode,
+} from "./signer/storeCode.js";
 
 import {
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
   registerAccount,
-} from "./user/registerAccount.js";
+} from "./signer/registerAccount.js";
 
 import {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./user/instantiate.js";
+} from "./signer/instantiate.js";
 
 import {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./user/storeCodeAndInstantiate.js";
+} from "./signer/storeCodeAndInstantiate.js";
 
 import {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./user/signAndBroadcastTx.js";
+} from "./signer/signAndBroadcastTx.js";
 
-export type UserActions<
+export type SignerActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain,
   signer extends Signer | undefined = Signer,
@@ -52,11 +56,11 @@ export type UserActions<
   signAndBroadcastTx: (args: SignAndBroadcastTxParameters) => SignAndBroadcastTxReturnType;
 };
 
-export function userActions<
+export function signerActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain,
   signer extends Signer = Signer,
->(client: Client<transport, chain, signer>): UserActions<transport, chain, signer> {
+>(client: Client<transport, chain, signer>): SignerActions<transport, chain, signer> {
   return {
     execute: (args: ExecuteParameters) => execute<chain, signer>(client, args),
     migrate: (args: MigrateParameters) => migrate<chain, signer>(client, args),
