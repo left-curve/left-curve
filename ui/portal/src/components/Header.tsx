@@ -10,7 +10,7 @@ import { AccountType } from "@leftcurve/types";
 
 import { useAccount } from "@leftcurve/react";
 import { Link, useNavigate } from "react-router-dom";
-import { applets, popularApplets } from "../../applets";
+import { applets } from "../../applets";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -26,10 +26,7 @@ export const Header: React.FC = () => {
             className="hidden sm:block h-8 order-1 cursor-pointer"
           />
         </Link>
-        <CommandBar
-          applets={{ all: applets, popular: popularApplets }}
-          action={({ path }) => navigate(path)}
-        />
+        <CommandBar applets={applets} action={({ path }) => navigate(path)} />
         <div className="flex gap-2 items-center justify-end order-2 md:order-3">
           <>
             {import.meta.env.MODE === "development" && !account ? <ConnectButton /> : null}

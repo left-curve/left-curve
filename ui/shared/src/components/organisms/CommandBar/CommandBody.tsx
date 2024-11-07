@@ -13,27 +13,24 @@ interface Props {
   isOpen: boolean;
   action: (applet: AppletMetadata) => void;
   searchText?: string;
-  applets: {
-    popular: AppletMetadata[];
-    all: AppletMetadata[];
-  };
+  applets: AppletMetadata[];
 }
 
 export const CommandBody: React.FC<Props> = ({ isOpen, applets, searchText, action }) => {
-  const { popular, all } = applets;
+  const popularApplets = applets.filter((applet) => applet.isFeatured);
 
   const filteredApplets = useMemo(() => {
-    if (!searchText) return all;
+    if (!searchText) return applets;
 
     const search = searchText.toLowerCase();
 
-    return all.filter((applet) => {
+    return applets.filter((applet) => {
       return (
         applet.title.toLowerCase().includes(search) ||
         applet.description.toLowerCase().includes(search)
       );
     });
-  }, [searchText, all]);
+  }, [searchText, applets]);
 
   return (
     <AnimatePresence mode="popLayout">
@@ -56,7 +53,7 @@ export const CommandBody: React.FC<Props> = ({ isOpen, applets, searchText, acti
               </div>
             </>
           ) : (
-            <CommandBodyPreview popularApplets={popular} action={action} />
+            <CommandBodyPreview popularApplets={popularApplets} action={action} />
           )}
         </motion.div>
       )}
