@@ -39,6 +39,10 @@ fmt:
 testdata:
   cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
 
+# Build the Left Curve Book
+book:
+  mdbook build --open
+
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/optimizer"
