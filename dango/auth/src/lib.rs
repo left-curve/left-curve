@@ -26,8 +26,8 @@ pub const NEXT_SEQUENCE: Counter<u32> = Counter::new("sequence", 0, 1);
 pub fn authenticate_tx(
     ctx: AuthCtx,
     tx: Tx,
-    // If the caller has already queried the factory address or deserialized the
-    // metadata, they can be provided here, so we don't redo the work.
+    // If the caller has already queried the factory address, it can be provided
+    // here, so we don't redo the work.
     maybe_factory: Option<Addr>,
 ) -> anyhow::Result<()> {
     // Query the chain for account factory's address, if it's not already done.
