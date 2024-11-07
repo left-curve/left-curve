@@ -5,6 +5,7 @@ use {
 
 /// Types relevant for multi-signature accounts.
 pub mod multi;
+
 /// Types relevant for single-signature accounts.
 pub mod single;
 
@@ -12,4 +13,6 @@ pub mod single;
 /// which is just empty.
 pub type InstantiateMsg = Empty;
 
+/// Transactions submitted to the Dango chain, with the Dango account metadata
+/// and credential types.
 pub type Tx = grug::Tx<Metadata, Credential>;
