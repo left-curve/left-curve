@@ -392,7 +392,7 @@ module pruning_state_machine {
 
   val pruneAllInvariants = all {
     allInvariants,
-    pruningDoesNotAffectActiveTreesInv
+    if(pruningDoesNotAffectActiveTreesInv) true else q::debug("pruningDoesNotAffectActiveTreesInv", false),
   }
 }
 
