@@ -6,10 +6,10 @@ import type { Pool, PoolId } from "@leftcurve/types";
 interface Props {
   poolId: PoolId;
   pool: Pool;
-  onClickPool: (id: PoolId) => void;
+  onPoolSelected: (id: PoolId) => void;
 }
 
-export const PoolCard: React.FC<Props> = ({ onClickPool, poolId, pool }) => {
+export const PoolCard: React.FC<Props> = ({ onPoolSelected, poolId, pool }) => {
   const { coins } = useConfig();
   const chainId = useChainId();
   const { getPrice } = usePrices();
@@ -35,7 +35,7 @@ export const PoolCard: React.FC<Props> = ({ onClickPool, poolId, pool }) => {
       className="py-4 px-6 items-center gap-1 grid grid-cols-[1fr_80px_80px_80px] text-end
             bg-surface-rose-100 hover:bg-surface-off-white-200 border-2 border-surface-off-white-500
           text-typography-black-100 hover:text-typography-black-300 rounded-2xl transition-all cursor-pointer font-normal leading-5"
-      onClick={() => onClickPool(poolId)}
+      onClick={() => onPoolSelected(poolId)}
     >
       <div className="flex gap-3 items-center">
         <div className="flex">

@@ -1,20 +1,20 @@
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { PoolManagment, PoolSelector, Tab, Tabs } from "@dango/shared";
+import { parseAsInteger, useQueryState } from "nuqs";
 
 const actions = ["deposit", "withdraw"];
 
 const PoolView: React.FC = () => {
-  const [searchParams, setSearchParam] = useSearchParams();
-  const action = searchParams.get("action") || "deposit";
-  const poolId = searchParams.get("id");
+  const [poolId, setPoolId] = useQueryState("pool", parseAsInteger);
+  const [action, setAction] = useQueryState("action");
 
   const [showPoolSelector, setShowPoolSelector] = useState(false);
-  const [activePoolId, setActivePoolId] = useState<number>(Number.parseInt(poolId || "1"));
-  const [activeAction, setActiveAction] = useState<string>(
-    actions.includes(action) ? action : "deposit",
-  );
+
+  useEffect(() => {
+    if (!action) setAction("deposit");
+    if (!poolId) setPoolId(0);
+  }, []);
 
   return (
     <div className="min-h-full w-full flex-1 flex items-center justify-center z-10 relative p-4">
@@ -22,12 +22,8 @@ const PoolView: React.FC = () => {
         <div className="w-full items-center justify-end flex">
           <Tabs
             key="dex-view-actions"
-            defaultSelectedKey={activeAction}
-            onSelectionChange={(key) => {
-              const actionKey = key.toString();
-              setSearchParam({ action: actionKey });
-              setActiveAction(actionKey);
-            }}
+            defaultSelectedKey={action || ""}
+            onSelectionChange={(key) => setAction(key.toString())}
             classNames={{
               container: "w-fit",
               tabsWrapper: "p-1 bg-surface-green-300 text-typography-green-300 rounded-2xl gap-0",
@@ -46,19 +42,9 @@ const PoolView: React.FC = () => {
           </Tabs>
         </div>
         {showPoolSelector ? (
-          <PoolSelector
-            onPoolSelection={(id) => [
-              setActivePoolId(id),
-              setShowPoolSelector(false),
-              setSearchParam({ id: id.toString() }),
-            ]}
-          />
+          <PoolSelector onPoolSelected={() => setShowPoolSelector(false)} />
         ) : (
-          <PoolManagment
-            poolId={activePoolId}
-            action={activeAction}
-            onRequestPoolSelection={() => setShowPoolSelector(true)}
-          />
+          <PoolManagment onRequestPoolSelection={() => setShowPoolSelector(true)} />
         )}
       </div>
     </div>

@@ -1,14 +1,17 @@
+import { parseAsInteger, useQueryState } from "nuqs";
 import type React from "react";
 import { Button, GradientContainer, Input, PoolCard, SearchIcon } from "../";
 
 import type { Pool, PoolId } from "@leftcurve/types";
 
 interface Props {
-  onPoolSelection: (id: PoolId) => void;
+  onPoolSelected: () => void;
 }
 
-export const PoolSelector: React.FC<Props> = ({ onPoolSelection }) => {
+export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
+  const { 1: setPoolId } = useQueryState("pool", parseAsInteger);
   const pools = {} as Record<PoolId, Pool>;
+
   return (
     <GradientContainer className="w-full flex flex-col gap-9">
       <h2 className="font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest mb-1">
@@ -40,7 +43,12 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelection }) => {
             </p>
           </div>
           {Object.entries(pools).map(([id, pool]) => (
-            <PoolCard key={id} poolId={Number(id)} pool={pool} onClickPool={onPoolSelection} />
+            <PoolCard
+              key={id}
+              poolId={Number(id)}
+              pool={pool}
+              onPoolSelected={(id) => [setPoolId(id), onPoolSelected()]}
+            />
           ))}
         </div>
       </div>
