@@ -17,6 +17,7 @@
 - [Gas](notes/gas.md)
 - [Generating dependency graph](notes/generate-dependency-graph.md)
 - [Liquidity provision](notes/liquidity-provision.md)
+- [Margin account: health](notes/margin-account-health.md)
 - [Transaction lifecycle](notes/transaction-lifecycle.md)
 
 ---
