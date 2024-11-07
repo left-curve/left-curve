@@ -1,6 +1,5 @@
 use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
-    borsh::BorshDeserialize,
     grug_types::{
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
         unwrap_into_generic_result, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse,
@@ -210,15 +209,13 @@ where
     Region::release_buffer(res_bytes) as usize
 }
 
-pub fn do_authenticate<E, D, C>(
-    authenticate_fn: &dyn Fn(AuthCtx, Tx<D, C>) -> Result<AuthResponse, E>,
+pub fn do_authenticate<E>(
+    authenticate_fn: &dyn Fn(AuthCtx, Tx) -> Result<AuthResponse, E>,
     ctx_ptr: usize,
     tx_ptr: usize,
 ) -> usize
 where
     E: Display,
-    D: BorshDeserialize,
-    C: BorshDeserialize,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };

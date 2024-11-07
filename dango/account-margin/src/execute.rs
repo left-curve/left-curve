@@ -1,11 +1,8 @@
 use {
     anyhow::ensure,
     dango_auth::authenticate_tx,
-    dango_types::{
-        account::{InstantiateMsg, Tx},
-        config::ACCOUNT_FACTORY_KEY,
-    },
-    grug::{Addr, AuthCtx, AuthResponse, MutableCtx, Response, StdResult},
+    dango_types::{account::InstantiateMsg, config::ACCOUNT_FACTORY_KEY},
+    grug::{Addr, AuthCtx, AuthResponse, MutableCtx, Response, StdResult, Tx},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -23,7 +20,7 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    authenticate_tx(ctx, tx, None)?;
+    authenticate_tx(ctx, tx, None, None)?;
 
     Ok(AuthResponse::new().request_backrun(false))
 }

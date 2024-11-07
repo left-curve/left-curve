@@ -5,12 +5,11 @@ use {
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
     dango_types::{
-        account::Tx,
-        auth::{ClientData, Credential, Key, SignDoc},
+        auth::{ClientData, Credential, Key, Metadata, SignDoc},
         config::ACCOUNT_FACTORY_KEY,
     },
     grug::{
-        json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query,
+        json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
     },
 };
 
@@ -26,15 +25,23 @@ pub const NEXT_SEQUENCE: Counter<u32> = Counter::new("sequence", 0, 1);
 pub fn authenticate_tx(
     ctx: AuthCtx,
     tx: Tx,
-    // If the caller has already queried the factory address, it can be provided
-    // here, so we don't redo the work.
+    // If the caller has already queried the factory address or deserialized the
+    // metadata, they can be provided here, so we don't redo the work.
     maybe_factory: Option<Addr>,
+    maybe_metadata: Option<Metadata>,
 ) -> anyhow::Result<()> {
     // Query the chain for account factory's address, if it's not already done.
     let factory = if let Some(factory) = maybe_factory {
         factory
     } else {
         ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?
+    };
+
+    // Deserialize the transaction metadata, if it's not already done.
+    let metadata = if let Some(metadata) = maybe_metadata {
+        metadata
+    } else {
+        tx.data.deserialize_json()?
     };
 
     // Increment the sequence.
@@ -51,13 +58,13 @@ pub fn authenticate_tx(
         let [res1, res2, res3] = ctx.querier.query_multi([
             Query::wasm_raw(
                 factory,
-                ACCOUNTS_BY_USER.path((&tx.data.username, tx.sender)),
+                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             ),
             Query::wasm_raw(
                 factory,
-                KEYS_BY_USER.path((&tx.data.username, tx.data.key_hash)),
+                KEYS_BY_USER.path((&metadata.username, metadata.key_hash)),
             ),
-            Query::wasm_raw(factory, KEYS.path(tx.data.key_hash)),
+            Query::wasm_raw(factory, KEYS.path(metadata.key_hash)),
         ])?;
 
         // If the sender account is associated with the username, then an entry
@@ -67,7 +74,7 @@ pub fn authenticate_tx(
             res1.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
             "account {} isn't associated with user `{}`",
             tx.sender,
-            tx.data.username,
+            metadata.username,
         );
 
         // Similarly, if the key hash is associated with the username, it must
@@ -75,13 +82,13 @@ pub fn authenticate_tx(
         ensure!(
             res2.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
             "key hash {} isn't associated with user `{}`",
-            tx.data.key_hash,
-            tx.data.username
+            metadata.key_hash,
+            metadata.username
         );
 
         // Deserialize the key from Borsh bytes.
         res3.as_wasm_raw()
-            .ok_or_else(|| anyhow!("key hash {} not found", tx.data.key_hash))?
+            .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
             .deserialize_borsh()?
     };
 
@@ -92,20 +99,20 @@ pub fn authenticate_tx(
         // txs for the same block.
         AuthMode::Check => {
             ensure!(
-                tx.data.sequence >= sequence,
+                metadata.sequence >= sequence,
                 "sequence is too old: expecting at least {}, found {}",
                 sequence,
-                tx.data.sequence
+                metadata.sequence
             );
         },
         // For `FinalizeBlock`, we make sure the tx's sequence matches exactly
         // the stored sequence.
         AuthMode::Finalize => {
             ensure!(
-                tx.data.sequence == sequence,
+                metadata.sequence == sequence,
                 "incorrect sequence: expecting {}, got {}",
                 sequence,
-                tx.data.sequence
+                metadata.sequence
             );
         },
         // No need to verify sequence in simulation mode.
@@ -114,7 +121,7 @@ pub fn authenticate_tx(
 
     // Verify signature.
     match ctx.mode {
-        AuthMode::Check | AuthMode::Finalize => match (key, tx.credential) {
+        AuthMode::Check | AuthMode::Finalize => match (key, tx.credential.deserialize_json()?) {
             (Key::Secp256k1(pk), Credential::Eip712(cred)) => {
                 let TypedData {
                     resolver, domain, ..
@@ -135,7 +142,7 @@ pub fn authenticate_tx(
                     primary_type: "Message".to_string(),
                     message: json!({
                         "chainId": ctx.chain_id,
-                        "sequence": tx.data.sequence,
+                        "sequence": metadata.sequence,
                         "messages": tx.msgs,
                     })
                     .into_inner(),
@@ -159,7 +166,7 @@ pub fn authenticate_tx(
                             sender: tx.sender,
                             messages: tx.msgs,
                             chain_id: ctx.chain_id,
-                            sequence: tx.data.sequence,
+                            sequence: metadata.sequence,
                         }
                         .to_json_vec()?,
                     );
@@ -195,7 +202,7 @@ pub fn authenticate_tx(
                         sender: tx.sender,
                         messages: tx.msgs,
                         chain_id: ctx.chain_id,
-                        sequence: tx.data.sequence,
+                        sequence: metadata.sequence,
                     }
                     .to_json_vec()?,
                 );
@@ -283,7 +290,7 @@ mod tests {
             .with_chain_id("dev-2")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
     }
 
     #[test]
@@ -344,7 +351,13 @@ mod tests {
           "gas_limit": 1116931
         }"#;
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
+        authenticate_tx(
+            ctx.as_auth(),
+            tx.deserialize_json::<Tx>().unwrap(),
+            None,
+            None,
+        )
+        .unwrap();
     }
 
     #[test]
@@ -401,6 +414,6 @@ mod tests {
             .with_chain_id("dev-2")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
     }
 }
