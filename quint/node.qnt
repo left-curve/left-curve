@@ -40,6 +40,7 @@ val l = {
     key_hash: termHash(raw([2])),
     value_hash:  termHash(raw([17]))
 }
+
 pure def hashLeafNode(l: LeafNode): Term_t =
     termHash(   LeafNodeHashPrefix
                 .termConcat(raw(l.key_hash))

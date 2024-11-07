@@ -30,8 +30,8 @@ module proofs {
 
   type NonExistenceProof = {
     key: BitArray,
-    left: ExistenceProof,
-    right: ExistenceProof,
+    left: Option[ExistenceProof],
+    right: Option[ExistenceProof],
   }
 
 
@@ -159,5 +159,48 @@ module proofs {
     proof
 
 
+  // The following is taken and adapted from ICS23 Quint library
+  // needed to update to specifics of our Merkle tree
+
+  /// calculate a hash from an exists proof
+  def existsCalculate(p: ExistenceProof): Term_t = 
+    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})
+    // the inner node nodeHashes are concatenated and hashed upwards
+    p.path.foldl(leafHash,
+      (child, inner) =>
+        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
+
+
+  /// verify that a proof matches a root
+  def verify(proof, root, key, value) = and {
+    key == proof.key, // TODO: check whether here hash(key) == proof.key (we don't model key hashing in this model)
+    value == proof.value,
+    root == existsCalculate(proof)
+  }
+
+  /// VerifyMembership returns true iff
+  /// proof is an ExistenceProof for the given key and value AND
+  /// calculating the root for the ExistenceProof matches
+  /// the provided CommitmentRoot
+  def verifyMembership(root: Term_t ,
+    proof: ExistenceProof, key: BitArray, value: BitArray): bool = {
+    verify(proof, root, key, value)
+  }
+
+  // We re-implement because lib version is pre-sum types
+
+  /// VerifyNonMembership returns true iff
+  /// proof is (contains) a NonExistenceProof,
+  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
+  /// left and right proofs are neighbors (or left/right most if one is nil),
+  /// provided key is between the keys of the two proofs
+  def verifyNonMembership(root: Term_t,
+      np: NonExistenceProof, key: BitArray): bool = and {
+        // match np.left {
+        //   Some(ep) => verifyMembership
+        // }
+
+      true
+      }
 
 }
