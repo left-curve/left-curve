@@ -121,8 +121,7 @@ module proofs {
                                           reversed_path.append(path_element)))    
     else
       None
-  pure def makeExistenceProof(key: BitArray, value: BitArray, leaf: Leaf_t, path: List[InnerOp]) : ExistenceProof = 
-    { key: key, value: value, leaf: leaf, path: path }
+
   // in implementation the key is passed instead of the key_hash
   pure def ics23_prove (t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
     val state_storage_read = t.treeAtVersion(version)
