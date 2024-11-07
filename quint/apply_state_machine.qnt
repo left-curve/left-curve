@@ -42,42 +42,45 @@ module apply_state_machine {
     nondet_value.mapToTuples().take(MAX_OPS).map(key_hash_map_to_op)
   }
 
-  action step_fancy = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      key_hashes_as_maps != Set(),
+  action step_fancy_parametrized(ops, key_hashes_as_maps) = all {
       tree' = fancy::apply(tree, version - 1, version, ops),
       version' = version + 1,
       smallest_unpruned_version' = smallest_unpruned_version,
       ops_history' = ops_history.append(ops),
-    }
+  }
+  action step_super_simple_parametrized(ops, key_hashes_as_maps) = all {
+      tree' = super_simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+  }
+  
+  action step_simple_parametrized(ops, key_hashes_as_maps) = all {
+      tree' = simple::apply(tree, version - 1, version, ops),
+      version' = version + 1,
+      smallest_unpruned_version' = smallest_unpruned_version,
+      ops_history' = ops_history.append(ops),
+  }
+
+  action step_fancy = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    step_fancy_parametrized(ops, key_hashes_as_maps)
   }
 
   action step_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
-    all {
-      key_hashes_as_maps != Set(),
-      tree' = simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops),
-    }
+    step_simple_parametrized(ops, key_hashes_as_maps)
   }
 
   action step_super_simple = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
-    all {
-      tree' = super_simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops)
-    }
+    step_super_simple_parametrized(ops, key_hashes_as_maps)
   }
 
   /********* INVARIANTS ***********/
@@ -318,24 +321,78 @@ module apply_state_machine {
 
 module pruning_state_machine {
   import apply_state_machine.*
+  import tree.* from "./tree"
+  import apply_fancy as fancy from "./apply_fancy"
 
   var unpruned_tree: Tree
 
-  // TODO: add steps that take care of unpruned_tree
-  // - When pruning don't update unpruned_tree
-  // - For all other actions (insert, delete), 
-  //     - apply update on unpruned_tree, and
-  //     - assign to unpruned_tree'
+  action pruning_state_machine::init = all {
+    init,
+    unpruned_tree' = { nodes: Map(), orphans: Set() },
+  }
+
+  action pruning_state_machine::step_fancy = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    all{
+      key_hashes_as_maps != Set(),
+      step_fancy_parametrized(ops, key_hashes_as_maps),
+      unpruned_tree' = fancy::apply(unpruned_tree, version - 1, version, ops)
+    }
+  }
+
+  action pruning_state_machine::step_simple = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    all{
+      key_hashes_as_maps != Set(),
+      step_simple_parametrized(ops, key_hashes_as_maps),
+      unpruned_tree' = fancy::apply(unpruned_tree, version - 1, version, ops)
+    }
+  }
+  action pruning_state_machine::step_super_simple = {
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
+    all{
+      key_hashes_as_maps != Set(),
+      step_super_simple_parametrized(ops, key_hashes_as_maps),
+      unpruned_tree' = fancy::apply(unpruned_tree, version - 1, version, ops)
+    }
+  }
+  action prune_action = {
+    val pruned_tree = tree.prune(version - 1)
+    all{
+      tree' = pruned_tree,
+      unpruned_tree' = unpruned_tree,
+      version' = version,
+      smallest_unpruned_version' = version,
+      ops_history' = ops_history,
+    }
+  }
+  action step_prune_fancy = any {
+    prune_action,
+    pruning_state_machine::step_fancy
+  }
+  action step_prune_simple = any {
+    prune_action,
+    pruning_state_machine::step_simple
+  }
+  action step_prune_super_simple = any {
+    prune_action,
+    pruning_state_machine::step_super_simple
+  }
 
   def pruningDoesNotAffectActiveTreesInv = 
     activeTreeVersions.forall(v =>
       tree.treeAtVersion(v) == unpruned_tree.treeAtVersion(v)
   )  
 
-
-
-  // just an idea to investigate pruning separatey agains an unpruned version of the tree
-
-
+  val pruneAllInvariants = all {
+    allInvariants,
+    pruningDoesNotAffectActiveTreesInv
+  }
 }
 
