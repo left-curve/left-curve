@@ -287,6 +287,58 @@ export {
 } from "./safe/mutations/vote.js";
 
 /* -------------------------------------------------------------------------- */
+/*                                 Amm Actions                                */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetPoolParameters,
+  type GetPoolReturnType,
+  getPool,
+} from "./amm/queries/getPool.js";
+
+export {
+  type GetAllPoolsParameters,
+  type GetAllPoolsReturnType,
+  getAllPools,
+} from "./amm/queries/getAllPools.js";
+
+export {
+  type SimulateSwapParameters,
+  type SimulateSwapReturnType,
+  simulateSwap,
+} from "./amm/queries/simulateSwap.js";
+
+export {
+  type GetAmmConfigParameters,
+  type GetAmmConfigReturnType,
+  getAmmConfig,
+} from "./amm/queries/getAmmConfig.js";
+
+export {
+  type CreatePoolParameters,
+  type CreatePoolReturnType,
+  createPool,
+} from "./amm/mutations/createPool.js";
+
+export {
+  type SwapCoinsParameters,
+  type SwapCoinsReturnType,
+  swapCoins,
+} from "./amm/mutations/swapCoins.js";
+
+export {
+  type ProvideLiquidityParameters,
+  type ProvideLiquidityReturnType,
+  provideLiquidity,
+} from "./amm/mutations/provideLiquidity.js";
+
+export {
+  type WithdrawLiquidityParameters,
+  type WithdrawLiquidityReturnType,
+  withdrawLiquidity,
+} from "./amm/mutations/withdrawLiquidity.js";
+
+/* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
 
