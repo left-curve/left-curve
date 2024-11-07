@@ -1,0 +1,17 @@
+set positional-arguments
+
+# List available recipes
+default:
+  @just --list
+
+# Create the development indexer database
+create_dev_db:
+  createdb -h localhost -U postgres grug_dev
+
+# Run the development database
+run_dev_db:
+  docker compose up db
+
+# Migrate the development database
+migrate_dev_db:
+  DATABASE_URL=postgres://postgres@localhost/grug_dev sea-orm-cli migrate up

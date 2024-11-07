@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["dango/*", "grug/*"]
+members = ["dango/*", "grug/*", "indexer/entity", "indexer/migration"]
 
 [workspace.package]
 version       = "0.0.0"
@@ -121,6 +121,8 @@ dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
+
+# Indexer packages
 
 [profile.release]
 codegen-units    = 1

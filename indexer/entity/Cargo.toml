@@ -1,0 +1,27 @@
+[package]
+name = "indexer-entity"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+documentation.workspace = true
+repository.workspace = true
+license.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+
+[dependencies.sea-orm]
+version = "1.1.0"
+features = [
+  "runtime-tokio-rustls",
+  "macros",
+  "debug-print",
+  "sea-orm-internal",
+  "sqlx-postgres",
+  "with-json",
+  "with-chrono",
+  "with-uuid",
+  "with-time",
+]

@@ -32,3 +32,6 @@ sdk/docs
 
 # Workers
 **/.wrangler
+
+# Database
+indexer/.data
