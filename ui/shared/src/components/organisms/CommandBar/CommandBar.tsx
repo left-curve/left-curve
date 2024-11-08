@@ -80,7 +80,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
           <motion.div
             ref={menuRef}
             className={twMerge(
-              "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2",
+              "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2 overflow-y-hidden",
               isOpen
                 ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
                 : "z-0",

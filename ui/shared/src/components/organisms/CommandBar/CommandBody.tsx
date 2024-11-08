@@ -36,9 +36,9 @@ export const CommandBody: React.FC<Props> = ({ isOpen, applets, searchText, acti
     <AnimatePresence mode="popLayout">
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, translateY: 100 }}
+          initial={{ opacity: 0, translateY: -100 }}
           animate={{ opacity: 1, translateY: 0 }}
-          exit={{ opacity: 0, translateY: 100 }}
+          exit={{ opacity: 0, translateY: -100 }}
           className="w-full flex flex-col gap-6 max-w-[calc(100vh-3.5rem)] overflow-scroll scrollbar-none md:p-4"
         >
           {searchText ? (
