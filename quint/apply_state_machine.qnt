@@ -42,43 +42,30 @@ module apply_state_machine {
     nondet_value.mapToTuples().take(MAX_OPS).map(key_hash_map_to_op)
   }
 
-  action step_fancy = {
+  action step_parametrized(
+    apply_op: (Tree, int, int, Set[OperationOnKey]) => Tree,
+    assign_result: (Set[OperationOnKey], Tree) => bool
+  ): bool = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
+    pure val new_tree = apply_op(tree, version - 1, version, ops)
     all {
       key_hashes_as_maps != Set(),
-      tree' = fancy::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops),
+      assign_result(ops, new_tree)
     }
   }
 
-  action step_simple = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      key_hashes_as_maps != Set(),
-      tree' = simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops),
-    }
+  action assign_result(ops: Set[OperationOnKey], new_tree: Tree): bool = all {
+    tree' = new_tree,
+    version' = version + 1,
+    smallest_unpruned_version' = smallest_unpruned_version,
+    ops_history' = ops_history.append(ops),
   }
 
-  action step_super_simple = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      tree' = super_simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops)
-    }
-  }
+  action step_fancy = step_parametrized(fancy::apply, assign_result)
+  action step_simple = step_parametrized(simple::apply, assign_result)
+  action step_super_simple = step_parametrized(super_simple::apply, assign_result)
 
   /********* INVARIANTS ***********/
 
@@ -317,11 +304,61 @@ module apply_state_machine {
 }
 
 module pruning_state_machine {
-  import apply_state_machine.*
+  import tree.* from "./tree"
+  import apply_fancy as fancy from "./apply_fancy"
+
+  import apply_state_machine as base
+  import apply_simple as simple from "./apply_simple"
+  import apply_fancy as fancy from "./apply_fancy"
+  import apply_super_simple as super_simple from "./apply_super_simple"
 
   var unpruned_tree: Tree
 
-  // just an idea to investigate pruning separatey agains an unpruned version of the tree
+  action init = all {
+    base::init,
+    unpruned_tree' = { nodes: Map(), orphans: Set() },
+  }
 
+  action assign_result(ops, new_tree) = all {
+    base::assign_result(ops, new_tree),
+    unpruned_tree' = new_tree,
+  }
+
+  action prune_action = all {
+    base::version > base::smallest_unpruned_version,
+    nondet version_to_prune = base::smallest_unpruned_version.to(base::version - 1).oneOf()
+    all {
+      base::tree' = base::tree.prune(version_to_prune),
+      base::version' = base::version,
+      base::smallest_unpruned_version' = version_to_prune + 1,
+      base::ops_history' = base::ops_history,
+      unpruned_tree' = unpruned_tree,
+    }
+  }
+
+  action step_fancy = any {
+    prune_action,
+    base::step_parametrized(fancy::apply, assign_result)
+  }
+
+  action step_simple = any {
+    prune_action,
+    base::step_parametrized(simple::apply, assign_result)
+  }
+
+  action step_super_simple = any {
+    prune_action,
+    base::step_parametrized(super_simple::apply, assign_result)
+  }
+
+  def pruningDoesNotAffectActiveTreesInv =
+    base::activeTreeVersions.forall(v =>
+      base::tree.treeAtVersion(v) == unpruned_tree.treeAtVersion(v)
+    )
+
+  val allInvariants = all {
+    base::allInvariants,
+    if(pruningDoesNotAffectActiveTreesInv) true else q::debug("pruningDoesNotAffectActiveTreesInv", false),
+  }
 }
 
