@@ -1,12 +1,11 @@
 use {
     crate::{
-        Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, LengthBounded, MaxLength,
-        Op, StdError, StdResult,
+        Addr, Binary, Coins, Config, Hash256, Json, JsonSerExt, LengthBounded, MaxLength, StdError,
+        StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
-    std::collections::BTreeMap,
 };
 
 /// An arbitrary binary data used for deriving address when instantiating a
@@ -61,12 +60,15 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn configure(updates: ConfigUpdates, app_updates: BTreeMap<String, Op<Json>>) -> Self {
-        MsgConfigure {
-            updates,
-            app_updates,
+    pub fn configure<T>(new_cfg: Option<Config>, new_app_cfg: Option<T>) -> StdResult<Self>
+    where
+        T: Serialize,
+    {
+        Ok(MsgConfigure {
+            new_cfg,
+            new_app_cfg: new_app_cfg.map(|t| t.to_json_value()).transpose()?,
         }
-        .into()
+        .into())
     }
 
     pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>
@@ -144,8 +146,8 @@ impl Message {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgConfigure {
-    pub updates: ConfigUpdates,
-    pub app_updates: BTreeMap<String, Op<Json>>,
+    pub new_cfg: Option<Config>,
+    pub new_app_cfg: Option<Json>,
 }
 
 #[skip_serializing_none]

@@ -11,8 +11,8 @@ pub const CHAIN_ID: Item<String> = Item::new("chain_id");
 /// Chain-level configuration
 pub const CONFIG: Item<Config> = Item::new("config");
 
-/// Application-specific configurations.
-pub const APP_CONFIGS: Map<&str, Json> = Map::new("app_config");
+/// Application-specific configuration.
+pub const APP_CONFIG: Item<Json> = Item::new("app_config");
 
 /// The most recently finalized block
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");

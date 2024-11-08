@@ -2,12 +2,11 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        btree_map, Addr, Coins, ConfigUpdates, Empty, Json, JsonDeExt, JsonSerExt, Message, Op,
-        QuerierWrapper, ResultExt, StdError, Tx,
+        Addr, Coins, Empty, Json, JsonSerExt, Message, QuerierWrapper, ResultExt, StdError, Tx,
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
-    std::{collections::BTreeMap, time::Duration},
+    std::{collections::BTreeMap, str::FromStr, time::Duration},
     thiserror::Error,
 };
 
@@ -108,12 +107,9 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
     ) -> Result<Vec<Bytes>, Self::Error> {
         // Check whether the oracle address in app config has been set.
         // If not, then we skip.
-        if let Some(oracle) = querier
-            .query_app_configs(None, None)?
-            .remove("oracle")
-            .map(|o| o.deserialize_json::<Addr>())
-            .transpose()?
-        {
+        if let Some(oracle) = querier.query_app_config::<Json>()?.as_str() {
+            let oracle = Addr::from_str(oracle)?;
+
             // Query the prices of a few coins from Coingecko.
             let prices = reqwest::blocking::Client::builder()
                 .timeout(Duration::from_millis(500))
@@ -181,15 +177,9 @@ fn prepare_proposal_works() {
         .should_succeed()
         .address;
 
-    // Set oracle contract address in app config.
+    // Set oracle contract address as app config.
     suite
-        .configure(
-            &mut accounts["larry"],
-            ConfigUpdates::default(),
-            btree_map! {
-                "oracle".to_string() => Op::Insert(oracle.to_json_value().unwrap()),
-            },
-        )
+        .configure(&mut accounts["larry"], None, Some(oracle))
         .should_succeed();
 
     // At this point, the feeder shouldn't have fed any price yet, because the
