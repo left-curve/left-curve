@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, Part, Uint128},
+    grug::{Addr, Coins, Denom, NonEmpty, Part, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -51,6 +51,8 @@ pub enum ExecuteMsg {
         denom: Denom,
         amount: Uint128,
     },
+    /// Set [`Metadata`] for a denom.
+    SetMetadata { denom: Denom, metadata: Metadata },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -64,4 +66,14 @@ pub enum QueryMsg {
         start_after: Option<Part>,
         limit: Option<u32>,
     },
+    #[returns(Metadata)]
+    Metadata { denom: Denom },
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct Metadata {
+    pub name: NonEmpty<String>,
+    pub symbol: NonEmpty<String>,
+    pub description: String,
+    pub decimals: u8,
 }

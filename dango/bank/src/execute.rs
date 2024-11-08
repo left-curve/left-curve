@@ -1,7 +1,7 @@
 use {
-    crate::{BALANCES, NAMESPACE_OWNERS, SUPPLIES},
+    crate::{BALANCES, DENOM_METADATAS, NAMESPACE_OWNERS, SUPPLIES},
     anyhow::{bail, ensure},
-    dango_types::bank::{ExecuteMsg, InstantiateMsg},
+    dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
         Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response, StdResult,
         Storage, SudoCtx, Uint128,
@@ -55,6 +55,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
+        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
     }
 }
 
@@ -141,6 +142,14 @@ fn force_transfer(
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
     Ok(Response::new())
+}
+
+fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
+    ensure_namespace_owner(&ctx, &denom)?;
+
+    DENOM_METADATAS.save(ctx.storage, &denom, &metadata)?;
+
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

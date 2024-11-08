@@ -1,5 +1,5 @@
 use {
-    crate::account_factory::Username,
+    crate::{account_factory::Username, bank::Metadata},
     grug::{Addr, Coin, Denom, NonZero, Part, Uint128},
     std::{collections::BTreeMap, sync::LazyLock},
 };
@@ -52,6 +52,8 @@ pub enum ExecuteMsg {
         from: Addr,
         amount: Uint128,
     },
+    /// Set [`Metadata`] for a denom in `bank` contract.
+    SetMetadata { denom: Denom, metadata: Metadata },
 }
 
 #[grug::derive(Serde, QueryRequest)]

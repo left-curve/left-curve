@@ -4,7 +4,7 @@ use {
     dango_account_factory::ACCOUNTS_BY_USER,
     dango_types::{
         account_factory::Username,
-        bank,
+        bank::{self, Metadata},
         config::ACCOUNT_FACTORY_KEY,
         taxman,
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
@@ -34,6 +34,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             from,
             amount,
         } => burn(ctx, denom, from, amount),
+        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
     }
 }
 
@@ -156,5 +157,20 @@ fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint128) -> anyhow::R
             amount,
         },
         Coins::new(),
+    )?))
+}
+
+fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ADMINS.load(ctx.storage, &denom)?,
+        "sender isn't the admin of denom `{denom}`"
+    );
+
+    let cfg = ctx.querier.query_config()?;
+
+    Ok(Response::new().add_message(Message::execute(
+        cfg.bank,
+        &bank::ExecuteMsg::SetMetadata { denom, metadata },
+        Coins::default(),
     )?))
 }
