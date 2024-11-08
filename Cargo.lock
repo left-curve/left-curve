@@ -1465,6 +1465,7 @@ dependencies = [
  "prost",
  "reqwest 0.12.9",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
