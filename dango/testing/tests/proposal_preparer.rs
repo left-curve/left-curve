@@ -2,10 +2,10 @@ use {
     core::time,
     dango_testing::setup_test,
     dango_types::oracle::{
-        ExecuteMsg, PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID,
-        USDC_USD_ID, WBTC_USD_ID,
+        PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID, USDC_USD_ID,
+        WBTC_USD_ID,
     },
-    grug::{btree_map, setup_tracing_subscriber, Coins, Denom, ResultExt},
+    grug::{btree_map, setup_tracing_subscriber, Denom, ResultExt},
     std::{
         str::FromStr,
         thread::{self, sleep},
@@ -15,7 +15,7 @@ use {
 
 #[test]
 fn proposal_pyth() {
-    let (mut suite, mut account, _, contracts) = setup_test();
+    let (mut suite, _, _, contracts) = setup_test();
 
     setup_tracing_subscriber(tracing::Level::INFO);
 
@@ -24,16 +24,6 @@ fn proposal_pyth() {
         Denom::from_str("btc").unwrap()  => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
         Denom::from_str("eth").unwrap()  => PriceSource::Pyth { id: ETH_USD_ID, precision: 18 },
     };
-
-    // Register the price sources.
-    suite
-        .execute(
-            &mut account.owner,
-            contracts.oracle,
-            &ExecuteMsg::RegisterPriceSources(price_ids.clone()),
-            Coins::default(),
-        )
-        .should_succeed();
 
     // Check if they are registered.
     let res = suite

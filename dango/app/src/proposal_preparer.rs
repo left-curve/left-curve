@@ -17,7 +17,7 @@ use {
 const PYTH_URL: &str = "https://hermes.pyth.network";
 const REQUEST_TIMEOUT: time::Duration = time::Duration::from_millis(500);
 const THREAD_SLEEP: time::Duration = time::Duration::from_millis(500);
-const GAS_LIMIT: u64 = 5_000_000;
+const GAS_LIMIT: u64 = 50_000_000;
 
 #[derive(Debug, Error)]
 pub enum ProposerError {
