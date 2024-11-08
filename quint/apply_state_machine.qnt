@@ -8,6 +8,9 @@ module apply_state_machine {
   import node.* from "./node"
   import utils.* from "./utils"
 
+  import ics23.* from "./ics23"
+  import proofs.* from "./proofs"
+
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
   import apply_super_simple as super_simple from "./apply_super_simple"
@@ -288,6 +291,8 @@ module apply_state_machine {
     activeVersionedTrees.forall(bijectiveTreeMap)
   }
 
+
+
   val allInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
@@ -301,6 +306,25 @@ module apply_state_machine {
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
   }
+
+
+  val verifyMembershipInv = 
+    activeTreeVersions.forall(v =>
+      tree.nodes.values().forall (nodes =>
+        match nodes {
+          | Internal => true
+          | Leaf(n) =>
+              val proof = ics23_prove(tree, n.key_hash, v)
+              val root = hashInternalNode(tree.get({ key_hash: [], version: v }))
+              match proof {
+                | Some(p) => 
+                  match p {
+                    | Exist(ep) => verifyMembership(root, ep, n.key_hash, n.value_hash)
+                    | Nonexist(nep) => verifyNonMembership(root, nep, n.key_hash)
+                  }
+                | None => false}}))
+
+
 }
 
 module pruning_state_machine {
