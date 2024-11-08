@@ -32,7 +32,7 @@ export const AppletCard: React.FC<Props> = ({ metadata, onClick }) => {
 
   return (
     <div
-      className="w-full rounded-[1.25rem] bg-surface-rose-200 flex gap-2 cursor-pointer relative group text-black"
+      className="applet-card w-full rounded-[1.25rem] bg-surface-rose-200 flex gap-2 cursor-pointer relative group text-black data-[selected=true]:bg-red-500"
       onClick={() => handleOnClick(metadata)}
     >
       <div className="w-[100px] bg-white absolute min-h-[80px] rounded-l-[1.25rem] rounded-r-[3.5rem] group-hover:w-full group-hover:rounded-[1.25rem] transition-all" />

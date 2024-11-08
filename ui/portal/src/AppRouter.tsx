@@ -4,6 +4,8 @@ import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { AuthLayout } from "./components/AuthLayout";
 
+import { NotFoundView } from "./views/NotFound";
+
 // Auth routes
 const LoginView = lazy(() => import(/* webpackPrefetch: true */ "./views/Login"));
 const SignupView = lazy(() => import(/* webpackPrefetch: true */ "./views/Signup"));
@@ -32,13 +34,8 @@ export const AppRouter: React.FC = () => {
           <Route path="accounts/:index" element={<AccountView />} />ç
           <Route path="/transfer" element={<TransferView />} />
           <Route path="/swap" element={<SwapView />} />
-          <Route path="/pools" element={<PoolView />} />
-          <Route
-            path="*"
-            element={
-              <div className="flex flex-1 justify-center items-center text-7xl font-bold">404</div>
-            }
-          />
+          <Route path="/amm" element={<PoolView />} />
+          <Route path="*" element={<NotFoundView />} />
         </Route>
       </Routes>
     </Suspense>
