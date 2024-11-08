@@ -1,15 +1,11 @@
 use {
     core::time,
-    dango_app::ProposalPreparer,
-    dango_testing::{setup_test, TestAccount},
-    dango_types::{
-        account_factory::Username,
-        oracle::{
-            ExecuteMsg, PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID,
-            USDC_USD_ID, WBTC_USD_ID,
-        },
+    dango_testing::setup_test,
+    dango_types::oracle::{
+        ExecuteMsg, PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID,
+        USDC_USD_ID, WBTC_USD_ID,
     },
-    grug::{btree_map, Addr, Addressable, Coins, Denom, ResultExt},
+    grug::{btree_map, Coins, Denom, ResultExt},
     std::{str::FromStr, thread::sleep},
 };
 
@@ -70,19 +66,4 @@ fn proposal_pyth() {
     for (denom, price) in prices1 {
         assert_ne!(price.timestamp, prices2.get(&denom).unwrap().timestamp);
     }
-}
-
-#[test]
-fn proposal_pyth_create() {
-    let feeder = TestAccount::new_random("feeder").set_address(&btree_map! {
-        Username::from_str("feeder").unwrap() => Addr::mock(1)
-    });
-
-    ProposalPreparer::new(
-        "dev-1".to_string(),
-        feeder.address(),
-        &feeder.sk.to_bytes(),
-        feeder.username.to_string(),
-    )
-    .unwrap();
 }

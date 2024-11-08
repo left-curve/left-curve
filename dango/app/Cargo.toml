@@ -14,7 +14,6 @@ anyhow      = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
 grug-app    = { workspace = true }
-k256        = { workspace = true }
 prost       = { workspace = true }
 reqwest     = { workspace = true, features = ["blocking", "json"] }
 thiserror   = { workspace = true }

@@ -6,7 +6,10 @@ use {
         GUARDIAN_SETS_INDEX, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID, USDC_USD_ID, WBTC_USD_ID,
         XRP_USD_ID,
     },
-    grug::{btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, ResultExt, Udec128},
+    grug::{
+        btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, NonEmpty, ResultExt,
+        Udec128,
+    },
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
@@ -86,7 +89,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(VAA_1).unwrap()
+                ])),
                 Coins::default(),
             )
             .should_succeed();
@@ -118,7 +123,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_2).unwrap()]),
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(VAA_2).unwrap()
+                ])),
                 Coins::default(),
             )
             .should_succeed();
@@ -148,7 +155,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(vec![Binary::from_str(VAA_1).unwrap()]),
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(VAA_1).unwrap()
+                ])),
                 Coins::default(),
             )
             .should_succeed();
@@ -227,7 +236,9 @@ fn double_vaas() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices([btc_vaas_raw, eth_vaas_raw].concat()),
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(
+                    [btc_vaas_raw, eth_vaas_raw].concat(),
+                )),
                 Coins::default(),
             )
             .should_succeed();
@@ -368,7 +379,7 @@ fn multiple_vaas() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(vaas_raw),
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vaas_raw)),
                 Coins::default(),
             )
             .should_succeed();

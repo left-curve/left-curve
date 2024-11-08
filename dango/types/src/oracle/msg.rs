@@ -1,6 +1,6 @@
 use {
     super::{GuardianSet, PrecisionedPrice, PriceSource},
-    grug::{Binary, Denom},
+    grug::{Binary, Denom, NonEmpty},
     std::collections::BTreeMap,
 };
 
@@ -15,7 +15,7 @@ pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
     /// Submit price data from Pyth Network.
-    FeedPrices(Vec<Binary>),
+    FeedPrices(NonEmpty<Vec<Binary>>),
 }
 
 #[grug::derive(Serde, QueryRequest)]

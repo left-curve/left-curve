@@ -1,23 +1,11 @@
 use {
     dango_types::{
-        account::multi::QuerySequenceRequest,
-        account_factory::Username,
-        auth::{Credential, Metadata, SignDoc},
         config::ORACLE_KEY,
         oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
     },
-    grug::{
-        Addr, Binary, Coins, Hash160, HashExt, JsonSerExt, Message, QuerierWrapper, StdError, Tx,
-    },
-    grug_app::Shared,
-    k256::ecdsa::{signature::Signer, Signature, SigningKey, VerifyingKey},
+    grug::{Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
-    std::{
-        ops::Deref,
-        str::FromStr,
-        thread::{self, JoinHandle},
-        time,
-    },
+    std::time,
     thiserror::Error,
     tracing::error,
 };
@@ -33,9 +21,6 @@ pub enum ProposerError {
 
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
-
-    #[error(transparent)]
-    Signature(#[from] k256::ecdsa::Error),
 }
 
 impl From<ProposerError> for grug_app::AppError {
@@ -217,15 +202,17 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
         }
 
         // Build the tx.
-        let sequence = querier.query_wasm_smart(self.feeder_addr, QuerySequenceRequest {})?;
-
-        let msgs = vec![Message::execute(
-            oracle,
-            &ExecuteMsg::FeedPrices(vaas),
-            Coins::new(),
-        )?];
-
-        let tx = self.sign_tx(sequence, msgs)?;
+        let tx = Tx {
+            sender: oracle,
+            gas_limit: GAS_LIMIT,
+            msgs: vec![Message::execute(
+                oracle,
+                &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                Coins::new(),
+            )?],
+            data: Json::null(),
+            credential: Json::null(),
+        };
 
         txs.insert(0, tx.to_json_vec()?.into());
 
