@@ -315,7 +315,7 @@ module apply_state_machine {
           | Internal => true
           | Leaf(n) =>
               val proof = ics23_prove(tree, n.key_hash, v)
-              val root = hashInternalNode(tree.get({ key_hash: [], version: v }))
+              val root = hash(tree.nodes.get({ key_hash: [], version: v }))
               match proof {
                 | Some(p) => 
                   match p {
