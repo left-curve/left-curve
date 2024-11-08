@@ -203,23 +203,6 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 }
 
 pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
-
-    // Ensure sender is a margin account.
-    // An an optimization, use raw instead of smart query.
-    ensure!(
-        ctx.querier
-            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
-            .ok_or_else(|| anyhow!(
-                "account {} is not registered in account factory",
-                ctx.sender
-            ))?
-            .deserialize_borsh::<Account>()?
-            .params
-            .is_margin(),
-        "Only margin accounts can borrow and repay"
-    );
-
     // Ensure all sent coins are whitelisted
     for coin in &ctx.funds {
         ensure!(

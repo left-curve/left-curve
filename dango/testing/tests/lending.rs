@@ -293,20 +293,6 @@ fn non_margin_accounts_cant_borrow() {
 }
 
 #[test]
-fn non_margin_accounts_cant_repay() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::Repay {},
-            Coins::new(),
-        )
-        .should_fail_with_error("Only margin accounts can borrow and repay");
-}
-
-#[test]
 fn cant_borrow_if_no_collateral() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
