@@ -88,7 +88,8 @@ module proofs {
         }
       ))
 
-  pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) : Option[List[InnerOp]] = 
+  pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
+  : Option[List[InnerOp]] = 
     val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
     // fold over prefixes created from key_hash
     // i - index of current fold
@@ -185,7 +186,5 @@ module proofs {
         Some(NonExist(nep))
     }
     proof
-
-
 
 }
