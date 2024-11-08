@@ -23,7 +23,7 @@ export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
       <GradientContainer className="flex flex-col gap-2 w-full">
         <div className="h-[104px] w-[104px] flex items-center justify-center bg-surface-rose-200 rounded-full">
           <img
-            src="/images/applets/deposit-and-withdraw.png"
+            src="/images/applets/deposit-and-withdraw.svg"
             alt="deposit-and-withdraw"
             className="h-[74px] w-[74px] object-contain"
           />

@@ -34,9 +34,9 @@ export const Header: React.FC = () => {
             <MenuAccounts
               manageAction={(account) => navigate(`/accounts/${account.index}`)}
               images={{
-                [AccountType.Spot]: "/images/avatars/spot.png",
-                [AccountType.Margin]: "/images/avatars/margin.png",
-                [AccountType.Safe]: "/images/avatars/safe.png",
+                [AccountType.Spot]: "/images/avatars/spot.svg",
+                [AccountType.Margin]: "/images/avatars/margin.svg",
+                [AccountType.Safe]: "/images/avatars/safe.svg",
               }}
             />
             <MenuConnections />
