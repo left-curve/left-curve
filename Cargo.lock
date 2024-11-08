@@ -1461,7 +1461,6 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
- "k256",
  "prost",
  "reqwest 0.12.9",
  "thiserror",

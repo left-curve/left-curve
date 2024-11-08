@@ -3,9 +3,8 @@ use {
     dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, Addressable, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper,
-        Duration, NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
+        NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -33,7 +32,6 @@ where
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");
-    let feeder = TestAccount::new_random("feeder");
 
     let (genesis_state, contracts, addresses) = build_genesis(
         codes.clone(),
@@ -54,11 +52,6 @@ where
                 .try_into()
                 .unwrap(),
             },
-            feeder.username.clone() => GenesisUser {
-                key: feeder.key,
-                key_hash: feeder.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
-            },
         },
         &owner.username,
         "uusdc",
@@ -68,18 +61,10 @@ where
     )
     .unwrap();
 
-    let feeder = feeder.set_address(&addresses);
-
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        ProposalPreparer::new(
-            CHAIN_ID.to_string(),
-            feeder.address(),
-            &feeder.sk.to_bytes(),
-            feeder.username.to_string(),
-        )
-        .unwrap(),
+        ProposalPreparer,
         CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
@@ -143,6 +128,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 
     let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
         .with_execute(Box::new(dango_oracle::execute))
+        .with_authenticate(Box::new(dango_oracle::authenticate))
         .with_query(Box::new(dango_oracle::query))
         .build();
 
