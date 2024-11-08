@@ -1599,6 +1599,7 @@ dependencies = [
  "rand",
  "reqwest 0.12.9",
  "test-case",
+ "tracing",
 ]
 
 [[package]]

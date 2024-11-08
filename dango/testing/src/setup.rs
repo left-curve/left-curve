@@ -64,7 +64,7 @@ where
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        ProposalPreparer,
+        ProposalPreparer::new(),
         CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
