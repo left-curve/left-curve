@@ -309,22 +309,20 @@ module apply_state_machine {
 
 
   val verifyMembershipInv = 
-    activeTreeVersions.forall(v =>
+    activeTreeVersions.forall(version =>
       tree.nodes.values().forall (nodes =>
         match nodes {
           | Internal => true
           | Leaf(n) =>
-              val proof = ics23_prove(tree, n.key_hash, v)
-              val root = hash(tree.nodes.get({ key_hash: [], version: v }))
+              val proof = ics23_prove(tree, n.key_hash, version)
+              val root = hash(tree.nodes.get({ key_hash: [], version: version }))
               match proof {
-                | Some(p) => 
+                | Some(p) =>
                   match p {
                     | Exist(ep) => verifyMembership(root, ep, n.key_hash, n.value_hash)
-                    | Nonexist(nep) => verifyNonMembership(root, nep, n.key_hash)
+                    | NonExist(nep) => verifyNonMembership(root, nep, n.key_hash)
                   }
                 | None => false}}))
-
-
 }
 
 module pruning_state_machine {

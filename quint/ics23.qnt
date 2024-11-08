@@ -14,12 +14,13 @@
 //
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems 2024
 
 module ics23 {
   import hashes.* from "./hashes"
   import node.* from "./node"
-
-
+  import basicSpells.* from "./spells/basicSpells"
+  import utils.* from "./utils"
   // type aliases for readability
   type Key_t = Bytes_t
   type Value_t = Bytes_t
@@ -65,7 +66,7 @@ module ics23 {
 
   /// a proof of non-existence of a key
   type NonExistsProof_t = {
-    key: Key_t, left: ExistsProof_t, right: ExistsProof_t
+    key: Key_t, left: Option[ExistsProof_t], right: Option[ExistsProof_t]
   }
 
   /// calculate a hash from an exists proof
@@ -255,27 +256,34 @@ module ics23 {
   def verifyNonMembership(root: CommitmentRoot_t,
       np: NonExistsProof_t, key: Key_t): bool = and {
     // getNonExistProofForKey
-    isNil(np.left.key) or lessThan(np.left.key, key),
-    isNil(np.right.key) or lessThan(key, np.right.key),
+    isNone(np.left) or match np.left {
+                                | Some(ep) =>  lessThan(ep.key, key)
+                                | None => true
+                              },
+    isNone(np.right) or match np.right {
+                                | Some(ep) =>  lessThan(key, ep.key)
+                                | None => true
+                              },
     // implicit assumption, missing in the code:
     // https://github.com/informalsystems/ics23-audit/issues/14
     np.key == key,
     // Verify
-    not(isNil(np.left.key)) or not(isNil(np.right.key)),
-    isNil(np.left.key) or and {
-      verify(np.left, root, np.left.key, np.left.value),
-      lessThan(np.left.key, key),
+    not(isNone(np.left)) or not(isNone(np.right)),
+    isNone(np.left) or and {
+      //TODO: @josef not sure if this can be safely unwrapped and it goes on for the rest of the file
+      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
+      lessThan(np.left.unwrap().key, key),
     },
-    isNil(np.right.key) or and {
-      verify(np.right, root, np.right.key, np.right.value),
-      lessThan(key, np.right.key),
+    isNone(np.right) or and {
+      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
+      lessThan(key, np.right.unwrap().key),
     },
-    if (isNil(np.left.key)) {
-      isLeftMost(np.right.path)
-    } else if (isNil(np.right.key)) {
-      isRightMost(np.left.path)
+    if (isNone(np.left)) {
+      isLeftMost(np.right.unwrap().path)
+    } else if (isNone(np.right)) {
+      isRightMost(np.left.unwrap().path)
     } else {
-      isLeftNeighbor(np.left.path, np.right.path)
+      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
     }
   }
 }
