@@ -517,8 +517,8 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(|raw_tx| raw_tx.deserialize_json())
-            .collect::<StdResult<Vec<_>>>()?;
+            .filter_map(|raw_tx| raw_tx.deserialize_json().map(Some).unwrap_or(None))
+            .collect();
 
         self.do_finalize_block(block, txs)
     }
