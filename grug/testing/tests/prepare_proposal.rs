@@ -2,8 +2,8 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        btree_map, Addr, Coins, ConfigUpdates, Empty, Json, JsonDeExt, JsonSerExt, Message, Op,
-        QuerierWrapper, ResultExt, StdError, Tx,
+        btree_map, Addr, Coins, ConfigUpdates, Empty, Json, JsonDeExt, JsonSerExt, Message,
+        NonEmpty, Op, QuerierWrapper, ResultExt, StdError, Tx,
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
@@ -132,11 +132,11 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
             let tx = Tx {
                 sender: oracle,
                 gas_limit: 1_000_000,
-                msgs: vec![Message::execute(
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
                     oracle,
                     &mock_oracle::ExecuteMsg::FeedPrices { prices },
                     Coins::new(),
-                )?],
+                )?]),
                 data: Json::null(),
                 credential: Json::null(),
             }

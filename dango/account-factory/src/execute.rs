@@ -53,7 +53,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 // exactly one message, to execute the factory itself with `Execute::RegisterUser`.
 // This transaction does not need to include any metadata or credential.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, mut tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let mut msgs = tx.msgs.iter();
 
     let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
@@ -94,7 +94,7 @@ pub fn authenticate(ctx: AuthCtx, mut tx: Tx) -> anyhow::Result<AuthResponse> {
     let maybe_msg = if ctx.mode == AuthMode::Check {
         // We already asserted that `tx.msgs` contains exactly one message,
         // so safe to unwrap here.
-        Some(tx.msgs.pop().unwrap())
+        Some(tx.msgs.into_inner().pop().unwrap())
     } else {
         None
     };
