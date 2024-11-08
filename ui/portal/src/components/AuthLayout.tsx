@@ -14,7 +14,7 @@ export const AuthLayout: React.FC = () => {
   }
 
   return (
-    <main className="flex flex-col min-h-screen w-full h-full bg-white relative overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center">
+    <main className="flex flex-col min-h-screen w-full h-full bg-surface-off-white-200 relative overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center">
       <div className="min-h-full w-full flex-1 flex flex-col justify-center z-10 relative">
         <div
           className={twMerge(

@@ -19,6 +19,7 @@ dango-bank            = { workspace = true, features = ["library"] }
 dango-genesis         = { workspace = true }
 dango-ibc-transfer    = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-token-factory   = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
@@ -31,9 +32,14 @@ grug-vm-wasm          = { workspace = true }
 k256                  = { workspace = true }
 
 [dev-dependencies]
-criterion = { workspace = true }
-rand      = { workspace = true }
-test-case = { workspace = true }
+anyhow      = { workspace = true }
+criterion   = { workspace = true }
+dango-types = { workspace = true }
+pyth-sdk    = { workspace = true }
+rand        = { workspace = true }
+reqwest     = { workspace = true, features = ["json"] }
+test-case   = { workspace = true }
+tokio       = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

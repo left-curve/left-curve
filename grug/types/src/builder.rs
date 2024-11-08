@@ -3,10 +3,14 @@
 //!
 //! See [this video](https://youtu.be/pwmIQzLuYl0) for context.
 
-use std::{fmt::Debug, marker::PhantomData};
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    serde::{Deserialize, Serialize},
+    std::{fmt::Debug, marker::PhantomData},
+};
 
 /// Represents a builder parameter that has not yet been provided.
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy)]
 pub struct Undefined<T = ()>(PhantomData<T>);
 
 impl<T> Undefined<T> {
@@ -22,7 +26,7 @@ impl<T> Default for Undefined<T> {
 }
 
 /// Represents a builder parameter that has already been provided.
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy)]
 pub struct Defined<T>(T);
 
 impl<T> Defined<T> {

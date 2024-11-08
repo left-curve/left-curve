@@ -113,7 +113,7 @@ Tendermint will reject the tx if `CheckTx` fails (meaning, either `withfold_fee`
 
 ## FinalizeBlock
 
-In `FinalzieBlock`, the entire tx processing flow is performed, which is:
+In `FinalizeBlock`, the entire tx processing flow is performed, which is:
 
 1. Call taxman's `withhold_fee` method.
 

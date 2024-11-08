@@ -10,7 +10,7 @@ import type {
   Transport,
   Username,
 } from "@leftcurve/types";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../user/broadcastTxSync.js";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../signer/broadcastTxSync.js";
 import { getAppConfig } from "./getAppConfig.js";
 import { simulate } from "./simulate.js";
 

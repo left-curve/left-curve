@@ -1,6 +1,6 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@leftcurve/crypto";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
-import { createKeyHash, createUserClient } from "@leftcurve/sdk";
+import { createKeyHash, createSignerClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { KeyAlgo } from "@leftcurve/types";
 import { composeTypedData, getRootDomain, hashTypedData } from "@leftcurve/utils";
@@ -16,7 +16,7 @@ import type {
 } from "@leftcurve/types";
 
 import "@leftcurve/types/window";
-import type { UserClient } from "@leftcurve/sdk/clients";
+import type { SignerClient } from "@leftcurve/sdk/clients";
 import { ConnectorSigner } from "@leftcurve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
@@ -29,7 +29,7 @@ type EIP1193ConnectorParameters = {
 export function eip1193(parameters: EIP1193ConnectorParameters) {
   let _transport: Transport;
   let _username: string;
-  let _client: UserClient;
+  let _client: SignerClient;
   let _isAuthorized = false;
 
   const {
@@ -78,7 +78,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       },
       async getClient() {
         if (!_client) {
-          _client = createUserClient({
+          _client = createSignerClient({
             transport: _transport,
             signer: new ConnectorSigner(this),
             username: _username,

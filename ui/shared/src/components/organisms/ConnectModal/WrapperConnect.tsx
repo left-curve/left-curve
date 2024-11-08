@@ -26,7 +26,7 @@ export const WrapperConnect: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div
       className={twMerge(
-        "flex flex-col items-start justify-center w-full bg-white min-h-[35rem] rounded-3xl relative transition-all h-fit",
+        "flex flex-col items-start justify-center w-full bg-surface-rose-200 min-h-[35rem] rounded-3xl relative transition-all h-fit",
         activeStep === 2 ? "md:max-w-[33rem] min-h-[25rem]" : "md:max-w-[50rem] min-h-[35rem]",
       )}
     >

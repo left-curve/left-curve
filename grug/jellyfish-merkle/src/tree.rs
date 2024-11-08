@@ -375,45 +375,67 @@ impl<'a> MerkleTree<'a> {
         batch: Vec<(Hash256, Hash256)>,
         existing_leaf: Option<LeafNode>,
     ) -> StdResult<Outcome> {
-        let new_node = match (batch.len(), existing_leaf) {
-            (0, None) => {
-                return Ok(Outcome::Unchanged(None));
-            },
-            (0, Some(leaf_node)) => Node::Leaf(leaf_node),
+        match (batch.len(), existing_leaf) {
+            // The subtree to be created is empty: do nothing.
+            (0, None) => Ok(Outcome::Unchanged(None)),
+            // The subtree to be created contains exactly one node, which is an
+            // existing leaf node.
+            (0, Some(leaf_node)) => Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node)))),
+            // The subtree to be created contains exactly one node, which is a
+            // new leaf node.
+            // This case requires special attention: we don't save the node yet,
+            // because the path may be collapsed if its sibling gets deleted.
             (1, None) => {
                 let (key_hash, value_hash) = only_item(batch);
-                Node::Leaf(LeafNode {
+                Ok(Outcome::Updated(Node::Leaf(LeafNode {
                     key_hash,
                     value_hash,
-                })
+                })))
             },
+            // The subtree to be created contains more 2 or more nodes.
+            // Recursively create the tree. Return the subtree's root, an
+            // internal node.
+            // Note that in this scenario, we certainly don't need to collapse the
+            // path.
             (_, existing_leaf) => {
+                // Split the batch for left and right children.
                 let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
                 let (leaf_for_left, leaf_for_right) = partition_leaf(existing_leaf, bits);
+
+                // Create the left subtree.
+                let left_bits = bits.extend_one_bit(true);
                 let left_outcome = self.create_subtree(
                     storage,
                     version,
-                    bits.extend_one_bit(true),
+                    left_bits,
                     batch_for_left,
                     leaf_for_left,
                 )?;
+
+                // Create the right subtree.
+                let right_bits = bits.extend_one_bit(false);
                 let right_outcome = self.create_subtree(
                     storage,
                     version,
-                    bits.extend_one_bit(false),
+                    right_bits,
                     batch_for_right,
                     leaf_for_right,
                 )?;
-                Node::Internal(InternalNode {
+
+                // If a subtree is non-empty, save it's root node.
+                if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &left_outcome {
+                    self.save_node(storage, version, left_bits, node)?;
+                }
+                if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &right_outcome {
+                    self.save_node(storage, version, right_bits, node)?;
+                }
+
+                Ok(Outcome::Updated(Node::Internal(InternalNode {
                     left_child: into_child(version, left_outcome),
                     right_child: into_child(version, right_outcome),
-                })
+                })))
             },
-        };
-
-        self.save_node(storage, version, bits, &new_node)?;
-
-        Ok(Outcome::Updated(new_node))
+        }
     }
 
     /// Generate Merkle proof for the a key at the given version.
@@ -662,12 +684,12 @@ fn hash_of(child: Option<Child>) -> Option<Hash256> {
 #[inline]
 fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
     match outcome {
-        Outcome::Updated(node) => Some(Child {
+        Outcome::Updated(node) | Outcome::Unchanged(Some(node)) => Some(Child {
             version,
             hash: node.hash(),
         }),
         Outcome::Unchanged(None) => None,
-        _ => unreachable!("invalid outcome when building subtree: {outcome:?}"),
+        Outcome::Deleted => unreachable!("invalid outcome when building subtree: {outcome:?}"),
     }
 }
 
@@ -1060,7 +1082,7 @@ mod tests {
         // Before doing any pruning, check nodes and orphans are correct.
         assert_tree(
             &storage,
-            vec![
+            [
                 (0, ROOT_BITS),
                 (0, BitArray::from_bits(&[0])),
                 (0, BitArray::from_bits(&[1])),
@@ -1078,7 +1100,7 @@ mod tests {
                 (3, ROOT_BITS),
                 // v5 tree is empty
             ],
-            vec![
+            [
                 (1, 0, ROOT_BITS),
                 (1, 0, BitArray::from_bits(&[0])),
                 (1, 0, BitArray::from_bits(&[0, 1])),
@@ -1101,7 +1123,7 @@ mod tests {
         TREE.prune(&mut storage, 1).unwrap();
         assert_tree(
             &storage,
-            vec![
+            [
                 (0, BitArray::from_bits(&[1])),
                 (0, BitArray::from_bits(&[0, 1, 0])),
                 (1, ROOT_BITS),
@@ -1112,7 +1134,7 @@ mod tests {
                 (2, BitArray::from_bits(&[0])),
                 (3, ROOT_BITS),
             ],
-            vec![
+            [
                 (2, 0, BitArray::from_bits(&[0, 1, 0])),
                 (2, 1, ROOT_BITS),
                 (2, 1, BitArray::from_bits(&[0])),
@@ -1129,13 +1151,13 @@ mod tests {
         TREE.prune(&mut storage, 2).unwrap();
         assert_tree(
             &storage,
-            vec![
+            [
                 (0, BitArray::from_bits(&[1])),
                 (2, ROOT_BITS),
                 (2, BitArray::from_bits(&[0])),
                 (3, ROOT_BITS),
             ],
-            vec![
+            [
                 (3, 0, BitArray::from_bits(&[1])),
                 (3, 2, ROOT_BITS),
                 (3, 2, BitArray::from_bits(&[0])),
@@ -1145,24 +1167,89 @@ mod tests {
 
         // Prune up to v3
         TREE.prune(&mut storage, 3).unwrap();
-        assert_tree(&storage, vec![(3, ROOT_BITS)], vec![(4, 3, ROOT_BITS)]);
+        assert_tree(&storage, [(3, ROOT_BITS)], [(4, 3, ROOT_BITS)]);
 
         // Prune up to v4
         TREE.prune(&mut storage, 4).unwrap();
-        assert_tree(&storage, vec![], vec![]);
+        assert_tree(&storage, [], []);
     }
 
-    fn assert_tree(
+    #[test]
+    fn no_extra_saves() {
+        let mut storage = MockStorage::new();
+
+        let _ = TREE.apply_raw(
+            &mut storage,
+            0,
+            1,
+            &Batch::from([
+                (b"m".to_vec(), Op::Insert(b"10".to_vec())),
+                (b"L".to_vec(), Op::Insert(b"6".to_vec())),
+                (b"q".to_vec(), Op::Delete),
+                (b"Z".to_vec(), Op::Insert(b"2".to_vec())),
+                (b"a".to_vec(), Op::Insert(b"14".to_vec())),
+            ]),
+        );
+
+        let _ = TREE.apply_raw(
+            &mut storage,
+            1,
+            2,
+            &Batch::from([
+                (b"r".to_vec(), Op::Insert(b"6".to_vec())),
+                (b"w".to_vec(), Op::Delete),
+                (b"m".to_vec(), Op::Delete),
+                (b"L".to_vec(), Op::Delete),
+                (b"a".to_vec(), Op::Insert(b"5".to_vec())),
+            ]),
+        );
+
+        assert_tree(
+            &storage,
+            [
+                (1, ROOT_BITS),
+                (1, BitArray::from_bits(&[0])),
+                (1, BitArray::from_bits(&[1])),
+                (1, BitArray::from_bits(&[0, 1])),
+                (1, BitArray::from_bits(&[1, 0])),
+                (1, BitArray::from_bits(&[1, 1])),
+                (1, BitArray::from_bits(&[0, 1, 1])),
+                (1, BitArray::from_bits(&[0, 1, 1, 0])),
+                (1, BitArray::from_bits(&[0, 1, 1, 1])),
+                (2, ROOT_BITS),
+                (2, BitArray::from_bits(&[0])),
+                (2, BitArray::from_bits(&[1])),
+                (2, BitArray::from_bits(&[1, 1])),
+                // In a previous implementation, the tree incorrectly saves the
+                // node { version = 2, bits = [0, 1, 0] }, which is a duplicate
+                // of { version = 2, bits = [0] }.
+                // Here we verify it doesn't exist.
+                // This bug was discovered in the Informal audit.
+            ],
+            [
+                (2, 1, BitArray::from_bits(&[])),
+                (2, 1, BitArray::from_bits(&[0])),
+                (2, 1, BitArray::from_bits(&[1])),
+                (2, 1, BitArray::from_bits(&[0, 1])),
+                (2, 1, BitArray::from_bits(&[1, 1])),
+                (2, 1, BitArray::from_bits(&[0, 1, 1])),
+                (2, 1, BitArray::from_bits(&[0, 1, 1, 0])),
+                (2, 1, BitArray::from_bits(&[0, 1, 1, 1])),
+            ],
+        );
+    }
+
+    fn assert_tree<const N: usize, const O: usize>(
         storage: &dyn Storage,
-        nodes: Vec<(u64, BitArray)>,
-        orphans: Vec<(u64, u64, BitArray)>,
+        nodes: [(u64, BitArray); N],
+        orphans: [(u64, u64, BitArray); O],
     ) {
         let nodes_dump = TREE
             .nodes
             .keys(storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<_>>>()
             .unwrap();
-        assert_eq!(nodes_dump, nodes,);
+        assert_eq!(nodes_dump, nodes);
 
         let orphans_dump = TREE
             .orphans

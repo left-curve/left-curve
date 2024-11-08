@@ -1,7 +1,9 @@
-use bnum::types::{I256, I512, U256, U512};
-
-use crate::{
-    Dec128, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec128_6, Udec256, Uint128, Uint256,
+use {
+    crate::{
+        Dec128, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec128_6, Udec256, Uint128,
+        Uint256,
+    },
+    bnum::types::{I256, I512, U256, U512},
 };
 
 /// Describes a number's associated constants: minimum and maximum; zero, one,

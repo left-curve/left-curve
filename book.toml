@@ -1,16 +1,19 @@
 [book]
-title        = "The Grug Book"
-description  = "Everything you need for building apps on a Grug-powered chain"
-authors      = ["Left Curve Software Ltd. (https://leftcurve.software/)"]
+title        = "The Left Curve Book"
+description  = "Everything about the Left Curve Stack"
+authors      = ["Left Curve Software Ltd. (https://grug.build/about)"]
 language     = "en"
 multilingual = false
 src          = "book/"
 
 [output.html]
-git-repository-url = "https://github.com/left-curve/grug"
+git-repository-url = "https://github.com/left-curve/left-curve"
 
 [build]
 build-dir = "target/book/"
 
 [rust]
 edition = "2021"
+
+# This is for Latex support, install with: `cargo install mdbook-katex`.
+[preprocessor.katex]

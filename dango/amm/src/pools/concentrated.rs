@@ -1,9 +1,8 @@
 use {
+    super::{PoolExt, PoolInit},
     dango_types::amm::{ConcentratedParams, ConcentratedPool},
     grug::{Coin, CoinPair, Uint128},
 };
-
-use super::{PoolExt, PoolInit};
 
 impl PoolInit for ConcentratedPool {
     type Params = ConcentratedParams;
