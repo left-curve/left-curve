@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Coins, ConfigUpdates, Hash256, Json, JsonSerExt, LengthBounded, MaxLength,
-        Op, StdError, StdResult,
+        NonEmpty, Op, StdError, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -26,7 +26,7 @@ pub type Label = LengthBounded<String, 1, 128>;
 pub struct Tx {
     pub sender: Addr,
     pub gas_limit: u64,
-    pub msgs: Vec<Message>,
+    pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
     pub credential: Json,
 }
@@ -37,7 +37,7 @@ pub struct Tx {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnsignedTx {
     pub sender: Addr,
-    pub msgs: Vec<Message>,
+    pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
 }
 

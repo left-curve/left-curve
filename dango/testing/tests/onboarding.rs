@@ -7,8 +7,8 @@ use {
         ibc_transfer,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, ResultExt, Tx,
-        Uint128,
+        btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, NonEmpty,
+        ResultExt, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -120,7 +120,7 @@ fn onboarding_existing_user() {
         let tx = Tx {
             sender: contracts.account_factory,
             gas_limit: 1_000_000,
-            msgs: vec![Message::execute(
+            msgs: NonEmpty::new_unchecked(vec![Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
@@ -129,7 +129,7 @@ fn onboarding_existing_user() {
                 },
                 Coins::new(),
             )
-            .unwrap()],
+            .unwrap()]),
             data: Json::null(),
             credential: Json::null(),
         };
@@ -163,7 +163,7 @@ fn onboarding_without_deposit() {
         .check_tx(Tx {
             sender: contracts.account_factory,
             gas_limit: 1_000_000,
-            msgs: vec![Message::execute(
+            msgs: NonEmpty::new_unchecked(vec![Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
@@ -172,7 +172,7 @@ fn onboarding_without_deposit() {
                 },
                 Coins::new(),
             )
-            .unwrap()],
+            .unwrap()]),
             data: Json::null(),
             credential: Json::null(),
         })
