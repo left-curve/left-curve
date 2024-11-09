@@ -1,13 +1,12 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::bail,
     dango_types::{
         config::LENDING_KEY,
-        lending::{CollateralPower, HealthResponse, LendingAppConfig, Market, QueryMsg},
+        lending::{CollateralPower, LendingAppConfig, Market, QueryMsg},
     },
     grug::{
-        Addr, Bound, Coins, Denom, ImmutableCtx, Inner, IsZero, Json, JsonSerExt, NumberConst,
-        Order, QuerierWrapper, StdResult, Storage, Udec128,
+        Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
+        StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -35,10 +34,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::CollateralPowers {} => {
             let res = query_collateral_powers(&ctx.querier)?;
-            res.to_json_value()
-        },
-        QueryMsg::Health { account } => {
-            let res = query_account_health(ctx, account)?;
             res.to_json_value()
         },
     }
@@ -86,57 +81,4 @@ pub fn query_collateral_powers(
 ) -> StdResult<BTreeMap<Denom, CollateralPower>> {
     let app_config: LendingAppConfig = querier.query_app_config(LENDING_KEY)?;
     Ok(app_config.collateral_powers)
-}
-
-/// Calculates the health of a margin account.
-pub fn calculate_account_health(
-    querier: &QuerierWrapper,
-    margin_account: Addr,
-    debts: Coins,
-    collateral_powers: BTreeMap<Denom, CollateralPower>,
-) -> anyhow::Result<HealthResponse> {
-    // Calculate the total value of the debts.
-    let mut total_debt_value = Udec128::ZERO;
-    for coin in debts {
-        let price = dango_oracle::raw_query_price(querier, &coin.denom)?;
-        total_debt_value += price.value_of_unit_amount(coin.amount);
-    }
-
-    // Calculate the total value of the account's collateral adjusted for the collateral power.
-    let mut total_adjusted_collateral_value = Udec128::ZERO;
-    for (denom, power) in collateral_powers {
-        let collateral_balance = querier.query_balance(margin_account, denom.clone())?;
-
-        // As an optimization, don't query the price if the collateral balance is zero.
-        if collateral_balance.is_zero() {
-            continue;
-        }
-
-        let price = dango_oracle::raw_query_price(querier, &denom)?;
-        let collateral_value = price.value_of_unit_amount(collateral_balance);
-        total_adjusted_collateral_value += collateral_value * power.into_inner();
-    }
-
-    if total_adjusted_collateral_value.is_zero() {
-        bail!("the account has no collateral");
-    }
-
-    // Calculate the utilization rate.
-    let utilization_rate = total_debt_value / total_adjusted_collateral_value;
-
-    Ok(HealthResponse {
-        utilization_rate,
-        total_debt_value,
-        total_adjusted_collateral_value,
-    })
-}
-
-pub fn query_account_health(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<HealthResponse> {
-    // Query all debts for the account.
-    let debts = query_debt(ctx.storage, account)?;
-
-    // Query all collateral powers.
-    let collateral_powers = query_collateral_powers(&ctx.querier)?;
-
-    calculate_account_health(&ctx.querier, account, debts, collateral_powers)
 }
