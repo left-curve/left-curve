@@ -216,6 +216,35 @@ impl Coins {
         Ok(())
     }
 
+    /// Deduct a coin from the `Coins`, saturating at zero. Returns a coin of
+    /// the remainder if the coin's amount is greater than the available amount.
+    pub fn saturating_deduct(&mut self, coin: Coin) -> StdResult<Coin> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            return Err(StdError::DenomNotFound { denom: coin.denom });
+        };
+
+        if &coin.amount >= amount {
+            let remainder = coin.amount - *amount;
+            self.0.remove(&coin.denom);
+            return Coin::new(coin.denom.clone(), remainder);
+        }
+
+        self.deduct(coin.clone())?;
+
+        Coin::new(coin.denom, 0)
+    }
+
+    /// Deduct all coins from another `Coins`, saturating at zero. Returns a
+    pub fn saturating_deduct_many(&mut self, coins: Self) -> StdResult<Self> {
+        let mut remainders = Self::new();
+
+        for coin in coins.into_iter() {
+            remainders.insert(self.saturating_deduct(coin)?)?;
+        }
+
+        Ok(remainders)
+    }
+
     /// Take a coin of the given denom out of the `Coins`.
     /// Return a coin of zero amount if the denom doesn't exist in this `Coins`.
     pub fn take(&mut self, denom: Denom) -> Coin {
@@ -524,5 +553,39 @@ mod tests {
         // invalid string: contains duplicate
         let s = "uatom:123,uatom:456";
         assert!(Coins::from_str(s).is_err())
+    }
+
+    #[test]
+    fn saturating_deduct_many() {
+        // Deduct less than available
+        let mut coins = mock_coins();
+        let deduct = Coins::try_from([
+            ("uatom", Uint128::new(100)),
+            ("umars", Uint128::new(100)),
+            ("uosmo", Uint128::new(789)),
+        ])
+        .unwrap();
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(remainders, Coins::new());
+
+        // Equal amounts
+        let mut coins = mock_coins();
+        let remainders = coins.saturating_deduct_many(mock_coins()).unwrap();
+        assert_eq!(remainders, Coins::new());
+
+        // some remainder
+        let mut coins = mock_coins();
+        let mut deduct = mock_coins();
+        deduct
+            .insert_many(
+                Coins::try_from([("uatom", Uint128::new(100)), ("umars", Uint128::new(100))])
+                    .unwrap(),
+            )
+            .unwrap();
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(
+            remainders,
+            Coins::try_from([("uatom", Uint128::new(100)), ("umars", Uint128::new(100))]).unwrap()
+        );
     }
 }
