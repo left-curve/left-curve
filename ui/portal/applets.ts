@@ -1,36 +1,37 @@
-export const popularApplets = [
+export const applets = [
   {
-    img: "/images/applets/account-creation.png",
+    isFeatured: true,
+    img: "/images/applets/account-creation.svg",
     title: "Account Creation",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/applets/account-creation",
+    path: "/account-creation",
   },
   {
-    img: "/images/applets/block-explorer.png",
+    isFeatured: true,
+    img: "/images/applets/block-explorer.svg",
     title: "Block Explorer",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/applets/block-explorer",
+    path: "block-explorer",
   },
   {
-    img: "/images/applets/token-factory.png",
+    isFeatured: true,
+    img: "/images/applets/token-factory.svg",
     title: "Token Factory",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/applets/token-factory",
+    path: "/token-factory",
   },
   {
-    img: "/images/applets/deposit-and-withdraw.png",
+    isFeatured: true,
+    img: "/images/applets/deposit-and-withdraw.svg",
     title: "Deposit & Withdraw",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/applets/deposit-and-withdraw",
+    path: "/amm",
   },
-];
-
-export const applets = [
-  ...popularApplets,
   {
-    img: "/images/applets/send-and-receive.png",
+    isFeatured: false,
+    img: "/images/applets/send-and-receive.svg",
     title: "Send & Receive",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/applets/send-and-receive",
+    path: "/transfer",
   },
 ];

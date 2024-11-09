@@ -165,7 +165,7 @@ pub fn authenticate_tx(
                     let sign_bytes = ctx.api.sha2_256(
                         &SignDoc {
                             sender: tx.sender,
-                            messages: tx.msgs,
+                            messages: tx.msgs.into_inner(),
                             chain_id: ctx.chain_id,
                             sequence: metadata.sequence,
                         }
@@ -201,7 +201,7 @@ pub fn authenticate_tx(
                 let sign_bytes = ctx.api.sha2_256(
                     &SignDoc {
                         sender: tx.sender,
-                        messages: tx.msgs,
+                        messages: tx.msgs.into_inner(),
                         chain_id: ctx.chain_id,
                         sequence: metadata.sequence,
                     }

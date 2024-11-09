@@ -2,7 +2,8 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        Addr, Coins, Empty, Json, JsonSerExt, Message, QuerierWrapper, ResultExt, StdError, Tx,
+        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierWrapper, ResultExt,
+        StdError, Tx,
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
@@ -112,7 +113,7 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
 
             // Query the prices of a few coins from Coingecko.
             let prices = reqwest::blocking::Client::builder()
-                .timeout(Duration::from_millis(500))
+                .timeout(Duration::from_millis(5000))
                 .build()?
                 .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd")
                 .send()?
@@ -128,11 +129,11 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
             let tx = Tx {
                 sender: oracle,
                 gas_limit: 1_000_000,
-                msgs: vec![Message::execute(
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
                     oracle,
                     &mock_oracle::ExecuteMsg::FeedPrices { prices },
                     Coins::new(),
-                )?],
+                )?]),
                 data: Json::null(),
                 credential: Json::null(),
             }

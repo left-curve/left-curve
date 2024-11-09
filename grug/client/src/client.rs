@@ -5,8 +5,8 @@ use {
     grug_math::Inner,
     grug_types::{
         Addr, AsyncSigner, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
-        Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Query, QueryResponse, StdError, Tx,
-        TxOutcome, UnsignedTx,
+        Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse,
+        StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -404,7 +404,7 @@ impl Client {
             } => {
                 let unsigned_tx = UnsignedTx {
                     sender: sign_opt.sender,
-                    msgs: msgs.clone(),
+                    msgs: NonEmpty::new(msgs.clone())?,
                     // TODO: allow user to specify this
                     data: Json::null(),
                 };
