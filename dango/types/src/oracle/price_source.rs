@@ -1,5 +1,6 @@
 use {
     crate::oracle::{PrecisionedPrice, PrecisionlessPrice, PythId},
+    anyhow::anyhow,
     grug::{Addr, BorshDeExt, Map, QuerierWrapper, Storage},
 };
 
@@ -38,7 +39,7 @@ impl PriceSource {
             Self::Pyth { id, precision } => {
                 let price = querier
                     .query_wasm_raw(oracle, PRICES.path(*id))?
-                    .ok_or(anyhow::anyhow!("Price not found for denom: {}", id))?
+                    .ok_or(anyhow!("Price not found for denom: {}", id))?
                     .deserialize_borsh::<PrecisionlessPrice>()?
                     .with_precision(*precision);
                 Ok(price)
