@@ -561,7 +561,7 @@ fn composite_denom() {
 }
 
 #[test]
-fn cant_repay_if_no_debts() {
+fn all_coins_refunded_if_repaying_when_no_debts() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
@@ -602,7 +602,7 @@ fn cant_repay_if_no_debts() {
         )
         .should_succeed();
 
-    // Try to repay, should fail
+    // Try to repay, should succeed
     suite
         .execute(
             &mut margin_account,
@@ -610,7 +610,12 @@ fn cant_repay_if_no_debts() {
             &lending::ExecuteMsg::Repay {},
             Coins::one(USDC.clone(), 100).unwrap(),
         )
-        .should_fail_with_error("Cannot repay more than the debts");
+        .should_succeed();
+
+    // Check that the excess is refunded
+    suite
+        .query_balance(&margin_account.address(), USDC.clone())
+        .should_succeed_and_equal(Uint128::new(100));
 }
 
 #[test]

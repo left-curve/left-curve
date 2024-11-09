@@ -5,10 +5,11 @@ use {
     },
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
+    std::fmt::Debug,
 };
 
 /// A marker that designates encoding/decoding schemes.
-pub trait Codec<T> {
+pub trait Codec<T>: Debug + Clone + Copy + PartialEq + Eq {
     fn encode(data: &T) -> StdResult<Vec<u8>>;
 
     fn decode(data: &[u8]) -> StdResult<T>;
@@ -17,7 +18,7 @@ pub trait Codec<T> {
 // ----------------------------------- borsh -----------------------------------
 
 /// Represents the Borsh encoding scheme.
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Borsh;
 
 impl<T> Codec<T> for Borsh
@@ -36,6 +37,7 @@ where
 // ----------------------------------- proto -----------------------------------
 
 /// Represents the Protobuf encoding scheme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Proto;
 
 impl<T> Codec<T> for Proto
@@ -58,6 +60,7 @@ where
 /// TODO: `Serde` is probably not a good naming, because serde library supports
 /// more encoding schemes than just JSON. But for now I don't have a better idea
 /// on how to name this.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Serde;
 
 impl<T> Codec<T> for Serde
@@ -76,6 +79,7 @@ where
 // ------------------------------------ raw ------------------------------------
 
 /// Represents raw bytes without encoding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Raw;
 
 impl Codec<Vec<u8>> for Raw {

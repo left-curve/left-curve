@@ -220,7 +220,7 @@ impl Coins {
     /// the remainder if the coin's amount is greater than the available amount.
     pub fn saturating_deduct(&mut self, coin: Coin) -> StdResult<Coin> {
         let Some(amount) = self.0.get_mut(&coin.denom) else {
-            return Err(StdError::DenomNotFound { denom: coin.denom });
+            return Ok(coin);
         };
 
         if &coin.amount >= amount {
@@ -587,5 +587,12 @@ mod tests {
             remainders,
             Coins::try_from([("uatom", Uint128::new(100)), ("umars", Uint128::new(100))]).unwrap()
         );
+
+        // Deduct denom not in coins
+        let mut coins = mock_coins();
+        let deduct =
+            Coins::try_from([("uatom", Uint128::new(100)), ("uusdc", Uint128::new(100))]).unwrap();
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(remainders, Coins::one("uusdc", 100).unwrap());
     }
 }
