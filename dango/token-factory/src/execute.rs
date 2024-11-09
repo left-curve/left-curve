@@ -5,7 +5,7 @@ use {
     dango_types::{
         account_factory::Username,
         bank,
-        config::ACCOUNT_FACTORY_KEY,
+        config::AppConfig,
         taxman,
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
@@ -60,12 +60,12 @@ fn create(
     // the sender is associated with the username.
     // Otherwise, use the sender's address as the sub-namespace.
     let subnamespace = if let Some(username) = username {
-        let account_factory = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
         if ctx
             .querier
             .query_wasm_raw(
-                account_factory,
+                app_cfg.addresses.account_factory,
                 ACCOUNTS_BY_USER.path((&username, ctx.sender)),
             )?
             .is_none()

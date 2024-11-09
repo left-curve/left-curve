@@ -415,12 +415,12 @@ mod tests {
             write_to_memory, Environment, VmResult, WasmVm, GAS_PER_OPERATION,
         },
         grug_app::{
-            AppCtx, GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIGS, GAS_COSTS,
+            AppCtx, GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIG, GAS_COSTS,
         },
         grug_crypto::{Identity256, Identity512},
         grug_types::{
             encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
-            Hash256, MockStorage, Order, Query, QueryResponse, Storage, Timestamp,
+            Hash256, MockStorage, Order, Query, QueryResponse, ResultExt, Storage, Timestamp,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
@@ -873,41 +873,27 @@ mod tests {
 
     // ----------------------------- query_chain -------------------------------
 
-    #[test_case(
-        "foo",
-        GenericResult::Ok(QueryResponse::AppConfig(json!({"bar": {}})));
-        "ok"
-    )]
-    #[test_case(
-        "bar",
-        GenericResult::Err("data not found! type: grug_types::json::Json, storage key: AAphcHBfY29uZmlnYmFy".to_string());
-        "fails"
-    )]
-    fn query_chain_works(key: &str, value: GenericResult<QueryResponse>) {
+    #[test]
+    fn query_chain_works() {
         let mut suite = setup_test();
 
         // Use AppConfig query as example
         // We don't want to test the query itself, just the query_chain function
-        let request = Query::app_config(key);
+        let request = Query::app_config();
 
-        APP_CONFIGS
-            .save(
-                &mut suite.storage,
-                "foo",
-                &json!({
-                    "bar": {}
-                }),
-            )
+        APP_CONFIG
+            .save(&mut suite.storage, &json!({ "foo": "bar" }))
             .unwrap();
 
         let ptr_key = suite.write(&request.to_borsh_vec().unwrap()).unwrap();
-
         let ptr_result = crate::query_chain(suite.fe_mut(), ptr_key).unwrap();
 
-        let result: GenericResult<QueryResponse> =
-            suite.read(ptr_result).unwrap().deserialize_borsh().unwrap();
-
-        assert_eq!(result, value);
+        suite
+            .read(ptr_result)
+            .unwrap()
+            .deserialize_borsh::<GenericResult<QueryResponse>>()
+            .unwrap()
+            .should_succeed_and_equal(QueryResponse::AppConfig(json!({ "foo": "bar" })));
     }
 
     // ----------------------------- Crypto Verify -----------------------------

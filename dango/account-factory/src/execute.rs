@@ -11,7 +11,7 @@ use {
             Username,
         },
         auth::Key,
-        config::IBC_TRANSFER_KEY,
+        config::AppConfig,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
@@ -119,10 +119,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    let ibc_transfer: Addr = ctx.querier.query_app_config(IBC_TRANSFER_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     ensure!(
-        ctx.sender == ibc_transfer,
+        ctx.sender == app_cfg.addresses.ibc_transfer,
         "only IBC transfer contract can make deposits"
     );
 

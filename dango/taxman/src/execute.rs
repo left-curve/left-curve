@@ -3,7 +3,7 @@ use {
     anyhow::ensure,
     dango_types::{
         bank,
-        config::ACCOUNT_FACTORY_KEY,
+        config::AppConfig,
         taxman::{Config, ExecuteMsg, InstantiateMsg},
     },
     grug::{
@@ -51,7 +51,6 @@ fn pay(_ctx: MutableCtx, _payer: Addr) -> anyhow::Result<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     let fee_cfg = CONFIG.load(ctx.storage)?;
-    let account_factory: Addr = ctx.querier.query_app_config("account_factory")?;
 
     // Compute the maximum amount of fee this transaction may incur.
     // Note that we ceil this amount, instead of flooring.
@@ -63,7 +62,10 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     //    in this case.
     // 2. Sender is the account factory contract. This happens during a new user
     //    onboarding. We don't charge gas fee this in case.
-    let withhold_amount = if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
+    let withhold_amount = if ctx.mode == AuthMode::Simulate || {
+        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        tx.sender == app_cfg.addresses.account_factory
+    } {
         Uint128::ZERO
     } else {
         Uint128::new(tx.gas_limit as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?
@@ -103,14 +105,16 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Response> {
     let (fee_cfg, withheld_amount) = WITHHELD_FEE.take(ctx.storage)?;
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
 
     // Compute how much fee to charge the sender, based on the actual amount of
     // gas consumed.
     //
     // Again, during simulation, or any tx sent by the account factory, is
     // exempt from gas fees.
-    let charge_amount = if ctx.mode == AuthMode::Simulate || tx.sender == account_factory {
+    let charge_amount = if ctx.mode == AuthMode::Simulate || {
+        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        tx.sender == app_cfg.addresses.account_factory
+    } {
         Uint128::ZERO
     } else {
         Uint128::new(outcome.gas_used as u128).checked_mul_dec_ceil(fee_cfg.fee_rate)?

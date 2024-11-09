@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
@@ -308,15 +308,17 @@ where
         max_orphan_age,
     };
 
-    let app_configs = btree_map! {
-        ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
-        IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
+    let app_config = AppConfig {
+        addresses: AppAddresses {
+            account_factory,
+            ibc_transfer,
+        },
     };
 
     let genesis_state = GenesisState {
         config,
         msgs,
-        app_configs,
+        app_config: app_config.to_json_value()?,
     };
 
     Ok((genesis_state, contracts, addresses))
