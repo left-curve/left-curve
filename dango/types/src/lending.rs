@@ -35,6 +35,20 @@ impl Bounds<Udec128> for CollateralPowerBounds {
 /// A decimal bounded by the collateral power bounds.
 pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
 
+// ------------------------------ App Config -----------------------------------
+
+/// The configuration for the lending contract stored in the chain's AppConfig.
+#[grug::derive(Serde)]
+pub struct LendingAppConfig {
+    /// The address of the lending contract.
+    pub lending: Addr,
+    /// The powers of all collateral tokens. This is the adjustment factor for
+    /// the collateral value of a given collateral token. Meaning, if the
+    /// collateral token has a power of 0.9, then the value of the collateral
+    /// token is 90% of its actual value.
+    pub collateral_powers: BTreeMap<Denom, CollateralPower>,
+}
+
 // -------------------------------- Market -------------------------------------
 
 /// Configurations and state of a market (borrowable assets).
@@ -56,13 +70,6 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Apply updates to markets.
     UpdateMarkets(BTreeMap<Denom, MarketUpdates>),
-    /// Set the collateral power for a denom.
-    SetCollateralPower {
-        denom: Denom,
-        power: CollateralPower,
-    },
-    /// Delist a collateral token. Removes it from the collateral power map.
-    DelistCollateral { denom: Denom },
     /// Deposit tokens into the lending pool.
     /// Sender must attach one or more supported tokens and nothing else.
     Deposit {},

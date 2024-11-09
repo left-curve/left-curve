@@ -6,7 +6,7 @@ use {
         bank,
         config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY, LENDING_KEY, ORACLE_KEY},
         ibc_transfer,
-        lending::{self, Market},
+        lending::{self, LendingAppConfig, Market},
         oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
         taxman, token_factory,
     },
@@ -310,10 +310,15 @@ where
         max_orphan_age,
     };
 
+    let lending_app_config = LendingAppConfig {
+        lending,
+        collateral_powers: btree_map! {},
+    };
+
     let app_configs = btree_map! {
         ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
         IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
-        LENDING_KEY.to_string() => lending.to_json_value()?,
+        LENDING_KEY.to_string() => lending_app_config.to_json_value()?,
         ORACLE_KEY.to_string() => oracle.to_json_value()?,
     };
 

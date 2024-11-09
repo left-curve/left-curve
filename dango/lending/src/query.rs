@@ -1,7 +1,10 @@
 use {
-    crate::{COLLATERAL_POWERS, DEBTS, MARKETS},
+    crate::{DEBTS, MARKETS},
     anyhow::bail,
-    dango_types::lending::{CollateralPower, HealthResponse, Market, QueryMsg},
+    dango_types::{
+        config::LENDING_KEY,
+        lending::{CollateralPower, HealthResponse, LendingAppConfig, Market, QueryMsg},
+    },
     grug::{
         Addr, Bound, Coins, Denom, ImmutableCtx, Inner, IsZero, Json, JsonSerExt, NumberConst,
         Order, QuerierWrapper, StdResult, Storage, Udec128,
@@ -31,7 +34,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::CollateralPowers {} => {
-            let res = query_collateral_powers(ctx.storage)?;
+            let res = query_collateral_powers(&ctx.querier)?;
             res.to_json_value()
         },
         QueryMsg::Health { account } => {
@@ -79,9 +82,10 @@ pub fn query_debts(
 }
 
 pub fn query_collateral_powers(
-    storage: &dyn Storage,
+    querier: &QuerierWrapper,
 ) -> StdResult<BTreeMap<Denom, CollateralPower>> {
-    COLLATERAL_POWERS.load(storage)
+    let app_config: LendingAppConfig = querier.query_app_config(LENDING_KEY)?;
+    Ok(app_config.collateral_powers)
 }
 
 /// Calculates the health of a margin account.
@@ -132,7 +136,7 @@ pub fn query_account_health(ctx: ImmutableCtx, account: Addr) -> anyhow::Result<
     let debts = query_debt(ctx.storage, account)?;
 
     // Query all collateral powers.
-    let collateral_powers = query_collateral_powers(ctx.storage)?;
+    let collateral_powers = query_collateral_powers(&ctx.querier)?;
 
     calculate_account_health(&ctx.querier, account, debts, collateral_powers)
 }

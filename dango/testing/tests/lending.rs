@@ -4,16 +4,18 @@ use {
     dango_types::{
         account::single,
         account_factory::AccountParams,
+        config::LENDING_KEY,
         lending::{
-            self, CollateralPower, MarketUpdates, QueryCollateralPowersRequest, QueryDebtRequest,
-            QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
+            self, CollateralPower, LendingAppConfig, MarketUpdates, QueryCollateralPowersRequest,
+            QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
         token_factory,
     },
     grug::{
-        btree_map, Addressable, Binary, Coin, Coins, Denom, HashExt, Message, MsgTransfer,
-        NumberConst, ResultExt, TestSuite, Udec128, Uint128,
+        btree_map, Addressable, Binary, Coin, Coins, ConfigUpdates, Denom, HashExt, JsonDeExt,
+        JsonSerExt, Message, MsgConfigure, MsgTransfer, NumberConst, Op, ResultExt, TestSuite,
+        Udec128, Uint128,
     },
     grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
@@ -143,64 +145,54 @@ fn update_markets_works() {
         .should_succeed_and(|markets| markets.contains_key(&ATOM));
 }
 
-#[test]
-fn only_owner_can_update_collateral_powers() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+fn set_collateral_power(
+    suite: &mut TestSuite,
+    accounts: &mut Accounts,
+    denom: Denom,
+    power: CollateralPower,
+) {
+    // Get old config
+    let mut config: LendingAppConfig = suite
+        .query_app_config(LENDING_KEY)
+        .unwrap()
+        .deserialize_json()
+        .unwrap();
 
-    // Try to set collateral power from non-owner, should fail.
+    // Update collateral power
+    config.collateral_powers.insert(denom, power);
+
+    // Set new config
     suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(80)).unwrap(),
-            },
-            Coins::new(),
+        .send_message(
+            &mut accounts.owner,
+            Message::Configure(MsgConfigure {
+                updates: ConfigUpdates::default(),
+                app_updates: btree_map! { LENDING_KEY.to_string() => Op::Insert(config.to_json_value().unwrap()) },
+            }),
         )
-        .should_fail_with_error("Only the owner can update collateral powers");
-}
+        .should_succeed();
 
-#[test]
-fn only_owner_can_delist_collateral() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
-
-    // Try to delist collateral from non-owner, should fail.
+    // Ensure config was updated.
     suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::DelistCollateral {
-                denom: USDC.clone(),
-            },
-            Coins::new(),
-        )
-        .should_fail_with_error("Only the owner can delist collateral tokens");
+        .query_app_config(LENDING_KEY)
+        .should_succeed_and_equal(config.to_json_value().unwrap());
+
+    // Ensure collateral power was updated.
+    suite
+        .query_wasm_smart(config.lending, QueryCollateralPowersRequest {})
+        .should_succeed_and_equal(config.collateral_powers);
 }
 
 #[test]
 fn set_collateral_power_works() {
-    let (mut suite, mut accounts, _codes, contracts) = setup_test();
+    let (mut suite, mut accounts, _codes, _contracts) = setup_test();
 
-    // Set collateral power from owner, should succeed.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(80)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Ensure collateral power was set.
-    suite
-        .query_wasm_smart(contracts.lending, QueryCollateralPowersRequest {})
-        .should_succeed_and_equal(btree_map! {
-            USDC.clone() => CollateralPower::new(Udec128::new_percent(80)).unwrap(),
-        });
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(80)).unwrap(),
+    );
 }
 
 #[test]
@@ -364,17 +356,12 @@ fn cant_borrow_if_undercollateralized() {
         .should_succeed();
 
     // Whitelist USDC as collateral at 90% power
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(90)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(90)).unwrap(),
+    );
 
     // Try to borrow, should fail
     suite
@@ -427,18 +414,13 @@ fn borrowing_works() {
         )
         .should_succeed();
 
-    // Whitelist USDC as collateral
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    // Whitelist USDC as collateral at 100% power
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
 
     // Try to borrow again, should succeed
     suite
@@ -590,17 +572,12 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
         .should_succeed();
 
     // Whitelist USDC as collateral
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
 
     // Try to repay, should succeed
     suite
@@ -648,17 +625,12 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .should_succeed();
 
     // Whitelist USDC as collateral
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
 
     // Deposit some USDC
     suite
@@ -726,17 +698,12 @@ fn repay_works() {
         .should_succeed();
 
     // Whitelist USDC as collateral
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::SetCollateralPower {
-                denom: USDC.clone(),
-                power: CollateralPower::new(Udec128::new_percent(100)).unwrap(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
 
     // Deposit some USDC
     suite
