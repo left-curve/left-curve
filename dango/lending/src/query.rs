@@ -114,7 +114,7 @@ pub fn calculate_account_health(
     }
 
     if total_adjusted_collateral_value.is_zero() {
-        bail!("The account has no collateral");
+        bail!("the account has no collateral");
     }
 
     // Calculate the utilization rate.
