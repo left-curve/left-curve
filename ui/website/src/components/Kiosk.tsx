@@ -6,7 +6,7 @@ export const Kiosk: React.FC = () => {
 
   return (
     <div
-      className="w-[63.89%] h-[52.78%] md:w-[51.11%] md:h-[68.81%] object-fit absolute left-0 top-0 md:left-[2.08%] md:top-[3.39%] transition-all z-[1] delay-2"
+      className="pointer-events-none w-[63.89%] h-[52.78%] md:w-[51.11%] md:h-[68.81%] object-fit absolute left-0 top-0 md:left-[2.08%] md:top-[3.39%] transition-all z-[1] delay-2"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Kiosk: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10122)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

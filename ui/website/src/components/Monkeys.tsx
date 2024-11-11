@@ -6,7 +6,7 @@ export const Monkeys: React.FC = () => {
 
   return (
     <div
-      className="w-[35.07%] h-[53.47%] left-[64.93%] top-[30.95%] sm:top-[27.95%] md:w-[27.08%] md:h-[67.12%] object-fit absolute md:left-[72.92%] md:top-[9.94%] hover:scale-[1.1] transition-all z-[3] md:z-[2] delay-3"
+      className="pointer-events-none w-[35.07%] h-[53.47%] left-[64.93%] top-[30.95%] sm:top-[27.95%] md:w-[27.08%] md:h-[67.12%] object-fit absolute md:left-[72.92%] md:top-[9.94%] transition-all z-[3] md:z-[2] delay-3"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Monkeys: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10120)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

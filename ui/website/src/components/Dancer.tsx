@@ -6,7 +6,7 @@ export const Dancer: React.FC = () => {
 
   return (
     <div
-      className="w-[69.03%] h-[67.12%] object-fit absolute left-0 md:left-[23.40%] top-[33%] sm:top-[28.88%] md:top-[32.88%] hover:scale-[1.1] transition-all z-[4] hover:z-[6] delay-4"
+      className="pointer-events-none w-[69.03%] h-[67.12%] object-fit absolute left-0 md:left-[23.40%] top-[33%] sm:top-[28.88%] md:top-[32.88%] transition-all z-[4] hover:z-[6] delay-4"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Dancer: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10121)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

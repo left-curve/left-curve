@@ -6,7 +6,7 @@ export const Dog: React.FC = () => {
 
   return (
     <div
-      className="w-[23.68%] h-[31.29%] object-fit absolute left-[13.13%] top-[47.34%] hover:scale-[1.1] transition-all z-[5] delay-5 hidden md:block"
+      className="pointer-events-none w-[23.68%] h-[31.29%] object-fit absolute left-[13.13%] top-[47.34%] hover:scale-[1.1] transition-all z-[5] delay-5 hidden md:block"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Dog: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10123)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

@@ -6,7 +6,7 @@ export const Snake: React.FC = () => {
 
   return (
     <div
-      className="w-[30.21%] h-[29.51%] md:w-[24.44%] md:h-[38.98%] object-fit absolute left-[37.59%] top-[37%] sm:top-[28.96%] md:left-[0%] md:top-[57.97%] hover:scale-[1.1] transition-all z-[2] md:z-[7] delay-6"
+      className="pointer-events-none w-[30.21%] h-[29.51%] md:w-[24.44%] md:h-[38.98%] object-fit absolute left-[37.59%] top-[37%] sm:top-[28.96%] md:left-[0%] md:top-[57.97%] transition-all z-[2] md:z-[7] delay-6"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Snake: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10124)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >

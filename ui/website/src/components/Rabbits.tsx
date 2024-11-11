@@ -6,7 +6,7 @@ export const Rabbits: React.FC = () => {
 
   return (
     <div
-      className="w-[36.11%] h-[38.54%] md:w-[26.25%] md:h-[45.54%] absolute left-[58.09%] top-[6.16%] sm:top-[1.16%] md:left-[44.31%] md:top-[2.15%] transition-all z-[0]"
+      className="pointer-events-none w-[36.11%] h-[38.54%] md:w-[26.25%] md:h-[45.54%] absolute left-[58.09%] top-[6.16%] sm:top-[1.16%] md:left-[44.31%] md:top-[2.15%] transition-all z-[0]"
       style={{
         transform: isHovered ? "scale(1.1)" : "scale(1)",
       }}
@@ -21,6 +21,7 @@ export const Rabbits: React.FC = () => {
       >
         <g
           clip-path="url(#clip0_708_10119)"
+          className="pointer-events-auto"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
