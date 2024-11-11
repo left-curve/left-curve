@@ -17,7 +17,7 @@ export const Kiosk: React.FC = () => {
         viewBox="0 0 736 609"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="object-fit w-full h-full kiosko"
+        className="object-fit w-full h-full"
       >
         <g clip-path="url(#clip0_708_10122)">
           <path
