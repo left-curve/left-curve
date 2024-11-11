@@ -4,11 +4,11 @@ use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
-        query_app_configs, query_balance, query_balances, query_code, query_codes, query_config,
-        query_contract, query_contracts, query_supplies, query_supply, query_wasm_raw,
-        query_wasm_scan, query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        NaiveProposalPreparer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIGS,
-        CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_balance, query_balances, query_code, query_codes, query_config, query_contract,
+        query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
+        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
+        NaiveProposalPreparer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID,
+        CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -86,13 +86,9 @@ where
         // Save the config and genesis block, so that they can be queried when
         // executing genesis messages.
         CHAIN_ID.save(&mut buffer, &chain_id)?;
-        CONFIG.save(&mut buffer, &genesis_state.config)?;
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
-
-        // Save app configs.
-        for (key, value) in genesis_state.app_configs {
-            APP_CONFIGS.save(&mut buffer, &key, &value)?;
-        }
+        CONFIG.save(&mut buffer, &genesis_state.config)?;
+        APP_CONFIG.save(&mut buffer, &genesis_state.app_config)?;
 
         // Schedule cronjobs.
         for (contract, interval) in genesis_state.config.cronjobs {
@@ -103,7 +99,7 @@ where
         let ctx = AppCtx::new(
             self.vm.clone(),
             buffer,
-            GasTracker::new_limitless(),
+            gas_tracker.clone(),
             chain_id.clone(),
             block,
         );
@@ -747,17 +743,13 @@ where
     AppError: From<VM::Error>,
 {
     match req {
-        Query::Config(..) => {
+        Query::Config(_req) => {
             let res = query_config(ctx.downcast())?;
             Ok(QueryResponse::Config(res))
         },
-        Query::AppConfig(req) => {
-            let res = query_app_config(ctx.downcast(), req)?;
+        Query::AppConfig(_req) => {
+            let res = query_app_config(ctx.downcast())?;
             Ok(QueryResponse::AppConfig(res))
-        },
-        Query::AppConfigs(req) => {
-            let res = query_app_configs(ctx.downcast(), req)?;
-            Ok(QueryResponse::AppConfigs(res))
         },
         Query::Balance(req) => {
             let res = query_balance(ctx, query_depth, req)?;

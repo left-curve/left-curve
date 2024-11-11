@@ -19,7 +19,7 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 #[derive(Default)]
 pub struct MockQuerier {
     config: Option<Config>,
-    app_configs: BTreeMap<String, Json>,
+    app_config: Option<Json>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
     supplies: BTreeMap<Denom, Uint128>,
     codes: BTreeMap<Hash256, Code>,
@@ -38,15 +38,11 @@ impl MockQuerier {
         self
     }
 
-    pub fn with_app_config<K, V>(mut self, key: K, value: V) -> StdResult<Self>
+    pub fn with_app_config<T>(mut self, config: T) -> StdResult<Self>
     where
-        K: Into<String>,
-        V: Serialize,
+        T: Serialize,
     {
-        let key = key.into();
-        let value = value.to_json_value()?;
-
-        self.app_configs.insert(key, value);
+        self.app_config = Some(config.to_json_value()?);
         Ok(self)
     }
 
@@ -123,31 +119,12 @@ impl Querier for MockQuerier {
                     .expect("[MockQuerier]: config is not set");
                 Ok(QueryResponse::Config(cfg))
             },
-            Query::AppConfig(req) => {
-                let value = self
-                    .app_configs
-                    .get(&req.key)
-                    .cloned()
-                    .ok_or_else(|| StdError::data_not_found::<Json>(req.key.as_bytes()))?;
-                Ok(QueryResponse::AppConfig(value))
-            },
-            Query::AppConfigs(req) => {
-                // Using the `BTreeMap::range` method is more efficient, but for
-                // testing purpose this is good enough.
-                let entries = self
-                    .app_configs
-                    .iter()
-                    .filter(|(k, _)| {
-                        if let Some(lower_bound) = &req.start_after {
-                            *k > lower_bound
-                        } else {
-                            true
-                        }
-                    })
-                    .take(req.limit.unwrap_or(u32::MAX) as usize)
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect();
-                Ok(QueryResponse::AppConfigs(entries))
+            Query::AppConfig(_req) => {
+                let app_cfg = self
+                    .app_config
+                    .clone()
+                    .expect("[MockQuerier]: app config is not set");
+                Ok(QueryResponse::AppConfig(app_cfg))
             },
             Query::Balance(req) => {
                 let amount = self

@@ -50,7 +50,7 @@ export const MenuConnections: React.FC = () => {
             CONNECTED WITH
           </p>
           {connector && (
-            <div className="flex items-end justify-between py-4 px-4 rounded-2xl bg-green/80 text-white">
+            <div className="flex items-end justify-between py-4 px-4 rounded-2xl bg-brand-green/80 text-white">
               <div className="flex gap-2">
                 <div className="flex justify-center items-center h-12 w-12 rounded-2xl bg-sand-100/50">
                   <WalletIcon connectorId={connector.id} className="h-8 w-8" />

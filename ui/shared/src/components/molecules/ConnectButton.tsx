@@ -12,8 +12,13 @@ export const ConnectButton: React.FC = () => {
   return (
     <>
       <Button
-        className="relative min-w-28 group"
-        onClick={() => (isConnected ? connector?.disconnect() : modalRef.current?.showModal())}
+        color="gray"
+        className="relative group font-bold px-4 py-2 gap-2"
+        onClick={() =>
+          isConnected
+            ? [connector?.disconnect(), console.log(connector, "test")]
+            : modalRef.current?.showModal()
+        }
       >
         {!isConnected ? <p>Connect</p> : null}
         {isConnected ? (

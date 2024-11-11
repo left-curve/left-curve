@@ -73,6 +73,14 @@ impl Response {
         self.attributes.push(Attribute::new(key, value));
         self
     }
+
+    pub fn add_attributes<A>(mut self, attrs: A) -> Self
+    where
+        A: IntoIterator<Item = Attribute>,
+    {
+        self.attributes.extend(attrs);
+        self
+    }
 }
 
 /// A special response emitted by the account contract at the end of the

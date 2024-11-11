@@ -39,6 +39,9 @@
       "include": ["sdk/examples/**", "ui/**"],
       "linter": {
         "rules": {
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          },
           "a11y": {
             "noSvgWithoutTitle": "off",
             "useKeyWithClickEvents": "off"

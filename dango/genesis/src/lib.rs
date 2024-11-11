@@ -4,18 +4,19 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, MarketUpdates},
+        oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
         taxman, token_factory,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, JsonSerExt, Message, NonZero, Permission, Permissions,
+        Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, NonZero, Permission, Permissions,
         StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, fs, io, path::Path},
+    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
 
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
@@ -29,6 +30,7 @@ pub struct Contracts {
     pub bank: Addr,
     pub ibc_transfer: Addr,
     pub lending: Addr,
+    pub oracle: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
 }
@@ -43,6 +45,7 @@ pub struct Codes<T> {
     pub bank: T,
     pub ibc_transfer: T,
     pub lending: T,
+    pub oracle: T,
     pub taxman: T,
     pub token_factory: T,
 }
@@ -62,6 +65,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
+    let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
 
@@ -74,6 +78,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         bank,
         ibc_transfer,
         lending,
+        oracle,
         taxman,
         token_factory,
     })
@@ -106,6 +111,7 @@ where
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
+    let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
 
@@ -251,14 +257,41 @@ where
         "dango/taxman",
     )?;
 
+    // Instantiate the oracle contract.
+    let oracle = instantiate(
+        &mut msgs,
+        oracle_code_hash,
+        &oracle::InstantiateMsg {
+            guardian_sets: btree_map! {
+                GUARDIAN_SETS_INDEX => GuardianSet {
+                    addresses: GUARDIANS_ADDRESSES
+                        .into_iter()
+                        .map(|addr| {
+                            let bytes = Binary::from_str(addr)
+                                .unwrap()
+                                .into_inner()
+                                .try_into()
+                                .unwrap();
+                            Hash160::from_inner(bytes)
+                        })
+                        .collect(),
+                    expiration_time: None,
+                },
+            },
+        },
+        "dango/oracle",
+        "dango/oracle",
+    )?;
+
     let contracts = Contracts {
         account_factory,
         amm,
         bank,
         ibc_transfer,
+        lending,
+        oracle,
         taxman,
         token_factory,
-        lending,
     };
 
     let permissions = Permissions {
@@ -275,15 +308,17 @@ where
         max_orphan_age,
     };
 
-    let app_configs = btree_map! {
-        ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
-        IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
+    let app_config = AppConfig {
+        addresses: AppAddresses {
+            account_factory,
+            ibc_transfer,
+        },
     };
 
     let genesis_state = GenesisState {
         config,
         msgs,
-        app_configs,
+        app_config: app_config.to_json_value()?,
     };
 
     Ok((genesis_state, contracts, addresses))

@@ -5,7 +5,7 @@ export const ManageSpot: React.FC = () => {
   const navigate = useNavigate();
   return (
     <>
-      <AccountInfo avatarUri="/images/avatars/spot.png" />
+      <AccountInfo avatarUri="/images/avatars/spot.svg" />
       <SpotPortfolioTable
         navigate={navigate}
         sendUrl="/transfer?action=send"

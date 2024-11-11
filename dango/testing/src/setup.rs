@@ -122,6 +122,11 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_execute(Box::new(dango_ibc_transfer::execute))
         .build();
 
+    let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
+        .with_execute(Box::new(dango_oracle::execute))
+        .with_query(Box::new(dango_oracle::query))
+        .build();
+
     let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
         .with_execute(Box::new(dango_lending::execute))
         .with_query(Box::new(dango_lending::query))
@@ -148,6 +153,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         bank,
         ibc_transfer,
         lending,
+        oracle,
         taxman,
         token_factory,
     };

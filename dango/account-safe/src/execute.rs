@@ -9,21 +9,21 @@ use {
         },
         account_factory::{QueryAccountRequest, Username},
         auth::Metadata,
-        config::ACCOUNT_FACTORY_KEY,
+        config::AppConfig,
     },
     grug::{
-        Addr, AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
+        AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
         StdResult, Tx,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Only the account factory can create new accounts.
     ensure!(
-        ctx.sender == account_factory,
+        ctx.sender == app_cfg.addresses.account_factory,
         "you don't have the right, O you don't have the right"
     );
 
@@ -38,7 +38,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // execute itself. Everything else needs to be done through proposals.
     // Additionally, if the action is proposing or voting, the proposer/voter's
     // username must match the transaction signer's username.
-    for msg in &tx.msgs {
+    for msg in tx.msgs.iter() {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 if let ExecuteMsg::Vote { voter, .. } = msg.clone().deserialize_json()? {
@@ -86,7 +86,7 @@ fn propose(
     description: Option<String>,
     messages: Vec<Message>,
 ) -> anyhow::Result<Response> {
-    let factory = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Query the Safe's parameters from the account factory.
     //
@@ -98,7 +98,7 @@ fn propose(
     // proposal's creation has no effect on it.
     let params = ctx
         .querier
-        .query_wasm_smart(factory, QueryAccountRequest {
+        .query_wasm_smart(app_cfg.addresses.account_factory, QueryAccountRequest {
             address: ctx.contract,
         })?
         .params
@@ -251,11 +251,12 @@ mod tests {
         dango_types::{
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
-            config::ACCOUNT_FACTORY_KEY,
+            config::AppAddresses,
         },
         grug::{
             btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
-            Json, JsonSerExt, MockContext, MockQuerier, NonZero, ResultExt, Timestamp, MOCK_BLOCK,
+            Json, JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
+            MOCK_BLOCK,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -270,7 +271,12 @@ mod tests {
     #[test]
     fn only_factory_can_instantiate() {
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                },
+            })
             .unwrap();
 
         let mut ctx = MockContext::new()
@@ -303,7 +309,12 @@ mod tests {
 
         // Create a Safe with 3 signers.
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                },
+            })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 for member in [&member1, &member2, &member3] {
@@ -322,7 +333,8 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: SAFE,
                 gas_limit: 1_000_000,
-                msgs: vec![],
+                // For this test the messages don't matter.
+                msgs: NonEmpty::new_unchecked(vec![]),
                 data: Metadata {
                     username: non_member.clone(),
                     // The things below (key hash, sequence, credential) don't
@@ -347,7 +359,11 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: SAFE,
                 gas_limit: 1_000_000,
-                msgs: vec![Message::transfer(Addr::mock(123), Coins::new()).unwrap()],
+                msgs: NonEmpty::new_unchecked(vec![Message::transfer(
+                    Addr::mock(123),
+                    Coins::new(),
+                )
+                .unwrap()]),
                 data: Metadata {
                     username: member1,
                     key_hash: Hash::ZERO,
@@ -369,7 +385,7 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: SAFE,
                 gas_limit: 1_000_000,
-                msgs: vec![Message::execute(
+                msgs: NonEmpty::new_unchecked(vec![Message::execute(
                     SAFE,
                     &multi::ExecuteMsg::Vote {
                         proposal_id: 1,
@@ -379,7 +395,7 @@ mod tests {
                     },
                     Coins::new(),
                 )
-                .unwrap()],
+                .unwrap()]),
                 data: Metadata {
                     username: member3,
                     key_hash: Hash::ZERO,
@@ -417,7 +433,12 @@ mod tests {
         // Need to make a clone of `params` so it can be moved into the closure.
         let params_clone = params.clone();
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                },
+            })
             .unwrap()
             .with_smart_query_handler(move |contract, data| {
                 match (contract, data.deserialize_json().unwrap()) {

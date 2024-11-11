@@ -50,12 +50,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use crate::{
-        dec_test, dts,
-        test_utils::{bt, dt},
-        Dec, Dec128, Dec256, Decimal, FixedPoint, MathError, NumberConst, Udec128, Udec256,
+    use {
+        crate::{
+            dec_test, dts,
+            test_utils::{bt, dt},
+            Dec, Dec128, Dec256, Decimal, FixedPoint, MathError, NumberConst, Udec128, Udec256,
+        },
+        std::str::FromStr,
     };
 
     dec_test!( checked_floor

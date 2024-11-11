@@ -1,19 +1,20 @@
 "use client";
 
 import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
-import { localhost } from "@leftcurve/connect-kit/chains";
+import { devnet } from "@leftcurve/connect-kit/chains";
 import { GrunnectProvider } from "@leftcurve/react";
 import type React from "react";
 import "@leftcurve/types/window";
 
 export const config = createConfig({
   ssr: true,
-  chains: [localhost],
+  multiInjectedProviderDiscovery: false,
+  chains: [devnet],
   transports: {
-    [localhost.id]: http("http://localhost:26657"),
+    [devnet.id]: http("http://localhost:26657"),
   },
   coins: {
-    [localhost.id]: {
+    [devnet.id]: {
       uusdc: {
         type: "native",
         name: "USD Circle",

@@ -29,7 +29,7 @@ export async function reconnect<config extends Config>(
     const connector = config.connectors.find(({ id }) => id === _connector_.id);
     if (!connector) continue;
     try {
-      connector.onConnect({ chainId, username });
+      connector.connect({ chainId, username });
       connectors.set(chainId, connector.uid);
       connections.set(connector.uid, {
         account,

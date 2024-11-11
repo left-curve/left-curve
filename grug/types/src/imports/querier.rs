@@ -1,6 +1,6 @@
 use {
     crate::{
-        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, Json, JsonDeExt, Query,
+        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
         QueryRequest, QueryResponse, StdResult,
     },
     grug_math::Uint128,
@@ -41,24 +41,13 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_config())
     }
 
-    pub fn query_app_config<K, T>(&self, key: K) -> StdResult<T>
+    pub fn query_app_config<T>(&self) -> StdResult<T>
     where
-        K: Into<String>,
         T: DeserializeOwned,
     {
         self.inner
-            .query_chain(Query::app_config(key))
+            .query_chain(Query::app_config())
             .and_then(|res| res.as_app_config().deserialize_json())
-    }
-
-    pub fn query_app_configs(
-        &self,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    ) -> StdResult<BTreeMap<String, Json>> {
-        self.inner
-            .query_chain(Query::app_configs(start_after, limit))
-            .map(|res| res.as_app_configs())
     }
 
     pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {

@@ -1,11 +1,11 @@
-import type { UserClient } from "@leftcurve/sdk/clients";
+import type { SignerClient } from "@leftcurve/sdk/clients";
 import type { Config, ConnectorUId } from "@leftcurve/types";
 
 export type GetConnectorClientParameters = {
   connectorUId?: ConnectorUId;
 };
 
-export type GetConnectorClientReturnType = UserClient;
+export type GetConnectorClientReturnType = SignerClient;
 
 export type GetConnectorClientErrorType = Error;
 

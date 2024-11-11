@@ -14,67 +14,74 @@ keywords      = ["blockchain", "wasm"]
 categories    = ["cryptography::cryptocurrencies"]
 
 [workspace.dependencies]
-alloy-dyn-abi      = { version = "0.8.9", features = ["eip712"] }
-alloy-primitives   = "0.8.9"
-anyhow             = "1"
-base64             = "0.22" # TODO: used in dango-auth; replace with data-encoding
-bip32              = "0.5"
-blake2             = "0.10"
-blake3             = "1"
-bnum               = "0.12"
-borsh              = "1"
-chrono             = "0.4"
-clap               = "4"
-clru               = "0.6"
-colored            = "2"
-colored_json       = "5"
-criterion          = "0.5"
-data-encoding      = "2"
-dialoguer          = "0.11"
-digest             = "0.10"
-dyn-clone          = "1"
-ed25519-dalek      = "2"
-elsa               = "1"
-glob               = "0.3"
-hex                = "0.4" # TODO: replace with data-encoding
-hex-literal        = "0.4"
-home               = "0.5"
-ics23              = "0.12"
-k256               = "0.13"
-paste              = "1"
-p256               = "0.13"
-proc-macro2        = "1"
-proptest           = "1"
-prost              = "0.13"
-quote              = "1"
-rand               = "0.8"
-reqwest            = "0.12"
-ripemd             = "0.1"
+alloy-dyn-abi              = { version = "0.8.9", features = ["eip712"] }
+alloy-primitives           = "0.8.9"
+anyhow                     = "1"
+base64                     = "0.22"
+bip32                      = "0.5"
+blake2                     = "0.10"
+blake3                     = "1"
+bnum                       = "0.12"
+borsh                      = "1"
+byteorder                  = "1"
+chrono                     = "0.4"
+clap                       = "4"
+clru                       = "0.6"
+colored                    = "2"
+colored_json               = "5"
+criterion                  = "0.5"
+data-encoding              = "2"
+dialoguer                  = "0.11"
+digest                     = "0.10"
+dyn-clone                  = "1"
+ed25519-dalek              = "2"
+elsa                       = "1"
+glob                       = "0.3"
+hex                        = "0.4"
+hex-literal                = "0.4"
+home                       = "0.5"
+ics23                      = "0.12"
+k256                       = "0.13"
+paste                      = "1"
+p256                       = "0.13"
+proc-macro2                = "1"
+proptest                   = "1"
+prost                      = "0.13"
+pyth-sdk                   = "0.8.0"
+# The Pyth attester SDK is not published to crates.io.
+# Import from GitHub, using the latest commit at this time.
+# TODO: Ask pyth team to make a stable release and publish the crate.
+pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "cd67cd8" }
+pythnet-sdk                = "2"
+quote                      = "1"
+rand                       = "0.8"
+reqwest                    = "0.12"
+ripemd                     = "0.1"
 # Use the latest `master` branch of rust-rocksdb, which includes support for
 # the user-defined timestamp feature:
 # https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
 # TODO: Update to v0.23.0 once released.
-rocksdb            = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "1710120" }
-serde              = "1"
-serde_json         = "1"
-serde_with         = "3"
-sha2               = "0.10"
-sha3               = "0.10"
-signature          = "2"
-syn                = "2"
-tempfile           = "3"
-tendermint         = "0.39"
-tendermint-abci    = "0.39"
-tendermint-proto   = "0.39"
-tendermint-rpc     = "0.39"
-test-case          = "3"
-thiserror          = "1"
-tokio              = "1"
-toml               = "0.8"
-tracing            = "0.1"
-tracing-subscriber = "0.3"
-wasmer             = "4"
-wasmer-middlewares = "4"
+rocksdb                    = { git = "https://github.com/rust-rocksdb/rust-rocksdb", rev = "1710120" }
+serde                      = "1"
+serde_json                 = "1"
+serde_with                 = "3"
+sha2                       = "0.10"
+sha3                       = "0.10"
+signature                  = "2"
+syn                        = "2"
+tempfile                   = "3"
+tendermint                 = "0.40"
+tendermint-abci            = "0.40"
+tendermint-proto           = "0.40"
+tendermint-rpc             = "0.40"
+test-case                  = "3"
+thiserror                  = "1"
+tokio                      = "1"
+toml                       = "0.8"
+tracing                    = "0.1"
+tracing-subscriber         = "0.3"
+wasmer                     = "5"
+wasmer-middlewares         = "5"
 
 # Grug packages
 grug              = { path = "grug/std" }
@@ -109,6 +116,7 @@ dango-bank            = { path = "dango/bank" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }
+dango-oracle          = { path = "dango/oracle" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }

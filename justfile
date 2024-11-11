@@ -19,9 +19,9 @@ docker-create-builder name:
 
 # ------------------------------------ Rust ------------------------------------
 
-# Compile and install the Grug node software
+# Compile and install the Dango node software
 install:
-  cargo install --path grug/cli
+  cargo install --path dango/cli
 
 # Run tests
 test:
@@ -38,6 +38,10 @@ fmt:
 # Update wasm artifacts used in tests
 testdata:
   cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
+
+# Build the Left Curve Book
+book:
+  mdbook build --open
 
 # --------------------------------- Optimizer ----------------------------------
 

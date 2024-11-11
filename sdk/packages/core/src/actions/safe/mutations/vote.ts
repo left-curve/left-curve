@@ -9,7 +9,7 @@ import type {
   TypedDataParameter,
   Vote,
 } from "@leftcurve/types";
-import { type ExecuteReturnType, execute } from "../../user/execute.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type SafeAccountVoteParameters = {
   proposalId: ProposalId;

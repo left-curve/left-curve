@@ -1,5 +1,5 @@
 use {
-    crate::{Borsh, Codec, Map, PathBuf, Prefix, PrefixBound, PrimaryKey},
+    crate::{Borsh, Codec, Map, Path, Prefix, PrefixBound, PrimaryKey},
     grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
 };
 
@@ -35,11 +35,11 @@ where
         }
     }
 
-    pub fn path_raw(&self, key_raw: &[u8]) -> PathBuf<T, C> {
+    pub fn path_raw(&self, key_raw: &[u8]) -> Path<T, C> {
         self.primary.path_raw(key_raw)
     }
 
-    pub fn path(&self, key: K) -> PathBuf<T, C> {
+    pub fn path(&self, key: K) -> Path<T, C> {
         self.primary.path(key)
     }
 

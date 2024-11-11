@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useClickAway } from "react-use";
 import { twMerge } from "../../../utils";
@@ -13,10 +13,7 @@ import { CommandBody } from "./CommandBody";
 import type { AppletMetadata } from "../../../types";
 
 interface Props {
-  applets: {
-    popular: AppletMetadata[];
-    all: AppletMetadata[];
-  };
+  applets: AppletMetadata[];
   action: (applet: AppletMetadata) => void;
 }
 
@@ -25,6 +22,30 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOpen && e.key === "Escape") {
+        setIsOpen(false);
+        setSearchText("");
+        inputRef.current?.blur();
+        return;
+      }
+      if (
+        !["INPUT", "TEXT"].includes(window.document.activeElement?.nodeName || "") &&
+        e.key.length === 1 &&
+        /\w/i.test(e.key)
+      ) {
+        e.preventDefault();
+        setIsOpen(true);
+        inputRef.current?.focus();
+        setSearchText((prev) => prev + e.key);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   useClickAway(menuRef, (e) => {
     setIsOpen(false);
@@ -59,7 +80,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
           <motion.div
             ref={menuRef}
             className={twMerge(
-              "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2",
+              "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2 overflow-y-hidden",
               isOpen
                 ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
                 : "z-0",

@@ -48,9 +48,12 @@ export const QRCode: React.FC<Props> = ({ data, options = {}, ...props }) => {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    qrCode.update({ data });
     qrCode.append(ref.current as HTMLDivElement);
-  }, [qrCode, data]);
+  }, []);
+
+  useEffect(() => {
+    qrCode.update({ data });
+  }, [data]);
 
   return (
     <div ref={ref} {...props} className={twMerge("rounded-3xl bg-white p-4", props.className)} />
