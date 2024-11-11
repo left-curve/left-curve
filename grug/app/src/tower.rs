@@ -48,6 +48,8 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
+        // TODO: Wrap this in a closure to handle errors.
+        // Then map the error into the Future's output.
         let res = match req {
             Request::Info(..) => {
                 let (last_block_height, last_block_version) = self.do_info().unwrap();
