@@ -1,5 +1,7 @@
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
+#[cfg(feature = "indexer")]
+use indexer_core::App as IndexerApp;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -42,9 +44,29 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+    #[cfg(feature = "indexer")]
+    indexer_app: Option<IndexerApp>,
 }
 
 impl<DB, VM, PP> App<DB, VM, PP> {
+    #[cfg(feature = "indexer")]
+    pub fn new(
+        db: DB,
+        vm: VM,
+        pp: PP,
+        query_gas_limit: u64,
+        indexer_app: Option<IndexerApp>,
+    ) -> Self {
+        Self {
+            db,
+            vm,
+            pp,
+            query_gas_limit,
+            indexer_app,
+        }
+    }
+
+    #[cfg(not(feature = "indexer"))]
     pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
@@ -274,6 +296,10 @@ where
                 tx,
                 AuthMode::Finalize,
             ));
+
+            #[cfg(feature = "indexer")]
+            // TODO: pass tx+outcome?
+            self.indexer_app.index_transaction();
         }
 
         // Save the last committed block.

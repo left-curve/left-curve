@@ -542,10 +542,14 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
-            Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        ]);
+        let outcome = self.send_messages_with_gas(
+            signer,
+            gas_limit,
+            vec![
+                Message::upload(code),
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            ],
+        );
 
         UploadAndInstantiateOutcome {
             address,

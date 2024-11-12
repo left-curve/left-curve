@@ -24,6 +24,7 @@ rand               = { workspace = true }
 serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
+indexer-core       = { workspace = true }
 
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }

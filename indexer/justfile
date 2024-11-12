@@ -14,4 +14,8 @@ run_dev_db:
 
 # Migrate the development database
 migrate_dev_db:
-  DATABASE_URL=postgres://postgres@localhost/grug_dev sea-orm-cli migrate up
+  sea-orm-cli migrate up
+
+# Generate entity from the datatabase
+generate_entity:
+  sea-orm-cli generate entity -o entity/src --with-derive 'Default,Debug,Clone,Eq,PartialEq'

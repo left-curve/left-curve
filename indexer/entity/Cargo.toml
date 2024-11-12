@@ -10,6 +10,10 @@ license.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[lib]
+name = "indexer_entity"
+path = "src/lib.rs"
+
 [dependencies]
 
 [dependencies.sea-orm]
@@ -20,6 +24,7 @@ features = [
   "debug-print",
   "sea-orm-internal",
   "sqlx-postgres",
+  "sqlx-sqlite",
   "with-json",
   "with-chrono",
   "with-uuid",

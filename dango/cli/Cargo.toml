@@ -13,6 +13,9 @@ categories    = { workspace = true }
 name = "dango"
 path = "src/main.rs"
 
+[features]
+indexer = ["indexer-core"]
+
 [dependencies]
 anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
@@ -31,3 +34,4 @@ serde              = { workspace = true }
 tokio              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
+indexer-core       = { workspace = true, optional = true }

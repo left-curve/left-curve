@@ -1,3 +1,6 @@
+#[cfg(feature = "indexer")]
+use indexer_core::App as IndexerApp;
+
 use {
     clap::Parser,
     grug_app::{App, NaiveProposalPreparer},
@@ -23,12 +26,32 @@ pub struct StartCmd {
     /// Gas limit when serving query requests [default: u64::MAX]
     #[arg(long)]
     query_gas_limit: Option<u64>,
+
+    /// Enable the internal indexer
+    #[arg(long)]
+    indexer_enabled: bool,
 }
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
+        #[cfg(feature = "indexer")]
+        let app = {
+            let indexer_app = match self.indexer_enabled {
+                true => Some(IndexerApp::new()),
+                false => None,
+            };
+            App::new(
+                db,
+                vm,
+                NaiveProposalPreparer,
+                self.query_gas_limit.unwrap_or(u64::MAX),
+                indexer_app,
+            );
+        };
+
+        #[cfg(not(feature = "indexer"))]
         let app = App::new(
             db,
             vm,

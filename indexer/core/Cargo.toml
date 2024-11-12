@@ -1,0 +1,31 @@
+[package]
+name = "indexer-core"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tokio                      = { workspace = true }
+anyhow = { workspace = true }
+indexer-migration     = { workspace = true }
+indexer-entity     = { workspace = true }
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[dependencies.sea-orm]
+version = "1.1.0"
+features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+  "sqlx-sqlite",
+  "with-json",
+  "with-chrono",
+  "with-uuid",
+]
