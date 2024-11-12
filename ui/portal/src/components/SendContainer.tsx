@@ -1,4 +1,4 @@
-import { AccountSearchInput, Button, CoinSelector, GradientContainer, Input } from "@dango/shared";
+import { AccountSearchInput, Button, CoinSelector, Input } from "@dango/shared";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";

@@ -169,6 +169,34 @@ export const tailwindConfig: Partial<Config> = {
       };
 
       addComponents({
+        ".dango-grid-landscape-fat-l": {
+          ...gridCommonStyles,
+          padding: "3rem",
+          height: "29.25rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/landscape-fat-l.svg)",
+        },
+        ".dango-grid-landscape-flat-mini-l": {
+          ...gridCommonStyles,
+          padding: "1.5rem 3.25rem",
+          height: "15.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/landscape-flat-mini-l.svg)",
+        },
+        ".dango-grid-square-xl-l": {
+          ...gridCommonStyles,
+          padding: "4.5rem 6.5rem",
+          height: "45.125rem",
+          width: "45.125rem",
+          backgroundImage: "url(./images/grids/square-xl-l.svg)",
+        },
+        ".dango-grid-square-l": {
+          ...gridCommonStyles,
+          padding: "5rem 4rem",
+          height: "38.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/square-l.svg)",
+        },
         ".dango-grid-square-m": {
           ...gridCommonStyles,
           padding: "5rem 4rem",
