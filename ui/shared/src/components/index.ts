@@ -8,7 +8,6 @@ export { Input, type InputProps } from "./atoms/Input";
 export { Tabs } from "./atoms/tabs/Tabs";
 export { TabItem as Tab } from "./atoms/tabs/TabItem";
 export { Select, Item as SelectItem } from "./atoms/Select";
-export { GradientContainer } from "./atoms/GradientContainer";
 export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
 export { QRCode } from "./atoms/QRCode";
 
