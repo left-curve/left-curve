@@ -28,5 +28,5 @@
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
     }
   },
-  "globalEnv": ["PUBLIC_FULLPAGE_KEY"]
+  "globalEnv": ["NEXT_PUBLIC_FULLPAGE_KEY"]
 }
