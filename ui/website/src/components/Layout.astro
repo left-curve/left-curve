@@ -31,11 +31,19 @@ import "@dango/assets/fonts/Exposure/index.css";
   }
 
   .header {
-    background: linear-gradient(76deg, #c4b7ba, #fff2e2);
-    --mask: linear-gradient(to top, #0000 50px, #000 0),
-      radial-gradient(50px, #000 98%, #0000) bottom/92.5px 100px;
-    -webkit-mask: var(--mask);
-    mask: var(--mask);
+    width: 200%;
+    mask-position: bottom center;
+    mask-repeat: no-repeat;
+    background: linear-gradient(134deg, #c4b7ba 0%, #fff2e2 76.05%);
+    mask-size: 115%;
+    mask-image: url("/images/header-mask.svg");
+    mask-mode: alpha;
+  }
+
+  @media screen and (min-width: 768px) {
+    .header {
+      width: 100%;
+    }
   }
 
   .scale {

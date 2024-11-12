@@ -12,7 +12,7 @@ export const Fullpage: React.FC<PropsWithChildren> = ({ children }) => {
       render={({ fullpageApi }) => {
         return (
           <ReactFullpage.Wrapper>
-            <div className="header top-0 w-screen h-[115vh] absolute" />
+            <div className="header top-0 w-screen h-[112lvh] md:h-[115vh] absolute" />
             <Hero goSectionBelow={() => fullpageApi.moveSectionDown()} />
 
             <div className="w-screen section">
