@@ -73,16 +73,16 @@ where
             Request::Query(req) => Response::Query(self.tower_query(req)?),
 
             // ----------------------- Unhandled requests ----------------------
-            Request::Flush => Response::Flush,
-            Request::Echo(_) => Response::Echo(Default::default()),
-            Request::ListSnapshots => Response::ListSnapshots(Default::default()),
-            Request::OfferSnapshot(_) => Response::OfferSnapshot(Default::default()),
-            Request::LoadSnapshotChunk(_) => Response::LoadSnapshotChunk(Default::default()),
             Request::ApplySnapshotChunk(_) => Response::ApplySnapshotChunk(Default::default()),
-            Request::ProcessProposal(_) => Response::ProcessProposal(Default::default()),
+            Request::Echo(_) => Response::Echo(Default::default()),
             Request::ExtendVote(_) => Response::ExtendVote(response::ExtendVote {
                 vote_extension: Bytes::default(),
             }),
+            Request::Flush => Response::Flush,
+            Request::ListSnapshots => Response::ListSnapshots(Default::default()),
+            Request::LoadSnapshotChunk(_) => Response::LoadSnapshotChunk(Default::default()),
+            Request::OfferSnapshot(_) => Response::OfferSnapshot(Default::default()),
+            Request::ProcessProposal(_) => Response::ProcessProposal(Default::default()),
             Request::VerifyVoteExtension(_) => {
                 Response::VerifyVoteExtension(response::VerifyVoteExtension::Accept)
             },
@@ -189,7 +189,9 @@ where
             data: env!("CARGO_PKG_NAME").into(),
             version: env!("CARGO_PKG_VERSION").into(),
             app_version: 1,
-            last_block_height: last_block_height.try_into().unwrap(),
+            last_block_height: last_block_height
+                .try_into()
+                .expect("block height exceeds i64"),
             last_block_app_hash: into_tm_app_hash(last_block_version),
         })
     }
@@ -323,7 +325,7 @@ fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
             ..Default::default()
         },
         GenericResult::Err(err) => ExecTxResult {
-            code: Code::Err(unsafe { NonZeroU32::new_unchecked(1) }),
+            code: code_error(1),
             codespace: "tx".to_string(),
             log: err,
             gas_wanted: outcome.gas_limit as i64,
