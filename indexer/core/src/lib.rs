@@ -153,6 +153,40 @@ mod tests {
             .expect("Can't commit txn");
     }
 
+    #[test]
+    fn should_use_db_transaction_in_multiple_steps() {
+        let app = app();
+        let db = app.db_txn().expect("Can't get db txn");
+
+        // create the block
+        app.runtime.block_on(async {
+            let new_block = indexer_entity::blocks::ActiveModel {
+                id: Set(Default::default()),
+                block_height: Set(10),
+                created_at: Set(Default::default()),
+            };
+            new_block.insert(&db).await.expect("Can't save block");
+        });
+
+        // commit the transaction
+        app.runtime.block_on(async {
+            db.commit().await.expect("Can't commit txn");
+        });
+
+        // ensure block was saved
+        app.runtime
+            .block_on(async {
+                let block = indexer_entity::blocks::Entity::find()
+                    .one(&app.context.db)
+                    .await
+                    .expect("Can't fetch blocks")
+                    .expect("Non existing block");
+                assert_that!(block.block_height).is_equal_to(10);
+                Ok::<(), sea_orm::DbErr>(())
+            })
+            .expect("Can't commit txn");
+    }
+
     fn app() -> App {
         let app = App::new().expect("Can't create app");
         app.migrate_db().expect("Can't migrate DB");
