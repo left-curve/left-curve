@@ -1,9 +1,11 @@
 use {
     clap::Parser,
-    grug_app::{App, NaiveProposalPreparer},
+    grug_app::{App, AppError, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
-    std::path::PathBuf,
+    std::{path::PathBuf, time},
+    tower::ServiceBuilder,
+    tower_abci::v038::{split, Server},
 };
 
 #[derive(Parser)]
@@ -23,6 +25,10 @@ pub struct StartCmd {
     /// Gas limit when serving query requests [default: u64::MAX]
     #[arg(long)]
     query_gas_limit: Option<u64>,
+
+    /// Use tower over tendermint_abci
+    #[arg(long)]
+    tower: bool,
 }
 
 impl StartCmd {
@@ -36,6 +42,42 @@ impl StartCmd {
             self.query_gas_limit.unwrap_or(u64::MAX),
         );
 
-        Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
+        if self.tower {
+            start_tower(app, self.abci_addr).await
+        } else {
+            Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
+        }
     }
+}
+
+async fn start_tower<DB, VM, PP>(app: App<DB, VM, PP>, path: String) -> anyhow::Result<()>
+where
+    DB: Db + Send + 'static,
+    VM: Vm + Clone + Send + 'static,
+    PP: ProposalPreparer + Send + 'static,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+{
+    let (consensus, mempool, snapshot, info) = split::service(app, 1);
+
+    let server_builder = Server::builder()
+        .consensus(consensus)
+        .snapshot(snapshot)
+        .mempool(
+            ServiceBuilder::new()
+                .load_shed()
+                .buffer(100)
+                .service(mempool),
+        )
+        .info(
+            ServiceBuilder::new()
+                .load_shed()
+                .buffer(100)
+                .rate_limit(50, time::Duration::from_secs(1))
+                .service(info),
+        );
+
+    let server = server_builder.finish().unwrap();
+
+    server.listen_tcp(path).await.unwrap();
+    Ok(())
 }

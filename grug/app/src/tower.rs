@@ -26,6 +26,7 @@ use {
         AppHash, Hash, Time,
     },
     tower::Service,
+    tower_abci::BoxError,
     tracing::error,
 };
 
@@ -38,8 +39,9 @@ where
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    type Error = AppError;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+    type Error = BoxError;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
     type Response = Response;
 
     fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -47,8 +49,10 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let res = self.tower_call(req);
-        Box::pin(async { res })
+        let res: Result<Response, Self::Error> = self
+            .tower_call(req)
+            .map_err(|err| Box::new(err) as BoxError);
+        Box::pin(async move { res })
     }
 }
 
@@ -82,7 +86,9 @@ where
             Request::ListSnapshots => Response::ListSnapshots(Default::default()),
             Request::LoadSnapshotChunk(_) => Response::LoadSnapshotChunk(Default::default()),
             Request::OfferSnapshot(_) => Response::OfferSnapshot(Default::default()),
-            Request::ProcessProposal(_) => Response::ProcessProposal(Default::default()),
+            Request::ProcessProposal(_) => {
+                Response::ProcessProposal(response::ProcessProposal::Accept)
+            },
             Request::VerifyVoteExtension(_) => {
                 Response::VerifyVoteExtension(response::VerifyVoteExtension::Accept)
             },
