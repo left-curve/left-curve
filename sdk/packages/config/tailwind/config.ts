@@ -148,7 +148,7 @@ export const tailwindConfig: Partial<Config> = {
   plugins: [
     require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
-    plugin(({ addUtilities }) => {
+    plugin(({ addUtilities, addComponents }) => {
       addUtilities({
         ".tap-highlight-transparent": {
           "-webkit-tap-highlight-color": "transparent",
@@ -159,6 +159,76 @@ export const tailwindConfig: Partial<Config> = {
           "-moz-user-drag": "none",
           "-o-user-drag": "none",
           "user-drag": "none",
+        },
+      });
+
+      addComponents({
+        ".dango-grid": {
+          width: "100%",
+          maskSize: "contain",
+          maskRepeat: "no-repeat",
+          background: "linear-gradient(180deg, #FFF2E2 0%, #C4B7BA 100%)",
+          maskMode: "alpha",
+        },
+        ".dango-grid-square-format-xl-size-l": {
+          maskImage: "url(./images/grids/square-xl-l.svg)",
+        },
+        ".dango-grid-square-format-xl-size-m": {
+          maskImage: "url(./images/grids/square-xl-m.svg)",
+        },
+        ".dango-grid-square-format-xl-size-s": {
+          maskImage: "url(./images/grids/square-xl-s.svg)",
+        },
+        ".dango-grid-square-l": {
+          maskImage: "url(./images/grids/square-l.svg)",
+        },
+        ".dango-grid-square-m": {
+          maskImage: "url(./images/grids/square-m.svg)",
+        },
+        ".dango-grid-square-s": {
+          maskImage: "url(./images/grids/square-s.svg)",
+        },
+        ".dango-grid-square-format-mini-size-l": {
+          maskImage: "url(./images/grids/square-mini-l.svg)",
+        },
+        ".dango-grid-square-format-mini-size-m": {
+          maskImage: "url(./images/grids/square-mini-m.svg)",
+        },
+        ".dango-grid-square-format-mini-size-s": {
+          maskImage: "url(./images/grids/square-mini-s.svg)",
+        },
+        ".dango-grid-landscape-format-fat-size-l": {
+          maskImage: "url(./images/grids/landscape-fat-l.svg)",
+        },
+        ".dango-grid-landscape-format-xl-size-l": {
+          maskImage: "url(./images/grids/landscape-xl-l.svg)",
+        },
+        ".dango-grid-landscape-l": {
+          maskImage: "url(./images/grids/landscape-l.svg)",
+        },
+        ".dango-grid-landscape-m": {
+          maskImage: "url(./images/grids/landscape-m.svg)",
+        },
+        ".dango-grid-landscape-s": {
+          maskImage: "url(./images/grids/landscape-s.svg)",
+        },
+        ".dango-grid-landscape-format-flat-size-l": {
+          maskImage: "url(./images/grids/landscape-flat-l.svg)",
+        },
+        ".dango-grid-landscape-format-flat-size-m": {
+          maskImage: "url(./images/grids/landscape-flat-m.svg)",
+        },
+        ".dango-grid-landscape-format-flat-size-s": {
+          maskImage: "url(./images/grids/landscape-flat-s.svg)",
+        },
+        ".dango-grid-landscape-format-flatmini-size-l": {
+          maskImage: "url(./images/grids/landscape-flat-mini-l.svg)",
+        },
+        ".dango-grid-landscape-format-flatmini-size-m": {
+          maskImage: "url(./images/grids/landscape-flat-mini-m.svg)",
+        },
+        ".dango-grid-landscape-format-flatmini-size-s": {
+          maskImage: "url(./images/grids/landscape-flat-mini-s.svg)",
         },
       });
     }),
