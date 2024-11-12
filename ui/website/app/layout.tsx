@@ -6,7 +6,7 @@ import "@dango/assets/fonts/Exposure/index.css";
 
 export const metadata: Metadata = {
   title: "Dango",
-  description: "Bringing back the good things of the last cycle",
+  description: "A DeFi hub with novel leverage capabilities and a true next-gen user experience",
 };
 
 export default function RootLayout({
