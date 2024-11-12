@@ -432,6 +432,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "assertor"
+version = "0.0.3"
+source = "git+https://github.com/google/assertor#8f69989c4af191a1b05de121ef822105f316ff6e"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "async-attributes"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3431,6 +3439,7 @@ name = "indexer-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "assertor",
  "indexer-entity",
  "indexer-migration",
  "sea-orm",

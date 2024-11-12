@@ -126,6 +126,7 @@ dango-types           = { path = "dango/types" }
 indexer-core = { path = "indexer/core" }
 indexer-migration = { path = "indexer/migration" }
 indexer-entity = { path = "indexer/entity" }
+assertor = { version = "0.0", git = "https://github.com/google/assertor" }
 
 [profile.release]
 codegen-units    = 1

@@ -29,3 +29,6 @@ features = [
   "with-chrono",
   "with-uuid",
 ]
+
+[dev-dependencies]
+assertor = { workspace = true }

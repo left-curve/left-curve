@@ -18,4 +18,4 @@ migrate_dev_db:
 
 # Generate entity from the datatabase
 generate_entity:
-  sea-orm-cli generate entity -o entity/src --with-derive 'Default,Debug,Clone,Eq,PartialEq'
+  sea-orm-cli generate entity -o entity/src/entity --model-extra-derives 'Default'
