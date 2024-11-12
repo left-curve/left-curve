@@ -17,7 +17,7 @@ export const AppletCard: React.FC<Props> = ({ metadata }) => {
       </div>
       <div className="flex flex-col px-5 py-4 relative z-10 flex-1">
         <p className="text-xl font-bold">{title}</p>
-        <p className="text-sm text-gray-500">{description}</p>
+        <p className="text-sm text-gray-500 truncate">{description}</p>
       </div>
     </div>
   );

@@ -51,7 +51,11 @@ export const CommandBody: React.FC<Props> = ({ isOpen, isSearching, applets, act
           className="w-full flex flex-col gap-6 max-w-[calc(100vh-3.5rem)] overflow-scroll scrollbar-none md:p-4"
         >
           <Command.List>
-            <Command.Empty>No applets found.</Command.Empty>
+            <Command.Empty>
+              <p className="bg-surface-rose-200 rounded-[20px] py-4 px-5 text-black font-semibold text-[1.25rem]">
+                No applets found.
+              </p>
+            </Command.Empty>
 
             {isSearching ? (
               <Command.Group value="Applets">
@@ -88,7 +92,7 @@ export const CommandBody: React.FC<Props> = ({ isOpen, isSearching, applets, act
 
                 <Command.Group
                   heading="Popular"
-                  className="text-typography-green-300 font-extrabold uppercase tracking-widest"
+                  className="text-typography-green-300 font-extrabold uppercase tracking-widest py-2"
                 >
                   {popularApplets.map((applet) => (
                     <Command.Item

@@ -26,7 +26,9 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isOpen && e.key === "Escape") {
+      if (!isOpen && e.code === "Space") {
+        setIsOpen(true);
+      } else if (isOpen && e.key === "Escape") {
         setIsOpen(false);
         setSearchText("");
         inputRef.current?.blur();
@@ -69,9 +71,14 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
         <div className="relative rounded-2xl w-full lg:max-w-xl">
           <div
             onClick={handleInteraction}
-            className="bg-surface-green-200 p-1 rounded-2xl flex items-center justify-center w-full lg:max-w-xl z-10 relative group group-hover:bg-surface-green-300 hover:bg-surface-green-300"
+            className="bg-surface-green-200 p-1 rounded-2xl flex items-center justify-center w-full lg:max-w-xl z-10 relative group group-hover:bg-surface-green-400 hover:bg-surface-green-400"
           >
-            <div className="bg-surface-green-300 flex-1 rounded-xl h-9  group-hover:bg-surface-green-200 hover:bg-surface-green-200 transition-all text-typography-green-300 flex items-center gap-2 px-2 cursor-text text-start">
+            <div
+              className={twMerge(
+                "bg-surface-green-300 flex-1 rounded-xl h-9 transition-all text-typography-green-300 flex items-center gap-2 px-2 cursor-text text-start",
+                { "bg-surface-green-400": isOpen },
+              )}
+            >
               <SearchIcon className="h-6 w-6" />
               <p className="flex-1 pt-1">Search for apps and commands</p>
               <p>/</p>
@@ -81,7 +88,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
             <motion.div
               ref={menuRef}
               className={twMerge(
-                "absolute w-full h-full top-0 left-0 transition-all bg-surface-green-300 rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2 overflow-y-hidden",
+                "absolute w-full h-full top-0 left-0 transition-all rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2 overflow-y-hidden",
                 isOpen
                   ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
                   : "z-0",
@@ -100,7 +107,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
                     onValueChange={setSearchText}
                     value={searchText}
                     placeholder="Search for apps and commands"
-                    className="flex-1 bg-transparent text-typography-green-4 placeholder-typography-green-300 pt-1 outline-none"
+                    className="flex-1 bg-transparent text-typography-green-500 placeholder-typography-green-300 pt-1 outline-none"
                   />
                   <p>/</p>
                 </div>
