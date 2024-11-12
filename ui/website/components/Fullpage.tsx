@@ -1,3 +1,5 @@
+"use client";
+
 import ReactFullpage from "@fullpage/react-fullpage";
 import type { PropsWithChildren } from "react";
 import { getFullpageLicenseKey } from "~/config/fullpage";

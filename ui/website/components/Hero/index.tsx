@@ -6,6 +6,8 @@ import { Monkeys } from "./Monkeys";
 import { Rabbits } from "./Rabbits";
 import { Snake } from "./Snake";
 
+import { AnimatePresence } from "framer-motion";
+
 interface Props {
   goSectionBelow: () => void;
 }
