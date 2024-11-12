@@ -12,7 +12,7 @@ export const GradientContainer: React.FC<ComponentPropsWithoutRef<"div">> = ({
   return (
     <div
       className={twMerge(
-        "bg-gradient-container backdrop-blur-xl rounded-3xl flex flex-col gap-3 items-center justify-between text-sand-900 p-4 h-fit w-fit",
+        "backdrop-blur-xl flex flex-col items-center justify-between w-fit h-fit",
         className,
       )}
     >

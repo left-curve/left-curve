@@ -162,73 +162,26 @@ export const tailwindConfig: Partial<Config> = {
         },
       });
 
+      const gridCommonStyles = {
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center center",
+        backgroundSize: "contain",
+      };
+
       addComponents({
-        ".dango-grid": {
-          width: "100%",
-          maskSize: "contain",
-          maskRepeat: "no-repeat",
-          background: "linear-gradient(180deg, #FFF2E2 0%, #C4B7BA 100%)",
-          maskMode: "alpha",
-        },
-        ".dango-grid-square-format-xl-size-l": {
-          maskImage: "url(./images/grids/square-xl-l.svg)",
-        },
-        ".dango-grid-square-format-xl-size-m": {
-          maskImage: "url(./images/grids/square-xl-m.svg)",
-        },
-        ".dango-grid-square-format-xl-size-s": {
-          maskImage: "url(./images/grids/square-xl-s.svg)",
-        },
-        ".dango-grid-square-l": {
-          maskImage: "url(./images/grids/square-l.svg)",
-        },
         ".dango-grid-square-m": {
-          maskImage: "url(./images/grids/square-m.svg)",
+          ...gridCommonStyles,
+          padding: "5rem 4rem",
+          height: "38.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/square-m.svg)",
         },
-        ".dango-grid-square-s": {
-          maskImage: "url(./images/grids/square-s.svg)",
-        },
-        ".dango-grid-square-format-mini-size-l": {
-          maskImage: "url(./images/grids/square-mini-l.svg)",
-        },
-        ".dango-grid-square-format-mini-size-m": {
-          maskImage: "url(./images/grids/square-mini-m.svg)",
-        },
-        ".dango-grid-square-format-mini-size-s": {
-          maskImage: "url(./images/grids/square-mini-s.svg)",
-        },
-        ".dango-grid-landscape-format-fat-size-l": {
-          maskImage: "url(./images/grids/landscape-fat-l.svg)",
-        },
-        ".dango-grid-landscape-format-xl-size-l": {
-          maskImage: "url(./images/grids/landscape-xl-l.svg)",
-        },
-        ".dango-grid-landscape-l": {
-          maskImage: "url(./images/grids/landscape-l.svg)",
-        },
-        ".dango-grid-landscape-m": {
-          maskImage: "url(./images/grids/landscape-m.svg)",
-        },
-        ".dango-grid-landscape-s": {
-          maskImage: "url(./images/grids/landscape-s.svg)",
-        },
-        ".dango-grid-landscape-format-flat-size-l": {
-          maskImage: "url(./images/grids/landscape-flat-l.svg)",
-        },
-        ".dango-grid-landscape-format-flat-size-m": {
-          maskImage: "url(./images/grids/landscape-flat-m.svg)",
-        },
-        ".dango-grid-landscape-format-flat-size-s": {
-          maskImage: "url(./images/grids/landscape-flat-s.svg)",
-        },
-        ".dango-grid-landscape-format-flatmini-size-l": {
-          maskImage: "url(./images/grids/landscape-flat-mini-l.svg)",
-        },
-        ".dango-grid-landscape-format-flatmini-size-m": {
-          maskImage: "url(./images/grids/landscape-flat-mini-m.svg)",
-        },
-        ".dango-grid-landscape-format-flatmini-size-s": {
-          maskImage: "url(./images/grids/landscape-flat-mini-s.svg)",
+        ".dango-grid-square-mini-l": {
+          ...gridCommonStyles,
+          padding: "2rem",
+          height: "18.75rem",
+          width: "18.75rem",
+          backgroundImage: "url(./images/grids/square-mini-l.svg)",
         },
       });
     }),
