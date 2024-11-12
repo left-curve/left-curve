@@ -371,6 +371,7 @@ fn into_tm_app_hash(hash: Hash256) -> AppHash {
     hash.into_inner().to_vec().try_into().unwrap()
 }
 
+/// Be sure to pass a non-zero index
 fn code_error(index: u32) -> Code {
     Code::Err(unsafe { NonZeroU32::new_unchecked(index) })
 }
