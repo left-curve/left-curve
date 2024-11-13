@@ -5,9 +5,10 @@ pub enum Block {
     #[sea_orm(iden = "blocks")]
     Table,
     Id,
-    CreatedAt,
     #[allow(clippy::enum_variant_names)]
     BlockHeight,
+    CreatedAt,
+    Hash,
 }
 
 #[derive(DeriveIden)]

@@ -1,11 +1,14 @@
+use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
 use migration::{Migrator, MigratorTrait};
+use sea_orm::ActiveModelTrait;
+use sea_orm::ConnectionTrait;
+use sea_orm::EntityTrait;
+use sea_orm::Set;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex};
 use tokio::runtime::{Builder, Runtime};
 use tokio::task;
-// Initialize the runtime once using OnceLock
-//static RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct Context {
@@ -36,31 +39,23 @@ impl Context {
 pub struct App {
     context: Context,
     runtime: Arc<Runtime>,
+    db_txn: Arc<Mutex<Option<DatabaseTransaction>>>,
 }
 
 impl App {
     pub fn new() -> Result<Self, anyhow::Error> {
-        //let runtime = RUNTIME.get_or_init(|| {
-        //    Arc::new(Builder::new_multi_thread()
-        //        //.worker_threads(4)  // Adjust as needed
-        //        .enable_all()
-        //        .build()
-        //        .unwrap())
-        //});
-
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
                 .build()
                 .unwrap());
 
-        //let runtime = Builder::new_multi_thread().enable_all().build()?;
-
         let db = runtime.block_on(async { Context::connect_db().await })?;
 
         Ok(App {
             context: Context { db },
             runtime: runtime.clone(),
+            db_txn: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -69,36 +64,80 @@ impl App {
             .block_on(async { self.context.migrate_db().await })
     }
 
-    pub fn db_txn(&self) -> Result<DatabaseTransaction, anyhow::Error> {
-        //let Some(runtime) = RUNTIME.get() else {
-        //    anyhow::bail!("Runtime not initialized");
-        //};
-
+    pub fn db_txn(&self) -> Result<(), anyhow::Error> {
         let db_transaction = self
             .runtime
             .block_on(async { self.context.db.begin().await })?;
 
-        Ok(db_transaction)
+        self.db_txn.lock().unwrap().replace(db_transaction);
+
+        Ok(())
     }
 
-    pub fn index_block(&self) {}
+    pub fn index_block(
+        &self,
+        block: &BlockInfo,
+        _block_outcome: &BlockOutcome,
+    ) -> Result<(), anyhow::Error> {
+        let txn = self.db_txn.lock().unwrap();
+        let Some(txn) = txn.as_ref() else {
+            anyhow::bail!("No transaction to commit");
+        };
 
-    pub fn index_transaction(&self) {}
+        self.runtime.block_on(async {
+            let new_block = indexer_entity::blocks::ActiveModel {
+                id: Set(Default::default()),
+                block_height: Set(block.height.try_into().unwrap()),
+                created_at: Set(Default::default()),
+                hash: Set(Default::default()),
+            };
+            new_block.insert(txn).await.expect("Can't save block");
+        });
 
-    pub fn save_db_txn(&self, txn: DatabaseTransaction) -> Result<(), sea_orm::DbErr> {
-        //let Some(runtime) = RUNTIME.get() else {
-        //    anyhow::bail!("Runtime not initialized");
-        //};
-        //
+        Ok(())
+    }
+
+    pub fn index_transaction(
+        &self,
+        _block_info: &BlockInfo,
+        _tx: &Tx,
+        _tx_outcome: &TxOutcome,
+    ) -> Result<(), anyhow::Error> {
+        todo!()
+    }
+
+    /// NOTE: when calling this, the DB transaction Mutex but be unlocked!
+    pub fn save_db_txn(&self) -> Result<(), anyhow::Error> {
+        let mut txn = self.db_txn.lock().unwrap();
+        let Some(txn) = txn.take() else {
+            anyhow::bail!("No transaction to commit");
+        };
+
         self.runtime.block_on(async { txn.commit().await })?;
 
         Ok(())
     }
 
     /// This will be used to ensure the tokio has no more tasks to run, when we gracefully stop
-    /// Grug.
+    /// Grug. We don't inject async tasks yet (they all block) but could.
     pub fn wait_for_all_tasks(&self) {
         self.runtime.block_on(async {});
+    }
+}
+
+impl Drop for App {
+    fn drop(&mut self) {
+        // If the DatabaseTransaction is left open (not committed) its `Drop` implementation
+        // expects a Tokio context. We must call `rollback` manually on it within our Tokio
+        // context.
+        let mut guard_db = self.db_txn.lock().unwrap();
+        let Some(db) = guard_db.take() else {
+            return;
+        };
+
+        self.runtime.block_on(async {
+            db.rollback().await.expect("Can't rollback txn");
+        });
     }
 }
 
@@ -125,11 +164,17 @@ mod tests {
     /// This is when used from Grug, which isn't async. In such case `App` has its own Tokio
     /// runtime and we need to inject async functions
     #[test]
-    fn should_migrate_db_and_create_block() {
+    fn should_migrate_db_and_create_block() -> anyhow::Result<()> {
         let app = app();
+        app.db_txn().expect("Can't create db txn");
+        let db = app.db_txn.lock().unwrap();
+        let Some(db) = db.as_ref() else {
+            anyhow::bail!("No transaction to commit");
+        };
         app.runtime.block_on(async {
-            check_empty_and_create_block(&app.context.db).await;
+            check_empty_and_create_block(db).await;
         });
+        Ok(())
     }
 
     /// This is when used from the httpd API, which is async. We dont need to use `App` runtime.
@@ -141,22 +186,31 @@ mod tests {
     }
 
     #[test]
-    fn should_use_db_transaction() {
+    fn should_use_db_transaction() -> Result<(), anyhow::Error> {
         let app = app();
-        let txn = app.db_txn().expect("Can't get db txn");
+        app.db_txn()?;
         app.runtime
             .block_on(async {
-                check_empty_and_create_block(&txn).await;
-                txn.commit().await?;
-                Ok::<(), sea_orm::DbErr>(())
+                let db_guard = app.db_txn.lock().unwrap();
+                let Some(db) = db_guard.as_ref() else {
+                    panic!("No transaction to commit");
+                };
+                check_empty_and_create_block(db).await;
+                Ok::<(), anyhow::Error>(())
             })
             .expect("Can't commit txn");
+        app.save_db_txn()?;
+        Ok(())
     }
 
     #[test]
-    fn should_use_db_transaction_in_multiple_steps() {
+    fn should_use_db_transaction_in_multiple_steps() -> Result<(), anyhow::Error> {
         let app = app();
-        let db = app.db_txn().expect("Can't get db txn");
+        app.db_txn()?;
+        let mut guard_db = app.db_txn.lock().unwrap();
+        let Some(db) = guard_db.as_ref() else {
+            anyhow::bail!("No transaction to commit");
+        };
 
         // create the block
         app.runtime.block_on(async {
@@ -164,9 +218,14 @@ mod tests {
                 id: Set(Default::default()),
                 block_height: Set(10),
                 created_at: Set(Default::default()),
+                hash: Set(Default::default()),
             };
-            new_block.insert(&db).await.expect("Can't save block");
+            new_block.insert(db).await.expect("Can't save block");
         });
+
+        let Some(db) = guard_db.take() else {
+            anyhow::bail!("No transaction to commit");
+        };
 
         // commit the transaction
         app.runtime.block_on(async {
@@ -185,6 +244,8 @@ mod tests {
                 Ok::<(), sea_orm::DbErr>(())
             })
             .expect("Can't commit txn");
+
+        Ok(())
     }
 
     fn app() -> App {
@@ -203,6 +264,7 @@ mod tests {
             id: Set(Default::default()),
             block_height: Set(10),
             created_at: Set(Default::default()),
+            hash: Set(Default::default()),
         };
         new_block.insert(db).await.expect("Can't save block");
         let block = indexer_entity::blocks::Entity::find()

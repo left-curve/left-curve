@@ -45,18 +45,14 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
     #[cfg(feature = "indexer")]
-    indexer_app: Option<IndexerApp>,
+    //NOTE: using option is annoying because I have to `.map` everywhere
+    //indexer_app: Option<IndexerApp>,
+    indexer_app: IndexerApp,
 }
 
 impl<DB, VM, PP> App<DB, VM, PP> {
     #[cfg(feature = "indexer")]
-    pub fn new(
-        db: DB,
-        vm: VM,
-        pp: PP,
-        query_gas_limit: u64,
-        indexer_app: Option<IndexerApp>,
-    ) -> Self {
+    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: IndexerApp) -> Self {
         Self {
             db,
             vm,
@@ -197,6 +193,10 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
+        #[cfg(feature = "indexer")]
+        // TODO: use my own indexer error and `?`
+        self.indexer_app.db_txn().expect("Cant set DB txn");
+
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.height != last_finalized_block.height + 1 {
@@ -288,18 +288,19 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_outcomes.push(process_tx(
+            let tx_outcome = process_tx(
                 self.vm.clone(),
                 buffer.clone(),
                 chain_id.clone(),
                 block,
-                tx,
+                tx.clone(),
                 AuthMode::Finalize,
-            ));
+            );
 
             #[cfg(feature = "indexer")]
-            // TODO: pass tx+outcome?
-            self.indexer_app.index_transaction();
+            self.indexer_app.index_transaction(&block, &tx, &tx_outcome);
+
+            tx_outcomes.push(tx_outcome);
         }
 
         // Save the last committed block.
@@ -328,11 +329,18 @@ where
             "Finalized block"
         );
 
-        Ok(BlockOutcome {
+        let block_outcome = BlockOutcome {
             app_hash: app_hash.unwrap(),
             cron_outcomes,
             tx_outcomes,
-        })
+        };
+
+        #[cfg(feature = "indexer")]
+        self.indexer_app
+            .index_block(&block, &block_outcome)
+            .unwrap();
+
+        Ok(block_outcome)
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
@@ -340,6 +348,9 @@ where
 
         #[cfg(feature = "tracing")]
         tracing::info!(height = self.db.latest_version(), "Committed state");
+
+        #[cfg(feature = "indexer")]
+        self.indexer_app.save_db_txn().unwrap();
 
         Ok(())
     }

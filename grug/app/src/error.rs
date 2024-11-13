@@ -14,6 +14,9 @@ pub enum AppError {
     #[error("DB error: {0}")]
     Db(String),
 
+    #[error("Indexer error: {0}")]
+    Indexer(String),
+
     #[error("proposal preparer error: {0}")]
     PrepareProposal(String),
 

@@ -10,7 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = []
+default = ["indexer"]
 abci    = ["tendermint-abci", "tendermint-proto"]
 tracing = ["chrono", "dep:tracing"]
 indexer = ["indexer-core"]

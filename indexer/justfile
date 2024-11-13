@@ -16,6 +16,10 @@ run_dev_db:
 migrate_dev_db:
   sea-orm-cli migrate up
 
+# Reset the development database
+refresh_dev_db:
+  sea-orm-cli migrate refresh
+
 # Generate entity from the datatabase
 generate_entity:
   sea-orm-cli generate entity -o entity/src/entity --model-extra-derives 'Default'

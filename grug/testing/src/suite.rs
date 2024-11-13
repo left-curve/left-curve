@@ -10,6 +10,7 @@ use {
         TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
+    indexer_core::App as AppIndexer,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -222,8 +223,10 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
+        let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, u64::MAX);
+        let app = App::new(db, vm, pp, u64::MAX, indexer);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

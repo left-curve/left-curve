@@ -22,6 +22,7 @@ impl MigrationTrait for Migration {
                             .unique_key()
                             .not_null(),
                     )
+                    .col(string(Block::Hash))
                     .to_owned(),
             )
             .await?;
