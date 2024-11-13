@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - "main"
-      - "develop"
+      - "ui/release"
     paths:
       - "sdk/packages/react/**"
       - "ui/shared/**"
