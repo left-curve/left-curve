@@ -7,6 +7,18 @@ import "@dango/assets/fonts/Exposure/index.css";
 export const metadata: Metadata = {
   title: "Dango",
   description: "A DeFi hub with novel leverage capabilities and a true next-gen user experience",
+  icons: {
+    icon: "/favicon.svg",
+  },
+  openGraph: {
+    images: [
+      {
+        url: "/images/og.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
