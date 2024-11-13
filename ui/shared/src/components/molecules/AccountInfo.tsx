@@ -19,7 +19,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
   if (!account) return null;
 
   return (
-    <div className="bg-gradient-to-br from-sand-100/70 to-white/10 backdrop-blur-sm  rounded-3xl flex flex-col gap-3 items-center justify-between text-sand-900 p-4 sm:min-w-[18rem] sm:w-fit w-full  min-h-[18rem]">
+    <div className="dango-grid-square-mini-l flex flex-col gap-3 items-center justify-center text-sand-900">
       <div className="flex gap-2 text-sm w-full items-center justify-center font-extrabold text-typography-black-200">
         <p className="uppercase">{account.username}</p>
         <p className="uppercase">
@@ -46,7 +46,9 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
           </div>
         </div>
       </div>
-      <Button variant="light">Edit</Button>
+      <Button variant="light" className="py-0">
+        Edit
+      </Button>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { Button, CoinSelector, GradientContainer, Input, SwapArrowDownIcon } from "@dango/shared";
+import { Button, CoinSelector, Input, SwapArrowDownIcon } from "@dango/shared";
 import { useAccount, useConfig } from "@leftcurve/react";
 import type React from "react";
 
@@ -9,7 +9,7 @@ export const SwapContainer: React.FC = () => {
   const arrayOfCoins = Object.values(coins);
 
   return (
-    <GradientContainer className="gap-8 justify-center w-full max-w-[45rem] md:py-12">
+    <div className="dango-grid-square-xl-l gap-4 flex flex-col justify-center items-center">
       <p className="font-extrabold text-typography-black-200 tracking-widest uppercase">Swap</p>
 
       <div className="flex flex-col gap-4 w-full max-w-[31.5rem] items-center justify-center">
@@ -56,6 +56,6 @@ export const SwapContainer: React.FC = () => {
         </div>
         <Button fullWidth>Swap</Button>
       </div>
-    </GradientContainer>
+    </div>
   );
 };

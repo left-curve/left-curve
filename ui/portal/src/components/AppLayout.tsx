@@ -34,7 +34,7 @@ export const AppLayout: React.FC = () => {
         />
       ) : null}
       <Header />
-      <main className="flex flex-1 w-full">
+      <main className="flex flex-1 w-full z-[2]">
         {status === ConnectionStatus.Connected ? <Outlet /> : <Navigate to="/auth/login" />}
       </main>
     </div>

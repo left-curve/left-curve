@@ -43,7 +43,7 @@ export const CredentialStep: React.FC = () => {
         error={errors.username?.message}
       />
       <Button type="submit" fullWidth isLoading={isSubmitting}>
-        Choose credentials
+        Choose username
       </Button>
     </form>
   );
