@@ -2,6 +2,7 @@ use {
     anyhow::bail,
     dango_auth::NEXT_SEQUENCE,
     dango_lending::DEBTS,
+    dango_oracle::OracleQueries,
     dango_types::{
         account::margin::{HealthResponse, QueryMsg},
         config::AppConfig,
@@ -34,10 +35,12 @@ pub fn calculate_account_health(
     debts: Coins,
     collateral_powers: BTreeMap<Denom, CollateralPower>,
 ) -> anyhow::Result<HealthResponse> {
+    let app_cfg: AppConfig = querier.query_app_config()?;
+
     // Calculate the total value of the debts.
     let mut total_debt_value = Udec128::ZERO;
     for coin in debts {
-        let price = dango_oracle::raw_query_price(querier, &coin.denom)?;
+        let price = querier.query_price(app_cfg.addresses.oracle, &coin.denom)?;
         total_debt_value += price.value_of_unit_amount(coin.amount)?;
     }
 
@@ -51,7 +54,7 @@ pub fn calculate_account_health(
             continue;
         }
 
-        let price = dango_oracle::raw_query_price(querier, &denom)?;
+        let price = querier.query_price(app_cfg.addresses.oracle, &denom)?;
         let collateral_value = price.value_of_unit_amount(collateral_balance)?;
         total_adjusted_collateral_value += collateral_value * power.into_inner();
     }

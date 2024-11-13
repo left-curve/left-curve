@@ -1,12 +1,7 @@
 use {
     crate::{GUARDIAN_SETS, PRICE_SOURCES},
-    dango_types::{
-        config::AppConfig,
-        oracle::{GuardianSet, PrecisionedPrice, PriceSource, QueryMsg},
-    },
-    grug::{
-        BorshDeExt, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper, StdResult,
-    },
+    dango_types::oracle::{GuardianSet, PrecisionedPrice, PriceSource, QueryMsg},
+    grug::{Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
 
@@ -46,26 +41,6 @@ fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPri
     PRICE_SOURCES
         .load(ctx.storage, &denom)?
         .get_price(ctx.storage)
-}
-
-/// Does a raw query to the oracle contract to get the latest price for the given denom.
-pub fn raw_query_price(
-    querier: &QuerierWrapper,
-    denom: &Denom,
-) -> anyhow::Result<PrecisionedPrice> {
-    let app_cfg: AppConfig = querier.query_app_config()?;
-    let oracle = app_cfg.addresses.oracle;
-
-    let price = querier
-        .query_wasm_raw(oracle, PRICE_SOURCES.path(denom))?
-        .ok_or(anyhow::anyhow!(
-            "Price source not found for denom: {}",
-            denom
-        ))?
-        .deserialize_borsh::<PriceSource>()?
-        .raw_query_price(querier, oracle)?;
-
-    Ok(price)
 }
 
 fn query_prices(
