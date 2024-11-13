@@ -1,11 +1,19 @@
-import { Button, Input, useWizard } from "@dango/shared";
+import {
+  Button,
+  CheckCircleIcon,
+  Input,
+  Spinner,
+  XCircleIcon,
+  useDebounce,
+  useWizard,
+} from "@dango/shared";
 import { usePublicClient } from "@leftcurve/react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
 
 export const CredentialStep: React.FC = () => {
   const { nextStep, setData } = useWizard();
-  const { setError, register, watch, setValue, handleSubmit, formState } = useForm<{
+  const { setError, register, watch, handleSubmit, setValue, formState } = useForm<{
     username: string;
   }>({
     mode: "onChange",
@@ -15,16 +23,27 @@ export const CredentialStep: React.FC = () => {
 
   const { errors, isSubmitting } = formState;
 
+  const {
+    refetch,
+    data: isUsernameAvailable,
+    isFetching,
+  } = useQuery({
+    enabled: false,
+    queryKey: ["username", username],
+    queryFn: async () => {
+      if (!username) return;
+      const { accounts } = await client.getUser({ username });
+      const isUsernameAvailable = !Object.keys(accounts).length;
+      if (!isUsernameAvailable) setError("username", { message: "Username is not available" });
+      return isUsernameAvailable;
+    },
+  });
+
+  useDebounce(refetch, 300, [username]);
+
   const onSubmit = handleSubmit(async () => {
-    if (!username) return;
-    const { accounts } = await client.getUser({ username });
-    const numberOfAccounts = Object.keys(accounts).length;
-    if (numberOfAccounts > 0) {
-      setError("username", { message: "Username is already taken" });
-    } else {
-      setData({ username });
-      nextStep();
-    }
+    setData({ username });
+    nextStep();
   });
 
   return (
@@ -33,13 +52,24 @@ export const CredentialStep: React.FC = () => {
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
-            if (!value) return "Username is required";
-            if (value.length > 15) return "Username must be at most 15 characters long";
+            if (!value || value.length > 15) {
+              return "Username must be no more than 15 lowercase alphanumeric characters (a-z, A-Z, 0-9)";
+            }
             return true;
           },
         })}
+        classNames={{ description: "text-typography-green-400" }}
         placeholder="Choose an username"
-        onKeyDown={({ key }) => key === "Enter" && onSubmit()}
+        description={isUsernameAvailable ? "Username is available" : undefined}
+        endContent={
+          isFetching ? (
+            <Spinner size="sm" color="white" />
+          ) : typeof isUsernameAvailable === "undefined" ? null : isUsernameAvailable ? (
+            <CheckCircleIcon className="stroke-typography-green-400 stroke-2" />
+          ) : (
+            <XCircleIcon className="stroke-typography-pink-200 stroke-2" />
+          )
+        }
         error={errors.username?.message}
       />
       <Button type="submit" fullWidth isLoading={isSubmitting}>

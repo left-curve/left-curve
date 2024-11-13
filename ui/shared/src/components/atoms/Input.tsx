@@ -8,6 +8,7 @@ export interface InputProps
   endContent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
   error?: string;
+  description?: string;
   classNames?: {
     base?: string;
     inputWrapper?: string;
@@ -30,6 +31,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       fullWidth,
       startText,
       error,
+      description: descriptionText,
       ...props
     },
     ref,
@@ -53,12 +55,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
           {endContent ? endContent : null}
         </div>
-        {error ? <span className="text-typography-pink-300">{error}</span> : null}
-        {bottomComponent ? (
-          <span className={description({ className: classNames?.description })}>
-            {bottomComponent}
-          </span>
-        ) : null}
+        <div className={description({ className: classNames?.description })}>
+          {error ? <span className="text-typography-pink-300">{error}</span> : null}
+          {descriptionText && !error ? <span>{descriptionText}</span> : null}
+        </div>
+        {bottomComponent && !error ? bottomComponent : null}
       </div>
     );
   },
@@ -71,7 +72,7 @@ export { Input };
 const inputVariants = tv(
   {
     slots: {
-      base: "group flex flex-col data-[hidden=true]:hidden",
+      base: "group flex flex-col data-[hidden=true]:hidden gap-1",
       inputWrapper:
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-sm px-6 py-3 gap-3",
       input: [
@@ -81,7 +82,7 @@ const inputVariants = tv(
         "file:cursor-pointer file:bg-transparent file:border-0",
         "autofill:bg-transparent bg-clip-text",
       ],
-      description: "text-sm",
+      description: "h-5 px-6 text-[12px] font-semibold",
     },
     variants: {
       color: {

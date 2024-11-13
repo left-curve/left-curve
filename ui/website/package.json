@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build:cf": "pnpx @cloudflare/next-on-pages",
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -12,18 +12,18 @@
   "dependencies": {
     "@dango/assets": "workspace:^",
     "@fullpage/react-fullpage": "^0.1.45",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106",
-    "next": "15.0.3",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "framer-motion": "catalog:"
   },
   "devDependencies": {
     "@leftcurve/config": "workspace:^",
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:"
   }
 }

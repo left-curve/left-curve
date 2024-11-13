@@ -64,3 +64,5 @@ export { ExternalLinkIcon } from "./icons/ExternalLink";
 export { SearchIcon } from "./icons/Search";
 export { ArrowSelectorIcon } from "./icons/ArrowSelector";
 export { SwapArrowDownIcon } from "./icons/SwapArrowDown";
+export { CheckCircleIcon } from "./icons/CheckCircle";
+export { XCircleIcon } from "./icons/XCircle";
