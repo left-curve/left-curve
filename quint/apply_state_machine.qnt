@@ -305,11 +305,11 @@ module apply_state_machine {
     if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
-
-
-  val verifyMembershipInv = 
-    activeTreeVersions.forall(version =>
+val verifyMembershipInv =
+    activeTreeVersions.forall(version => all {
+      version > 0,
       tree.nodes.values().forall (nodes =>
         match nodes {
           | Internal => true
@@ -322,8 +322,8 @@ module apply_state_machine {
                     | Exist(ep) => verifyMembership(root, ep, n.key_hash, n.value_hash)
                     | NonExist(nep) => verifyNonMembership(root, nep, n.key_hash)
                   }
-                | None => false}}))
-}
+                | None => false}})
+    })}
 
 module pruning_state_machine {
   import tree.* from "./tree"

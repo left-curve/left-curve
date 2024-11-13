@@ -94,9 +94,10 @@ module proofs {
     // fold over prefixes created from key_hash
     // i - index of current fold
     val result = prefixes_list.foldl({ path: List(), i: 0, found: false}, (result, key_prefix) => 
-        val node = t.nodes.get({key_hash: key_prefix, version: version})
+      if(result.found) result else 
+      val node = t.nodes.get({key_hash: key_prefix, version: version})
         match node {
-          | Leaf(l) => { ...result, i: result.i+1, 
+          | Leaf(l) => { ...result, i: result.i + 1, 
                                     found: l.key_hash == key_hash }
           | Internal(internal) => 
             val next_bit_0 = key_prefix.append(0)
@@ -140,13 +141,13 @@ module proofs {
         val p = ics23_prove_existence(t, version, key_hash)
         match p {
           | Some(path) =>
-            Some(Exist(
-              {  key: key_hash,
-                    value: value,
-                    leaf: {prefix: hashLeafNode({ key_hash: key_hash, value_hash: value})},
-                    // not sure about the hash function. check with Rust
-                    path: path }
-                ))
+              Some(Exist(
+                {  key: key_hash,
+                      value: value,
+                      leaf: {prefix: hashLeafNode({ key_hash: key_hash, value_hash: value})},
+                      // not sure about the hash function. check with Rust
+                      path: path }
+                  ))
           | None => None 
         }
       | None => 
