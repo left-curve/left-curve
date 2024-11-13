@@ -224,6 +224,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+        indexer.migrate_db().expect("Can't migrate DB");
 
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, u64::MAX, indexer);

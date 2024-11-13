@@ -1,5 +1,7 @@
 use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
 use migration::{Migrator, MigratorTrait};
+use sea_orm::prelude::*;
+use sea_orm::sqlx::types::chrono::TimeZone;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ConnectionTrait;
 use sea_orm::EntityTrait;
@@ -12,7 +14,7 @@ use tokio::task;
 
 #[derive(Debug, Clone)]
 pub struct Context {
-    db: DatabaseConnection,
+    pub db: DatabaseConnection,
 }
 
 impl Context {
@@ -37,8 +39,8 @@ impl Context {
 
 #[derive(Debug, Clone)]
 pub struct App {
-    context: Context,
-    runtime: Arc<Runtime>,
+    pub context: Context,
+    pub runtime: Arc<Runtime>,
     db_txn: Arc<Mutex<Option<DatabaseTransaction>>>,
 }
 
@@ -85,11 +87,22 @@ impl App {
         };
 
         self.runtime.block_on(async {
+            let epoch_millis = block.timestamp.into_millis();
+            let seconds = (epoch_millis / 1_000) as i64;
+            let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
+
+            let naive_datetime = sea_orm::sqlx::types::chrono::Utc
+                .timestamp_opt(seconds, nanoseconds)
+                .single()
+                .unwrap_or_default()
+                .naive_utc();
+
+            // TODO: implement a From &BlockInfo -> indexer_entity::blocks::ActiveModel
             let new_block = indexer_entity::blocks::ActiveModel {
-                id: Set(Default::default()),
+                id: Set(Uuid::new_v4()),
                 block_height: Set(block.height.try_into().unwrap()),
-                created_at: Set(Default::default()),
-                hash: Set(Default::default()),
+                created_at: Set(naive_datetime),
+                hash: Set(block.hash.to_string()),
             };
             new_block.insert(txn).await.expect("Can't save block");
         });
@@ -103,7 +116,8 @@ impl App {
         _tx: &Tx,
         _tx_outcome: &TxOutcome,
     ) -> Result<(), anyhow::Error> {
-        todo!()
+        // TODO:
+        Ok(())
     }
 
     /// NOTE: when calling this, the DB transaction Mutex but be unlocked!
@@ -138,6 +152,8 @@ impl Drop for App {
         self.runtime.block_on(async {
             db.rollback().await.expect("Can't rollback txn");
         });
+
+        *guard_db = None;
     }
 }
 

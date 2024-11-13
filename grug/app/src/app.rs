@@ -47,7 +47,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     #[cfg(feature = "indexer")]
     //NOTE: using option is annoying because I have to `.map` everywhere
     //indexer_app: Option<IndexerApp>,
-    indexer_app: IndexerApp,
+    pub indexer_app: IndexerApp,
 }
 
 impl<DB, VM, PP> App<DB, VM, PP> {

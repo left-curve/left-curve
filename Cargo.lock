@@ -2777,6 +2777,7 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "assertor",
  "borsh 1.5.2",
  "grug-app",
  "grug-crypto",
@@ -2789,10 +2790,12 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "indexer-core",
+ "indexer-entity",
  "k256",
  "prost",
  "rand",
  "reqwest 0.12.9",
+ "sea-orm",
  "serde",
  "test-case",
  "thiserror",
