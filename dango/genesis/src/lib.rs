@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY, LENDING_KEY, ORACLE_KEY},
+        config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, LendingAppConfig, Market},
         oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
@@ -311,21 +311,22 @@ where
     };
 
     let lending_app_config = LendingAppConfig {
-        lending,
         collateral_powers: btree_map! {},
     };
-
-    let app_configs = btree_map! {
-        ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
-        IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
-        LENDING_KEY.to_string() => lending_app_config.to_json_value()?,
-        ORACLE_KEY.to_string() => oracle.to_json_value()?,
+    let app_config = AppConfig {
+        addresses: AppAddresses {
+            account_factory,
+            ibc_transfer,
+            lending,
+            oracle,
+        },
+        lending: lending_app_config,
     };
 
     let genesis_state = GenesisState {
         config,
         msgs,
-        app_configs,
+        app_config: app_config.to_json_value()?,
     };
 
     Ok((genesis_state, contracts, addresses))

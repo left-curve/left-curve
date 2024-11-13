@@ -1,5 +1,13 @@
 {
   "extends": "@leftcurve/config/ts/common.json",
   "include": ["src"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../../sdk/packages/types"
+    },
+    {
+      "path": "../../../sdk/packages/core"
+    }
+  ]
 }

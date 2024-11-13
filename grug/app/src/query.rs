@@ -1,15 +1,14 @@
 use {
     crate::{
         call_in_1_out_1, AppCtx, AppError, AppResult, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        StorageProvider, Vm, APP_CONFIG, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config, Context,
-        ContractInfo, GenericResult, Hash256, Json, Order, QueryAppConfigRequest,
-        QueryAppConfigsRequest, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
-        QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest,
-        QuerySupplyRequest, QueryWasmRawRequest, QueryWasmScanRequest, QueryWasmSmartRequest,
-        StdResult,
+        ContractInfo, GenericResult, Hash256, Json, Order, QueryBalanceRequest,
+        QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest, QueryContractRequest,
+        QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest,
+        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -20,21 +19,8 @@ pub fn query_config(ctx: AppCtx) -> StdResult<Config> {
     CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker)
 }
 
-pub fn query_app_config(ctx: AppCtx, req: QueryAppConfigRequest) -> StdResult<Json> {
-    APP_CONFIGS.load_with_gas(&ctx.storage, ctx.gas_tracker, &req.key)
-}
-
-pub fn query_app_configs(
-    ctx: AppCtx,
-    req: QueryAppConfigsRequest,
-) -> StdResult<BTreeMap<String, Json>> {
-    let start = req.start_after.as_deref().map(Bound::Exclusive);
-    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    APP_CONFIGS
-        .range_with_gas(&ctx.storage, ctx.gas_tracker, start, None, Order::Ascending)?
-        .take(limit)
-        .collect()
+pub fn query_app_config(ctx: AppCtx) -> StdResult<Json> {
+    APP_CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker)
 }
 
 pub fn query_balance<VM>(

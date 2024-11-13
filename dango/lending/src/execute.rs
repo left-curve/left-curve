@@ -5,10 +5,10 @@ use {
     dango_types::{
         account_factory::Account,
         bank,
-        config::ACCOUNT_FACTORY_KEY,
+        config::AppConfig,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
     },
-    grug::{Addr, BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
+    grug::{BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
     optional_struct::Applicable,
     std::collections::BTreeMap,
 };
@@ -122,13 +122,13 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Ensure sender is a margin account.
     // An an optimization, use raw instead of smart query.
     ensure!(
         ctx.querier
-            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
+            .query_wasm_raw(app_cfg.addresses.account_factory, ACCOUNTS.path(ctx.sender))?
             .ok_or_else(|| anyhow!(
                 "borrower {} is not registered in account factory",
                 ctx.sender

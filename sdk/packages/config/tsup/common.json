@@ -1,5 +1,9 @@
 {
-  "dts": true,
+  "dts": {
+    "compilerOptions": {
+      "composite": false
+    }
+  },
   "bundle": true,
   "outDir": "build",
   "platform": "neutral",

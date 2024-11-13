@@ -4,18 +4,17 @@ use {
     dango_types::{
         account::single,
         account_factory::AccountParams,
-        config::LENDING_KEY,
+        config::AppConfig,
         lending::{
-            self, CollateralPower, LendingAppConfig, MarketUpdates, QueryCollateralPowersRequest,
-            QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
+            self, CollateralPower, MarketUpdates, QueryCollateralPowersRequest, QueryDebtRequest,
+            QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
         token_factory,
     },
     grug::{
-        btree_map, Addressable, Binary, Coin, Coins, ConfigUpdates, Denom, HashExt, JsonDeExt,
-        JsonSerExt, Message, MsgConfigure, MsgTransfer, NumberConst, Op, ResultExt, TestSuite,
-        Udec128, Uint128,
+        btree_map, Addressable, Binary, Coin, Coins, Denom, HashExt, JsonSerExt, Message,
+        MsgConfigure, MsgTransfer, NumberConst, ResultExt, TestSuite, Udec128, Uint128,
     },
     grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
@@ -152,35 +151,31 @@ fn set_collateral_power(
     power: CollateralPower,
 ) {
     // Get old config
-    let mut config: LendingAppConfig = suite
-        .query_app_config(LENDING_KEY)
-        .unwrap()
-        .deserialize_json()
-        .unwrap();
+    let mut config: AppConfig = suite.query_app_config().unwrap();
 
     // Update collateral power
-    config.collateral_powers.insert(denom, power);
+    config.lending.collateral_powers.insert(denom, power);
 
     // Set new config
     suite
         .send_message(
             &mut accounts.owner,
             Message::Configure(MsgConfigure {
-                updates: ConfigUpdates::default(),
-                app_updates: btree_map! { LENDING_KEY.to_string() => Op::Insert(config.to_json_value().unwrap()) },
+                new_app_cfg: Some(config.to_json_value().unwrap()),
+                new_cfg: None,
             }),
         )
         .should_succeed();
 
     // Ensure config was updated.
     suite
-        .query_app_config(LENDING_KEY)
-        .should_succeed_and_equal(config.to_json_value().unwrap());
+        .query_app_config::<AppConfig>()
+        .should_succeed_and_equal(config.clone());
 
     // Ensure collateral power was updated.
     suite
-        .query_wasm_smart(config.lending, QueryCollateralPowersRequest {})
-        .should_succeed_and_equal(config.collateral_powers);
+        .query_wasm_smart(config.addresses.lending, QueryCollateralPowersRequest {})
+        .should_succeed_and_equal(config.lending.collateral_powers);
 }
 
 #[test]

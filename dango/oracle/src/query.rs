@@ -1,7 +1,7 @@
 use {
     crate::{GUARDIAN_SETS, PRICE_SOURCES},
     dango_types::{
-        config::ORACLE_KEY,
+        config::AppConfig,
         oracle::{GuardianSet, PrecisionedPrice, PriceSource, QueryMsg},
     },
     grug::{
@@ -53,7 +53,8 @@ pub fn raw_query_price(
     querier: &QuerierWrapper,
     denom: &Denom,
 ) -> anyhow::Result<PrecisionedPrice> {
-    let oracle = querier.query_app_config(ORACLE_KEY)?;
+    let app_cfg: AppConfig = querier.query_app_config()?;
+    let oracle = app_cfg.addresses.oracle;
 
     let price = querier
         .query_wasm_raw(oracle, PRICE_SOURCES.path(denom))?

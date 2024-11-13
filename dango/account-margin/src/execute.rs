@@ -2,19 +2,17 @@ use {
     crate::query_health,
     anyhow::ensure,
     dango_auth::authenticate_tx,
-    dango_types::{account::InstantiateMsg, config::ACCOUNT_FACTORY_KEY},
-    grug::{
-        Addr, AuthCtx, AuthResponse, MutableCtx, NumberConst, Response, StdResult, Tx, Udec128,
-    },
+    dango_types::{account::InstantiateMsg, config::AppConfig},
+    grug::{AuthCtx, AuthResponse, MutableCtx, NumberConst, Response, StdResult, Tx, Udec128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    let account_factory: Addr = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Only the account factory can create new accounts.
     ensure!(
-        ctx.sender == account_factory,
+        ctx.sender == app_cfg.addresses.account_factory,
         "you don't have the right, O you don't have the right"
     );
 

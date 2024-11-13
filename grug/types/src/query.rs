@@ -33,10 +33,8 @@ pub trait QueryRequest: Sized {
 pub enum Query {
     /// Query the chain's global configuration.
     Config(QueryConfigRequest),
-    /// Query a single application-specific configuration.
+    /// Query the application-specific configuration.
     AppConfig(QueryAppConfigRequest),
-    /// Enumerate all application-specific configurations.
-    AppConfigs(QueryAppConfigsRequest),
     /// Query an account's balance in a single denom.
     Balance(QueryBalanceRequest),
     /// Enumerate an account's balances in all denoms.
@@ -68,15 +66,8 @@ impl Query {
         QueryConfigRequest {}.into()
     }
 
-    pub fn app_config<T>(key: T) -> Self
-    where
-        T: Into<String>,
-    {
-        QueryAppConfigRequest { key: key.into() }.into()
-    }
-
-    pub fn app_configs(start_after: Option<String>, limit: Option<u32>) -> Self {
-        QueryAppConfigsRequest { start_after, limit }.into()
+    pub fn app_config() -> Self {
+        QueryAppConfigRequest {}.into()
     }
 
     pub fn balance(address: Addr, denom: Denom) -> Self {
@@ -176,9 +167,7 @@ impl Query {
 pub struct QueryConfigRequest {}
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct QueryAppConfigRequest {
-    pub key: String,
-}
+pub struct QueryAppConfigRequest {}
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -275,7 +264,6 @@ macro_rules! impl_into_query {
 impl_into_query! {
     Config     => QueryConfigRequest     => Config,
     AppConfig  => QueryAppConfigRequest  => Json,
-    AppConfigs => QueryAppConfigsRequest => BTreeMap<String, Json>,
     Balance    => QueryBalanceRequest    => Coin,
     Balances   => QueryBalancesRequest   => Coins,
     Supply     => QuerySupplyRequest     => Coin,
@@ -297,7 +285,6 @@ impl_into_query! {
 pub enum QueryResponse {
     Config(Config),
     AppConfig(Json),
-    AppConfigs(BTreeMap<String, Json>),
     Balance(Coin),
     Balances(Coins),
     Supply(Coin),
@@ -334,7 +321,6 @@ impl QueryResponse {
     generate_downcast! {
         Config     => Config,
         AppConfig  => Json,
-        AppConfigs => BTreeMap<String, Json>,
         Balance    => Coin,
         Balances   => Coins,
         Supply     => Coin,

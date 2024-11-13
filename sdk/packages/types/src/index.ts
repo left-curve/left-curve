@@ -236,6 +236,12 @@ export type {
 } from "./amm.js";
 
 export type {
+  TokenFactoryConfig,
+  TokenFactoryQueryMsg,
+  TokenFactoryExecuteMsg,
+} from "./token-factory.js";
+
+export type {
   Duration,
   Timestamp,
   Language,

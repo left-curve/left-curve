@@ -4,9 +4,9 @@ use {
     grug_jmt::Proof,
     grug_math::Inner,
     grug_types::{
-        Addr, AsyncSigner, Binary, Code, Coin, Coins, Config, ConfigUpdates, ContractInfo, Denom,
-        GenericResult, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, Op, Query,
-        QueryResponse, StdError, Tx, TxOutcome, UnsignedTx,
+        Addr, AsyncSigner, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
+        Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse,
+        StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap},
@@ -404,7 +404,7 @@ impl Client {
             } => {
                 let unsigned_tx = UnsignedTx {
                     sender: sign_opt.sender,
-                    msgs: msgs.clone(),
+                    msgs: NonEmpty::new(msgs.clone())?,
                     // TODO: allow user to specify this
                     data: Json::null(),
                 };
@@ -432,17 +432,18 @@ impl Client {
     }
 
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
-    pub async fn configure<S>(
+    pub async fn configure<T, S>(
         &self,
-        updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Op<Json>>,
+        new_cfg: Option<Config>,
+        new_app_cfg: Option<T>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_, S>,
     ) -> anyhow::Result<tx_sync::Response>
     where
+        T: Serialize,
         S: AsyncSigner,
     {
-        let msg = Message::configure(updates, app_updates);
+        let msg = Message::configure(new_cfg, new_app_cfg)?;
         self.send_message(msg, gas_opt, sign_opt).await
     }
 

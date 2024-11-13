@@ -40,8 +40,6 @@ pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
 /// The configuration for the lending contract stored in the chain's AppConfig.
 #[grug::derive(Serde)]
 pub struct LendingAppConfig {
-    /// The address of the lending contract.
-    pub lending: Addr,
     /// The powers of all collateral tokens. This is the adjustment factor for
     /// the collateral value of a given collateral token. Meaning, if the
     /// collateral token has a power of 0.9, then the value of the collateral

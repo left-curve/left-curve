@@ -104,6 +104,9 @@ export const tailwindConfig: Partial<Config> = {
           white: "#F2E2B8",
         },
       },
+      screens: {
+        "3xl": "1925px",
+      },
       borderRadius: {
         small: "8px",
         medium: "12px",

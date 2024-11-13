@@ -4,8 +4,8 @@ use {
     dango_lending::DEBTS,
     dango_types::{
         account::margin::{HealthResponse, QueryMsg},
-        config::LENDING_KEY,
-        lending::{CollateralPower, LendingAppConfig},
+        config::AppConfig,
+        lending::CollateralPower,
     },
     grug::{
         Addr, BorshDeExt, Coins, Denom, ImmutableCtx, Inner, IsZero, Json, JsonSerExt, NumberConst,
@@ -71,12 +71,12 @@ pub fn calculate_account_health(
 }
 
 pub fn query_health(ctx: ImmutableCtx) -> anyhow::Result<HealthResponse> {
-    let lending_config: LendingAppConfig = ctx.querier.query_app_config(LENDING_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Query all debts for the account.
     let debts = ctx
         .querier
-        .query_wasm_raw(lending_config.lending, DEBTS.path(ctx.contract))?
+        .query_wasm_raw(app_cfg.addresses.lending, DEBTS.path(ctx.contract))?
         .map(|coins| coins.deserialize_borsh::<Coins>())
         .transpose()?
         .unwrap_or_default();
@@ -85,6 +85,6 @@ pub fn query_health(ctx: ImmutableCtx) -> anyhow::Result<HealthResponse> {
         &ctx.querier,
         ctx.contract,
         debts,
-        lending_config.collateral_powers,
+        app_cfg.lending.collateral_powers,
     )
 }

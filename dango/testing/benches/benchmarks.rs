@@ -7,8 +7,8 @@ use {
         amm::{self, FeeRate, PoolParams, XykParams},
     },
     grug::{
-        btree_map, Addr, Coins, HashExt, JsonSerExt, Message, ResultExt, Signer, Tx, Udec128,
-        UniqueVec,
+        btree_map, Addr, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Signer, Tx,
+        Udec128, UniqueVec,
     },
     grug_db_disk::TempDataDir,
     rand::{distributions::Alphanumeric, Rng},
@@ -98,7 +98,7 @@ fn sends(c: &mut Criterion) {
                         Tx {
                             sender,
                             gas_limit: 2_000_000,
-                            msgs: vec![msg],
+                            msgs: NonEmpty::new_unchecked(vec![msg]),
                             data: data.to_json_value().unwrap(),
                             credential: credential.to_json_value().unwrap(),
                         }

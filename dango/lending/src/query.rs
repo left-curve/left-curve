@@ -1,8 +1,8 @@
 use {
     crate::{DEBTS, MARKETS},
     dango_types::{
-        config::LENDING_KEY,
-        lending::{CollateralPower, LendingAppConfig, Market, QueryMsg},
+        config::AppConfig,
+        lending::{CollateralPower, Market, QueryMsg},
     },
     grug::{
         Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
@@ -79,6 +79,6 @@ pub fn query_debts(
 pub fn query_collateral_powers(
     querier: &QuerierWrapper,
 ) -> StdResult<BTreeMap<Denom, CollateralPower>> {
-    let app_config: LendingAppConfig = querier.query_app_config(LENDING_KEY)?;
-    Ok(app_config.collateral_powers)
+    let app_config: AppConfig = querier.query_app_config()?;
+    Ok(app_config.lending.collateral_powers)
 }
