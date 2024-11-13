@@ -38,11 +38,10 @@ pub fn calculate_account_health(
     let app_cfg: AppConfig = querier.query_app_config()?;
 
     // Calculate the total value of the debts.
-    let mut total_debt_value = Udec128::ZERO;
-    for coin in debts {
+    let total_debt_value = debts.into_iter().try_fold(Udec128::ZERO, |acc, coin| {
         let price = querier.query_price(app_cfg.addresses.oracle, &coin.denom)?;
-        total_debt_value += price.value_of_unit_amount(coin.amount)?;
-    }
+        Ok::<_, anyhow::Error>(acc + price.value_of_unit_amount(coin.amount)?)
+    })?;
 
     // Calculate the total value of the account's collateral adjusted for the collateral power.
     let mut total_adjusted_collateral_value = Udec128::ZERO;
