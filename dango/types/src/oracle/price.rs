@@ -1,5 +1,5 @@
 use {
-    grug::{Defined, Inner, Udec128, Uint128, Undefined},
+    grug::{Defined, StdResult, Udec128, Uint128, Undefined},
     pyth_sdk::PriceFeed,
 };
 
@@ -44,9 +44,17 @@ impl PrecisionedPrice {
     /// Returns the value of a given unit amount. E.g. if this Price represents
     /// the price in USD of one ATOM, then this function will return the value
     /// in USD of the given number of uatom.
-    pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> Udec128 {
-        self.humanized_price * Udec128::new(*unit_amount.inner())
-            / Udec128::new(10u128.pow(self.precision.into_inner() as u32))
+    ///
+    /// e.g.
+    /// Humanized price: 3000
+    /// precision: 18
+    /// unit amount: 1*10^18
+    pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> StdResult<Udec128> {
+        Ok(self.humanized_price
+            * Udec128::checked_from_ratio(
+                unit_amount,
+                10u128.pow(self.precision.into_inner() as u32),
+            )?)
     }
 }
 
@@ -72,5 +80,30 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
             timestamp: price_unchecked.publish_time.unsigned_abs(),
             precision: Undefined::new(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use grug::NumberConst;
+
+    use super::*;
+
+    #[test]
+    fn value_of_unit_amount_does_not_overflow_with_large_precision() {
+        // $100M per ETH
+        let price = PrecisionedPrice {
+            humanized_price: Udec128::new(100_000_000u128),
+            humanized_ema: Udec128::ONE,
+            timestamp: 0,
+            precision: Defined::new(18),
+        };
+
+        // Value of 100M ETH at $100M = $100000T
+        let value = price
+            .value_of_unit_amount(Uint128::new(100_000_000u128 * 10u128.pow(18)))
+            .unwrap();
+        println!("{value:?}");
+        assert_eq!(value, Udec128::new(10_000_000_000_000_000u128));
     }
 }

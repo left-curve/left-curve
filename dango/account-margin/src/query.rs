@@ -38,7 +38,7 @@ pub fn calculate_account_health(
     let mut total_debt_value = Udec128::ZERO;
     for coin in debts {
         let price = dango_oracle::raw_query_price(querier, &coin.denom)?;
-        total_debt_value += price.value_of_unit_amount(coin.amount);
+        total_debt_value += price.value_of_unit_amount(coin.amount)?;
     }
 
     // Calculate the total value of the account's collateral adjusted for the collateral power.
@@ -52,7 +52,7 @@ pub fn calculate_account_health(
         }
 
         let price = dango_oracle::raw_query_price(querier, &denom)?;
-        let collateral_value = price.value_of_unit_amount(collateral_balance);
+        let collateral_value = price.value_of_unit_amount(collateral_balance)?;
         total_adjusted_collateral_value += collateral_value * power.into_inner();
     }
 
