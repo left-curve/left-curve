@@ -6,7 +6,7 @@ export const Footer: React.FC = () => {
     <footer className="flex flex-col gap-6 md:gap-10 items-center justify-center py-2 pb-12 md:pb-8">
       <div className="flex gap-12 uppercase font-extrabold">
         <a
-          href="https://x.com/leftCurveSoft"
+          href="https://x.com/dango_zone"
           target="_blank"
           rel="noreferrer"
           className="text-typography-black-300 hover:bg-typography-purple-300/40 rounded-full p-2 transition-all"
