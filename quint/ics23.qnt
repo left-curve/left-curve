@@ -256,31 +256,24 @@ module ics23 {
   def verifyNonMembership(root: CommitmentRoot_t,
       np: NonExistsProof_t, key: Key_t): bool = and {
     // getNonExistProofForKey
-    isNone(np.left) or match np.left {
-                                | Some(ep) =>  lessThan(ep.key, key)
-                                | None => true
-                              },
-    isNone(np.right) or match np.right {
-                                | Some(ep) =>  lessThan(key, ep.key)
-                                | None => true
-                              },
+    np.left == None or lessThan(np.left.unwrap().key, key),
+    np.right == None or lessThan(key, np.right.unwrap().key),
     // implicit assumption, missing in the code:
     // https://github.com/informalsystems/ics23-audit/issues/14
     np.key == key,
     // Verify
-    not(isNone(np.left)) or not(isNone(np.right)),
-    isNone(np.left) or and {
-      //TODO: @josef not sure if this can be safely unwrapped and it goes on for the rest of the file
+    np.left != None or np.right != None,
+    np.left == None or and {
       verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
       lessThan(np.left.unwrap().key, key),
     },
-    isNone(np.right) or and {
+    np.right == None or and {
       verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
       lessThan(key, np.right.unwrap().key),
     },
-    if (isNone(np.left)) {
+    if (np.left == None) {
       isLeftMost(np.right.unwrap().path)
-    } else if (isNone(np.right)) {
+    } else if (np.right == None) {
       isRightMost(np.left.unwrap().path)
     } else {
       isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
