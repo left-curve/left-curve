@@ -3443,6 +3443,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "grug-math",
  "grug-types",
  "indexer-entity",
  "indexer-migration",

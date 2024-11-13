@@ -16,6 +16,8 @@ pub enum Transaction {
     #[sea_orm(iden = "transactions")]
     Table,
     Id,
+    Data,
+    Credential,
     Hash,
     HasSucceeded,
     ErrorMessage,

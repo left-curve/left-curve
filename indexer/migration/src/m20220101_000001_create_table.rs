@@ -39,6 +39,8 @@ impl MigrationTrait for Migration {
                             .big_unsigned()
                             .not_null(),
                     )
+                    .col(json_binary(Transaction::Data))
+                    .col(json_binary(Transaction::Credential))
                     .col(string(Transaction::Hash))
                     .col(boolean(Transaction::HasSucceeded))
                     .col(string_null(Transaction::ErrorMessage))

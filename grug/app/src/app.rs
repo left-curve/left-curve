@@ -298,7 +298,9 @@ where
             );
 
             #[cfg(feature = "indexer")]
-            self.indexer_app.index_transaction(&block, &tx, &tx_outcome);
+            self.indexer_app
+                .index_transaction(&block, &tx, &tx_outcome)
+                .unwrap();
 
             tx_outcomes.push(tx_outcome);
         }

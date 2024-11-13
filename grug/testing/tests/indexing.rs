@@ -37,6 +37,13 @@ fn index_block() {
             assert_that!(block).is_some();
             dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
+
+            let transaction = indexer_entity::transactions::Entity::find()
+                .one(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch transactions");
+            dbg!(&transaction);
+
             Ok::<(), sea_orm::DbErr>(())
         })
         .expect("Can't commit txn");

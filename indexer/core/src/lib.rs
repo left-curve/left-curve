@@ -1,3 +1,4 @@
+use grug_math::Inner;
 use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::prelude::*;
@@ -112,11 +113,47 @@ impl App {
 
     pub fn index_transaction(
         &self,
-        _block_info: &BlockInfo,
-        _tx: &Tx,
-        _tx_outcome: &TxOutcome,
+        block: &BlockInfo,
+        tx: &Tx,
+        tx_outcome: &TxOutcome,
     ) -> Result<(), anyhow::Error> {
-        // TODO:
+        let txn = self.db_txn.lock().unwrap();
+        let Some(txn) = txn.as_ref() else {
+            anyhow::bail!("No transaction to commit");
+        };
+
+        let epoch_millis = block.timestamp.into_millis();
+        let seconds = (epoch_millis / 1_000) as i64;
+        let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
+
+        let naive_datetime = sea_orm::sqlx::types::chrono::Utc
+            .timestamp_opt(seconds, nanoseconds)
+            .single()
+            .unwrap_or_default()
+            .naive_utc();
+
+        self.runtime.block_on(async {
+            let new_transaction = indexer_entity::transactions::ActiveModel {
+                id: Set(Uuid::new_v4()),
+                has_succeeded: Set(tx_outcome.result.is_ok()),
+                error_message: Set(tx_outcome
+                    .clone()
+                    .result
+                    .map_or_else(|err| Some(err), |_| None)),
+                gas_wanted: Set(tx.gas_limit.try_into().unwrap()),
+                gas_used: Set(tx_outcome.gas_used.try_into().unwrap()),
+                created_at: Set(naive_datetime),
+                block_height: Set(block.height.try_into().unwrap()),
+                hash: Set("".to_string()),
+                data: Set(tx.data.clone().into_inner()),
+                credential: Set(tx.credential.clone().into_inner()),
+            };
+            new_transaction
+                .insert(txn)
+                .await
+                .expect("Can't save transaction");
+        });
+
         Ok(())
     }
 

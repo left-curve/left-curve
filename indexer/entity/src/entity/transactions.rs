@@ -9,6 +9,10 @@ pub struct Model {
     pub id: Uuid,
     pub created_at: DateTime,
     pub block_height: i64,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub data: Json,
+    #[sea_orm(column_type = "JsonBinary")]
+    pub credential: Json,
     pub hash: String,
     pub has_succeeded: bool,
     pub error_message: Option<String>,
