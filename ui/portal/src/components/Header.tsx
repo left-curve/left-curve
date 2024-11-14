@@ -25,6 +25,7 @@ export const Header: React.FC = () => {
           <MenuNotifications />
           <MenuAccounts
             manageAction={(account) => navigate(`/accounts/${account.index}`)}
+            createAction={() => navigate("/account-creation")}
             images={{
               [AccountType.Spot]: "/images/avatars/spot.svg",
               [AccountType.Margin]: "/images/avatars/margin.svg",

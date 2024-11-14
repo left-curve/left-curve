@@ -13,6 +13,7 @@ import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 import { type Account, AccountType } from "@leftcurve/types";
 
 interface Props {
+  createAction?: () => void;
   manageAction?: (account: Account) => void;
   images: {
     [AccountType.Spot]: string;
@@ -21,7 +22,7 @@ interface Props {
   };
 }
 
-export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
+export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageAction }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useDOMRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -72,7 +73,12 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
             Accounts
           </p>
           <div className="flex gap-2">
-            <Button isIconOnly radius="lg" color="green">
+            <Button
+              isIconOnly
+              radius="lg"
+              color="green"
+              onClick={() => [createAction?.(), setShowMenu(false)]}
+            >
               <PlusIcon className="h-6 w-6" />
             </Button>
             <Button color="purple" radius="lg" isIconOnly onClick={() => setExpanded(!expanded)}>
