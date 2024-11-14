@@ -8,7 +8,7 @@ export const Stepper: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <AnimatePresence mode="wait">
       <div className="flex flex-col items-center justify-center w-full">
-        <div className="dango-grid-square-l flex flex-col relative items-center justify-center gap-12">
+        <div className="dango-grid-square-l flex flex-col relative items-center justify-between">
           {children}
           <div className="flex gap-4 text-xs tracking-wider font-semibold">
             <p

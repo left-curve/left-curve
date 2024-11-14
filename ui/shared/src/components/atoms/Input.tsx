@@ -55,10 +55,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
           {endContent ? endContent : null}
         </div>
-        <div className={description({ className: classNames?.description })}>
-          {error ? <span className="text-typography-pink-300">{error}</span> : null}
-          {descriptionText && !error ? <span>{descriptionText}</span> : null}
-        </div>
+        {!bottomComponent || error ? (
+          <div className={description({ className: classNames?.description })}>
+            {error ? <span className="text-typography-pink-300">{error}</span> : null}
+            {descriptionText && !error ? <span>{descriptionText}</span> : null}
+          </div>
+        ) : null}
         {bottomComponent && !error ? bottomComponent : null}
       </div>
     );
