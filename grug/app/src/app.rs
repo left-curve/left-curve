@@ -2,6 +2,7 @@
 use grug_types::{JsonDeExt, JsonSerExt};
 #[cfg(feature = "indexer")]
 use indexer_core::App as IndexerApp;
+use indexer_core::AppTrait as IndexerAppTrait;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,

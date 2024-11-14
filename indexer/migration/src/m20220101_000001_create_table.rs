@@ -62,6 +62,7 @@ impl MigrationTrait for Migration {
                     .col(uuid(Message::TransactionId))
                     .col(date_time(Message::CreatedAt))
                     .col(json_binary(Message::Data))
+                    .col(string(Message::MethodName))
                     // TODO: add foreign key to blocks
                     .col(
                         ColumnDef::new(Message::BlockHeight)

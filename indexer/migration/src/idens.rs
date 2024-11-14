@@ -35,7 +35,7 @@ pub enum Message {
     Id,
     TransactionId,
     Data,
-    //MethodName
+    MethodName,
     Addr,
     BlockHeight,
     CreatedAt,

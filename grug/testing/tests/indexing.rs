@@ -17,9 +17,9 @@ fn index_block() {
         .build();
 
     let to = accounts["owner"].address;
-    let from = accounts["owner"].address;
+    //let from = accounts["owner"].address;
 
-    dbg!(&accounts);
+    //dbg!(&accounts);
 
     let _outcome = suite.send_message_with_gas(
         &mut accounts["sender"],

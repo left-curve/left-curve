@@ -1,4 +1,5 @@
 use grug_math::Inner;
+use grug_types::JsonSerExt;
 use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::prelude::*;
@@ -38,6 +39,22 @@ impl Context {
     }
 }
 
+pub trait AppTrait {
+    fn db_txn(&self) -> Result<(), anyhow::Error>;
+    fn index_block(
+        &self,
+        block: &BlockInfo,
+        block_outcome: &BlockOutcome,
+    ) -> Result<(), anyhow::Error>;
+    fn index_transaction(
+        &self,
+        block: &BlockInfo,
+        tx: &Tx,
+        tx_outcome: &TxOutcome,
+    ) -> Result<(), anyhow::Error>;
+    fn save_db_txn(&self) -> Result<(), anyhow::Error>;
+}
+
 #[derive(Debug, Clone)]
 pub struct App {
     pub context: Context,
@@ -45,29 +62,8 @@ pub struct App {
     db_txn: Arc<Mutex<Option<DatabaseTransaction>>>,
 }
 
-impl App {
-    pub fn new() -> Result<Self, anyhow::Error> {
-        let runtime = Arc::new(Builder::new_multi_thread()
-                //.worker_threads(4)  // Adjust as needed
-                .enable_all()
-                .build()
-                .unwrap());
-
-        let db = runtime.block_on(async { Context::connect_db().await })?;
-
-        Ok(App {
-            context: Context { db },
-            runtime: runtime.clone(),
-            db_txn: Arc::new(Mutex::new(None)),
-        })
-    }
-
-    pub fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
-        self.runtime
-            .block_on(async { self.context.migrate_db().await })
-    }
-
-    pub fn db_txn(&self) -> Result<(), anyhow::Error> {
+impl AppTrait for App {
+    fn db_txn(&self) -> Result<(), anyhow::Error> {
         let db_transaction = self
             .runtime
             .block_on(async { self.context.db.begin().await })?;
@@ -77,7 +73,7 @@ impl App {
         Ok(())
     }
 
-    pub fn index_block(
+    fn index_block(
         &self,
         block: &BlockInfo,
         _block_outcome: &BlockOutcome,
@@ -111,7 +107,7 @@ impl App {
         Ok(())
     }
 
-    pub fn index_transaction(
+    fn index_transaction(
         &self,
         block: &BlockInfo,
         tx: &Tx,
@@ -134,6 +130,7 @@ impl App {
 
         self.runtime.block_on(async {
             let transaction_id = Uuid::new_v4();
+            let sender = tx.sender.to_string();
             let new_transaction = indexer_entity::transactions::ActiveModel {
                 id: Set(transaction_id),
                 has_succeeded: Set(tx_outcome.result.is_ok()),
@@ -147,6 +144,7 @@ impl App {
                 block_height: Set(block.height.try_into().unwrap()),
                 hash: Set("".to_string()),
                 data: Set(tx.data.clone().into_inner()),
+                sender: Set(sender),
                 credential: Set(tx.credential.clone().into_inner()),
             };
             new_transaction
@@ -159,12 +157,17 @@ impl App {
                     .get("contract")
                     .and_then(|c| c.as_str())
                     .map(|c| c.to_string());
+                let method_name = serialized_message
+                    .as_object()
+                    .and_then(|obj| obj.keys().next().cloned())
+                    .unwrap_or_default();
 
                 let new_message = indexer_entity::messages::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     transaction_id: Set(transaction_id),
                     block_height: Set(block.height.try_into().unwrap()),
                     created_at: Set(naive_datetime),
+                    method_name: Set(method_name),
                     data: Set(serialized_message),
                     addr: Set(contract_addr),
                 };
@@ -188,7 +191,7 @@ impl App {
     }
 
     /// NOTE: when calling this, the DB transaction Mutex but be unlocked!
-    pub fn save_db_txn(&self) -> Result<(), anyhow::Error> {
+    fn save_db_txn(&self) -> Result<(), anyhow::Error> {
         let mut txn = self.db_txn.lock().unwrap();
         let Some(txn) = txn.take() else {
             anyhow::bail!("No transaction to commit");
@@ -197,6 +200,29 @@ impl App {
         self.runtime.block_on(async { txn.commit().await })?;
 
         Ok(())
+    }
+}
+
+impl App {
+    pub fn new() -> Result<Self, anyhow::Error> {
+        let runtime = Arc::new(Builder::new_multi_thread()
+                //.worker_threads(4)  // Adjust as needed
+                .enable_all()
+                .build()
+                .unwrap());
+
+        let db = runtime.block_on(async { Context::connect_db().await })?;
+
+        Ok(App {
+            context: Context { db },
+            runtime: runtime.clone(),
+            db_txn: Arc::new(Mutex::new(None)),
+        })
+    }
+
+    pub fn migrate_db(&self) -> Result<(), sea_orm::DbErr> {
+        self.runtime
+            .block_on(async { self.context.migrate_db().await })
     }
 
     /// This will be used to ensure the tokio has no more tasks to run, when we gracefully stop

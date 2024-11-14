@@ -11,6 +11,7 @@ pub struct Model {
     pub created_at: DateTime,
     #[sea_orm(column_type = "JsonBinary")]
     pub data: Json,
+    pub method_name: String,
     pub block_height: i64,
     pub addr: Option<String>,
 }
