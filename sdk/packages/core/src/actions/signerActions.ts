@@ -48,7 +48,7 @@ export type SignerActions<
   instantiate: (args: InstantiateParameters) => InstantiateReturnType;
   registerAccount: (
     args: RegisterAccountParameters,
-    txArgs: TxParameters,
+    txArgs?: TxParameters,
   ) => RegisterAccountReturnType;
   storeCodeAndInstantiate: (
     args: StoreCodeAndInstantiateParameters,
