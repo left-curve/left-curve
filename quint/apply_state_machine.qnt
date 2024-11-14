@@ -31,7 +31,7 @@ module apply_state_machine {
     // For now, we always start with an empty tree
     tree' = { nodes: Map(), orphans: Set() },
     version' = 1,
-    smallest_unpruned_version' = 0,
+    smallest_unpruned_version' = 1,
     ops_history' = [],
   }
 
@@ -63,7 +63,7 @@ module apply_state_machine {
     tree' = new_tree,
     version' = version + 1,
     smallest_unpruned_version' = smallest_unpruned_version,
-    ops_history' = ops_history.append(ops),
+    ops_history' = ops_history.append(q::debug("ops", ops)),
   }
 
   action step_fancy = step_parametrized(fancy::apply, assign_result)
@@ -308,8 +308,7 @@ module apply_state_machine {
     if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
 val verifyMembershipInv =
-    activeTreeVersions.forall(version => all {
-      version > 0,
+    activeTreeVersions.forall(version => 
       tree.nodes.values().forall (nodes =>
         match nodes {
           | Internal => true
@@ -319,11 +318,11 @@ val verifyMembershipInv =
               match proof {
                 | Some(p) =>
                   match p {
-                    | Exist(ep) => verifyMembership(root, ep, n.key_hash, n.value_hash)
-                    | NonExist(nep) => verifyNonMembership(root, nep, n.key_hash)
+                    | Exist(ep) =>  q::debug("verifyMembership ", verifyMembership(root, ep, q::debug("membership key", n.key_hash), q::debug("membership value", n.value_hash)))
+                    | NonExist(nep) => q::debug("verifyNonMembership ", verifyNonMembership(root, nep, q::debug("non membership key", n.key_hash)))
                   }
                 | None => false}})
-    })}
+    )}
 
 module pruning_state_machine {
   import tree.* from "./tree"
