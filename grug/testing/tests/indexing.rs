@@ -16,12 +16,15 @@ fn index_block() {
         .set_owner("owner")
         .build();
 
-    let to = accounts["sender"].address;
+    let to = accounts["owner"].address;
+    let from = accounts["owner"].address;
+
+    dbg!(&accounts);
 
     let _outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
         2000,
-        Message::transfer(to, Coins::new()).unwrap(),
+        Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
     );
 
     // ensure block was saved
@@ -38,11 +41,23 @@ fn index_block() {
             dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let transaction = indexer_entity::transactions::Entity::find()
-                .one(&suite.app.indexer_app.context.db)
+            let transactions = indexer_entity::transactions::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch transactions");
-            dbg!(&transaction);
+            dbg!(&transactions);
+
+            let messages = indexer_entity::messages::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch messages");
+            dbg!(&messages);
+
+            let events = indexer_entity::events::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch events");
+            dbg!(&events);
 
             Ok::<(), sea_orm::DbErr>(())
         })

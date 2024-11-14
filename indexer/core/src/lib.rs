@@ -133,8 +133,9 @@ impl App {
             .naive_utc();
 
         self.runtime.block_on(async {
+            let transaction_id = Uuid::new_v4();
             let new_transaction = indexer_entity::transactions::ActiveModel {
-                id: Set(Uuid::new_v4()),
+                id: Set(transaction_id),
                 has_succeeded: Set(tx_outcome.result.is_ok()),
                 error_message: Set(tx_outcome
                     .clone()
@@ -152,6 +153,35 @@ impl App {
                 .insert(txn)
                 .await
                 .expect("Can't save transaction");
+            for message in tx.msgs.iter() {
+                let serialized_message = serde_json::to_value(message).unwrap();
+                let contract_addr = serialized_message
+                    .get("contract")
+                    .and_then(|c| c.as_str())
+                    .map(|c| c.to_string());
+
+                let new_message = indexer_entity::messages::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    transaction_id: Set(transaction_id),
+                    block_height: Set(block.height.try_into().unwrap()),
+                    created_at: Set(naive_datetime),
+                    data: Set(serialized_message),
+                    addr: Set(contract_addr),
+                };
+                new_message.insert(txn).await.expect("Can't save message");
+            }
+            for event in tx_outcome.events.iter() {
+                let serialized_attributes = serde_json::to_value(&event.attributes).unwrap();
+                let new_event = indexer_entity::events::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    transaction_id: Set(transaction_id),
+                    block_height: Set(block.height.try_into().unwrap()),
+                    created_at: Set(naive_datetime),
+                    r#type: Set(event.r#type.clone()),
+                    attributes: Set(serialized_attributes),
+                };
+                new_event.insert(txn).await.expect("Can't save event");
+            }
         });
 
         Ok(())

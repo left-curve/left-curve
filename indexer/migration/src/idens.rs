@@ -16,6 +16,7 @@ pub enum Transaction {
     #[sea_orm(iden = "transactions")]
     Table,
     Id,
+    Sender,
     Data,
     Credential,
     Hash,
@@ -32,7 +33,23 @@ pub enum Message {
     #[sea_orm(iden = "messages")]
     Table,
     Id,
+    TransactionId,
     Data,
+    //MethodName
+    Addr,
+    BlockHeight,
+    CreatedAt,
+}
+
+#[derive(DeriveIden)]
+pub enum Event {
+    #[sea_orm(iden = "events")]
+    Table,
+    Id,
+    TransactionId,
+    Type,
+    //ContractAddr,
+    Attributes,
     BlockHeight,
     CreatedAt,
 }

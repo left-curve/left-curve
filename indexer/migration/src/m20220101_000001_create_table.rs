@@ -1,5 +1,5 @@
 use {
-    crate::idens::{Block, Message, Transaction},
+    crate::idens::{Block, Event, Message, Transaction},
     sea_orm_migration::{prelude::*, schema::*},
 };
 
@@ -34,11 +34,13 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_uuid(Transaction::Id))
                     .col(date_time(Transaction::CreatedAt))
+                    // TODO: add foreign key to blocks
                     .col(
                         ColumnDef::new(Transaction::BlockHeight)
                             .big_unsigned()
                             .not_null(),
                     )
+                    .col(string(Transaction::Sender))
                     .col(json_binary(Transaction::Data))
                     .col(json_binary(Transaction::Credential))
                     .col(string(Transaction::Hash))
@@ -56,13 +58,34 @@ impl MigrationTrait for Migration {
                     .table(Message::Table)
                     .if_not_exists()
                     .col(pk_uuid(Message::Id))
+                    // TODO: add foreign key to transactions
+                    .col(uuid(Message::TransactionId))
                     .col(date_time(Message::CreatedAt))
+                    .col(json_binary(Message::Data))
+                    // TODO: add foreign key to blocks
                     .col(
-                        ColumnDef::new(Transaction::BlockHeight)
+                        ColumnDef::new(Message::BlockHeight)
                             .big_unsigned()
                             .not_null(),
                     )
-                    .col(json(Message::Data))
+                    .col(string_null(Message::Addr))
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(Event::Table)
+                    .if_not_exists()
+                    .col(pk_uuid(Event::Id))
+                    // TODO: add foreign key to transactions
+                    .col(uuid(Event::TransactionId))
+                    .col(date_time(Event::CreatedAt))
+                    .col(string(Event::Type))
+                    .col(json_binary(Event::Attributes))
+                    // TODO: add foreign key to blocks
+                    .col(ColumnDef::new(Event::BlockHeight).big_unsigned().not_null())
                     .to_owned(),
             )
             .await?;
