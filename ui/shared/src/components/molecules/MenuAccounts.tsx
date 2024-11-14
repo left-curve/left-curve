@@ -4,13 +4,14 @@ import { useAccount } from "@leftcurve/react";
 import { useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
-import { capitalize } from "@leftcurve/utils";
 import { twMerge, useDOMRef } from "../../utils";
 
 import { AccountCard, Button } from "../";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
+import { capitalize } from "@leftcurve/utils";
+import { useAccountName } from "../../hooks";
 
 interface Props {
   createAction?: () => void;
@@ -28,6 +29,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
+  const [accountName] = useAccountName();
 
   useClickAway(menuRef, (e) => {
     if (buttonRef.current?.contains(e.target as Node)) return;
@@ -57,7 +59,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
         radius="lg"
         className="font-bold px-4 py-2"
       >
-        {capitalize(selectedAccount.type)} Account #{selectedAccount.index}
+        {capitalize(accountName)}
       </Button>
       <div
         ref={menuRef}
