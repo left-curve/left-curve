@@ -9,7 +9,7 @@ use {
     },
     grug::{
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, ResultExt, Signer, StdResult, Tx, Undefined,
+        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
@@ -216,7 +216,7 @@ impl Signer for TestAccount<Defined<Addr>> {
         Ok(Tx {
             sender: self.address(),
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })
@@ -251,7 +251,7 @@ impl Signer for Factory {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: Json::null(),
             credential: Json::null(),
         })
@@ -317,7 +317,7 @@ impl<'a> Signer for Safe<'a> {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })

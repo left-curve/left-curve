@@ -1,13 +1,13 @@
-import { http, createUserClient } from "@leftcurve/sdk";
-import { localhost } from "@leftcurve/sdk/chains";
+import { http, createSignerClient } from "@leftcurve/sdk";
+import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 
 async function execute() {
-  const client = createUserClient({
-    chain: localhost, // Its optional
+  const client = createSignerClient({
+    chain: devnet, // Its optional
     username: "owner",
     signer: PrivateKeySigner.fromRandomKey(),
-    transport: http("http://localhost:26657"),
+    transport: http(devnet.rpcUrls.default.http.at(0)),
   });
 
   const response = await client.execute({ contract: "0x", msg: {}, sender: "0x" });

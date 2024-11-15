@@ -11,7 +11,7 @@ use {
             Username,
         },
         auth::Key,
-        config::IBC_TRANSFER_KEY,
+        config::AppConfig,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
@@ -53,7 +53,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 // exactly one message, to execute the factory itself with `Execute::RegisterUser`.
 // This transaction does not need to include any metadata or credential.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, mut tx: Tx) -> anyhow::Result<AuthResponse> {
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let mut msgs = tx.msgs.iter();
 
     let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
@@ -94,7 +94,7 @@ pub fn authenticate(ctx: AuthCtx, mut tx: Tx) -> anyhow::Result<AuthResponse> {
     let maybe_msg = if ctx.mode == AuthMode::Check {
         // We already asserted that `tx.msgs` contains exactly one message,
         // so safe to unwrap here.
-        Some(tx.msgs.pop().unwrap())
+        Some(tx.msgs.into_inner().pop().unwrap())
     } else {
         None
     };
@@ -119,10 +119,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    let ibc_transfer: Addr = ctx.querier.query_app_config(IBC_TRANSFER_KEY)?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     ensure!(
-        ctx.sender == ibc_transfer,
+        ctx.sender == app_cfg.addresses.ibc_transfer,
         "only IBC transfer contract can make deposits"
     );
 

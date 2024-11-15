@@ -25,7 +25,6 @@ Prerequisites:
 
 We use [VS Code](https://code.visualstudio.com/) as text editor with the following plugins:
 
-- [AstroBuild](https://marketplace.visualstudio.com/items?itemName=astro-build.astro-vscode)
 - [Biomejs](https://marketplace.visualstudio.com/items?itemName=biomejs.biome)
 - [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
 - [Dependi](https://marketplace.visualstudio.com/items?itemName=fill-labs.dependi)
@@ -118,6 +117,14 @@ Storybook:
 
 ```shell
 pnpm storybook
+```
+
+Book:
+
+```shell
+cargo install mdbook
+cargo install mdbook-katex
+mdbook build
 ```
 
 ## Acknowledgement

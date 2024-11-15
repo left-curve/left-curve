@@ -7,7 +7,7 @@ export {
 } from "./publicClient.js";
 
 export {
-  type UserClient,
-  type UserClientConfig,
-  createUserClient,
-} from "./userClient.js";
+  type SignerClient,
+  type SignerClientConfig,
+  createSignerClient,
+} from "./signerClient.js";

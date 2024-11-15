@@ -1,6 +1,6 @@
 use {
     dango_types::{
-        config::ORACLE_KEY,
+        config::AppConfig,
         oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
     },
     grug::{Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierWrapper, StdError, Tx},
@@ -40,11 +40,11 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
         mut txs: Vec<Bytes>,
         _max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
-        let oracle = querier.query_app_config(ORACLE_KEY)?;
+        let cfg: AppConfig = querier.query_app_config()?;
 
         // Retrieve the price ids from the oracle and prepare the query params.
         let params = querier
-            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+            .query_wasm_smart(cfg.addresses.oracle, QueryPriceSourcesRequest {
                 start_after: None,
                 limit: Some(u32::MAX),
             })?
@@ -71,13 +71,13 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
         // Build the tx.
         let tx = Tx {
-            sender: oracle,
+            sender: cfg.addresses.oracle,
             gas_limit: GAS_LIMIT,
-            msgs: vec![Message::execute(
-                oracle,
+            msgs: NonEmpty::new_unchecked(vec![Message::execute(
+                cfg.addresses.oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new(prices)?),
                 Coins::new(),
-            )?],
+            )?]),
             data: Json::null(),
             credential: Json::null(),
         };

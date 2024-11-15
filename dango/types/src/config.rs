@@ -1,5 +1,15 @@
-pub const ACCOUNT_FACTORY_KEY: &str = "account_factory";
+use grug::Addr;
 
-pub const IBC_TRANSFER_KEY: &str = "ibc_transfer";
+/// Application-specific configurations of the Dango chain.
+#[grug::derive(Serde)]
+pub struct AppConfig {
+    pub addresses: AppAddresses,
+}
 
-pub const ORACLE_KEY: &str = "oracle";
+/// Addresses of relevant Dango contracts.
+#[grug::derive(Serde)]
+pub struct AppAddresses {
+    pub account_factory: Addr,
+    pub ibc_transfer: Addr,
+    pub oracle: Addr,
+}

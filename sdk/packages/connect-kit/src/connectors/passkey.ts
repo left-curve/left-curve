@@ -1,10 +1,10 @@
 import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
 import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
-import { createKeyHash, createUserClient } from "@leftcurve/sdk";
+import { createKeyHash, createSignerClient } from "@leftcurve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
 import { createConnector } from "./createConnector.js";
 
-import type { UserClient } from "@leftcurve/sdk/clients";
+import type { SignerClient } from "@leftcurve/sdk/clients";
 import { ConnectorSigner } from "@leftcurve/sdk/signers";
 import { KeyAlgo } from "@leftcurve/types";
 import { getRootDomain } from "@leftcurve/utils";
@@ -18,7 +18,7 @@ type PasskeyConnectorParameters = {
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
   let _transport: Transport;
   let _username: string;
-  let _client: UserClient;
+  let _client: SignerClient;
   let _isAuthorized = false;
 
   const { icon } = parameters;
@@ -58,7 +58,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
       async getClient() {
         if (!_client) {
-          _client = createUserClient({
+          _client = createSignerClient({
             transport: _transport,
             signer: new ConnectorSigner(this),
             username: _username,

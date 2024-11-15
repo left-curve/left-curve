@@ -35,7 +35,7 @@ const spinner = tv({
         base: "animate-rotate-2",
         circle1: "stroke-blue-200",
         circle2:
-          "stroke-blue-500 [stroke-dasharray:1,200] [stroke-dashoffset:0] [stroke-linecap:round] animate-dash-4",
+          "stroke-typography-black-100 [stroke-dasharray:1,200] [stroke-dashoffset:0] [stroke-linecap:round] animate-dash-4",
       },
     },
     isError: {

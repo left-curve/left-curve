@@ -216,6 +216,32 @@ export type {
 } from "./safe.js";
 
 export type {
+  Pool,
+  PoolId,
+  PoolInfo,
+  PoolTypes,
+  PoolParams,
+  XykPool,
+  XykParams,
+  ConcentratedPool,
+  ConcentratedParams,
+  FeeRate,
+} from "./pool.js";
+
+export type {
+  AmmConfig,
+  AmmQueryMsg,
+  AmmExecuteMsg,
+  SwapOutcome,
+} from "./amm.js";
+
+export type {
+  TokenFactoryConfig,
+  TokenFactoryQueryMsg,
+  TokenFactoryExecuteMsg,
+} from "./token-factory.js";
+
+export type {
   Duration,
   Timestamp,
   Language,
@@ -277,6 +303,7 @@ export {
 export { AccountType } from "./account.js";
 export { KeyTag, KeyAlgo } from "./key.js";
 export { Vote } from "./safe.js";
+export { PoolType } from "./pool.js";
 
 export { ConnectorTypes, ConnectorIds } from "./connector.js";
 export { ConnectionStatus } from "./config.js";
