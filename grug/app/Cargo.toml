@@ -11,12 +11,13 @@ categories    = { workspace = true }
 
 [features]
 default = []
-abci    = ["tendermint-abci", "tendermint-proto"]
+abci    = ["data-encoding", "tendermint-abci", "tendermint-proto"]
 tracing = ["chrono", "dep:tracing"]
 
 [dependencies]
 borsh            = { workspace = true }
 chrono           = { workspace = true, optional = true }
+data-encoding    = { workspace = true, optional = true }
 grug-math        = { workspace = true }
 grug-storage     = { workspace = true }
 grug-types       = { workspace = true }

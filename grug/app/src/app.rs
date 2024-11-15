@@ -1,5 +1,3 @@
-#[cfg(feature = "abci")]
-use grug_types::{JsonDeExt, JsonSerExt};
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -18,6 +16,11 @@ use {
         UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
+};
+#[cfg(feature = "abci")]
+use {
+    data_encoding::BASE64,
+    grug_types::{JsonDeExt, JsonSerExt},
 };
 
 /// The ABCI application.
@@ -517,7 +520,30 @@ where
     {
         let txs = raw_txs
             .iter()
-            .filter_map(|raw_tx| raw_tx.deserialize_json().ok())
+            .filter_map(|raw_tx| {
+                if let Ok(tx) = raw_tx.deserialize_json() {
+                    Some(tx)
+                } else {
+                    // The transaction failed to deserialize.
+                    //
+                    // This can only happen for txs inserted by the block's
+                    // proposer during ABCI++ `PrepareProposal`, as regular txs
+                    // submitted by users would have been rejected during `CheckTx`
+                    // if they fail to deserialize.
+                    //
+                    // A block proposer inserting an invalid tx is a fatal error.
+                    // There's no correct answer on what's the better way to
+                    // handle this - halt the chain, or ignore? Here we choose
+                    // to ignore.
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        raw_tx = BASE64.encode(raw_tx.as_ref()),
+                        "Failed to deserialize transaction! Ignoring it..."
+                    );
+
+                    None
+                }
+            })
             .collect();
 
         self.do_finalize_block(block, txs)

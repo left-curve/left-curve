@@ -2273,6 +2273,7 @@ version = "0.0.0"
 dependencies = [
  "borsh 1.5.1",
  "chrono",
+ "data-encoding",
  "grug-math",
  "grug-storage",
  "grug-types",
