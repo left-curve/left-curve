@@ -53,6 +53,7 @@ fn setup_oracle_test(denoms: BTreeMap<Denom, PriceSource>) -> (TestSuite, Accoun
                         expiration_time: None,
                     },
                 },
+                price_sources: Default::default(),
             },
             "salt",
             None,

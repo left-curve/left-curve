@@ -7,7 +7,10 @@ use {
         config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, MarketUpdates},
-        oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+        oracle::{
+            self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
+            USDC_USD_ID, WBTC_USD_ID,
+        },
         taxman, token_factory,
     },
     grug::{
@@ -277,6 +280,11 @@ where
                         .collect(),
                     expiration_time: None,
                 },
+            },
+            price_sources: btree_map! {
+                Denom::from_str("usdc").unwrap() => PriceSource::Pyth { id: USDC_USD_ID, precision: 6 },
+                Denom::from_str("btc").unwrap()  => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
+                Denom::from_str("eth").unwrap()  => PriceSource::Pyth { id: ETH_USD_ID, precision: 18 },
             },
         },
         "dango/oracle",

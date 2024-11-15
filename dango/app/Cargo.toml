@@ -17,3 +17,4 @@ grug-app    = { workspace = true }
 prost       = { workspace = true }
 reqwest     = { workspace = true, features = ["blocking", "json"] }
 thiserror   = { workspace = true }
+tracing     = { workspace = true }

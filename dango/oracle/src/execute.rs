@@ -15,6 +15,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         GUARDIAN_SETS.save(ctx.storage, i, &guardian_set)?;
     }
 
+    for (denom, price_source) in msg.price_sources {
+        PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    }
+
     Ok(Response::new())
 }
 
