@@ -281,7 +281,6 @@ mod tests {
                     ibc_transfer: Addr::mock(0),
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
-                    oracle: Addr::mock(0),  // doesn't matter for this tes
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},
@@ -327,7 +326,6 @@ mod tests {
                     ibc_transfer: Addr::mock(0),
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
-                    oracle: Addr::mock(0),  // doesn't matter for this test
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},
@@ -429,7 +427,6 @@ mod tests {
                     ibc_transfer: Addr::mock(0),
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
-                    oracle: Addr::mock(0),  // doesn't matter for this tes
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},

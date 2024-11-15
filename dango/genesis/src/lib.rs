@@ -319,7 +319,6 @@ where
             ibc_transfer,
             lending,
             oracle,
-            oracle,
         },
         lending: lending_app_config,
     };
