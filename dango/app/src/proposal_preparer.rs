@@ -50,10 +50,10 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
                 limit: Some(u32::MAX),
             })?
             .into_values()
-            .filter_map(|price_id| {
+            .filter_map(|price_source| {
                 // For now there is only Pyth as PriceSource, but there could be more.
                 #[allow(irrefutable_let_patterns)]
-                if let PriceSource::Pyth { id, .. } = price_id {
+                if let PriceSource::Pyth { id, .. } = price_source {
                     Some(("ids[]", id.to_string()))
                 } else {
                     None
