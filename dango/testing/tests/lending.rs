@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{setup_test, Accounts},
+    dango_testing::{setup_test, Accounts, TestSuite},
     dango_types::{
         account::single,
         account_factory::AccountParams,
@@ -14,7 +14,7 @@ use {
     },
     grug::{
         btree_map, Addressable, Binary, Coin, Coins, Denom, HashExt, JsonSerExt, Message,
-        MsgConfigure, MsgTransfer, NumberConst, ResultExt, TestSuite, Udec128, Uint128,
+        MsgConfigure, MsgTransfer, NonEmpty, NumberConst, ResultExt, Udec128, Uint128,
     },
     grug_vm_rust::VmError,
     std::{str::FromStr, sync::LazyLock},
@@ -59,7 +59,10 @@ fn feed_oracle_usdc_price(suite: &mut TestSuite, accounts: &mut Accounts, contra
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &oracle::ExecuteMsg::FeedPrices(vec![Binary::from_str(USDC_VAA).unwrap()]),
+                &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![Binary::from_str(
+                    USDC_VAA,
+                )
+                .unwrap()])),
                 Coins::default(),
             )
             .should_succeed();
