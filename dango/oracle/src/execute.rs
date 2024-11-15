@@ -30,9 +30,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // Authenticate can only be called during finalize.
-    if ctx.mode != AuthMode::Finalize {
-        bail!("you don't have the right, O you don't have the right");
-    }
+    ensure!(
+        ctx.mode == AuthMode::Finalize,
+        "you don't have the right, O you don't have the right"
+    );
 
     let mut msgs = tx.msgs.iter();
 
