@@ -43,6 +43,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
         let cfg: AppConfig = querier.query_app_config()?;
 
         // Retrieve the price ids from the oracle and prepare the query params.
+        // TODO: optimize this by using the raw WasmScan query.
         let params = querier
             .query_wasm_smart(cfg.addresses.oracle, QueryPriceSourcesRequest {
                 start_after: None,
