@@ -274,7 +274,9 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
                 },
             })
             .unwrap();
@@ -312,7 +314,9 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
                 },
             })
             .unwrap()
@@ -436,7 +440,9 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
                 },
             })
             .unwrap()

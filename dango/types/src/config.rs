@@ -11,4 +11,5 @@ pub struct AppConfig {
 pub struct AppAddresses {
     pub account_factory: Addr,
     pub ibc_transfer: Addr,
+    pub oracle: Addr,
 }

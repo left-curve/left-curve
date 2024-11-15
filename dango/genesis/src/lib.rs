@@ -312,6 +312,7 @@ where
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,
+            oracle,
         },
     };
 

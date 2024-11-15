@@ -7,8 +7,8 @@ use {
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
         query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        NaiveProposalPreparer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID,
-        CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, QuerierProvider, Shared, Vm,
+        APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -18,6 +18,7 @@ use {
         UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
+    tracing::error,
 };
 
 /// The ABCI application.
@@ -141,11 +142,27 @@ where
         Ok(root_hash.unwrap())
     }
 
-    pub fn do_prepare_proposal(
-        &self,
-        txs: Vec<Bytes>,
-        max_tx_bytes: usize,
-    ) -> AppResult<Vec<Bytes>> {
+    pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        let txs = self
+            ._do_prepare_proposal(txs.clone(), max_tx_bytes)
+            .unwrap_or_else(|err| {
+                #[cfg(feature = "tracing")]
+                error!(
+                    err = err.to_string(),
+                    "Failed to prepare proposal! Falling back to naive preparer."
+                );
+
+                txs
+            });
+
+        // Call naive proposal preparer to check the `max_tx_bytes`.
+        NaiveProposalPreparer
+            .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
+            .unwrap()
+    }
+
+    #[inline]
+    fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let chain_id = CHAIN_ID.load(&storage)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
