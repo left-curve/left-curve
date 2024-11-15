@@ -1,8 +1,11 @@
 use {
     crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
-    grug::{Binary, Denom, Inner, MutableCtx, Response},
+    grug::{
+        AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
+        MutableCtx, Response, Tx,
+    },
     std::collections::BTreeMap,
 };
 
@@ -15,13 +18,50 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new())
 }
 
+/// The oracle can be used as sender when:
+///
+/// - Auth mode must be `Finalize`. This ensures such transactions are only
+///   inserted by the block proposer during ABCI++ `PrepareProposal`, not by
+///   regular users.
+/// - The tranaction contains exactly one message.
+/// - This one message is an `Execute`.
+/// - The contract being executed must be the oracle itself.
+/// - the execute message must be `FeedPrices`.
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
+    // Authenticate can only be called during finalize.
+    ensure!(
+        ctx.mode == AuthMode::Finalize,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let mut msgs = tx.msgs.iter();
+
+    // Assert the transaction contains exactly 1 MsgExecute.
+    let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
+        (msgs.next(), msgs.next())
+    else {
+        bail!("transaction must contain exactly one message");
+    };
+
+    // Assert the contract is the oracle.
+    ensure!(contract == ctx.contract, "contract must be the oracle");
+
+    // Assert the message is `ExecuteMsg::FeedPrices`.
+    let Ok(ExecuteMsg::FeedPrices(..)) = msg.clone().deserialize_json() else {
+        bail!("the execute message must be feed prices");
+    };
+
+    Ok(AuthResponse::new().request_backrun(false))
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
-        ExecuteMsg::FeedPrices(vaas) => feed_prices(ctx, vaas),
+        ExecuteMsg::FeedPrices(vaas) => feed_prices(ctx, vaas.into_inner()),
     }
 }
 

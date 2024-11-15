@@ -4,7 +4,7 @@ import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 
 import { Button } from "../../";
 
-import { truncateAddress } from "@leftcurve/utils";
+import { capitalize, truncateAddress } from "@leftcurve/utils";
 import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "../../../utils";
 
@@ -13,6 +13,7 @@ import { CardSafeBottom } from "./CardSafeBottom";
 import { CardSpotBottom } from "./CardSpotBottom";
 
 import { type Account, AccountType } from "@leftcurve/types";
+import { useAccountName } from "../../../hooks";
 
 export interface CardProps extends VariantProps<typeof cardVariants> {
   className?: string;
@@ -33,6 +34,7 @@ export const AccountCard: React.FC<CardProps> = ({
 }) => {
   const { calculateBalance } = usePrices();
   const { account: selectedAccount } = useAccount();
+  const [accountName] = useAccountName({ account });
   const { isLoading, data: balances = {} } = useBalances({ address: account.address });
   const totalBalance = calculateBalance(balances, { format: true });
   const color = cardColors[account.type];
@@ -53,9 +55,9 @@ export const AccountCard: React.FC<CardProps> = ({
       <div className={twMerge(base({ color: account.type, isActive }), className)}>
         <div className="flex items-start justify-between">
           <div className="flex gap-1 flex-col">
-            <p
-              className={twMerge(title({ color: account.type, isActive }))}
-            >{`${account.type} account #${account.index}`}</p>
+            <p className={twMerge(title({ color: account.type, isActive }))}>
+              {capitalize(accountName)}
+            </p>
             <p className={twMerge(subtitle({ color: account.type, isActive }))}>
               {truncateAddress(account.address)}
             </p>

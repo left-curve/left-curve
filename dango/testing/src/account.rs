@@ -1,4 +1,5 @@
 use {
+    crate::TestSuite,
     dango_types::{
         account::single,
         account_factory::{
@@ -8,7 +9,7 @@ use {
     },
     grug::{
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, TestSuite, Tx, Undefined,
+        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
@@ -30,7 +31,7 @@ pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub key: Key,
     pub key_hash: Hash160,
     pub sequence: u32,
-    sk: SigningKey,
+    pub sk: SigningKey,
     address: T,
 }
 

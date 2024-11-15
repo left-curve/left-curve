@@ -244,7 +244,7 @@ importers:
         version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
       unocss:
         specifier: ^0.63.3
-        version: 0.63.3(@unocss/webpack@0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)))(postcss@8.4.47)(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
+        version: 0.63.3(@unocss/webpack@0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)))(postcss@8.4.47)(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
 
   sdk/packages/connect-kit:
     dependencies:
@@ -453,7 +453,7 @@ importers:
         version: 11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       nuqs:
         specifier: 'catalog:'
-        version: 2.1.1(next@15.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 2.1.1(next@15.0.3(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -584,6 +584,9 @@ importers:
       qr-code-styling:
         specifier: ^1.7.2
         version: 1.7.2
+      react-hook-form:
+        specifier: ^7
+        version: 7.53.0(react@18.3.1)
       react-use:
         specifier: ^17.5.1
         version: 17.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -665,37 +668,37 @@ importers:
         version: 0.1.45
       framer-motion:
         specifier: 'catalog:'
-        version: 11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106))(react@19.0.0-rc-66855b96-20241106)
+        version: 11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next:
-        specifier: 15.0.3
-        version: 15.0.3(react-dom@19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106))(react@19.0.0-rc-66855b96-20241106)
+        specifier: 'catalog:'
+        version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react:
-        specifier: 19.0.0-rc-66855b96-20241106
-        version: 19.0.0-rc-66855b96-20241106
+        specifier: 'catalog:'
+        version: 18.3.1
       react-dom:
-        specifier: 19.0.0-rc-66855b96-20241106
-        version: 19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106)
+        specifier: 'catalog:'
+        version: 18.3.1(react@18.3.1)
     devDependencies:
       '@leftcurve/config':
         specifier: workspace:^
         version: link:../../sdk/packages/config
       '@types/node':
-        specifier: ^20
+        specifier: 'catalog:'
         version: 20.16.10
       '@types/react':
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.11
       '@types/react-dom':
-        specifier: ^18
+        specifier: 'catalog:'
         version: 18.3.1
       postcss:
-        specifier: ^8
+        specifier: 'catalog:'
         version: 8.4.47
       tailwindcss:
-        specifier: ^3.4.1
+        specifier: 'catalog:'
         version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
       typescript:
-        specifier: ^5
+        specifier: 'catalog:'
         version: 5.6.3
 
   ui/workers/mock-ibc:
@@ -2097,15 +2100,6 @@ packages:
       rollup:
         optional: true
 
-  '@rollup/pluginutils@5.1.3':
-    resolution: {integrity: sha512-Pnsb6f32CD2W3uCaLZIzDmeFyQ2b8UWMFI7xtwUezpcGBDVDW6y9XgAWIlARiGAo6eNF5FK5aQTr0LFyNyqq5A==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      rollup: ^1.20.0||^2.0.0||^3.0.0||^4.0.0
-    peerDependenciesMeta:
-      rollup:
-        optional: true
-
   '@rollup/rollup-android-arm-eabi@4.24.0':
     resolution: {integrity: sha512-Q6HJd7Y6xdB48x8ZNVDOqsbh2uByBhgK8PiQgPhwkIw/HC/YX5Ghq2mQY5sRMZWHb3VsFkWooUVOZHKr7DmDIA==}
     cpu: [arm]
@@ -2882,11 +2876,6 @@ packages:
 
   acorn@8.12.1:
     resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
-  acorn@8.14.0:
-    resolution: {integrity: sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -3943,9 +3932,6 @@ packages:
   magic-string@0.30.11:
     resolution: {integrity: sha512-+Wri9p0QHMy+545hKww7YAu5NyzF8iomPL/RQazugQ9+Ez4Ic3mERMd8ZTX5rfK944j+560ZJi8iAwgak1Ac7A==}
 
-  magic-string@0.30.12:
-    resolution: {integrity: sha512-Ea8I3sQMVXr8JhN4z+H/d8zwo+tYDgHE9+5G4Wnrwhs0gaK9fXTKx0Tw5Xwsd/bCPTTZNRAdpyzvoeORe9LYpw==}
-
   make-dir@3.1.0:
     resolution: {integrity: sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw==}
     engines: {node: '>=8'}
@@ -4452,11 +4438,6 @@ packages:
     peerDependencies:
       react: ^18.3.1
 
-  react-dom@19.0.0-rc-66855b96-20241106:
-    resolution: {integrity: sha512-D25vdaytZ1wFIRiwNU98NPQ/upS2P8Co4/oNoa02PzHbh8deWdepjm5qwZM/46OdSiGv4WSWwxP55RO9obqJEQ==}
-    peerDependencies:
-      react: 19.0.0-rc-66855b96-20241106
-
   react-element-to-jsx-string@15.0.0:
     resolution: {integrity: sha512-UDg4lXB6BzlobN60P8fHWVPX3Kyw8ORrTeBtClmIlGdkOOE+GYQSFvmEU5iLLpwp/6v42DINwNcwOhOLfQ//FQ==}
     peerDependencies:
@@ -4619,9 +4600,6 @@ packages:
 
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
-
-  scheduler@0.25.0-rc-66855b96-20241106:
-    resolution: {integrity: sha512-HQXp/Mnp/MMRSXMQF7urNFla+gmtXW/Gr1KliuR0iboTit4KvZRY8KYaq5ccCTAOJiUqQh2rE2F3wgUekmgdlA==}
 
   schema-utils@3.3.0:
     resolution: {integrity: sha512-pN/yOAvcC+5rQ5nERGuwrjLlYvLTbCibnZ1I7B1LaiAz9BRBlE9GMgE/eqV30P7aJQUf7Ddimy/RsbYO/GrVGg==}
@@ -5226,37 +5204,6 @@ packages:
       vite: '*'
     peerDependenciesMeta:
       vite:
-        optional: true
-
-  vite@5.4.11:
-    resolution: {integrity: sha512-c7jFQRklXua0mTzneGW9QVyxFjUgwcihC4bXEtujIo2ouWCe1Ajt/amn2PCxYnhYfd5k09JX3SB7OYWFKYqj8Q==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^18.0.0 || >=20.0.0
-      less: '*'
-      lightningcss: ^1.21.0
-      sass: '*'
-      sass-embedded: '*'
-      stylus: '*'
-      sugarss: '*'
-      terser: ^5.4.0
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
         optional: true
 
   vite@5.4.8:
@@ -6102,7 +6049,8 @@ snapshots:
 
   '@next/env@14.2.5': {}
 
-  '@next/env@15.0.3': {}
+  '@next/env@15.0.3':
+    optional: true
 
   '@next/swc-darwin-arm64@14.2.5':
     optional: true
@@ -6625,15 +6573,6 @@ snapshots:
     optionalDependencies:
       rollup: 4.24.0
 
-  '@rollup/pluginutils@5.1.3(rollup@4.24.0)':
-    dependencies:
-      '@types/estree': 1.0.6
-      estree-walker: 2.0.2
-      picomatch: 4.0.2
-    optionalDependencies:
-      rollup: 4.24.0
-    optional: true
-
   '@rollup/rollup-android-arm-eabi@4.24.0':
     optional: true
 
@@ -7150,11 +7089,11 @@ snapshots:
   '@types/body-parser@1.19.5':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
 
   '@types/doctrine@0.0.9': {}
 
@@ -7166,7 +7105,7 @@ snapshots:
 
   '@types/express-serve-static-core@4.19.6':
     dependencies:
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
       '@types/qs': 6.9.16
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.4
@@ -7183,7 +7122,7 @@ snapshots:
   '@types/glob@7.2.0':
     dependencies:
       '@types/minimatch': 5.1.2
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
 
   '@types/hast@3.0.4':
     dependencies:
@@ -7210,7 +7149,7 @@ snapshots:
 
   '@types/node-forge@1.3.11':
     dependencies:
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
 
   '@types/node@20.16.10':
     dependencies:
@@ -7240,12 +7179,12 @@ snapshots:
   '@types/send@0.17.4':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
 
   '@types/serve-static@1.15.7':
     dependencies:
       '@types/http-errors': 2.0.4
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
       '@types/send': 0.17.4
 
   '@types/unist@3.0.3': {}
@@ -7256,13 +7195,13 @@ snapshots:
 
   '@ungap/structured-clone@1.2.0': {}
 
-  '@unocss/astro@0.63.3(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))':
+  '@unocss/astro@0.63.3(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))':
     dependencies:
       '@unocss/core': 0.63.3
       '@unocss/reset': 0.63.3
-      '@unocss/vite': 0.63.3(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
+      '@unocss/vite': 0.63.3(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
     optionalDependencies:
-      vite: 5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
+      vite: 5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
     transitivePeerDependencies:
       - rollup
       - supports-color
@@ -7387,7 +7326,7 @@ snapshots:
     dependencies:
       '@unocss/core': 0.63.3
 
-  '@unocss/vite@0.63.3(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))':
+  '@unocss/vite@0.63.3(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@rollup/pluginutils': 5.1.2(rollup@4.24.0)
@@ -7397,7 +7336,7 @@ snapshots:
       chokidar: 3.6.0
       magic-string: 0.30.11
       tinyglobby: 0.2.9
-      vite: 5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
+      vite: 5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
     transitivePeerDependencies:
       - rollup
       - supports-color
@@ -7405,11 +7344,11 @@ snapshots:
   '@unocss/webpack@0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1))':
     dependencies:
       '@ampproject/remapping': 2.3.0
-      '@rollup/pluginutils': 5.1.3(rollup@4.24.0)
+      '@rollup/pluginutils': 5.1.2(rollup@4.24.0)
       '@unocss/config': 0.63.3
       '@unocss/core': 0.63.3
       chokidar: 3.6.0
-      magic-string: 0.30.12
+      magic-string: 0.30.11
       tinyglobby: 0.2.9
       unplugin: 1.14.1(webpack-sources@3.2.3)
       webpack: 5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)
@@ -7575,9 +7514,9 @@ snapshots:
       mime-types: 2.1.35
       negotiator: 0.6.3
 
-  acorn-import-attributes@1.9.5(acorn@8.14.0):
+  acorn-import-attributes@1.9.5(acorn@8.12.1):
     dependencies:
-      acorn: 8.14.0
+      acorn: 8.12.1
     optional: true
 
   acorn-jsx@5.3.2(acorn@7.4.1):
@@ -7593,9 +7532,6 @@ snapshots:
   acorn@7.4.1: {}
 
   acorn@8.12.1: {}
-
-  acorn@8.14.0:
-    optional: true
 
   ajv-keywords@3.5.2(ajv@6.12.6):
     dependencies:
@@ -8272,14 +8208,6 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  framer-motion@11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106))(react@19.0.0-rc-66855b96-20241106):
-    dependencies:
-      tslib: 2.7.0
-    optionalDependencies:
-      '@emotion/is-prop-valid': 0.8.8
-      react: 19.0.0-rc-66855b96-20241106
-      react-dom: 19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106)
-
   fresh@0.5.2: {}
 
   fs-extra@11.2.0:
@@ -8548,7 +8476,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 20.16.10
+      '@types/node': 22.7.5
       merge-stream: 2.0.0
       supports-color: 8.1.1
     optional: true
@@ -8688,11 +8616,6 @@ snapshots:
   magic-string@0.30.11:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.0
-
-  magic-string@0.30.12:
-    dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.0
-    optional: true
 
   make-dir@3.1.0:
     dependencies:
@@ -8909,57 +8832,6 @@ snapshots:
       - babel-plugin-macros
     optional: true
 
-  next@15.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@next/env': 15.0.3
-      '@swc/counter': 0.1.3
-      '@swc/helpers': 0.5.13
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001666
-      postcss: 8.4.31
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      styled-jsx: 5.1.6(react@18.3.1)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 15.0.3
-      '@next/swc-darwin-x64': 15.0.3
-      '@next/swc-linux-arm64-gnu': 15.0.3
-      '@next/swc-linux-arm64-musl': 15.0.3
-      '@next/swc-linux-x64-gnu': 15.0.3
-      '@next/swc-linux-x64-musl': 15.0.3
-      '@next/swc-win32-arm64-msvc': 15.0.3
-      '@next/swc-win32-x64-msvc': 15.0.3
-      sharp: 0.33.5
-    transitivePeerDependencies:
-      - '@babel/core'
-      - babel-plugin-macros
-    optional: true
-
-  next@15.0.3(react-dom@19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106))(react@19.0.0-rc-66855b96-20241106):
-    dependencies:
-      '@next/env': 15.0.3
-      '@swc/counter': 0.1.3
-      '@swc/helpers': 0.5.13
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001666
-      postcss: 8.4.31
-      react: 19.0.0-rc-66855b96-20241106
-      react-dom: 19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106)
-      styled-jsx: 5.1.6(react@19.0.0-rc-66855b96-20241106)
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 15.0.3
-      '@next/swc-darwin-x64': 15.0.3
-      '@next/swc-linux-arm64-gnu': 15.0.3
-      '@next/swc-linux-arm64-musl': 15.0.3
-      '@next/swc-linux-x64-gnu': 15.0.3
-      '@next/swc-linux-x64-musl': 15.0.3
-      '@next/swc-win32-arm64-msvc': 15.0.3
-      '@next/swc-win32-x64-msvc': 15.0.3
-      sharp: 0.33.5
-    transitivePeerDependencies:
-      - '@babel/core'
-      - babel-plugin-macros
-
   node-fetch-native@1.6.4: {}
 
   node-forge@1.3.1: {}
@@ -8985,14 +8857,6 @@ snapshots:
       react: 18.3.1
     optionalDependencies:
       next: 15.0.3(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react-router-dom: 6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  nuqs@2.1.1(next@15.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
-    dependencies:
-      mitt: 3.0.1
-      react: 18.3.1
-    optionalDependencies:
-      next: 15.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-router-dom: 6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   object-assign@4.1.1: {}
@@ -9242,11 +9106,6 @@ snapshots:
       react: 18.3.1
       scheduler: 0.23.2
 
-  react-dom@19.0.0-rc-66855b96-20241106(react@19.0.0-rc-66855b96-20241106):
-    dependencies:
-      react: 19.0.0-rc-66855b96-20241106
-      scheduler: 0.25.0-rc-66855b96-20241106
-
   react-element-to-jsx-string@15.0.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@base2/pretty-print-object': 1.0.1
@@ -9441,8 +9300,6 @@ snapshots:
   scheduler@0.23.2:
     dependencies:
       loose-envify: 1.4.0
-
-  scheduler@0.25.0-rc-66855b96-20241106: {}
 
   schema-utils@3.3.0:
     dependencies:
@@ -9679,17 +9536,6 @@ snapshots:
       '@babel/core': 7.25.7
     optional: true
 
-  styled-jsx@5.1.6(react@18.3.1):
-    dependencies:
-      client-only: 0.0.1
-      react: 18.3.1
-    optional: true
-
-  styled-jsx@5.1.6(react@19.0.0-rc-66855b96-20241106):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.0.0-rc-66855b96-20241106
-
   stylis@4.3.4: {}
 
   sucrase@3.35.0:
@@ -9809,7 +9655,7 @@ snapshots:
   terser@5.34.1:
     dependencies:
       '@jridgewell/source-map': 0.3.6
-      acorn: 8.14.0
+      acorn: 8.12.1
       commander: 2.20.3
       source-map-support: 0.5.21
     optional: true
@@ -9875,7 +9721,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 20.16.10
-      acorn: 8.14.0
+      acorn: 8.12.1
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -9896,7 +9742,7 @@ snapshots:
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 22.7.5
-      acorn: 8.14.0
+      acorn: 8.12.1
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
@@ -10051,9 +9897,9 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  unocss@0.63.3(@unocss/webpack@0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)))(postcss@8.4.47)(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)):
+  unocss@0.63.3(@unocss/webpack@0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1)))(postcss@8.4.47)(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)):
     dependencies:
-      '@unocss/astro': 0.63.3(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
+      '@unocss/astro': 0.63.3(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
       '@unocss/cli': 0.63.3(rollup@4.24.0)
       '@unocss/core': 0.63.3
       '@unocss/postcss': 0.63.3(postcss@8.4.47)
@@ -10069,10 +9915,10 @@ snapshots:
       '@unocss/transformer-compile-class': 0.63.3
       '@unocss/transformer-directives': 0.63.3
       '@unocss/transformer-variant-group': 0.63.3
-      '@unocss/vite': 0.63.3(rollup@4.24.0)(vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
+      '@unocss/vite': 0.63.3(rollup@4.24.0)(vite@5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1))
     optionalDependencies:
       '@unocss/webpack': 0.63.3(rollup@4.24.0)(webpack@5.95.0(@swc/core@1.7.26(@swc/helpers@0.5.13))(esbuild@0.23.1))
-      vite: 5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
+      vite: 5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
     transitivePeerDependencies:
       - postcss
       - rollup
@@ -10196,17 +10042,6 @@ snapshots:
       - supports-color
       - typescript
 
-  vite@5.4.11(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1):
-    dependencies:
-      esbuild: 0.21.5
-      postcss: 8.4.47
-      rollup: 4.24.0
-    optionalDependencies:
-      '@types/node': 22.7.5
-      fsevents: 2.3.3
-      lightningcss: 1.27.0
-      terser: 5.34.1
-
   vite@5.4.8(@types/node@20.16.10)(lightningcss@1.27.0)(terser@5.34.1):
     dependencies:
       esbuild: 0.21.5
@@ -10287,8 +10122,8 @@ snapshots:
       '@webassemblyjs/ast': 1.12.1
       '@webassemblyjs/wasm-edit': 1.12.1
       '@webassemblyjs/wasm-parser': 1.12.1
-      acorn: 8.14.0
-      acorn-import-attributes: 1.9.5(acorn@8.14.0)
+      acorn: 8.12.1
+      acorn-import-attributes: 1.9.5(acorn@8.12.1)
       browserslist: 4.24.0
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.17.1

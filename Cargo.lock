@@ -1456,6 +1456,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "prost",
+ "reqwest 0.12.9",
+ "thiserror",
+]
+
+[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
@@ -1485,6 +1498,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
+ "dango-app",
  "dialoguer",
  "grug-app",
  "grug-client",
@@ -1568,6 +1582,7 @@ dependencies = [
  "dango-account-safe",
  "dango-account-spot",
  "dango-amm",
+ "dango-app",
  "dango-bank",
  "dango-genesis",
  "dango-ibc-transfer",
@@ -1587,7 +1602,6 @@ dependencies = [
  "rand",
  "reqwest 0.12.9",
  "test-case",
- "tokio",
 ]
 
 [[package]]
@@ -1610,6 +1624,7 @@ dependencies = [
  "data-encoding",
  "grug",
  "optional_struct",
+ "hex-literal",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",
@@ -2278,6 +2293,7 @@ version = "0.0.0"
 dependencies = [
  "borsh 1.5.1",
  "chrono",
+ "data-encoding",
  "grug-math",
  "grug-storage",
  "grug-types",

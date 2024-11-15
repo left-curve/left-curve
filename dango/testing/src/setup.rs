@@ -1,18 +1,22 @@
 use {
     crate::{Accounts, TestAccount},
+    dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
         btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
+    grug_app::{AppError, Db, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     std::{env, path::PathBuf},
 };
+
+const CHAIN_ID: &str = "dev-1";
+
+pub type TestSuite<DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, ProposalPreparer>;
 
 /// Set up a test with the given DB, VM, and codes.
 fn setup_suite_with_db_and_vm<DB, VM, T>(
@@ -60,8 +64,8 @@ where
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        NaiveProposalPreparer,
-        "dev-1".to_string(),
+        ProposalPreparer,
+        CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -125,6 +129,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 
     let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
         .with_execute(Box::new(dango_oracle::execute))
+        .with_authenticate(Box::new(dango_oracle::authenticate))
         .with_query(Box::new(dango_oracle::query))
         .build();
 

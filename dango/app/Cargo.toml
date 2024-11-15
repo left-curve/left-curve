@@ -1,0 +1,19 @@
+[package]
+name          = "dango-app"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
+documentation = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
+
+[dependencies]
+anyhow      = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
+grug-app    = { workspace = true }
+prost       = { workspace = true }
+reqwest     = { workspace = true, features = ["blocking", "json"] }
+thiserror   = { workspace = true }

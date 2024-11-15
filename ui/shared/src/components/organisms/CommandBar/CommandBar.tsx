@@ -26,7 +26,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen && e.code === "Space") {
+      if (!isOpen && e.key === "k" && e.ctrlKey) {
         setIsOpen(true);
       } else if (isOpen && e.key === "Escape") {
         setIsOpen(false);
@@ -81,7 +81,9 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
             >
               <SearchIcon className="h-6 w-6" />
               <p className="flex-1 pt-1">Search for apps and commands</p>
-              <p>/</p>
+              <p className="px-1.5 py-0.5 inline-flex items-center font-sans font-normal text-center bg-surface-green-200 rounded-small text-sm shadow-sm">
+                ⌥ K
+              </p>
             </div>
           </div>
           <Command>
@@ -109,7 +111,6 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
                     placeholder="Search for apps and commands"
                     className="flex-1 bg-transparent text-typography-green-500 placeholder-typography-green-300 pt-1 outline-none"
                   />
-                  <p>/</p>
                 </div>
                 <Button
                   className={twMerge(

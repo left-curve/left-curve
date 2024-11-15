@@ -275,9 +275,11 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
-                    lending: Addr::mock(0),      // doesn't matter for this test
-                    oracle: Addr::mock(0),       // doesn't matter for this tes
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                    oracle: Addr::mock(0),  // doesn't matter for this tes
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},
@@ -318,9 +320,11 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
-                    lending: Addr::mock(0),      // doesn't matter for this test
-                    oracle: Addr::mock(0),       // doesn't matter for this tes
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                    oracle: Addr::mock(0),  // doesn't matter for this tes
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},
@@ -447,9 +451,11 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
-                    lending: Addr::mock(0),      // doesn't matter for this test
-                    oracle: Addr::mock(0),       // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                    oracle: Addr::mock(0),  // doesn't matter for this test
                 },
                 lending: LendingAppConfig {
                     collateral_powers: btree_map! {},

@@ -1,15 +1,19 @@
-import { AccountInfo, SpotPortfolioTable } from "@dango/shared";
+import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@dango/shared";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export const ManageSpot: React.FC = () => {
   const navigate = useNavigate();
-  return (
+  const [isEditing, setIsEditing] = useState(false);
+
+  return isEditing ? (
+    <SpotEditAccount goBack={() => setIsEditing(false)} />
+  ) : (
     <>
-      <AccountInfo avatarUri="/images/avatars/spot.svg" />
+      <AccountInfo avatarUri="/images/avatars/spot.svg" triggerEdit={() => setIsEditing(true)} />
       <SpotPortfolioTable
-        navigate={navigate}
-        sendUrl="/transfer?action=send"
-        receiveUrl="/transfer?action=receive"
+        sendAction={() => navigate("/transfer?action=send")}
+        receiveAction={() => navigate("/transfer?action=receive")}
       />
     </>
   );

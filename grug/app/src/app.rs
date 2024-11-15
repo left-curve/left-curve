@@ -1,5 +1,3 @@
-#[cfg(feature = "abci")]
-use grug_types::{JsonDeExt, JsonSerExt};
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -7,8 +5,8 @@ use {
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
         query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        NaiveProposalPreparer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID,
-        CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, QuerierProvider, Shared, Vm,
+        APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -18,6 +16,12 @@ use {
         UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
+    tracing::error,
+};
+#[cfg(feature = "abci")]
+use {
+    data_encoding::BASE64,
+    grug_types::{JsonDeExt, JsonSerExt},
 };
 
 /// The ABCI application.
@@ -141,11 +145,27 @@ where
         Ok(root_hash.unwrap())
     }
 
-    pub fn do_prepare_proposal(
-        &self,
-        txs: Vec<Bytes>,
-        max_tx_bytes: usize,
-    ) -> AppResult<Vec<Bytes>> {
+    pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        let txs = self
+            ._do_prepare_proposal(txs.clone(), max_tx_bytes)
+            .unwrap_or_else(|err| {
+                #[cfg(feature = "tracing")]
+                error!(
+                    err = err.to_string(),
+                    "Failed to prepare proposal! Falling back to naive preparer."
+                );
+
+                txs
+            });
+
+        // Call naive proposal preparer to check the `max_tx_bytes`.
+        NaiveProposalPreparer
+            .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
+            .unwrap()
+    }
+
+    #[inline]
+    fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let chain_id = CHAIN_ID.load(&storage)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
@@ -513,8 +533,31 @@ where
     {
         let txs = raw_txs
             .iter()
-            .map(|raw_tx| raw_tx.deserialize_json())
-            .collect::<StdResult<Vec<_>>>()?;
+            .filter_map(|raw_tx| {
+                if let Ok(tx) = raw_tx.deserialize_json() {
+                    Some(tx)
+                } else {
+                    // The transaction failed to deserialize.
+                    //
+                    // This can only happen for txs inserted by the block's
+                    // proposer during ABCI++ `PrepareProposal`, as regular txs
+                    // submitted by users would have been rejected during `CheckTx`
+                    // if they fail to deserialize.
+                    //
+                    // A block proposer inserting an invalid tx is a fatal error.
+                    // There's no correct answer on what's the better way to
+                    // handle this - halt the chain, or ignore? Here we choose
+                    // to ignore.
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        raw_tx = BASE64.encode(raw_tx.as_ref()),
+                        "Failed to deserialize transaction! Ignoring it..."
+                    );
+
+                    None
+                }
+            })
+            .collect();
 
         self.do_finalize_block(block, txs)
     }

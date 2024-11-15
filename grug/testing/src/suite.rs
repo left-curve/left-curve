@@ -273,9 +273,6 @@ where
         let txs = self
             .app
             .do_prepare_proposal(raw_txs, usize::MAX)
-            .unwrap_or_else(|err| {
-                panic!("fatal error while preparing proposal: {err}");
-            })
             .into_iter()
             .map(|raw_tx| raw_tx.deserialize_json().unwrap())
             .collect();

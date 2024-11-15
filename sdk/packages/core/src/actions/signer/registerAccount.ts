@@ -21,7 +21,7 @@ export type RegisterAccountReturnType = ExecuteReturnType;
 export async function registerAccount<chain extends Chain | undefined, signer extends Signer>(
   client: Client<Transport, chain, signer>,
   parameters: RegisterAccountParameters,
-  txParameters: Pick<TxParameters, "gasLimit">,
+  txParameters: TxParameters = {},
 ): RegisterAccountReturnType {
   const { sender, config } = parameters;
   const msg = { registerAccount: { params: config } };
@@ -32,17 +32,30 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
     type: [{ name: "registerAccount", type: "RegisterAccount" }],
     extraTypes: {
       RegisterAccount: [{ name: "params", type: "AccountParams" }],
-      AccountParams: [
-        ...("safe" in config
-          ? [
+      ...("spot" in config
+        ? {
+            AccountParams: [{ name: "spot", type: "SpotParams" }],
+            SpotParams: [{ name: "owner", type: "string" }],
+          }
+        : {}),
+      ...("safe" in config
+        ? {
+            AccountParams: [{ name: "safe", type: "SafeParams" }],
+            SafeParams: [
               { name: "threshold", type: "uint32" },
               { name: "votingPeriod", type: "uint256" },
               { name: "timelock", type: "uint256" },
               { name: "members", type: "Member" },
-            ]
-          : [{ name: "owner", type: "string" }]),
-      ],
-      Member: [...("safe" in config ? getMembersTypedData(config.safe.members) : [])],
+            ],
+            Member: [...getMembersTypedData(config.safe.members)],
+          }
+        : {}),
+      ...("margin" in config
+        ? {
+            AccountParams: [{ name: "margin", type: "MarginParams" }],
+            MarginParams: [{ name: "owner", type: "string" }],
+          }
+        : {}),
     },
   };
 

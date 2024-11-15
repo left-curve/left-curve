@@ -1,11 +1,11 @@
-import { GradientContainer, QRCode } from "@dango/shared";
+import { QRCode } from "@dango/shared";
 import { useAccount } from "@leftcurve/react";
 import { truncateAddress } from "@leftcurve/utils";
 
 export const ReceiveContainer: React.FC = () => {
   const { account } = useAccount();
   return (
-    <GradientContainer className="gap-4 justify-center w-full min-h-[37.5rem] text-typography-black-200">
+    <div className="dango-grid-square-m gap-4 flex flex-col items-center justify-center w-full text-typography-black-200">
       <div className="p-4 bg-surface-rose-200 rounded-full">
         <img src="/images/send-and-receive.webp" alt="transfer" className="w-[88px] h-[88px]" />
       </div>
@@ -25,6 +25,6 @@ export const ReceiveContainer: React.FC = () => {
         </p>
       </div>
       <QRCode data={account?.address!} />
-    </GradientContainer>
+    </div>
   );
 };

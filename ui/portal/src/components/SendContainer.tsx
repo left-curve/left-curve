@@ -1,4 +1,4 @@
-import { AccountSearchInput, Button, CoinSelector, GradientContainer, Input } from "@dango/shared";
+import { AccountSearchInput, Button, CoinSelector, Input } from "@dango/shared";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";
@@ -51,7 +51,7 @@ export const SendContainer: React.FC = () => {
 
   return (
     <form className="w-full" onSubmit={onSubmit}>
-      <GradientContainer className="gap-4 justify-center w-full min-h-[37.5rem]">
+      <div className="dango-grid-square-m gap-4 flex flex-col items-center justify-center w-full">
         <div className="p-6 rounded-full bg-surface-rose-200">
           <img src="/images/send-and-receive.webp" alt="transfer" className="w-[120px] h-[120px]" />
         </div>
@@ -108,7 +108,7 @@ export const SendContainer: React.FC = () => {
           </div>
           <Button isLoading={isSubmitting}>Send</Button>
         </div>
-      </GradientContainer>
+      </div>
     </form>
   );
 };

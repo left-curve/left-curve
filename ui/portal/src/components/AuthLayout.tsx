@@ -18,7 +18,7 @@ export const AuthLayout: React.FC = () => {
       <div className="min-h-full w-full flex-1 flex flex-col justify-center z-10 relative">
         <div
           className={twMerge(
-            "header w-full sticky  h-[160px] top-0 left-0 pt-4 pl-4 md:pt-7 md:pl-12 z-50",
+            "header w-full sticky h-[80px] md:h-[130px] top-0 left-0 pt-4 pl-4 md:pt-7 md:pl-12 z-50",
             isSignup ? "header-signup" : "header-login",
           )}
         >
