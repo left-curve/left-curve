@@ -5,16 +5,14 @@ use {
 
 // -------------------------------- int -> dec ---------------------------------
 
-pub trait IntoDec<U, const S: u32> {
-    fn checked_into_dec(self) -> MathResult<Dec<U, S>>;
-}
-
-impl<U, const S: u32> IntoDec<U, S> for Int<U>
+impl<U> Int<U>
 where
-    Self: Number + Copy + ToString,
-    Dec<U, S>: FixedPoint<U>,
+    Self: Number + ToString,
 {
-    fn checked_into_dec(self) -> MathResult<Dec<U, S>> {
+    pub fn checked_into_dec<const S: u32>(self) -> MathResult<Dec<U, S>>
+    where
+        Dec<U, S>: FixedPoint<U>,
+    {
         self.checked_mul(Dec::<U, S>::PRECISION)
             .map(Dec::raw)
             .map_err(|_| MathError::overflow_conversion::<_, Dec<U, S>>(self))
@@ -65,8 +63,8 @@ where
 mod int_tests {
     use {
         crate::{
-            conversions::IntoDec, int_test, test_utils::bt, Dec, Dec128, Dec256, Int, Int256,
-            MathError, MathResult, NumberConst, Udec128, Udec256, Uint256,
+            int_test, test_utils::bt, Dec, Dec128, Dec256, Int, Int256, MathError, MathResult,
+            NumberConst, Udec128, Udec256, Uint256,
         },
         bnum::types::{I256, U256},
     };
