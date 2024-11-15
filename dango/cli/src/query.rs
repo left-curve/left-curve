@@ -41,13 +41,8 @@ enum SubCmd {
     },
     /// Query the chain's global configuration
     Config,
-    /// Query a single application-specific configuration
-    AppConfig { key: String },
-    /// Enumerate all application-specific configurations
-    AppConfigs {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    /// Query the application-specific configuration
+    AppConfig,
     /// Query an account's balance in a single denom
     Balance {
         /// Account address
@@ -159,8 +154,7 @@ impl QueryCmd {
                 return print_json_pretty(res);
             },
             SubCmd::Config => Query::config(),
-            SubCmd::AppConfig { key } => Query::app_config(key),
-            SubCmd::AppConfigs { start_after, limit } => Query::app_configs(start_after, limit),
+            SubCmd::AppConfig => Query::app_config(),
             SubCmd::Balance { address, denom } => {
                 let denom = Denom::try_from(denom)?;
                 Query::balance(address, denom)

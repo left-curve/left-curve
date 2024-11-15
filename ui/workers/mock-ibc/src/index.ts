@@ -1,5 +1,5 @@
 import type { Request } from "@cloudflare/workers-types";
-import { http, createUserClient, isValidAddress } from "@leftcurve/sdk";
+import { http, createSignerClient, isValidAddress } from "@leftcurve/sdk";
 import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import type { Address } from "@leftcurve/types";
@@ -31,7 +31,7 @@ export default {
       });
     }
 
-    const client = createUserClient({
+    const client = createSignerClient({
       chain: devnet,
       username: env.USERNAME,
       signer: PrivateKeySigner.fromMnemonic(env.MNEMONIC),

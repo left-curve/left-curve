@@ -23,15 +23,21 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 }
 
 /// The oracle can be used as sender when:
-/// - `ctx.mode` must be [`AuthMode::Finalize`] which ensure the tx has been inserted during prepare proposal;
-/// - has only 1 message -> [`ExecuteMsg::FeedPrices`];
-/// - the contract must be the oracle;
+///
+/// - Auth mode must be `Finalize`. This ensures such transactions are only
+///   inserted by the block proposer during ABCI++ `PrepareProposal`, not by
+///   regular users.
+/// - The tranaction contains exactly one message.
+/// - This one message is an `Execute`.
+/// - The contract being executed must be the oracle itself.
+/// - the execute message must be `FeedPrices`.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     // Authenticate can only be called during finalize.
-    if ctx.mode != AuthMode::Finalize {
-        bail!("you don't have the right, O you don't have the right");
-    }
+    ensure!(
+        ctx.mode == AuthMode::Finalize,
+        "you don't have the right, O you don't have the right"
+    );
 
     let mut msgs = tx.msgs.iter();
 

@@ -4,10 +4,9 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ConfigUpdates,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, Json, JsonDeExt, JsonSerExt, Message,
-        Op, Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
-        TxSuccess, UnsignedTx,
+        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ContractInfo,
+        Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt, Message, Outcome, Query,
+        QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -351,24 +350,34 @@ where
     }
 
     /// Update the chain's config.
-    pub fn configure(
+    pub fn configure<T>(
         &mut self,
         signer: &mut dyn Signer,
-        updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Op<Json>>,
-    ) -> TxOutcome {
-        self.configure_with_gas(signer, self.default_gas_limit, updates, app_updates)
+        new_cfg: Option<Config>,
+        new_app_cfg: Option<T>,
+    ) -> TxOutcome
+    where
+        T: Serialize,
+    {
+        self.configure_with_gas(signer, self.default_gas_limit, new_cfg, new_app_cfg)
     }
 
     /// Update the chain's config under the given gas limit.
-    pub fn configure_with_gas(
+    pub fn configure_with_gas<T>(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
-        updates: ConfigUpdates,
-        app_updates: BTreeMap<String, Op<Json>>,
-    ) -> TxOutcome {
-        self.send_message_with_gas(signer, gas_limit, Message::configure(updates, app_updates))
+        new_cfg: Option<Config>,
+        new_app_cfg: Option<T>,
+    ) -> TxOutcome
+    where
+        T: Serialize,
+    {
+        self.send_message_with_gas(
+            signer,
+            gas_limit,
+            Message::configure(new_cfg, new_app_cfg).unwrap(),
+        )
     }
 
     /// Make a transfer of tokens.
@@ -627,16 +636,13 @@ where
             .map(|val| val.as_config())
     }
 
-    pub fn query_app_config(&self, key: &str) -> AppResult<Json> {
+    pub fn query_app_config<T>(&self) -> AppResult<T>
+    where
+        T: DeserializeOwned,
+    {
         self.app
-            .do_query_app(Query::app_config(key), 0, false)
-            .map(|res| res.as_app_config())
-    }
-
-    pub fn query_app_configs(&self) -> AppResult<BTreeMap<String, Json>> {
-        self.app
-            .do_query_app(Query::app_configs(None, Some(u32::MAX)), 0, false)
-            .map(|res| res.as_app_configs())
+            .do_query_app(Query::app_config(), 0, false)
+            .map(|res| res.as_app_config().deserialize_json().unwrap())
     }
 
     pub fn query_balance<D>(&self, account: &dyn Addressable, denom: D) -> AppResult<Uint128>

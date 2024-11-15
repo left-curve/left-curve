@@ -1,0 +1,40 @@
+import type { Chain, Client, ClientConfig, RequiredBy, Signer, Transport } from "@leftcurve/types";
+
+import { type PublicActions, publicActions } from "../actions/publicActions.js";
+import { type SignerActions, signerActions } from "../actions/signerActions.js";
+import { createBaseClient } from "./baseClient.js";
+
+export type SignerClientConfig<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+  signer extends Signer = Signer,
+> = RequiredBy<ClientConfig<transport, chain, signer>, "signer" | "username">;
+
+export type SignerClient<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+  signer extends Signer = Signer,
+> = Client<
+  transport,
+  chain,
+  signer,
+  PublicActions<transport, chain> & SignerActions<transport, chain>
+>;
+
+export function createSignerClient<
+  transport extends Transport,
+  chain extends Chain | undefined = undefined,
+  signer extends Signer = Signer,
+>(
+  parameters: SignerClientConfig<transport, chain, signer>,
+): SignerClient<transport, chain, signer> {
+  const { name = "Wallet Client" } = parameters;
+
+  const client = createBaseClient({
+    ...parameters,
+    name,
+    type: "user",
+  });
+
+  return client.extend(publicActions).extend(signerActions);
+}

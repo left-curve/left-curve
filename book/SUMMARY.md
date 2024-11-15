@@ -2,13 +2,6 @@
 
 ---
 
-# Guides
-
-- [Math](guides/math.md)
-- [Indexed map](guides/indexed-map.md)
-
----
-
 # Notes
 
 - [Bounded values](notes/bounded-values.md)
@@ -16,7 +9,10 @@
 - [Extension traits](notes/extension-traits.md)
 - [Gas](notes/gas.md)
 - [Generating dependency graph](notes/generate-dependency-graph.md)
+- [Indexed map](notes/indexed-map.md)
 - [Liquidity provision](notes/liquidity-provision.md)
+- [Margin account: health](notes/margin-account-health.md)
+- [Math](notes/math.md)
 - [Transaction lifecycle](notes/transaction-lifecycle.md)
 
 ---

@@ -45,7 +45,7 @@ pub struct GenesisState {
     /// Chain configurations.
     pub config: Config,
     /// App-specific configurations.
-    pub app_configs: BTreeMap<String, Json>,
+    pub app_config: Json,
     /// Messages to be executed in order during genesis.
     pub msgs: Vec<Message>,
 }
@@ -69,23 +69,6 @@ pub struct Config {
     /// A code is deleted if it remains orphaned (not used by any contract) for
     /// longer than this duration.
     pub max_orphan_age: Duration,
-}
-
-/// Set of updates to be made to the config.
-///
-/// A field being `Some` means it is to be updated to be the given value;
-/// it being `None` means it is not to be updated.
-#[skip_serializing_none]
-#[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
-)]
-#[serde(deny_unknown_fields)]
-pub struct ConfigUpdates {
-    pub owner: Option<Addr>,
-    pub bank: Option<Addr>,
-    pub taxman: Option<Addr>,
-    pub cronjobs: Option<BTreeMap<Addr, Duration>>,
-    pub permissions: Option<Permissions>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
