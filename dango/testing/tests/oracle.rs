@@ -1,15 +1,12 @@
 use {
-    dango_testing::{setup_test, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, Accounts, TestSuite},
     dango_types::oracle::{
-        self, ExecuteMsg, GuardianSet, PrecisionlessPrice, PriceSource, PythId, PythVaa,
-        QueryPriceRequest, ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, GUARDIANS_ADDRESSES,
-        GUARDIAN_SETS_INDEX, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID, USDC_USD_ID, WBTC_USD_ID,
-        XRP_USD_ID,
+        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
+        ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID,
+        USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
     },
-    grug::{
-        btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, NonEmpty, ResultExt,
-        Udec128,
-    },
+    grug::{btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, ResultExt, Udec128},
+    grug_app::NaiveProposalPreparer,
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
@@ -26,52 +23,21 @@ const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-fn setup_oracle_test(denoms: BTreeMap<Denom, PriceSource>) -> (TestSuite, Accounts, Addr) {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
-    // init a new oracle
-    let code_hash = suite.query_contract(&contracts.oracle).unwrap().code_hash;
-
-    let oracle = suite
-        .instantiate(
-            &mut accounts.owner,
-            code_hash,
-            &oracle::InstantiateMsg {
-                guardian_sets: btree_map! {
-                    GUARDIAN_SETS_INDEX => GuardianSet {
-                        addresses: GUARDIANS_ADDRESSES
-                            .into_iter()
-                            .map(|addr| {
-                                let bytes = Binary::from_str(addr)
-                                    .unwrap()
-                                    .into_inner()
-                                    .try_into()
-                                    .unwrap();
-                                Hash160::from_inner(bytes)
-                            })
-                            .collect(),
-                        expiration_time: None,
-                    },
-                },
-            },
-            "salt",
-            None,
-            None,
-            Coins::default(),
-        )
-        .should_succeed()
-        .address;
+fn setup_oracle_test(
+    denoms: BTreeMap<Denom, PriceSource>,
+) -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     suite
         .execute(
             &mut accounts.owner,
-            oracle,
+            contracts.oracle,
             &ExecuteMsg::RegisterPriceSources(denoms),
             Coins::default(),
         )
         .should_succeed();
 
-    (suite, accounts, oracle)
+    (suite, accounts, contracts.oracle)
 }
 
 #[test]
@@ -84,6 +50,40 @@ fn oracle() {
     });
 
     // Push price
+    {
+        suite
+            .execute(
+                &mut accounts.owner,
+                oracle,
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(VAA_2).unwrap()
+                ])),
+                Coins::default(),
+            )
+            .should_succeed();
+
+        let current_price = suite
+            .query_wasm_smart(oracle, QueryPriceRequest {
+                denom: btc_denom.clone(),
+            })
+            .unwrap();
+
+        assert_eq!(
+            current_price.humanized_price,
+            Udec128::from_str("71319.50295749").unwrap()
+        );
+
+        assert_eq!(
+            current_price.humanized_ema,
+            Udec128::from_str("71110.59200000").unwrap()
+        );
+
+        assert_eq!(current_price.precision(), precision);
+
+        assert_eq!(current_price.timestamp, 1730209108);
+    }
+
+    // Push an updated_price
     {
         suite
             .execute(
@@ -112,12 +112,10 @@ fn oracle() {
             Udec128::from_str("68638.95300000").unwrap()
         );
 
-        assert_eq!(current_price.precision(), precision);
-
         assert_eq!(current_price.timestamp, 1730804420);
     }
 
-    // Push an updated_price
+    // Push an outdated price. it should not be updated
     {
         suite
             .execute(
@@ -131,52 +129,20 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: btc_denom.clone(),
-            })
-            .unwrap();
-
-        assert_eq!(
-            current_price.humanized_price,
-            Udec128::from_str("68690.52261900").unwrap()
-        );
-
-        assert_eq!(
-            current_price.humanized_ema,
-            Udec128::from_str("68639.54100000").unwrap()
-        );
-
-        assert_eq!(current_price.timestamp, 1730804507);
-    }
-
-    // Push an outdated price. it should not be updated
-    {
-        suite
-            .execute(
-                &mut accounts.owner,
-                oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_1).unwrap()
-                ])),
-                Coins::default(),
-            )
-            .should_succeed();
-
-        let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest { denom: btc_denom })
             .unwrap();
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("68690.52261900").unwrap()
+            Udec128::from_str("68645.78657006").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("68639.54100000").unwrap()
+            Udec128::from_str("68638.95300000").unwrap()
         );
 
-        assert_eq!(current_price.timestamp, 1730804507);
+        assert_eq!(current_price.timestamp, 1730804420);
     }
 }
 
