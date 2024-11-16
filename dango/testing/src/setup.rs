@@ -57,10 +57,14 @@ where
     )
     .unwrap();
 
+    //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+    //indexer.migrate_db().expect("Can't migrate DB");
+
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
         NaiveProposalPreparer,
+        //indexer,
         "dev-1".to_string(),
         Duration::from_millis(250),
         1_000_000,

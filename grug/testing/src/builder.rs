@@ -9,6 +9,9 @@ use {
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
+    indexer_core::App as AppIndexer,
+    indexer_core::AppTrait as IndexerAppTrait,
+    indexer_core::NoApp,
     serde::Serialize,
     std::{
         collections::BTreeMap,
@@ -506,7 +509,7 @@ where
     PP: ProposalPreparer,
     AppError: From<VM::Error> + From<PP::Error>,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM, PP>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, AppIndexer, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }
@@ -616,10 +619,14 @@ where
             app_configs: self.app_configs,
         };
 
+        //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+        //indexer.migrate_db().expect("Can't migrate DB");
+
         let suite = TestSuite::new_with_db_vm_and_pp(
             MemDb::new(),
             self.vm,
             self.pp,
+            //indexer,
             chain_id,
             block_time,
             default_gas_limit,

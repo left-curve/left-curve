@@ -56,6 +56,33 @@ pub trait AppTrait {
 }
 
 #[derive(Debug, Clone)]
+pub struct NoApp;
+
+impl AppTrait for NoApp {
+    fn db_txn(&self) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+    fn index_block(
+        &self,
+        _block: &BlockInfo,
+        _block_outcome: &BlockOutcome,
+    ) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+    fn index_transaction(
+        &self,
+        _block: &BlockInfo,
+        _tx: &Tx,
+        _tx_outcome: &TxOutcome,
+    ) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+    fn save_db_txn(&self) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct App {
     pub context: Context,
     pub runtime: Arc<Runtime>,

@@ -5,6 +5,7 @@ use {
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, QuerierWrapper,
         Timestamp, TxOutcome, GENESIS_BLOCK_HASH,
     },
+    indexer_core::AppTrait as IndexerAppTrait,
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
@@ -21,11 +22,12 @@ use {
     tracing::error,
 };
 
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
+    Indexer: IndexerAppTrait + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
@@ -36,11 +38,12 @@ where
     }
 }
 
-impl<DB, VM, PP> Application for App<DB, VM, PP>
+impl<DB, VM, Indexer, PP> Application for App<DB, VM, Indexer, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
+    Indexer: IndexerAppTrait + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {

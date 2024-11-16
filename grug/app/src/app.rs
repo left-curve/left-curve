@@ -28,7 +28,7 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM, PP = NaiveProposalPreparer> {
+pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
     pp: PP,
@@ -48,12 +48,12 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     #[cfg(feature = "indexer")]
     //NOTE: using option is annoying because I have to `.map` everywhere
     //indexer_app: Option<IndexerApp>,
-    pub indexer_app: IndexerApp,
+    pub indexer_app: INDEXER,
 }
 
-impl<DB, VM, PP> App<DB, VM, PP> {
+impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP> {
     #[cfg(feature = "indexer")]
-    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: IndexerApp) -> Self {
+    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: Indexer) -> Self {
         Self {
             db,
             vm,
@@ -74,10 +74,11 @@ impl<DB, VM, PP> App<DB, VM, PP> {
     }
 }
 
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
 where
     DB: Db,
     VM: Vm + Clone,
+    Indexer: IndexerAppTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -529,10 +530,11 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
 where
     DB: Db,
     VM: Vm + Clone,
+    Indexer: IndexerAppTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
