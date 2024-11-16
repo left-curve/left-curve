@@ -57,9 +57,6 @@ where
     )
     .unwrap();
 
-    //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-    //indexer.migrate_db().expect("Can't migrate DB");
-
     let suite = TestSuite::new_with_db_vm_and_pp(
         db,
         vm,

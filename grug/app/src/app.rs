@@ -51,9 +51,9 @@ pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
     pub indexer_app: INDEXER,
 }
 
-impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP> {
+impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
     #[cfg(feature = "indexer")]
-    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: Indexer) -> Self {
+    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: INDEXER) -> Self {
         Self {
             db,
             vm,
@@ -74,11 +74,11 @@ impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP> {
     }
 }
 
-impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
+impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    Indexer: IndexerAppTrait,
+    INDEXER: IndexerAppTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -530,11 +530,11 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
+impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    Indexer: IndexerAppTrait,
+    INDEXER: IndexerAppTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

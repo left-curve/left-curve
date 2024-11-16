@@ -22,12 +22,12 @@ use {
     tracing::error,
 };
 
-impl<DB, VM, Indexer, PP> App<DB, VM, Indexer, PP>
+impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
-    Indexer: IndexerAppTrait + Clone + Send + 'static,
+    INDEXER: IndexerAppTrait + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     pub fn start_abci_server<A>(self, read_buf_size: usize, addr: A) -> Result<(), ABCIError>
@@ -38,12 +38,12 @@ where
     }
 }
 
-impl<DB, VM, Indexer, PP> Application for App<DB, VM, Indexer, PP>
+impl<DB, VM, INDEXER, PP> Application for App<DB, VM, INDEXER, PP>
 where
     DB: Db + Clone + Send + 'static,
     VM: Vm + Clone + Send + 'static,
     PP: ProposalPreparer + Clone + Send + 'static,
-    Indexer: IndexerAppTrait + Clone + Send + 'static,
+    INDEXER: IndexerAppTrait + Clone + Send + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     fn info(&self, _req: RequestInfo) -> ResponseInfo {
