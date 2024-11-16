@@ -211,40 +211,6 @@ where
     }
 }
 
-//impl<DB, VM, PP> TestSuite<DB, VM, AppIndexer, PP>
-//where
-//    DB: Db,
-//    VM: Vm + Clone,
-//    PP: ProposalPreparer,
-//    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
-//{
-//    /// Create a new test suite with `MemDb`, `RustVm`, and the given proposal
-//    /// preparer.
-//    pub fn new_with_db_vm_and_pp(
-//        pp: PP,
-//        chain_id: String,
-//        block_time: Duration,
-//        default_gas_limit: u64,
-//        genesis_block: BlockInfo,
-//        genesis_state: GenesisState,
-//    ) -> Self {
-//        let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-//        indexer.migrate_db().expect("Can't migrate DB");
-//
-//        Self::new_with_db_vm_indexer_and_pp(
-//            MemDb::new(),
-//            RustVm::new(),
-//            pp,
-//            indexer,
-//            chain_id,
-//            block_time,
-//            default_gas_limit,
-//            genesis_block,
-//            genesis_state,
-//        )
-//    }
-//}
-
 impl<DB, VM, PP> TestSuite<DB, VM, AppIndexer, PP>
 where
     DB: Db,
