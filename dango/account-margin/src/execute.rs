@@ -1,5 +1,5 @@
 use {
-    crate::query_health,
+    crate::MarginQuerier,
     anyhow::ensure,
     dango_auth::authenticate_tx,
     dango_types::{account::InstantiateMsg, config::AppConfig},
@@ -28,12 +28,14 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health = query_health(ctx.into_immutable())?;
+    let health = ctx.querier.query_health(ctx.contract)?;
 
-    // If the utilization rate is greater than 1, the account is undercollateralized.
+    // After executing all messages in the transactions, the account must have
+    // a utilization rate no greater than one. Otherwise, we throw an error to
+    // revert the transaction.
     ensure!(
         health.utilization_rate <= Udec128::ONE,
-        "the action would make the account undercollateralized! utilization rate after action: {}, total debt: {}, total collateral: {}",
+        "this action would make account undercollateralized! utilization rate: {}, total debt: {}, total adjusted collateral: {}",
         health.utilization_rate,
         health.total_debt_value,
         health.total_adjusted_collateral_value

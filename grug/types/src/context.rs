@@ -77,20 +77,6 @@ pub struct AuthCtx<'a> {
     pub mode:     AuthMode,
 }
 
-impl<'a> AuthCtx<'a> {
-    /// Converts an `AuthCtx` to an `ImmutableCtx`.
-    pub fn into_immutable(self) -> ImmutableCtx<'a> {
-        ImmutableCtx {
-            storage: self.storage,
-            api: self.api,
-            querier: self.querier,
-            chain_id: self.chain_id,
-            block: self.block,
-            contract: self.contract,
-        }
-    }
-}
-
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthMode {
     Simulate,

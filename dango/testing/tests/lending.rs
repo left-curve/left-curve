@@ -320,7 +320,7 @@ fn cant_borrow_if_no_collateral() {
             &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
             Coins::new(),
         )
-        .should_fail_with_error("the account has no collateral");
+        .should_fail_with_error("this action would make account undercollateralized!");
 }
 
 #[test]
@@ -369,7 +369,7 @@ fn cant_borrow_if_undercollateralized() {
             &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
             Coins::new(),
         )
-        .should_fail_with_error("the action would make the account undercollateralized");
+        .should_fail_with_error("this action would make account undercollateralized!");
 }
 
 #[test]
