@@ -12,18 +12,6 @@ pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("
 
 // -------------------------------- Bounds -------------------------------------
 
-/// Defines the bounds for a loan-to-value ratio: 0 < LoanToValue < 1.
-#[grug::derive(Serde)]
-pub struct LoanToValueBounds;
-
-impl Bounds<Udec128> for LoanToValueBounds {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
-}
-
-/// A decimal bounded by the loan-to-value bounds.
-pub type LoanToValue = Bounded<Udec128, LoanToValueBounds>;
-
 /// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
 #[grug::derive(Serde)]
 pub struct CollateralPowerBounds;
