@@ -8,7 +8,7 @@ use {
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Market { denom } => {
             let res = query_market(ctx.storage, denom)?;
@@ -27,7 +27,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
     }
-    .map_err(Into::into)
 }
 
 pub fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
