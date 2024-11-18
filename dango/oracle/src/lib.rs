@@ -1,6 +1,6 @@
 mod execute;
-mod oracle_queries;
+mod oracle_querier;
 mod query;
 mod state;
 
-pub use {execute::*, oracle_queries::*, query::*, state::*};
+pub use {execute::*, oracle_querier::*, query::*, state::*};

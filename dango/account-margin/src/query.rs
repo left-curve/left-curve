@@ -2,7 +2,7 @@ use {
     anyhow::bail,
     dango_auth::NEXT_SEQUENCE,
     dango_lending::DEBTS,
-    dango_oracle::OracleQueries,
+    dango_oracle::OracleQuerier,
     dango_types::{
         account::margin::{CollateralPower, HealthResponse, QueryMsg},
         config::AppConfig,

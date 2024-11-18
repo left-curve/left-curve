@@ -6,18 +6,17 @@ use {
 };
 
 /// A trait for querying prices from the oracle.
-pub trait OracleQueries {
+pub trait OracleQuerier {
     /// Queries the price for a given denom from the oracle.
     fn query_price(&self, oracle: Addr, denom: &Denom) -> anyhow::Result<PrecisionedPrice>;
 }
 
-impl OracleQueries for QuerierWrapper<'_> {
+impl OracleQuerier for QuerierWrapper<'_> {
     fn query_price(&self, oracle: Addr, denom: &Denom) -> anyhow::Result<PrecisionedPrice> {
         let price_source = self
             .query_wasm_raw(oracle, PRICE_SOURCES.path(denom))?
             .ok_or(anyhow::anyhow!(
-                "Price source not found for denom: {}",
-                denom
+                "price source not found for denom `{denom}`"
             ))?
             .deserialize_borsh::<PriceSource>()?;
 
@@ -25,7 +24,7 @@ impl OracleQueries for QuerierWrapper<'_> {
             PriceSource::Pyth { id, precision } => {
                 let price = self
                     .query_wasm_raw(oracle, PRICES.path(id))?
-                    .ok_or(anyhow!("Price not found for denom: {}", id))?
+                    .ok_or(anyhow!("price not found for pyth id: {id}"))?
                     .deserialize_borsh::<PrecisionlessPrice>()?
                     .with_precision(precision);
                 Ok(price)
