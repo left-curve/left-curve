@@ -174,6 +174,14 @@ pub fn authenticate_tx(
                         },
                     )?;
 
+                    // Ensure the number of signatures is at least the threshold.
+                    ensure!(
+                        signs_info.len() as u8 >= *threshold,
+                        "insufficient signatures: expected at least {}, got {}",
+                        threshold,
+                        signs_info.len()
+                    );
+
                     let mut signs_info = signs_info.into_iter();
                     let mut responses = ctx.querier.query_multi_vec(requests)?.into_iter();
                     let mut signs_to_verify = vec![];
@@ -201,14 +209,6 @@ pub fn authenticate_tx(
 
                         signs_to_verify.push((key, signature));
                     }
-
-                    // Ensure the number of signatures is at least the threshold.
-                    ensure!(
-                        signs_to_verify.len() as u8 >= *threshold,
-                        "insufficient signatures: expected at least {}, got {}",
-                        threshold,
-                        signs_to_verify.len()
-                    );
 
                     signs_to_verify
                 },
