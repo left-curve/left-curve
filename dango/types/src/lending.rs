@@ -106,7 +106,4 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-    /// Returns all collateral powers.
-    #[returns(BTreeMap<Denom, CollateralPower>)]
-    CollateralPowers {},
 }

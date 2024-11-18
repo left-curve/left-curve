@@ -1,13 +1,7 @@
 use {
     crate::{DEBTS, MARKETS},
-    dango_types::{
-        config::AppConfig,
-        lending::{CollateralPower, Market, QueryMsg},
-    },
-    grug::{
-        Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
-        StdResult, Storage,
-    },
+    dango_types::lending::{Market, QueryMsg},
+    grug::{Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
 };
 
@@ -30,10 +24,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Debts { start_after, limit } => {
             let res = query_debts(ctx.storage, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::CollateralPowers {} => {
-            let res = query_collateral_powers(&ctx.querier)?;
             res.to_json_value()
         },
     }
@@ -74,11 +64,4 @@ pub fn query_debts(
         .range(storage, start, None, Order::Ascending)
         .take(limit as usize)
         .collect()
-}
-
-pub fn query_collateral_powers(
-    querier: &QuerierWrapper,
-) -> StdResult<BTreeMap<Denom, CollateralPower>> {
-    let app_config: AppConfig = querier.query_app_config()?;
-    Ok(app_config.lending.collateral_powers)
 }

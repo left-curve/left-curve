@@ -6,8 +6,8 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         lending::{
-            self, CollateralPower, MarketUpdates, QueryCollateralPowersRequest, QueryDebtRequest,
-            QueryDebtsRequest, QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
+            self, CollateralPower, MarketUpdates, QueryDebtRequest, QueryDebtsRequest,
+            QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
         token_factory,
@@ -179,11 +179,6 @@ fn set_collateral_power(
     suite
         .query_app_config::<AppConfig>()
         .should_succeed_and_equal(config.clone());
-
-    // Ensure collateral power was updated.
-    suite
-        .query_wasm_smart(config.addresses.lending, QueryCollateralPowersRequest {})
-        .should_succeed_and_equal(config.lending.collateral_powers);
 }
 
 #[test]
