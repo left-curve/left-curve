@@ -83,10 +83,5 @@ pub fn query_health(ctx: ImmutableCtx) -> anyhow::Result<HealthResponse> {
         .transpose()?
         .unwrap_or_default();
 
-    calculate_account_health(
-        &ctx.querier,
-        ctx.contract,
-        debts,
-        app_cfg.lending.collateral_powers,
-    )
+    calculate_account_health(&ctx.querier, ctx.contract, debts, app_cfg.collateral_powers)
 }

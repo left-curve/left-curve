@@ -162,7 +162,7 @@ fn set_collateral_power(
     let mut config: AppConfig = suite.query_app_config().unwrap();
 
     // Update collateral power
-    config.lending.collateral_powers.insert(denom, power);
+    config.collateral_powers.insert(denom, power);
 
     // Set new config
     suite

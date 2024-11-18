@@ -225,7 +225,7 @@ pub fn authenticate_tx(
 mod tests {
     use {
         super::*,
-        dango_types::{account_factory::Username, config::AppAddresses, lending::LendingAppConfig},
+        dango_types::{account_factory::Username, config::AppAddresses},
         grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
@@ -282,9 +282,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -327,9 +325,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -428,9 +424,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {

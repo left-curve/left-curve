@@ -252,7 +252,6 @@ mod tests {
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
             config::AppAddresses,
-            lending::LendingAppConfig,
         },
         grug::{
             btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
@@ -280,9 +279,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap();
 
@@ -324,9 +321,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -454,9 +449,7 @@ mod tests {
                     oracle: Addr::mock(1),
                     lending: Addr::mock(0), // doesn't matter for this test
                 },
-                lending: LendingAppConfig {
-                    collateral_powers: btree_map! {},
-                },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_smart_query_handler(move |contract, data| {

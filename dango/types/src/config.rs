@@ -1,12 +1,18 @@
-use grug::Addr;
-
-use crate::lending::LendingAppConfig;
+use {
+    crate::lending::CollateralPower,
+    grug::{Addr, Denom},
+    std::collections::BTreeMap,
+};
 
 /// Application-specific configurations of the Dango chain.
 #[grug::derive(Serde)]
 pub struct AppConfig {
     pub addresses: AppAddresses,
-    pub lending: LendingAppConfig,
+    /// The powers of all collateral tokens. This is the adjustment factor for
+    /// the collateral value of a given collateral token. Meaning, if the
+    /// collateral token has a power of 0.9, then the value of the collateral
+    /// token is 90% of its actual value.
+    pub collateral_powers: BTreeMap<Denom, CollateralPower>,
 }
 
 /// Addresses of relevant Dango contracts.

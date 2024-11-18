@@ -6,7 +6,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig},
         ibc_transfer,
-        lending::{self, LendingAppConfig, MarketUpdates},
+        lending::{self, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
@@ -318,9 +318,6 @@ where
         max_orphan_age,
     };
 
-    let lending_app_config = LendingAppConfig {
-        collateral_powers: btree_map! {},
-    };
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
@@ -328,7 +325,7 @@ where
             lending,
             oracle,
         },
-        lending: lending_app_config,
+        collateral_powers: btree_map! {},
     };
 
     let genesis_state = GenesisState {
