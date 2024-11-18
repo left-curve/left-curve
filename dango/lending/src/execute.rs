@@ -161,7 +161,7 @@ pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         );
     }
 
-    let mut msgs = vec![];
+    let mut maybe_msg = None;
 
     // Update the sender's liabilities
     DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
@@ -170,11 +170,11 @@ pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         // Deduct the sent coins from the account's debts, saturating at zero.
         let remainders = debts.saturating_deduct_many(ctx.funds)?;
 
-        // Refund the remainders to the sender
-        msgs.push(Message::transfer(ctx.sender, remainders)?);
+        // Refund the remainders to the sender, if any.
+        maybe_msg = Some(Message::transfer(ctx.sender, remainders)?);
 
         Ok(debts)
     })?;
 
-    Ok(Response::new().add_messages(msgs))
+    Ok(Response::new().may_add_message(maybe_msg))
 }
