@@ -10,8 +10,8 @@ use {
         TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    indexer_core::App as AppIndexer,
-    indexer_core::AppTrait as IndexerAppTrait,
+    indexer_core::blocking_indexer::Indexer as AppIndexer,
+    indexer_core::IndexerTrait as IndexerAppTrait,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -230,7 +230,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        indexer.migrate_db().expect("Can't migrate DB");
+        indexer.start().expect("Can't start AppIndexer");
 
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, u64::MAX, indexer);

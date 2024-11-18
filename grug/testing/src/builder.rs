@@ -9,9 +9,9 @@ use {
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    indexer_core::App as AppIndexer,
-    indexer_core::AppTrait as IndexerAppTrait,
-    indexer_core::NoApp,
+    indexer_core::blocking_indexer::Indexer as AppIndexer,
+    indexer_core::null_indexer::Indexer as NullIndexer,
+    indexer_core::IndexerTrait as IndexerAppTrait,
     serde::Serialize,
     std::{
         collections::BTreeMap,

@@ -1,8 +1,8 @@
 #[cfg(feature = "abci")]
 use grug_types::{JsonDeExt, JsonSerExt};
 #[cfg(feature = "indexer")]
-use indexer_core::App as IndexerApp;
-use indexer_core::AppTrait as IndexerAppTrait;
+use indexer_core::blocking_indexer::Indexer as IndexerApp;
+use indexer_core::IndexerTrait as IndexerAppTrait;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -197,7 +197,9 @@ where
 
         #[cfg(feature = "indexer")]
         // TODO: use my own indexer error and `?`
-        self.indexer_app.db_txn().expect("Cant set DB txn");
+        self.indexer_app
+            .pre_indexing(block.height)
+            .expect("Cant set DB txn");
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -354,7 +356,9 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         #[cfg(feature = "indexer")]
-        self.indexer_app.save_db_txn().unwrap();
+        if let Some(block_height) = self.db.latest_version() {
+            self.indexer_app.post_indexing(block_height).unwrap();
+        }
 
         Ok(())
     }

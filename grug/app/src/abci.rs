@@ -5,7 +5,7 @@ use {
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, QuerierWrapper,
         Timestamp, TxOutcome, GENESIS_BLOCK_HASH,
     },
-    indexer_core::AppTrait as IndexerAppTrait,
+    indexer_core::IndexerTrait as IndexerAppTrait,
     prost::bytes::Bytes,
     std::{any::type_name, net::ToSocketAddrs},
     tendermint_abci::{Application, Error as ABCIError, ServerBuilder},
