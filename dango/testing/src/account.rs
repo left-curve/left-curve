@@ -11,7 +11,7 @@ use {
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
-    grug_app::ProposalPreparer,
+    grug_app::{AppError, ProposalPreparer},
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
         elliptic_curve::rand_core::OsRng,
@@ -157,7 +157,7 @@ where
     ) -> StdResult<TestAccount<Defined<Addr>>>
     where
         PP: ProposalPreparer,
-        grug_app::AppError: From<PP::Error>,
+        AppError: From<PP::Error>,
     {
         // If registering a single account, ensure the supplied username matches this account's username.
         match &params {
