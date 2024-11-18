@@ -83,11 +83,11 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
-    use grug::NumberConst;
-
-    use super::*;
+    use {super::*, grug::NumberConst};
 
     #[test]
     fn value_of_unit_amount_does_not_overflow_with_large_precision() {
@@ -103,7 +103,6 @@ mod tests {
         let value = price
             .value_of_unit_amount(Uint128::new(100_000_000u128 * 10u128.pow(18)))
             .unwrap();
-        println!("{value:?}");
         assert_eq!(value, Udec128::new(10_000_000_000_000_000u128));
     }
 }
