@@ -20,10 +20,7 @@ library = []
 [dependencies]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
-dango-auth            = { workspace = true }
-dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
-grug-storage          = { workspace = true }
 
 [dev-dependencies]
