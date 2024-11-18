@@ -40,6 +40,7 @@ pyth-sdk    = { workspace = true }
 rand        = { workspace = true }
 reqwest     = { workspace = true, features = ["json"] }
 test-case   = { workspace = true }
+tracing     = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

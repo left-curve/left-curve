@@ -21,7 +21,8 @@ pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm> = grug::TestS
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
     let codes = build_codes();
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, ProposalPreparer)
+
+    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, ProposalPreparer::new())
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer` and `ContractWrapper` codes.
@@ -32,6 +33,7 @@ pub fn setup_test_naive() -> (
     Contracts,
 ) {
     let codes = build_codes();
+
     setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, NaiveProposalPreparer)
 }
 
@@ -41,7 +43,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<ProposalPreparer, DiskDb, WasmVm>,
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,
@@ -53,7 +55,7 @@ pub fn setup_benchmark(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, ProposalPreparer)
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer)
 }
 
 /// Set up a test with the given DB, VM, and codes.
