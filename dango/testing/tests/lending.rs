@@ -2,12 +2,12 @@ use {
     dango_genesis::Contracts,
     dango_testing::{setup_test_naive, Accounts, TestSuite},
     dango_types::{
-        account::single,
+        account::{margin::CollateralPower, single},
         account_factory::AccountParams,
         config::AppConfig,
         lending::{
-            self, CollateralPower, MarketUpdates, QueryDebtRequest, QueryDebtsRequest,
-            QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
+            self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
+            NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
         token_factory,

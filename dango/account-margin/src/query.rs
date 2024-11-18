@@ -4,9 +4,8 @@ use {
     dango_lending::DEBTS,
     dango_oracle::OracleQueries,
     dango_types::{
-        account::margin::{HealthResponse, QueryMsg},
+        account::margin::{CollateralPower, HealthResponse, QueryMsg},
         config::AppConfig,
-        lending::CollateralPower,
     },
     grug::{
         Addr, BorshDeExt, Coins, Denom, ImmutableCtx, Inner, IsZero, Json, JsonSerExt, NumberConst,

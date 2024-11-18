@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Bound, Bounded, Bounds, Coins, Denom, NumberConst, Part, Udec128},
+    grug::{Addr, Coins, Denom, Part},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -9,22 +9,6 @@ pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("len
 
 /// Sub-namespace that liquidity share tokens will be minted under.
 pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("pool"));
-
-// -------------------------------- Bounds -------------------------------------
-
-/// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
-#[grug::derive(Serde)]
-pub struct CollateralPowerBounds;
-
-impl Bounds<Udec128> for CollateralPowerBounds {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
-}
-
-/// A decimal bounded by the collateral power bounds.
-pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
-
-// -------------------------------- Market -------------------------------------
 
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]
@@ -38,7 +22,6 @@ pub struct MarketUpdates {
     // TODO
 }
 
-// -------------------------------- Messages -----------------------------------
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub markets: BTreeMap<Denom, MarketUpdates>,

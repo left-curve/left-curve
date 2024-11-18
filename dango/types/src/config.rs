@@ -1,5 +1,5 @@
 use {
-    crate::lending::CollateralPower,
+    crate::account::margin::CollateralPower,
     grug::{Addr, Denom},
     std::collections::BTreeMap,
 };
