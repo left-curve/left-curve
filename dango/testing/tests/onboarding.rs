@@ -2,7 +2,7 @@ use {
     dango_testing::{setup_test, Factory, TestAccount},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, Username},
+        account_factory::{self, Account, AccountParams, SignMode, Username},
         auth::Key,
         ibc_transfer,
     },
@@ -18,7 +18,7 @@ use {
 fn user_onboarding() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
-    // Create a new key offchain; then, predict what its address would be.
+    // Create a new key off chain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
         codes.account_spot.to_bytes().hash256(),
@@ -79,7 +79,7 @@ fn user_onboarding() {
                 // We have 2 genesis accounts (0 owner, 1 relayer) so this one should have
                 // the index of 2.
                 index: 2,
-                params: AccountParams::Spot(single::Params { owner: user.username.clone() }),
+                params: AccountParams::Spot(single::Params { owner: user.username.clone(), sign_mode: SignMode::Single }),
             },
         });
 

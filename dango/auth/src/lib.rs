@@ -1,16 +1,18 @@
 use {
     alloy_dyn_abi::{Eip712Domain, TypedData},
     alloy_primitives::U160,
-    anyhow::{anyhow, bail, ensure},
+    anyhow::{anyhow, bail, ensure, Ok},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
-    dango_account_factory::{ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
+    dango_account_factory::{ACCOUNTS, ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
     dango_types::{
-        auth::{ClientData, Credential, Key, Metadata, SignDoc},
+        account_factory::{Account, SignMode},
+        auth::{ClientData, Credential, Key, Metadata, SignDoc, Signature},
         config::AppConfig,
     },
     grug::{
         json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
     },
+    std::ops::Deref,
 };
 
 /// Expected sequence number of the next transaction this account sends.
@@ -48,50 +50,20 @@ pub fn authenticate_tx(
     // Increment the sequence.
     let (sequence, _) = NEXT_SEQUENCE.increment(ctx.storage)?;
 
-    // Query the account factory. We need to do three things:
-    // - ensure the `tx.sender` is associated with the username;
-    // - ensure the `key_hash` is associated wit the username;
-    // - query the key by key hash.
-    //
-    // We use Wasm raw queries instead of smart queries to optimize on gas.
-    // We also user the multi query to reduce the number of FFI calls.
-    let key = {
-        let [res1, res2, res3] = ctx.querier.query_multi([
-            Query::wasm_raw(
-                factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-            ),
-            Query::wasm_raw(
-                factory,
-                KEYS_BY_USER.path((&metadata.username, metadata.key_hash)),
-            ),
-            Query::wasm_raw(factory, KEYS.path(metadata.key_hash)),
-        ])?;
+    // Ensure the `tx.sender` is associated with the username.
+    {
+        let res = ctx.querier.query_wasm_raw(
+            factory,
+            ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+        )?;
 
-        // If the sender account is associated with the username, then an entry
-        // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-        // empty because we Borsh for encoding.
         ensure!(
-            res1.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
+            res.is_some_and(|bytes| bytes.is_empty()),
             "account {} isn't associated with user `{}`",
             tx.sender,
             metadata.username,
         );
-
-        // Similarly, if the key hash is associated with the username, it must
-        // be present in the `KEYS_BY_USER` set.
-        ensure!(
-            res2.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
-            "key hash {} isn't associated with user `{}`",
-            metadata.key_hash,
-            metadata.username
-        );
-
-        // Deserialize the key from Borsh bytes.
-        res3.as_wasm_raw()
-            .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
-            .deserialize_borsh()?
-    };
+    }
 
     // Verify sequence.
     match ctx.mode {
@@ -122,97 +94,219 @@ pub fn authenticate_tx(
 
     // Verify signature.
     match ctx.mode {
-        AuthMode::Check | AuthMode::Finalize => match (key, tx.credential.deserialize_json()?) {
-            (Key::Secp256k1(pk), Credential::Eip712(cred)) => {
-                let TypedData {
-                    resolver, domain, ..
-                } = cred.typed_data.deserialize_json()?;
+        AuthMode::Check | AuthMode::Finalize => {
+            let credential: Credential = tx.credential.deserialize_json()?;
 
-                // Recreate the EIP-712 data originally used for signing.
-                // Verify that the critical values in the transaction such as
-                // the message and the verifying contract (sender).
-                let typed_data = TypedData {
-                    resolver,
-                    domain: Eip712Domain {
-                        name: domain.name,
-                        verifying_contract: Some(
-                            U160::from_be_bytes(ctx.contract.into_inner()).into(),
-                        ),
-                        ..Default::default()
-                    },
-                    primary_type: "Message".to_string(),
-                    message: json!({
-                        "chainId": ctx.chain_id,
-                        "sequence": metadata.sequence,
-                        "messages": tx.msgs,
-                    })
-                    .into_inner(),
-                };
+            // Get account info.
+            let account_info: Account = ctx
+                .querier
+                .query_wasm_raw(factory, ACCOUNTS.path(tx.sender))?
+                .ok_or(anyhow!("account not found: {}", tx.sender))?
+                .deserialize_borsh()?;
 
-                // EIP-712 hash used in the signature.
-                let sign_bytes = typed_data.eip712_signing_hash()?;
+            let signs_to_verify = match account_info.params.sign_mode().deref() {
+                SignMode::Single => {
+                    let mut credential = credential.into_iter();
 
-                ctx.api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
-            },
-            (Key::Secp256r1(pk), Credential::Passkey(cred)) => {
-                // Verify that Passkey has signed the correct data.
-                // The data should be the SHA-256 hash of a `ClientData`, where
-                // the challenge is the sign bytes.
-                // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
-                let signed_hash = {
-                    let client_data: ClientData = cred.client_data.deserialize_json()?;
+                    let (Some((key_hash, signature)), None) =
+                        (credential.next(), credential.next())
+                    else {
+                        bail!("invalid credential: expected a single signature")
+                    };
 
-                    let sign_bytes = ctx.api.sha2_256(
-                        &SignDoc {
-                            sender: tx.sender,
-                            messages: tx.msgs.into_inner(),
-                            chain_id: ctx.chain_id,
-                            sequence: metadata.sequence,
-                        }
-                        .to_json_vec()?,
-                    );
-                    let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
+                    // Query the account factory. We need to do two things:
+                    // - ensure the `key_hash` is associated wit the username;
+                    // - query the key by key hash.
+                    let key: Key = {
+                        let [res_ownership, res_key] = ctx.querier.query_multi([
+                            Query::wasm_raw(
+                                factory,
+                                KEYS_BY_USER.path((&metadata.username, key_hash)),
+                            ),
+                            Query::wasm_raw(factory, KEYS.path(key_hash)),
+                        ])?;
 
-                    ensure!(
-                        client_data.challenge == sign_bytes_base64,
-                        "incorrect challenge: expecting {}, got {}",
-                        sign_bytes_base64,
-                        client_data.challenge
-                    );
+                        // If the key hash is associated with the username, it must
+                        // be present in the `KEYS_BY_USER` set.
+                        ensure!(
+                            res_ownership
+                                .as_wasm_raw()
+                                .is_some_and(|bytes| bytes.is_empty()),
+                            "key hash {} isn't associated with user `{}`",
+                            key_hash,
+                            metadata.username
+                        );
 
-                    let client_data_hash = ctx.api.sha2_256(&cred.client_data);
+                        // Deserialize the key from Borsh bytes.
+                        res_key
+                            .as_wasm_raw()
+                            .ok_or_else(|| anyhow!("key hash {} not found", key_hash))?
+                            .deserialize_borsh()?
+                    };
+                    vec![(key, signature)]
+                },
+                SignMode::Restricted {
+                    threshold,
+                    allowed_keys,
+                } => {
+                    // Gather all Query requests for the keys and ownerships.
+                    // This is done in a single `query_multi_vec` to avoid multiple queries.
+                    let (requests, signs_info) = credential.into_iter().try_fold(
+                        (vec![], vec![]),
+                        |(mut requests, mut info), (key_hash, signature)| {
+                            // Instead of raising an error, just skip the key if it's not allowed.
+                            if !allowed_keys.contains(&key_hash) {
+                                return Ok((requests, info));
+                            }
 
-                    let signed_data = [
-                        cred.authenticator_data.as_ref(),
-                        client_data_hash.as_slice(),
-                    ]
-                    .concat();
+                            let [res_ownership, res_key] = [
+                                Query::wasm_raw(
+                                    factory,
+                                    KEYS_BY_USER.path((&metadata.username, key_hash)),
+                                ),
+                                Query::wasm_raw(factory, KEYS.path(key_hash)),
+                            ];
 
-                    // Note we use the FFI `sha2_256` method instead of `hash256`
-                    // from `HashExt`, because we may change the hash function
-                    // used in `HashExt` (we're exploring BLAKE3 over SHA-256).
-                    // Passkey always signs over SHA-256 digests.
-                    ctx.api.sha2_256(&signed_data)
-                };
+                            requests.push(res_ownership);
+                            requests.push(res_key);
+                            info.push((key_hash, signature));
+                            Ok((requests, info))
+                        },
+                    )?;
 
-                ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
-            },
-            (Key::Secp256k1(pk), Credential::Secp256k1(sig)) => {
-                let sign_bytes = ctx.api.sha2_256(
-                    &SignDoc {
-                        sender: tx.sender,
-                        messages: tx.msgs.into_inner(),
-                        chain_id: ctx.chain_id,
-                        sequence: metadata.sequence,
+                    let mut signs_info = signs_info.into_iter();
+                    let mut responses = ctx.querier.query_multi_vec(requests)?.into_iter();
+                    let mut signs_to_verify = vec![];
+
+                    // We need to unpack the responses in pairs of (ownership, key).
+                    while let (Some(res_ownership), Some(res_key), Some((key_hash, signature))) =
+                        (responses.next(), responses.next(), signs_info.next())
+                    {
+                        // If the key hash is associated with the username, it must
+                        // be present in the `KEYS_BY_USER` set.
+                        ensure!(
+                            res_ownership
+                                .as_wasm_raw()
+                                .is_some_and(|bytes| bytes.is_empty()),
+                            "key hash {} isn't associated with user `{}`",
+                            key_hash,
+                            metadata.username
+                        );
+
+                        // Deserialize the key from Borsh bytes.
+                        let key: Key = res_key
+                            .as_wasm_raw()
+                            .ok_or_else(|| anyhow!("key hash {} not found", key_hash))?
+                            .deserialize_borsh()?;
+
+                        signs_to_verify.push((key, signature));
                     }
-                    .to_json_vec()?,
-                );
 
-                ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
-            },
-            _ => bail!("key and credential types don't match!"),
+                    // Ensure the number of signatures is at least the threshold.
+                    ensure!(
+                        signs_to_verify.len() as u8 >= *threshold,
+                        "insufficient signatures: expected at least {}, got {}",
+                        threshold,
+                        signs_to_verify.len()
+                    );
+
+                    signs_to_verify
+                },
+            };
+
+            for (key, sign) in signs_to_verify {
+                match (key, sign) {
+                    (Key::Secp256k1(pk), Signature::Eip712(cred)) => {
+                        let TypedData {
+                            resolver, domain, ..
+                        } = cred.typed_data.deserialize_json()?;
+
+                        // Recreate the EIP-712 data originally used for signing.
+                        // Verify that the critical values in the transaction such as
+                        // the message and the verifying contract (sender).
+                        let typed_data = TypedData {
+                            resolver,
+                            domain: Eip712Domain {
+                                name: domain.name,
+                                verifying_contract: Some(
+                                    U160::from_be_bytes(ctx.contract.into_inner()).into(),
+                                ),
+                                ..Default::default()
+                            },
+                            primary_type: "Message".to_string(),
+                            message: json!({
+                                "chainId": ctx.chain_id,
+                                "sequence": metadata.sequence,
+                                "messages": tx.msgs,
+                            })
+                            .into_inner(),
+                        };
+
+                        // EIP-712 hash used in the signature.
+                        let sign_bytes = typed_data.eip712_signing_hash()?;
+
+                        ctx.api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
+                    },
+                    (Key::Secp256r1(pk), Signature::Passkey(cred)) => {
+                        // Verify that Passkey has signed the correct data.
+                        // The data should be the SHA-256 hash of a `ClientData`, where
+                        // the challenge is the sign bytes.
+                        // See: <https://github.com/j0nl1/demo-passkey/blob/main/wasm/lib.rs#L59-L99>
+                        let signed_hash = {
+                            let client_data: ClientData = cred.client_data.deserialize_json()?;
+
+                            let sign_bytes = ctx.api.sha2_256(
+                                &SignDoc {
+                                    sender: tx.sender,
+                                    messages: tx.msgs.clone().into_inner(),
+                                    chain_id: ctx.chain_id.clone(),
+                                    sequence: metadata.sequence,
+                                }
+                                .to_json_vec()?,
+                            );
+                            let sign_bytes_base64 = URL_SAFE_NO_PAD.encode(sign_bytes);
+
+                            ensure!(
+                                client_data.challenge == sign_bytes_base64,
+                                "incorrect challenge: expecting {}, got {}",
+                                sign_bytes_base64,
+                                client_data.challenge
+                            );
+
+                            let client_data_hash = ctx.api.sha2_256(&cred.client_data);
+
+                            let signed_data = [
+                                cred.authenticator_data.as_ref(),
+                                client_data_hash.as_slice(),
+                            ]
+                            .concat();
+
+                            // Note we use the FFI `sha2_256` method instead of `hash256`
+                            // from `HashExt`, because we may change the hash function
+                            // used in `HashExt` (we're exploring BLAKE3 over SHA-256).
+                            // Passkey always signs over SHA-256 digests.
+                            ctx.api.sha2_256(&signed_data)
+                        };
+
+                        ctx.api.secp256r1_verify(&signed_hash, &cred.sig, &pk)?;
+                    },
+                    (Key::Secp256k1(pk), Signature::Secp256k1(sig)) => {
+                        let sign_bytes = ctx.api.sha2_256(
+                            &SignDoc {
+                                sender: tx.sender,
+                                messages: tx.msgs.clone().into_inner(),
+                                chain_id: ctx.chain_id.clone(),
+                                sequence: metadata.sequence,
+                            }
+                            .to_json_vec()?,
+                        );
+
+                        ctx.api.secp256k1_verify(&sign_bytes, &sig, &pk)?;
+                    },
+                    _ => bail!("key and credential types don't match!"),
+                }
+            }
         },
-        // No need to verify signature in simulation mode.
         AuthMode::Simulate => (),
     }
 
@@ -225,7 +319,11 @@ pub fn authenticate_tx(
 mod tests {
     use {
         super::*,
-        dango_types::{account_factory::Username, config::AppAddresses},
+        dango_types::{
+            account::single,
+            account_factory::{AccountParams, Username},
+            config::AppAddresses,
+        },
         grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
@@ -237,7 +335,7 @@ mod tests {
     fn passkey_authentication() {
         let user_address = Addr::from_str("0x0e6d8a14f8e200f060ef35514c8184d54042e811").unwrap();
         let user_username = Username::from_str("test200").unwrap();
-        let user_keyhash = Hash160::from_str("8BFF03014982A50218CE139F1FAC0B1897DEDEF9").unwrap();
+        let user_key_hash = Hash160::from_str("8BFF03014982A50218CE139F1FAC0B1897DEDEF9").unwrap();
         let user_key = Key::Secp256r1(
             [
                 3, 190, 24, 244, 141, 90, 188, 110, 30, 146, 69, 153, 207, 241, 45, 19, 100, 19,
@@ -249,14 +347,15 @@ mod tests {
         let tx = r#"{
           "sender": "0x0e6d8a14f8e200f060ef35514c8184d54042e811",
           "credential": {
-            "passkey": {
-              "sig": "Ni2ljMLszTN+iL9lXPzPMo7klwVFUsK3SBCFnsYNdDOkN03/T2Es/7zTZ4CyJGQGcIeAzM4/fO+XbIASu92Q4w==",
-              "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidXYya01mUllmUDJ2cXFGSGxBT0xsVlotTTItYWQtM3kyaVlNVVY1MGJqWSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-              "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+            "8BFF03014982A50218CE139F1FAC0B1897DEDEF9": {
+              "passkey": {
+                "sig": "Ni2ljMLszTN+iL9lXPzPMo7klwVFUsK3SBCFnsYNdDOkN03/T2Es/7zTZ4CyJGQGcIeAzM4/fO+XbIASu92Q4w==",
+                "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidXYya01mUllmUDJ2cXFGSGxBT0xsVlotTTItYWQtM3kyaVlNVVY1MGJqWSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+              }
             }
           },
           "data": {
-            "key_hash": "8BFF03014982A50218CE139F1FAC0B1897DEDEF9",
             "username": "test200",
             "sequence": 0
           },
@@ -288,9 +387,18 @@ mod tests {
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
                 KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
+                    .insert(storage, (&user_username, user_key_hash))
                     .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+                KEYS.save(storage, user_key_hash, &user_key).unwrap();
+                ACCOUNTS
+                    .save(storage, user_address, &Account {
+                        index: 0,
+                        params: AccountParams::Spot(single::Params {
+                            owner: user_username,
+                            sign_mode: SignMode::Single,
+                        }),
+                    })
+                    .unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -305,7 +413,7 @@ mod tests {
     fn eip712_authentication() {
         let user_address = Addr::from_str("0x2e3d61d8cca8a774b884175fcf736e4c4e8060db").unwrap();
         let user_username = Username::from_str("test100").unwrap();
-        let user_keyhash = Hash160::from_str("125DA0206939DD8D2DB125C8903F7F1EF96C6195").unwrap();
+        let user_key_hash = Hash160::from_str("125DA0206939DD8D2DB125C8903F7F1EF96C6195").unwrap();
         let user_key = Key::Secp256k1(
             [
                 2, 133, 171, 100, 31, 51, 234, 81, 118, 154, 124, 111, 48, 233, 1, 122, 227, 69,
@@ -329,9 +437,18 @@ mod tests {
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
                 KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
+                    .insert(storage, (&user_username, user_key_hash))
                     .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+                KEYS.save(storage, user_key_hash, &user_key).unwrap();
+                ACCOUNTS
+                    .save(storage, user_address, &Account {
+                        index: 0,
+                        params: AccountParams::Spot(single::Params {
+                            owner: user_username,
+                            sign_mode: SignMode::Single,
+                        }),
+                    })
+                    .unwrap();
             });
 
         let mut ctx = MockContext::new()
@@ -343,13 +460,14 @@ mod tests {
         let tx = r#"{
           "sender": "0x2e3d61d8cca8a774b884175fcf736e4c4e8060db",
           "credential": {
-            "eip712": {
-              "sig": "BMbo/9aO/rPkhbt2hN1OaHl32QWME9BtLtwttbuUDyZmpnivpk73SLwDw6bc+3wsHSVxGVsARo5NtPPtQBDdvA==",
-              "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MmUzZDYxZDhjY2E4YTc3NGI4ODQxNzVmY2Y3MzZlNGM0ZTgwNjBkYiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMiIsIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyJ0byI6IjB4MTIzNTU5Y2E5NGQ3MzQxMTFmMzJjYzdkNjAzYzMzNDFjNGQyOWE4NCIsImNvaW5zIjp7InV1c2RjIjoiMTAwMDAwMCJ9fX1dLCJzZXF1ZW5jZSI6MH19"
+            "125DA0206939DD8D2DB125C8903F7F1EF96C6195": {
+              "eip712": {
+                "sig": "BMbo/9aO/rPkhbt2hN1OaHl32QWME9BtLtwttbuUDyZmpnivpk73SLwDw6bc+3wsHSVxGVsARo5NtPPtQBDdvA==",
+                "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MmUzZDYxZDhjY2E4YTc3NGI4ODQxNzVmY2Y3MzZlNGM0ZTgwNjBkYiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMiIsIm1lc3NhZ2VzIjpbeyJ0cmFuc2ZlciI6eyJ0byI6IjB4MTIzNTU5Y2E5NGQ3MzQxMTFmMzJjYzdkNjAzYzMzNDFjNGQyOWE4NCIsImNvaW5zIjp7InV1c2RjIjoiMTAwMDAwMCJ9fX1dLCJzZXF1ZW5jZSI6MH19"
+              }
             }
           },
           "data": {
-            "key_hash": "125DA0206939DD8D2DB125C8903F7F1EF96C6195",
             "username": "test100",
             "sequence": 0
           },
@@ -379,7 +497,7 @@ mod tests {
     fn secp256k1_authentication() {
         let user_address = Addr::from_str("0x93841114860ba74d0a9fa88962268aff17365fc9").unwrap();
         let user_username = Username::from_str("owner").unwrap();
-        let user_keyhash = Hash160::from_str("46DDF382989C9B321428A688032BC9F2A34F6BCD").unwrap();
+        let user_key_hash = Hash160::from_str("46DDF382989C9B321428A688032BC9F2A34F6BCD").unwrap();
         let user_key = Key::Secp256k1(
             [
                 3, 124, 218, 165, 96, 43, 172, 215, 28, 79, 219, 96, 16, 200, 82, 173, 128, 6, 111,
@@ -391,10 +509,11 @@ mod tests {
         let tx = r#"{
           "sender": "0x93841114860ba74d0a9fa88962268aff17365fc9",
           "credential": {
-            "secp256k1": "W+kfvnD23DMencrjT3/OLVfNkwYQTNcVsP2WHzIGj4ZizYAIpMslIiqE25vSDG3E634w4V+ppHIutqLZMY6sLg=="
+            "46DDF382989C9B321428A688032BC9F2A34F6BCD": {
+              "secp256k1": "W+kfvnD23DMencrjT3/OLVfNkwYQTNcVsP2WHzIGj4ZizYAIpMslIiqE25vSDG3E634w4V+ppHIutqLZMY6sLg=="
+            }
           },
           "data": {
-            "key_hash": "46DDF382989C9B321428A688032BC9F2A34F6BCD",
             "username": "owner",
             "sequence": 0
           },
@@ -426,9 +545,18 @@ mod tests {
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
                 KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
+                    .insert(storage, (&user_username, user_key_hash))
                     .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+                KEYS.save(storage, user_key_hash, &user_key).unwrap();
+                ACCOUNTS
+                    .save(storage, user_address, &Account {
+                        index: 0,
+                        params: AccountParams::Spot(single::Params {
+                            owner: user_username,
+                            sign_mode: SignMode::Single,
+                        }),
+                    })
+                    .unwrap();
             });
 
         let mut ctx = MockContext::new()

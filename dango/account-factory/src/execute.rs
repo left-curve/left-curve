@@ -8,7 +8,7 @@ use {
         account::{self, multi, single},
         account_factory::{
             Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
-            Username,
+            SignMode, Username,
         },
         auth::Key,
         config::AppConfig,
@@ -126,7 +126,7 @@ fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
         "only IBC transfer contract can make deposits"
     );
 
-    // 1. If someone makes a depsoit twice, then we simply merge the deposits.
+    // 1. If someone makes a deposit twice, then we simply merge the deposits.
     // 2. We trust the IBC transfer contract is implemented correctly and won't
     // make empty deposits.
     DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
@@ -181,7 +181,7 @@ fn register_user(
     )?))
 }
 
-// Onboarding a new user involves saving an initial key, and intantiate an
+// Onboarding a new user involves saving an initial key, and instantiate an
 // initial account, under the username.
 fn onboard_new_user(
     storage: &mut dyn Storage,
@@ -227,6 +227,7 @@ fn onboard_new_user(
         index,
         params: AccountParams::Spot(single::Params {
             owner: username.clone(),
+            sign_mode: SignMode::Single,
         }),
     };
 

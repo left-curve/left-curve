@@ -1,4 +1,4 @@
-use crate::account_factory::Username;
+use crate::account_factory::{SignMode, Username};
 
 /// Parameters of a single-signature account.
 #[grug::derive(Serde, Borsh)]
@@ -8,6 +8,7 @@ pub struct Params {
     /// The user can sign transactions with any key associated with their
     /// username and this account as sender.
     pub owner: Username,
+    pub sign_mode: SignMode,
 }
 
 #[grug::derive(Serde, QueryRequest)]

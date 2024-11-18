@@ -2,7 +2,7 @@ use {
     dango_testing::setup_test,
     dango_types::{
         account::single,
-        account_factory::AccountParams,
+        account_factory::{AccountParams, SignMode},
         lending::{
             self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
             NAMESPACE, SUBNAMESPACE,
@@ -181,6 +181,7 @@ fn borrowing_works() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )

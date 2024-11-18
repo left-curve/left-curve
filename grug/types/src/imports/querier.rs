@@ -158,4 +158,10 @@ impl<'a> QuerierWrapper<'a> {
                 responses.try_into().unwrap()
             })
     }
+
+    pub fn query_multi_vec(&self, requests: Vec<Query>) -> StdResult<Vec<QueryResponse>> {
+        self.inner
+            .query_chain(Query::Multi(requests))
+            .map(|res| res.as_multi())
+    }
 }

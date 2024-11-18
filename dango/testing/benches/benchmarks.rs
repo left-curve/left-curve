@@ -3,7 +3,7 @@ use {
     dango_testing::setup_benchmark,
     dango_types::{
         account::single,
-        account_factory::{self, AccountParams, Salt},
+        account_factory::{self, AccountParams, Salt, SignMode},
         amm::{self, FeeRate, PoolParams, XykParams},
     },
     grug::{
@@ -45,6 +45,7 @@ fn sends(c: &mut Criterion) {
                             &account_factory::ExecuteMsg::RegisterAccount {
                                 params: AccountParams::Spot(single::Params {
                                     owner: accounts.relayer.username.clone(),
+                                    sign_mode: SignMode::Single,
                                 }),
                             },
                             if i < 100 {

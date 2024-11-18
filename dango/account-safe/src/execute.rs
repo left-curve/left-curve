@@ -254,8 +254,8 @@ mod tests {
             config::AppAddresses,
         },
         grug::{
-            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
-            Json, JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
+            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json,
+            JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
             MOCK_BLOCK,
         },
         std::{collections::BTreeMap, str::FromStr},
@@ -341,10 +341,6 @@ mod tests {
                 msgs: NonEmpty::new_unchecked(vec![]),
                 data: Metadata {
                     username: non_member.clone(),
-                    // The things below (key hash, sequence, credential) don't
-                    // matter, because authentication should fail before we even
-                    // reach the signature verification step.
-                    key_hash: Hash::ZERO,
                     sequence: 0,
                 }
                 .to_json_value()
@@ -370,7 +366,6 @@ mod tests {
                 .unwrap()]),
                 data: Metadata {
                     username: member1,
-                    key_hash: Hash::ZERO,
                     sequence: 0,
                 }
                 .to_json_value()
@@ -402,7 +397,6 @@ mod tests {
                 .unwrap()]),
                 data: Metadata {
                     username: member3,
-                    key_hash: Hash::ZERO,
                     sequence: 0,
                 }
                 .to_json_value()

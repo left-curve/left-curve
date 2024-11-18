@@ -226,7 +226,7 @@ where
 
     // Create the `namespaces` map needed for instantiating bank.
     // Token factory gets the "factory" namespace.
-    // IBC trasfer gets the "ibc" namespace.
+    // IBC transfer gets the "ibc" namespace.
     let namespaces = btree_map! {
         amm::NAMESPACE.clone()           => amm,
         ibc_transfer::NAMESPACE.clone()  => ibc_transfer,

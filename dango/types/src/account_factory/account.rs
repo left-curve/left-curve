@@ -1,9 +1,10 @@
 use {
     crate::account::{multi, single},
-    grug::{PrimaryKey, StdError, StdResult},
+    grug::{Hash160, PrimaryKey, StdError, StdResult},
     paste::paste,
     std::{
         borrow::Cow,
+        collections::BTreeSet,
         fmt::{self, Display},
     },
 };
@@ -71,8 +72,25 @@ impl AccountParams {
             AccountParams::Safe(_) => AccountType::Safe,
         }
     }
+
+    pub fn sign_mode(&self) -> Cow<SignMode> {
+        match self {
+            AccountParams::Spot(params) | AccountParams::Margin(params) => {
+                Cow::Borrowed(&params.sign_mode)
+            },
+            AccountParams::Safe(_) => Cow::Owned(SignMode::Single),
+        }
+    }
 }
 
+#[grug::derive(Serde, Borsh)]
+pub enum SignMode {
+    Single,
+    Restricted {
+        threshold: u8,
+        allowed_keys: BTreeSet<Hash160>,
+    },
+}
 // ----------------------------------- type ------------------------------------
 
 /// Types of accounts the protocol supports.
