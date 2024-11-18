@@ -115,7 +115,7 @@ pub fn authenticate_tx(
                     };
 
                     // Query the account factory. We need to do two things:
-                    // - ensure the `key_hash` is associated wit the username;
+                    // - ensure the `key_hash` is associated with the username;
                     // - query the key by key hash.
                     let key: Key = {
                         let [res_ownership, res_key] = ctx.querier.query_multi([
