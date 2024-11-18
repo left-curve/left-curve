@@ -6,7 +6,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig},
         ibc_transfer,
-        lending::{self, LendingAppConfig, Market},
+        lending::{self, LendingAppConfig, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
@@ -204,9 +204,9 @@ where
         lending_code_hash,
         &lending::InstantiateMsg {
             markets: btree_map! {
-                fee_denom.clone() => Market {
+                fee_denom.clone() => MarketUpdates {
                     // TODO
-                }
+                },
             },
         },
         "dango/lending",

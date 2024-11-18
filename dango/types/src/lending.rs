@@ -1,8 +1,5 @@
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
     grug::{Addr, Bound, Bounded, Bounds, Coins, Denom, NumberConst, Part, Udec128},
-    optional_struct::optional_struct,
-    serde::{Deserialize, Serialize},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -53,19 +50,22 @@ pub struct LendingAppConfig {
 
 // -------------------------------- Market -------------------------------------
 
-/// Configurations and state of a market (borrowable assets).
-#[optional_struct(MarketUpdates)]
-#[derive(
-    Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize,
-)]
+/// Configurations and state of a market.
+#[grug::derive(Serde, Borsh)]
 pub struct Market {
+    // TODO
+}
+
+/// A set of updates to be applied to a market.
+#[grug::derive(Serde)]
+pub struct MarketUpdates {
     // TODO
 }
 
 // -------------------------------- Messages -----------------------------------
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub markets: BTreeMap<Denom, Market>,
+    pub markets: BTreeMap<Denom, MarketUpdates>,
 }
 
 #[grug::derive(Serde)]

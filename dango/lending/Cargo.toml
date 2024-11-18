@@ -25,6 +25,5 @@ dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
 grug-storage          = { workspace = true }
-optional_struct       = { workspace = true }
 
 [dev-dependencies]
