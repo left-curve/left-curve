@@ -238,7 +238,7 @@ impl Coins {
     pub fn saturating_deduct_many(&mut self, coins: Self) -> StdResult<Self> {
         let mut remainders = Self::new();
 
-        for coin in coins.into_iter() {
+        for coin in coins {
             remainders.insert(self.saturating_deduct(coin)?)?;
         }
 
