@@ -33,7 +33,7 @@ pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
     // If the utilization rate is greater than 1, the account is undercollateralized.
     ensure!(
         health.utilization_rate <= Udec128::ONE,
-        "the action would make the account undercollateralized. Utilization rate after action: {}. Total debt: {}. Total collateral: {}",
+        "the action would make the account undercollateralized! utilization rate after action: {}, total debt: {}, total collateral: {}",
         health.utilization_rate,
         health.total_debt_value,
         health.total_adjusted_collateral_value
