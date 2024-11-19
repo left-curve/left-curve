@@ -40,11 +40,6 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
     setShowMenu(false);
   });
 
-  const handleAction = (account: Account) => {
-    manageAction?.(account);
-    setShowMenu(false);
-  };
-
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
       if (a.index === selectedAccount?.index) return -1;
@@ -80,12 +75,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
             Accounts
           </p>
           <div className="flex gap-2">
-            <Button
-              isIconOnly
-              radius="lg"
-              color="green"
-              onClick={() => [createAction?.(), setShowMenu(false)]}
-            >
+            <Button isIconOnly radius="lg" color="green" onClick={createAction}>
               <PlusIcon className="h-6 w-6" />
             </Button>
             <Button color="purple" radius="lg" isIconOnly onClick={() => setExpanded(!expanded)}>
@@ -113,7 +103,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
                 key={crypto.randomUUID()}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}
-                manageAction={handleAction}
+                manageAction={manageAction}
                 expanded={expanded}
               />
             );
