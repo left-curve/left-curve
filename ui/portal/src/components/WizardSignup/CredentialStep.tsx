@@ -31,7 +31,7 @@ export const CredentialStep: React.FC = () => {
     enabled: false,
     queryKey: ["username", username],
     queryFn: async () => {
-      if (!username) return;
+      if (!username) return null;
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
       if (!isUsernameAvailable) setError("username", { message: "Username is not available" });
@@ -52,8 +52,8 @@ export const CredentialStep: React.FC = () => {
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
-            if (!value || value.length > 15) {
-              return "Username must be no more than 15 lowercase alphanumeric characters (a-z, A-Z, 0-9)";
+            if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
+              return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
             }
             return true;
           },
@@ -64,7 +64,7 @@ export const CredentialStep: React.FC = () => {
         endContent={
           isFetching ? (
             <Spinner size="sm" color="white" />
-          ) : typeof isUsernameAvailable === "undefined" ? null : isUsernameAvailable ? (
+          ) : isUsernameAvailable === null ? null : isUsernameAvailable ? (
             <CheckCircleIcon className="stroke-typography-green-400 stroke-2" />
           ) : (
             <XCircleIcon className="stroke-typography-pink-200 stroke-2" />
