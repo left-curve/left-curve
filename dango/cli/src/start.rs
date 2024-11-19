@@ -1,4 +1,5 @@
 use {
+    anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer as DangoProposalPreparer,
     grug_app::{App, AppError, Db, ProposalPreparer, Vm},
@@ -61,25 +62,25 @@ where
 {
     let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
-    let server_builder = Server::builder()
+    let mempool = ServiceBuilder::new()
+        .load_shed()
+        .buffer(100)
+        .service(mempool);
+
+    let info = ServiceBuilder::new()
+        .load_shed()
+        .buffer(100)
+        .rate_limit(50, time::Duration::from_secs(1))
+        .service(info);
+
+    Server::builder()
         .consensus(consensus)
         .snapshot(snapshot)
-        .mempool(
-            ServiceBuilder::new()
-                .load_shed()
-                .buffer(100)
-                .service(mempool),
-        )
-        .info(
-            ServiceBuilder::new()
-                .load_shed()
-                .buffer(100)
-                .rate_limit(50, time::Duration::from_secs(1))
-                .service(info),
-        );
-
-    let server = server_builder.finish().unwrap();
-
-    server.listen_tcp(path).await.unwrap();
-    Ok(())
+        .mempool(mempool)
+        .info(info)
+        .finish()
+        .unwrap() // this fails if one of consensus|snapshot|mempool|info is None
+        .listen_tcp(path)
+        .await
+        .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
 }
