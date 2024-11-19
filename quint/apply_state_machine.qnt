@@ -313,15 +313,19 @@ val verifyMembershipInv =
         match nodes {
           | Internal => true
           | Leaf(n) =>
-              val proof = ics23_prove(tree, n.key_hash, version)
+              val proof = ics23_prove(tree, n.key_hash, q::debug("proof version", version))
               val root = hash(tree.nodes.get({ key_hash: [], version: version }))
               match proof {
                 | Some(p) =>
                   match p {
-                    | Exist(ep) =>  q::debug("verifyMembership ", verifyMembership(root, ep, q::debug("membership key", n.key_hash), q::debug("membership value", n.value_hash)))
-                    | NonExist(nep) => q::debug("verifyNonMembership ", verifyNonMembership(root, nep, q::debug("non membership key", n.key_hash)))
+                    | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(n)))
+                                      verifyMembership(root, ep, n.key_hash,  n.value_hash)
+                                    else not(verifyMembership(root, ep, n.key_hash, n.value_hash))
+                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(q::debug("leaf should not exist",n)))) 
+                                          q::debug("not verifyNonMembership", not(verifyNonMembership(root, q::debug("nep",nep), q::debug("kh ", n.key_hash))))
+                                        else q::debug("verifyNonMembership", verifyNonMembership(root, q::debug("nep",nep), q::debug("non membership key", n.key_hash)))
                   }
-                | None => false}})
+                | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
     )}
 
 module pruning_state_machine {

@@ -93,40 +93,44 @@ module proofs {
     val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
     // fold over prefixes created from key_hash
     // i - index of current fold
-    val result = prefixes_list.foldl({ path: List(), i: 0, found: false}, (result, key_prefix) => 
-      if (result.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: version}))) result else 
-      val node = t.nodes.get({key_hash: key_prefix, version: version})
+    val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) => 
+      if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) iterator else 
+      val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
         match node {
-          | Leaf(l) => { ...result, i: result.i + 1, 
+          | Leaf(l) => { ...iterator, i: iterator.i + 1, 
                                     found: l.key_hash == key_hash }
           | Internal(internal) => 
             val next_bit_0 = key_prefix.append(0)
+            val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
+              internal.left_child.unwrap().version
+              else 
+              internal.right_child.unwrap().version
             val innerOp = 
-              if(prefixes_list[result.i + 1] == next_bit_0) 
+              if(prefixes_list[iterator.i + 1] == next_bit_0) 
+                // enters here idk why?
                 { prefix: InternalNodeHashPrefix, 
                   suffix: match internal.right_child {
-                            | None => termHash(raw([0]))  // used to be Map(), experiments lead us to this solution
+                            | None => debug("reached None branch for internal.rightchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
                             | Some(c) => c.hash} }
               else 
                 { prefix: InternalNodeHashPrefix.termConcat(match internal.left_child {
-                                                              | None => termHash(raw([0])) // used to be Map(), experiments lead us to this solution
-                                                              | Some(c) => c.hash}), 
+                                                              | None => debug("reached None branch for internal.leftchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
+                                                              | Some(c) => debug("lc hash",c.hash)}), 
                   suffix: Map() }
-            { path: result.path.append(innerOp),  
-              i: result.i + 1, 
-              found: false }
+            { ...iterator, path: iterator.path.append(innerOp),  
+              i: iterator.i + 1, child_version: child_version }
         }
 
     )
-    if (result.found)
-      Some(result.path.foldr(List(), (path_element, reversed_path ) => 
+    if (r.found)
+      Some(r.path.foldr(List(), (path_element, reversed_path ) => 
                                           reversed_path.append(path_element)))    
     else
       None
 
   // in implementation the key is passed instead of the key_hash
   pure def ics23_prove (t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
-    val filteredOutList =t.treeAtVersion(version)
+    val filteredOutList = t.treeAtVersion(version)
                               .values()
                               .filter(n => match n {
                                       | Leaf(l) => l.key_hash == key_hash
@@ -136,7 +140,7 @@ module proofs {
                                       | Leaf(l) => Some(l.value_hash)
                                       | Internal(_) => None})
     val state_storage_read = if(filteredOutList.empty()) None else filteredOutList.getOnlyElement()
-    val proof = match state_storage_read {
+    match state_storage_read {
       | Some(value) => // have key in database
         val p = ics23_prove_existence(t, version, key_hash)
         match p {
@@ -169,7 +173,7 @@ module proofs {
         val rneighborOption: Option[LeafNode]  = rightNeighbor(t.treeAtVersion(version), key_hash)
         val rightNeighborExistenceProof: Option[ExistenceProof] = match rneighborOption {
           | Some(rneighbor) => 
-            val pathOption = ics23_prove_existence(t, version, rneighbor.key_hash)
+            val pathOption = ics23_prove_existence(t,version, rneighbor.key_hash)
             match pathOption {
               | Some(path) => Some({
                 key: rneighbor.key_hash,
@@ -186,6 +190,4 @@ module proofs {
                                         right: rightNeighborExistenceProof }
         Some(NonExist(nep))
     }
-    proof
-
 }

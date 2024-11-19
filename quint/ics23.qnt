@@ -1,7 +1,7 @@
 // -*- mode: Bluespec; -*-
 
 // This is a protocol specification of ICS23, tuned towards the Grug JMT
-// (The original spec was for the IAVL case.
+// (The original spec was for the IAVL case.)
 //
 // For details of ICS23, see:
 // https://github.com/cosmos/ibc/tree/main/spec/core/ics-023-vector-commitments
@@ -32,18 +32,17 @@ module ics23 {
   // MaxPrefixLength = 12
   // ChildSize = 33
   //
-  // To ease spec testing, we set:
-  pure val MinPrefixLen = 4
-  pure val MaxPrefixLen = 12
+  // update: in LeftCurve Grug these parameters are set to 1
+  pure val MinPrefixLen = 1
+  pure val MaxPrefixLen = 1
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
+  // update: this parameter is set to 32 because that is the size of SHA256 
+  //         and that value is used in configuring ics23 verification spec
+  //         in LeftCurve Grug implementation
+  pure val ChildSize = 32 // 32 bytes in SHA256 + 1 byte for the length marker
   // Empty child is a predefined sequence that fills an absent child.
   // TODO: EmptyChild is set to nil in IavlSpec. We have 33 bytes.
-  pure val EmptyChild = raw([
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,
-  ])
+  pure val EmptyChild = termHash(raw([0]))
 
   type LEAF_T = {
     // The implementation additionally stores hashing and length functions:
@@ -97,7 +96,15 @@ module ics23 {
     //       by the spec checker
     verify(proof, root, key, value)
   }
-
+  pure def termLen1(term: Term_t): int = {
+    // the roots' children
+    pure val top =
+      debug("top ", keys(term).filter(p => length(p) == 1).map(p => term.get(p)))
+    debug("top + 32 operation", top.fold(0, (s, t) => match(t) {
+      | Hash => s + 32
+      | Raw(bytes) => s + length(bytes)
+    }))
+  }
   /// checks if an op has the expected padding
   def hasPadding(inner: INNER_T,
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
@@ -107,9 +114,18 @@ module ics23 {
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-    termLen(inner.suffix) == suffixLen
+   termLen( inner.suffix) == suffixLen
   }
-
+    def hasPadding1(inner: INNER_T,
+      minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
+    termLen(inner.prefix) >= minPrefixLen,
+    debug("len prefix", termLen(inner.prefix)) <= maxPrefixLen,
+    // When inner turns left, suffixLen == ChildSize,
+    // that is, we store the hash of the right child in the suffix.
+    // When inner turns right, suffixLen == 0,
+    // that is, we store the hash of the left child in the prefix.
+   debug("sufix",termLen( inner.suffix) == suffixLen)
+  }
   /// This will look at the proof and determine which order it is...
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
   /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411
@@ -137,14 +153,19 @@ module ics23 {
   /// on a leftmost path
   def leftBranchesAreEmpty(inner: INNER_T): bool = and {
     // the case of leftBranches == 0 returns false
-    val order = orderFromPadding(inner)
-    order._2 and order._1 != 0,
+    val order = debug("lef branches empty order from padding", orderFromPadding(inner))
+    debug("leftBranchesAreEmpty: order._2 and order._1 != 0",order._2 and order._1 != 0),
     // the remaining case is leftBranches == 1, see orderFromPadding
     // actualPrefix = len(inner.prefix) - 33
-    termLen(inner.prefix) >= ChildSize,
+    // !!! UPDATE !!!
+    // For Grug we have changed Child Size so this comment is outdated
+    // actualPrefix = len(inner.prefix) - 32
+    debug("leftBranchesAreEmpty: termLen(inner.prefix) >= ChildSize",termLen(inner.prefix) >= ChildSize),
     // getPosition(0) returns 0
-    val fromIndex = termLen(inner.prefix) - ChildSize
-    termSlice(inner.prefix, fromIndex, fromIndex + ChildSize) == EmptyChild
+    // GRUG: this is not the case for us, in example: Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash) from slice gives 1 and then it will 
+    val fromIndex = debug("leftBranchesAreEmpty: from index", termLen1(inner.prefix) - ChildSize)
+    debug("leftBranchesAreEmpty: termSlice(inner.prefix, fromIndex, fromIndex + ChildSize) == EmptyChild",
+              debug("leftBranchesAreEmpty: termslice", termSlice(debug("leftBranchesAreEmpty: inner prefix for slice",inner.prefix), fromIndex, fromIndex + ChildSize)) == debug("EmptyChild",EmptyChild)),
   }
 
   /// IsLeftMost returns true if this is the left-most path in the tree,
@@ -153,15 +174,19 @@ module ics23 {
     // Calls getPadding(0) => idx = 0, prefix = 0.
     // We specialize the constants to IavlSpec.
     path.indices().forall(i =>
-      val pathStep = path[i]
+      val pathStep = debug("isLeftMost: pathStep ", path[i])
       or {
         // the path goes left
-        hasPadding(pathStep, MinPrefixLen, MaxPrefixLen, ChildSize),
+        debug("isLeftMost: hasPadding ",hasPadding1( pathStep, MinPrefixLen, MaxPrefixLen, ChildSize)),
         // the path goes right, but the left child is empty (a gap)
-        leftBranchesAreEmpty(pathStep)
+        debug("isLeftMost: leftBranchesAreEmpty(pathStep)", leftBranchesAreEmpty(pathStep)),
       }
     )
   }
+//   from index  1
+// inner prefix  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash)
+//    termslice  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash)
+//  empty_child  Map([0, 0] -> Raw([0]), [0] -> Hash)
 
   /// rightBranchesAreEmpty returns true if the padding bytes correspond
   /// to all empty siblings on the right side of a branch,
@@ -197,12 +222,12 @@ module ics23 {
   /// checks if left is exactly one slot to the left of right
   def isLeftStep(left: INNER_T, right: INNER_T): bool = {
     // 'left' turns left, and 'right' turns right
-    val lorder = orderFromPadding(left)
-    val rorder = orderFromPadding(right)
+    val lorder = debug("isLeftStep: lorder from padding", orderFromPadding(left))
+    val rorder = debug("isLeftStep: rorder from padding",orderFromPadding(right))
     and {
       lorder._2,
       rorder._2,
-      rorder._1 == lorder._1 + 1
+      debug("isLeftStep: rorder._1 == lorder._1 + 1", rorder._1 == lorder._1 + 1)
     }
   }
 
@@ -239,11 +264,13 @@ module ics23 {
         // of the same tree node:
         //  the left one stores the hash of the right one, whereas
         //  the right one stores the hash of the left one.
-        isLeftStep(lpath[li], rpath[ri]),
+        debug("isLeftNeighbor: isLeftStep(lpath[li], rpath[ri])", isLeftStep(lpath[li], rpath[ri])), //true - OK
         // left and right are remaining children below the split,
+        debug("isLeftNeighbor: isRightMost(lpath.slice(0, li))", isRightMost(lpath.slice(0, li))),
+
         // ensure left child is the rightmost path, and visa versa
-        isRightMost(lpath.slice(0, li)),
-        isLeftMost(rpath.slice(0, ri)),
+        debug("isLeftNeighbor: isLeftMost(rpath.slice(0, ri))", isLeftMost(debug("isLeftNeighbor: isLeftMost(rpath.slice(0, ri)) rpath slice", rpath.slice(0, debug("ri",ri))))),
+        
       })
     )
   }
@@ -256,27 +283,34 @@ module ics23 {
   def verifyNonMembership(root: CommitmentRoot_t,
       np: NonExistsProof_t, key: Key_t): bool = and {
     // getNonExistProofForKey
-    np.left == None or lessThan(np.left.unwrap().key, key),
-    np.right == None or lessThan(key, np.right.unwrap().key),
+    debug("np.left == None or lessThan(np.left.unwrap().key, key)", np.left == None or lessThan(np.left.unwrap().key, key)),
+    debug("np.right == None or lessThan(key, np.right.unwrap().key)",np.right == None or lessThan(key, np.right.unwrap().key)),
     // implicit assumption, missing in the code:
     // https://github.com/informalsystems/ics23-audit/issues/14
-    np.key == key,
+    debug("np.key == key ",np.key == key),
     // Verify
-    np.left != None or np.right != None,
-    np.left == None or and {
+    debug("np.left != None or np.right != None", np.left != None or np.right != None),
+    debug("np.left == None or and {
       verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
       lessThan(np.left.unwrap().key, key),
-    },
-    np.right == None or and {
+    }",np.left == None or and {
+      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
+      lessThan(np.left.unwrap().key, key),
+    }),
+    debug("np.right == None or and {
       verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
       lessThan(key, np.right.unwrap().key),
-    },
-    if (np.left == None) {
-      isLeftMost(np.right.unwrap().path)
-    } else if (np.right == None) {
-      isRightMost(np.left.unwrap().path)
-    } else {
-      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
-    }
+    }", np.right == None or and {
+      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
+      lessThan(key, np.right.unwrap().key),
+    }),
+    if(np.left != None and np.right != None)
+      debug("isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)", isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path))
+    else if (np.left == None) 
+      debug("isRightMost(np.left.unwrap().path)", isRightMost(np.left.unwrap().path))
+    else 
+      debug("isLeftMost(np.right.unwrap().path)", isLeftMost(np.right.unwrap().path))
+
+    
   }
 }
