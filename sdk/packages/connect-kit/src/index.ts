@@ -95,3 +95,9 @@ export {
   type GetConnectorClientErrorType,
   getConnectorClient,
 } from "./actions/getConnectorClient.js";
+
+export {
+  type ChangeAccountParameters,
+  type ChangeAccountReturnType,
+  changeAccount,
+} from "./actions/changeAccount.js";

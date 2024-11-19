@@ -44,7 +44,7 @@ export type NumberFormatterOptions = {
  */
 export function formatNumber(_amount_: number | bigint | string, options: NumberFormatterOptions) {
   const { language, maxFractionDigits = 2, minFractionDigits = 2 } = options;
-  const amount = typeof _amount_ === "string" ? BigInt(_amount_) : _amount_;
+  const amount = typeof _amount_ === "string" ? Number(_amount_) : _amount_;
   return new Intl.NumberFormat(language, {
     notation: "compact",
     minimumFractionDigits: minFractionDigits,

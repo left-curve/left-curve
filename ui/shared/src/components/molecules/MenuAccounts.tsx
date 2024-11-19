@@ -107,11 +107,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
                 avatarUrl={images[account.type]}
                 key={crypto.randomUUID()}
                 account={account}
-                onClick={() => [
-                  changeAccount?.(account),
-                  setExpanded(false),
-                  console.log(account, changeAccount),
-                ]}
+                onClick={() => [changeAccount?.(account), setExpanded(false)]}
                 manageAction={handleAction}
                 expanded={expanded}
               />
