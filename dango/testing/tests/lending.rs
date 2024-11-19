@@ -297,96 +297,7 @@ fn cant_borrow_if_no_collateral() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
-            }),
-            Coins::new(),
-        )
-        .unwrap();
-
-    // Deposit some USDC into the lending pool
-    suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
-        )
-        .should_succeed();
-
-    // Try to borrow without collateral, should fail
-    suite
-        .execute(
-            &mut margin_account,
-            contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
-            Coins::new(),
-        )
-        .should_fail_with_error("this action would make account undercollateralized!");
-}
-
-#[test]
-fn cant_borrow_if_undercollateralized() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-
-    feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
-
-    // Create a margin account.
-    let mut margin_account = accounts
-        .relayer
-        .register_new_account(
-            &mut suite,
-            contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
-            Coins::new(),
-        )
-        .unwrap();
-
-    // Deposit some USDC into the lending pool
-    suite
-        .execute(
-            &mut accounts.relayer,
-            contracts.lending,
-            &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
-        )
-        .should_succeed();
-
-    // Whitelist USDC as collateral at 90% power
-    set_collateral_power(
-        &mut suite,
-        &mut accounts,
-        USDC.clone(),
-        CollateralPower::new(Udec128::new_percent(90)).unwrap(),
-    );
-
-    // Try to borrow, should fail
-    suite
-        .execute(
-            &mut margin_account,
-            contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
-            Coins::new(),
-        )
-        .should_fail_with_error("this action would make account undercollateralized!");
-}
-
-#[test]
-fn cant_borrow_if_no_collateral() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-
-    feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
-
-    // Create a margin account.
-    let mut margin_account = accounts
-        .relayer
-        .register_new_account(
-            &mut suite,
-            contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -647,6 +558,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -700,6 +612,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -773,6 +686,7 @@ fn repay_works() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
