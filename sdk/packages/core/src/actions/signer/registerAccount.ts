@@ -31,7 +31,7 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
   const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   const typedData: TypedDataParameter = {
-    type: [{ name: "registerAccount", type: "RegisterAccount" }],
+    type: [{ name: "register_account", type: "RegisterAccount" }],
     extraTypes: {
       RegisterAccount: [{ name: "params", type: "AccountParams" }],
       ...("spot" in config

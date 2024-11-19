@@ -4,6 +4,7 @@ import type {
   EIP712Message,
   EIP712Types,
   Hex,
+  Message,
   Power,
   TxMessageType,
   TypedData,
@@ -11,6 +12,8 @@ import type {
   TypedDataProperty,
   Username,
 } from "@leftcurve/types";
+import { recursiveTransform } from "./mappers.js";
+import { camelToSnake } from "./strings.js";
 
 /**
  * @description Hash the typed data.
@@ -37,6 +40,7 @@ export function composeTypedData(
   typeData?: Partial<TypedDataParameter<TxMessageType>>,
 ): TypedData {
   const { type = [], extraTypes = {} } = typeData || {};
+  const { chainId, sequence, messages } = message;
 
   return {
     types: {
@@ -54,7 +58,11 @@ export function composeTypedData(
     },
     primaryType: "Message",
     domain,
-    message,
+    message: {
+      chainId,
+      sequence,
+      messages: recursiveTransform(messages, camelToSnake) as Message[],
+    },
   };
 }
 
