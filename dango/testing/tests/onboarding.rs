@@ -48,8 +48,8 @@ fn user_onboarding() {
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
                 username: user.username.clone(),
-                key: user.key,
-                key_hash: user.key_hash,
+                key: user.key(),
+                key_hash: user.key_hash(),
             },
             Coins::new(),
         )
@@ -63,7 +63,7 @@ fn user_onboarding() {
                 username: user.username.clone(),
             },
         )
-        .should_succeed_and_equal(btree_map! { user.key_hash => user.key });
+        .should_succeed_and_equal(btree_map! { user.key_hash() => user.key()});
 
     // The user's account info should have been recorded in account factory.
     // Note: a user's first ever account is always a spot account.
@@ -124,8 +124,8 @@ fn onboarding_existing_user() {
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
+                    key: user.key(),
+                    key_hash: user.key_hash(),
                 },
                 Coins::new(),
             )
@@ -167,8 +167,8 @@ fn onboarding_without_deposit() {
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
+                    key: user.key(),
+                    key_hash: user.key_hash(),
                 },
                 Coins::new(),
             )
@@ -229,8 +229,8 @@ fn false_factory_tx(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: false_username.unwrap_or_else(|| user.username.clone()),
-                    key: false_key.unwrap_or(user.key),
-                    key_hash: false_key_hash.unwrap_or(user.key_hash),
+                    key: false_key.unwrap_or(user.key()),
+                    key_hash: false_key_hash.unwrap_or(user.key_hash()),
                 },
                 Coins::new(),
             )

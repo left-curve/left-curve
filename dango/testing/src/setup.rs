@@ -79,13 +79,13 @@ where
         codes.clone(),
         btree_map! {
             owner.username.clone() => GenesisUser {
-                key: owner.key,
-                key_hash: owner.key_hash,
+                key: owner.key(),
+                key_hash: owner.key_hash(),
                 balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
             },
             relayer.username.clone() => GenesisUser {
-                key: relayer.key,
-                key_hash: relayer.key_hash,
+                key: relayer.key(),
+                key_hash: relayer.key_hash(),
                 balances: btree_map! {
                     "uusdc" => 100_000_000_000_000,
                     "uatom" => 100_000_000_000_000,

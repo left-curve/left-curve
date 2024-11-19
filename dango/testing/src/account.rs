@@ -16,7 +16,10 @@ use {
         ecdsa::{signature::Signer as SignerTrait, Signature as EcdsaSignature, SigningKey},
         elliptic_curve::rand_core::OsRng,
     },
-    std::{collections::BTreeMap, str::FromStr},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    },
 };
 
 pub struct Accounts {
@@ -26,13 +29,18 @@ pub struct Accounts {
 
 // ------------------------------- test account --------------------------------
 
+#[derive(Debug, Clone)]
+pub struct SingleSign(Hash160);
+
+#[derive(Debug, Clone)]
+pub struct RestrictedSign(BTreeSet<Hash160>);
+
 #[derive(Debug)]
-pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
+pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>, S = SingleSign> {
     pub username: Username,
-    pub key: Key,
-    pub key_hash: Hash160,
     pub sequence: u32,
-    pub sk: SigningKey,
+    pub keys: BTreeMap<Hash160, (SigningKey, Key)>,
+    sign_mode: S,
     address: T,
 }
 
@@ -54,11 +62,10 @@ impl TestAccount<Undefined<Addr>> {
 
         Self {
             username,
-            key,
-            key_hash,
             sequence: 0,
-            sk,
             address: Undefined::new(),
+            sign_mode: SingleSign(key_hash),
+            keys: btree_map! {key_hash => (sk, key)},
         }
     }
 
@@ -68,11 +75,13 @@ impl TestAccount<Undefined<Addr>> {
         spot_code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount {
+        let (key_hash, (_, key)) = self.keys.iter().next().unwrap();
+
         let salt = if new_user_salt {
             NewUserSalt {
                 username: &self.username,
-                key: self.key,
-                key_hash: self.key_hash,
+                key: *key,
+                key_hash: *key_hash,
             }
             .into_bytes()
         } else {
@@ -83,10 +92,9 @@ impl TestAccount<Undefined<Addr>> {
 
         TestAccount {
             username: self.username,
-            key: self.key,
-            key_hash: self.key_hash,
             sequence: self.sequence,
-            sk: self.sk,
+            sign_mode: self.sign_mode,
+            keys: self.keys,
             address: Defined::new(address),
         }
     }
@@ -96,10 +104,9 @@ impl TestAccount<Undefined<Addr>> {
 
         TestAccount {
             username: self.username,
-            key: self.key,
-            key_hash: self.key_hash,
             sequence: self.sequence,
-            sk: self.sk,
+            sign_mode: self.sign_mode,
+            keys: self.keys,
             address: Defined::new(address),
         }
     }
@@ -124,17 +131,28 @@ where
         }
         .to_json_vec()?;
 
-        // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
-        // use another hash, it's necessary to update this.
-        let signature: EcdsaSignature = self.sk.sign(&sign_bytes);
-
         let data = Metadata {
             username: self.username.clone(),
             sequence,
         };
 
-        let signature = auth::Signature::Secp256k1(signature.to_bytes().to_vec().try_into()?);
-        Ok((data, btree_map! {self.key_hash => signature}))
+        // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
+        // use another hash, it's necessary to update this.
+        let (sk, _) = self.keys.get(&self.sign_mode.0).unwrap();
+        let sign: EcdsaSignature = sk.sign(&sign_bytes);
+        let signs = btree_map! {
+            self.sign_mode.0 => auth::Signature::Secp256k1(sign.to_bytes().to_vec().try_into()?),
+        };
+
+        Ok((data, signs))
+    }
+
+    pub fn key(&self) -> Key {
+        self.keys.values().next().map(|val| val.1).unwrap()
+    }
+
+    pub fn key_hash(&self) -> Hash160 {
+        *self.keys.keys().next().unwrap()
     }
 }
 
@@ -184,22 +202,91 @@ where
 
         Ok(TestAccount {
             username: self.username.clone(),
-            key: self.key,
-            key_hash: self.key_hash,
+            sign_mode: self.sign_mode.clone(),
+            keys: self.keys.clone(),
             sequence: 0,
-            sk: self.sk.clone(),
             address: Defined::new(address),
         })
     }
 }
+impl<T> TestAccount<T, RestrictedSign>
+where
+    T: MaybeDefined<Addr>,
+{
+    pub fn sign_transaction_with_sequence(
+        &self,
+        sender: Addr,
+        msgs: Vec<Message>,
+        chain_id: &str,
+        sequence: u32,
+    ) -> StdResult<(Metadata, Credential)> {
+        let sign_bytes = SignDoc {
+            sender,
+            messages: msgs.clone(),
+            chain_id: chain_id.to_string(),
+            sequence,
+        }
+        .to_json_vec()?;
 
-impl Addressable for TestAccount<Defined<Addr>> {
+        let data = Metadata {
+            username: self.username.clone(),
+            sequence,
+        };
+
+        // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
+        // use another hash, it's necessary to update this.
+        let signs = self
+            .sign_mode
+            .0
+            .iter()
+            .map(|key_hash| {
+                let (sk, _) = self.keys.get(key_hash).unwrap();
+                let sign: EcdsaSignature = sk.sign(&sign_bytes);
+                Ok((
+                    *key_hash,
+                    auth::Signature::Secp256k1(sign.to_bytes().to_vec().try_into()?),
+                ))
+            })
+            .collect::<StdResult<_>>()?;
+
+        Ok((data, signs))
+    }
+}
+
+impl<S> Addressable for TestAccount<Defined<Addr>, S> {
     fn address(&self) -> Addr {
         *self.address.inner()
     }
 }
 
 impl Signer for TestAccount<Defined<Addr>> {
+    fn sign_transaction(
+        &mut self,
+        msgs: Vec<Message>,
+        chain_id: &str,
+        gas_limit: u64,
+    ) -> StdResult<Tx> {
+        let (data, credential) = self.sign_transaction_with_sequence(
+            self.address(),
+            msgs.clone(),
+            chain_id,
+            self.sequence,
+        )?;
+
+        // Increment the internally tracked sequence.
+        self.sequence += 1;
+
+        Ok(Tx {
+            sender: self.address(),
+            gas_limit,
+            msgs: NonEmpty::new(msgs)?,
+            data: data.to_json_value()?,
+            credential: credential.to_json_value()?,
+        })
+    }
+}
+
+impl Signer for TestAccount<Defined<Addr>, RestrictedSign> {
     fn sign_transaction(
         &mut self,
         msgs: Vec<Message>,
