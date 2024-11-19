@@ -73,6 +73,13 @@ export const SendContainer: React.FC = () => {
                     return true;
                   },
                 })}
+                value={watch("amount", "")}
+                onChange={({ target }) => {
+                  const regex = /^\d+(\.\d{0,18})?$/;
+                  if (target.value === "" || regex.test(target.value)) {
+                    setValue("amount", target.value, { shouldValidate: true });
+                  }
+                }}
                 isDisabled={isSubmitting}
                 placeholder="0"
                 classNames={{ input: "text-3xl", inputWrapper: "py-4 pl-6 pr-4" }}

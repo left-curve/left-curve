@@ -14,7 +14,7 @@ export const TransferStep: React.FC = () => {
   const { chains, coins } = useConfig();
   const { account, connector, refreshAccounts } = useAccount();
   const { data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, formState, setValue, handleSubmit } = useForm<{ amount: string }>({
+  const { register, formState, setValue, handleSubmit, watch } = useForm<{ amount: string }>({
     mode: "onChange",
   });
 
@@ -77,13 +77,14 @@ export const TransferStep: React.FC = () => {
                   if (Number(v) > Number(humanBalance)) return "Insufficient balance";
                   return true;
                 },
-                onChange: ({ target }) => {
-                  const regex = /^\d+(\.\d{0,18})?$/;
-                  if (target.value === "" || regex.test(target.value)) {
-                    setValue("amount", target.value, { shouldValidate: true });
-                  }
-                },
               })}
+              onChange={({ target }) => {
+                const regex = /^\d+(\.\d{0,18})?$/;
+                if (target.value === "" || regex.test(target.value)) {
+                  setValue("amount", target.value, { shouldValidate: true });
+                }
+              }}
+              value={watch("amount", "")}
               startText="right"
               placeholder="0"
               disabled={isSubmitting}
