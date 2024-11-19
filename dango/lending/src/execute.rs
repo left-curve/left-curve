@@ -49,7 +49,7 @@ fn update_markets(
     Ok(Response::new())
 }
 
-pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     let mut msgs = vec![];
@@ -78,7 +78,7 @@ pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     Ok(Response::new().add_messages(msgs))
 }
 
-pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     let mut msgs = vec![];
@@ -113,7 +113,7 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
-pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
+fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Ensure sender is a margin account.
@@ -152,7 +152,7 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
 }
 
-pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Ensure all sent coins are whitelisted
     for coin in &ctx.funds {
         ensure!(
