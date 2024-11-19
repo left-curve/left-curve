@@ -169,6 +169,13 @@ export const tailwindConfig: Partial<Config> = {
       };
 
       addComponents({
+        ".dango-grid-landscape-desktop": {
+          ...gridCommonStyles,
+          padding: "4rem 3rem",
+          height: "27rem",
+          width: "50rem",
+          backgroundImage: "url(./images/grids/landscape-desktop.svg)",
+        },
         ".dango-grid-landscape-fat-l": {
           ...gridCommonStyles,
           padding: "3rem",

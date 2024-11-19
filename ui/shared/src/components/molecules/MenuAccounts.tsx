@@ -11,6 +11,7 @@ import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
 import { capitalize } from "@leftcurve/utils";
+import { parseAsBoolean, useQueryState } from "nuqs";
 import { useAccountName } from "../../hooks";
 
 interface Props {
@@ -27,7 +28,10 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useDOMRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [showMenu, setShowMenu] = useQueryState(
+    "accountsVisible",
+    parseAsBoolean.withDefault(false),
+  );
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
   const [accountName] = useAccountName();
 
@@ -43,7 +47,8 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
 
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
-      if (selectedAccount?.index === a.index) return -1;
+      if (a.index === selectedAccount?.index) return -1;
+      if (b.index === selectedAccount?.index) return 1;
       return a.index - b.index;
     });
   }, [selectedAccount, accounts]);
@@ -105,7 +110,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
             return (
               <AccountCard
                 avatarUrl={images[account.type]}
-                key={account.index}
+                key={crypto.randomUUID()}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}
                 manageAction={handleAction}

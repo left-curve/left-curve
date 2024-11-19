@@ -3,20 +3,22 @@ import { useAccount, useBalances, useConfig } from "@leftcurve/react";
 import { motion } from "framer-motion";
 
 import type { AccountTypes, NativeCoin } from "@leftcurve/types";
-import { formatUnits, parseUnits } from "@leftcurve/utils";
+import { formatUnits, parseUnits, wait } from "@leftcurve/utils";
 import { useForm } from "react-hook-form";
 
 import type { SignerClient } from "@leftcurve/sdk/clients";
+import { useNavigate } from "react-router-dom";
 
 export const TransferStep: React.FC = () => {
+  const navigate = useNavigate();
   const { chains, coins } = useConfig();
-  const { account, connector } = useAccount();
+  const { account, connector, refreshAccounts } = useAccount();
   const { data } = useWizard<{ accountType: AccountTypes }>();
   const { register, formState, setValue, handleSubmit } = useForm<{ amount: string }>({
     mode: "onChange",
   });
 
-  const { errors } = formState;
+  const { errors, isSubmitting } = formState;
   const chain = chains.at(0)!;
   const chainCoins = coins[chain.id];
   const { logoURI, symbol, denom, decimals } = chainCoins[chain.nativeCoin.denom] as NativeCoin;
@@ -37,6 +39,9 @@ export const TransferStep: React.FC = () => {
         },
       },
     );
+    await wait(1000);
+    await refreshAccounts?.();
+    navigate("/?accountsVisible=true");
   });
 
   return (
@@ -81,6 +86,7 @@ export const TransferStep: React.FC = () => {
               })}
               startText="right"
               placeholder="0"
+              disabled={isSubmitting}
               error={errors.amount?.message?.toString()}
               startContent={
                 <div className="flex flex-row items-center gap-2">
@@ -106,7 +112,7 @@ export const TransferStep: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-1 w-full items-center justify-center">
-          <Button color="rose" fullWidth>
+          <Button color="rose" fullWidth isLoading={isSubmitting}>
             Create Account
           </Button>
         </div>

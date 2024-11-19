@@ -56,6 +56,7 @@
     "@dango/assets": "workspace:^",
     "@leftcurve/react": "workspace:^",
     "@leftcurve/sdk": "workspace:^",
+    "@leftcurve/connect-kit": "workspace:^",
     "@leftcurve/utils": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
