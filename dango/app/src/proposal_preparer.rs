@@ -19,6 +19,7 @@ use {
 const PYTH_URL: &str = "https://hermes.pyth.network";
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
 const THREAD_SLEEP: Duration = Duration::from_millis(1000);
+const THREAD_SLEEP_ON_FIRST_429: Duration = Duration::from_millis(5000);
 const MAX_THREAD_SLEEP: Duration = Duration::from_secs(30);
 const GAS_LIMIT: u64 = 50_000_000;
 
@@ -135,7 +136,7 @@ impl ProposalPreparer {
                             // The first time we get a 429, we increase
                             // the sleep time to avoid further rate limitation.
                             if status_code == 429 && failed_requests == 1 {
-                                sleep = THREAD_SLEEP.mul(5);
+                                sleep = THREAD_SLEEP_ON_FIRST_429;
                             }
                             error!(
                                 code = status_code.as_u16(),
