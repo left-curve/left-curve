@@ -304,13 +304,12 @@ module ics23 {
       verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
       lessThan(key, np.right.unwrap().key),
     }),
-    if(np.left != None and np.right != None)
-      debug("isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)", isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path))
-    else if (np.left == None) 
-      debug("isRightMost(np.left.unwrap().path)", isRightMost(np.left.unwrap().path))
-    else 
+    if (np.left == None) {
       debug("isLeftMost(np.right.unwrap().path)", isLeftMost(np.right.unwrap().path))
-
-    
+    } else if (np.right == None) {
+      debug("isRightMost(np.left.unwrap().path)", isRightMost(np.left.unwrap().path))
+    } else {
+      debug("isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)", isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path))
+    }
   }
 }

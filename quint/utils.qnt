@@ -6,7 +6,7 @@ module utils {
   import hashes.* from "./hashes"
   val keylength = 4
 
-  pure val DEBUG_ENABLED = true
+  pure val DEBUG_ENABLED = false
 
   pure def debug(desc, expr) = if (DEBUG_ENABLED) q::debug(desc, expr) else expr
 

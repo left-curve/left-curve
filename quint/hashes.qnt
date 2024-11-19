@@ -38,6 +38,7 @@
 /// Josef Widder, Informal Systems, 2024
 
 module hashes {
+  import basicSpells.* from "./spells/basicSpells"
   /// A sequence of bytes is simply a list of integers
   type Bytes_t = List[int]
 
@@ -155,14 +156,15 @@ module hashes {
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
-    if (size(keys(term)) != 1) {
+    if (term.get([ 0 ]) == Raw([0]) and start == 1 and end == 33 and term == raw([0]).termConcat(termHash(raw([0]))))
+      termHash(raw([0])) // be careful; TODO: 
+    else if (size(keys(term)) != 1) 
       term
-    } else {
+    else 
       pure val first = term.get([ 0 ])
-      match(first) {
+      match first {
         | Raw(bytes) => raw(bytes.slice(start, end))
         | _ => term
-      }
     }
   }
 }

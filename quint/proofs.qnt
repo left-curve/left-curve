@@ -94,33 +94,34 @@ module proofs {
     // fold over prefixes created from key_hash
     // i - index of current fold
     val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) => 
-      if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) iterator else 
-      val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
-        match node {
-          | Leaf(l) => { ...iterator, i: iterator.i + 1, 
-                                    found: l.key_hash == key_hash }
-          | Internal(internal) => 
-            val next_bit_0 = key_prefix.append(0)
-            val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
-              internal.left_child.unwrap().version
-              else 
-              internal.right_child.unwrap().version
-            val innerOp = 
-              if(prefixes_list[iterator.i + 1] == next_bit_0) 
-                // enters here idk why?
-                { prefix: InternalNodeHashPrefix, 
-                  suffix: match internal.right_child {
-                            | None => debug("reached None branch for internal.rightchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
-                            | Some(c) => c.hash} }
-              else 
-                { prefix: InternalNodeHashPrefix.termConcat(match internal.left_child {
-                                                              | None => debug("reached None branch for internal.leftchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
-                                                              | Some(c) => debug("lc hash",c.hash)}), 
-                  suffix: Map() }
-            { ...iterator, path: iterator.path.append(innerOp),  
-              i: iterator.i + 1, child_version: child_version }
-        }
-
+      if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) 
+        iterator 
+      else 
+        val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
+          match node {
+            | Leaf(l) => { ...iterator, i: iterator.i + 1, 
+                                      found: l.key_hash == key_hash }
+            | Internal(internal) => 
+              val next_bit_0 = key_prefix.append(0)
+              val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
+                internal.left_child.unwrap().version
+                else 
+                internal.right_child.unwrap().version
+              val innerOp = 
+                if(prefixes_list[iterator.i + 1] == next_bit_0) 
+                  // enters here idk why?
+                  { prefix: InternalNodeHashPrefix, 
+                    suffix: match internal.right_child {
+                              | None => debug("reached None branch for internal.rightchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
+                              | Some(c) => c.hash} }
+                else 
+                  { prefix: InternalNodeHashPrefix.termConcat(match internal.left_child {
+                                                                | None => debug("reached None branch for internal.leftchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
+                                                                | Some(c) => debug("lc hash",c.hash)}), 
+                    suffix: Map() }
+              { ...iterator, path: iterator.path.append(innerOp),  
+                i: iterator.i + 1, child_version: child_version }
+          }
     )
     if (r.found)
       Some(r.path.foldr(List(), (path_element, reversed_path ) => 

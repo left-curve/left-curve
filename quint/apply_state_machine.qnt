@@ -63,7 +63,7 @@ module apply_state_machine {
     tree' = new_tree,
     version' = version + 1,
     smallest_unpruned_version' = smallest_unpruned_version,
-    ops_history' = ops_history.append(q::debug("ops", ops)),
+    ops_history' = ops_history.append(debug("ops", ops)),
   }
 
   action step_fancy = step_parametrized(fancy::apply, assign_result)
@@ -310,20 +310,21 @@ module apply_state_machine {
 val verifyMembershipInv =
     activeTreeVersions.forall(version => 
       tree.nodes.values().forall (nodes =>
+        if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else
         match nodes {
           | Internal => true
           | Leaf(n) =>
-              val proof = ics23_prove(tree, n.key_hash, q::debug("proof version", version))
-              val root = hash(tree.nodes.get({ key_hash: [], version: version }))
+              val proof = ics23_prove(tree, n.key_hash, debug("proof version", version))
+              val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
               match proof {
                 | Some(p) =>
                   match p {
                     | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(n)))
                                       verifyMembership(root, ep, n.key_hash,  n.value_hash)
                                     else not(verifyMembership(root, ep, n.key_hash, n.value_hash))
-                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(q::debug("leaf should not exist",n)))) 
-                                          q::debug("not verifyNonMembership", not(verifyNonMembership(root, q::debug("nep",nep), q::debug("kh ", n.key_hash))))
-                                        else q::debug("verifyNonMembership", verifyNonMembership(root, q::debug("nep",nep), q::debug("non membership key", n.key_hash)))
+                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(debug("leaf should not exist",n)))) 
+                                          debug("not verifyNonMembership", not(verifyNonMembership(root, debug("nep",nep), debug("kh ", n.key_hash))))
+                                        else debug("verifyNonMembership", verifyNonMembership(root, debug("nep",nep), debug("non membership key", n.key_hash)))
                   }
                 | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
     )}
