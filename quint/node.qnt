@@ -36,11 +36,6 @@ val LeafNodeIdentifier : Bytes_t = [1]
 val InternalNodeHashPrefix : Term_t = raw(InternalNodeIdentifier)
 val LeafNodeHashPrefix : Term_t = raw(LeafNodeIdentifier)
 
-val l = {
-    key_hash: termHash(raw([2])),
-    value_hash:  termHash(raw([17]))
-}
-
 pure def hashLeafNode(l: LeafNode): Term_t =
     termHash(   LeafNodeHashPrefix
                 .termConcat(raw(l.key_hash))
@@ -48,7 +43,7 @@ pure def hashLeafNode(l: LeafNode): Term_t =
 
 pure def hashOfChild(oc: Option[Child]) : Term_t =
     match oc {
-        | None => termHash(raw([0]))
+        | None => Hash256_ZERO
         | Some(c) => c.hash
     }
 

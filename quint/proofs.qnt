@@ -109,16 +109,21 @@ module proofs {
                 internal.right_child.unwrap().version
               val innerOp = 
                 if(prefixes_list[iterator.i + 1] == next_bit_0) 
-                  // enters here idk why?
                   { prefix: InternalNodeHashPrefix, 
                     suffix: match internal.right_child {
-                              | None => debug("reached None branch for internal.rightchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
+                              // used to be Map(), now is Hash256_ZERO which is representation of Hash256::ZERO in Quint.
+                              // Hash256_ZERO == termHash(raw([0]))
+                              | None => Hash256_ZERO
                               | Some(c) => c.hash} }
                 else 
-                  { prefix: InternalNodeHashPrefix.termConcat(match internal.left_child {
-                                                                | None => debug("reached None branch for internal.leftchild ", termHash(raw([0])))  // used to be Map(), experiments lead us to this solution
-                                                                | Some(c) => debug("lc hash",c.hash)}), 
+                  { prefix: InternalNodeHashPrefix
+                              .termConcat(match internal.left_child {
+                                // used to be Map(), now is Hash256_ZERO which is representation of Hash256::ZERO in Quint.
+                                // Hash256_ZERO == termHash(raw([0]))
+                                | None => Hash256_ZERO
+                                | Some(c) => c.hash}), 
                     suffix: Map() }
+
               { ...iterator, path: iterator.path.append(innerOp),  
                 i: iterator.i + 1, child_version: child_version }
           }

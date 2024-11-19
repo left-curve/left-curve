@@ -27,33 +27,44 @@ module ics23 {
   type CommitmentRoot_t = Term_t
   type CommitmentProof_t = Term_t
 
-  // ICS23 IavlSpec has: // TODO Grug Merkle
+  // ICS23 IavlSpec has:
   // MinPrefixLength = 4
   // MaxPrefixLength = 12
   // ChildSize = 33
-  //
-  // update: in LeftCurve Grug these parameters are set to 1
+  // !!! UPDATE !!!
+  // In Left Curve Grug JellyFish Merkle Tree these parameters are set to 1
   pure val MinPrefixLen = 1
   pure val MaxPrefixLen = 1
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  // update: this parameter is set to 32 because that is the size of SHA256 
+  // !!! OUTDATED !!! 
+  //  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
+  // !!! UPDATE!!! 
+  //      this parameter is set to 32 because that is the size of SHA256 
   //         and that value is used in configuring ics23 verification spec
-  //         in LeftCurve Grug implementation
-  pure val ChildSize = 32 // 32 bytes in SHA256 + 1 byte for the length marker
+  //         in LeftCurve Grug JellyFish Merkle Tree implementation
+  pure val ChildSize = 32 //32 bytes in SHA256
+
+  // !!! UPDATE !!!
+  // The same applies for Left Curve Grug JellyFish Merkle Tree
   // Empty child is a predefined sequence that fills an absent child.
-  // TODO: EmptyChild is set to nil in IavlSpec. We have 33 bytes.
-  pure val EmptyChild = termHash(raw([0]))
+  // It's defined in InnerSpec and it has the value of Hash256::ZERO
+  // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
+  pure val EmptyChild = Hash256_ZERO
 
   type LEAF_T = {
     // The implementation additionally stores hashing and length functions:
-    // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL, TODO Grug
+    // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL,
     // we do not have to carry them around.
+    // !!! UPDATE !!! 
+    // The same applies for Left Curve Grug JellyFish Merkle Tree
     prefix: Term_t
   }
 
   type INNER_T = {
     // The implementation additionally stores the hashing function.
-    // Since we fix the spec to IAVL, we do not have to carry it around. TODO Grug
+    // Since we fix the spec to IAVL, we do not have to carry it around.
+    // !!! UPDATE !!!
+    // The same applies for Left Curve Grug JellyFish Merkle Tree
     prefix: Term_t,
     suffix: Term_t
   }
@@ -96,15 +107,6 @@ module ics23 {
     //       by the spec checker
     verify(proof, root, key, value)
   }
-  pure def termLen1(term: Term_t): int = {
-    // the roots' children
-    pure val top =
-      debug("top ", keys(term).filter(p => length(p) == 1).map(p => term.get(p)))
-    debug("top + 32 operation", top.fold(0, (s, t) => match(t) {
-      | Hash => s + 32
-      | Raw(bytes) => s + length(bytes)
-    }))
-  }
   /// checks if an op has the expected padding
   def hasPadding(inner: INNER_T,
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
@@ -119,12 +121,12 @@ module ics23 {
     def hasPadding1(inner: INNER_T,
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
     termLen(inner.prefix) >= minPrefixLen,
-    debug("len prefix", termLen(inner.prefix)) <= maxPrefixLen,
+    termLen(inner.prefix) <= maxPrefixLen,
     // When inner turns left, suffixLen == ChildSize,
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-   debug("sufix",termLen( inner.suffix) == suffixLen)
+   termLen( inner.suffix) == suffixLen
   }
   /// This will look at the proof and determine which order it is...
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
@@ -135,6 +137,8 @@ module ics23 {
     // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
     // branch = 1: minp, maxp, suffix =
     //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+    // !!! UPDATE !!!
+    // The same applies for Left Curve Grug JellyFish Merkle Tree
     if (hasPadding(inner, MinPrefixLen, MaxPrefixLen, ChildSize)) {
       // the node turns left
       (0, true)
@@ -153,19 +157,44 @@ module ics23 {
   /// on a leftmost path
   def leftBranchesAreEmpty(inner: INNER_T): bool = and {
     // the case of leftBranches == 0 returns false
-    val order = debug("lef branches empty order from padding", orderFromPadding(inner))
-    debug("leftBranchesAreEmpty: order._2 and order._1 != 0",order._2 and order._1 != 0),
+    val order = orderFromPadding(inner)
+    order._2 and order._1 != 0,
     // the remaining case is leftBranches == 1, see orderFromPadding
     // actualPrefix = len(inner.prefix) - 33
     // !!! UPDATE !!!
-    // For Grug we have changed Child Size so this comment is outdated
+    // For Left Curve Grug we have changed ChildSize to accustom their JellyFish Merkle Tree, 
+    // therefore previous comment is outdated
     // actualPrefix = len(inner.prefix) - 32
-    debug("leftBranchesAreEmpty: termLen(inner.prefix) >= ChildSize",termLen(inner.prefix) >= ChildSize),
-    // getPosition(0) returns 0
-    // GRUG: this is not the case for us, in example: Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash) from slice gives 1 and then it will 
-    val fromIndex = debug("leftBranchesAreEmpty: from index", termLen1(inner.prefix) - ChildSize)
-    debug("leftBranchesAreEmpty: termSlice(inner.prefix, fromIndex, fromIndex + ChildSize) == EmptyChild",
-              debug("leftBranchesAreEmpty: termslice", termSlice(debug("leftBranchesAreEmpty: inner prefix for slice",inner.prefix), fromIndex, fromIndex + ChildSize)) == debug("EmptyChild",EmptyChild)),
+    termLen(inner.prefix) >= ChildSize,
+    // !!!!!!! IMPLEMENTATION SPECIFIC NOTE
+    // We have adopted the following approach in order to fix problem with Quint hashing:
+    //  In the event when left branches are empty, 
+    //  inner.prefix will be: InternalNodeHashPrefix.termConcat(Hash256_ZERO)
+    //  Hash256_ZERO being termHash(raw([0]))
+    //  which will result in: Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash).
+    //  In Rust implementation this equals to:
+    //  prefix: [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat()
+    //        Note: here we are concatenating [0] and 
+    //              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    //  
+    //  After concatanation, prefix will have lenght 33 and look like this:
+    //  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    //  It is obvious that this is simply an array of zeros with length 33.
+    //  In Rust implementation of ics23, in leftBranchesAreEmpty branch of execution, this array is sliced like:
+    //  op.prefix[from..from + child_size], `from` being `1` and `child_size` being 33. 
+    //  Result of this slice should be equal to `spec.empty_child` which is Hash256::ZERO, 
+    //  or simply put, the first zero which represents `INTERNAL_NODE_HASH_PREFIX`.
+    //  However, this is not tha t simple to do in Quint.
+
+    //  In order to do so, we have changed `termSlice(...)` function. When prefix has value
+    //  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash), 
+    //  which is Quint equivalent of [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat(),
+    //  we will mimic the behaviour of Rust code, 
+    //  and simply just return `EmptyChild`, or: Map([0, 0] -> Raw([0]), [0] -> Hash), 
+    //  which is the same as trimming of the first zero, which represents `INTERNAL_NODE_HASH_PREFIX`.
+    
+    val fromIndex = termLen(inner.prefix) - ChildSize
+    termSlice(inner.prefix, fromIndex, fromIndex + ChildSize)== EmptyChild
   }
 
   /// IsLeftMost returns true if this is the left-most path in the tree,
@@ -173,20 +202,20 @@ module ics23 {
   def isLeftMost(path: List[INNER_T]): bool = {
     // Calls getPadding(0) => idx = 0, prefix = 0.
     // We specialize the constants to IavlSpec.
+    // !!! UPDATE !!!
+    // For Left Curve Grug we have changed: MinPrefixLen, MaxPrefixLen and ChildSize in order to
+    // accustom their JellyFish Merkle Tree, 
+    // therefore previous comment about specializing constants for IavlSpec is outdated
     path.indices().forall(i =>
-      val pathStep = debug("isLeftMost: pathStep ", path[i])
+      val pathStep = path[i]
       or {
         // the path goes left
-        debug("isLeftMost: hasPadding ",hasPadding1( pathStep, MinPrefixLen, MaxPrefixLen, ChildSize)),
+        hasPadding(pathStep, MinPrefixLen, MaxPrefixLen, ChildSize),
         // the path goes right, but the left child is empty (a gap)
-        debug("isLeftMost: leftBranchesAreEmpty(pathStep)", leftBranchesAreEmpty(pathStep)),
+        leftBranchesAreEmpty(pathStep)
       }
     )
   }
-//   from index  1
-// inner prefix  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash)
-//    termslice  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash)
-//  empty_child  Map([0, 0] -> Raw([0]), [0] -> Hash)
 
   /// rightBranchesAreEmpty returns true if the padding bytes correspond
   /// to all empty siblings on the right side of a branch,
@@ -207,6 +236,8 @@ module ics23 {
     // Specialize to IavlSpec
     // Calls getPadding(1) => minPrefix, maxPrefix,
     //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+    // !!! UPDATE !!!
+    // The same applies for Left Curve Grug JellyFish Merkle Tree
     path.indices().forall(i =>
       val pathStep = path[i]
       or {
@@ -222,12 +253,12 @@ module ics23 {
   /// checks if left is exactly one slot to the left of right
   def isLeftStep(left: INNER_T, right: INNER_T): bool = {
     // 'left' turns left, and 'right' turns right
-    val lorder = debug("isLeftStep: lorder from padding", orderFromPadding(left))
-    val rorder = debug("isLeftStep: rorder from padding",orderFromPadding(right))
+    val lorder = orderFromPadding(left)
+    val rorder = orderFromPadding(right)
     and {
       lorder._2,
       rorder._2,
-      debug("isLeftStep: rorder._1 == lorder._1 + 1", rorder._1 == lorder._1 + 1)
+      rorder._1 == lorder._1 + 1
     }
   }
 
@@ -264,13 +295,11 @@ module ics23 {
         // of the same tree node:
         //  the left one stores the hash of the right one, whereas
         //  the right one stores the hash of the left one.
-        debug("isLeftNeighbor: isLeftStep(lpath[li], rpath[ri])", isLeftStep(lpath[li], rpath[ri])), //true - OK
+        isLeftStep(lpath[li], rpath[ri]),
         // left and right are remaining children below the split,
-        debug("isLeftNeighbor: isRightMost(lpath.slice(0, li))", isRightMost(lpath.slice(0, li))),
-
         // ensure left child is the rightmost path, and visa versa
-        debug("isLeftNeighbor: isLeftMost(rpath.slice(0, ri))", isLeftMost(debug("isLeftNeighbor: isLeftMost(rpath.slice(0, ri)) rpath slice", rpath.slice(0, debug("ri",ri))))),
-        
+        isRightMost(lpath.slice(0, li)),
+        isLeftMost(rpath.slice(0, ri)),
       })
     )
   }
@@ -283,33 +312,27 @@ module ics23 {
   def verifyNonMembership(root: CommitmentRoot_t,
       np: NonExistsProof_t, key: Key_t): bool = and {
     // getNonExistProofForKey
-    debug("np.left == None or lessThan(np.left.unwrap().key, key)", np.left == None or lessThan(np.left.unwrap().key, key)),
-    debug("np.right == None or lessThan(key, np.right.unwrap().key)",np.right == None or lessThan(key, np.right.unwrap().key)),
+    np.left == None or lessThan(np.left.unwrap().key, key),
+    np.right == None or lessThan(key, np.right.unwrap().key),
     // implicit assumption, missing in the code:
     // https://github.com/informalsystems/ics23-audit/issues/14
-    debug("np.key == key ",np.key == key),
+    np.key == key,
     // Verify
-    debug("np.left != None or np.right != None", np.left != None or np.right != None),
-    debug("np.left == None or and {
+    np.left != None or np.right != None,
+    np.left == None or and {
       verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
       lessThan(np.left.unwrap().key, key),
-    }",np.left == None or and {
-      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
-      lessThan(np.left.unwrap().key, key),
-    }),
-    debug("np.right == None or and {
+    },
+    np.right == None or and {
       verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
       lessThan(key, np.right.unwrap().key),
-    }", np.right == None or and {
-      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
-      lessThan(key, np.right.unwrap().key),
-    }),
+    },
     if (np.left == None) {
-      debug("isLeftMost(np.right.unwrap().path)", isLeftMost(np.right.unwrap().path))
+      isLeftMost(np.right.unwrap().path)
     } else if (np.right == None) {
-      debug("isRightMost(np.left.unwrap().path)", isRightMost(np.left.unwrap().path))
+      isRightMost(np.left.unwrap().path)
     } else {
-      debug("isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)", isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path))
+      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
     }
   }
 }
