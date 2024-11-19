@@ -221,6 +221,7 @@ where
 
     fn tower_info(&self) -> AppResult<response::Info> {
         let (last_block_height, last_block_version) = self.do_info()?;
+
         Ok(response::Info {
             data: env!("CARGO_PKG_NAME").into(),
             version: env!("CARGO_PKG_VERSION").into(),
