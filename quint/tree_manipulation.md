@@ -369,7 +369,7 @@ Next, we deal with orphans.
         }
 ```
 
-Again, no mutations on Quint, so instead we return sets of orphans to be added (empty on else branches).
+Again, no mutations on Quint, so instead we return sets of orphans to be added (which are empty on else branches).
 
 ```bluespec apply_fancy.qnt+=
     // If the left child exists and have been updated or deleted, then the
@@ -421,7 +421,9 @@ Now, lets go case by case on the match expression, which are translated into if 
         match (left_outcome, right_outcome) {
 ```
 
-No match in Quint, as we use ifs instead. First case:
+No match in Quint, as we use ifs instead.
+
+First case:
 
 ```rust
             // Neither children is changed. This node is unchanged as well.
