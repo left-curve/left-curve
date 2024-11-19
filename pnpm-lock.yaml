@@ -512,6 +512,9 @@ importers:
       '@dango/assets':
         specifier: workspace:^
         version: link:../assets
+      '@leftcurve/connect-kit':
+        specifier: workspace:^
+        version: link:../../sdk/packages/connect-kit
       '@leftcurve/react':
         specifier: workspace:^
         version: link:../../sdk/packages/react

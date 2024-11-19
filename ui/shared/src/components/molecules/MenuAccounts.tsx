@@ -43,7 +43,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
 
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
-      if (selectedAccount?.index === a.index) return -1;
+      if (selectedAccount?.index === b.index) return 1;
       return a.index - b.index;
     });
   }, [selectedAccount, accounts]);
@@ -105,9 +105,13 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
             return (
               <AccountCard
                 avatarUrl={images[account.type]}
-                key={account.index}
+                key={crypto.randomUUID()}
                 account={account}
-                onClick={() => [changeAccount?.(account), setExpanded(false)]}
+                onClick={() => [
+                  changeAccount?.(account),
+                  setExpanded(false),
+                  console.log(account, changeAccount),
+                ]}
                 manageAction={handleAction}
                 expanded={expanded}
               />
