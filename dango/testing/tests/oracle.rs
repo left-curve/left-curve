@@ -1,23 +1,20 @@
 use {
-    dango_testing::{setup_test, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, Accounts, TestSuite},
     dango_types::oracle::{
-        self, ExecuteMsg, GuardianSet, PrecisionlessPrice, PriceSource, PythId, PythVaa,
-        QueryPriceRequest, ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, GUARDIANS_ADDRESSES,
-        GUARDIAN_SETS_INDEX, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID, USDC_USD_ID, WBTC_USD_ID,
-        XRP_USD_ID,
+        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
+        ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID,
+        USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
     },
-    grug::{
-        btree_map, Addr, Binary, Coins, Denom, Hash160, Inner, MockApi, NonEmpty, ResultExt,
-        Udec128,
-    },
+    grug::{btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, ResultExt, Udec128},
+    grug_app::NaiveProposalPreparer,
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
-/// - price: **6984382159562**
-/// - publish_time: **1730157441**
-const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBkMyJzGWOwAlhd3NDvcYJvct5KACRi6oi9InIE/PYqXh1z92MOXFyFPGP5y9uOpubgMIvUh/pa5aXsM/z+aaCdAALKQlwSVB5YIQ/C0NuqXqam0fAAQYUJeBe+G7rjnv7UXhHRIqNiqCvTE1ygz3zUztg07pqoYahCI7SlqI23hHizAAPG7cQdoENAUMDgYC1znnRkG8NUDS/Yzlxb3Krl/fKDUjpgKM2ZEB5HD11bCTzIhPHTI8KQxIDbyKxF6o4cwf5QAAQxrIWXQX0Bx9/lDEDfFOOqRU6LwZhFMmiDwUedUxsIvR73V/yfZKNtObHA0O9McjdTo1JibRqnbNqw6H8hw4/JAAax4DOJ/M8yxbIk88rV0n8sttzelXPuMnnJCXV2CFpwlSqYu0cQ+gmWvfjK/zJSFKHhNF0N7wzOX9J/bghUeQ8nAQgJ7BPYtJo/qowTuQfDCa4ZHIhLjC9frRQh3/UWLrxosG5xWODfYWtpDLKwfmi2gjMV4PIMUdhwZLyMDfZIqR6MAQrB/IQ438iz+1cgU+i8ij7eB5+MeUxcV0ukQhJW/0nwVCm234OqZ+ES3fNPIpWHRo4nq5ZVCdX4ZE3MF+SjZIW2AAu4DFxPpw3tokuOP6z2jNk9AFzjC/WUqlZaIx+6Se5ZeGr4chhEh2IiwChhSUJnGsKtkXHSqTuLZpXf8QZ+ZiRFAAz9XiWxbiOvw6E4+I/0JRutYrALssiRNYBah4I1QzYSU1gIAeMEHz2jvMX9lGGZMfS/uJrv1VtW9UCJMxMCUqgOAA2Hkv95hjyj6toIigG6PyEpzzoJE3ZVqI92F2kWoGSE0l/7aV/sz6jhRl8udbq/Mqu+i9wpbUZqa/ZUCFFi0NLSAQ5s3Le7hPfK1QnMOU8eWkJqiy/XL+remqBwR92Omm8FFANUVzHwOKBsj0Zlrp9o7UW05BJUrUgVXbvJ61r2F+zoAREVSnZt5Tt3JOQs/JRFUway6AvKiQQJihLAOo6AkKiUCTR2G4kbFGiILq4hwgASZGshfdgKRCy+jbHlfDGpNF+vABIwoeTGgkil6kOH/Dg+hNKmqS8N41Y1tQn7i7RkfjMw7gMOQoZcNTKDCNGfgR0gu62ZIkDBIXmea25leCk6VnH2AGcgG4EAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFVzmdAUFVV1YAAAAAAApj+2QAACcQuyA5y12P+HQ9xkG4YvVJJeqDZf4BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZaLZ4aygAAAAIyAxQV////+AAAAABnIBuBAAAAAGcgG4AAAAZXwuHPYAAAAAJwWNtUCsIlij3mTR7FLM4Pu9qzDhJrUtUxIctFWnmj84Af485oCfcURBzjS8v9xlCaHMjofeED+Ml66aUMg3GKE8PDVhr5SAP4MJU436Fr6IFOxCWwq4hIuPuRgtLh6xy3t1dAZmA1SLzhr+OAOS1cKUapaSIeOdv/Mclu2fbSsnRU72f3eNeVU1v13bHKNJ70zxX/fMj109FD2kNQf4+VnjXn0jbxUKWfH5PZBT9oXoD9C59CFRYhLKAuMLSgi1sRBH0T1SmF59vcZjsn";
+/// - price: **6864578657006**
+/// - publish_time: **1730804420**
+const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBnC+7yOL2qsxrpxHzhTnaruVWTSfjBRIF7sk1bJUZzj3s7wZyytPTHtoxXFQaFFSCgVpCXeLdeHuN3ZM2LOvQMAAMOXaxpZYUuwjEhbN8yP3wfgSDdaFgiS0Abr1Hyf29BX1sYEEH82xUVspIdEv7DBves+XjKJWWnZ51De4KMmDqgAQR9ExeR/D3QbvfFarB73jLQ+QKGS0tb50229RyjKCHv2VbRJL5go04kePmSqLjqjhBn/IBx2Rr1W16DF9fKV2h+AAaPsmegjpPIfPIDZwqMcgvNfXqG77+8RYSH95azsCTMEFOaQVtJGJbjQUWdSrlqXukLgxIxf6yKdzp7sOBNFFVdAAhXAe1EFhONyQgWDnViECw7DbvmwNtjJ2xM/DslvZ2RJVA46pZ5St6IKyK2Ucqq/0Hu2nC1CEB39Rtcvu0Sm6DCAQpyh2KzwK+i9CtzyZNYfRFn+esWmnSHpoZrBYLgxayqtRIiTPetE3hudyHUxm4xk7CfcBrRD8uThsny1YHeiQpiAQtcR4XqjxUWHNLXsMaqaF3B/pskIjxVjWEiDkJCIpqoJFn8tktkDh00XREbZ68SUhUQQ1/S6icJLUIQt2Rf4cy5AAwJVyMi0NmjVs0X5NYzwO1Uk6Yfx96HQtibi9gPiCR4gXTW0udFzqvQ2u2xiiXonGjmaRMW86hm/6kx08d341PTAQ2ypzyZJiPhPZAo4I2IJtdjkq72uyR4lL1kqaIGupLxtCq36i1tD61Yjt3HRruBuVvHqjC60xDvWIVQL6UAHAu9AQ7wH5SeZ1ra473yrfVGIEtuGSh0iITJ3Tnzh+4IJMdnvjFARCrxHLmne50gjYcG+CQYSHl/TJ+fElFtiDx43ouGABCT8qRJAJYpusR2A1mGXDX/oBSq0NoaKKr7u4c8zLDsLWUudBRRVkDS4281f+GuQupa5eRPKdDHXt40lFY5V+FWABEcD+ka2buu8h4ZAK9gWcOhe9Ms0COktqchnwS3oZV7lXXcZM1K+LKc+gKshOln7r3JC1UrkcjJa6gy9v5Ka9YTARIYLaAd0TkttKtK9hoALKRTkEqpqgtvBLqJA9qW1UDYoAZksJo2X0th7lFdIZJQsCIkDxqedbuS1H7EQ7Im6XUHAGcp+sQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFcADhAUFVV1YAAAAAAAp8yzcAACcQXNrQIBXy4Cs6ul3jv4wlMishtwkBAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAY+SMW67gAAAAI/1aJY////+AAAAABnKfrEAAAAAGcp+sQAAAY+IAqHoAAAAAIKJkDECnJa8p4N3HJckOG0/XBHQ4HSCFfFvzHVwHvYJ9V5NPKGlOHwUp0GbOXWbNIMhSmoX+hk8FUMlP6NlHHbf8S2YxVixm+nMOOrhtH9+3bMQQh26XE6/E5UIoNgScjtRRQ32qtHxrU1ezhAhHmTAAD07E8S/ACc8F8xjDAZgLgjSFLHptczUSe1wR5IrrbZQRQhERagNdCcBUp8S5wl7VAQBPqprw5ZZ6dvI0y/P8UaldqRoa8eN47BbGvH/12oNzfcUiLjHCFciAwc";
 
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
 /// - price: **7131950295749**
@@ -26,53 +23,21 @@ const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-fn setup_oracle_test(denoms: BTreeMap<Denom, PriceSource>) -> (TestSuite, Accounts, Addr) {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-
-    // init a new oracle
-    let code_hash = suite.query_contract(&contracts.oracle).unwrap().code_hash;
-
-    let oracle = suite
-        .instantiate(
-            &mut accounts.owner,
-            code_hash,
-            &oracle::InstantiateMsg {
-                guardian_sets: btree_map! {
-                    GUARDIAN_SETS_INDEX => GuardianSet {
-                        addresses: GUARDIANS_ADDRESSES
-                            .into_iter()
-                            .map(|addr| {
-                                let bytes = Binary::from_str(addr)
-                                    .unwrap()
-                                    .into_inner()
-                                    .try_into()
-                                    .unwrap();
-                                Hash160::from_inner(bytes)
-                            })
-                            .collect(),
-                        expiration_time: None,
-                    },
-                },
-                price_sources: Default::default(),
-            },
-            "salt",
-            None,
-            None,
-            Coins::default(),
-        )
-        .should_succeed()
-        .address;
+fn setup_oracle_test(
+    denoms: BTreeMap<Denom, PriceSource>,
+) -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     suite
         .execute(
             &mut accounts.owner,
-            oracle,
+            contracts.oracle,
             &ExecuteMsg::RegisterPriceSources(denoms),
             Coins::default(),
         )
         .should_succeed();
 
-    (suite, accounts, oracle)
+    (suite, accounts, contracts.oracle)
 }
 
 #[test]
@@ -85,40 +50,6 @@ fn oracle() {
     });
 
     // Push price
-    {
-        suite
-            .execute(
-                &mut accounts.owner,
-                oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_1).unwrap()
-                ])),
-                Coins::default(),
-            )
-            .should_succeed();
-
-        let current_price = suite
-            .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: btc_denom.clone(),
-            })
-            .unwrap();
-
-        assert_eq!(
-            current_price.humanized_price,
-            Udec128::from_str("69843.82159562").unwrap()
-        );
-
-        assert_eq!(
-            current_price.humanized_ema,
-            Udec128::from_str("69843.82159562").unwrap()
-        );
-
-        assert_eq!(current_price.precision(), precision);
-
-        assert_eq!(current_price.timestamp, 1730157441);
-    }
-
-    // Push an updated_price
     {
         suite
             .execute(
@@ -144,13 +75,15 @@ fn oracle() {
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("71319.50295749").unwrap()
+            Udec128::from_str("71110.59200000").unwrap()
         );
+
+        assert_eq!(current_price.precision(), precision);
 
         assert_eq!(current_price.timestamp, 1730209108);
     }
 
-    // Push an outdated price. it should not be updated
+    // Push an updated_price
     {
         suite
             .execute(
@@ -164,20 +97,52 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
+            .query_wasm_smart(oracle, QueryPriceRequest {
+                denom: btc_denom.clone(),
+            })
+            .unwrap();
+
+        assert_eq!(
+            current_price.humanized_price,
+            Udec128::from_str("68645.78657006").unwrap()
+        );
+
+        assert_eq!(
+            current_price.humanized_ema,
+            Udec128::from_str("68638.95300000").unwrap()
+        );
+
+        assert_eq!(current_price.timestamp, 1730804420);
+    }
+
+    // Push an outdated price. it should not be updated
+    {
+        suite
+            .execute(
+                &mut accounts.owner,
+                oracle,
+                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(VAA_2).unwrap()
+                ])),
+                Coins::default(),
+            )
+            .should_succeed();
+
+        let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest { denom: btc_denom })
             .unwrap();
 
         assert_eq!(
             current_price.humanized_price,
-            Udec128::from_str("71319.50295749").unwrap()
+            Udec128::from_str("68645.78657006").unwrap()
         );
 
         assert_eq!(
             current_price.humanized_ema,
-            Udec128::from_str("71319.50295749").unwrap()
+            Udec128::from_str("68638.95300000").unwrap()
         );
 
-        assert_eq!(current_price.timestamp, 1730209108);
+        assert_eq!(current_price.timestamp, 1730804420);
     }
 }
 

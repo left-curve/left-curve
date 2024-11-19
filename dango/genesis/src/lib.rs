@@ -204,7 +204,9 @@ where
         lending_code_hash,
         &lending::InstantiateMsg {
             markets: btree_map! {
-                fee_denom.clone() => MarketUpdates {},
+                fee_denom.clone() => MarketUpdates {
+                    // TODO
+                },
             },
         },
         "dango/lending",
@@ -320,8 +322,10 @@ where
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,
+            lending,
             oracle,
         },
+        collateral_powers: btree_map! {},
     };
 
     let genesis_state = GenesisState {

@@ -28,6 +28,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
+        ExecuteMsg::Repay {} => repay(ctx),
     }
 }
 
@@ -149,4 +150,31 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Transfer the coins to the caller
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
+}
+
+pub fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
+    // Ensure all sent coins are whitelisted
+    for coin in &ctx.funds {
+        ensure!(
+            MARKETS.has(ctx.storage, coin.denom),
+            "Invalid denom. Only whitelisted denoms can be repaid."
+        );
+    }
+
+    let mut maybe_msg = None;
+
+    // Update the sender's liabilities
+    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
+        let mut debts = maybe_debts.unwrap_or_default();
+
+        // Deduct the sent coins from the account's debts, saturating at zero.
+        let remainders = debts.saturating_deduct_many(ctx.funds)?;
+
+        // Refund the remainders to the sender, if any.
+        maybe_msg = Some(Message::transfer(ctx.sender, remainders)?);
+
+        Ok(debts)
+    })?;
+
+    Ok(Response::new().may_add_message(maybe_msg))
 }
