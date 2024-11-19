@@ -12,7 +12,7 @@ use {
     grug::{
         json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
     },
-    std::ops::Deref,
+    std::{collections::BTreeMap, ops::Deref},
 };
 
 /// Expected sequence number of the next transaction this account sends.
@@ -152,7 +152,7 @@ pub fn authenticate_tx(
                     // Gather all Query requests for the keys and ownerships.
                     // This is done in a single `query_multi_vec` to avoid multiple queries.
                     let (requests, signs_info) = credential.into_iter().try_fold(
-                        (vec![], vec![]),
+                        (vec![], BTreeMap::new()),
                         |(mut requests, mut info), (key_hash, signature)| {
                             // Instead of raising an error, just skip the key if it's not allowed.
                             if !allowed_keys.contains(&key_hash) {
@@ -169,7 +169,8 @@ pub fn authenticate_tx(
 
                             requests.push(res_ownership);
                             requests.push(res_key);
-                            info.push((key_hash, signature));
+                            info.insert(key_hash, signature);
+
                             Ok((requests, info))
                         },
                     )?;

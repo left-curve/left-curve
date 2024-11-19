@@ -1,6 +1,6 @@
 use {
     crate::{
-        account::multi::ParamUpdates,
+        account::{multi::ParamUpdates, single},
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
@@ -47,8 +47,15 @@ pub enum ExecuteMsg {
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
+    /// Register a new key for an existing user.
+    RegisterKey { key_hash: Hash160, key: Key },
     /// Update a Safe account's parameters.
     ConfigureSafe { updates: ParamUpdates },
+    /// Update a single account's parameters.
+    ConfigureSingle {
+        address: Addr,
+        params: single::Params,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]

@@ -114,7 +114,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
+        ExecuteMsg::RegisterKey { key_hash, key } => register_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
+        ExecuteMsg::ConfigureSingle { address, params } => configure_single(ctx, address, params),
     }
 }
 
@@ -303,6 +305,22 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
+fn register_key(ctx: MutableCtx, key_hash: Hash160, key: Key) -> anyhow::Result<Response> {
+    let username = derive_username_by_address(ctx.storage, ctx.sender)?;
+
+    KEYS.may_update(ctx.storage, key_hash, |maybe_key| {
+        if let Some(existing_key) = maybe_key {
+            ensure!(key == existing_key, "reusing an existing key but mismatch");
+        }
+        Ok(key)
+    })?;
+
+    KEYS_BY_USER.insert(ctx.storage, (&username, key_hash))?;
+    USERS_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
+
+    Ok(Response::new())
+}
+
 fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
     for member in updates.members.add().keys() {
         ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
@@ -329,4 +347,55 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
     })?;
 
     Ok(Response::new())
+}
+
+fn configure_single(
+    ctx: MutableCtx,
+    address: Addr,
+    params: single::Params,
+) -> anyhow::Result<Response> {
+    let mut account = ACCOUNTS.load(ctx.storage, address)?;
+
+    match &mut account.params {
+        AccountParams::Spot(existing) | AccountParams::Margin(existing) => {
+            ensure!(
+                existing.owner == params.owner,
+                "can't change account owner for single accounts."
+            );
+
+            if let SignMode::Restricted {
+                threshold,
+                allowed_keys,
+            } = &params.sign_mode
+            {
+                ensure!(
+                    *threshold <= allowed_keys.len() as u8,
+                    "threshold can't be greater than total power."
+                );
+
+                for key in allowed_keys {
+                    ensure!(
+                        KEYS_BY_USER.has(ctx.storage, (&existing.owner, *key)),
+                        "key {} doesn't exist for user {}.",
+                        key,
+                        existing.owner
+                    )
+                }
+            }
+
+            *existing = params
+        },
+        _ => bail!("only spot and margin accounts can be updated"),
+    }
+
+    ACCOUNTS.save(ctx.storage, address, &account)?;
+
+    Ok(Response::new())
+}
+
+fn derive_username_by_address(storage: &dyn Storage, addr: Addr) -> anyhow::Result<Username> {
+    match ACCOUNTS.load(storage, addr)?.params {
+        AccountParams::Spot(params) | AccountParams::Margin(params) => Ok(params.owner),
+        AccountParams::Safe(_) => bail!("can't derive username from Safe account"),
+    }
 }
