@@ -30,22 +30,19 @@ module ics23 {
   // ICS23 IavlSpec has:
   // MinPrefixLength = 4
   // MaxPrefixLength = 12
-  // ChildSize = 33
+  // ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
   // !!! UPDATE !!!
-  // In Left Curve Grug JellyFish Merkle Tree these parameters are set to 1
+  // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
   pure val MinPrefixLen = 1
   pure val MaxPrefixLen = 1
   // It is crucial to make sure that ChildSize > MaxPrefixLen
-  // !!! OUTDATED !!! 
-  //  pure val ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
   // !!! UPDATE!!! 
-  //      this parameter is set to 32 because that is the size of SHA256 
-  //         and that value is used in configuring ics23 verification spec
-  //         in LeftCurve Grug JellyFish Merkle Tree implementation
+  //  this parameter is set to 32 because that is the size of SHA256 
+  //  and that value is used in configuring ics23 verification spec
+  //  in LeftCurve Grug JellyFish Merkle Tree implementation
   pure val ChildSize = 32 //32 bytes in SHA256
 
-  // !!! UPDATE !!!
-  // The same applies for Left Curve Grug JellyFish Merkle Tree
+
   // Empty child is a predefined sequence that fills an absent child.
   // It's defined in InnerSpec and it has the value of Hash256::ZERO
   // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
