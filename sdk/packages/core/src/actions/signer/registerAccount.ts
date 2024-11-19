@@ -1,3 +1,6 @@
+import { getMembersTypedData } from "@leftcurve/utils";
+import { type ExecuteReturnType, execute, getAppConfig } from "../index.js";
+
 import type {
   AccountConfig,
   Address,
@@ -8,8 +11,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { getMembersTypedData } from "@leftcurve/utils";
-import { type ExecuteReturnType, execute, getAppConfig } from "../index.js";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -26,7 +28,7 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
   const { sender, config } = parameters;
   const msg = { registerAccount: { params: config } };
 
-  const factoryAddr = await getAppConfig<Address>(client, { key: "account_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   const typedData: TypedDataParameter = {
     type: [{ name: "registerAccount", type: "RegisterAccount" }],
@@ -59,5 +61,11 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
     },
   };
 
-  return await execute(client, { contract: factoryAddr, sender, msg, typedData, ...txParameters });
+  return await execute(client, {
+    contract: addresses.accountFactory,
+    sender,
+    msg,
+    typedData,
+    ...txParameters,
+  });
 }

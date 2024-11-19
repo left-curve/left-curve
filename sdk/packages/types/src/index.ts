@@ -27,7 +27,6 @@ export type {
   SimulateResponse,
   ContractResponse,
   ContractsResponse,
-  AppConfigsResponse,
   AppConfigResponse,
 } from "./queries.js";
 

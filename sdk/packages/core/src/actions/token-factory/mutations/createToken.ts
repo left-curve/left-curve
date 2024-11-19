@@ -1,3 +1,6 @@
+import { getAppConfig } from "../../public/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+
 import type {
   Address,
   Chain,
@@ -10,8 +13,7 @@ import type {
   TypedDataParameter,
   Username,
 } from "@leftcurve/types";
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type CreateTokenParameters = {
   sender: Address;
@@ -61,11 +63,11 @@ export async function createToken<chain extends Chain | undefined, signer extend
     },
   };
 
-  const contract = await getAppConfig<Address>(client, { key: "token_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   return await execute(client, {
     sender,
-    contract,
+    contract: addresses.amm,
     msg,
     funds,
     gasLimit,

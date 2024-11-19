@@ -1,3 +1,6 @@
+import { getAppConfig } from "../../public/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+
 import type {
   Address,
   Chain,
@@ -9,8 +12,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type MintTokenParameters = {
   sender: Address;
@@ -54,11 +56,11 @@ export async function mintToken<chain extends Chain | undefined, signer extends 
     },
   };
 
-  const contract = await getAppConfig<Address>(client, { key: "token_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   return await execute(client, {
     sender,
-    contract,
+    contract: addresses.amm,
     msg,
     funds,
     gasLimit,
