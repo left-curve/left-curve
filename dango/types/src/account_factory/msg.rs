@@ -1,6 +1,7 @@
 use {
+    super::SignMode,
     crate::{
-        account::{multi::ParamUpdates, single},
+        account::multi::ParamUpdates,
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
@@ -52,10 +53,7 @@ pub enum ExecuteMsg {
     /// Update a Safe account's parameters.
     ConfigureSafe { updates: ParamUpdates },
     /// Update a single account's parameters.
-    ConfigureSingle {
-        address: Addr,
-        params: single::Params,
-    },
+    ConfigureSingle { sign_mode: SignMode },
 }
 
 #[grug::derive(Serde, QueryRequest)]

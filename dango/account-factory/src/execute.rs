@@ -116,7 +116,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::RegisterKey { key_hash, key } => register_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
-        ExecuteMsg::ConfigureSingle { address, params } => configure_single(ctx, address, params),
+        ExecuteMsg::ConfigureSingle { sign_mode } => configure_single(ctx, sign_mode),
     }
 }
 
@@ -349,24 +349,15 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
     Ok(Response::new())
 }
 
-fn configure_single(
-    ctx: MutableCtx,
-    address: Addr,
-    params: single::Params,
-) -> anyhow::Result<Response> {
-    let mut account = ACCOUNTS.load(ctx.storage, address)?;
+fn configure_single(ctx: MutableCtx, sign_mode: SignMode) -> anyhow::Result<Response> {
+    let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
 
     match &mut account.params {
         AccountParams::Spot(existing) | AccountParams::Margin(existing) => {
-            ensure!(
-                existing.owner == params.owner,
-                "can't change account owner for single accounts."
-            );
-
             if let SignMode::Restricted {
                 threshold,
                 allowed_keys,
-            } = &params.sign_mode
+            } = &sign_mode
             {
                 ensure!(
                     *threshold <= allowed_keys.len() as u8,
@@ -383,12 +374,12 @@ fn configure_single(
                 }
             }
 
-            *existing = params
+            existing.sign_mode = sign_mode
         },
         _ => bail!("only spot and margin accounts can be updated"),
     }
 
-    ACCOUNTS.save(ctx.storage, address, &account)?;
+    ACCOUNTS.save(ctx.storage, ctx.sender, &account)?;
 
     Ok(Response::new())
 }

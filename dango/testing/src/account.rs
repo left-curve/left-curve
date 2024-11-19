@@ -30,17 +30,21 @@ pub struct Accounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug, Clone)]
-pub struct SingleSign(Hash160);
+pub struct SingleSign {
+    pub key_hash: Hash160,
+}
 
 #[derive(Debug, Clone)]
-pub struct RestrictedSign(BTreeSet<Hash160>);
+pub struct RestrictedSign {
+    pub key_hashes: BTreeSet<Hash160>,
+}
 
 #[derive(Debug)]
 pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>, S = SingleSign> {
     pub username: Username,
     pub sequence: u32,
     pub keys: BTreeMap<Hash160, (SigningKey, Key)>,
-    sign_mode: S,
+    pub sign_mode: S,
     address: T,
 }
 
@@ -64,7 +68,7 @@ impl TestAccount<Undefined<Addr>> {
             username,
             sequence: 0,
             address: Undefined::new(),
-            sign_mode: SingleSign(key_hash),
+            sign_mode: SingleSign { key_hash },
             keys: btree_map! {key_hash => (sk, key)},
         }
     }
@@ -138,21 +142,55 @@ where
 
         // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
         // use another hash, it's necessary to update this.
-        let (sk, _) = self.keys.get(&self.sign_mode.0).unwrap();
+        let (sk, _) = self.keys.get(&self.sign_mode.key_hash).unwrap();
         let sign: EcdsaSignature = sk.sign(&sign_bytes);
         let signs = btree_map! {
-            self.sign_mode.0 => auth::Signature::Secp256k1(sign.to_bytes().to_vec().try_into()?),
+            self.sign_mode.key_hash => auth::Signature::Secp256k1(sign.to_bytes().to_vec().try_into()?),
         };
 
         Ok((data, signs))
     }
 
     pub fn key(&self) -> Key {
-        self.keys.values().next().map(|val| val.1).unwrap()
+        self.keys.get(&self.sign_mode.key_hash).unwrap().1
     }
 
     pub fn key_hash(&self) -> Hash160 {
-        *self.keys.keys().next().unwrap()
+        self.sign_mode.key_hash
+    }
+}
+
+impl TestAccount {
+    pub fn restricted(
+        self,
+        key_hashes: BTreeSet<Hash160>,
+    ) -> TestAccount<Defined<Addr>, RestrictedSign> {
+        TestAccount {
+            username: self.username,
+            sequence: self.sequence,
+            keys: self.keys,
+            sign_mode: RestrictedSign { key_hashes },
+            address: self.address,
+        }
+    }
+}
+
+impl<S> TestAccount<Defined<Addr>, S> {
+    pub fn add_key(&mut self) -> (Hash160, Key) {
+        let sk = SigningKey::random(&mut OsRng);
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .to_vec()
+            .try_into()
+            .unwrap();
+
+        let key = Key::Secp256k1(pk);
+        let key_hash = pk.hash160();
+
+        self.keys.insert(key_hash, (sk, key));
+        (key_hash, key)
     }
 }
 
@@ -209,6 +247,7 @@ where
         })
     }
 }
+
 impl<T> TestAccount<T, RestrictedSign>
 where
     T: MaybeDefined<Addr>,
@@ -237,7 +276,7 @@ where
         // use another hash, it's necessary to update this.
         let signs = self
             .sign_mode
-            .0
+            .key_hashes
             .iter()
             .map(|key_hash| {
                 let (sk, _) = self.keys.get(key_hash).unwrap();
