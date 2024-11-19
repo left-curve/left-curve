@@ -2324,8 +2324,6 @@ dependencies = [
  "prost",
  "serde",
  "tendermint",
- "tendermint-abci",
- "tendermint-proto",
  "thiserror",
  "tower 0.5.1",
  "tower-abci",
@@ -5350,19 +5348,6 @@ dependencies = [
  "tendermint-proto",
  "time",
  "zeroize",
-]
-
-[[package]]
-name = "tendermint-abci"
-version = "0.40.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4af85534babbbaec8f39b22571680b4edd17daf5606ae859d7d15b7232ca8d2"
-dependencies = [
- "bytes",
- "flex-error",
- "prost",
- "tendermint-proto",
- "tracing",
 ]
 
 [[package]]

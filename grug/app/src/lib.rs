@@ -13,7 +13,6 @@ mod query;
 mod shared;
 mod state;
 mod submessage;
-mod tower;
 mod traits;
 mod vm;
 
