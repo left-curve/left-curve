@@ -2,7 +2,7 @@ import { AccountSearchInput, Button, CoinSelector, Input } from "@dango/shared";
 import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
 import { isValidAddress } from "@leftcurve/sdk";
 import type { Address } from "@leftcurve/types";
-import { formatUnits, parseUnits } from "@leftcurve/utils";
+import { formatUnits, parseUnits, wait } from "@leftcurve/utils";
 import { useForm } from "react-hook-form";
 
 export const SendContainer: React.FC = () => {
@@ -13,7 +13,7 @@ export const SendContainer: React.FC = () => {
   const coins = chainCoins[chainId as string];
   const arrayOfCoins = Object.values(coins);
 
-  const { register, watch, setValue, setError, handleSubmit, formState } = useForm<{
+  const { register, watch, setValue, setError, handleSubmit, formState, reset } = useForm<{
     amount: string;
     denom: string;
     address: string;
@@ -24,7 +24,7 @@ export const SendContainer: React.FC = () => {
     },
   });
 
-  const { data: balances } = useBalances({ address: account?.address });
+  const { data: balances, refetch } = useBalances({ address: account?.address });
 
   const denom = watch("denom");
   const humanAmount = formatUnits(balances?.[denom] || 0, coins[denom].decimals);
@@ -47,6 +47,9 @@ export const SendContainer: React.FC = () => {
         [formData.denom]: amount.toString(),
       },
     });
+    await wait(1000);
+    await refetch();
+    reset();
   });
 
   return (
