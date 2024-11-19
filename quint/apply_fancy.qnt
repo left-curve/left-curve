@@ -75,14 +75,15 @@ module apply_fancy {
     bits: BitArray,
     batch: Set[OperationOnKey]
   ): ApplyResult = {
-    if (tree.nodes.has({ version: old_version, key_hash: bits })) {
-      match tree.nodes.get({ version: old_version, key_hash: bits }) {
+    match (tree.nodes.safeGet({ version: old_version, key_hash: bits })) {
+      | Some(node) => match node {
         | Leaf(leaf_node) => tree.apply_at_leaf(new_version, bits, leaf_node, batch)
         | Internal(internal_node) => tree.apply_at_internal(memo, new_version, bits, internal_node, batch)
       }
-    } else {
-      pure val batchAndOp = prepare_batch_for_subtree(batch, None)
-      tree.create_subtree(new_version, bits, batchAndOp._1, None)
+      | None => {
+        pure val batchAndOp = prepare_batch_for_subtree(batch, None)
+        tree.create_subtree(new_version, bits, batchAndOp._1, None)
+      }
     }
   }
 
@@ -95,19 +96,19 @@ module apply_fancy {
     batch: Set[OperationOnKey]
   ): ApplyResult = {
     // Split the batch into two, one for left child, one for right.
-    pure val partitioned_batch = debug("partitioned batch", partition_batch(batch, debug("internal node bits", bits)))
+    pure val partitioned_batch = partition_batch(batch,  bits)
     pure val batch_for_left = partitioned_batch._1
     pure val batch_for_right = partitioned_batch._2
 
     // Apply the left batch at left child
     pure val left_bits = bits.append(0)
     pure val left_result = tree.apply_at_child(memo, new_version, left_bits, internal_node.left_child, batch_for_left)
-    pure val left_outcome = debug("left outcome", left_result.outcome)
+    pure val left_outcome = left_result.outcome
 
     // Apply the right batch at right child
     pure val right_bits = bits.append(1)
     pure val right_result = tree.apply_at_child(memo, new_version, right_bits, internal_node.right_child, batch_for_right)
-    pure val right_outcome = debug("right outcome", right_result.outcome)
+    pure val right_outcome = right_result.outcome
 
     // If the left child exists and have been updated or deleted, then the
     // old one needs to be marked as orphaned.
@@ -162,7 +163,7 @@ module apply_fancy {
       // Mark left child as orphaned
       match left_outcome {
         | Unchanged(left) => {
-          pure val orphans = orphans_from_children.union(Set({
+          pure val orphans = default_result.orphans_to_add.union(Set({
             orphaned_since_version: new_version,
             version: internal_node.left_child.unwrap().version,
             key_hash: left_bits,
@@ -182,7 +183,7 @@ module apply_fancy {
       // Mark right child as orphaned
       match right_outcome {
         | Unchanged(right) => {
-          pure val orphans = orphans_from_children.union(Set({
+          pure val orphans = default_result.orphans_to_add.union(Set({
             orphaned_since_version: new_version,
             version: internal_node.right_child.unwrap().version,
             key_hash: right_bits,
@@ -234,7 +235,7 @@ module apply_fancy {
       {
         ...default_result,
         outcome: Updated(new_internal_node),
-        nodes_to_add: nodes_from_children
+        nodes_to_add: default_result.nodes_to_add
           .union(new_left_child_and_tree.nodes_to_add)
           .union(new_right_child_and_tree.nodes_to_add),
       }

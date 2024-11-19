@@ -17,6 +17,10 @@ module utils {
     }
   }
 
+  pure def safeGet(m: a -> b, k: a): Option[b] = {
+    if (m.has(k)) Some(m.get(k)) else None
+  }
+
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
