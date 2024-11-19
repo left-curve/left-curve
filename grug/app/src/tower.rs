@@ -1,11 +1,9 @@
 use {
-    crate::{
-        App, AppError, AppResult, Db, NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, Vm,
-    },
+    crate::{App, AppError, AppResult, Db, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, QuerierWrapper,
-        TxOutcome, GENESIS_BLOCK_HASH,
+        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, TxOutcome,
+        GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
     std::{
@@ -27,7 +25,6 @@ use {
     },
     tower::Service,
     tower_abci::BoxError,
-    tracing::error,
 };
 
 // ----------------------------------- Abci ------------------------------------
@@ -220,22 +217,7 @@ where
         req: request::PrepareProposal,
     ) -> AppResult<response::PrepareProposal> {
         let max_tx_bytes = req.max_tx_bytes.try_into().unwrap_or(0);
-
-        let txs = self
-            .do_prepare_proposal(req.txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|err| {
-                // For the sake of liveness, in case proposal preparation fails,
-                // we fall back to the naive strategy instead of panicking.
-                #[cfg(feature = "tracing")]
-                error!(
-                    err = err.to_string(),
-                    "Failed to prepare proposal! Falling back to naive preparer."
-                );
-
-                NaiveProposalPreparer
-                    .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), req.txs, max_tx_bytes)
-                    .unwrap()
-            });
+        let txs = self.do_prepare_proposal(req.txs.clone(), max_tx_bytes);
 
         Ok(response::PrepareProposal { txs })
     }

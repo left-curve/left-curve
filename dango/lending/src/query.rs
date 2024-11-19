@@ -29,11 +29,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     }
 }
 
-pub fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
+fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
     MARKETS.load(storage, &denom)
 }
 
-pub fn query_markets(
+fn query_markets(
     storage: &dyn Storage,
     start_after: Option<Denom>,
     limit: Option<u32>,
@@ -47,11 +47,11 @@ pub fn query_markets(
         .collect()
 }
 
-pub fn query_debt(storage: &dyn Storage, account: Addr) -> StdResult<Coins> {
+fn query_debt(storage: &dyn Storage, account: Addr) -> StdResult<Coins> {
     DEBTS.load(storage, account)
 }
 
-pub fn query_debts(
+fn query_debts(
     storage: &dyn Storage,
     start_after: Option<Addr>,
     limit: Option<u32>,

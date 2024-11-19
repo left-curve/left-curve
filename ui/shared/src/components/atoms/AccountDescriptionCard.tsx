@@ -1,5 +1,6 @@
 "use client";
 import type React from "react";
+import { twMerge } from "../../utils";
 
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
@@ -7,10 +8,19 @@ interface Props extends React.HTMLAttributes<HTMLDivElement> {
   description: string;
 }
 
-export const AccountDescriptionCard: React.FC<Props> = ({ title, img, description, ...props }) => {
+export const AccountDescriptionCard: React.FC<Props> = ({
+  title,
+  img,
+  description,
+  className,
+  ...props
+}) => {
   return (
     <div
-      className="w-full p-3 md:p-4 flex gap-6 rounded-2xl bg-surface-purple-200 hover:bg-surface-rose-200 transition-all cursor-pointer"
+      className={twMerge(
+        "w-full p-3 md:p-4 flex gap-6 rounded-2xl transition-all cursor-pointer",
+        className,
+      )}
       {...props}
     >
       <img src={img} alt={title} className="w-20 h-20" />

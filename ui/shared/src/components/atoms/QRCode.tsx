@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { twMerge } from "../../utils";
 
 const defaultOptions: QROptions = {
-  width: 250,
-  height: 250,
+  width: 210,
+  height: 210,
   dotsOptions: {
     type: "dots",
     color: "#000",
@@ -56,6 +56,10 @@ export const QRCode: React.FC<Props> = ({ data, options = {}, ...props }) => {
   }, [data]);
 
   return (
-    <div ref={ref} {...props} className={twMerge("rounded-3xl bg-white p-4", props.className)} />
+    <div
+      ref={ref}
+      {...props}
+      className={twMerge("rounded-[72px] bg-surface-rose-100 p-10", props.className)}
+    />
   );
 };

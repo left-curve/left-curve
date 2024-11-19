@@ -7,7 +7,10 @@ use {
         config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, MarketUpdates},
-        oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+        oracle::{
+            self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
+            USDC_USD_ID, WBTC_USD_ID,
+        },
         taxman, token_factory,
     },
     grug::{
@@ -201,7 +204,9 @@ where
         lending_code_hash,
         &lending::InstantiateMsg {
             markets: btree_map! {
-                fee_denom.clone() => MarketUpdates {},
+                fee_denom.clone() => MarketUpdates {
+                    // TODO
+                },
             },
         },
         "dango/lending",
@@ -278,6 +283,11 @@ where
                     expiration_time: None,
                 },
             },
+            price_sources: btree_map! {
+                Denom::from_str("usdc").unwrap() => PriceSource::Pyth { id: USDC_USD_ID, precision: 6 },
+                Denom::from_str("btc").unwrap()  => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
+                Denom::from_str("eth").unwrap()  => PriceSource::Pyth { id: ETH_USD_ID, precision: 18 },
+            },
         },
         "dango/oracle",
         "dango/oracle",
@@ -312,7 +322,10 @@ where
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,
+            lending,
+            oracle,
         },
+        collateral_powers: btree_map! {},
     };
 
     let genesis_state = GenesisState {

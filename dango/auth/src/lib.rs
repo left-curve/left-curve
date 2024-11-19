@@ -226,7 +226,7 @@ mod tests {
     use {
         super::*,
         dango_types::{account_factory::Username, config::AppAddresses},
-        grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
 
@@ -277,8 +277,12 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
                 },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -316,8 +320,12 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
                 },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -411,8 +419,12 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    ibc_transfer: Addr::mock(0), // doesn't matter for this test
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
                 },
+                collateral_powers: btree_map! {},
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {

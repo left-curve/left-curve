@@ -1,10 +1,10 @@
 use {
     crate::{Accounts, TestAccount},
+    dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
         btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, TestSuite, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -14,17 +14,63 @@ use {
     std::{env, path::PathBuf},
 };
 
+const CHAIN_ID: &str = "dev-1";
+
+pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, PP>;
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
+pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
+    let codes = build_codes();
+
+    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, ProposalPreparer::new())
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer` and `ContractWrapper` codes.
+pub fn setup_test_naive() -> (
+    TestSuite<NaiveProposalPreparer>,
+    Accounts,
+    Codes<ContractWrapper>,
+    Contracts,
+) {
+    let codes = build_codes();
+
+    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, NaiveProposalPreparer)
+}
+
+/// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
+/// Used for benchmarks.
+pub fn setup_benchmark(
+    dir: &TempDataDir,
+    wasm_cache_size: usize,
+) -> (
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm>,
+    Accounts,
+    Codes<Vec<u8>>,
+    Contracts,
+) {
+    // TODO: create a `testdata` directory for the wasm files
+    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
+        .unwrap();
+
+    let db = DiskDb::open(dir).unwrap();
+    let vm = WasmVm::new(wasm_cache_size);
+
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer)
+}
+
 /// Set up a test with the given DB, VM, and codes.
-fn setup_suite_with_db_and_vm<DB, VM, T>(
+fn setup_suite_with_db_and_vm<DB, VM, T, PP>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
-) -> (TestSuite<DB, VM>, Accounts, Codes<T>, Contracts)
+    pp: PP,
+) -> (TestSuite<PP, DB, VM>, Accounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
-    AppError: From<DB::Error> + From<VM::Error>,
+    PP: grug_app::ProposalPreparer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");
@@ -57,11 +103,11 @@ where
     )
     .unwrap();
 
-    let suite = TestSuite::new_with_db_vm_and_pp(
+    let suite = grug::TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
-        NaiveProposalPreparer,
-        "dev-1".to_string(),
+        pp,
+        CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
         BlockInfo {
@@ -80,8 +126,7 @@ where
     (suite, accounts, codes, contracts)
 }
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, and `ContractWrapper` codes.
-pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
+fn build_codes() -> Codes<ContractWrapper> {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
         .with_query(Box::new(dango_account_factory::query))
@@ -90,6 +135,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 
     let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
         .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_backrun(Box::new(dango_account_margin::backrun))
         .with_receive(Box::new(dango_account_margin::receive))
         .with_query(Box::new(dango_account_margin::query))
         .build();
@@ -124,6 +170,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 
     let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
         .with_execute(Box::new(dango_oracle::execute))
+        .with_authenticate(Box::new(dango_oracle::authenticate))
         .with_query(Box::new(dango_oracle::query))
         .build();
 
@@ -144,7 +191,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
-    let codes = Codes {
+    Codes {
         account_factory,
         account_margin,
         account_safe,
@@ -156,28 +203,5 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         oracle,
         taxman,
         token_factory,
-    };
-
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes)
-}
-
-/// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
-/// Used for benchmarks.
-pub fn setup_benchmark(
-    dir: &TempDataDir,
-    wasm_cache_size: usize,
-) -> (
-    TestSuite<DiskDb, WasmVm>,
-    Accounts,
-    Codes<Vec<u8>>,
-    Contracts,
-) {
-    // TODO: create a `testdata` directory for the wasm files
-    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
-        .unwrap();
-
-    let db = DiskDb::open(dir).unwrap();
-    let vm = WasmVm::new(wasm_cache_size);
-
-    setup_suite_with_db_and_vm(db, vm, codes)
+    }
 }

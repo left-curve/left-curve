@@ -28,6 +28,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Deposit {} => deposit(ctx),
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
+        ExecuteMsg::Repay {} => repay(ctx),
     }
 }
 
@@ -48,7 +49,7 @@ fn update_markets(
     Ok(Response::new())
 }
 
-pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     let mut msgs = vec![];
@@ -77,7 +78,7 @@ pub fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     Ok(Response::new().add_messages(msgs))
 }
 
-pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     let mut msgs = vec![];
@@ -112,7 +113,7 @@ pub fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         .add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
-pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
+fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Ensure sender is a margin account.
@@ -149,4 +150,31 @@ pub fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
     // Transfer the coins to the caller
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
+}
+
+fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
+    // Ensure all sent coins are whitelisted
+    for coin in &ctx.funds {
+        ensure!(
+            MARKETS.has(ctx.storage, coin.denom),
+            "Invalid denom. Only whitelisted denoms can be repaid."
+        );
+    }
+
+    let mut maybe_msg = None;
+
+    // Update the sender's liabilities
+    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
+        let mut debts = maybe_debts.unwrap_or_default();
+
+        // Deduct the sent coins from the account's debts, saturating at zero.
+        let remainders = debts.saturating_deduct_many(ctx.funds)?;
+
+        // Refund the remainders to the sender, if any.
+        maybe_msg = Some(Message::transfer(ctx.sender, remainders)?);
+
+        Ok(debts)
+    })?;
+
+    Ok(Response::new().may_add_message(maybe_msg))
 }

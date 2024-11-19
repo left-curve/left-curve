@@ -42,11 +42,11 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm build:pkg
-
       - name: Build Website
         run: pnpm build:website
+        env:
+          NEXT_PUBLIC_FULLPAGE_KEY: ${{secrets.PUBLIC_FULLPAGE_KEY}}
+          VERCEL_PROJECT_PRODUCTION_URL: ${{ github.ref == 'refs/heads/main' && secrets.PREVIEW_BASE_URL || secrets.PROD_BASE_URL }}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -55,6 +55,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-website
-          directory: ./ui/website/build
+          directory: ./ui/website/.vercel/output/static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

@@ -31,12 +31,6 @@ export const LoginStep: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {retry ? (
-        <p className="text-typography-rose-600 text-center text-xl">
-          The credential connected does not match the on-chain record.
-          <br /> Please try again.
-        </p>
-      ) : null}
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
@@ -46,12 +40,12 @@ export const LoginStep: React.FC = () => {
             return true;
           },
         })}
-        placeholder="Choose an username"
+        placeholder="Enter your username"
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
         error={errors.username?.message}
       />
       <Button fullWidth onClick={onSubmit} isLoading={isSubmitting}>
-        {retry ? "Choose credentials" : "Login"}
+        {retry ? "Confirm" : "Login"}
       </Button>
     </div>
   );

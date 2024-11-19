@@ -1,22 +1,27 @@
-use crate::{Dec, FixedPoint, Int, MathError, MathResult, Number};
+use {
+    crate::{Dec, FixedPoint, Int, MathError, MathResult, Number, NumberConst},
+    std::cmp::Ordering,
+};
 
 // -------------------------------- int -> dec ---------------------------------
 
 impl<U> Int<U>
 where
-    Self: Number + Copy + ToString,
-    Dec<U>: FixedPoint<U>,
+    Self: Number + ToString,
 {
-    pub fn checked_into_dec(self) -> MathResult<Dec<U>> {
-        self.checked_mul(Dec::<U>::PRECISION)
+    pub fn checked_into_dec<const S: u32>(self) -> MathResult<Dec<U, S>>
+    where
+        Dec<U, S>: FixedPoint<U>,
+    {
+        self.checked_mul(Dec::<U, S>::PRECISION)
             .map(Dec::raw)
-            .map_err(|_| MathError::overflow_conversion::<_, Dec<U>>(self))
+            .map_err(|_| MathError::overflow_conversion::<_, Dec<U, S>>(self))
     }
 }
 
 // -------------------------------- dec -> int ---------------------------------
 
-impl<U> Dec<U>
+impl<U, const S: u32> Dec<U, S>
 where
     Self: FixedPoint<U>,
     Int<U>: Number,
@@ -27,13 +32,38 @@ where
     }
 }
 
+// -------------------------- dec<U, S> -> dec<U, S1> --------------------------
+
+impl<U, const S: u32> Dec<U, S>
+where
+    U: Number + NumberConst,
+{
+    pub fn conver_precision<const S1: u32>(self) -> MathResult<Dec<U, S1>> {
+        match S.cmp(&S1) {
+            Ordering::Less => {
+                let diff = S1 - S;
+                Ok(Dec::raw(
+                    self.0.checked_mul(Int::<U>::TEN.checked_pow(diff)?)?,
+                ))
+            },
+            Ordering::Equal => Ok(Dec::raw(self.0)),
+            Ordering::Greater => {
+                let diff = S - S1;
+                Ok(Dec::raw(
+                    self.0.checked_div(Int::<U>::TEN.checked_pow(diff)?)?,
+                ))
+            },
+        }
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod int_tests {
     use {
         crate::{
-            int_test, test_utils::bt, Dec128, Dec256, FixedPoint, Int, Int256, MathError,
+            int_test, test_utils::bt, Dec, Dec128, Dec256, Int, Int256, MathError, MathResult,
             NumberConst, Udec128, Udec256, Uint256,
         },
         bnum::types::{I256, U256},
@@ -96,7 +126,8 @@ mod int_tests {
 
             for unsigned in failing_samples {
                 let uint = bt(_0, Int::new(unsigned));
-                assert!(matches!(uint.checked_into_dec(), Err(MathError::OverflowConversion { .. })));
+                let dec: MathResult<Dec<_, 18>> = uint.checked_into_dec();
+                assert!(matches!(dec, Err(MathError::OverflowConversion { .. })));
             }
         }
     );
@@ -107,8 +138,8 @@ mod dec_tests {
     use {
         crate::{
             dec_test,
-            test_utils::{bt, dt},
-            Dec, Dec128, Dec256, FixedPoint, Int, NumberConst, Udec128, Udec256,
+            test_utils::{bt, dec, dt},
+            Dec, Dec128, Dec256, FixedPoint, Int, Number, NumberConst, Udec128, Udec128_6, Udec256,
         },
         bnum::types::{I256, U256},
     };
@@ -162,7 +193,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, samples| {
+        method = |_0d: Dec<_, 18>, samples| {
             for (dec, expected) in samples {
                 let expected = bt(_0d.0, Int::new(expected));
                 dt(_0d, dec);
@@ -170,4 +201,17 @@ mod dec_tests {
             }
         }
     );
+
+    #[test]
+    fn convert_precision() {
+        let dec_18: Udec128 = dec("123.123456789012345678");
+        let dec_6 = dec_18.conver_precision::<6>().unwrap();
+        assert_eq!(dec_6, dec("123.123456"));
+
+        // Try at max
+        let dec_18 = Udec128::MAX;
+        dec_18.checked_add(Udec128::TICK).unwrap_err();
+        let dec_6 = dec_18.conver_precision::<6>().unwrap();
+        dec_6.checked_add(Udec128_6::TICK).unwrap();
+    }
 }

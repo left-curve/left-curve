@@ -1,6 +1,7 @@
 use {
     clap::Parser,
-    grug_app::{App, AppError, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
+    dango_app::ProposalPreparer as DangoProposalPreparer,
+    grug_app::{App, AppError, Db, ProposalPreparer, Vm},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     std::{path::PathBuf, time},
@@ -35,10 +36,11 @@ impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
+
         let app = App::new(
             db,
             vm,
-            NaiveProposalPreparer,
+            DangoProposalPreparer::new(),
             self.query_gas_limit.unwrap_or(u64::MAX),
         );
 

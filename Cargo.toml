@@ -82,8 +82,8 @@ tower                      = "0.5"
 tower-abci                 = "0.18"
 tracing                    = "0.1"
 tracing-subscriber         = "0.3"
-wasmer                     = "5"
-wasmer-middlewares         = "5"
+wasmer                     = "5.0.0"
+wasmer-middlewares         = "5.0.0"
 
 # Grug packages
 grug              = { path = "grug/std" }
@@ -113,6 +113,7 @@ dango-account-margin  = { path = "dango/account-margin" }
 dango-account-safe    = { path = "dango/account-safe" }
 dango-account-spot    = { path = "dango/account-spot" }
 dango-amm             = { path = "dango/amm" }
+dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
 dango-genesis         = { path = "dango/genesis" }

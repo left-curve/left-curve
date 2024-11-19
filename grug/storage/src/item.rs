@@ -19,6 +19,10 @@ where
             path: Path::from_raw(storage_key.as_bytes()),
         }
     }
+
+    pub fn path(&self) -> &Path<'a, T, C> {
+        &self.path
+    }
 }
 
 // `Item` is effectively a wrapper over a `Path`, so instead of implementing
