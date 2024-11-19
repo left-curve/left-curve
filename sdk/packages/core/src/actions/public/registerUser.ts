@@ -1,5 +1,8 @@
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../signer/broadcastTxSync.js";
+import { getAppConfig } from "./getAppConfig.js";
+import { simulate } from "./simulate.js";
+
 import type {
-  Address,
   Chain,
   Client,
   Credential,
@@ -10,9 +13,7 @@ import type {
   Transport,
   Username,
 } from "@leftcurve/types";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../signer/broadcastTxSync.js";
-import { getAppConfig } from "./getAppConfig.js";
-import { simulate } from "./simulate.js";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type RegisterUserParameters = {
   username: Username;
@@ -39,7 +40,7 @@ export async function registerUser<
 ): RegisterUserReturnType {
   const { username, keyHash, key } = parameters;
 
-  const factoryAddr = await getAppConfig<Address>(client, { key: "account_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   const registerMsg = {
     registerUser: {
@@ -51,18 +52,18 @@ export async function registerUser<
 
   const executeMsg = {
     execute: {
-      contract: factoryAddr,
+      contract: addresses.accountFactory,
       msg: registerMsg,
       funds: {},
     },
   };
 
   const { gasUsed } = await simulate(client, {
-    simulate: { sender: factoryAddr, msgs: [executeMsg], data: null },
+    simulate: { sender: addresses.accountFactory, msgs: [executeMsg], data: null },
   });
 
   const tx = {
-    sender: factoryAddr,
+    sender: addresses.accountFactory,
     msgs: [executeMsg],
     gasLimit: gasUsed,
     data: null,

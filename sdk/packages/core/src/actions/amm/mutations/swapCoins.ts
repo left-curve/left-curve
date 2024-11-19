@@ -1,3 +1,6 @@
+import { getAppConfig } from "../../public/getAppConfig.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+
 import type {
   Address,
   AmmExecuteMsg,
@@ -9,8 +12,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type SwapCoinsParameters = {
   sender: Address;
@@ -51,11 +53,11 @@ export async function swapCoins<chain extends Chain | undefined, signer extends 
     },
   };
 
-  const contract = await getAppConfig<Address>(client, { key: "amm" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
   return await execute(client, {
     sender,
-    contract,
+    contract: addresses.amm,
     msg,
     funds,
     gasLimit,

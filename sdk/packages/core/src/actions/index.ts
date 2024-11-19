@@ -69,12 +69,6 @@ export {
 } from "./public/getAppConfig.js";
 
 export {
-  type GetAppConfigsParameters,
-  type GetAppConfigsReturnType,
-  getAppConfigs,
-} from "./public/getAppConfigs.js";
-
-export {
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,

@@ -1,4 +1,11 @@
-import type { Chain, Client, JsonValue, Signer, Transport } from "@leftcurve/types";
+import type {
+  AppConfigResponse,
+  Chain,
+  Client,
+  JsonValue,
+  Signer,
+  Transport,
+} from "@leftcurve/types";
 
 import {
   type GetBalanceParameters,
@@ -67,12 +74,6 @@ import {
   type GetAppConfigReturnType,
   getAppConfig,
 } from "./public/getAppConfig.js";
-
-import {
-  type GetAppConfigsParameters,
-  type GetAppConfigsReturnType,
-  getAppConfigs,
-} from "./public/getAppConfigs.js";
 
 import {
   type GetAccountTypeCodeHashParameters,
@@ -172,10 +173,9 @@ export type PublicActions<
   getCode: (args: GetCodeParameters) => GetCodeReturnType;
   getCodes: (args?: GetCodesParameters) => GetCodesReturnType;
   getChainInfo: (args?: GetChainInfoParameters) => GetChainInfoReturnType;
-  getAppConfig: <value extends JsonValue>(
-    args: GetAppConfigParameters,
+  getAppConfig: <value extends AppConfigResponse>(
+    args?: GetAppConfigParameters,
   ) => GetAppConfigReturnType<value>;
-  getAppConfigs: (args?: GetAppConfigsParameters) => GetAppConfigsReturnType;
   getAccountTypeCodeHash: (
     args: GetAccountTypeCodeHashParameters,
   ) => GetAccountTypeCodeHashReturnType;
@@ -211,7 +211,6 @@ export function publicActions<
 >(client: Client<transport, chain, signer>): PublicActions<transport, chain, signer> {
   return {
     getAppConfig: (args) => getAppConfig(client, args),
-    getAppConfigs: (args) => getAppConfigs(client, args),
     getBalance: (args) => getBalance(client, args),
     getBalances: (args) => getBalances(client, args),
     getDeposit: (args) => getDeposit(client, args),
