@@ -3,14 +3,14 @@ import { useAccount, useBalances, useConfig } from "@leftcurve/react";
 import { motion } from "framer-motion";
 
 import type { AccountTypes, NativeCoin } from "@leftcurve/types";
-import { formatUnits, parseUnits } from "@leftcurve/utils";
+import { formatUnits, parseUnits, wait } from "@leftcurve/utils";
 import { useForm } from "react-hook-form";
 
 import type { SignerClient } from "@leftcurve/sdk/clients";
 
 export const TransferStep: React.FC = () => {
   const { chains, coins } = useConfig();
-  const { account, connector } = useAccount();
+  const { account, connector, refreshAccounts } = useAccount();
   const { data } = useWizard<{ accountType: AccountTypes }>();
   const { register, formState, setValue, handleSubmit } = useForm<{ amount: string }>({
     mode: "onChange",
@@ -37,6 +37,8 @@ export const TransferStep: React.FC = () => {
         },
       },
     );
+    await wait(1000);
+    await refreshAccounts?.();
   });
 
   return (

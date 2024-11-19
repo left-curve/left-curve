@@ -43,7 +43,8 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
 
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
-      if (selectedAccount?.index === b.index) return 1;
+      if (a.index === selectedAccount?.index) return -1;
+      if (b.index === selectedAccount?.index) return 1;
       return a.index - b.index;
     });
   }, [selectedAccount, accounts]);
