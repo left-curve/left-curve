@@ -207,6 +207,44 @@ impl Coins {
         Ok(())
     }
 
+    /// Deduct all coins from another `Coins`.
+    pub fn deduct_many(&mut self, coins: Self) -> StdResult<()> {
+        for coin in coins.into_iter() {
+            self.deduct(coin)?;
+        }
+
+        Ok(())
+    }
+
+    /// Deduct a coin from the `Coins`, saturating at zero. Returns a coin of
+    /// the remainder if the coin's amount is greater than the available amount.
+    pub fn saturating_deduct(&mut self, coin: Coin) -> StdResult<Coin> {
+        let Some(amount) = self.0.get_mut(&coin.denom) else {
+            return Ok(coin);
+        };
+
+        if &coin.amount >= amount {
+            let remainder = coin.amount - *amount;
+            self.0.remove(&coin.denom);
+            return Coin::new(coin.denom.clone(), remainder);
+        }
+
+        self.deduct(coin.clone())?;
+
+        Coin::new(coin.denom, 0)
+    }
+
+    /// Deduct all coins from another `Coins`, saturating at zero. Returns a
+    pub fn saturating_deduct_many(&mut self, coins: Self) -> StdResult<Self> {
+        let mut remainders = Self::new();
+
+        for coin in coins {
+            remainders.insert(self.saturating_deduct(coin)?)?;
+        }
+
+        Ok(remainders)
+    }
+
     /// Take a coin of the given denom out of the `Coins`.
     /// Return a coin of zero amount if the denom doesn't exist in this `Coins`.
     pub fn take(&mut self, denom: Denom) -> Coin {
@@ -444,18 +482,17 @@ impl fmt::Debug for Coins {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{json, Coins, Json, JsonDeExt, JsonSerExt},
+        crate::{btree_map, json, Coins, Denom, Json, JsonDeExt, JsonSerExt},
         grug_math::Uint128,
         std::str::FromStr,
     };
 
     fn mock_coins() -> Coins {
-        Coins::try_from([
-            ("uatom", Uint128::new(123)),
-            ("umars", Uint128::new(456)),
-            ("uosmo", Uint128::new(789)),
-        ])
-        .unwrap()
+        Coins::new_unchecked(btree_map! {
+            Denom::new_unchecked(["uatom"]) => Uint128::new(123),
+            Denom::new_unchecked(["umars"]) => Uint128::new(456),
+            Denom::new_unchecked(["uosmo"]) => Uint128::new(789),
+        })
     }
 
     fn mock_coins_json() -> Json {
@@ -515,5 +552,43 @@ mod tests {
         // invalid string: contains duplicate
         let s = "uatom:123,uatom:456";
         assert!(Coins::from_str(s).is_err())
+    }
+
+    #[test]
+    fn saturating_deduct_many() {
+        // Deduct less than available
+        let mut coins = mock_coins();
+        let deduct = Coins::new_unchecked(btree_map! {
+            Denom::new_unchecked(["uatom"]) => Uint128::new(100),
+            Denom::new_unchecked(["umars"]) => Uint128::new(100),
+            Denom::new_unchecked(["uosmo"]) => Uint128::new(789),
+        });
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(remainders, Coins::new());
+
+        // Equal amounts
+        let mut coins = mock_coins();
+        let remainders = coins.saturating_deduct_many(mock_coins()).unwrap();
+        assert_eq!(remainders, Coins::new());
+
+        // Some remainder
+        let extra = Coins::new_unchecked(btree_map! {
+            Denom::new_unchecked(["uatom"]) => Uint128::new(100),
+            Denom::new_unchecked(["umars"]) => Uint128::new(100),
+        });
+        let mut coins = mock_coins();
+        let mut deduct = mock_coins();
+        deduct.insert_many(extra.clone()).unwrap();
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(remainders, extra);
+
+        // Deduct denom not in coins
+        let mut coins = mock_coins();
+        let deduct = Coins::new_unchecked(btree_map! {
+            Denom::new_unchecked(["uatom"]) => Uint128::new(100),
+            Denom::new_unchecked(["uusdc"]) => Uint128::new(100),
+        });
+        let remainders = coins.saturating_deduct_many(deduct).unwrap();
+        assert_eq!(remainders, Coins::one("uusdc", 100).unwrap());
     }
 }

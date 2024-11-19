@@ -10,10 +10,3 @@ pub struct Params {
     pub owner: Username,
     pub sign_mode: SignMode,
 }
-
-#[grug::derive(Serde, QueryRequest)]
-pub enum QueryMsg {
-    /// Query the account's current sequence number.
-    #[returns(u32)]
-    Sequence {},
-}

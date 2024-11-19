@@ -5,6 +5,12 @@ pub mod multi;
 /// Types relevant for single-signature accounts.
 pub mod single;
 
+/// Types relevant for spot accounts.
+pub mod spot;
+
+/// Types relevant for margin accounts.
+pub mod margin;
+
 /// Single- and multi-signature accounts share the same instantiate message,
 /// which is just empty.
 pub type InstantiateMsg = Empty;

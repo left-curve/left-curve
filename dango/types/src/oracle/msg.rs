@@ -7,7 +7,6 @@ use {
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub guardian_sets: BTreeMap<u32, GuardianSet>,
-    // TODO: set up price sources during instantiation
     pub price_sources: BTreeMap<Denom, PriceSource>,
 }
 
