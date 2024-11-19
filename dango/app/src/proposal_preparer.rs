@@ -79,7 +79,7 @@ impl ProposalPreparer {
         let thread_latest_vaas = latest_vaas.clone();
 
         let _handle = thread::spawn(move || {
-            let update_func = || -> Result<(), ProposerError> {
+            let update_func = || -> Result<(), reqwest::Error> {
                 // Copy the params to unlock the mutex.
                 let mut params = thread_params.read_access().clone();
                 if params.is_empty() {
@@ -98,6 +98,7 @@ impl ProposalPreparer {
                     .get(format!("{PYTH_URL}/v2/updates/price/latest"))
                     .query(&params)
                     .send()?
+                    .error_for_status()?
                     .json::<LatestVaaResponse>()?
                     .binary
                     .data;
@@ -113,6 +114,7 @@ impl ProposalPreparer {
             };
 
             let mut failed_requests: u32 = 0;
+            let mut sleep = THREAD_SLEEP;
 
             loop {
                 // Update the VAAs.
@@ -121,17 +123,32 @@ impl ProposalPreparer {
                         failed_requests = 0;
                     },
                     Err(err) => {
-                        error!(err = err.to_string(), "Failed to update the latest VAAs");
                         failed_requests += 1;
+
+                        // Exponentially increases the sleep time on failed requests.
+                        sleep = min(
+                            MAX_THREAD_SLEEP,
+                            THREAD_SLEEP.mul(2u32.pow(failed_requests)),
+                        );
+
+                        if let Some(status_code) = err.status() {
+                            // The first time we get a 429, we increase
+                            // the sleep time to avoid further rate limitation.
+                            if status_code == 429 && failed_requests == 1 {
+                                sleep = THREAD_SLEEP.mul(5);
+                            }
+                            error!(
+                                code = status_code.as_u16(),
+                                reason = status_code.canonical_reason().unwrap_or("Unknown"),
+                                "Failed to update the latest VAAs"
+                            );
+                        } else {
+                            error!(err = err.to_string(), "Failed to update the latest VAAs");
+                        }
                     },
                 }
 
-                // Wait some time before the next request.
-                // Exponentially increases the sleep time on failed requests.
-                thread::sleep(min(
-                    MAX_THREAD_SLEEP,
-                    THREAD_SLEEP.mul(2u32.pow(failed_requests)),
-                ));
+                thread::sleep(sleep);
             }
         });
 
