@@ -21,7 +21,7 @@ type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_a
 
 ## Recursion emulation for `apply_at`
 
-The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutually recursive. Since there is no recursion in Quint, we need to emulate it somehow. What happens in the actuall recursion is that longer bit arrays will get computed first, and then smaller bit array computations might depend on the result of longer bit array computations. Therefore, to emulate it, we start from the longest bit arrays, which shouldn't depend on anything else, and save the result in a `memo` value that will be given to what we process next. Then, when a computation calls `apply_at`, we read a result from the `memo` value instead - and the result should already be there, since are computing dependencies first.
+The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutually recursive. Since there is no recursion in Quint, we need to emulate it somehow. What happens in the actual recursion is that longer bit arrays will get computed first, and then smaller bit array computations might depend on the result of longer bit array computations. Therefore, to emulate it, we start from the longest bit arrays, which shouldn't depend on anything else, and save the result in a `memo` value that will be given to what we process next. Then, when a computation calls `apply_at`, we read a result from the `memo` value instead - and the result should already be there, since are computing dependencies first.
 
 ```rust
     fn apply_at(
@@ -33,10 +33,6 @@ The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutu
         batch: Vec<(Hash256, Op<Hash256>)>,
     ) -> StdResult<Outcome> 
 ```
-
-Recursive calls of `apply_at` include the arguments: `self`, `storage`, `new_version`, `old_version`, `bits` and `batch`. `self` and `storage` are only used to load the tree, which is always done for versions older than the current one being built, so it should be the same for every single call - therefore, we don't make this as part of our key in the `memo` value, as it would introduce significant complexity on figuring out how the tree looked like at that call, and we are not going to read it anyway.
-
-The other fields (`new_version`, `old_version`, `bits` and `batch`) are relevant, and we need to include all of them in the `memo` key so it doesn't end up returning a computation for a full batch while the implementation, at that point, would only have a partial batch. It's easy to predict what batches would be given as arguments to what bits, and we also how the `new_version` from the original call. `bits` can be any of the existing key hashes of the existing tree, and we want to iterate from the longest ones to the shortest ones. We couldn't find a good way to predict `old_version`, so we actually compute `memo` values for all possible versions from `0` to `new_version`, so we know that it will have a value for whatever possible `old_version` it's called with.
 
 ```bluespec apply_fancy.qnt+=
   /// Result of apply_at calls, for emulating recursion
@@ -60,6 +56,72 @@ The other fields (`new_version`, `old_version`, `bits` and `batch`) are relevant
     })
   }
 ```
+
+#### Concrete example
+
+Consider the following tree:
+```
+       root
+     ┌──┴──┐
+    (0)    1
+  ┌──┴──┐
+ 00    (01)
+     ┌──┴──┐
+    010   011
+```
+
+With `010` being a prefix for `0100` and `011` being a prefix `0110`. Consider the following batch:
+```
+Delete 0100
+Insert 0110 <new value>
+```
+
+The call stack for the Rust implementation looks something like this:
+```rust
+apply_at(ROOT_BITS, [ Delete 0100, Insert 0110 ])
+↳ apply_at_internal(ROOT_BITS, [ Delete 0100, Insert 0110 ])
+   ↳ apply_at_child(0, [ Delete 0100, Insert 0110 ])
+      ↳ apply_at(0, [ Delete 0100, Insert 0110 ])
+         ↳ apply_at_internal(0, [ Delete 0100, Insert 0110 ])
+            ↳ apply_child(00, [ ])
+            ↳ apply_child(01, [ Delete 0100, Insert 0110 ])
+               ↳ apply_at(01, [ Delete 0100, Insert 0110 ])
+                  ↳ apply_at_internal(01, [ Delete 0100, Insert 0110 ])
+                     ↳ apply_at_child(010, [ Delete 0100 ])
+                        ↳ (...) Mark as orphan [mutation]
+                        ↳ (...) Outcome: Deleted
+                     ↳ apply_at_child(011, [ Insert 0110 ])
+                        ↳ (...) Mark as orphan [mutation]
+                        ↳ (...) Outcome: Updated
+      ↳ Left was Unchanged, Right was Updated => save [mutation]
+   ↳ apply_at_child(1, [ ])
+   ↳ Left was Updated, Right was Unchanged => save [mutation]
+```
+
+To emulate recursion in Quint, we want to process the rightmost parts of the above call tree first. Considering only the `apply_at` calls, that is:
+```rust
+1. apply_at(010, [ Delete 0100 ])
+2. apply_at(011, [ Insert 0110 ])
+3. apply_at(00, [ ])
+4. apply_at(01, [ Delete 0100, Insert 0110 ])
+5. apply_at(0, [ Delete 0100, Insert 0110 ])
+6. apply_at(1, [ ])
+7. apply_at(ROOT_BITS, [ Delete 0100, Insert 0110 ])
+```
+
+We want to compute the results of these calls in this order, and then use the results of the longer bit arrays to compute the shorter ones. We will use the `pre_compute_apply_at` function to compute these results.
+
+### Memoization
+
+The example above only talks about `bits` and `batch`, but recursive calls of `apply_at` also include the arguments: `self`, `storage`, `new_version` and `old_version`. `self` and `storage` are only used to load the tree, which is always done for versions older than the current one being built, so it should be the same for every single call - therefore, we don't make this as part of our key in the `memo` value, as it would introduce significant complexity on figuring out how the tree looked like at that call, and we are not going to read it anyway.
+
+> [!IMPORTANT]
+> Not tracking the tree state might be the biggest difference between model and implementation. It does seem like a fair assumption since we always read the tree from older versions, but it might be worth to find a stronger argument for this.
+
+The other fields (`new_version`, `old_version`, `bits` and `batch`) are relevant, and we need to include all of them in the `memo` key so it doesn't end up returning a computation for a full batch while the implementation, at that point, would only have a partial batch. It's easy to predict what batches would be given as arguments to what bits, and we also how the `new_version` from the original call. `bits` can be any of the existing key hashes of the existing tree, and we want to iterate from the longest ones to the shortest ones. We couldn't find a good way to predict `old_version`, so we actually compute `memo` values for all possible versions from `0` to `new_version`, and then we know that it will have a value for whatever possible `old_version` it's called with.
+
+> [!TIP]
+> There might be a way to predict `old_version` for each call and avoid unnecessary computations. We should look into this in the future. This does *not* affect correctness, only performance.
 
 ## Apply operators
 
@@ -106,7 +168,7 @@ For reference, the Rust code:
 The Quint version has a lot of similarities to Rust. Here are the differences:
 - Rust has a statement if with a mutation inside it. In Quint, we assign the new value to `tree_1`, and add an `else` branch that returns the unmodified tree. We use `tree_1` everywhere after this.
 - We call `pre_compute_apply_at` to prepare for the recursion from calling `apply_at`
-- `memo`, the result from the precomputation, is given to `apply_at` so it uses it instead of doing recursion.
+- `memo`, the result from the pre-computation, is given to `apply_at` so it uses it instead of doing recursion.
 - The result obtained from `apply_at` includes mutations to be made to the tree (`nodes_to_add` and `orphans_to_add`). We produce a new tree (`new_tree`) with those changes applied.
 - Now, we just need to match, in a less powerful but similar pattern matching. 
 - While Rust returns an outcome, Quint actually returns a tree. There are no verification goals for the outcome, so we ignore it. We need to return the tree since there is no storage to fetch the tree from.
@@ -171,5 +233,4 @@ The Quint version has a lot of similarities to Rust. Here are the differences:
             },
         }
     }
-
 ```
