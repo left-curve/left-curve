@@ -11,6 +11,7 @@ import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
 import { capitalize } from "@leftcurve/utils";
+import { parseAsBoolean, useQueryState } from "nuqs";
 import { useAccountName } from "../../hooks";
 
 interface Props {
@@ -27,7 +28,10 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useDOMRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [showMenu, setShowMenu] = useQueryState(
+    "accountsVisible",
+    parseAsBoolean.withDefault(false),
+  );
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
   const [accountName] = useAccountName();
 
