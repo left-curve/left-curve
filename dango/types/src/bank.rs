@@ -9,6 +9,8 @@ pub struct InstantiateMsg {
     pub balances: BTreeMap<Addr, Coins>,
     /// Initial namespace ownerships.
     pub namespaces: BTreeMap<Part, Addr>,
+    /// Initial denom metadatas.
+    pub metadatas: BTreeMap<Denom, Metadata>,
 }
 
 #[grug::derive(Serde)]

@@ -238,6 +238,9 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces,
+            metadatas: btree_map! {
+                // TODO: add dango token metadata
+            },
         },
         "dango/bank",
         "dango/bank",

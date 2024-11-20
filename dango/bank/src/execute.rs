@@ -36,6 +36,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         NAMESPACE_OWNERS.save(ctx.storage, &namespace, &owner)?;
     }
 
+    for (denom, metadata) in msg.metadatas {
+        METADATAS.save(ctx.storage, &denom, &metadata)?;
+    }
+
     Ok(Response::new())
 }
 
