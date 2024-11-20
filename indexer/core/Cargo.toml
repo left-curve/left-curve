@@ -13,6 +13,7 @@ categories    = { workspace = true }
 path = "src/lib.rs"
 
 [dependencies]
+thiserror = { workspace = true }
 tokio                      = { workspace = true }
 anyhow = { workspace = true }
 indexer-migration     = { workspace = true }

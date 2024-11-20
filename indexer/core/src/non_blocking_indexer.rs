@@ -26,6 +26,7 @@ pub struct Indexer {
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
 }
 
+/// Saves the block and its transactions in memory
 #[derive(Debug)]
 struct BlockToIndex {
     pub block_info: BlockInfo,
@@ -33,7 +34,8 @@ struct BlockToIndex {
 }
 
 impl BlockToIndex {
-    pub async fn save(self, db: &DatabaseTransaction) -> Result<(), anyhow::Error> {
+    /// Takes care of inserting the data in the database
+    pub async fn save(self, db: &DatabaseTransaction) -> Result<(), sea_orm::DbErr> {
         let mut models = Models::build(&self.block_info);
         for tx in self.txs.iter() {
             models.push(&tx.0, &tx.1);

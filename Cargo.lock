@@ -3449,6 +3449,7 @@ dependencies = [
  "indexer-migration",
  "sea-orm",
  "serde_json",
+ "thiserror",
  "tokio",
  "uuid",
 ]
