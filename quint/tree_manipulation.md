@@ -1206,7 +1206,9 @@ Third case:
 
 ```
 
-Fourth case:
+Fourth case. Let's break this one into smaller chunks:
+
+First, we call `partition_batch` and `partition_leaf`:
 ```rust
             // The subtree to be created contains more 2 or more nodes.
             // Recursively create the tree. Return the subtree's root, an
@@ -1217,7 +1219,28 @@ Fourth case:
                 // Split the batch for left and right children.
                 let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
                 let (leaf_for_left, leaf_for_right) = partition_leaf(existing_leaf, bits);
+```
 
+```bluespec apply_fancy.qnt+=
+    } else {
+       // The subtree to be created contains more 2 or more nodes.
+       // Recursively create the tree. Return the subtree's root, an
+       // internal node.
+       // Note that in this scenario, we certainly don't need to collapse the
+       // path.
+       pure val partitioned_batch = partition_batch(batch, bits)
+       pure val batch_for_left = partitioned_batch._1
+       pure val batch_for_right = partitioned_batch._2
+
+       pure val partitioned_leaf = partition_leaf(existing_leaf, bits)
+       pure val leaf_for_left = partitioned_leaf._1
+       pure val leaf_for_right = partitioned_leaf._2
+
+```
+
+Then, we make the recursive calls for the left and the right side. In Quint, this means reading from the `memo`:
+
+```rust
                 // Create the left subtree.
                 let left_bits = bits.extend_one_bit(true);
                 let left_outcome = self.create_subtree(
@@ -1238,6 +1261,20 @@ Fourth case:
                     leaf_for_right,
                 )?;
 
+```
+```bluespec apply_fancy.qnt+=
+       pure val left_bits = bits.append(0)
+       pure val left = memo.get((version, left_bits, batch_for_left, leaf_for_left))
+
+       pure val right_bits = bits.append(1)
+       pure val right = memo.get((version, right_bits, batch_for_right, leaf_for_right))
+
+```
+> [!IMPORTANT]
+> Once again, the `create_subtree` calls and `memo` acceses have the same parameters, except for the storage (tree) as discussed before. This is a good indication that the Quint spec replicates the implementation closely, since the value saved to `memo` is the exact call to the Quint `create_subtree_with_memo` definition (which corresponds to Rust's `create_subtree`). The only difference is that it was pre-computed and not computed on the spot at the recursive call.
+
+Then, we save new nodes. In Quint, this means adding to `nodes_to_add`.
+```rust
                 // If a subtree is non-empty, save it's root node.
                 if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &left_outcome {
                     self.save_node(storage, version, left_bits, node)?;
@@ -1256,26 +1293,6 @@ Fourth case:
 ```
 
 ```bluespec apply_fancy.qnt+=
-} else {
-       // The subtree to be created contains more 2 or more nodes.
-       // Recursively create the tree. Return the subtree's root, an
-       // internal node.
-       // Note that in this scenario, we certainly don't need to collapse the
-       // path.
-       pure val partitioned_batch = partition_batch(batch, bits)
-       pure val batch_for_left = partitioned_batch._1
-       pure val batch_for_right = partitioned_batch._2
-
-       pure val partitioned_leaf = partition_leaf(existing_leaf, bits)
-       pure val leaf_for_left = partitioned_leaf._1
-       pure val leaf_for_right = partitioned_leaf._2
-
-       pure val left_bits = bits.append(0)
-       pure val left = memo.get((version, left_bits, batch_for_left, leaf_for_left))
-
-       pure val right_bits = bits.append(1)
-       pure val right = memo.get((version, right_bits, batch_for_right, leaf_for_right))
-
        pure val nodes_to_add =
          left.nodes_to_add
          .union(right.nodes_to_add)
@@ -1305,4 +1322,3 @@ Fourth case:
      }
   }
 ```
-
