@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, NonEmpty, Part, Uint128},
+    grug::{Addr, Coins, Denom, LengthBounded, Part, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -83,8 +83,9 @@ pub enum QueryMsg {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Metadata {
-    pub name: NonEmpty<String>,
-    pub symbol: NonEmpty<String>,
-    pub description: String,
+    // The length limits were arbitrarily chosen and can be adjusted.
+    pub name: LengthBounded<String, 1, 32>,
+    pub symbol: LengthBounded<String, 1, 16>,
+    pub description: Option<LengthBounded<String, 1, 140>>,
     pub decimals: u8,
 }

@@ -4,7 +4,7 @@ use {
         bank::{self, Metadata, QueryMetadataRequest},
         token_factory::{Config, ExecuteMsg, NAMESPACE},
     },
-    grug::{Addressable, Coins, Denom, Message, NonEmpty, ResultExt, Uint128},
+    grug::{Addressable, Coins, Denom, LengthBounded, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -262,9 +262,9 @@ fn metadata() {
     ))
     .unwrap();
     let metadata = Metadata {
-        name: NonEmpty::new_unchecked("Foo".to_string()),
-        symbol: NonEmpty::new_unchecked("FO".to_string()),
-        description: "A test token".to_string(),
+        name: LengthBounded::new_unchecked("Foo".to_string()),
+        symbol: LengthBounded::new_unchecked("FO".to_string()),
+        description: Some(LengthBounded::new_unchecked("A test token".to_string())),
         decimals: 6,
     };
 
