@@ -32,6 +32,8 @@ module ics23 {
   // MaxPrefixLength = 12
   // ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
   // !!! UPDATE !!!
+  // ICS23 specs are placed in grug/jellyfish-merkle/src/ics23.rs
+  // https://github.com/left-curve/left-curve/blob/7a0451dfad14d607722c33bec20ae56dd5c3bffa/grug/jellyfish-merkle/src/ics23.rs#L18-L37
   // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
   pure val MinPrefixLen = 1
   pure val MaxPrefixLen = 1
