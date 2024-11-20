@@ -50,7 +50,6 @@ impl IndexerTrait for Indexer {
     }
 
     fn shutdown(self) -> Result<(), anyhow::Error> {
-        drop(self);
         //// This is making sure the current transaction is being committed before we shutdown the
         //// process
         //loop {
@@ -60,6 +59,7 @@ impl IndexerTrait for Indexer {
         //    }
         //    sleep(std::time::Duration::from_millis(10));
         //}
+        drop(self);
         Ok(())
     }
 
@@ -99,7 +99,6 @@ impl IndexerTrait for Indexer {
                 .unwrap_or_default()
                 .naive_utc();
 
-            // TODO: implement a From &BlockInfo -> indexer_entity::blocks::ActiveModel
             let new_block = indexer_entity::blocks::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 block_height: Set(block.height.try_into().unwrap()),
