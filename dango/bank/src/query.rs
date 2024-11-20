@@ -1,10 +1,10 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
-    dango_types::bank::QueryMsg,
+    dango_types::bank::{Metadata, QueryMsg},
     grug::{
-        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Json, JsonSerExt,
-        NumberConst, Order, Part, QueryBalanceRequest, QueryBalancesRequest, QuerySuppliesRequest,
-        QuerySupplyRequest, StdResult, Uint128,
+        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
+        JsonSerExt, NumberConst, Order, Part, QueryBalanceRequest, QueryBalancesRequest,
+        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -23,8 +23,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::Metadata { denom } => {
-            let metadata = METADATAS.load(ctx.storage, &denom)?;
-            metadata.to_json_value()
+            let res = query_metadata(ctx, denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::Metadatas { start_after, limit } => {
+            let res = query_metadatas(ctx, start_after, limit)?;
+            res.to_json_value()
         },
     }
 }
@@ -42,6 +46,24 @@ fn query_namespaces(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     NAMESPACE_OWNERS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect()
+}
+
+fn query_metadata(ctx: ImmutableCtx, denom: Denom) -> StdResult<Metadata> {
+    METADATAS.load(ctx.storage, &denom)
+}
+
+fn query_metadatas(
+    ctx: ImmutableCtx,
+    start_after: Option<Denom>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Denom, Metadata>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    METADATAS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .collect()

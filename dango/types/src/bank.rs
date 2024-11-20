@@ -59,7 +59,7 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Return owner of a namespace.
+    /// Query the owner of a namespace.
     #[returns(Addr)]
     Namespace { namespace: Part },
     /// Enumerate owners of all namespaces.
@@ -68,8 +68,15 @@ pub enum QueryMsg {
         start_after: Option<Part>,
         limit: Option<u32>,
     },
+    /// Query the metadata of a denom.
     #[returns(Metadata)]
     Metadata { denom: Denom },
+    /// Enumerate metadata of all denoms.
+    #[returns(BTreeMap<Denom, Metadata>)]
+    Metadatas {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
 }
 
 #[grug::derive(Serde, Borsh)]
