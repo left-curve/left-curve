@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "build:cf": "pnpx @cloudflare/next-on-pages",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
-    "lint": "next lint",
-    "postbuild": "pnpx @cloudflare/next-on-pages --skip-build"
+    "lint": "next lint"
   },
   "dependencies": {
     "@dango/assets": "workspace:^",

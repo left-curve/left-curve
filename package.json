@@ -18,7 +18,7 @@
     "dev:website": "turbo dev -F @dango/website",
     "build:pkg": "turbo build -F=./sdk/packages/**",
     "build:graph": "turbo build --graph=build-graph.png",
-    "build:portal": "turbo build -F @dango/portal",
+    "build:portal": "turbo build -F=./sdk/packages/** -F @dango/shared && pnpm -F @dango/portal build:cf",
     "build:website": "pnpm -F @dango/website build:cf",
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
