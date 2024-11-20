@@ -3,18 +3,21 @@ use {
     dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, Binary, BlockInfo, Coins, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, Timestamp, Udec128, Uint128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        btree_map, Binary, BlockInfo, Coin, Coins, ContractBuilder, ContractWrapper, Duration,
+        NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
-    std::{env, path::PathBuf},
+    std::{env, path::PathBuf, sync::LazyLock},
 };
 
-const CHAIN_ID: &str = "dev-1";
+pub const CHAIN_ID: &str = "dev-1";
+
+pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
+    LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, PP>;
 
@@ -96,9 +99,9 @@ where
             },
         },
         &owner.username,
-        "uusdc",
+        TOKEN_FACTORY_CREATION_FEE.denom.to_string(),
         Udec128::ZERO,
-        Some(Uint128::new(10_000_000)),
+        Some(TOKEN_FACTORY_CREATION_FEE.amount),
         Duration::from_seconds(7 * 24 * 60 * 60),
     )
     .unwrap();
@@ -160,6 +163,7 @@ fn build_codes() -> Codes<ContractWrapper> {
 
     let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
         .with_execute(Box::new(dango_bank::execute))
+        .with_query(Box::new(dango_bank::query))
         .with_bank_execute(Box::new(dango_bank::bank_execute))
         .with_bank_query(Box::new(dango_bank::bank_query))
         .build();

@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, Part, Uint128},
+    grug::{Addr, Coins, Denom, LengthBounded, Part, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -9,6 +9,8 @@ pub struct InstantiateMsg {
     pub balances: BTreeMap<Addr, Coins>,
     /// Initial namespace ownerships.
     pub namespaces: BTreeMap<Part, Addr>,
+    /// Initial denom metadatas.
+    pub metadatas: BTreeMap<Denom, Metadata>,
 }
 
 #[grug::derive(Serde)]
@@ -26,6 +28,10 @@ pub enum ExecuteMsg {
     ///
     /// We may implement some of these in the future.
     GrantNamespace { namespace: Part, owner: Addr },
+    /// Set metadata of a denom.
+    /// Can only be called by the namespace owner, or the chain owner in case of
+    /// top-level denoms.
+    SetMetadata { denom: Denom, metadata: Metadata },
     /// Mint tokens of the specified amount to a recipient.
     /// Can only be called by the namespace owner.
     Mint {
@@ -55,7 +61,7 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Return owner of a namespace.
+    /// Query the owner of a namespace.
     #[returns(Addr)]
     Namespace { namespace: Part },
     /// Enumerate owners of all namespaces.
@@ -64,4 +70,22 @@ pub enum QueryMsg {
         start_after: Option<Part>,
         limit: Option<u32>,
     },
+    /// Query the metadata of a denom.
+    #[returns(Metadata)]
+    Metadata { denom: Denom },
+    /// Enumerate metadata of all denoms.
+    #[returns(BTreeMap<Denom, Metadata>)]
+    Metadatas {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct Metadata {
+    // The length limits were arbitrarily chosen and can be adjusted.
+    pub name: LengthBounded<String, 1, 32>,
+    pub symbol: LengthBounded<String, 1, 16>,
+    pub description: Option<LengthBounded<String, 1, 140>>,
+    pub decimals: u8,
 }
