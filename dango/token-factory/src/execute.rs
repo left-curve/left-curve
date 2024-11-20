@@ -27,14 +27,14 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             subdenom,
             admin,
-        } => create(ctx, subdenom, username, admin),
+            metadata,
+        } => create(ctx, subdenom, username, admin, metadata),
         ExecuteMsg::Mint { denom, to, amount } => mint(ctx, denom, to, amount),
         ExecuteMsg::Burn {
             denom,
             from,
             amount,
         } => burn(ctx, denom, from, amount),
-        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
     }
 }
 
@@ -56,6 +56,7 @@ fn create(
     subdenom: Denom,
     username: Option<Username>,
     admin: Option<Addr>,
+    metadata: Option<Metadata>,
 ) -> anyhow::Result<Response> {
     // If the sender has chosen to use a username as the sub-namespace, ensure
     // the sender is associated with the username.
@@ -111,7 +112,7 @@ fn create(
     };
 
     // Ensure the denom hasn't already been created.
-    {
+    let denom = {
         let denom = subdenom.prepend(&[&NAMESPACE, &subnamespace])?;
         let admin = admin.unwrap_or(ctx.sender);
 
@@ -121,9 +122,26 @@ fn create(
         );
 
         ADMINS.save(ctx.storage, &denom, &admin)?;
-    }
 
-    Ok(Response::new().may_add_message(fee_msg))
+        denom
+    };
+
+    // Optionally set the token's metadata.
+    let metadata_msg = if let Some(metadata) = metadata {
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.bank,
+            &bank::ExecuteMsg::SetMetadata { denom, metadata },
+            Coins::new(),
+        )?)
+    } else {
+        None
+    };
+
+    Ok(Response::new()
+        .may_add_message(fee_msg)
+        .may_add_message(metadata_msg))
 }
 
 fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Result<Response> {
@@ -157,20 +175,5 @@ fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint128) -> anyhow::R
             amount,
         },
         Coins::new(),
-    )?))
-}
-
-fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ADMINS.load(ctx.storage, &denom)?,
-        "sender isn't the admin of denom `{denom}`"
-    );
-
-    let cfg = ctx.querier.query_config()?;
-
-    Ok(Response::new().add_message(Message::execute(
-        cfg.bank,
-        &bank::ExecuteMsg::SetMetadata { denom, metadata },
-        Coins::default(),
     )?))
 }

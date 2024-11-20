@@ -255,6 +255,7 @@ fn composite_denom() {
                 subdenom: Denom::from_str("foo").unwrap(),
                 username: None,
                 admin: None,
+                metadata: None,
             },
             fee_token_creation,
         )

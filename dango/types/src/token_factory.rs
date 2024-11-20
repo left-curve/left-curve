@@ -39,6 +39,8 @@ pub enum ExecuteMsg {
         username: Option<Username>,
         // If not provided, use the message sender's address.
         admin: Option<Addr>,
+        // Optional metadata for the token.
+        metadata: Option<Metadata>,
     },
     /// Mint the token of the specified subdenom and amount to a recipient.
     Mint {
@@ -52,8 +54,6 @@ pub enum ExecuteMsg {
         from: Addr,
         amount: Uint128,
     },
-    /// Set [`Metadata`] for a denom in `bank` contract.
-    SetMetadata { denom: Denom, metadata: Metadata },
 }
 
 #[grug::derive(Serde, QueryRequest)]

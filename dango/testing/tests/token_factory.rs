@@ -1,7 +1,7 @@
 use {
     dango_testing::{setup_test, TOKEN_FACTORY_CREATION_FEE},
     dango_types::{
-        bank::{Metadata, QueryMetadataRequest},
+        bank::{self, Metadata, QueryMetadataRequest},
         token_factory::{Config, ExecuteMsg, NAMESPACE},
     },
     grug::{Addressable, Coins, Denom, Message, NonEmpty, ResultExt, Uint128},
@@ -29,6 +29,7 @@ fn token_factory() {
                     username: Some(owner_username.clone()),
                     subdenom: SUBDENOM.clone(),
                     admin: None,
+                    metadata: None,
                 },
                 Coins::new(), // wrong!
             )
@@ -46,6 +47,7 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(owner_username.clone()),
                     admin: None,
+                    metadata: None,
                 },
                 Coins::one("uusdc", 20_000_000).unwrap(), // wrong!
             )
@@ -63,6 +65,7 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(accounts.relayer.username.clone()), // wrong!
                     admin: None,
+                    metadata: None,
                 },
                 Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
             )
@@ -79,6 +82,7 @@ fn token_factory() {
                 subdenom: SUBDENOM.clone(),
                 username: Some(owner_username.clone()),
                 admin: None,
+                metadata: None,
             },
             Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
         )
@@ -94,6 +98,7 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(owner_username.clone()),
                     admin: None,
+                    metadata: None,
                 },
                 Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
             )
@@ -237,6 +242,7 @@ fn token_factory() {
                 username: Some(owner_username.clone()),
                 subdenom: Denom::from_str("hello").unwrap(),
                 admin: None,
+                metadata: None,
             },
             Coins::new(),
         )
@@ -247,7 +253,20 @@ fn token_factory() {
 fn metadata() {
     let (mut suite, mut account, _, contracts) = setup_test();
 
-    let subdenom = Denom::from_str("foo").unwrap();
+    let subdenom = Denom::new_unchecked(["foo"]);
+    let denom = Denom::from_str(&format!(
+        "{}/{}/{}",
+        NAMESPACE.as_ref(),
+        account.relayer.address(),
+        subdenom
+    ))
+    .unwrap();
+    let metadata = Metadata {
+        name: NonEmpty::new_unchecked("Foo".to_string()),
+        symbol: NonEmpty::new_unchecked("FO".to_string()),
+        description: "A test token".to_string(),
+        decimals: 6,
+    };
 
     // Register a new denom
     suite
@@ -258,63 +277,29 @@ fn metadata() {
                 subdenom: subdenom.clone(),
                 username: None,
                 admin: None,
+                metadata: Some(metadata.clone()),
             },
             Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
         )
         .should_succeed();
 
-    let denom = Denom::from_str(&format!("factory/{}/foo", account.relayer.address())).unwrap();
-
-    let metadata = Metadata {
-        name: NonEmpty::new_unchecked("Foo".to_string()),
-        symbol: NonEmpty::new_unchecked("FO".to_string()),
-        description: "A test token".to_string(),
-        decimals: 6,
-    };
-
-    // Try set metadata on token_factory from non admin
+    // Query metadata
     suite
-        .execute(
-            &mut account.owner,
-            contracts.token_factory,
-            &ExecuteMsg::SetMetadata {
-                denom: denom.clone(),
-                metadata: metadata.clone(),
-            },
-            Coins::default(),
-        )
-        .should_fail_with_error("sender isn't the admin of denom");
+        .query_wasm_smart(contracts.bank, QueryMetadataRequest {
+            denom: denom.clone(),
+        })
+        .should_succeed_and_equal(metadata.clone());
 
-    // Try set metadata on bank from the admin of the denom
+    // Try set metadata on bank from non-admin.
     suite
         .execute(
             &mut account.owner,
             contracts.bank,
-            &ExecuteMsg::SetMetadata {
+            &bank::ExecuteMsg::SetMetadata {
                 denom: denom.clone(),
-                metadata: metadata.clone(),
+                metadata,
             },
             Coins::default(),
         )
         .should_fail_with_error("sender does not own the namespace");
-
-    // Ok set metadata on token_factory from the admin of the denom
-    suite
-        .execute(
-            &mut account.relayer,
-            contracts.token_factory,
-            &ExecuteMsg::SetMetadata {
-                denom: denom.clone(),
-                metadata: metadata.clone(),
-            },
-            Coins::default(),
-        )
-        .should_succeed();
-
-    // Query metadata
-    let res = suite
-        .query_wasm_smart(contracts.bank, QueryMetadataRequest { denom })
-        .should_succeed();
-
-    assert_eq!(res, metadata);
 }
