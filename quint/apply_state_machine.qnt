@@ -8,7 +8,7 @@ module apply_state_machine {
   import node.* from "./node"
   import utils.* from "./utils"
 
-  import ics23.* from "./ics23"
+  import grug_ics23.* from "./grug_ics23"
   import proofs.* from "./proofs"
 
   import apply_simple as simple from "./apply_simple"

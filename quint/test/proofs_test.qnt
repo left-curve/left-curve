@@ -4,7 +4,7 @@ module proofs_test {
   import apply_fancy.* from "../apply_fancy"
   import rareSpells.* from "../spells/rareSpells"
   import node.* from "../node"
-  import ics23.* from "../ics23"
+  import grug_ics23.* from "../grug_ics23"
   import utils.* from "../utils"
 
   val empty_tree: Tree = { nodes: Map(), orphans: Set()}

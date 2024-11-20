@@ -7,16 +7,16 @@
 // https://github.com/cosmos/ibc/tree/main/spec/core/ics-023-vector-commitments
 //
 // For the implementation of ICS23, see:
-// https://github.com/confio/ics23/
+// https://github.com/cosmos/ics23
 //
 // We still have to parameterize the spec with the data structure parameters
 // such as MinPrefixLen, MaxPrefixLen, ChildSize, and hash.
 //
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
-// Aleksandar Ignjatijevic, Informal Systems 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
 
-module ics23 {
+module grug_ics23 {
   import hashes.* from "./hashes"
   import node.* from "./node"
   import basicSpells.* from "./spells/basicSpells"

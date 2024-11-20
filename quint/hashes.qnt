@@ -157,7 +157,7 @@ module hashes {
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
     // !!! UPDATE !!! 
-    // As previously documented in ics23.qnt, this is modification of previous `termSlice(...)`
+    // As previously documented in grug_ics23.qnt, this is modification of previous `termSlice(...)`
     // In order not to break other usages of termSlice and in order to accustom trimming first bit of inner.prefix
     // we have placed rigorous safeguards around this branch of execution.
     if (term.get([ 0 ]) == Raw([0]) and 
