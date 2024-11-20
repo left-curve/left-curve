@@ -11,7 +11,7 @@ This document describes how tree manipulation was modelled in Quint, and how eve
 
 Types have a 1:1 mapping between Rust and Quint that is pretty trivial, so won't be covered here. See [tree.qnt](./tree.qnt) and [node.qnt](./node.qnt) for types. The only difference is that we chose to use records instead of tuples for most things, as accessing records is more readable than accessing tuples, specially since Quint doesn't support destructuring tuples at this time.
 
-In order to replicate Rust's mutations over the tree in Quint, we need to also return the modified values somehow. So, we define a type for the return of apply operations:
+In order to replicate Rust's mutations over the tree in Quint, we need to also return the modified values. So, we define a type for the return of apply operations:
 
 ```bluespec apply_fancy.qnt+=
 /// The return type of apply_* functions, as some of them modify the tree
@@ -21,7 +21,7 @@ type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_a
 
 ## Recursion emulation for `apply_at`
 
-The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutually recursive. Since there is no recursion in Quint, we need to emulate it somehow. What happens in the actual recursion is that longer bit arrays will get computed first, and then smaller bit array computations might depend on the result of longer bit array computations. Therefore, to emulate it, we start from the longest bit arrays, which shouldn't depend on anything else, and save the result in a `memo` value that will be given to what we process next. Then, when a computation calls `apply_at`, we read a result from the `memo` value instead - and the result should already be there, since are computing dependencies first.
+The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutually recursive. Since there is no recursion in Quint, we need to emulate it. What happens in the actual recursion is that longer bit arrays will get computed first, and then smaller bit array computations might depend on the result of longer bit array computations. Therefore, to emulate it, we start from the longest bit arrays, which shouldn't depend on anything else, and save the result in a `memo` value that will be given to what we process next. Then, when a computation calls `apply_at`, we read a result from the `memo` value instead - and the result should already be there, since are computing dependencies first.
 
 ```rust
     fn apply_at(
