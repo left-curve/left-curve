@@ -1,28 +1,29 @@
 {
   "name": "@dango/website",
-  "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro check && astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "build:cf": "pnpx @cloudflare/next-on-pages",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
     "@dango/assets": "workspace:^",
+    "@fullpage/react-fullpage": "^0.1.45",
+    "next": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "framer-motion": "catalog:"
   },
   "devDependencies": {
-    "tailwindcss": "catalog:",
-    "@astrojs/react": "^3.6.2",
-    "@astrojs/tailwind": "^5.1.1",
+    "@leftcurve/config": "workspace:^",
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@astrojs/check": "^0.9.4",
-    "@leftcurve/config": "workspace:^",
-    "astro": "^4.15.12",
-    "typescript": "catalog:"
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:"
   }
 }

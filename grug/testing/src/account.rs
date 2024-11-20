@@ -2,8 +2,8 @@ use {
     grug_crypto::{sha2_256, Identity256},
     grug_mock_account::{Credential, PublicKey},
     grug_types::{
-        Addr, Addressable, ByteArray, Hash256, Json, JsonSerExt, Message, Signer, StdResult, Tx,
-        GENESIS_SENDER,
+        Addr, Addressable, ByteArray, Hash256, Json, JsonSerExt, Message, NonEmpty, Signer,
+        StdResult, Tx, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
@@ -76,7 +76,7 @@ impl TestAccount {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: Json::null(),
             credential,
         })

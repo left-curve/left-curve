@@ -127,7 +127,7 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U> Number for Dec<U>
+impl<U, const S: u32> Number for Dec<U, S>
 where
     Self: FixedPoint<U> + NumberConst + Sign,
     U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
@@ -1172,7 +1172,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.checked_add(right).unwrap(), expected);
@@ -1188,8 +1188,8 @@ mod dec_tests {
     dec_test!( add_panic
         attrs = #[should_panic(expected = "addition overflow")]
         method = |_0d| {
-            let max = bt(_0d, Dec::MAX);
-            let one = bt(_0d,Dec::ONE);
+            let max  = bt(_0d, Dec::MAX);
+            let one = bt(_0d, Dec::ONE);
             let _ = max + one;
         }
     );
@@ -1286,7 +1286,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.checked_sub(right).unwrap(), expected);
@@ -1394,7 +1394,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.checked_mul(right).unwrap(), expected);
@@ -1506,7 +1506,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.checked_div(right).unwrap(), expected);
@@ -1593,7 +1593,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, expected);
                 assert_eq!(left.checked_pow(right).unwrap(), expected);
@@ -1649,7 +1649,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing, failing| {
+        method = |_0d: Dec<_, 18>, passing, failing| {
             for (base, expected) in passing {
                 dts!(_0d, base, expected);
                 assert_eq!(base.checked_sqrt().unwrap(), expected);
@@ -1709,7 +1709,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (base, div, expected) in passing {
                 dts!(_0d, base, div, expected);
                 assert_eq!(base.checked_rem(div).unwrap(), expected);
@@ -1778,7 +1778,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.saturating_add(right), expected);
@@ -1829,7 +1829,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.saturating_sub(right), expected);
@@ -1886,7 +1886,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (left, right, expected) in passing {
                 dts!(_0d, left, right, expected);
                 assert_eq!(left.saturating_mul(right), expected);
@@ -1940,7 +1940,7 @@ mod dec_tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (base, exp, expected) in passing {
                 dts!(_0d, base, expected);
                 assert_eq!(base.saturating_pow(exp), expected);

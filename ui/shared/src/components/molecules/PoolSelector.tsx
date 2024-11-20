@@ -1,6 +1,6 @@
 import { parseAsInteger, useQueryState } from "nuqs";
 import type React from "react";
-import { Button, GradientContainer, Input, PoolCard, SearchIcon } from "../";
+import { Button, Input, PoolCard, SearchIcon } from "../";
 
 import type { Pool, PoolId } from "@leftcurve/types";
 
@@ -13,7 +13,7 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
   const pools = {} as Record<PoolId, Pool>;
 
   return (
-    <GradientContainer className="w-full flex flex-col gap-9">
+    <div className="dango-grid-square-xl-l flex flex-col items-center gap-9">
       <h2 className="font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest mb-1">
         SELECT POOL
       </h2>
@@ -53,6 +53,6 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
         </div>
       </div>
       <Button variant="light">Show all</Button>
-    </GradientContainer>
+    </div>
   );
 };

@@ -56,11 +56,9 @@ export type QueryRequest =
   | { wasmSmart: QueryWasmSmartRequest }
   | { multi: QueryRequest[] };
 
-export type QueryConfigRequest = Record<string, never>;
+export type QueryConfigRequest = Record<never, never>;
 
-export type QueryAppConfigRequest = {
-  key: string;
-};
+export type QueryAppConfigRequest = Record<never, never>;
 
 export type QueryAppConfigsRequest = {
   startAfter?: string;
@@ -118,7 +116,6 @@ export type QueryContractRequest = {
 export type QueryResponse =
   | { config: ChainConfigResponse }
   | { appConfig: AppConfigResponse }
-  | { appConfigs: AppConfigsResponse }
   | { balance: Coin }
   | { balances: Coins }
   | { supply: Coin }
@@ -141,9 +138,7 @@ export type CodeResponse = Code;
 
 export type CodesResponse = Record<Hex, Code>;
 
-export type AppConfigResponse<T = JsonValue> = T;
-
-export type AppConfigsResponse = Json;
+export type AppConfigResponse = Json;
 
 export type AccountResponse = {
   address: Address;

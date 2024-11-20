@@ -42,9 +42,6 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm build:pkg
-
       - name: Build Portal
         run: pnpm build:portal
 

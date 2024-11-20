@@ -3,6 +3,7 @@ import { http, createSignerClient, isValidAddress } from "@leftcurve/sdk";
 import { devnet } from "@leftcurve/sdk/chains";
 import { PrivateKeySigner } from "@leftcurve/sdk/signers";
 import type { Address } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 interface Env {
   MNEMONIC: string;
@@ -51,10 +52,10 @@ export default {
       return new Response("error: invalid address", { headers, status: 400 });
     }
 
-    const ibcTransferAddr = await client.getAppConfig<Address>({ key: "ibc_transfer" });
+    const { addresses } = await client.getAppConfig<DangoAppConfigResponse>();
 
     const response = await client.execute({
-      contract: ibcTransferAddr,
+      contract: addresses.ibcTransfer,
       sender: address as Address,
       msg: {
         receive_transfer: {

@@ -1,6 +1,8 @@
-import type { Address, Chain, Client, Key, KeyHash, Signer, Transport } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
+
+import type { Chain, Client, Key, KeyHash, Signer, Transport } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type GetKeyParameters = {
   keyHash: KeyHash;
@@ -23,7 +25,7 @@ export async function getKey<chain extends Chain | undefined, signer extends Sig
   const { keyHash, height = 0 } = parameters;
   const msg = { key: { hash: keyHash } };
 
-  const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
-  return await queryWasmSmart(client, { contract: accountFactory, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

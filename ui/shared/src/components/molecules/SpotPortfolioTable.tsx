@@ -3,20 +3,19 @@ import { Button } from "../atoms/Button";
 import { PortfolioTable } from "./PortfolioTable";
 
 interface Props {
-  navigate: (path: string) => void;
-  sendUrl: string;
-  receiveUrl: string;
+  sendAction: () => void;
+  receiveAction: () => void;
 }
 
-export const SpotPortfolioTable: React.FC<Props> = ({ navigate, sendUrl, receiveUrl }) => {
+export const SpotPortfolioTable: React.FC<Props> = ({ sendAction, receiveAction }) => {
   return (
     <PortfolioTable
       topComponent={
         <div className="flex flex-col gap-3 sm:flex-row w-full">
-          <Button className="flex-1" onClick={() => navigate(sendUrl)}>
+          <Button className="flex-1" onClick={sendAction}>
             Send
           </Button>
-          <Button className="flex-1" onClick={() => navigate(receiveUrl)}>
+          <Button className="flex-1" onClick={receiveAction}>
             Receive
           </Button>
         </div>

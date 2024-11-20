@@ -1,6 +1,8 @@
-import type { Address, Chain, Client, Coins, Signer, Transport } from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
+
+import type { Address, Chain, Client, Coins, Signer, Transport } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type GetDepositParameters = {
   recipient: Address;
@@ -26,7 +28,7 @@ export async function getDeposit<
   const { recipient, height = 0 } = parameters;
   const msg = { deposit: { recipient } };
 
-  const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
-  return await queryWasmSmart(client, { contract: accountFactory, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

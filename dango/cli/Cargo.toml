@@ -18,6 +18,7 @@ anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
+dango-app          = { workspace = true }
 dialoguer          = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-client        = { workspace = true }
@@ -29,5 +30,7 @@ hex                = { workspace = true }
 home               = { workspace = true }
 serde              = { workspace = true }
 tokio              = { workspace = true }
+tower              = { workspace = true, features = ["full"] }
+tower-abci         = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

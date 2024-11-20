@@ -27,7 +27,7 @@ impl<U> Inner for Int<U> {
     }
 }
 
-impl<U> Inner for Dec<U> {
+impl<U, const S: u32> Inner for Dec<U, S> {
     type U = U;
 
     fn inner(&self) -> &Self::U {

@@ -54,37 +54,37 @@ where
     }
 }
 
-impl<U> MultiplyFraction<Dec<U>, U> for Int<U>
+impl<U, const S: u32> MultiplyFraction<Dec<U, S>, U> for Int<U>
 where
     Int<U>: IsZero + NumberConst + MultiplyRatio + ToString + Copy,
-    Dec<U>: IsZero + Fraction<U>,
+    Dec<U, S>: IsZero + Fraction<U>,
 {
-    fn checked_mul_dec(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_mul_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
         // If either left or right hand side is zero, then simply return zero.
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio(rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio(rhs.numerator(), Dec::<U, S>::denominator())
     }
 
-    fn checked_mul_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_mul_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_floor(rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio_floor(rhs.numerator(), Dec::<U, S>::denominator())
     }
 
-    fn checked_mul_dec_ceil(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_mul_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
         if self.is_zero() || rhs.is_zero() {
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_ceil(rhs.numerator(), Dec::<U>::denominator())
+        self.checked_multiply_ratio_ceil(rhs.numerator(), Dec::<U, S>::denominator())
     }
 
-    fn checked_div_dec(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_div_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
         // If right hand side is zero, throw error, because you can't divide any
         // number by zero.
         if rhs.is_zero() {
@@ -97,10 +97,10 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio(Dec::<U>::denominator(), rhs.numerator())
+        self.checked_multiply_ratio(Dec::<U, S>::denominator(), rhs.numerator())
     }
 
-    fn checked_div_dec_floor(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_div_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
         if rhs.is_zero() {
             return Err(MathError::division_by_zero(self));
         }
@@ -109,10 +109,10 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_floor(Dec::<U>::denominator(), rhs.numerator())
+        self.checked_multiply_ratio_floor(Dec::<U, S>::denominator(), rhs.numerator())
     }
 
-    fn checked_div_dec_ceil(self, rhs: Dec<U>) -> MathResult<Self> {
+    fn checked_div_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
         if rhs.is_zero() {
             return Err(MathError::division_by_zero(self));
         }
@@ -121,7 +121,7 @@ where
             return Ok(Self::ZERO);
         }
 
-        self.checked_multiply_ratio_ceil(Dec::<U>::denominator(), rhs.numerator())
+        self.checked_multiply_ratio_ceil(Dec::<U, S>::denominator(), rhs.numerator())
     }
 }
 
@@ -419,7 +419,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec(_0d), Err(MathError::DivisionByZero { .. })));
         }
@@ -491,7 +491,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec_floor(_0d), Err(MathError::DivisionByZero { .. })));
         }
@@ -563,7 +563,7 @@ mod tests {
                 assert_eq!(result, Int::new(expected));
             }
 
-            let _0d = Dec::ZERO;
+            let _0d = Dec::<_, 18>::ZERO;
             let base = bt(_0, Int::TEN);
             assert!(matches!(base.checked_div_dec_ceil(_0d), Err(MathError::DivisionByZero { .. })));
         }

@@ -1,15 +1,8 @@
-import type {
-  Address,
-  AmmQueryMsg,
-  Chain,
-  Client,
-  Pool,
-  PoolId,
-  Signer,
-  Transport,
-} from "@leftcurve/types";
 import { getAppConfig } from "../../public/getAppConfig.js";
 import { queryWasmSmart } from "../../public/queryWasmSmart.js";
+
+import type { AmmQueryMsg, Chain, Client, Pool, PoolId, Signer, Transport } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type GetPoolParameters = {
   height?: number;
@@ -32,7 +25,7 @@ export async function getPool<chain extends Chain | undefined, signer extends Si
   const { poolId, height = 0 } = parameters;
   const msg: AmmQueryMsg = { pool: { poolId } };
 
-  const ammAddr = await getAppConfig<Address>(client, { key: "amm" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
-  return await queryWasmSmart(client, { contract: ammAddr, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.amm, msg, height });
 }

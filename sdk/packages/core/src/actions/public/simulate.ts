@@ -32,7 +32,7 @@ export async function simulate<chain extends Chain | undefined, signer extends S
   client: Client<Transport, chain, signer>,
   parameters: SimulateParameters,
 ): SimulateReturnType {
-  const { simulate, scale = 1.3, base = 750_000, height = 0 } = parameters;
+  const { simulate, scale = 1.3, base = 1_880_000, height = 0 } = parameters;
 
   const { value } = await queryAbci(client, {
     data: serialize(simulate),

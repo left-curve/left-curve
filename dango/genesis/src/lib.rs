@@ -4,10 +4,13 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{ACCOUNT_FACTORY_KEY, IBC_TRANSFER_KEY},
+        config::{AppAddresses, AppConfig},
         ibc_transfer,
         lending::{self, MarketUpdates},
-        oracle::{self, GuardianSet, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+        oracle::{
+            self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
+            USDC_USD_ID, WBTC_USD_ID,
+        },
         taxman, token_factory,
     },
     grug::{
@@ -201,7 +204,9 @@ where
         lending_code_hash,
         &lending::InstantiateMsg {
             markets: btree_map! {
-                fee_denom.clone() => MarketUpdates {},
+                fee_denom.clone() => MarketUpdates {
+                    // TODO
+                },
             },
         },
         "dango/lending",
@@ -281,6 +286,11 @@ where
                     expiration_time: None,
                 },
             },
+            price_sources: btree_map! {
+                Denom::from_str("usdc").unwrap() => PriceSource::Pyth { id: USDC_USD_ID, precision: 6 },
+                Denom::from_str("btc").unwrap()  => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
+                Denom::from_str("eth").unwrap()  => PriceSource::Pyth { id: ETH_USD_ID, precision: 18 },
+            },
         },
         "dango/oracle",
         "dango/oracle",
@@ -311,15 +321,20 @@ where
         max_orphan_age,
     };
 
-    let app_configs = btree_map! {
-        ACCOUNT_FACTORY_KEY.to_string() => account_factory.to_json_value()?,
-        IBC_TRANSFER_KEY.to_string() => ibc_transfer.to_json_value()?,
+    let app_config = AppConfig {
+        addresses: AppAddresses {
+            account_factory,
+            ibc_transfer,
+            lending,
+            oracle,
+        },
+        collateral_powers: btree_map! {},
     };
 
     let genesis_state = GenesisState {
         config,
         msgs,
-        app_configs,
+        app_config: app_config.to_json_value()?,
     };
 
     Ok((genesis_state, contracts, addresses))

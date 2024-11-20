@@ -1,4 +1,5 @@
 use {
+    crate::TestSuite,
     dango_types::{
         account::single,
         account_factory::{
@@ -8,8 +9,9 @@ use {
     },
     grug::{
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, ResultExt, Signer, StdResult, TestSuite, Tx, Undefined,
+        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
+    grug_app::{AppError, ProposalPreparer},
     k256::{
         ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
         elliptic_curve::rand_core::OsRng,
@@ -30,7 +32,7 @@ pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub key: Key,
     pub key_hash: Hash160,
     pub sequence: u32,
-    sk: SigningKey,
+    pub sk: SigningKey,
     address: T,
 }
 
@@ -145,14 +147,18 @@ where
 {
     /// Register a new account with the username and key of this account and returns a new
     /// `TestAccount` with the new account's address.
-    pub fn register_new_account(
+    pub fn register_new_account<PP>(
         &mut self,
-        test_suite: &mut TestSuite,
+        test_suite: &mut TestSuite<PP>,
         factory: Addr,
         code_hash: Hash256,
         params: AccountParams,
         funds: Coins,
-    ) -> StdResult<TestAccount<Defined<Addr>>> {
+    ) -> StdResult<TestAccount<Defined<Addr>>>
+    where
+        PP: ProposalPreparer,
+        AppError: From<PP::Error>,
+    {
         // If registering a single account, ensure the supplied username matches this account's username.
         match &params {
             AccountParams::Spot(single::Params { owner, .. })
@@ -215,7 +221,7 @@ impl Signer for TestAccount<Defined<Addr>> {
         Ok(Tx {
             sender: self.address(),
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })
@@ -250,7 +256,7 @@ impl Signer for Factory {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: Json::null(),
             credential: Json::null(),
         })
@@ -316,7 +322,7 @@ impl<'a> Signer for Safe<'a> {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs,
+            msgs: NonEmpty::new(msgs)?,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })

@@ -27,7 +27,6 @@ export type {
   SimulateResponse,
   ContractResponse,
   ContractsResponse,
-  AppConfigsResponse,
   AppConfigResponse,
 } from "./queries.js";
 
@@ -234,6 +233,12 @@ export type {
   AmmExecuteMsg,
   SwapOutcome,
 } from "./amm.js";
+
+export type {
+  TokenFactoryConfig,
+  TokenFactoryQueryMsg,
+  TokenFactoryExecuteMsg,
+} from "./token-factory.js";
 
 export type {
   Duration,

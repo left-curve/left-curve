@@ -4,15 +4,18 @@ import { useAccount } from "@leftcurve/react";
 import { useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
-import { capitalize } from "@leftcurve/utils";
 import { twMerge, useDOMRef } from "../../utils";
 
 import { AccountCard, Button } from "../";
 import { CloseIcon, CollapseIcon, ExpandedIcon, PlusIcon } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
+import { capitalize } from "@leftcurve/utils";
+import { parseAsBoolean, useQueryState } from "nuqs";
+import { useAccountName } from "../../hooks";
 
 interface Props {
+  createAction?: () => void;
   manageAction?: (account: Account) => void;
   images: {
     [AccountType.Spot]: string;
@@ -21,26 +24,26 @@ interface Props {
   };
 }
 
-export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
+export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageAction }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useDOMRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [showMenu, setShowMenu] = useQueryState(
+    "accountsVisible",
+    parseAsBoolean.withDefault(false),
+  );
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
+  const [accountName] = useAccountName();
 
   useClickAway(menuRef, (e) => {
     if (buttonRef.current?.contains(e.target as Node)) return;
     setShowMenu(false);
   });
 
-  const handleAction = (account: Account) => {
-    manageAction?.(account);
-    setShowMenu(false);
-  };
-
   const sortedAccounts = useMemo(() => {
     return [...(accounts ? accounts : [])]?.sort((a, b) => {
-      if (selectedAccount?.index === a.index) return -1;
+      if (a.index === selectedAccount?.index) return -1;
+      if (b.index === selectedAccount?.index) return 1;
       return a.index - b.index;
     });
   }, [selectedAccount, accounts]);
@@ -56,7 +59,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
         radius="lg"
         className="font-bold px-4 py-2"
       >
-        {capitalize(selectedAccount.type)} Account #{selectedAccount.index}
+        {capitalize(accountName)}
       </Button>
       <div
         ref={menuRef}
@@ -72,7 +75,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
             Accounts
           </p>
           <div className="flex gap-2">
-            <Button isIconOnly radius="lg" color="green">
+            <Button isIconOnly radius="lg" color="green" onClick={createAction}>
               <PlusIcon className="h-6 w-6" />
             </Button>
             <Button color="purple" radius="lg" isIconOnly onClick={() => setExpanded(!expanded)}>
@@ -97,10 +100,10 @@ export const MenuAccounts: React.FC<Props> = ({ images, manageAction }) => {
             return (
               <AccountCard
                 avatarUrl={images[account.type]}
-                key={account.index}
+                key={crypto.randomUUID()}
                 account={account}
                 onClick={() => [changeAccount?.(account), setExpanded(false)]}
-                manageAction={handleAction}
+                manageAction={manageAction}
                 expanded={expanded}
               />
             );

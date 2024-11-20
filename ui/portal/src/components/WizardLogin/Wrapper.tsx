@@ -1,23 +1,66 @@
-import { Button, GradientContainer, useWizard } from "@dango/shared";
+import { Button, twMerge, useWizard } from "@dango/shared";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) => {
-  const { activeStep, data } = useWizard<{ retry: boolean }>();
+  const { activeStep, data, previousStep } = useWizard<{ retry: boolean }>();
+  const navigate = useNavigate();
   const { retry } = data;
+
+  const isFirstStep = activeStep === 0;
+  const isSecondStep = activeStep === 1;
+
   return (
     <div className="flex flex-col items-center justify-center w-full gap-8">
-      <GradientContainer className="w-full max-w-2xl *:flex flex-1 flex-col items-center rounded-3xl p-4 md:p-8 gap-8 md:gap-12">
-        <p className="font-extrabold text-typography-rose-600 tracking-widest uppercase text-lg">
-          {activeStep === 0 && !retry ? "login to portal" : null}
-          {activeStep === 0 && retry ? "enter username" : null}
-          {activeStep === 1 ? "select credentials " : null}
-        </p>
-        {children}
-      </GradientContainer>
-      <Button as={Link} to="/auth/signup" variant="light" className="text-lg">
-        Don't have an account?
+      <div
+        className={twMerge("flex flex-col items-center", {
+          "dango-grid-landscape-fat-l": isFirstStep || retry,
+          "dango-grid-square-l": !isFirstStep && !retry,
+        })}
+      >
+        <div className="flex flex-col gap-4 items-center">
+          <p className="font-extrabold text-typography-black-200 tracking-widest uppercase text-lg">
+            {isFirstStep && !retry ? "login to portal" : null}
+            {isFirstStep && retry ? "enter username" : null}
+            {isSecondStep ? "login " : null}
+          </p>
+          <p className="text-typography-black-100 text-lg text-center">
+            {isFirstStep && !retry ? "Enter your username" : null}
+            {isFirstStep && retry
+              ? "The username connected does not match the on-chain record"
+              : null}
+            {activeStep === 1
+              ? "Choose any of the credentials that have been associated with your username."
+              : null}
+          </p>
+        </div>
+        <div className="flex flex-1 justify-center items-center w-full">{children}</div>
+        <div className="flex gap-4">
+          <p
+            className={twMerge(
+              "text-[10px] font-semibold tracking-[0.125rem]",
+              isFirstStep ? "text-typography-purple-400" : "text-typography-purple-300",
+            )}
+          >
+            1 USERNAME
+          </p>
+          <p
+            className={twMerge(
+              "text-[10px] font-semibold tracking-[0.125rem]",
+              isSecondStep ? "text-typography-purple-400" : "text-typography-purple-300",
+            )}
+          >
+            2 CREDENTIAL
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="light"
+        className="text-lg"
+        onClick={() => (isFirstStep ? navigate("/auth/signup") : previousStep())}
+      >
+        {isFirstStep ? "Already have an account?" : "Back"}
       </Button>
     </div>
   );

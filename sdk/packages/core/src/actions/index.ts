@@ -69,12 +69,6 @@ export {
 } from "./public/getAppConfig.js";
 
 export {
-  type GetAppConfigsParameters,
-  type GetAppConfigsReturnType,
-  getAppConfigs,
-} from "./public/getAppConfigs.js";
-
-export {
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,
@@ -337,6 +331,46 @@ export {
   type WithdrawLiquidityReturnType,
   withdrawLiquidity,
 } from "./amm/mutations/withdrawLiquidity.js";
+
+/* -------------------------------------------------------------------------- */
+/*                            TokenFactory Actions                            */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetAllTokenAdminsParameters,
+  type GetAllTokenAdminsReturnType,
+  getAllTokenAdmins,
+} from "./token-factory/queries/getAllTokenAdmins.js";
+
+export {
+  type GetTokenAdminParameters,
+  type GetTokenAdminReturnType,
+  getTokenAdmin,
+} from "./token-factory/queries/getTokenAdmin.js";
+
+export {
+  type GetTokenFactoryConfigParameters,
+  type GetTokenFactoryConfigReturnType,
+  getTokenFactoryConfig,
+} from "./token-factory/queries/getTokenFactoryConfig.js";
+
+export {
+  type CreateTokenParameters,
+  type CreateTokenReturnType,
+  createToken,
+} from "./token-factory/mutations/createToken.js";
+
+export {
+  type BurnTokenParameters,
+  type BurnTokenReturnType,
+  burnToken,
+} from "./token-factory/mutations/burnToken.js";
+
+export {
+  type MintTokenParameters,
+  type MintTokenReturnType,
+  mintToken,
+} from "./token-factory/mutations/mintToken.js";
 
 /* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */

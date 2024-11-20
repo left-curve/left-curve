@@ -1,13 +1,13 @@
 use {
     super::{GuardianSet, PrecisionedPrice, PriceSource},
-    grug::{Binary, Denom},
+    grug::{Binary, Denom, NonEmpty},
     std::collections::BTreeMap,
 };
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub guardian_sets: BTreeMap<u32, GuardianSet>,
-    // TODO: set up price sources during instantiation
+    pub price_sources: BTreeMap<Denom, PriceSource>,
 }
 
 #[grug::derive(Serde)]
@@ -15,7 +15,7 @@ pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
     /// Submit price data from Pyth Network.
-    FeedPrices(Vec<Binary>),
+    FeedPrices(NonEmpty<Vec<Binary>>),
 }
 
 #[grug::derive(Serde, QueryRequest)]

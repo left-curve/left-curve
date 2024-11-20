@@ -1,8 +1,7 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, ConfigUpdates, Duration, ResultExt, Timestamp},
+    grug_types::{btree_map, Coin, Coins, Duration, Json, ResultExt, Timestamp},
     grug_vm_rust::ContractBuilder,
-    std::collections::BTreeMap,
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -126,21 +125,19 @@ fn cronjob_works() {
     // Block time: 5
     //
     // Update the config to add the cronjobs.
-    let updates = ConfigUpdates {
-        cronjobs: Some(btree_map! {
-            // cron1 has interval of 0, meaning it's to be called every block.
-            cron1 => Duration::from_seconds(0),
-            cron2 => Duration::from_seconds(2),
-            cron3 => Duration::from_seconds(3),
-        }),
-        ..Default::default()
+    let mut new_cfg = suite.query_config().unwrap();
+    new_cfg.cronjobs = btree_map! {
+        // cron1 has interval of 0, meaning it's to be called every block.
+        cron1 => Duration::from_seconds(0),
+        cron2 => Duration::from_seconds(2),
+        cron3 => Duration::from_seconds(3),
     };
 
     // cron1 scheduled at 5
     // cron2 scheduled at 7
     // cron3 scheduled at 8
     suite
-        .configure(&mut accounts["larry"], updates, BTreeMap::new())
+        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
         .should_succeed();
 
     // Make some blocks.
