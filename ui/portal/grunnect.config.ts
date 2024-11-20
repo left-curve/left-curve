@@ -6,6 +6,7 @@ const dango = devnet;
 
 export const config = createConfig({
   multiInjectedProviderDiscovery: true,
+  ssr: true,
   chains: [dango],
   transports: {
     [dango.id]: http(dango.rpcUrls.default.http.at(0), { batch: true }),

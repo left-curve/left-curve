@@ -1,3 +1,5 @@
+"use client";
+
 import { useControlledState } from "@react-stately/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, useState } from "react";

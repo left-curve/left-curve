@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
 type MediaBreakpoints = "sm" | "md" | "lg" | "xl" | "2xl";

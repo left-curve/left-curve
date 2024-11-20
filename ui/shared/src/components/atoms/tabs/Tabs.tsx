@@ -1,3 +1,5 @@
+"use client";
+
 import { useTabList } from "@react-aria/tabs";
 import { type TabListStateOptions, useTabListState } from "@react-stately/tabs";
 import type React from "react";
