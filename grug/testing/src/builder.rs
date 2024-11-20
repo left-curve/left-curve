@@ -49,6 +49,7 @@ pub struct TestBuilder<
     M3 = grug_mock_taxman::InstantiateMsg,
     OW = Undefined<Addr>,
     TA = Undefined<TestAccounts>,
+    INDEXER = NullIndexer,
 > {
     vm: VM,
     pp: PP,
@@ -73,6 +74,8 @@ pub struct TestBuilder<
     fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
     max_orphan_age: Option<Duration>,
+    // Indexer
+    indexer: Option<INDEXER>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -139,6 +142,7 @@ where
             fee_denom: None,
             fee_rate: None,
             max_orphan_age: None,
+            indexer: None,
         }
     }
 }
@@ -278,6 +282,7 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
+            indexer: self.indexer,
         }
     }
 
@@ -342,6 +347,7 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
+            indexer: self.indexer,
         }
     }
 
@@ -388,6 +394,42 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
+            indexer: self.indexer,
+        }
+    }
+}
+
+impl<VM, PP, M1, M2, M3, OW, TA, INDEXER> TestBuilder<VM, PP, M1, M2, M3, OW, TA, INDEXER>
+where
+    M1: Serialize,
+    M2: Serialize,
+    M3: Serialize,
+    OW: MaybeDefined<Addr>,
+    TA: MaybeDefined<TestAccounts>,
+    VM: TestVm + Clone,
+    AppError: From<VM::Error>,
+    INDEXER: IndexerAppTrait,
+{
+    pub fn set_indexer(self, indexer: INDEXER) -> TestBuilder<VM, PP, M1, M2, M3, OW, TA, INDEXER> {
+        TestBuilder {
+            vm: self.vm,
+            pp: self.pp,
+            tracing_level: self.tracing_level,
+            chain_id: self.chain_id,
+            genesis_time: self.genesis_time,
+            block_time: self.block_time,
+            default_gas_limit: self.default_gas_limit,
+            app_configs: self.app_configs,
+            owner: self.owner,
+            account_opt: self.account_opt,
+            accounts: self.accounts,
+            bank_opt: self.bank_opt,
+            balances: self.balances,
+            taxman_opt: self.taxman_opt,
+            fee_denom: self.fee_denom,
+            fee_rate: self.fee_rate,
+            max_orphan_age: self.max_orphan_age,
+            indexer: Some(indexer),
         }
     }
 }
@@ -462,6 +504,7 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
+            indexer: self.indexer,
         }
     }
 }
@@ -495,6 +538,7 @@ impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Define
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
+            indexer: self.indexer,
         }
     }
 }
@@ -618,6 +662,10 @@ where
             msgs,
             app_configs: self.app_configs,
         };
+
+        //let indexer = self
+        //    .indexer
+        //    .unwrap_or(AppIndexer::new().expect("Can't create AppIndexer"));
 
         //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
         //indexer.migrate_db().expect("Can't migrate DB");

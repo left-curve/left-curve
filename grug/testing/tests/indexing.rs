@@ -2,13 +2,15 @@ use {
     assertor::*,
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message},
+    indexer_core::blocking_indexer::Indexer as AppIndexer,
+    indexer_core::IndexerTrait,
     sea_orm::EntityTrait,
     sea_orm::QueryOrder,
     std::str::FromStr,
 };
 
 #[test]
-fn index_block() {
+fn index_block_with_blocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
     let (mut suite, mut accounts) = TestBuilder::new()
         .add_account("owner", Coins::new())
@@ -83,6 +85,66 @@ fn index_block() {
             assert_that!(block).is_some();
             dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(2);
+            Ok::<(), sea_orm::DbErr>(())
+        })
+        .expect("Can't commit txn");
+}
+
+#[test]
+fn index_block_with_nonblocking_indexer() {
+    let denom = Denom::from_str("ugrug").unwrap();
+    let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .add_account("owner", Coins::new())
+        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
+        //.set_indexer(indexer)
+        .set_owner("owner")
+        .build();
+
+    let to = accounts["owner"].address;
+    //let from = accounts["owner"].address;
+
+    //dbg!(&accounts);
+
+    let _outcome = suite.send_message_with_gas(
+        &mut accounts["sender"],
+        2000,
+        Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+    );
+
+    // ensure block was saved
+    suite
+        .app
+        .indexer_app
+        .runtime
+        .block_on(async {
+            let block = indexer_entity::blocks::Entity::find()
+                .one(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch blocks");
+            assert_that!(block).is_some();
+            dbg!(&block);
+            assert_that!(block.unwrap().block_height).is_equal_to(1);
+
+            let transactions = indexer_entity::transactions::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch transactions");
+            dbg!(&transactions);
+
+            let messages = indexer_entity::messages::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch messages");
+            dbg!(&messages);
+
+            let events = indexer_entity::events::Entity::find()
+                .all(&suite.app.indexer_app.context.db)
+                .await
+                .expect("Can't fetch events");
+            dbg!(&events);
+
             Ok::<(), sea_orm::DbErr>(())
         })
         .expect("Can't commit txn");
