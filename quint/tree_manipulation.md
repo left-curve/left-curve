@@ -226,7 +226,7 @@ As explained, we call `pre_compute_apply_at` to prepare for the recursion from c
   }
 ```
 
-## Apply At
+### Apply At
 
 ```rust
     fn apply_at(
@@ -277,7 +277,7 @@ Quint needs one more level of `match` and doesn't have the debug statement.
   }
 ```
 
-## Apply At Internal
+### Apply At Internal
 
 From Rust:
 
@@ -657,4 +657,366 @@ The Quint is similar, apart from not being able to mutate (neither on `save_node
       }
     }
   }
+```
+
+### Apply At Child
+
+Applications on children map closely between Rust and Quint.
+
+```rust
+    fn apply_at_child(
+        &self,
+        storage: &mut dyn Storage,
+        new_version: u64,
+        child_bits: BitArray,
+        child: Option<Child>,
+        batch: Vec<(Hash256, Op<Hash256>)>,
+    ) -> StdResult<Outcome> {
+```
+
+```bluespec apply_fancy.qnt+=
+  pure def apply_at_child(
+    tree: Tree,
+    memo: ApplyAtMemo,
+    new_version: Version,
+    child_bits: BitArray,
+    child: Option[Child],
+    batch: Set[OperationOnKey]
+  ): ApplyResult = {
+```
+
+Once again, Rust uses a `match`, and Quint will use a combination of `if` and `match` instead due to less powerful pattern matching. 
+```rust
+        match (batch.is_empty(), child) {
+```
+
+The first two cases in the Rust's `match` are for empty batches (`batch.is_empty` matches `true`):
+
+```rust
+            // Child doesn't exist, and there is no op to apply.
+            (true, None) => Ok(Outcome::Unchanged(None)),
+            // Child exists, but there is no op to apply.
+            (true, Some(child)) => {
+                let child_node = self.nodes.load(storage, (child.version, &child_bits))?;
+                Ok(Outcome::Unchanged(Some(child_node)))
+            },
+```
+
+```bluespec apply_fancy.qnt+=
+    if (batch == Set()) {
+      match child {
+        // Child doesn't exist, and there is no op to apply.
+        | None => { outcome: Unchanged(None), orphans_to_add: Set(), nodes_to_add: Set() }
+        // Child exists, but there is no op to apply.
+        | Some(child) => {
+          pure val child_node = tree.nodes.get({ version: child.version, key_hash: child_bits })
+          { outcome: Unchanged(Some(child_node)), orphans_to_add: Set(), nodes_to_add: Set() }
+        }
+      }
+```
+
+The remaining two cases are for non-empty batches:
+
+```rust
+            // Child doesn't exist, but there are ops to apply.
+            (false, None) => {
+                let (batch, op) = prepare_batch_for_subtree(batch, None);
+                debug_assert!(op.is_none());
+                self.create_subtree(storage, new_version, child_bits, batch, None)
+            },
+            // Child exists, and there are ops to apply.
+            (false, Some(child)) => {
+                self.apply_at(storage, new_version, child.version, child_bits, batch)
+            },
+        }
+    }
+```
+
+The last non-bracket line is what makes the recursive call to `apply_at`. As explained in [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at), the Quint version access the value from `memo` instead.
+
+> [!IMPORTANT]
+> The `apply_at` call and `memo` access have the same parameters, except for the storage (tree) as discussed before. This is a good indication that the Quint spec replicates the implementation closely, since the value saved to `memo` is the exact call to the Quint `apply_at` definition. The only difference is that it was pre-computed and not computed on the spot at the recursive call.
+
+As a reminder, here's how we previously saved the value to `memo`:
+```bluespec
+        pure val memo_key = (new_version, old_version, bits, batch_here)
+        pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
+        memo.put(memo_key, memo_value)
+```
+
+```bluespec apply_fancy.qnt+=
+    } else {
+      match child {
+        // Child doesn't exist, but there are ops to apply.
+        | None => {
+          pure val batchAndOp = prepare_batch_for_subtree(batch, None)
+          tree.create_subtree(new_version, child_bits, batchAndOp._1, None)
+        }
+        // Child exists, and there are ops to apply.
+        | Some(child) => {
+          memo.get((new_version, child.version, child_bits, batch))
+        }
+      }
+    }
+  }
+```
+
+### Apply at Leaf
+
+Applications on leaves correspondance is similat to that of `apply_at_child`.
+
+```rust
+    fn apply_at_leaf(
+        &self,
+        storage: &mut dyn Storage,
+        new_version: u64,
+        bits: BitArray,
+        mut leaf_node: LeafNode,
+        batch: Vec<(Hash256, Op<Hash256>)>,
+    ) -> StdResult<Outcome> {
+```
+
+```bluespec apply_fancy.qnt+=
+  pure def apply_at_leaf(
+    tree: Tree,
+    new_version: Version,
+    bits: BitArray,
+    leaf_node: LeafNode,
+    batch: Set[OperationOnKey]
+  ): ApplyResult = {
+```
+
+We start by preparing the batch:
+```rust
+        let (batch, op) = prepare_batch_for_subtree(batch, Some(leaf_node));
+```
+
+```bluespec apply_fancy.qnt+=
+    pure val batchAndOp = prepare_batch_for_subtree(batch, Some(leaf_node))
+    pure val batch = batchAndOp._1
+    pure val operation = batchAndOp._2
+
+```
+
+And again, we have a `match`:
+  
+```rust
+        match (batch.is_empty(), op) {
+```
+
+Which again will become a mix of `match`es and `if`s in Quint. The first three scenarios are again for empty batches:
+
+```rust
+           (true, Some(Op::Insert(value_hash))) => {
+                if value_hash == leaf_node.value_hash {
+                    // Overwriting with the same value hash, no-op.
+                    Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node))))
+                } else {
+                    leaf_node.value_hash = value_hash;
+                    Ok(Outcome::Updated(Node::Leaf(leaf_node)))
+                }
+            },
+            (true, Some(Op::Delete)) => Ok(Outcome::Deleted),
+            (true, None) => Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node)))),
+```
+
+In case of empty batches, we don't need update the nodes nor the orphans. We return the full `ApplyResult` with no updates, since the `else` branch will have updates (as it calls `create_subtree`) and types between both `if` branches (`then` and `else`) need to match.
+
+```bluespec apply_fancy.qnt+=
+    if (batch == Set()) {
+      pure val outcome = match operation {
+        | Some(op) => {
+          match op.op {
+            | Insert(value_hash) => {
+              if (value_hash == leaf_node.value_hash) {
+                // Overwriting with the same value hash, no-op.
+                Unchanged(Some(Leaf(leaf_node)))
+              } else {
+                pure val updated_leaf_node = { ...leaf_node, value_hash: value_hash }
+                Updated(Leaf(updated_leaf_node))
+              }
+            }
+            | Delete => Deleted
+          }
+        }
+        | None => Unchanged(Some(Leaf(leaf_node)))
+      }
+
+      { outcome: outcome, orphans_to_add: Set(), nodes_to_add: Set() }
+```
+
+The last three cases are for non-empty batches:
+
+```rust
+            (false, Some(Op::Insert(value_hash))) => {
+                leaf_node.value_hash = value_hash;
+                self.create_subtree(storage, new_version, bits, batch, Some(leaf_node))
+            },
+            (false, Some(Op::Delete)) => {
+                self.create_subtree(storage, new_version, bits, batch, None)
+            },
+            (false, None) => {
+                self.create_subtree(storage, new_version, bits, batch, Some(leaf_node))
+            },
+        }
+    }
+
+```
+
+```bluespec apply_fancy.qnt+=
+    } else {
+      match operation {
+        | Some(op) => {
+          match op.op {
+            | Insert(value_hash) => {
+                pure val updated_leaf_node = { ...leaf_node, value_hash: value_hash }
+                tree.create_subtree(new_version, bits, batch, Some(updated_leaf_node))
+            }
+            | Delete => {
+              tree.create_subtree(new_version, bits, batch, None)
+            }
+          }
+        }
+        | None => {
+          tree.create_subtree(new_version, bits, batch, Some(leaf_node))
+        }
+      }
+    }
+  }
+```
+
+## Auxiliary functions
+
+We translated all the apply_* functions already. Now let's look into the functions they use.
+
+### Partition Batch
+
+This is a simple function where Rust uses `partition_point` and `split_off` for the most performatic way to split a vector in two. `bit_at_index` is also a performance-related complexity.
+
+```rust
+fn partition_batch<T>(
+    mut batch: Vec<(Hash256, T)>,
+    bits: BitArray,
+) -> (Vec<(Hash256, T)>, Vec<(Hash256, T)>) {
+    let partition_point =
+        batch.partition_point(|(key_hash, _)| bit_at_index(key_hash, bits.num_bits) == 0);
+    let right = batch.split_off(partition_point);
+    (batch, right)
+}
+```
+
+In Quint, we do a simpler partition using a fold and list access for bits. 
+
+```bluespec apply_fancy.qnt+=
+  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
+    batch.fold((Set(), Set()), (acc, op) => {
+      // 0 = left, 1 = right
+      if (op.key_hash[bits.length()] == 0) {
+        (acc._1.union(Set(op)), acc._2)
+      } else {
+        (acc._1, acc._2.union(Set(op)))
+      }
+    })
+  }
+```
+
+### Prepare Batch for Subtree
+
+```rust
+fn prepare_batch_for_subtree(
+    batch: Vec<(Hash256, Op<Hash256>)>,
+    existing_leaf: Option<LeafNode>,
+) -> (Vec<(Hash256, Hash256)>, Option<Op<Hash256>>) {
+```
+
+The return type uses type aliases in Quint as we use records (with named fields) instead of tuples, and types of records are too long to be written inline all the time. The types are equivalent, except from the vector to set difference that was previously discussed.
+
+```bluespec apply_fancy.qnt+=
+  pure def prepare_batch_for_subtree(
+    batch: Set[OperationOnKey],
+    existing_leaf: Option[LeafNode]
+  ): (Set[KeyWithValue], Option[OperationOnKey]) = {
+```
+
+```rust
+    let mut maybe_op = None;
+    let filtered_batch = batch
+        .into_iter()
+        .filter_map(|(key_hash, op)| {
+            // check if key hash match the leaf's
+            if let Some(leaf) = existing_leaf {
+                if key_hash == leaf.key_hash {
+                    maybe_op = Some(op);
+                    return None;
+                }
+            }
+            // keep inserts, remove deletes
+            if let Op::Insert(value_hash) = op {
+                Some((key_hash, value_hash))
+            } else {
+                None
+            }
+        })
+        .collect();
+    (filtered_batch, maybe_op)
+}
+```
+
+The way to write this in Quint that keeps tighter correspondance is to break down how we find `maybe_op` and `filtered_batch` into two different iterations. This happens because we can't have a mutable `maybe_op` as in Rust, and doing it all on a single iteration would require a more complicated fold. We favor cognitive correspondance over performance. 
+
+For `maybe_op`:
+
+```bluespec apply_fancy.qnt+=
+    pure val maybe_op = batch.fold(None, (acc, op) => {
+      match existing_leaf {
+        | Some(leaf) => {
+            if (op.key_hash == leaf.key_hash) {
+              Some(op)
+            } else {
+              acc
+            }
+          }
+        | None => acc
+      }
+    })
+
+```
+
+When computing `filtered_batch`, Rust has an early return for when it finds an operation matching `existing_leaf`, and we replicate that early return in Quint:
+
+```bluespec apply_fancy.qnt+=
+    pure val filtered_batch = batch.filterMap(op => {
+      if (maybe_op == Some(op)) {
+        // early return
+        None
+      } else {
+        match op.op {
+          | Insert(value_hash) => Some({ key_hash: op.key_hash, value_hash: value_hash })
+          | _ => None
+        }
+      }
+    })
+```
+
+And finally we return both:
+```bluespec apply_fancy.qnt+=
+    (filtered_batch, maybe_op)
+  }
+```
+
+
+## Create Subtree
+
+The second recursive function is `create_subtree`, and we also have to emulate it.
+
+Similar to the `ApplyAtMemo` type, we define a (simpler) memo type for this function:
+
+```bluespec apply_fancy.qnt+=
+  type CreateSubtreeMemo = BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
+```
+
+```bluespec apply_fancy.qnt+=
+  pure val bits_to_compute = Set(0,1)
+    .allListsUpTo(MAX_HASH_LENGTH)
+    .toList((a, b) => intCompare(a.length(), b.length()))
 ```

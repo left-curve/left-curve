@@ -292,6 +292,7 @@ module apply_fancy {
           match op.op {
             | Insert(value_hash) => {
               if (value_hash == leaf_node.value_hash) {
+                // Overwriting with the same value hash, no-op.
                 Unchanged(Some(Leaf(leaf_node)))
               } else {
                 pure val updated_leaf_node = { ...leaf_node, value_hash: value_hash }
@@ -325,36 +326,47 @@ module apply_fancy {
     }
   }
 
+  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
+    batch.fold((Set(), Set()), (acc, op) => {
+      // 0 = left, 1 = right
+      if (op.key_hash[bits.length()] == 0) {
+        (acc._1.union(Set(op)), acc._2)
+      } else {
+        (acc._1, acc._2.union(Set(op)))
+      }
+    })
+  }
+
   pure def prepare_batch_for_subtree(
     batch: Set[OperationOnKey],
     existing_leaf: Option[LeafNode]
   ): (Set[KeyWithValue], Option[OperationOnKey]) = {
-    // This replicates the filter_map implementation from Rust.
-    // It's a bit more complicated as we don't have early returns.
-    batch.fold((Set(), None), (acc, op) => {
-      pure val batch = acc._1
-
-      pure val is_leaf_op = match existing_leaf {
+    pure val maybe_op = batch.fold(None, (acc, op) => {
+      match existing_leaf {
         | Some(leaf) => {
             if (op.key_hash == leaf.key_hash) {
               Some(op)
             } else {
-              None
+              acc
             }
           }
-        | None => None
+        | None => acc
       }
+    })
 
-      if (is_leaf_op != None) {
+    pure val filtered_batch = batch.filterMap(op => {
+      if (maybe_op == Some(op)) {
         // early return
-        (batch, is_leaf_op)
+        None
       } else {
         match op.op {
-          | Insert(value_hash) => (batch.union(Set({ key_hash: op.key_hash, value_hash: value_hash })), acc._2)
-          | Delete => (batch, acc._2)
+          | Insert(value_hash) => Some({ key_hash: op.key_hash, value_hash: value_hash })
+          | _ => None
         }
       }
     })
+
+    (filtered_batch, maybe_op)
   }
 
   type CreateSubtreeMemo = BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
@@ -456,17 +468,6 @@ module apply_fancy {
 
   pure def max_height(values_with_key_hash) = {
     values_with_key_hash.fold(0, (max_height, key) => max(max_height, key.key_hash.length()))
-  }
-
-  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
-    batch.fold((Set(), Set()), (acc, op) => {
-      // 0 = left, 1 = right
-      if (op.key_hash[bits.length()] == 0) {
-        (acc._1.union(Set(op)), acc._2)
-      } else {
-        (acc._1, acc._2.union(Set(op)))
-      }
-    })
   }
 
   pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
