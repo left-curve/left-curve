@@ -43,6 +43,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::GrantNamespace { namespace, owner } => grant_namespace(ctx, namespace, owner),
+        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
             from,
@@ -55,7 +56,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
-        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
     }
 }
 
@@ -79,6 +79,14 @@ fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Res
     })?;
 
     Ok(Response::new())
+}
+
+fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
+    ensure_namespace_owner(&ctx, &denom)?;
+
+    DENOM_METADATAS.save(ctx.storage, &denom, &metadata)?;
+
+    Ok(Response::default())
 }
 
 fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
@@ -142,14 +150,6 @@ fn force_transfer(
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
     Ok(Response::new())
-}
-
-fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
-    ensure_namespace_owner(&ctx, &denom)?;
-
-    DENOM_METADATAS.save(ctx.storage, &denom, &metadata)?;
-
-    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]

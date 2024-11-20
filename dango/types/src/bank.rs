@@ -26,6 +26,10 @@ pub enum ExecuteMsg {
     ///
     /// We may implement some of these in the future.
     GrantNamespace { namespace: Part, owner: Addr },
+    /// Set metadata of a denom.
+    /// Can only be called by the namespace owner, or the chain owner in case of
+    /// top-level denoms.
+    SetMetadata { denom: Denom, metadata: Metadata },
     /// Mint tokens of the specified amount to a recipient.
     /// Can only be called by the namespace owner.
     Mint {
@@ -51,8 +55,6 @@ pub enum ExecuteMsg {
         denom: Denom,
         amount: Uint128,
     },
-    /// Set [`Metadata`] for a denom.
-    SetMetadata { denom: Denom, metadata: Metadata },
 }
 
 #[grug::derive(Serde, QueryRequest)]
