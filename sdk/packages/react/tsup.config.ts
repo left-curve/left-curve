@@ -8,9 +8,14 @@ export default defineConfig([
   {
     ...(config as Options),
     outExtension: ({ format }) => (format === "cjs" ? { js: ".cjs" } : { js: ".js" }),
-    entry: ["src/index.ts"],
+    banner: {
+      js: '"use client";',
+    },
+    entry: ["src/**"],
     format: ["esm"],
     external: ["react", "@tanstack/react-query"],
     platform: "browser",
+    splitting: false,
+    treeshake: false,
   },
 ]);

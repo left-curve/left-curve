@@ -1,3 +1,5 @@
+"use client";
+
 import { Button, CoinSelector, Input, SwapArrowDownIcon } from "@dango/shared";
 import { useAccount, useConfig } from "@leftcurve/react";
 import type React from "react";

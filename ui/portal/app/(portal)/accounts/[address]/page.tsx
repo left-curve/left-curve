@@ -3,6 +3,8 @@
 import { useParams } from "next/navigation";
 import { AccountRouter } from "./AccountRouter";
 
+export const runtime = "edge";
+
 export default function AccountsPage() {
   const { address = "0" } = useParams<{ address: string }>();
   return (

@@ -1,32 +1,21 @@
 {
-  "extends": [
-    "@leftcurve/config/ts/react.json"
-  ],
+  "extends": ["@leftcurve/config/ts/react.json"],
   "compilerOptions": {
     "paths": {
-      "~/*": [
-        "./*"
-      ]
+      "~/*": ["./*"]
     },
-    "noEmit": true,
-    "incremental": true,
-    "jsx": "preserve",
     "plugins": [
       {
         "name": "next"
       }
-    ]
+    ],
+    "noEmit": true,
+    "incremental": true,
+    "composite": true,
+    "jsx": "preserve"
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "next.config.mjs"
-  ],
-  "exclude": [
-    "node_modules"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"],
   "references": [
     {
       "path": "../shared"
