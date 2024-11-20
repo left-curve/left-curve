@@ -52,6 +52,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-portal
-          directory: ./ui/portal/build
+          directory: ./ui/portal/.vercel/output/static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}
