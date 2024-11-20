@@ -326,7 +326,10 @@ module apply_fancy {
     }
   }
 
-  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
+  pure def partition_batch(
+    batch: Set[{ key_hash: BitArray | t }],
+    bits: BitArray
+  ): (Set[{ key_hash: BitArray | t }], Set[{ key_hash: BitArray | t }]) = {
     batch.fold((Set(), Set()), (acc, op) => {
       // 0 = left, 1 = right
       if (op.key_hash[bits.length()] == 0) {
@@ -335,6 +338,20 @@ module apply_fancy {
         (acc._1, acc._2.union(Set(op)))
       }
     })
+  }
+
+  pure def partition_leaf(leaf: Option[LeafNode], bits: BitArray): (Option[LeafNode], Option[LeafNode]) = {
+    match leaf {
+      | Some(leaf) => {
+        // 0 = left, 1 = right
+        if (leaf.key_hash[bits.length()] == 0) {
+          (Some(leaf), None)
+        } else {
+          (None, Some(leaf))
+        }
+      }
+      | None => (None, None)
+    }
   }
 
   pure def prepare_batch_for_subtree(
@@ -369,11 +386,7 @@ module apply_fancy {
     (filtered_batch, maybe_op)
   }
 
-  type CreateSubtreeMemo = BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
-
-  pure val bits_to_compute = Set(0,1)
-    .allListsUpTo(MAX_HASH_LENGTH)
-    .toList((a, b) => intCompare(a.length(), b.length()))
+  type CreateSubtreeMemo = (Version, BitArray, Set[KeyWithValue], Option[LeafNode]) -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
 
   pure def pre_compute_create_subtree(
     tree: Tree,
@@ -382,31 +395,50 @@ module apply_fancy {
     batch: Set[KeyWithValue],
     existing_leaf: Option[LeafNode]
   ): CreateSubtreeMemo = {
-   bits_to_compute.foldr(Map(), (bits_now, memo) => {
-     pure val batch_now = batch.filter(kv => bits_now.isPrefixOf(kv.key_hash))
+    pure val bits_to_compute = Set(0,1)
+      .allListsUpTo(MAX_HASH_LENGTH)
+      .filter(b => bits.isPrefixOf(b))
+      .toList((a, b) => intCompare(a.length(), b.length()))
 
-     pure val existing_leaf_now = if (existing_leaf != None and bits_now.isPrefixOf(existing_leaf.unwrap().key_hash)) {
-       Some(existing_leaf.unwrap())
-     } else {
-       None
-     }
+    bits_to_compute.foldr(Map(), (bits_now, memo) => {
+      pure val batch_now = batch.filter(kv => bits_now.isPrefixOf(kv.key_hash))
 
-     pure val result = if (batch_now.size() == 0 and existing_leaf_now == None) {
+      pure val existing_leaf_now = if (existing_leaf != None and bits_now.isPrefixOf(existing_leaf.unwrap().key_hash)) {
+        existing_leaf
+      } else {
+        None
+      }
+
+      pure val memo_key = (version, bits_now, batch_now, existing_leaf_now)
+      pure val memo_value = tree.create_subtree_with_memo(memo, version, bits_now, batch_now, existing_leaf_now)
+      memo.put(memo_key, memo_value)
+    })
+  }
+
+  pure def create_subtree_with_memo(
+    tree: Tree,
+    memo: CreateSubtreeMemo,
+    version: Version,
+    bits: BitArray,
+    batch: Set[KeyWithValue],
+    existing_leaf: Option[LeafNode]
+  ): { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] } = {
+     if (batch.size() == 0 and existing_leaf == None) {
        // The subtree to be created is empty: do nothing.
        { outcome: Unchanged(None), nodes_to_add: Set() }
 
-     } else if (batch_now.size() == 0) {
+     } else if (batch.size() == 0) {
        // The subtree to be created contains exactly one node, which is an
        // existing leaf node.
-       pure val node = Leaf(existing_leaf_now.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
+       pure val node = Leaf(existing_leaf.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
        { outcome: Updated(node), nodes_to_add: Set() }
 
-     } else if (batch_now.size() == 1 and existing_leaf_now == None) {
+     } else if (batch.size() == 1 and existing_leaf == None) {
        // The subtree to be created contains exactly one node, which is a
        // new leaf node.
        // This case requires special attention: we don't save the node yet,
        // because the path may be collapsed if it's sibling gets deleted.
-       pure val node = Leaf(batch_now.getOnlyElement())
+       pure val node = Leaf(batch.getOnlyElement())
        { outcome: Updated(node), nodes_to_add: Set() }
 
      } else {
@@ -415,11 +447,19 @@ module apply_fancy {
        // internal node.
        // Note that in this scenario, we certainly don't need to collapse the
        // path.
-       pure val left_bits = bits_now.append(0)
-       pure val left = memo.get(left_bits)
+       pure val partitioned_batch = partition_batch(batch, bits)
+       pure val batch_for_left = partitioned_batch._1
+       pure val batch_for_right = partitioned_batch._2
 
-       pure val right_bits = bits_now.append(1)
-       pure val right = memo.get(right_bits)
+       pure val partitioned_leaf = partition_leaf(existing_leaf, bits)
+       pure val leaf_for_left = partitioned_leaf._1
+       pure val leaf_for_right = partitioned_leaf._2
+
+       pure val left_bits = bits.append(0)
+       pure val left = memo.get((version, left_bits, batch_for_left, leaf_for_left))
+
+       pure val right_bits = bits.append(1)
+       pure val right = memo.get((version, right_bits, batch_for_right, leaf_for_right))
 
        pure val nodes_to_add =
          left.nodes_to_add
@@ -448,9 +488,6 @@ module apply_fancy {
 
        { outcome: Updated(node), nodes_to_add: nodes_to_add }
      }
-
-      memo.put(bits_now, result)
-    })
   }
 
   pure def create_subtree(
@@ -462,7 +499,7 @@ module apply_fancy {
   ): ApplyResult = {
     pure val memo = pre_compute_create_subtree(tree, version, bits, batch, existing_leaf)
 
-    pure val result = memo.get(bits)
+    pure val result = memo.get((version, bits, batch, existing_leaf))
     { outcome: result.outcome, orphans_to_add: Set(), nodes_to_add: result.nodes_to_add }
   }
 

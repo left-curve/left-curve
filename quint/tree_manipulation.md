@@ -908,7 +908,10 @@ fn partition_batch<T>(
 In Quint, we do a simpler partition using a fold and list access for bits. 
 
 ```bluespec apply_fancy.qnt+=
-  pure def partition_batch(batch: Set[OperationOnKey], bits: BitArray): (Set[OperationOnKey], Set[OperationOnKey]) = {
+  pure def partition_batch(
+    batch: Set[{ key_hash: BitArray | t }],
+    bits: BitArray
+  ): (Set[{ key_hash: BitArray | t }], Set[{ key_hash: BitArray | t }]) = {
     batch.fold((Set(), Set()), (acc, op) => {
       // 0 = left, 1 = right
       if (op.key_hash[bits.length()] == 0) {
@@ -917,6 +920,45 @@ In Quint, we do a simpler partition using a fold and list access for bits.
         (acc._1, acc._2.union(Set(op)))
       }
     })
+  }
+```
+
+### Partition Leaf
+
+There is a similar function to partition an optional leaf:
+
+```rust
+fn partition_leaf(leaf: Option<LeafNode>, bits: BitArray) -> (Option<LeafNode>, Option<LeafNode>) {
+    if let Some(leaf) = leaf {
+        let bit = bit_at_index(&leaf.key_hash, bits.num_bits);
+        // 0 = left, 1 = right
+        debug_assert!(bit == 0 || bit == 1);
+        if bit == 0 {
+            (Some(leaf), None)
+        } else {
+            (None, Some(leaf))
+        }
+    } else {
+        (None, None)
+    }
+}
+```
+
+Replacing `if let` with a `match` and `bit_at_index` with simple list access, we have: 
+
+```bluespec apply_fancy.qnt+=
+  pure def partition_leaf(leaf: Option[LeafNode], bits: BitArray): (Option[LeafNode], Option[LeafNode]) = {
+    match leaf {
+      | Some(leaf) => {
+        // 0 = left, 1 = right
+        if (leaf.key_hash[bits.length()] == 0) {
+          (Some(leaf), None)
+        } else {
+          (None, Some(leaf))
+        }
+      }
+      | None => (None, None)
+    }
   }
 ```
 
@@ -1009,14 +1051,258 @@ And finally we return both:
 
 The second recursive function is `create_subtree`, and we also have to emulate it.
 
-Similar to the `ApplyAtMemo` type, we define a (simpler) memo type for this function:
+The Rust signature looks like this:
+```rust
+    fn create_subtree(
+        &self,
+        storage: &mut dyn Storage,
+        version: u64,
+        bits: BitArray,
+        batch: Vec<(Hash256, Hash256)>,
+        existing_leaf: Option<LeafNode>,
+    ) -> StdResult<Outcome> {
+```
+
+In Quint, we use pre-computation and memoization:
 
 ```bluespec apply_fancy.qnt+=
-  type CreateSubtreeMemo = BitArray -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
+  pure def create_subtree(
+    tree: Tree,
+    version: Version,
+    bits: BitArray,
+    batch: Set[KeyWithValue],
+    existing_leaf: Option[LeafNode]
+  ): ApplyResult = {
+    pure val memo = pre_compute_create_subtree(tree, version, bits, batch, existing_leaf)
+
+    pure val result = memo.get((version, bits, batch, existing_leaf))
+    { outcome: result.outcome, orphans_to_add: Set(), nodes_to_add: result.nodes_to_add }
+  }
+```
+
+Let's break that down.
+
+Similar to the `ApplyAtMemo` type, we define a memo type for this function:
+
+```bluespec apply_fancy.qnt+=
+  type CreateSubtreeMemo = (Version, BitArray, Set[KeyWithValue], Option[LeafNode]) -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
+```
+
+The pre-computation function receives all paramters and returns this memo:
+
+```bluespec apply_fancy.qnt+=
+  pure def pre_compute_create_subtree(
+    tree: Tree,
+    version: Version,
+    bits: BitArray,
+    batch: Set[KeyWithValue],
+    existing_leaf: Option[LeafNode]
+  ): CreateSubtreeMemo = {
+```
+
+Now, for what to pre-compute: we can potentially need to call `create_subtree` recursively for any bit array that has the original `bits` as prefix. Longer bit arrays should be processed before shorter ones, as `create_subtree` for shorter bit arrays may depend on the result of `create_subtree` of longer bit arrays.
+
+`bits_to_compute` defines this list of bit arrays, ordered from shortest to longest length - we will iterate it with `foldr` and therefore start from the right (longest).
+
+```bluespec apply_fancy.qnt+=
+    pure val bits_to_compute = Set(0,1)
+      .allListsUpTo(MAX_HASH_LENGTH)
+      .filter(b => bits.isPrefixOf(b))
+      .toList((a, b) => intCompare(a.length(), b.length()))
+```
+
+Now the iteration: for each bit array, we can predict with each `batch` and `existing_leaf` it will be called, as that is just a matter of checking prefixes. Similar to `apply_at`, our memo includes all parameters except for the tree/storage itself.
+
+```bluespec apply_fancy.qnt+=
+    bits_to_compute.foldr(Map(), (bits_now, memo) => {
+      pure val batch_now = batch.filter(kv => bits_now.isPrefixOf(kv.key_hash))
+
+      pure val existing_leaf_now = if (existing_leaf != None and bits_now.isPrefixOf(existing_leaf.unwrap().key_hash)) {
+        existing_leaf
+      } else {
+        None
+      }
+
+      pure val memo_key = (version, bits_now, batch_now, existing_leaf_now)
+      pure val memo_value = tree.create_subtree_with_memo(memo, version, bits_now, batch_now, existing_leaf_now)
+      memo.put(memo_key, memo_value)
+    })
+  }
+```
+
+The pre-computation calls `create_subtree_with_memo`, which is what maps from `create_subtree` in Rust - we already have `create_subtree` in Quint which is responsible for calling the pre-computation and returning the final result, so we gave a different name for this auxiliary one:
+
+```bluespec apply_fancy.qnt+=
+ pure def create_subtree_with_memo(
+    tree: Tree,
+    memo: CreateSubtreeMemo,
+    version: Version,
+    bits: BitArray,
+    batch: Set[KeyWithValue],
+    existing_leaf: Option[LeafNode]
+  ): { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] } = {
+```
+
+Then we start the translation from the body of `create_subtree` in Rust:
+
+```rust
+        match (batch.len(), existing_leaf) {
+```
+
+In Quint, this `match` will be if-else branches. 
+
+First case:
+```rust
+            // The subtree to be created is empty: do nothing.
+            (0, None) => Ok(Outcome::Unchanged(None)),
 ```
 
 ```bluespec apply_fancy.qnt+=
-  pure val bits_to_compute = Set(0,1)
-    .allListsUpTo(MAX_HASH_LENGTH)
-    .toList((a, b) => intCompare(a.length(), b.length()))
+     if (batch.size() == 0 and existing_leaf == None) {
+       // The subtree to be created is empty: do nothing.
+       { outcome: Unchanged(None), nodes_to_add: Set() }
+
 ```
+
+Second case:
+```rust
+            // The subtree to be created contains exactly one node, which is an
+            // existing leaf node.
+            (0, Some(leaf_node)) => Ok(Outcome::Unchanged(Some(Node::Leaf(leaf_node)))),
+```
+
+```bluespec apply_fancy.qnt+=
+     } else if (batch.size() == 0) {
+       // The subtree to be created contains exactly one node, which is an
+       // existing leaf node.
+       pure val node = Leaf(existing_leaf.unwrap()) // existing_leaf_now is Some for sure, since we didn't match the first case
+       { outcome: Updated(node), nodes_to_add: Set() }
+
+```
+
+Third case:
+```rust
+            // The subtree to be created contains exactly one node, which is a
+            // new leaf node.
+            // This case requires special attention: we don't save the node yet,
+            // because the path may be collapsed if its sibling gets deleted.
+            (1, None) => {
+                let (key_hash, value_hash) = only_item(batch);
+                Ok(Outcome::Updated(Node::Leaf(LeafNode {
+                    key_hash,
+                    value_hash,
+                })))
+            },
+```
+
+```bluespec apply_fancy.qnt+=
+     } else if (batch.size() == 1 and existing_leaf == None) {
+       // The subtree to be created contains exactly one node, which is a
+       // new leaf node.
+       // This case requires special attention: we don't save the node yet,
+       // because the path may be collapsed if it's sibling gets deleted.
+       pure val node = Leaf(batch.getOnlyElement())
+       { outcome: Updated(node), nodes_to_add: Set() }
+
+```
+
+Fourth case:
+```rust
+            // The subtree to be created contains more 2 or more nodes.
+            // Recursively create the tree. Return the subtree's root, an
+            // internal node.
+            // Note that in this scenario, we certainly don't need to collapse the
+            // path.
+            (_, existing_leaf) => {
+                // Split the batch for left and right children.
+                let (batch_for_left, batch_for_right) = partition_batch(batch, bits);
+                let (leaf_for_left, leaf_for_right) = partition_leaf(existing_leaf, bits);
+
+                // Create the left subtree.
+                let left_bits = bits.extend_one_bit(true);
+                let left_outcome = self.create_subtree(
+                    storage,
+                    version,
+                    left_bits,
+                    batch_for_left,
+                    leaf_for_left,
+                )?;
+
+                // Create the right subtree.
+                let right_bits = bits.extend_one_bit(false);
+                let right_outcome = self.create_subtree(
+                    storage,
+                    version,
+                    right_bits,
+                    batch_for_right,
+                    leaf_for_right,
+                )?;
+
+                // If a subtree is non-empty, save it's root node.
+                if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &left_outcome {
+                    self.save_node(storage, version, left_bits, node)?;
+                }
+                if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &right_outcome {
+                    self.save_node(storage, version, right_bits, node)?;
+                }
+
+                Ok(Outcome::Updated(Node::Internal(InternalNode {
+                    left_child: into_child(version, left_outcome),
+                    right_child: into_child(version, right_outcome),
+                })))
+            },
+        }
+    }
+```
+
+```bluespec apply_fancy.qnt+=
+} else {
+       // The subtree to be created contains more 2 or more nodes.
+       // Recursively create the tree. Return the subtree's root, an
+       // internal node.
+       // Note that in this scenario, we certainly don't need to collapse the
+       // path.
+       pure val partitioned_batch = partition_batch(batch, bits)
+       pure val batch_for_left = partitioned_batch._1
+       pure val batch_for_right = partitioned_batch._2
+
+       pure val partitioned_leaf = partition_leaf(existing_leaf, bits)
+       pure val leaf_for_left = partitioned_leaf._1
+       pure val leaf_for_right = partitioned_leaf._2
+
+       pure val left_bits = bits.append(0)
+       pure val left = memo.get((version, left_bits, batch_for_left, leaf_for_left))
+
+       pure val right_bits = bits.append(1)
+       pure val right = memo.get((version, right_bits, batch_for_right, leaf_for_right))
+
+       pure val nodes_to_add =
+         left.nodes_to_add
+         .union(right.nodes_to_add)
+         .union(match left.outcome {
+           | Updated(node) => Set(({ version: version, key_hash: left_bits }, node))
+           | Unchanged(option) => match option {
+              | Some(node) => Set(({ version: version, key_hash: left_bits }, node))
+              | _ => Set()
+             }
+          | _ => Set()
+         })
+         .union(match right.outcome {
+           | Updated(node) => Set(({ version: version, key_hash: right_bits }, node))
+           | Unchanged(option) => match option {
+              | Some(node) => Set(({ version: version, key_hash: right_bits }, node))
+              | _ => Set()
+             }
+          | _ => Set()
+         })
+
+       pure val node = Internal({
+         left_child: into_child(version, left.outcome),
+         right_child: into_child(version, right.outcome),
+       })
+
+       { outcome: Updated(node), nodes_to_add: nodes_to_add }
+     }
+  }
+```
+
