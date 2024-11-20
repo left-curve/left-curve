@@ -1,5 +1,5 @@
 use {
-    crate::{BALANCES, DENOM_METADATAS, NAMESPACE_OWNERS, SUPPLIES},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
     dango_types::bank::QueryMsg,
     grug::{
         Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, ImmutableCtx, Json, JsonSerExt,
@@ -23,7 +23,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::Metadata { denom } => {
-            let metadata = DENOM_METADATAS.load(ctx.storage, &denom)?;
+            let metadata = METADATAS.load(ctx.storage, &denom)?;
             metadata.to_json_value()
         },
     }

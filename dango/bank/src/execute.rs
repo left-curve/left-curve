@@ -1,5 +1,5 @@
 use {
-    crate::{BALANCES, DENOM_METADATAS, NAMESPACE_OWNERS, SUPPLIES},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
@@ -84,7 +84,7 @@ fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Res
 fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
     ensure_namespace_owner(&ctx, &denom)?;
 
-    DENOM_METADATAS.save(ctx.storage, &denom, &metadata)?;
+    METADATAS.save(ctx.storage, &denom, &metadata)?;
 
     Ok(Response::default())
 }
