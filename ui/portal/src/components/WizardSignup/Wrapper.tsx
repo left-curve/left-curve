@@ -15,8 +15,8 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
     <div className="flex flex-col items-center justify-center w-full gap-8">
       <div
         className={twMerge("flex flex-col items-center", {
-          "dango-grid-landscape-fat-l": isFirstStep,
-          "dango-grid-square-l": !isFirstStep,
+          "dango-grid-3x4-L": isFirstStep,
+          "dango-grid-4x4-M": !isFirstStep,
         })}
       >
         <div className="flex flex-col gap-4 items-center">

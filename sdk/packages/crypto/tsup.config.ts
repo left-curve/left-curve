@@ -9,5 +9,5 @@ export default defineConfig({
   ...(config as Options),
   platform: "node",
   outExtension: ({ format }) => (format === "cjs" ? { js: ".cjs" } : { js: ".js" }),
-  entry: ["src/**"],
+  entry: ["src/**", "!src/**/*.spec.ts"],
 });

@@ -65,7 +65,7 @@
     "@leftcurve/types": "workspace:^",
     "@leftcurve/utils": "workspace:^",
     "eventemitter3": "^5.0.1",
-    "zustand": "^4.5.5"
+    "zustand": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0"

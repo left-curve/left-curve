@@ -5,7 +5,7 @@ import { truncateAddress } from "@leftcurve/utils";
 export const ReceiveContainer: React.FC = () => {
   const { account } = useAccount();
   return (
-    <div className="dango-grid-square-m gap-4 flex flex-col items-center justify-center w-full text-typography-black-200">
+    <div className="dango-grid-5x5-M gap-4 flex flex-col items-center justify-center w-full text-typography-black-200">
       <div className="p-4 bg-surface-rose-200 rounded-full">
         <img src="/images/send-and-receive.webp" alt="transfer" className="w-[88px] h-[88px]" />
       </div>
