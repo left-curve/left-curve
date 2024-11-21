@@ -26,13 +26,9 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit }) => {
       <div className="flex gap-2 text-sm w-full items-center justify-center font-extrabold text-typography-black-200">
         <p className="uppercase">{accountName}</p>
       </div>
-      <div className="rounded-full bg-surface-rose-200 p-4">
+      <div className="rounded-full bg-surface-rose-200 flex items-center justify-center min-h-[6.5rem] min-w-[6.5rem]">
         {avatarUri ? (
-          <img
-            src={avatarUri}
-            className="rounded-full h-[4.5rem] w-[4.5rem]"
-            alt="account-type-avatar"
-          />
+          <img src={avatarUri} className="h-[4.5rem] w-[4.5rem]" alt="account-type-avatar" />
         ) : (
           <div className="rounded-full h-[4.5rem] w-[4.5rem] bg-gray-200" />
         )}

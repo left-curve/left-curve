@@ -89,6 +89,7 @@ const inputVariants = tv(
     variants: {
       color: {
         default: {},
+        purple: {},
       },
       size: {
         sm: {},
@@ -146,6 +147,26 @@ const inputVariants = tv(
             "bg-surface-rose-300 text-typography-rose-600 group-hover:bg-surface-rose-400",
           input: "placeholder:text-typography-rose-600 focus:text-typography-black-100",
           description: "text-typography-600",
+        },
+      },
+      {
+        size: "md",
+        color: "purple",
+        class: {
+          inputWrapper:
+            "bg-surface-purple-100 text-typography-black-300 group-hover:bg-surface-purple-200 border border-purple-600/40",
+          input: "placeholder:text-typography-black-100/40 focus:text-typography-black-100",
+          description: "text-typography-black-300",
+        },
+      },
+      {
+        size: "lg",
+        color: "purple",
+        class: {
+          inputWrapper:
+            "bg-surface-purple-100 text-typography-black-300 group-hover:bg-surface-purple-200 border border-purple-600/40",
+          input: "placeholder:text-typography-black-100/40 focus:text-typography-black-100",
+          description: "text-typography-black-300",
         },
       },
     ],
