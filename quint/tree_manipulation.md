@@ -18,21 +18,11 @@ In order to replicate Rust's mutations over the tree in Quint, we need to also r
 type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_add: Set[(NodeId, Node)] }
 ```
 
-
 ## Recursion emulation for `apply_at`
 
 The Rust functions `apply_at`, `apply_at_internal` and `apply_at_child` are mutually recursive. Since there is no recursion in Quint, we need to emulate it. What happens in the actual recursion is that longer bit arrays will get computed first, and then smaller bit array computations might depend on the result of longer bit array computations. Therefore, to emulate it, we start from the longest bit arrays, which shouldn't depend on anything else, and save the result in a `memo` value that will be given to what we process next. Then, when a computation calls `apply_at`, we read a result from the `memo` value instead - and the result should already be there, since are computing dependencies first.
 
-```rust
-    fn apply_at(
-        &self,
-        storage: &mut dyn Storage,
-        new_version: u64,
-        old_version: u64,
-        bits: BitArray,
-        batch: Vec<(Hash256, Op<Hash256>)>,
-    ) -> StdResult<Outcome> 
-```
+The type of the `memo` value is defined by `ApplyAtMemo`, and has a similar signature to the `apply_at` Rust function. `sorted_nodes` defines the order in which memo values will be pre-computed, and `pre_compute_apply_at` does iteration over versions and nodes, pre-computing `apply_at` for each of them. Following, let's look at a concrete example and understand this emulation in more detail.
 
 ```bluespec apply_fancy.qnt+=
   /// Result of apply_at calls, for emulating recursion
