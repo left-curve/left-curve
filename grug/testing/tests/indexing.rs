@@ -1,15 +1,10 @@
 use {
     assertor::*,
-    grug_app::NaiveProposalPreparer,
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message},
-    grug_vm_rust::RustVm,
-    indexer_core::{blocking_indexer::Indexer as AppIndexer, IndexerTrait},
+    indexer_core::IndexerTrait,
     sea_orm::{EntityTrait, QueryOrder},
-    std::{
-        str::FromStr,
-        thread::{sleep, sleep_ms},
-    },
+    std::str::FromStr,
 };
 
 #[test]
@@ -48,22 +43,25 @@ fn index_block_with_blocking_indexer() {
             //dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let _transactions = indexer_entity::transactions::Entity::find()
+            let transactions = indexer_entity::transactions::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch transactions");
+            assert_that!(transactions).is_not_empty();
             //dbg!(&transactions);
 
             let _messages = indexer_entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
+            assert_that!(_messages).is_not_empty();
             //dbg!(&messages);
 
-            let _events = indexer_entity::events::Entity::find()
+            let events = indexer_entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
+            assert_that!(events).is_not_empty();
             //dbg!(&events);
 
             Ok::<(), sea_orm::DbErr>(())
@@ -144,18 +142,21 @@ fn index_block_with_nonblocking_indexer() {
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch transactions");
+            assert_that!(transactions).is_not_empty();
             //dbg!(&transactions);
 
             let messages = indexer_entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
+            assert_that!(messages).is_not_empty();
             //dbg!(&messages);
 
             let events = indexer_entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
+            assert_that!(events).is_not_empty();
             //dbg!(&events);
 
             Ok::<(), sea_orm::DbErr>(())
