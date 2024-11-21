@@ -168,4 +168,19 @@ module tree {
 
   /// Is the node a leaf node?
   pure def isLeaf(n) = (not(isInternal(n)))
+
+  pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
+    new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
+  }
+
+  pure def into_child(version: Version, outcome: Outcome): Option[Child] = {
+    match outcome {
+      | Updated(node) => Some({
+        version: version,
+        hash: node.hash(),
+      })
+      | Unchanged(_) => None // Unreachable if _ is not None
+      | Deleted => None // Unreachable
+    }
+  }
 }
