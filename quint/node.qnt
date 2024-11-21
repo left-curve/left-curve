@@ -26,6 +26,15 @@ type Node =
     | Internal(InternalNode)
     | Leaf(LeafNode)
 
+  type Outcome =
+    | Unchanged(Option[Node])
+    | Updated(Node)
+    | Deleted
+
+  type Operation =
+    | Insert(Bytes_t)
+    | Delete
+
 pure def is_leaf(n: Node) : bool =
     match n {
         | Leaf(n) => true

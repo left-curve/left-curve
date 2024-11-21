@@ -11,15 +11,6 @@ module tree {
 
   pure val MAX_HASH_LENGTH = 4
 
-  type Outcome =
-    | Unchanged(Option[Node])
-    | Updated(Node)
-    | Deleted
-
-  type Operation =
-    | Insert(Bytes_t)
-    | Delete
-
   // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
   type OperationOnKey = { key_hash: BitArray, op: Operation }
   // For types like -> batch: Vec<(Hash256, Hash256)>

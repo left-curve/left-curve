@@ -55,4 +55,61 @@ module utils {
   pure def mapToTuples(m: a -> b): Set[(a, b)] = {
     m.keys().map(k => (k, m.get(k)))
   }
+
+  pure def max_height(values_with_key_hash) = {
+    values_with_key_hash.fold(0, (max_height, key) => max(max_height, key.key_hash.length()))
+  }
+
+  pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
+    new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
+  }
+
+  pure def into_child(version: Version, outcome: Outcome): Option[Child] = {
+    match outcome {
+      | Updated(node) => Some({
+        version: version,
+        hash: node.hash(),
+      })
+      | Unchanged(_) => None // Unreachable if _ is not None
+      | Deleted => None // Unreachable
+    }
+  }
+
+  pure def is_updated_or_deleted(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(_) => true
+      | Deleted => true
+      | _ => false
+    }
+  }
+
+  pure def is_unchanged(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(_) => true
+      | _ => false
+    }
+  }
+
+  pure def unchanged_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(optional) => match optional {
+        | Some(node) => match node {
+          | Leaf(_) => true
+          | _ => false
+        }
+        | _ => false
+      }
+      | _ => false
+    }
+  }
+
+  pure def updated_to_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(node) => match node {
+        | Leaf(_) => true
+        | _ => false
+      }
+      | _ => false
+    }
+  }
 }
