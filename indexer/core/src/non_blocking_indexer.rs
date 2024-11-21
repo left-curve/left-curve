@@ -72,7 +72,7 @@ impl Indexer {
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
         let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex {
-            block_info: block.clone(),
+            block_info: *block,
             txs: vec![],
         });
         action(block_to_index)
@@ -81,7 +81,7 @@ impl Indexer {
     fn find_or_fail(&self, block_height: &u64) -> Result<BlockToIndex, anyhow::Error> {
         let blocks = self.blocks.lock().expect("Can't lock blocks");
 
-        let block_to_index = match blocks.get(&block_height) {
+        let block_to_index = match blocks.get(block_height) {
             Some(block_to_index) => block_to_index,
             None => anyhow::bail!("Block {} not found", block_height),
         };
@@ -137,7 +137,7 @@ impl IndexerTrait for Indexer {
 
     fn shutdown(&mut self) -> Result<(), anyhow::Error> {
         // Avoid running this twice when called manually and from `Drop`
-        if self.indexing == false {
+        if !self.indexing {
             return Ok(());
         }
         self.indexing = false;

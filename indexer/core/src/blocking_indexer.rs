@@ -138,10 +138,7 @@ impl IndexerTrait for Indexer {
             let new_transaction = indexer_entity::transactions::ActiveModel {
                 id: Set(transaction_id),
                 has_succeeded: Set(tx_outcome.result.is_ok()),
-                error_message: Set(tx_outcome
-                    .clone()
-                    .result
-                    .map_or_else(|err| Some(err), |_| None)),
+                error_message: Set(tx_outcome.clone().result.err()),
                 gas_wanted: Set(tx.gas_limit.try_into().unwrap()),
                 gas_used: Set(tx_outcome.gas_used.try_into().unwrap()),
                 created_at: Set(naive_datetime),
