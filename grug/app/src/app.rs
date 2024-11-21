@@ -1,5 +1,3 @@
-#[cfg(feature = "indexer")]
-use indexer_core::blocking_indexer::Indexer as IndexerApp;
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,

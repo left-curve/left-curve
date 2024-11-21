@@ -1,5 +1,5 @@
 use grug_math::Inner;
-use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
+use grug_types::{BlockInfo, Tx, TxOutcome};
 use sea_orm::prelude::*;
 use sea_orm::sqlx::types::chrono::TimeZone;
 use sea_orm::Set;

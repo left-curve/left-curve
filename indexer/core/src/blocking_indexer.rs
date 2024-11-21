@@ -1,22 +1,14 @@
+use super::Context;
+use super::IndexerTrait;
 use grug_math::Inner;
-use grug_types::JsonSerExt;
-use grug_types::{BlockInfo, BlockOutcome, Message, Tx, TxOutcome};
-use migration::{Migrator, MigratorTrait};
+use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
 use sea_orm::prelude::*;
 use sea_orm::sqlx::types::chrono::TimeZone;
 use sea_orm::ActiveModelTrait;
-use sea_orm::ConnectionTrait;
-use sea_orm::EntityTrait;
 use sea_orm::Set;
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use sea_orm::{DatabaseTransaction, TransactionTrait};
 use std::sync::{Arc, Mutex};
-use std::thread::sleep;
 use tokio::runtime::{Builder, Runtime};
-use tokio::task;
-
-use super::Context;
-use super::IndexerTrait;
 
 #[derive(Debug, Clone)]
 pub struct Indexer {

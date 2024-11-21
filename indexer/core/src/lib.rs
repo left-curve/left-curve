@@ -1,5 +1,4 @@
 use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
-use std::sync::Arc;
 
 pub mod active_model;
 pub mod blocking_indexer;

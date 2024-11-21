@@ -423,7 +423,7 @@ where
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
