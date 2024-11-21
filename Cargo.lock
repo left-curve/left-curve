@@ -1590,6 +1590,7 @@ dependencies = [
  "dango-taxman",
  "dango-token-factory",
  "dango-types",
+ "dango-vesting",
  "grug",
  "grug-app",
  "grug-db-disk",
@@ -1632,6 +1633,15 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "dango-vesting"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
 ]
 
 [[package]]
