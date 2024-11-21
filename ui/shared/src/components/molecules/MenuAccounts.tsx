@@ -42,12 +42,8 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
   });
 
   const sortedAccounts = useMemo(() => {
-    return [...(accounts ? accounts : [])]?.sort((a, b) => {
-      if (a.index === selectedAccount?.index) return -1;
-      if (b.index === selectedAccount?.index) return 1;
-      return a.index - b.index;
-    });
-  }, [selectedAccount, accounts]);
+    return [...(accounts ? accounts : [])]?.sort((a, b) => a.index - b.index);
+  }, [accounts]);
 
   if (!selectedAccount) return null;
 
@@ -91,29 +87,43 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
             </Button>
           </div>
         </div>
-        <div
-          className={twMerge(
-            "flex flex-col gap-4 relative flex-1 scrollbar-none",
-            expanded ? "overflow-scroll" : "overflow-hidden cursor-pointer",
-          )}
-        >
-          {sortedAccounts.map((account) => {
-            return (
-              <AccountCard
-                avatarUrl={images[account.type]}
-                key={crypto.randomUUID()}
-                account={account}
-                onClick={() => [changeAccount?.(account), setExpanded(false)]}
-                manageAction={manageAction}
-                expanded={expanded}
-              />
-            );
-          })}
+
+        <div className="relative flex-1 overflow-hidden flex flex-col gap-4">
+          <div className="flex flex-col w-full gap-2">
+            <AccountCard avatarUrl={images[selectedAccount.type]} account={selectedAccount} />
+            <Button
+              variant="bordered"
+              color="purple"
+              size="sm"
+              onClick={() => manageAction?.(selectedAccount)}
+            >
+              Manage
+            </Button>
+          </div>
+          <div
+            className={twMerge(
+              "flex flex-col gap-4 relative flex-1 scrollbar-none",
+              expanded ? "overflow-scroll" : "overflow-hidden cursor-pointer",
+            )}
+          >
+            {sortedAccounts.map((account) => {
+              if (account.index === selectedAccount.index) return null;
+              return (
+                <AccountCard
+                  avatarUrl={images[account.type]}
+                  key={account.index}
+                  account={account}
+                  onClick={() => [changeAccount?.(account), setExpanded(false)]}
+                  expanded={expanded}
+                />
+              );
+            })}
+          </div>
 
           <div
             className={twMerge(
-              "absolute bottom-0 left-0 w-full h-[2rem] bg-gradient-to-b from-transparent to-white/50  z-[60]",
-              expanded ? "scale-0" : "scale-100",
+              "absolute bottom-0 left-0 w-full h-[2rem] bg-gradient-to-b from-transparent to-white/50 z-[60]",
+              !expanded ? "scale-0" : "scale-100",
             )}
           />
           <div

@@ -2,7 +2,7 @@
 
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
 
-import { Button } from "../../";
+import { motion } from "framer-motion";
 
 import { capitalize, truncateAddress } from "@leftcurve/utils";
 import { type VariantProps, tv } from "tailwind-variants";
@@ -19,7 +19,6 @@ export interface CardProps extends VariantProps<typeof cardVariants> {
   className?: string;
   avatarUrl: string;
   account: Account;
-  manageAction?: (account: Account) => void;
   onClick?: () => void;
   expanded?: boolean;
 }
@@ -27,7 +26,6 @@ export interface CardProps extends VariantProps<typeof cardVariants> {
 export const AccountCard: React.FC<CardProps> = ({
   className,
   onClick,
-  manageAction,
   account,
   avatarUrl,
   expanded,
@@ -43,13 +41,10 @@ export const AccountCard: React.FC<CardProps> = ({
   const { base, title, subtitle } = cardVariants();
 
   return (
-    <div
-      className={twMerge(
-        "flex flex-col gap-2 transition-all cursor-pointer",
-        expanded
-          ? "first:mt-0  mt-0"
-          : "first:mt-0 first:mb-[9rem] first:md:mb-[6.5rem] mt-[-9rem] md:mt-[-6.5rem]",
-      )}
+    <motion.div
+      className={twMerge("flex flex-col gap-2 transition-all cursor-pointer mt-0", {
+        "first:mt-0 mt-[-9rem] md:mt-[-6.5rem]": !expanded,
+      })}
       onClick={onClick}
     >
       <div className={twMerge(base({ color: account.type, isActive }), className)}>
@@ -84,12 +79,7 @@ export const AccountCard: React.FC<CardProps> = ({
           ) : null}
         </div>
       </div>
-      {isActive ? (
-        <Button variant="bordered" color="purple" size="sm" onClick={() => manageAction?.(account)}>
-          Manage
-        </Button>
-      ) : null}
-    </div>
+    </motion.div>
   );
 };
 
