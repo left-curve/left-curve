@@ -24,7 +24,7 @@ rand               = { workspace = true }
 serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-indexer-core       = { workspace = true }
+indexer-core       = { workspace = true, features = ["tracing"] }
 indexer-entity     = { workspace = true }
 assertor           = { workspace = true }
 

@@ -108,8 +108,12 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub struct TestSuite<DB = MemDb, VM = RustVm, INDEXER = AppIndexer, PP = NaiveProposalPreparer>
-where
+pub struct TestSuite<
+    DB = MemDb,
+    VM = RustVm,
+    INDEXER = indexer_core::null_indexer::Indexer,
+    PP = NaiveProposalPreparer,
+> where
     DB: Db,
     VM: Vm,
     PP: ProposalPreparer,
@@ -151,7 +155,7 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, AppIndexer, NaiveProposalPreparer>
+impl<VM> TestSuite<MemDb, VM, indexer_core::null_indexer::Indexer, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
     //Indexer: IndexerAppTrait,
@@ -170,6 +174,7 @@ where
         Self::new_with_db_vm_and_pp(
             MemDb::new(),
             vm,
+            indexer_core::null_indexer::Indexer::new().unwrap(),
             NaiveProposalPreparer,
             chain_id,
             block_time,
@@ -195,12 +200,13 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        //indexer.migrate_db().expect("Can't migrate DB");
+        let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+        indexer.start().expect("Can't start indexer");
 
         Self::new_with_db_vm_and_pp(
             MemDb::new(),
             RustVm::new(),
+            indexer,
             pp,
             chain_id,
             block_time,
@@ -211,10 +217,11 @@ where
     }
 }
 
-impl<DB, VM, PP> TestSuite<DB, VM, AppIndexer, PP>
+impl<DB, VM, INDEXER, PP> TestSuite<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
+    INDEXER: IndexerAppTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -222,6 +229,7 @@ where
     pub fn new_with_db_vm_and_pp(
         db: DB,
         vm: VM,
+        indexer: INDEXER,
         pp: PP,
         chain_id: String,
         block_time: Duration,
@@ -229,9 +237,6 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        indexer.start().expect("Can't start AppIndexer");
-
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, u64::MAX, indexer);
 

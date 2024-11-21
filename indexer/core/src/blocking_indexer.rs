@@ -43,23 +43,29 @@ impl IndexerTrait for Indexer {
         })
     }
 
+    //fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
+    //    Some(self.runtime.clone())
+    //}
+
     fn start(&self) -> Result<(), anyhow::Error> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
         Ok(())
     }
 
-    fn shutdown(self) -> Result<(), anyhow::Error> {
+    fn shutdown(&mut self) -> Result<(), anyhow::Error> {
         //// This is making sure the current transaction is being committed before we shutdown the
         //// process
-        //loop {
-        //    let db_txn = self.db_txn.lock().unwrap();
-        //    if db_txn.is_none() {
-        //        break;
-        //    }
-        //    sleep(std::time::Duration::from_millis(10));
-        //}
-        drop(self);
+        let mut db_txn = self.db_txn.lock().unwrap();
+        let Some((_, txn)) = db_txn.take() else {
+            return Ok(());
+        };
+
+        self.runtime.block_on(async {
+            txn.commit().await.expect("Can't commit txn");
+        });
+
+        *db_txn = None;
         Ok(())
     }
 
@@ -221,19 +227,7 @@ impl Indexer {
 
 impl Drop for Indexer {
     fn drop(&mut self) {
-        // If the DatabaseTransaction is left open (not committed) its `Drop` implementation
-        // expects a Tokio context. We must call `rollback` manually on it within our Tokio
-        // context.
-        let mut db_txn = self.db_txn.lock().unwrap();
-        let Some((_, txn)) = db_txn.take() else {
-            return;
-        };
-
-        self.runtime.block_on(async {
-            txn.rollback().await.expect("Can't rollback txn");
-        });
-
-        *db_txn = None;
+        self.shutdown().expect("Can't shutdown Indexer");
     }
 }
 

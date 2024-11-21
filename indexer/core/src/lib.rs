@@ -1,4 +1,5 @@
 use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
+use std::sync::Arc;
 
 pub mod active_model;
 pub mod blocking_indexer;
@@ -14,19 +15,18 @@ pub trait IndexerTrait {
     fn new() -> Result<Self, anyhow::Error>
     where
         Self: Sized;
+    /// Called when initializing the indexer, allowing for DB migration if needed
     fn start(&self) -> Result<(), anyhow::Error> {
         Ok(())
     }
-    fn shutdown(self) -> Result<(), anyhow::Error>;
+    /// Called when terminating the indexer, allowing for DB transactions to be committed
+    fn shutdown(&mut self) -> Result<(), anyhow::Error>;
 
+    /// Called when indexing a block, allowing to create a new DB transaction
     fn pre_indexing(&self, block_height: u64) -> Result<(), anyhow::Error>;
 
-    fn index_block(
-        &self,
-        block: &BlockInfo,
-        block_outcome: &BlockOutcome,
-    ) -> Result<(), anyhow::Error>;
-
+    /// Called for each transaction, happens before `index_block` and might be called multiple
+    /// times per block (for each transaction)
     fn index_transaction(
         &self,
         block: &BlockInfo,
@@ -34,5 +34,18 @@ pub trait IndexerTrait {
         tx_outcome: &TxOutcome,
     ) -> Result<(), anyhow::Error>;
 
+    /// Called when indexing the block, happens at the end of the block creation
+    fn index_block(
+        &self,
+        block: &BlockInfo,
+        block_outcome: &BlockOutcome,
+    ) -> Result<(), anyhow::Error>;
+
+    /// Called after indexing the block, allowing for DB transactions to be committed
     fn post_indexing(&self, block_height: u64) -> Result<(), anyhow::Error>;
+
+    // Used in tests when needing to execute async code with an async indexer implementation
+    //fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
+    //    None
+    //}
 }

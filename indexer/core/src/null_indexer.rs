@@ -11,7 +11,7 @@ impl IndexerTrait for Indexer {
         Ok(Indexer {})
     }
 
-    fn shutdown(self) -> Result<(), anyhow::Error> {
+    fn shutdown(&mut self) -> Result<(), anyhow::Error> {
         Ok(())
     }
 

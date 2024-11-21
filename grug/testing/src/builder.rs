@@ -9,7 +9,6 @@ use {
         GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    indexer_core::blocking_indexer::Indexer as AppIndexer,
     indexer_core::null_indexer::Indexer as NullIndexer,
     indexer_core::IndexerTrait as IndexerAppTrait,
     serde::Serialize,
@@ -44,15 +43,16 @@ struct CodeOption<B> {
 pub struct TestBuilder<
     VM = RustVm,
     PP = NaiveProposalPreparer,
+    INDEXER = NullIndexer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
     OW = Undefined<Addr>,
     TA = Undefined<TestAccounts>,
-    INDEXER = NullIndexer,
 > {
     vm: VM,
     pp: PP,
+    indexer: INDEXER,
     // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
@@ -74,15 +74,17 @@ pub struct TestBuilder<
     fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
     max_orphan_age: Option<Duration>,
-    // Indexer
-    indexer: Option<INDEXER>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
 #[allow(clippy::new_without_default)]
-impl TestBuilder<RustVm> {
+impl TestBuilder<RustVm, NaiveProposalPreparer, NullIndexer> {
     pub fn new() -> Self {
-        Self::new_with_vm_and_pp(RustVm::new(), NaiveProposalPreparer)
+        Self::new_with_vm_and_pp_and_indexer(
+            RustVm::new(),
+            NaiveProposalPreparer,
+            NullIndexer::new().unwrap(),
+        )
     }
 }
 
@@ -91,21 +93,31 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        Self::new_with_vm_and_pp(vm, NaiveProposalPreparer)
+        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer::new().unwrap())
+    }
+}
+
+impl<INDEXER> TestBuilder<RustVm, NaiveProposalPreparer, INDEXER> {
+    pub fn new_with_indexer(indexer: INDEXER) -> Self
+    where
+        INDEXER: IndexerAppTrait,
+    {
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, indexer)
     }
 }
 
 impl<PP> TestBuilder<RustVm, PP> {
     pub fn new_with_pp(pp: PP) -> Self {
-        Self::new_with_vm_and_pp(RustVm::new(), pp)
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer::new().unwrap())
     }
 }
 
-impl<VM, PP> TestBuilder<VM, PP>
+impl<VM, PP, INDEXER> TestBuilder<VM, PP, INDEXER>
 where
     VM: TestVm,
+    INDEXER: IndexerAppTrait,
 {
-    pub fn new_with_vm_and_pp(vm: VM, pp: PP) -> Self {
+    pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: INDEXER) -> Self {
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
@@ -130,6 +142,7 @@ where
             },
             vm,
             pp,
+            indexer,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
@@ -142,13 +155,13 @@ where
             fee_denom: None,
             fee_rate: None,
             max_orphan_age: None,
-            indexer: None,
         }
     }
 }
 
-impl<VM, PP, M1, M2, M3, OW, TA> TestBuilder<VM, PP, M1, M2, M3, OW, TA>
+impl<VM, PP, INDEXER, M1, M2, M3, OW, TA> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA>
 where
+    INDEXER: IndexerAppTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -256,7 +269,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1, M2A, M3, OW, TA>
+    ) -> TestBuilder<VM, PP, INDEXER, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -264,6 +277,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -282,7 +296,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: self.indexer,
         }
     }
 
@@ -321,7 +334,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1, M2, M3A, OW, TA>
+    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(Denom, Udec128) -> M3A + 'static,
@@ -329,6 +342,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -347,7 +361,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: self.indexer,
         }
     }
 
@@ -355,7 +368,7 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> TestBuilder<VM, PP, M1, M2, M3, OW, Defined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, Defined<TestAccounts>>
     where
         C: TryInto<Coins>,
         C::Error: Debug,
@@ -379,6 +392,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -394,13 +408,13 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: self.indexer,
         }
     }
 }
 
-impl<VM, PP, M1, M2, M3, OW, TA, INDEXER> TestBuilder<VM, PP, M1, M2, M3, OW, TA, INDEXER>
+impl<VM, PP, INDEXER, M1, M2, M3, OW, TA> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA>
 where
+    INDEXER: IndexerAppTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -408,12 +422,12 @@ where
     TA: MaybeDefined<TestAccounts>,
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
-    INDEXER: IndexerAppTrait,
 {
-    pub fn set_indexer(self, indexer: INDEXER) -> TestBuilder<VM, PP, M1, M2, M3, OW, TA, INDEXER> {
+    pub fn set_indexer(self, indexer: INDEXER) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA> {
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -429,13 +443,14 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: Some(indexer),
         }
     }
 }
 
-impl<VM, PP, M1, M2, M3, OW> TestBuilder<VM, PP, M1, M2, M3, OW, Undefined<TestAccounts>>
+impl<VM, PP, INDEXER, M1, M2, M3, OW>
+    TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
+    INDEXER: IndexerAppTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -478,7 +493,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1A, M2, M3, OW, Undefined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, INDEXER, M1A, M2, M3, OW, Undefined<TestAccounts>>
     where
         T: Into<Binary>,
         F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
@@ -486,6 +501,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -504,18 +520,19 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: self.indexer,
         }
     }
 }
 
 // `set_owner` can only be called if `add_accounts` has been called at least
 // once, and `set_owner` hasn't already been called.
-impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
+impl<VM, PP, INDEXER, M1, M2, M3>
+    TestBuilder<VM, PP, INDEXER, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>>
+{
     pub fn set_owner(
         self,
         name: &'static str,
-    ) -> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
+    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
         let owner = self.accounts.inner().get(name).unwrap_or_else(|| {
             panic!("failed to set owner: can't find account with name `{name}`")
         });
@@ -523,6 +540,7 @@ impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Define
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -538,13 +556,13 @@ impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Define
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            indexer: self.indexer,
         }
     }
 }
 
 // `build` can only be called if both `owner` and `accounts` have been set.
-impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
+impl<VM, PP, INDEXER, M1, M2, M3>
+    TestBuilder<VM, PP, INDEXER, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -552,8 +570,9 @@ where
     VM: TestVm + Clone,
     PP: ProposalPreparer,
     AppError: From<VM::Error> + From<PP::Error>,
+    INDEXER: IndexerAppTrait,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM, AppIndexer, PP>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, INDEXER, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }
@@ -668,11 +687,12 @@ where
         //    .unwrap_or(AppIndexer::new().expect("Can't create AppIndexer"));
 
         //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        //indexer.migrate_db().expect("Can't migrate DB");
+        //indexer.start();
 
         let suite = TestSuite::new_with_db_vm_and_pp(
             MemDb::new(),
             self.vm,
+            self.indexer,
             self.pp,
             //indexer,
             chain_id,
