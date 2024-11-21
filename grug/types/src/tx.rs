@@ -153,7 +153,6 @@ pub struct MsgConfigure {
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgTransfer {
-    //pub from: Addr,
     pub to: Addr,
     pub coins: Coins,
 }

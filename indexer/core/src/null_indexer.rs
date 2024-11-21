@@ -39,6 +39,7 @@ impl IndexerTrait for Indexer {
     ) -> Result<(), anyhow::Error> {
         Ok(())
     }
+
     fn post_indexing(&self, _block_height: u64) -> Result<(), anyhow::Error> {
         Ok(())
     }

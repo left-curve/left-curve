@@ -252,6 +252,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::await_holding_lock)]
     fn should_use_db_transaction() -> Result<(), anyhow::Error> {
         let app = app();
         app.pre_indexing(1)?;
