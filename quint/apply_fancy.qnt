@@ -49,7 +49,7 @@ module apply_fancy {
       orphans: tree_1.orphans.union(apply_result.orphans_to_add)
     }
 
-    match debug("final outcome", apply_result.outcome) {
+    match apply_result.outcome {
       | Updated(new_root_node) => {
           ...new_tree,
           nodes: new_tree.nodes.put({ version: new_version, key_hash: ROOT_BITS }, new_root_node)
@@ -96,7 +96,7 @@ module apply_fancy {
     batch: Set[OperationOnKey]
   ): ApplyResult = {
     // Split the batch into two, one for left child, one for right.
-    pure val partitioned_batch = partition_batch(batch,  bits)
+    pure val partitioned_batch = partition_batch(batch, bits)
     pure val batch_for_left = partitioned_batch._1
     pure val batch_for_right = partitioned_batch._2
 
@@ -386,6 +386,19 @@ module apply_fancy {
     (filtered_batch, maybe_op)
   }
 
+  pure def create_subtree(
+    tree: Tree,
+    version: Version,
+    bits: BitArray,
+    batch: Set[KeyWithValue],
+    existing_leaf: Option[LeafNode]
+  ): ApplyResult = {
+    pure val memo = pre_compute_create_subtree(tree, version, bits, batch, existing_leaf)
+
+    pure val result = memo.get((version, bits, batch, existing_leaf))
+    { outcome: result.outcome, orphans_to_add: Set(), nodes_to_add: result.nodes_to_add }
+  }
+
   type CreateSubtreeMemo = (Version, BitArray, Set[KeyWithValue], Option[LeafNode]) -> { outcome: Outcome, nodes_to_add: Set[(NodeId, Node)] }
 
   pure def pre_compute_create_subtree(
@@ -414,7 +427,6 @@ module apply_fancy {
       memo.put(memo_key, memo_value)
     })
   }
-
   pure def create_subtree_with_memo(
     tree: Tree,
     memo: CreateSubtreeMemo,
@@ -441,7 +453,7 @@ module apply_fancy {
        pure val node = Leaf(batch.getOnlyElement())
        { outcome: Updated(node), nodes_to_add: Set() }
 
-     } else {
+    } else {
        // The subtree to be created contains more 2 or more nodes.
        // Recursively create the tree. Return the subtree's root, an
        // internal node.
@@ -490,16 +502,4 @@ module apply_fancy {
      }
   }
 
-  pure def create_subtree(
-    tree: Tree,
-    version: Version,
-    bits: BitArray,
-    batch: Set[KeyWithValue],
-    existing_leaf: Option[LeafNode]
-  ): ApplyResult = {
-    pure val memo = pre_compute_create_subtree(tree, version, bits, batch, existing_leaf)
-
-    pure val result = memo.get((version, bits, batch, existing_leaf))
-    { outcome: result.outcome, orphans_to_add: Set(), nodes_to_add: result.nodes_to_add }
-  }
 }
