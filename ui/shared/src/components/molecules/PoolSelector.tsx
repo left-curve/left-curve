@@ -13,7 +13,7 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
   const pools = {} as Record<PoolId, Pool>;
 
   return (
-    <div className="dango-grid-square-xl-l flex flex-col items-center gap-9">
+    <div className="dango-grid-4x4-M flex flex-col items-center gap-9">
       <h2 className="font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest mb-1">
         SELECT POOL
       </h2>

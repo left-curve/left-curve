@@ -12,7 +12,7 @@ export const MarginAccountInfo: React.FC<Props> = ({ avatarUrl }) => {
   if (!account) return null;
 
   return (
-    <div className="dango-grid-landscape-desktop flex flex-col gap-3 items-center justify-center text-sand-900">
+    <div className="dango-grid-4x8-L flex flex-col gap-3 items-center justify-center text-sand-900">
       <div className="flex gap-4 flex-col md:grid md:grid-cols-3 w-full items-center md:items-end justify-center mb-14">
         <div className="flex flex-col gap-2 order-2 md:order-1 items-center md:items-start justify-center">
           <p className="uppercase text-typography-black-400 tracking-widest font-semibold text-sm">

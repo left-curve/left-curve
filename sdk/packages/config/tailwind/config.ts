@@ -169,55 +169,6 @@ export const tailwindConfig: Partial<Config> = {
       };
 
       addComponents({
-        ".dango-grid-landscape-desktop": {
-          ...gridCommonStyles,
-          padding: "4rem 3rem",
-          height: "27rem",
-          width: "50rem",
-          backgroundImage: "url(./images/grids/landscape-desktop.svg)",
-        },
-        ".dango-grid-landscape-fat-l": {
-          ...gridCommonStyles,
-          padding: "3rem",
-          height: "29.25rem",
-          width: "38.5rem",
-          backgroundImage: "url(./images/grids/landscape-fat-l.svg)",
-        },
-        ".dango-grid-landscape-flat-mini-l": {
-          ...gridCommonStyles,
-          padding: "1.5rem 3.25rem",
-          height: "15.5rem",
-          width: "38.5rem",
-          backgroundImage: "url(./images/grids/landscape-flat-mini-l.svg)",
-        },
-        ".dango-grid-square-xl-l": {
-          ...gridCommonStyles,
-          padding: "4.5rem 6.5rem",
-          height: "45.125rem",
-          width: "45.125rem",
-          backgroundImage: "url(./images/grids/square-xl-l.svg)",
-        },
-        ".dango-grid-square-l": {
-          ...gridCommonStyles,
-          padding: "5rem 4rem",
-          height: "38.5rem",
-          width: "38.5rem",
-          backgroundImage: "url(./images/grids/square-l.svg)",
-        },
-        ".dango-grid-square-m": {
-          ...gridCommonStyles,
-          padding: "5rem 4rem",
-          height: "38.5rem",
-          width: "38.5rem",
-          backgroundImage: "url(./images/grids/square-m.svg)",
-        },
-        ".dango-grid-square-mini-l": {
-          ...gridCommonStyles,
-          padding: "2rem",
-          height: "18.75rem",
-          width: "18.75rem",
-          backgroundImage: "url(./images/grids/square-mini-l.svg)",
-        },
         ".dango-grid-3x3-L": {
           ...gridCommonStyles,
           padding: "1rem",
@@ -227,21 +178,21 @@ export const tailwindConfig: Partial<Config> = {
         },
         ".dango-grid-4x4-L": {
           ...gridCommonStyles,
-          padding: "2rem",
+          padding: "4.5rem 6.5rem",
           height: "45.125rem",
           width: "45.125rem",
           backgroundImage: "url(./images/grids/4x4-L.svg)",
         },
         ".dango-grid-4x4-M": {
           ...gridCommonStyles,
-          padding: "1.5rem",
+          padding: "5rem 4rem",
           height: "38.5rem",
           width: "38.5rem",
           backgroundImage: "url(./images/grids/4x4-M.svg)",
         },
         ".dango-grid-4x4-S": {
           ...gridCommonStyles,
-          padding: "1rem",
+          padding: "2rem",
           height: "18.75rem",
           width: "18.75rem",
           backgroundImage: "url(./images/grids/4x4-S.svg)",
@@ -255,7 +206,7 @@ export const tailwindConfig: Partial<Config> = {
         },
         ".dango-grid-5x5-M": {
           ...gridCommonStyles,
-          padding: "1.5rem",
+          padding: "3rem 4rem",
           height: "38.5rem",
           width: "38.5rem",
           backgroundImage: "url(./images/grids/5x5-M.svg)",
@@ -290,7 +241,7 @@ export const tailwindConfig: Partial<Config> = {
         },
         ".dango-grid-3x4-L": {
           ...gridCommonStyles,
-          padding: "2rem 1rem",
+          padding: "3rem",
           height: "29.25rem",
           width: "38.5rem",
           backgroundImage: "url(./images/grids/3x4-L.svg)",
@@ -311,7 +262,7 @@ export const tailwindConfig: Partial<Config> = {
         },
         ".dango-grid-4x8-L": {
           ...gridCommonStyles,
-          padding: "2rem 1rem",
+          padding: "4rem 3rem",
           height: "27.375rem",
           width: "51.625rem",
           backgroundImage: "url(./images/grids/4x8-L.svg)",
@@ -325,7 +276,7 @@ export const tailwindConfig: Partial<Config> = {
         },
         ".dango-grid-3x8-S": {
           ...gridCommonStyles,
-          padding: "2rem 1rem",
+          padding: "1.5rem 3.25rem",
           height: "15.5rem",
           width: "38.5rem",
           backgroundImage: "url(./images/grids/3x8-S.svg)",

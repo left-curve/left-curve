@@ -54,9 +54,9 @@ export const SendContainer: React.FC = () => {
 
   return (
     <form className="w-full" onSubmit={onSubmit}>
-      <div className="dango-grid-square-m gap-4 flex flex-col items-center justify-center w-full">
-        <div className="p-6 rounded-full bg-surface-rose-200">
-          <img src="/images/send-and-receive.webp" alt="transfer" className="w-[120px] h-[120px]" />
+      <div className="dango-grid-5x5-M gap-4 flex flex-col items-center w-full">
+        <div className="p-4 rounded-full bg-surface-rose-200">
+          <img src="/images/send-and-receive.webp" alt="transfer" className="w-[88px] h-[88px]" />
         </div>
         <div className="flex flex-col gap-6 w-full">
           <div className="w-full flex flex-col gap-6 p-3 bg-surface-rose-200 rounded-[20px]">

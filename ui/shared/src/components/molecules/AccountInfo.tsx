@@ -22,7 +22,7 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit }) => {
   if (!account) return null;
 
   return (
-    <div className="dango-grid-square-mini-l flex flex-col gap-3 items-center justify-center text-sand-900">
+    <div className="dango-grid-4x4-S flex flex-col gap-3 items-center justify-center text-sand-900">
       <div className="flex gap-2 text-sm w-full items-center justify-center font-extrabold text-typography-black-200">
         <p className="uppercase">{accountName}</p>
       </div>
