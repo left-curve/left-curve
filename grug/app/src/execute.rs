@@ -7,40 +7,9 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        //<<<<<<< HEAD
-        //        Addr, Addressable, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context,
-        //        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute,
-        //        MsgInstantiate, MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx,
-        //        TxOutcome,
-        //||||||| 81452f3f
-        //        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
-        //        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
-        //        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
-        //=======
-        Addr,
-        AuthMode,
-        AuthResponse,
-        BankMsg,
-        Code,
-        CodeStatus,
-        Context,
-        ContractInfo,
-        Event,
-        GenericResult,
-        Hash256,
-        HashExt,
-        Json,
-        MsgConfigure,
-        MsgExecute,
-        MsgInstantiate,
-        MsgMigrate,
-        MsgTransfer,
-        MsgUpload,
-        StdResult,
-        SubMsgResult,
-        Tx,
-        TxOutcome,
-        //>>>>>>> main
+        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
+        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        MsgMigrate, MsgTransfer, MsgUpload, StdResult, SubMsgResult, Tx, TxOutcome,
     },
 };
 
