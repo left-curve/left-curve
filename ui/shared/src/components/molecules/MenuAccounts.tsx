@@ -27,17 +27,18 @@ interface Props {
 export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageAction }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useDOMRef<HTMLButtonElement>(null);
-  const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useQueryState(
     "accountsVisible",
     parseAsBoolean.withDefault(false),
   );
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
   const [accountName] = useAccountName();
+  const [expanded, setExpanded] = useState(Boolean(accounts?.length && accounts?.length <= 2));
 
   useClickAway(menuRef, (e) => {
     if (buttonRef.current?.contains(e.target as Node)) return;
     setShowMenu(false);
+    setExpanded(false);
   });
 
   const sortedAccounts = useMemo(() => {
@@ -93,7 +94,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
         <div
           className={twMerge(
             "flex flex-col gap-4 relative flex-1 scrollbar-none",
-            expanded ? "overflow-scroll" : "overflow-hidden",
+            expanded ? "overflow-scroll" : "overflow-hidden cursor-pointer",
           )}
         >
           {sortedAccounts.map((account) => {

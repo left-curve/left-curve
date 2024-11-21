@@ -45,7 +45,7 @@ export const AccountCard: React.FC<CardProps> = ({
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-2 transition-all",
+        "flex flex-col gap-2 transition-all cursor-pointer",
         expanded
           ? "first:mt-0  mt-0"
           : "first:mt-0 first:mb-[9rem] first:md:mb-[6.5rem] mt-[-9rem] md:mt-[-6.5rem]",
