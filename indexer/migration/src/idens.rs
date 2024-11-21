@@ -48,7 +48,7 @@ pub enum Event {
     Id,
     TransactionId,
     Type,
-    //ContractAddr,
+    // ContractAddr,
     Attributes,
     BlockHeight,
     CreatedAt,

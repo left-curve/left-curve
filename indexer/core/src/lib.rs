@@ -42,9 +42,4 @@ pub trait IndexerTrait {
 
     /// Called after indexing the block, allowing for DB transactions to be committed
     fn post_indexing(&self, block_height: u64) -> Result<(), anyhow::Error>;
-
-    // Used in tests when needing to execute async code with an async indexer implementation
-    //fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
-    //    None
-    //}
 }

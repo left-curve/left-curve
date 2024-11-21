@@ -125,10 +125,6 @@ impl IndexerTrait for Indexer {
         })
     }
 
-    //fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
-    //    Some(self.runtime.clone())
-    //}
-
     fn start(&self) -> Result<(), anyhow::Error> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
@@ -144,7 +140,6 @@ impl IndexerTrait for Indexer {
 
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
         // async
-
         for _ in 0..10 {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if blocks.is_empty() {

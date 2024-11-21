@@ -35,10 +35,6 @@ impl IndexerTrait for Indexer {
         })
     }
 
-    //fn runtime(&self) -> Option<Arc<tokio::runtime::Runtime>> {
-    //    Some(self.runtime.clone())
-    //}
-
     fn start(&self) -> Result<(), anyhow::Error> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
@@ -224,6 +220,8 @@ impl Drop for Indexer {
 mod tests {
     use super::*;
     use assertor::*;
+    use migration::Migrator;
+    use migration::MigratorTrait;
     use sea_orm::ActiveModelTrait;
     use sea_orm::ConnectionTrait;
     use sea_orm::EntityTrait;
