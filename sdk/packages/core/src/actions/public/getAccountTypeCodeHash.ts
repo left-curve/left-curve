@@ -1,14 +1,8 @@
-import type {
-  AccountTypes,
-  Address,
-  Chain,
-  Client,
-  Hex,
-  Signer,
-  Transport,
-} from "@leftcurve/types";
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
+
+import type { AccountTypes, Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export type GetAccountTypeCodeHashParameters = {
   accountType: AccountTypes;
@@ -35,7 +29,7 @@ export async function getAccountTypeCodeHash<
   const msg = {
     codeHash: { accountType },
   };
-  const accountFactory = await getAppConfig<Address>(client, { key: "account_factory" });
+  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
 
-  return await queryWasmSmart(client, { contract: accountFactory, msg, height });
+  return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

@@ -2,11 +2,15 @@
 use indexer_core::App as IndexerApp;
 
 use {
+    anyhow::anyhow,
     clap::Parser,
-    grug_app::{App, NaiveProposalPreparer},
+    dango_app::ProposalPreparer,
+    grug_app::App,
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
-    std::path::PathBuf,
+    std::{path::PathBuf, time},
+    tower::ServiceBuilder,
+    tower_abci::v038::{split, Server},
 };
 
 #[derive(Parser)]
@@ -14,10 +18,6 @@ pub struct StartCmd {
     /// Tendermint ABCI listening address
     #[arg(long, default_value = "127.0.0.1:26658")]
     abci_addr: String,
-
-    /// Size of the read buffer for each incoming connection to the ABCI server, in bytes
-    #[arg(long, default_value = "1048576")]
-    read_buf_size: usize,
 
     /// Capacity of the wasm module cache; zero means do not use a cache
     #[arg(long, default_value = "1000")]
@@ -45,7 +45,7 @@ impl StartCmd {
             App::new(
                 db,
                 vm,
-                NaiveProposalPreparer,
+                ProposalPreparer::new(),
                 self.query_gas_limit.unwrap_or(u64::MAX),
                 indexer_app,
             );
@@ -55,10 +55,32 @@ impl StartCmd {
         let app = App::new(
             db,
             vm,
-            NaiveProposalPreparer,
+            ProposalPreparer::new(),
             self.query_gas_limit.unwrap_or(u64::MAX),
         );
 
-        Ok(app.start_abci_server(self.read_buf_size, self.abci_addr)?)
+        let (consensus, mempool, snapshot, info) = split::service(app, 1);
+
+        let mempool = ServiceBuilder::new()
+            .load_shed()
+            .buffer(100)
+            .service(mempool);
+
+        let info = ServiceBuilder::new()
+            .load_shed()
+            .buffer(100)
+            .rate_limit(50, time::Duration::from_secs(1))
+            .service(info);
+
+        Server::builder()
+            .consensus(consensus)
+            .snapshot(snapshot)
+            .mempool(mempool)
+            .info(info)
+            .finish()
+            .unwrap() // this fails if one of consensus|snapshot|mempool|info is None
+            .listen_tcp(self.abci_addr)
+            .await
+            .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::account_factory::Username,
+    crate::{account_factory::Username, bank::Metadata},
     grug::{Addr, Coin, Denom, NonZero, Part, Uint128},
     std::{collections::BTreeMap, sync::LazyLock},
 };
@@ -39,6 +39,8 @@ pub enum ExecuteMsg {
         username: Option<Username>,
         // If not provided, use the message sender's address.
         admin: Option<Addr>,
+        // Optional metadata for the token.
+        metadata: Option<Metadata>,
     },
     /// Mint the token of the specified subdenom and amount to a recipient.
     Mint {

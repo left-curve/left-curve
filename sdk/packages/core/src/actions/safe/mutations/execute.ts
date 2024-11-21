@@ -8,7 +8,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@leftcurve/types";
-import { type ExecuteReturnType, execute } from "../../user/execute.js";
+import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type SafeAccountExecuteParameters = {
   sender: Address;

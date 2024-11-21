@@ -1,7 +1,10 @@
 use {
-    dango_testing::setup_test,
-    dango_types::token_factory::{Config, ExecuteMsg, NAMESPACE},
-    grug::{Addressable, Coins, Denom, Message, ResultExt, Uint128},
+    dango_testing::{setup_test, TOKEN_FACTORY_CREATION_FEE},
+    dango_types::{
+        bank::{self, Metadata, QueryMetadataRequest},
+        token_factory::{Config, ExecuteMsg, NAMESPACE},
+    },
+    grug::{Addressable, Coins, Denom, LengthBounded, Message, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -26,6 +29,7 @@ fn token_factory() {
                     username: Some(owner_username.clone()),
                     subdenom: SUBDENOM.clone(),
                     admin: None,
+                    metadata: None,
                 },
                 Coins::new(), // wrong!
             )
@@ -43,6 +47,7 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(owner_username.clone()),
                     admin: None,
+                    metadata: None,
                 },
                 Coins::one("uusdc", 20_000_000).unwrap(), // wrong!
             )
@@ -60,8 +65,9 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(accounts.relayer.username.clone()), // wrong!
                     admin: None,
+                    metadata: None,
                 },
-                Coins::one("uusdc", 10_000_000).unwrap(),
+                Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
             )
             .unwrap(),
         )
@@ -76,8 +82,9 @@ fn token_factory() {
                 subdenom: SUBDENOM.clone(),
                 username: Some(owner_username.clone()),
                 admin: None,
+                metadata: None,
             },
-            Coins::one("uusdc", 10_000_000).unwrap(),
+            Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
         )
         .should_succeed();
 
@@ -91,8 +98,9 @@ fn token_factory() {
                     subdenom: SUBDENOM.clone(),
                     username: Some(owner_username.clone()),
                     admin: None,
+                    metadata: None,
                 },
-                Coins::one("uusdc", 10_000_000).unwrap(),
+                Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
             )
             .unwrap(),
         )
@@ -234,8 +242,64 @@ fn token_factory() {
                 username: Some(owner_username.clone()),
                 subdenom: Denom::from_str("hello").unwrap(),
                 admin: None,
+                metadata: None,
             },
             Coins::new(),
         )
         .should_succeed();
+}
+
+#[test]
+fn metadata() {
+    let (mut suite, mut account, _, contracts) = setup_test();
+
+    let subdenom = Denom::new_unchecked(["foo"]);
+    let denom = Denom::from_str(&format!(
+        "{}/{}/{}",
+        NAMESPACE.as_ref(),
+        account.relayer.address(),
+        subdenom
+    ))
+    .unwrap();
+    let metadata = Metadata {
+        name: LengthBounded::new_unchecked("Foo".to_string()),
+        symbol: LengthBounded::new_unchecked("FO".to_string()),
+        description: Some(LengthBounded::new_unchecked("A test token".to_string())),
+        decimals: 6,
+    };
+
+    // Register a new denom
+    suite
+        .execute(
+            &mut account.relayer,
+            contracts.token_factory,
+            &ExecuteMsg::Create {
+                subdenom: subdenom.clone(),
+                username: None,
+                admin: None,
+                metadata: Some(metadata.clone()),
+            },
+            Coins::from(TOKEN_FACTORY_CREATION_FEE.clone()),
+        )
+        .should_succeed();
+
+    // Query metadata
+    suite
+        .query_wasm_smart(contracts.bank, QueryMetadataRequest {
+            denom: denom.clone(),
+        })
+        .should_succeed_and_equal(metadata.clone());
+
+    // Try set metadata on bank from non-admin.
+    suite
+        .execute(
+            &mut account.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetMetadata {
+                denom: denom.clone(),
+                metadata,
+            },
+            Coins::default(),
+        )
+        .should_fail_with_error("sender does not own the namespace");
 }

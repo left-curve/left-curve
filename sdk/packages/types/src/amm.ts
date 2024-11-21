@@ -12,43 +12,25 @@ export type AmmConfig = {
   readonly protocolFeeRate: FeeRate;
 };
 
-export type AmmQueryMsg = {
-  /** Query the AMM's global configuration.
-   * @returns AmmConfig */
-  config: {
-    parameters: Record<never, never>;
-    returns: AmmConfig;
-  };
-  /** Query the state of a single pool by ID.
-   * @returns Pool */
-  pool: {
-    parameters: { poolId: PoolId };
-    returns: Pool;
-  };
-  /** Query the states of all pools.
-   * @returns { [PoolId]: Pool } */
-  pools: {
-    parameters: { startAfter?: PoolId; limit?: number };
-    returns: Record<PoolId, Pool>;
-  };
-  /** Simulate the output of a swap.
-   * @returns SwapOutcome */
-  simulate: {
-    parameters: { input: Coin; route: Set<PoolId> };
-    returns: SwapOutcome;
-  };
-};
+export type AmmQueryMsg =
+  /** Query the AMM's global configuration. */
+  | { config: Record<never, never> }
+  /** Query the state of a single pool by ID. */
+  | { pool: { poolId: PoolId } }
+  /** Query the states of all pools. */
+  | { pools: { startAfter?: PoolId; limit?: number } }
+  /** Simulate the output of a swap. */
+  | { simulate: { input: Coin; route: PoolId[] } };
 
-export type AmmExecuteMsg = {
+export type AmmExecuteMsg =
   /** Create a new trading pool with the given parameters. */
-  createPool: PoolParams;
+  | { createPool: PoolParams }
   /** Perform a swap. */
-  swap: { route: Set<PoolId>; minimumOutput?: Coin };
+  | { swap: { route: PoolId[]; minimumOutput?: string } }
   /** Provide liquidity to a trading pool. */
-  provideLiquidity: { poolId: PoolId; minimumOutput?: string };
+  | { provideLiquidity: { poolId: PoolId; minimumOutput?: string } }
   /** Withdraw liquidity from a trading pool. */
-  withdrawLiquidity: { poolId: PoolId };
-};
+  | { withdrawLiquidity: { poolId: PoolId } };
 
 export type SwapOutcome = {
   /** The amount of coin to be returned to the trader. */
@@ -58,5 +40,3 @@ export type SwapOutcome = {
   /** The amount of fee paid to liquidity providers. */
   liquidityFees: Coin[];
 };
-
-export type Test = AmmQueryMsg["pool"];

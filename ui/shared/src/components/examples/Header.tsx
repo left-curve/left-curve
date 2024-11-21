@@ -38,9 +38,8 @@ export const ExampleHeader: React.FC = () => {
             />
             <MenuConnections />
           </>
-        ) : (
-          <ConnectButton />
-        )}
+        ) : null}
+        <ConnectButton />
       </div>
     </header>
   );

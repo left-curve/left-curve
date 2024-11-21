@@ -15,7 +15,7 @@ pub trait Fraction<U>: Sized {
     }
 }
 
-impl<U> Fraction<U> for Dec<U>
+impl<U, const S: u32> Fraction<U> for Dec<U, S>
 where
     Self: FixedPoint<U>,
     U: Copy,
@@ -82,7 +82,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (base, numerator) in passing {
                 dt(_0d, base);
                 assert_eq!(base.numerator(), numerator);
@@ -113,7 +113,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for denominator in passing {
 
                 fn t<U, FP: Fraction<U>>(_: FP,  denominator: Int<U>)
@@ -169,7 +169,7 @@ mod tests {
                 ]
             }
         }
-        method = |_0d: Dec<_>, passing| {
+        method = |_0d: Dec<_, 18>, passing| {
             for (base, inv) in passing {
                 dt(_0d, base);
                 assert_eq!(base.checked_inv().unwrap(), inv);

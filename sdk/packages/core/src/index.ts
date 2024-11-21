@@ -8,13 +8,13 @@ export {
 
 export { createBaseClient } from "./clients/baseClient.js";
 export { createPublicClient } from "./clients/publicClient.js";
-export { createUserClient } from "./clients/userClient.js";
+export { createSignerClient } from "./clients/signerClient.js";
 
 export { http } from "./transports/http.js";
 
 export {
-  type UserActions,
+  type SignerActions,
   type PublicActions,
-  userActions,
+  signerActions,
   publicActions,
 } from "./actions/index.js";

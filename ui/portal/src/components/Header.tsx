@@ -1,16 +1,10 @@
-import {
-  CommandBar,
-  ConnectButton,
-  MenuAccounts,
-  MenuConnections,
-  MenuNotifications,
-} from "@dango/shared";
+import { CommandBar, MenuAccounts, MenuConnections, MenuNotifications } from "@dango/shared";
 
 import { AccountType } from "@leftcurve/types";
 
 import { useAccount } from "@leftcurve/react";
 import { Link, useNavigate } from "react-router-dom";
-import { applets, popularApplets } from "../../applets";
+import { applets } from "../../applets";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -26,24 +20,19 @@ export const Header: React.FC = () => {
             className="hidden sm:block h-8 order-1 cursor-pointer"
           />
         </Link>
-        <CommandBar
-          applets={{ all: applets, popular: popularApplets }}
-          action={({ path }) => navigate(path)}
-        />
+        <CommandBar applets={applets} action={({ path }) => navigate(path)} />
         <div className="flex gap-2 items-center justify-end order-2 md:order-3">
-          <>
-            {import.meta.env.MODE === "development" && !account ? <ConnectButton /> : null}
-            <MenuNotifications />
-            <MenuAccounts
-              manageAction={(account) => navigate(`/accounts/${account.index}`)}
-              images={{
-                [AccountType.Spot]: "/images/avatars/spot.png",
-                [AccountType.Margin]: "/images/avatars/margin.png",
-                [AccountType.Safe]: "/images/avatars/safe.png",
-              }}
-            />
-            <MenuConnections />
-          </>
+          <MenuNotifications />
+          <MenuAccounts
+            manageAction={(account) => navigate(`/accounts/${account.index}`)}
+            createAction={() => navigate("/account-creation")}
+            images={{
+              [AccountType.Spot]: "/images/avatars/spot.svg",
+              [AccountType.Margin]: "/images/avatars/margin.svg",
+              [AccountType.Safe]: "/images/avatars/safe.svg",
+            }}
+          />
+          <MenuConnections />
         </div>
       </header>
     </>

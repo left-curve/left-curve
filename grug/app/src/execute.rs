@@ -2,15 +2,45 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIGS, CODES, CONFIG, CONTRACTS,
+        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIG, CODES, CONFIG, CONTRACTS,
         NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
-        Addr, Addressable, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context,
-        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute,
-        MsgInstantiate, MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx,
+        //<<<<<<< HEAD
+        //        Addr, Addressable, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context,
+        //        ContractInfo, Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute,
+        //        MsgInstantiate, MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx,
+        //        TxOutcome,
+        //||||||| 81452f3f
+        //        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
+        //        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        //        MsgMigrate, MsgTransfer, MsgUpload, Op, StdResult, SubMsgResult, Tx, TxOutcome,
+        //=======
+        Addr,
+        AuthMode,
+        AuthResponse,
+        BankMsg,
+        Code,
+        CodeStatus,
+        Context,
+        ContractInfo,
+        Event,
+        GenericResult,
+        Hash256,
+        HashExt,
+        Json,
+        MsgConfigure,
+        MsgExecute,
+        MsgInstantiate,
+        MsgMigrate,
+        MsgTransfer,
+        MsgUpload,
+        StdResult,
+        SubMsgResult,
+        Tx,
         TxOutcome,
+        //>>>>>>> main
     },
 };
 
@@ -34,7 +64,7 @@ pub fn do_configure(ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<V
 }
 
 fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<Event> {
-    let mut cfg = CONFIG.load(&ctx.storage)?;
+    let cfg = CONFIG.load(&ctx.storage)?;
 
     // Make sure the sender is authorized to set the config.
     if sender != cfg.owner {
@@ -44,46 +74,22 @@ fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<
         });
     }
 
-    if let Some(new_owner) = msg.updates.owner {
-        cfg.owner = new_owner;
-    }
-
-    if let Some(new_bank) = msg.updates.bank {
-        cfg.bank = new_bank;
-    }
-
-    if let Some(new_taxman) = msg.updates.taxman {
-        cfg.taxman = new_taxman;
-    }
-
-    if let Some(new_cronjobs) = msg.updates.cronjobs {
+    if let Some(new_cfg) = msg.new_cfg {
         // If the list of cronjobs has been changed, we have to delete the
         // existing scheduled ones and reschedule.
-        if new_cronjobs != cfg.cronjobs {
+        if new_cfg.cronjobs != cfg.cronjobs {
             NEXT_CRONJOBS.clear(&mut ctx.storage, None, None);
 
-            for (contract, interval) in &new_cronjobs {
+            for (contract, interval) in &new_cfg.cronjobs {
                 schedule_cronjob(&mut ctx.storage, *contract, ctx.block.timestamp, *interval)?;
             }
         }
 
-        cfg.cronjobs = new_cronjobs;
+        CONFIG.save(&mut ctx.storage, &new_cfg)?;
     }
 
-    if let Some(new_permissions) = msg.updates.permissions {
-        cfg.permissions = new_permissions;
-    }
-
-    // Save the updated config.
-    CONFIG.save(&mut ctx.storage, &cfg)?;
-
-    // Update app configs
-    for (key, op) in msg.app_updates {
-        if let Op::Insert(value) = op {
-            APP_CONFIGS.save(&mut ctx.storage, &key, &value)?;
-        } else {
-            APP_CONFIGS.remove(&mut ctx.storage, &key);
-        }
+    if let Some(new_app_cfg) = msg.new_app_cfg {
+        APP_CONFIG.save(&mut ctx.storage, &new_app_cfg)?;
     }
 
     Ok(Event::new("configure").add_attribute("sender", sender))

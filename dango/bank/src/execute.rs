@@ -1,7 +1,7 @@
 use {
-    crate::{BALANCES, NAMESPACE_OWNERS, SUPPLIES},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
     anyhow::{bail, ensure},
-    dango_types::bank::{ExecuteMsg, InstantiateMsg},
+    dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
         Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response, StdResult,
         Storage, SudoCtx, Uint128,
@@ -36,6 +36,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         NAMESPACE_OWNERS.save(ctx.storage, &namespace, &owner)?;
     }
 
+    for (denom, metadata) in msg.metadatas {
+        METADATAS.save(ctx.storage, &denom, &metadata)?;
+    }
+
     Ok(Response::new())
 }
 
@@ -43,6 +47,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::GrantNamespace { namespace, owner } => grant_namespace(ctx, namespace, owner),
+        ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
             from,
@@ -78,6 +83,14 @@ fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Res
     })?;
 
     Ok(Response::new())
+}
+
+fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Result<Response> {
+    ensure_namespace_owner(&ctx, &denom)?;
+
+    METADATAS.save(ctx.storage, &denom, &metadata)?;
+
+    Ok(Response::default())
 }
 
 fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {

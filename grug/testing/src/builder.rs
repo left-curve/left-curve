@@ -5,8 +5,8 @@ use {
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
-        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, Timestamp, Undefined,
-        GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, StdResult, Timestamp,
+        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
     indexer_core::null_indexer::Indexer as NullIndexer,
@@ -59,8 +59,8 @@ pub struct TestBuilder<
     genesis_time: Option<Timestamp>,
     block_time: Option<Duration>,
     default_gas_limit: Option<u64>,
-    // App configs
-    app_configs: BTreeMap<String, Json>,
+    // App config
+    app_config: Json,
     // Owner
     owner: OW,
     // Accounts
@@ -148,7 +148,7 @@ where
             genesis_time: None,
             block_time: None,
             default_gas_limit: None,
-            app_configs: BTreeMap::new(),
+            app_config: Json::null(),
             owner: Undefined::new(),
             accounts: Undefined::new(),
             balances: BTreeMap::new(),
@@ -218,22 +218,12 @@ where
         self
     }
 
-    pub fn add_app_config<K, V>(mut self, key: K, value: &V) -> Self
+    pub fn set_app_config<T>(mut self, app_cfg: &T) -> StdResult<Self>
     where
-        K: Into<String>,
-        V: Serialize,
+        T: Serialize,
     {
-        let key = key.into();
-        let value = value.to_json_value().unwrap();
-
-        assert!(
-            !self.app_configs.contains_key(&key),
-            "app config key `{key}` is already set"
-        );
-
-        self.app_configs.insert(key, value);
-
-        self
+        self.app_config = app_cfg.to_json_value()?;
+        Ok(self)
     }
 
     /// Use a custom code for the bank instead the default implementation
@@ -283,7 +273,7 @@ where
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -348,7 +338,7 @@ where
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -398,7 +388,7 @@ where
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: self.owner,
             account_opt: self.account_opt,
             accounts: Defined::new(accounts),
@@ -507,7 +497,7 @@ where
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: self.owner,
             account_opt: CodeOption {
                 code: code.into(),
@@ -546,7 +536,7 @@ impl<VM, PP, INDEXER, M1, M2, M3>
             genesis_time: self.genesis_time,
             block_time: self.block_time,
             default_gas_limit: self.default_gas_limit,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
             owner: Defined::new(owner.address),
             account_opt: self.account_opt,
             accounts: self.accounts,
@@ -679,7 +669,7 @@ where
         let genesis_state = GenesisState {
             config,
             msgs,
-            app_configs: self.app_configs,
+            app_config: self.app_config,
         };
 
         //let indexer = self

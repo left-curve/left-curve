@@ -69,12 +69,6 @@ export {
 } from "./public/getAppConfig.js";
 
 export {
-  type GetAppConfigsParameters,
-  type GetAppConfigsReturnType,
-  getAppConfigs,
-} from "./public/getAppConfigs.js";
-
-export {
   type RegisterUserParameters,
   type RegisterUserReturnType,
   registerUser,
@@ -196,49 +190,49 @@ export {
   type ExecuteParameters,
   type ExecuteReturnType,
   execute,
-} from "./user/execute.js";
+} from "./signer/execute.js";
 
 export {
   type MigrateParameters,
   type MigrateReturnType,
   migrate,
-} from "./user/migrate.js";
+} from "./signer/migrate.js";
 
 export {
   type TransferParameters,
   type TransferReturnType,
   transfer,
-} from "./user/transfer.js";
+} from "./signer/transfer.js";
 
 export {
   type StoreCodeParameters,
   type StoreCodeReturnType,
   storeCode,
-} from "./user/storeCode.js";
+} from "./signer/storeCode.js";
 
 export {
   type InstantiateParameters,
   type InstantiateReturnType,
   instantiate,
-} from "./user/instantiate.js";
+} from "./signer/instantiate.js";
 
 export {
   type RegisterAccountParameters,
   type RegisterAccountReturnType,
   registerAccount,
-} from "./user/registerAccount.js";
+} from "./signer/registerAccount.js";
 
 export {
   type StoreCodeAndInstantiateParameters,
   type StoreCodeAndInstantiateReturnType,
   storeCodeAndInstantiate,
-} from "./user/storeCodeAndInstantiate.js";
+} from "./signer/storeCodeAndInstantiate.js";
 
 export {
   type SignAndBroadcastTxParameters,
   type SignAndBroadcastTxReturnType,
   signAndBroadcastTx,
-} from "./user/signAndBroadcastTx.js";
+} from "./signer/signAndBroadcastTx.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                Safe Actions                                */
@@ -287,6 +281,98 @@ export {
 } from "./safe/mutations/vote.js";
 
 /* -------------------------------------------------------------------------- */
+/*                                 Amm Actions                                */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetPoolParameters,
+  type GetPoolReturnType,
+  getPool,
+} from "./amm/queries/getPool.js";
+
+export {
+  type GetAllPoolsParameters,
+  type GetAllPoolsReturnType,
+  getAllPools,
+} from "./amm/queries/getAllPools.js";
+
+export {
+  type SimulateSwapParameters,
+  type SimulateSwapReturnType,
+  simulateSwap,
+} from "./amm/queries/simulateSwap.js";
+
+export {
+  type GetAmmConfigParameters,
+  type GetAmmConfigReturnType,
+  getAmmConfig,
+} from "./amm/queries/getAmmConfig.js";
+
+export {
+  type CreatePoolParameters,
+  type CreatePoolReturnType,
+  createPool,
+} from "./amm/mutations/createPool.js";
+
+export {
+  type SwapCoinsParameters,
+  type SwapCoinsReturnType,
+  swapCoins,
+} from "./amm/mutations/swapCoins.js";
+
+export {
+  type ProvideLiquidityParameters,
+  type ProvideLiquidityReturnType,
+  provideLiquidity,
+} from "./amm/mutations/provideLiquidity.js";
+
+export {
+  type WithdrawLiquidityParameters,
+  type WithdrawLiquidityReturnType,
+  withdrawLiquidity,
+} from "./amm/mutations/withdrawLiquidity.js";
+
+/* -------------------------------------------------------------------------- */
+/*                            TokenFactory Actions                            */
+/* -------------------------------------------------------------------------- */
+
+export {
+  type GetAllTokenAdminsParameters,
+  type GetAllTokenAdminsReturnType,
+  getAllTokenAdmins,
+} from "./token-factory/queries/getAllTokenAdmins.js";
+
+export {
+  type GetTokenAdminParameters,
+  type GetTokenAdminReturnType,
+  getTokenAdmin,
+} from "./token-factory/queries/getTokenAdmin.js";
+
+export {
+  type GetTokenFactoryConfigParameters,
+  type GetTokenFactoryConfigReturnType,
+  getTokenFactoryConfig,
+} from "./token-factory/queries/getTokenFactoryConfig.js";
+
+export {
+  type CreateTokenParameters,
+  type CreateTokenReturnType,
+  createToken,
+} from "./token-factory/mutations/createToken.js";
+
+export {
+  type BurnTokenParameters,
+  type BurnTokenReturnType,
+  burnToken,
+} from "./token-factory/mutations/burnToken.js";
+
+export {
+  type MintTokenParameters,
+  type MintTokenReturnType,
+  mintToken,
+} from "./token-factory/mutations/mintToken.js";
+
+/* -------------------------------------------------------------------------- */
 /*                              Actions Builders                              */
 /* -------------------------------------------------------------------------- */
 
@@ -296,9 +382,9 @@ export {
 } from "./publicActions.js";
 
 export {
-  type UserActions,
-  userActions,
-} from "./userActions.js";
+  type SignerActions,
+  signerActions,
+} from "./signerActions.js";
 
 export {
   type SafeActions,

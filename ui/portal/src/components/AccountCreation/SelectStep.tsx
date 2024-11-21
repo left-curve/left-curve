@@ -31,13 +31,15 @@ export const SelectStep: React.FC = () => {
       <div className="flex flex-col gap-2">
         <AccountDescriptionCard
           title="Spot account"
-          img="/images/avatars/spot.png"
+          img="/images/avatars/spot.svg"
           description="Can hold any asset and partake in any activity; cheapest gas cost; can only take over-collateralized loans."
+          className="bg-surface-rose-100 hover:bg-surface-rose-200"
           onClick={() => handleSelect(AccountType.Spot)}
         />
         <AccountDescriptionCard
           title="Margin account"
-          img="/images/avatars/margin.png"
+          img="/images/avatars/margin.svg"
+          className="bg-surface-purple-100 hover:bg-surface-purple-200"
           description="Can take under-collateralized loans up to 5x leverage; can only hold whitelisted assets and partake in whitelisted activity"
           onClick={() => handleSelect(AccountType.Margin)}
         />

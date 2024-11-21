@@ -20,7 +20,7 @@ export const ManageSafe: React.FC = () => {
     >
       <Tab key="assets" title="Assets">
         <div className="flex flex-col gap-4 justify-center items-center">
-          <AccountInfo avatarUri="/images/safe-avatar.png" />
+          <AccountInfo avatarUri="/images/safe.svg" />
           <SafePortfolioTable />
         </div>
       </Tab>

@@ -6,7 +6,7 @@ use {
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
     dango_types::{
         auth::{ClientData, Credential, Key, Metadata, SignDoc},
-        config::ACCOUNT_FACTORY_KEY,
+        config::AppConfig,
     },
     grug::{
         json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
@@ -34,7 +34,8 @@ pub fn authenticate_tx(
     let factory = if let Some(factory) = maybe_factory {
         factory
     } else {
-        ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?
+        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        app_cfg.addresses.account_factory
     };
 
     // Deserialize the transaction metadata, if it's not already done.
@@ -164,7 +165,7 @@ pub fn authenticate_tx(
                     let sign_bytes = ctx.api.sha2_256(
                         &SignDoc {
                             sender: tx.sender,
-                            messages: tx.msgs,
+                            messages: tx.msgs.into_inner(),
                             chain_id: ctx.chain_id,
                             sequence: metadata.sequence,
                         }
@@ -200,7 +201,7 @@ pub fn authenticate_tx(
                 let sign_bytes = ctx.api.sha2_256(
                     &SignDoc {
                         sender: tx.sender,
-                        messages: tx.msgs,
+                        messages: tx.msgs.into_inner(),
                         chain_id: ctx.chain_id,
                         sequence: metadata.sequence,
                     }
@@ -224,8 +225,8 @@ pub fn authenticate_tx(
 mod tests {
     use {
         super::*,
-        dango_types::account_factory::Username,
-        grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        dango_types::{account_factory::Username, config::AppAddresses},
+        grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
 
@@ -273,7 +274,16 @@ mod tests {
         }"#;
 
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                },
+                collateral_powers: btree_map! {},
+            })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 ACCOUNTS_BY_USER
@@ -307,7 +317,16 @@ mod tests {
         );
 
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                },
+                collateral_powers: btree_map! {},
+            })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 ACCOUNTS_BY_USER
@@ -397,7 +416,16 @@ mod tests {
         }"#;
 
         let querier = MockQuerier::new()
-            .with_app_config(ACCOUNT_FACTORY_KEY, ACCOUNT_FACTORY)
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                },
+                collateral_powers: btree_map! {},
+            })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 ACCOUNTS_BY_USER

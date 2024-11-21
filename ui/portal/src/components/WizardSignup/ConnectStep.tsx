@@ -17,7 +17,8 @@ import { getNavigatorOS, getRootDomain, wait } from "@leftcurve/utils";
 
 import { Button } from "@dango/shared";
 
-import type { Address, EIP1193Provider, Key } from "@leftcurve/types";
+import type { EIP1193Provider, Key } from "@leftcurve/types";
+import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
 
 export const ConnectStep: React.FC = () => {
   const [connectorLoading, setConnectorLoading] = useState<string>();
@@ -82,13 +83,17 @@ export const ConnectStep: React.FC = () => {
           return { key, keyHash };
         })();
 
-        const factoryAddr = await client.getAppConfig<Address>({ key: "account_factory" });
+        const { addresses } = await client.getAppConfig<DangoAppConfigResponse>();
         const accountCodeHash = await client.getAccountTypeCodeHash({
           accountType: AccountType.Spot,
         });
 
         const salt = createAccountSalt({ key, keyHash, username });
-        const address = computeAddress({ deployer: factoryAddr, codeHash: accountCodeHash, salt });
+        const address = computeAddress({
+          deployer: addresses.accountFactory,
+          codeHash: accountCodeHash,
+          salt,
+        });
 
         const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
           method: "POST",

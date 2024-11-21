@@ -1,29 +1,29 @@
 import { useAccount, useBalances, usePrices } from "@leftcurve/react";
+import { useQueryState } from "nuqs";
 import type React from "react";
-import { Button, GradientContainer, Input } from "../";
+import { Button, Input } from "../";
 import { twMerge } from "../../utils";
 
-import type { PoolId } from "@leftcurve/types";
-
 interface Props {
-  action: string;
-  poolId: PoolId;
   onRequestPoolSelection?: () => void;
 }
 
-export const PoolManagment: React.FC<Props> = ({ action, onRequestPoolSelection }) => {
+export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
   const { account } = useAccount();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
+
+  const [action] = useQueryState("action");
+  const [poolId] = useQueryState("pool");
 
   const totalBalance = calculateBalance(balances, { format: true });
 
   return (
     <div className="flex flex-col gap-12 w-full items-center">
-      <GradientContainer className="flex flex-col gap-2 w-full">
+      <div className="dango-grid-landscape-flat-mini-l flex flex-col gap-2 w-full items-center text-typography-black-200">
         <div className="h-[104px] w-[104px] flex items-center justify-center bg-surface-rose-200 rounded-full">
           <img
-            src="/images/applets/deposit-and-withdraw.png"
+            src="/images/applets/deposit-and-withdraw.svg"
             alt="deposit-and-withdraw"
             className="h-[74px] w-[74px] object-contain"
           />
@@ -68,7 +68,7 @@ export const PoolManagment: React.FC<Props> = ({ action, onRequestPoolSelection 
             ) : null}
           </div>
         </div>
-      </GradientContainer>
+      </div>
       <div className="flex flex-col gap-6 w-full">
         <div className="w-full flex flex-col gap-2">
           <div className="w-full flex flex-col p-3 bg-surface-rose-200 rounded-[20px] items-start justify-center gap-1">

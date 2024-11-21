@@ -25,7 +25,7 @@ export const AppLayout: React.FC = () => {
     );
 
   return (
-    <div className="flex flex-col min-h-screen w-full h-full bg-white relative scrollbar-none items-center justify-center">
+    <div className="flex flex-col min-h-screen w-full h-full bg-surface-off-white-200 relative scrollbar-none items-center justify-center">
       {status === ConnectionStatus.Connected ? (
         <img
           src="/images/background.png"
@@ -34,7 +34,7 @@ export const AppLayout: React.FC = () => {
         />
       ) : null}
       <Header />
-      <main className="flex flex-1 w-full">
+      <main className="flex flex-1 w-full z-[2]">
         {status === ConnectionStatus.Connected ? <Outlet /> : <Navigate to="/auth/login" />}
       </main>
     </div>

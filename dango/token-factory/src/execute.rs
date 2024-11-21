@@ -4,8 +4,8 @@ use {
     dango_account_factory::ACCOUNTS_BY_USER,
     dango_types::{
         account_factory::Username,
-        bank,
-        config::ACCOUNT_FACTORY_KEY,
+        bank::{self, Metadata},
+        config::AppConfig,
         taxman,
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
     },
@@ -27,7 +27,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             subdenom,
             admin,
-        } => create(ctx, subdenom, username, admin),
+            metadata,
+        } => create(ctx, subdenom, username, admin, metadata),
         ExecuteMsg::Mint { denom, to, amount } => mint(ctx, denom, to, amount),
         ExecuteMsg::Burn {
             denom,
@@ -55,17 +56,18 @@ fn create(
     subdenom: Denom,
     username: Option<Username>,
     admin: Option<Addr>,
+    metadata: Option<Metadata>,
 ) -> anyhow::Result<Response> {
     // If the sender has chosen to use a username as the sub-namespace, ensure
     // the sender is associated with the username.
     // Otherwise, use the sender's address as the sub-namespace.
     let subnamespace = if let Some(username) = username {
-        let account_factory = ctx.querier.query_app_config(ACCOUNT_FACTORY_KEY)?;
+        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
         if ctx
             .querier
             .query_wasm_raw(
-                account_factory,
+                app_cfg.addresses.account_factory,
                 ACCOUNTS_BY_USER.path((&username, ctx.sender)),
             )?
             .is_none()
@@ -110,7 +112,7 @@ fn create(
     };
 
     // Ensure the denom hasn't already been created.
-    {
+    let denom = {
         let denom = subdenom.prepend(&[&NAMESPACE, &subnamespace])?;
         let admin = admin.unwrap_or(ctx.sender);
 
@@ -120,9 +122,26 @@ fn create(
         );
 
         ADMINS.save(ctx.storage, &denom, &admin)?;
-    }
 
-    Ok(Response::new().may_add_message(fee_msg))
+        denom
+    };
+
+    // Optionally set the token's metadata.
+    let metadata_msg = if let Some(metadata) = metadata {
+        let cfg = ctx.querier.query_config()?;
+
+        Some(Message::execute(
+            cfg.bank,
+            &bank::ExecuteMsg::SetMetadata { denom, metadata },
+            Coins::new(),
+        )?)
+    } else {
+        None
+    };
+
+    Ok(Response::new()
+        .may_add_message(fee_msg)
+        .may_add_message(metadata_msg))
 }
 
 fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Result<Response> {

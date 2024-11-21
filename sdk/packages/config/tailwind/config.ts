@@ -104,6 +104,9 @@ export const tailwindConfig: Partial<Config> = {
           white: "#F2E2B8",
         },
       },
+      screens: {
+        "3xl": "1925px",
+      },
       borderRadius: {
         small: "8px",
         medium: "12px",
@@ -145,7 +148,7 @@ export const tailwindConfig: Partial<Config> = {
   plugins: [
     require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
-    plugin(({ addUtilities }) => {
+    plugin(({ addUtilities, addComponents }) => {
       addUtilities({
         ".tap-highlight-transparent": {
           "-webkit-tap-highlight-color": "transparent",
@@ -156,6 +159,64 @@ export const tailwindConfig: Partial<Config> = {
           "-moz-user-drag": "none",
           "-o-user-drag": "none",
           "user-drag": "none",
+        },
+      });
+
+      const gridCommonStyles = {
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center center",
+        backgroundSize: "contain",
+      };
+
+      addComponents({
+        ".dango-grid-landscape-desktop": {
+          ...gridCommonStyles,
+          padding: "4rem 3rem",
+          height: "27rem",
+          width: "50rem",
+          backgroundImage: "url(./images/grids/landscape-desktop.svg)",
+        },
+        ".dango-grid-landscape-fat-l": {
+          ...gridCommonStyles,
+          padding: "3rem",
+          height: "29.25rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/landscape-fat-l.svg)",
+        },
+        ".dango-grid-landscape-flat-mini-l": {
+          ...gridCommonStyles,
+          padding: "1.5rem 3.25rem",
+          height: "15.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/landscape-flat-mini-l.svg)",
+        },
+        ".dango-grid-square-xl-l": {
+          ...gridCommonStyles,
+          padding: "4.5rem 6.5rem",
+          height: "45.125rem",
+          width: "45.125rem",
+          backgroundImage: "url(./images/grids/square-xl-l.svg)",
+        },
+        ".dango-grid-square-l": {
+          ...gridCommonStyles,
+          padding: "5rem 4rem",
+          height: "38.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/square-l.svg)",
+        },
+        ".dango-grid-square-m": {
+          ...gridCommonStyles,
+          padding: "5rem 4rem",
+          height: "38.5rem",
+          width: "38.5rem",
+          backgroundImage: "url(./images/grids/square-m.svg)",
+        },
+        ".dango-grid-square-mini-l": {
+          ...gridCommonStyles,
+          padding: "2rem",
+          height: "18.75rem",
+          width: "18.75rem",
+          backgroundImage: "url(./images/grids/square-mini-l.svg)",
         },
       });
     }),

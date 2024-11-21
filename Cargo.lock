@@ -1632,6 +1632,8 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-auth",
+ "dango-lending",
+ "dango-oracle",
  "dango-types",
  "grug",
 ]
@@ -1668,6 +1670,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-app"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "prost",
+ "reqwest 0.12.9",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
@@ -1697,6 +1713,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
+ "dango-app",
  "dialoguer",
  "grug-app",
  "grug-client",
@@ -1709,6 +1726,8 @@ dependencies = [
  "indexer-core",
  "serde",
  "tokio",
+ "tower 0.5.1",
+ "tower-abci",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1743,10 +1762,8 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-account-factory",
- "dango-auth",
  "dango-types",
  "grug",
- "grug-storage",
 ]
 
 [[package]]
@@ -1779,6 +1796,7 @@ dependencies = [
  "dango-account-safe",
  "dango-account-spot",
  "dango-amm",
+ "dango-app",
  "dango-bank",
  "dango-genesis",
  "dango-ibc-transfer",
@@ -1798,7 +1816,7 @@ dependencies = [
  "rand",
  "reqwest 0.12.9",
  "test-case",
- "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1820,6 +1838,7 @@ dependencies = [
  "byteorder",
  "data-encoding",
  "grug",
+ "hex-literal",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",
@@ -2409,6 +2428,7 @@ checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
 dependencies = [
  "futures-channel",
  "futures-core",
+ "futures-executor",
  "futures-io",
  "futures-sink",
  "futures-task",
@@ -2473,6 +2493,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-macro"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "162ee34ebcb7c64a8abebc059ce0fee27c2262618d7b60ed8faf72fef13c3650"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
+# >>>>>>> main
 name = "futures-sink"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2493,6 +2525,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-io",
+ "futures-macro",
  "futures-sink",
  "futures-task",
  "memchr",
@@ -2594,6 +2627,7 @@ version = "0.0.0"
 dependencies = [
  "borsh 1.5.2",
  "chrono",
+ "data-encoding",
  "grug-math",
  "grug-storage",
  "grug-types",
@@ -2601,9 +2635,10 @@ dependencies = [
  "indexer-core",
  "prost",
  "serde",
- "tendermint-abci",
- "tendermint-proto",
+ "tendermint",
  "thiserror",
+ "tower 0.5.1",
+ "tower-abci",
  "tracing",
 ]
 
@@ -2885,7 +2920,7 @@ dependencies = [
  "indexmap 2.6.0",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.12",
  "tracing",
 ]
 
@@ -2904,7 +2939,7 @@ dependencies = [
  "indexmap 2.6.0",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.12",
  "tracing",
 ]
 
@@ -2975,10 +3010,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "heck"
-version = "0.4.1"
+name = "hdrhistogram"
+version = "7.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+checksum = "765c9198f173dd59ce26ff9f95ef0aafd0a0fe01fb9d72841bc5066a4c06511d"
+dependencies = [
+ "byteorder",
+ "num-traits",
+]
 
 [[package]]
 name = "heck"
@@ -6342,19 +6381,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tendermint-abci"
-version = "0.40.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4af85534babbbaec8f39b22571680b4edd17daf5606ae859d7d15b7232ca8d2"
-dependencies = [
- "bytes",
- "flex-error",
- "prost",
- "tendermint-proto",
- "tracing",
-]
-
-[[package]]
 name = "tendermint-config"
 version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6690,6 +6716,72 @@ dependencies = [
  "toml_datetime",
  "winnow",
 ]
+
+[[package]]
+name = "tower"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8fa9be0de6cf49e536ce1851f987bd21a43b771b09473c3549a6c853db37c1c"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "hdrhistogram",
+ "indexmap 1.9.3",
+ "pin-project",
+ "pin-project-lite",
+ "rand",
+ "slab",
+ "tokio",
+ "tokio-util 0.7.12",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tower"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2873938d487c3cfb9aed7546dc9f2711d867c9f90c46b889989a2cb84eba6b4f"
+dependencies = [
+ "futures-core",
+ "futures-util",
+ "hdrhistogram",
+ "indexmap 2.6.0",
+ "pin-project-lite",
+ "slab",
+ "sync_wrapper 0.1.2",
+ "tokio",
+ "tokio-util 0.7.12",
+ "tower-layer",
+ "tower-service",
+ "tracing",
+]
+
+[[package]]
+name = "tower-abci"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f3458c29aae68bfc21edc8482ee7ecce8e5dfbb0d07a8034f96fa304525391f"
+dependencies = [
+ "bytes",
+ "futures",
+ "pin-project",
+ "prost",
+ "tendermint",
+ "tendermint-proto",
+ "tokio",
+ "tokio-stream",
+ "tokio-util 0.6.10",
+ "tower 0.4.13",
+ "tracing",
+]
+
+[[package]]
+name = "tower-layer"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "121c2a6cda46980bb0fcd1647ffaf6cd3fc79a013de288782836f6df9c48780e"
 
 [[package]]
 name = "tower-service"

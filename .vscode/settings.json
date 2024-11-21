@@ -36,6 +36,7 @@
     "merkle",
     "ripemd",
     "secp",
+    "subdenom",
     "submessage",
     "submsgs",
     "timelock",

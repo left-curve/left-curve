@@ -16,11 +16,11 @@ Let's consider the case where $\frac{A_{\mathrm{user}}}{A_{\mathrm{pool}}} > \fr
 
 To make it balanced, we're going to swap a portion of user's A to B. Let's say that we swap $A_{\mathrm{in}}$ for $B_{\mathrm{out}}$. The constant product variant holds during the swap:
 
-```math
+$$
 \begin{equation}
 A_{\mathrm{pool}} B_{\mathrm{pool}} = (A_{\mathrm{pool}} + A_{\mathrm{in}}) (B_{\mathrm{pool}} - B_{\mathrm{out}})
 \end{equation}
-```
+$$
 
 (Note: we don't charge any fee for this swap.)
 

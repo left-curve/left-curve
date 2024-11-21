@@ -2,15 +2,18 @@
 
 import { useAccount, useBalances, useConfig } from "@leftcurve/react";
 import { formatNumber, formatUnits } from "@leftcurve/utils";
+import { useAccountName } from "../../hooks";
 import { Button } from "../atoms/Button";
 
 interface Props {
   avatarUri?: string;
+  triggerEdit?: () => void;
 }
 
-export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
+export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit }) => {
   const config = useConfig();
   const { account } = useAccount();
+  const [accountName] = useAccountName();
   const { nativeCoin } = config.chains.find((chain) => chain.id === config.state.chainId)!;
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -19,12 +22,9 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
   if (!account) return null;
 
   return (
-    <div className="bg-gradient-to-br from-sand-100/70 to-white/10 backdrop-blur-sm  rounded-3xl flex flex-col gap-3 items-center justify-between text-sand-900 p-4 sm:min-w-[18rem] sm:w-fit w-full  min-h-[18rem]">
+    <div className="dango-grid-square-mini-l flex flex-col gap-3 items-center justify-center text-sand-900">
       <div className="flex gap-2 text-sm w-full items-center justify-center font-extrabold text-typography-black-200">
-        <p className="uppercase">{account.username}</p>
-        <p className="uppercase">
-          {account.type} #{account.index}
-        </p>
+        <p className="uppercase">{accountName}</p>
       </div>
       <div className="rounded-full bg-surface-rose-200 p-4">
         {avatarUri ? (
@@ -46,7 +46,9 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri }) => {
           </div>
         </div>
       </div>
-      <Button variant="light">Edit</Button>
+      <Button variant="light" className="py-0" onClick={triggerEdit}>
+        Rename
+      </Button>
     </div>
   );
 };

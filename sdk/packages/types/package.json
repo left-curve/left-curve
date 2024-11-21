@@ -19,11 +19,17 @@
       "types": "./build/window.d.ts",
       "import": "./build/window.js",
       "default": "./build/window.cjs"
+    },
+    "./dango": {
+      "types": "./build/dango/index.d.ts",
+      "import": "./build/dango/index.js",
+      "default": "./build/dango/index.cjs"
     }
   },
   "typesVersions": {
     "*": {
-      "window": ["./build/window.d.ts"]
+      "window": ["./build/window.d.ts"],
+      "dango": ["./build/dango/index.d.ts"]
     }
   },
   "scripts": {

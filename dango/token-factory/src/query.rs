@@ -2,6 +2,7 @@ use {
     crate::{ADMINS, CONFIG},
     dango_types::token_factory::{Config, QueryMsg},
     grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
+    std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -36,7 +37,7 @@ fn query_admins(
     storage: &dyn Storage,
     start_after: Option<Denom>,
     limit: Option<u32>,
-) -> StdResult<Vec<(Denom, Addr)>> {
+) -> StdResult<BTreeMap<Denom, Addr>> {
     let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
