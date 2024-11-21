@@ -60,7 +60,7 @@ export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) =>
         className="text-lg"
         onClick={() => (isFirstStep ? navigate("/auth/signup") : previousStep())}
       >
-        {isFirstStep ? "Already have an account?" : "Back"}
+        {isFirstStep ? "Don't have an account?" : "Back"}
       </Button>
     </div>
   );
