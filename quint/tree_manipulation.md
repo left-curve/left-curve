@@ -7,6 +7,22 @@ This document describes how tree manipulation was modelled in Quint, and how eve
 - Rust has early returns while Quint is functional and does not
 - Rust has statement if while Quint is functional and does not (every `if` needs an `else`).
 
+Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on the recursion emulation, which we explain in more detail on [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at) and [Recursion emulation for `create_subtree`](#recursion-emulation-for-create-subtree).
+
+This document covers the correspondance of all the `apply_*` functions and their main helper functions, including:
+- [`apply`](#top-level-apply)
+- [`apply_at`](#apply-at)
+- [`apply_at_internal`](#apply-at-internal)
+- [`apply_at_child`](#apply-at-child)
+- [`apply_at_leaf`](#apply-at-leaf)
+- [`partition_batch`](#partition_batch)
+- [`partition_leaf`](#partition_leaf)
+- [`prepare_batch_for_subtree`](#prepare_batch_for_subtree)
+- [`create_subtree`](#create_subtree)
+
+> [!TIP]
+> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](./apply_fancy.qnt).
+
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
 ```bluespec apply_fancy.qnt
 // -*- mode: Bluespec; -*-
@@ -76,7 +92,7 @@ pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[Opera
 ```
 -->
 
-#### Concrete example
+### Concrete example
 
 Consider the following tree:
 ```
@@ -139,7 +155,7 @@ The example above only talks about `bits` and `batch`, but recursive calls of `a
 
 The other fields (`new_version`, `old_version`, `bits` and `batch`) are relevant, and we need to include all of them in the `memo` key so it doesn't end up returning a computation for a full batch while the implementation, at that point, would only have a partial batch. It's easy to predict what batches would be given as arguments to what bits, and we also how the `new_version` from the original call. `bits` can be any of the existing key hashes of the existing tree, and we want to iterate from the longest ones to the shortest ones. We couldn't find a good way to predict `old_version`, so we actually compute `memo` values for all possible versions from `0` to `new_version`, and then we know that it will have a value for whatever possible `old_version` it's called with.
 
-> [!TIP]
+> [!NOTE]
 > There might be a way to predict `old_version` for each call and avoid unnecessary computations. We should look into this in the future. This does *not* affect correctness, only performance.
 
 ## Apply operators
@@ -587,7 +603,7 @@ We also may add a new orphan on top of those from the default result.
 ```
 -->
 
-Fifth case: Symmetrical to the Third case:
+Fifth case: Symmetrical to the third case:
 
 ```rust
         // Left child is deleted, right child is a leaf.
@@ -614,7 +630,7 @@ Fifth case: Symmetrical to the Third case:
 ```
 -->
 
-Sixth case: Symmetrical to the Fourth case
+Sixth case: Symmetrical to the fourth case
 
 ```rust
         (Outcome::Deleted, Outcome::Unchanged(Some(right))) if right.is_leaf() => {
@@ -1174,6 +1190,8 @@ And finally we return both:
 
 The second recursive function is `create_subtree`, and we also have to emulate it.
 
+### Recursion emulation for `create_subtree`
+
 The Rust signature looks like this:
 ```rust
 fn create_subtree(
@@ -1268,7 +1286,9 @@ Now the iteration: for each bit array, we can predict with each `batch` and `exi
 }
 ```
 
-The pre-computation calls `create_subtree_with_memo`, which is what maps from `create_subtree` in Rust - we already have `create_subtree` in Quint which is responsible for calling the pre-computation and returning the final result, so we gave a different name for this auxiliary one:
+### Create subtree operator
+
+The pre-computation calls `create_subtree_with_memo`, which is what maps from `create_subtree` in Rust - we already have `create_subtree` in Quint which is responsible for calling the pre-computation and returning the final result, so we gave a different name for this operator:
 
 ```bluespec "definitions" +=
 pure def create_subtree_with_memo(
