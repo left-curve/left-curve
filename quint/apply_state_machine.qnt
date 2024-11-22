@@ -291,6 +291,28 @@ module apply_state_machine {
     activeVersionedTrees.forall(bijectiveTreeMap)
   }
 
+  val operationSuccessInv: bool =
+    pure def treeContainsKV(t: TreeMap, n: LeafNode): bool =
+      t.values().contains(Leaf(n))
+
+    pure def treeNotContainsKey(t: TreeMap, key: BitArray): bool =
+      t.values()
+        .filter(node =>
+          match node {
+            | Leaf(n) => n.key_hash == key
+            | Internal(_) => false
+        })
+        .size() == 0
+            
+    val tm = tree.treeAtVersion(version - 1)
+    ops_history.length() > 0 implies
+      ops_history.last().forall(op => {
+        match op.op {
+          | Insert(value) => treeContainsKV(tm, { key_hash: op.key_hash, value_hash: value })
+          | Delete => treeNotContainsKey(tm, op.key_hash)
+        }
+      })
+
   val verifyMembershipInv =
     activeTreeVersions.forall(version => 
       tree.nodes.values().forall (nodes =>
@@ -327,9 +349,9 @@ module apply_state_machine {
     if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+    if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
     if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
-
 }
 
 module pruning_state_machine {
