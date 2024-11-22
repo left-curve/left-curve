@@ -11,15 +11,6 @@ module tree {
 
   pure val MAX_HASH_LENGTH = 4
 
-  type Outcome =
-    | Unchanged(Option[Node])
-    | Updated(Node)
-    | Deleted
-
-  type Operation =
-    | Insert(Bytes_t)
-    | Delete
-
   // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
   type OperationOnKey = { key_hash: BitArray, op: Operation }
   // For types like -> batch: Vec<(Hash256, Hash256)>
@@ -177,4 +168,19 @@ module tree {
 
   /// Is the node a leaf node?
   pure def isLeaf(n) = (not(isInternal(n)))
+
+  pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
+    new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
+  }
+
+  pure def into_child(version: Version, outcome: Outcome): Option[Child] = {
+    match outcome {
+      | Updated(node) => Some({
+        version: version,
+        hash: node.hash(),
+      })
+      | Unchanged(_) => None // Unreachable if _ is not None
+      | Deleted => None // Unreachable
+    }
+  }
 }
