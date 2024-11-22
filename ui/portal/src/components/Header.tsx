@@ -24,7 +24,7 @@ export const Header: React.FC = () => {
         <div className="flex gap-2 items-center justify-end order-2 md:order-3">
           <MenuNotifications />
           <MenuAccounts
-            manageAction={(account) => navigate(`/accounts/${account.index}`)}
+            manageAction={(account) => navigate(`/accounts?address=${account.address}`)}
             createAction={() => navigate("/account-creation")}
             images={{
               [AccountType.Spot]: "/images/avatars/spot.svg",
