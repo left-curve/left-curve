@@ -17,6 +17,10 @@ impl PoolExt for ConcentratedPool {
         todo!()
     }
 
+    fn reverse_swap(&self, _input: Coin) -> anyhow::Result<(Coin, Coin)> {
+        todo!()
+    }
+
     fn provide_liquidity(&mut self, _deposit: CoinPair) -> anyhow::Result<Uint128> {
         todo!()
     }

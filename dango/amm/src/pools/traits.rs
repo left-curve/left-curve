@@ -21,6 +21,14 @@ pub trait PoolExt {
     /// We just output it in events for data logging purpose.
     fn swap(&mut self, input: Coin) -> anyhow::Result<(Coin, Coin)>;
 
+    /// Perform a reverse swap simulation.
+    /// output is the amount of token that should be swapped in.
+    ///
+    /// Returns:
+    /// 1. swap input required;
+    /// 2. liquidity fee charged (in `output` denom).
+    fn reverse_swap(&self, output: Coin) -> anyhow::Result<(Coin, Coin)>;
+
     /// Provide liquidity to the pool.
     /// Returns the amount of liquidity tokens to be minted.
     fn provide_liquidity(&mut self, deposit: CoinPair) -> anyhow::Result<Uint128>;
