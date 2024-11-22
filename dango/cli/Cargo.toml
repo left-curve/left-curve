@@ -14,6 +14,7 @@ name = "dango"
 path = "src/main.rs"
 
 [features]
+default = ["indexer"]
 indexer = ["indexer-core"]
 
 [dependencies]

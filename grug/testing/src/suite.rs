@@ -114,8 +114,8 @@ pub struct TestSuite<
 > where
     DB: Db,
     VM: Vm,
-    PP: ProposalPreparer,
     INDEXER: IndexerAppTrait,
+    PP: ProposalPreparer,
 {
     pub app: App<DB, VM, INDEXER, PP>,
     /// The chain ID can be queries from the `app`, but we internally track it in

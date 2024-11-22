@@ -1,5 +1,5 @@
 #[cfg(feature = "indexer")]
-use indexer_core::App as IndexerApp;
+use {indexer_core::non_blocking_indexer, indexer_core::IndexerTrait};
 
 use {
     anyhow::anyhow,
@@ -38,17 +38,17 @@ impl StartCmd {
         let vm = WasmVm::new(self.wasm_cache_capacity);
         #[cfg(feature = "indexer")]
         let app = {
-            let indexer_app = match self.indexer_enabled {
-                true => Some(IndexerApp::new()),
-                false => None,
-            };
-            App::new(
+            let indexer = non_blocking_indexer::Indexer::new().expect("Can't create indexer");
+            indexer.start().expect("Can't start indexer");
+            let mut app = App::new(
                 db,
                 vm,
                 ProposalPreparer::new(),
                 self.query_gas_limit.unwrap_or(u64::MAX),
-                indexer_app,
+                indexer,
             );
+            app.indexing_enabled = self.indexer_enabled;
+            app
         };
 
         #[cfg(not(feature = "indexer"))]

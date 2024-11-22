@@ -1811,6 +1811,7 @@ dependencies = [
  "grug-db-memory",
  "grug-vm-rust",
  "grug-vm-wasm",
+ "indexer-core",
  "k256",
  "pyth-sdk 0.8.0",
  "rand",

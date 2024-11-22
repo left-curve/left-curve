@@ -15,7 +15,7 @@ use {
         QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome,
         UnsignedTx, GENESIS_SENDER,
     },
-    indexer_core::IndexerTrait as IndexerAppTrait,
+    indexer_core::IndexerTrait,
     prost::bytes::Bytes,
     tracing::error,
 };
@@ -49,6 +49,8 @@ pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
     query_gas_limit: u64,
     #[cfg(feature = "indexer")]
     pub indexer_app: INDEXER,
+    #[cfg(feature = "indexer")]
+    pub indexing_enabled: bool,
 }
 
 impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
@@ -60,6 +62,7 @@ impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
             pp,
             query_gas_limit,
             indexer_app,
+            indexing_enabled: true,
         }
     }
 
@@ -78,7 +81,7 @@ impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -209,9 +212,11 @@ where
 
         #[cfg(feature = "indexer")]
         // TODO: use my own indexer error and `?`
-        self.indexer_app
-            .pre_indexing(block.height)
-            .expect("Cant set DB txn");
+        if self.indexing_enabled {
+            self.indexer_app
+                .pre_indexing(block.height)
+                .expect("Cant set DB txn");
+        }
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -314,9 +319,11 @@ where
             );
 
             #[cfg(feature = "indexer")]
-            self.indexer_app
-                .index_transaction(&block, &tx, &tx_outcome)
-                .unwrap();
+            if self.indexing_enabled {
+                self.indexer_app
+                    .index_transaction(&block, &tx, &tx_outcome)
+                    .unwrap();
+            }
 
             tx_outcomes.push(tx_outcome);
         }
@@ -354,9 +361,11 @@ where
         };
 
         #[cfg(feature = "indexer")]
-        self.indexer_app
-            .index_block(&block, &block_outcome)
-            .unwrap();
+        if self.indexing_enabled {
+            self.indexer_app
+                .index_block(&block, &block_outcome)
+                .unwrap();
+        }
 
         Ok(block_outcome)
     }
@@ -368,8 +377,10 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         #[cfg(feature = "indexer")]
-        if let Some(block_height) = self.db.latest_version() {
-            self.indexer_app.post_indexing(block_height).unwrap();
+        if self.indexing_enabled {
+            if let Some(block_height) = self.db.latest_version() {
+                self.indexer_app.post_indexing(block_height).unwrap();
+            }
         }
 
         Ok(())
@@ -550,7 +561,7 @@ impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

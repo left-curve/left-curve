@@ -11,6 +11,7 @@ use {
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
+    indexer_core::{null_indexer, IndexerTrait},
     std::{env, path::PathBuf, sync::LazyLock},
 };
 
@@ -19,13 +20,24 @@ pub const CHAIN_ID: &str = "dev-1";
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
-pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, PP>;
+pub type TestSuite<
+    PP = ProposalPreparer,
+    DB = MemDb,
+    VM = RustVm,
+    INDEXER = null_indexer::Indexer,
+> = grug::TestSuite<DB, VM, INDEXER, PP>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
     let codes = build_codes();
 
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, ProposalPreparer::new())
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        codes,
+        ProposalPreparer::new(),
+        null_indexer::Indexer::new().expect("Can't create indexer"),
+    )
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer` and `ContractWrapper` codes.
@@ -37,7 +49,13 @@ pub fn setup_test_naive() -> (
 ) {
     let codes = build_codes();
 
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, NaiveProposalPreparer)
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        codes,
+        NaiveProposalPreparer,
+        null_indexer::Indexer::new().expect("Can't create indexer"),
+    )
 }
 
 /// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
@@ -46,7 +64,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm>,
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, null_indexer::Indexer>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,
@@ -58,20 +76,33 @@ pub fn setup_benchmark(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer)
+    setup_suite_with_db_and_vm(
+        db,
+        vm,
+        codes,
+        NaiveProposalPreparer,
+        null_indexer::Indexer::new().expect("Can't create indexer"),
+    )
 }
 
 /// Set up a test with the given DB, VM, and codes.
-fn setup_suite_with_db_and_vm<DB, VM, T, PP>(
+fn setup_suite_with_db_and_vm<DB, VM, T, PP, INDEXER>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
     pp: PP,
-) -> (TestSuite<PP, DB, VM>, Accounts, Codes<T>, Contracts)
+    indexer: INDEXER,
+) -> (
+    TestSuite<PP, DB, VM, INDEXER>,
+    Accounts,
+    Codes<T>,
+    Contracts,
+)
 where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
+    INDEXER: IndexerTrait,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -109,6 +140,7 @@ where
     let suite = grug::TestSuite::new_with_db_vm_and_pp(
         db,
         vm,
+        indexer,
         pp,
         CHAIN_ID.to_string(),
         Duration::from_millis(250),

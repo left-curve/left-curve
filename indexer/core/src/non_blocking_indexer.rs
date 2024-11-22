@@ -22,8 +22,7 @@ use {
 ///
 /// Decided to do different and prepare the data in memory to inject all data in a single Tokio
 /// spawned task
-/// NOTE: Do not make this `Clone`
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Indexer {
     pub context: Context,
     pub runtime: Arc<Runtime>,
