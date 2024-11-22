@@ -43,7 +43,7 @@ export const MenuConnections: React.FC = () => {
         className="font-bold px-4 py-2 gap-2"
       >
         <ProfileIcon className="h-6 w-6" />
-        <p>{username}</p>
+        <p className="truncate">{username}</p>
       </Button>
 
       <div

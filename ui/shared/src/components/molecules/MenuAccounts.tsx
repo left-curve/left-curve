@@ -54,7 +54,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
         radius="lg"
-        className="font-bold px-4 py-2"
+        className="font-bold px-4 py-2 min-w-32 truncate"
       >
         {capitalize(accountName)}
       </Button>

@@ -67,7 +67,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
 
   return (
     <>
-      <div className="xl:col-span-2  min-w-full md:min-w-0 flex-1 order-3 md:order-2 flex items-center justify-center relative">
+      <div className="xl:col-span-2  min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-center justify-center relative">
         <div className="relative rounded-2xl w-full lg:max-w-xl">
           <div
             onClick={handleInteraction}
