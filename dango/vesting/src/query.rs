@@ -1,7 +1,7 @@
 use {
     crate::POSITIONS,
     dango_types::vesting::{ClaimablePosition, PositionIndex, QueryMsg},
-    grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, StdResult},
+    grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
 
@@ -10,15 +10,22 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Position { idx } => position(ctx, idx)?.to_json_value(),
+        QueryMsg::Position { idx } => {
+            let res = position(ctx, idx)?;
+            res.to_json_value()
+        },
         QueryMsg::Positions { start_after, limit } => {
-            positions(ctx, start_after, limit)?.to_json_value()
+            let res = positions(ctx, start_after, limit)?;
+            res.to_json_value()
         },
         QueryMsg::PositionsByUser {
             user,
             start_after,
             limit,
-        } => positions_by_user(ctx, user, start_after, limit)?.to_json_value(),
+        } => {
+            let res = positions_by_user(ctx, user, start_after, limit)?;
+            res.to_json_value()
+        },
     }
 }
 
@@ -35,8 +42,9 @@ fn positions(
 ) -> StdResult<BTreeMap<PositionIndex, ClaimablePosition>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
     POSITIONS
-        .range(ctx.storage, start, None, grug::Order::Ascending)
+        .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| res.map(|(k, v)| (k, v.with_claimable_amount(ctx.block.timestamp))))
         .collect()
@@ -50,11 +58,12 @@ fn positions_by_user(
 ) -> StdResult<BTreeMap<PositionIndex, ClaimablePosition>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
     POSITIONS
         .idx
         .user
         .prefix(user)
-        .range(ctx.storage, start, None, grug::Order::Ascending)
+        .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| res.map(|(k, v)| (k, v.with_claimable_amount(ctx.block.timestamp))))
         .collect()
