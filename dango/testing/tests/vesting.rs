@@ -10,6 +10,8 @@ use {
     test_case::test_case,
 };
 
+static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new("uusdc", 100).unwrap());
+
 fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     let (mut suite, accounts, _codes, contracts) = setup_test_naive();
 
@@ -18,8 +20,6 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
 
     (suite, accounts, contracts.vesting)
 }
-
-static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new("uusdc", 100).unwrap());
 
 #[test_case(
     None,
