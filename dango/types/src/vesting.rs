@@ -93,7 +93,7 @@ impl<T> Position<T> {
     pub fn compute_claimable_amount(&self, now: Timestamp) -> anyhow::Result<Uint128> {
         let vesting_start = self.schedule.start_time + self.schedule.cliff;
 
-        if vesting_start >= now {
+        if vesting_start > now {
             return Ok(Uint128::ZERO);
         }
 
