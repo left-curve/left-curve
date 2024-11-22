@@ -1,3 +1,5 @@
+// -*- mode: Bluespec; -*-
+
 module proofs_test {
   import proofs.* from "../proofs"
   import basicSpells.* from "../spells/basicSpells"
