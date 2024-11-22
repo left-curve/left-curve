@@ -45,3 +45,13 @@ export {
   getConnectorClientQueryOptions,
   getConnectorClientQueryKey,
 } from "./getConnectorClient.js";
+
+export {
+  type GetAccountInfoData,
+  type GetAccountInfoQueryFnData,
+  type GetAccountInfoQueryKey,
+  type GetAccountInfoOptions,
+  type GetAccountInfoErrorType,
+  getAccountInfoQueryOptions,
+  getAccountInfoQueryKey,
+} from "./getAccountInfo.js";
