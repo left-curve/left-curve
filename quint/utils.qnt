@@ -16,12 +16,21 @@ module utils {
       | Some(x) => x
     }
   }
-  pure def isNone(value: Option[a]) : bool = 
-    match value {
-      | None => true
-      | Some(_) => false
-    }
-  
+
+  pure def safeGet(m: a -> b, k: a): Option[b] = {
+    if (m.has(k)) Some(m.get(k)) else None
+  }
+
+  pure def filterMap(s: Set[a], f: (a) => Option[b]): Set[b] = {
+    s.fold(Set(), (acc, e) => {
+      match f(e) {
+        | Some(x) => acc.union(Set(x))
+        | None => acc
+      }
+    })
+  }
+
+
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
@@ -46,5 +55,43 @@ module utils {
 
   pure def mapToTuples(m: a -> b): Set[(a, b)] = {
     m.keys().map(k => (k, m.get(k)))
+  }
+
+  pure def is_updated_or_deleted(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(_) => true
+      | Deleted => true
+      | _ => false
+    }
+  }
+
+  pure def is_unchanged(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(_) => true
+      | _ => false
+    }
+  }
+
+  pure def unchanged_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Unchanged(optional) => match optional {
+        | Some(node) => match node {
+          | Leaf(_) => true
+          | _ => false
+        }
+        | _ => false
+      }
+      | _ => false
+    }
+  }
+
+  pure def updated_to_leaf(outcome: Outcome): bool = {
+    match outcome {
+      | Updated(node) => match node {
+        | Leaf(_) => true
+        | _ => false
+      }
+      | _ => false
+    }
   }
 }
