@@ -291,7 +291,6 @@ module apply_state_machine {
     activeVersionedTrees.forall(bijectiveTreeMap)
   }
 
-
   val operationSuccessInv: bool =
     pure def treeContainsKV(t: TreeMap, n: LeafNode): bool =
       t.values().contains(Leaf(n))
@@ -305,14 +304,14 @@ module apply_state_machine {
         })
         .size() == 0
             
-      val version = ops_history.length() // TODO: is this the version?
-      val tm = tree.treeAtVersion(version)
-      ops_history.length() > 0 implies
-      ops_history.last().forall(op =>
+    val tm = tree.treeAtVersion(version - 1)
+    ops_history.length() > 0 implies
+      ops_history.last().forall(op => {
         match op.op {
           | Insert(value) => treeContainsKV(tm, { key_hash: op.key_hash, value_hash: value })
           | Delete => treeNotContainsKey(tm, op.key_hash)
-        })
+        }
+      })
 
   val verifyMembershipInv =
     activeTreeVersions.forall(version => 
