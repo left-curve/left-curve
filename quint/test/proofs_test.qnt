@@ -12,7 +12,7 @@ module proofs_test {
   
   val empty_tree: Tree = { nodes: Map(), orphans: Set()}
   
-  pure def onlyDeletes(ops) = ops.filter( x => x.op != Delete).empty()
+  pure def onlyDeletes(ops) = ops.forall(x => x.op == Delete)
   pure def getOnlyInserts(ops) = ops.filter(x => x.op != Delete)
   
   run twoDifferentTreesTest = 
