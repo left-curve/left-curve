@@ -8,12 +8,13 @@ import { useClickAway } from "react-use";
 import { truncateAddress } from "@leftcurve/utils";
 import { twMerge } from "../../utils";
 
-import { Button, CopyIcon, ProfileIcon, WalletIcon } from "../";
+import { Button, CopyCheckIcon, CopyIcon, ProfileIcon, WalletIcon } from "../";
 
 export const MenuConnections: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [showMenu, setShowMenu] = useState(false);
+  const [copyIcon, setCopyIcon] = useState(<CopyIcon className="w-6 h-6" />);
 
   const { username, connector, account } = useAccount();
   const { disconnect } = useDisconnect();
@@ -22,6 +23,13 @@ export const MenuConnections: React.FC = () => {
     if (buttonRef.current?.contains(e.target as Node)) return;
     setShowMenu(false);
   });
+
+  const copyAction = () => {
+    if (!account) return;
+    navigator.clipboard.writeText(account.address);
+    setCopyIcon(<CopyCheckIcon className="w-6 h-6" />);
+    setTimeout(() => setCopyIcon(<CopyIcon className="w-6 h-6" />), 1000);
+  };
 
   if (!connector || !account) return null;
 
@@ -41,7 +49,7 @@ export const MenuConnections: React.FC = () => {
       <div
         ref={menuRef}
         className={twMerge(
-          "transition-all bg-white backdrop-blur-3xl  min-w-[18rem] fixed top-[72px] right-4 rounded-3xl p-2",
+          "transition-all bg-white backdrop-blur-3xl  min-w-[18rem] fixed top-[72px] right-4 rounded-3xl p-2 z-[90]",
           showMenu ? "h-fit border border-white" : "h-0 min-h-0 p-0 overflow-hidden border-none",
         )}
       >
@@ -66,8 +74,9 @@ export const MenuConnections: React.FC = () => {
                 isIconOnly
                 radius="md"
                 className="px-2 bg-black/30 hover:bg-black/70"
+                onClick={copyAction}
               >
-                <CopyIcon className="w-6 h-6" />
+                {copyIcon}
               </Button>
             </div>
           )}
