@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["dango/*", "grug/*", "indexer/core", "indexer/entity", "indexer/migration", "indexer/core"]
+members = ["dango/*", "grug/*", "indexer/core", "indexer/entity", "indexer/migration"]
 
 [workspace.package]
 version       = "0.0.0"

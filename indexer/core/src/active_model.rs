@@ -1,8 +1,8 @@
-use grug_math::Inner;
-use grug_types::{BlockInfo, Tx, TxOutcome};
-use sea_orm::prelude::*;
-use sea_orm::sqlx::types::chrono::TimeZone;
-use sea_orm::Set;
+use {
+    grug_math::Inner,
+    grug_types::{BlockInfo, Tx, TxOutcome},
+    sea_orm::{prelude::*, sqlx::types::chrono::TimeZone, Set},
+};
 
 #[derive(Debug, Default)]
 pub struct Models {

@@ -9,8 +9,7 @@ use {
         QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    indexer_core::blocking_indexer::Indexer as AppIndexer,
-    indexer_core::IndexerTrait as IndexerAppTrait,
+    indexer_core::{blocking_indexer::Indexer as AppIndexer, IndexerTrait as IndexerAppTrait},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -157,7 +156,7 @@ impl TestSuite {
 impl<VM> TestSuite<MemDb, VM, indexer_core::null_indexer::Indexer, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
-    //Indexer: IndexerAppTrait,
+    // Indexer: IndexerAppTrait,
     AppError: From<VM::Error>,
 {
     /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
@@ -563,14 +562,10 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(
-            signer,
-            gas_limit,
-            vec![
-                Message::upload(code),
-                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-            ],
-        );
+        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
+            Message::upload(code),
+            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+        ]);
 
         UploadAndInstantiateOutcome {
             address,

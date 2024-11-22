@@ -1,14 +1,14 @@
-use super::Context;
-use super::IndexerTrait;
-use grug_math::Inner;
-use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
-use sea_orm::prelude::*;
-use sea_orm::sqlx::types::chrono::TimeZone;
-use sea_orm::ActiveModelTrait;
-use sea_orm::Set;
-use sea_orm::{DatabaseTransaction, TransactionTrait};
-use std::sync::{Arc, Mutex};
-use tokio::runtime::{Builder, Runtime};
+use {
+    super::{Context, IndexerTrait},
+    grug_math::Inner,
+    grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    sea_orm::{
+        prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
+        TransactionTrait,
+    },
+    std::sync::{Arc, Mutex},
+    tokio::runtime::{Builder, Runtime},
+};
 
 #[derive(Debug, Clone)]
 pub struct Indexer {
@@ -218,14 +218,12 @@ impl Drop for Indexer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use assertor::*;
-    use migration::Migrator;
-    use migration::MigratorTrait;
-    use sea_orm::ActiveModelTrait;
-    use sea_orm::ConnectionTrait;
-    use sea_orm::EntityTrait;
-    use sea_orm::Set;
+    use {
+        super::*,
+        assertor::*,
+        migration::{Migrator, MigratorTrait},
+        sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, Set},
+    };
 
     /// This is when used from Grug, which isn't async. In such case `App` has its own Tokio
     /// runtime and we need to inject async functions

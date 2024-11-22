@@ -99,17 +99,12 @@ fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Eve
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(
-        &mut ctx.storage,
-        ctx.gas_tracker,
-        code_hash,
-        &Code {
-            code: msg.code,
-            status: CodeStatus::Orphaned {
-                since: ctx.block.timestamp,
-            },
+    CODES.save_with_gas(&mut ctx.storage, ctx.gas_tracker, code_hash, &Code {
+        code: msg.code,
+        status: CodeStatus::Orphaned {
+            since: ctx.block.timestamp,
         },
-    )?;
+    })?;
 
     Ok((
         Event::new("upload").add_attribute("code_hash", code_hash),

@@ -1,15 +1,16 @@
-use super::Context;
-use super::IndexerTrait;
-use crate::active_model::Models;
-use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
-use sea_orm::ActiveModelTrait;
-use sea_orm::EntityTrait;
-use sea_orm::{DatabaseTransaction, TransactionTrait};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
-use tokio::runtime::{Builder, Runtime};
+use {
+    super::{Context, IndexerTrait},
+    crate::active_model::Models,
+    grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
+    std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+        thread::sleep,
+        time::Duration,
+    },
+    tokio::runtime::{Builder, Runtime},
+};
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
 /// data to live as long as the spawned task.

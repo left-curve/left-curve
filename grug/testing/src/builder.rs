@@ -9,8 +9,7 @@ use {
         Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    indexer_core::null_indexer::Indexer as NullIndexer,
-    indexer_core::IndexerTrait as IndexerAppTrait,
+    indexer_core::{null_indexer::Indexer as NullIndexer, IndexerTrait as IndexerAppTrait},
     serde::Serialize,
     std::{
         collections::BTreeMap,
@@ -672,19 +671,19 @@ where
             app_config: self.app_config,
         };
 
-        //let indexer = self
+        // let indexer = self
         //    .indexer
         //    .unwrap_or(AppIndexer::new().expect("Can't create AppIndexer"));
 
-        //let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        //indexer.start();
+        // let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+        // indexer.start();
 
         let suite = TestSuite::new_with_db_vm_and_pp(
             MemDb::new(),
             self.vm,
             self.indexer,
             self.pp,
-            //indexer,
+            // indexer,
             chain_id,
             block_time,
             default_gas_limit,

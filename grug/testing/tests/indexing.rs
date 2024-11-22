@@ -86,7 +86,7 @@ fn index_block_with_blocking_indexer() {
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
-            //dbg!(&block);
+            // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(2);
             Ok::<(), sea_orm::DbErr>(())
         })

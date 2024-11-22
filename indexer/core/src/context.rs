@@ -1,5 +1,7 @@
-use migration::{Migrator, MigratorTrait};
-use sea_orm::{ConnectOptions, Database, DatabaseConnection};
+use {
+    migration::{Migrator, MigratorTrait},
+    sea_orm::{ConnectOptions, Database, DatabaseConnection},
+};
 
 #[derive(Debug, Clone)]
 pub struct Context {
