@@ -33,7 +33,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
   );
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
   const [accountName] = useAccountName();
-  const [expanded, setExpanded] = useState(Boolean(accounts?.length && accounts?.length <= 2));
+  const [expanded, setExpanded] = useState(false);
 
   useClickAway(menuRef, (e) => {
     if (buttonRef.current?.contains(e.target as Node)) return;
@@ -130,6 +130,7 @@ export const MenuAccounts: React.FC<Props> = ({ images, createAction, manageActi
             className={twMerge(
               "absolute top-[16rem] left-0 w-full h-[calc(100%-16rem)] md:top-[14rem] md:h-[calc(100%-14rem)] bg-transparent",
               expanded ? "scale-0" : "scale-100",
+              { "scale-0": Boolean(accounts?.length && accounts?.length <= 2) },
             )}
             onClick={() => setExpanded(true)}
           />
