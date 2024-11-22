@@ -15,10 +15,10 @@ This document covers the correspondance of all the `apply_*` functions and their
 - [`apply_at_internal`](#apply-at-internal)
 - [`apply_at_child`](#apply-at-child)
 - [`apply_at_leaf`](#apply-at-leaf)
-- [`partition_batch`](#partition_batch)
-- [`partition_leaf`](#partition_leaf)
-- [`prepare_batch_for_subtree`](#prepare_batch_for_subtree)
-- [`create_subtree`](#create_subtree)
+- [`partition_batch`](#partition-batch)
+- [`partition_leaf`](#partition-leaf)
+- [`prepare_batch_for_subtree`](#prepare-batch-for-subtree)
+- [`create_subtree`](#create-subtree)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](./apply_fancy.qnt).
@@ -1507,3 +1507,4 @@ Then, we save new nodes. In Quint, this means adding to `nodes_to_add`.
 ```
 -->
 
+And this is all of the main tree manipulation functionality in Rust and Quint.
