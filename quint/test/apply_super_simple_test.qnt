@@ -870,4 +870,5 @@ module apply_super_simple_test {
   }
 
   assert(t2==fancy)
+  
 }

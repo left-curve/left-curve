@@ -30,6 +30,7 @@ module utils {
     })
   }
 
+
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
