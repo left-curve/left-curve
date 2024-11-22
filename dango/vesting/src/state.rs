@@ -3,7 +3,7 @@ use {
     grug::{Addr, Counter, IndexedMap, MultiIndex},
 };
 
-pub const POSITION_INDEX: Counter<u64> = Counter::new("position_index", 0, 1);
+pub const NEXT_POSITION_INDEX: Counter<u64> = Counter::new("index", 0, 1);
 
 pub const POSITIONS: IndexedMap<u64, Position, PositionIndexes> =
     IndexedMap::new("position", PositionIndexes {
