@@ -23,56 +23,56 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
 
 #[test_case(
     None,
-    None,
-    None,
+    0,
+    0,
     Coins::default(),
     Some("invalid payment: expecting 1 coins, found 0");
     "no funds"
 )]
 #[test_case(
     Some(99),
-    None,
-    None,
+    0,
+    0,
     TEST_AMOUNT.clone().into(),
-    Some("invalid start time");
-    "invalid start time"
+    None;
+    "ok start time before now"
 )]
 #[test_case(
     Some(100),
-    None,
-    None,
+    0,
+    0,
     TEST_AMOUNT.clone().into(),
     None;
     "ok no cliff no vesting"
 )]
 #[test_case(
     Some(100),
-    Some(200),
-    None,
+    200,
+    0,
     TEST_AMOUNT.clone().into(),
     None;
     "ok no vesting"
 )]
 #[test_case(
     Some(100),
-    None,
-    Some(300),
+    0,
+    300,
     TEST_AMOUNT.clone().into(),
     None;
     "ok no cliff"
 )]
 #[test_case(
     Some(100),
-    Some(200),
-    Some(300),
+    200,
+    300,
     TEST_AMOUNT.clone().into(),
     None;
     "ok"
 )]
 fn creation_cases(
     start_time: Option<u128>,
-    cliff: Option<u128>,
-    vesting: Option<u128>,
+    cliff: u128,
+    vesting: u128,
     coins: Coins,
     maybe_err: Option<&str>,
 ) {
@@ -85,8 +85,8 @@ fn creation_cases(
             user: accounts.relayer.address(),
             schedule: Schedule {
                 start_time: start_time.map(Duration::from_seconds),
-                cliff: cliff.map(Duration::from_seconds),
-                vesting: vesting.map(Duration::from_seconds),
+                cliff: Duration::from_seconds(cliff),
+                vesting: Duration::from_seconds(vesting),
             },
         },
         coins,
@@ -111,8 +111,8 @@ fn cliff() {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: None,
-                    cliff: Some(Duration::from_seconds(100)),
-                    vesting: None,
+                    cliff: Duration::from_seconds(100),
+                    vesting: Duration::default(),
                 },
             },
             TEST_AMOUNT.clone(),
@@ -130,7 +130,7 @@ fn cliff() {
                 &vesting::ExecuteMsg::Claim { idx: 1 },
                 Coins::default(),
             )
-            .should_fail_with_error("nothing to claim during cliff phase");
+            .should_fail_with_error("nothing to claim");
 
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
@@ -185,8 +185,8 @@ fn vesting() {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: Some(Duration::from_seconds(110)),
-                    cliff: None,
-                    vesting: Some(Duration::from_seconds(100)),
+                    cliff: Duration::default(),
+                    vesting: Duration::from_seconds(100),
                 },
             },
             TEST_AMOUNT.clone(),
@@ -205,7 +205,7 @@ fn vesting() {
                 &vesting::ExecuteMsg::Claim { idx: 1 },
                 Coins::default(),
             )
-            .should_fail_with_error("vesting has not started yet");
+            .should_fail_with_error("nothing to claim");
     }
 
     let initial_balance = suite
@@ -296,8 +296,8 @@ fn cliff_and_vesting() {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: None,
-                    cliff: Some(Duration::from_seconds(50)),
-                    vesting: Some(Duration::from_seconds(100)),
+                    cliff: Duration::from_seconds(50),
+                    vesting: Duration::from_seconds(100),
                 },
             },
             TEST_AMOUNT.clone(),
@@ -315,7 +315,7 @@ fn cliff_and_vesting() {
                 &vesting::ExecuteMsg::Claim { idx: 1 },
                 Coins::default(),
             )
-            .should_fail_with_error("nothing to claim during cliff phase");
+            .should_fail_with_error("nothing to claim");
 
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })

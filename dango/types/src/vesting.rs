@@ -1,5 +1,4 @@
 use {
-    anyhow::ensure,
     grug::{
         Addr, Coin, Duration, MultiplyFraction, NumberConst, Timestamp, Udec128, Uint128, Undefined,
     },
@@ -44,26 +43,14 @@ pub enum QueryMsg {
 #[grug::derive(Serde, Borsh)]
 pub struct Schedule<T = Timestamp> {
     pub start_time: T,
-    pub cliff: Option<Duration>,
-    pub vesting: Option<Duration>,
+    pub cliff: Duration,
+    pub vesting: Duration,
 }
 
 impl Schedule<Option<Timestamp>> {
     pub fn set_start_time(self, now: Timestamp) -> anyhow::Result<Schedule> {
-        let start_time = if let Some(start_time) = self.start_time {
-            ensure!(
-                start_time >= now,
-                "invalid start time: {:?}, now: {:?}",
-                start_time,
-                now
-            );
-            start_time
-        } else {
-            now
-        };
-
         Ok(Schedule {
-            start_time,
+            start_time: self.start_time.unwrap_or(now),
             cliff: self.cliff,
             vesting: self.vesting,
         })
@@ -104,36 +91,19 @@ impl Position {
 
 impl<T> Position<T> {
     pub fn compute_claimable_amount(&self, now: Timestamp) -> anyhow::Result<Uint128> {
-        ensure!(
-            now >= self.schedule.start_time,
-            "vesting has not started yet: start at: {:?}, now: {:?}",
-            self.schedule.start_time,
-            now
-        );
+        let vesting_start = self.schedule.start_time + self.schedule.cliff;
 
-        let mut time = self.schedule.start_time;
-
-        if let Some(cliff) = self.schedule.cliff {
-            time = time + cliff;
-
-            ensure!(
-                now >= time,
-                "nothing to claim during cliff phase: end: {:?}, now: {:?}",
-                time,
-                now
-            );
+        if vesting_start >= now {
+            return Ok(Uint128::ZERO);
         }
 
-        let claim_percent = if let Some(vesting) = self.schedule.vesting {
-            let vesting_end = time + vesting;
-
-            if now >= vesting_end {
-                Udec128::ONE
-            } else {
-                Udec128::checked_from_ratio((now - time).into_nanos(), vesting.into_nanos())?
-            }
-        } else {
+        let claim_percent = if now >= self.schedule.vesting + vesting_start {
             Udec128::ONE
+        } else {
+            Udec128::checked_from_ratio(
+                (now - vesting_start).into_nanos(),
+                self.schedule.vesting.into_nanos(),
+            )?
         };
 
         Ok(self.amount.amount.checked_mul_dec_floor(claim_percent)? - self.claimed_amount)

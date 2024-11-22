@@ -43,10 +43,7 @@ fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
 
     let claimable_amount = position.compute_claimable_amount(ctx.block.timestamp)?;
 
-    ensure!(
-        !claimable_amount.is_zero(),
-        "don't try to claim twice in the same block"
-    );
+    ensure!(!claimable_amount.is_zero(), "nothing to claim");
 
     position.claimed_amount += claimable_amount;
 
