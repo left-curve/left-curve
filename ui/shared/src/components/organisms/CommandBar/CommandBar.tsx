@@ -67,7 +67,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
 
   return (
     <>
-      <div className="xl:col-span-2  min-w-full md:min-w-0 flex-1 order-3 md:order-2 flex items-center justify-center relative">
+      <div className="xl:col-span-2  min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-center justify-center relative">
         <div className="relative rounded-2xl w-full lg:max-w-xl">
           <div
             onClick={handleInteraction}
@@ -80,7 +80,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
               )}
             >
               <SearchIcon className="h-6 w-6" />
-              <p className="flex-1 pt-1">Search for apps and commands</p>
+              <p className="flex-1 pt-1 truncate">Search for apps and commands</p>
               <p className="px-1.5 py-0.5 inline-flex items-center font-sans font-normal text-center bg-surface-green-200 rounded-small text-sm shadow-sm">
                 ⌥ K
               </p>

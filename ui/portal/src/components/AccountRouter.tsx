@@ -1,34 +1,30 @@
-import { useAccount } from "@leftcurve/react";
-import { useEffect } from "react";
+import { useAccountInfo } from "@leftcurve/react";
 
+import { Spinner } from "@dango/shared";
 import { ManageMargin } from "./ManageMargin";
 import { ManageSafe } from "./ManageSafe";
 import { ManageSpot } from "./ManageSpot";
 
-import { AccountType } from "@leftcurve/types";
+import { AccountType, type Address } from "@leftcurve/types";
+import { Navigate } from "react-router-dom";
 
 interface Props {
-  index: number;
+  address: Address;
 }
 
-export const AccountRouter: React.FC<Props> = ({ index }) => {
-  const { account, accounts, changeAccount } = useAccount();
+export const AccountRouter: React.FC<Props> = ({ address }) => {
+  const { isLoading, data: account } = useAccountInfo({ address, query: { retry: 0 } });
 
-  useEffect(() => {
-    if (!account || !accounts?.length || account.index === index) return;
-    const newAccount = accounts.find((a) => a.index === index);
-    if (!newAccount) throw new Error(`Account with index ${index} not found`);
-    changeAccount?.(newAccount);
-  }, [index, account, accounts, changeAccount]);
+  if (isLoading) return <Spinner />;
 
-  if (!account || account.index !== index) return null;
+  if (!account) return <Navigate to="/404" />;
 
   switch (account.type) {
     case AccountType.Spot:
-      return <ManageSpot />;
+      return <ManageSpot account={account} />;
     case AccountType.Safe:
-      return <ManageSafe />;
+      return <ManageSafe account={account} />;
     case AccountType.Margin:
-      return <ManageMargin />;
+      return <ManageMargin account={account} />;
   }
 };

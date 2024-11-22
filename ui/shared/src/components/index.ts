@@ -67,3 +67,4 @@ export { ArrowSelectorIcon } from "./icons/ArrowSelector";
 export { SwapArrowDownIcon } from "./icons/SwapArrowDown";
 export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
+export { CopyCheckIcon } from "./icons/CopyCheck";

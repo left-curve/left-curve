@@ -12,7 +12,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 left-0 bg-white md:bg-transparent gap-4 z-50 flex flex-wrap md:flex-nowrap items-center justify-between w-full p-4 xl:grid xl:grid-cols-4">
+      <header className="sticky top-0 left-0 bg-white lg:bg-transparent gap-4 z-50 flex flex-wrap lg:flex-nowrap items-center justify-between w-full p-4 xl:grid xl:grid-cols-4">
         <Link to="/" className="w-fit">
           <img
             src="/images/dango.svg"
@@ -21,10 +21,10 @@ export const Header: React.FC = () => {
           />
         </Link>
         <CommandBar applets={applets} action={({ path }) => navigate(path)} />
-        <div className="flex gap-2 items-center justify-end order-2 md:order-3">
+        <div className="flex gap-2 items-center justify-end order-2 lg:order-3">
           <MenuNotifications />
           <MenuAccounts
-            manageAction={(account) => navigate(`/accounts/${account.index}`)}
+            manageAction={(account) => navigate(`/accounts?address=${account.address}`)}
             createAction={() => navigate("/account-creation")}
             images={{
               [AccountType.Spot]: "/images/avatars/spot.svg",

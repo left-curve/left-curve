@@ -35,7 +35,7 @@ export const AppRouter: React.FC = () => {
           <Route path="signup" element={<SignupView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
-          <Route path="accounts/:index" element={<AccountView />} />
+          <Route path="accounts" element={<AccountView />} />
           <Route path="/account-creation" element={<AccountCreationView />} />
           <Route path="/block-explorer" element={<BlockExplorerView />} />
           <Route path="/transfer" element={<TransferView />} />
