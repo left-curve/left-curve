@@ -6,8 +6,8 @@ use {
 pub const POSITION_INDEX: Counter<u64> = Counter::new("position_index", 0, 1);
 
 pub const POSITIONS: IndexedMap<u64, Position, PositionIndexes> =
-    IndexedMap::new("positions", PositionIndexes {
-        user: MultiIndex::new(|_, position| position.user, "positions", "positions_user"),
+    IndexedMap::new("position", PositionIndexes {
+        user: MultiIndex::new(|_, position| position.user, "position", "position__user"),
     });
 
 #[grug::index_list(u64, Position)]
