@@ -2,8 +2,8 @@ use {
     dango_testing::{setup_test_naive, Accounts, TestSuite},
     dango_types::vesting::{self, Schedule},
     grug::{
-        Addr, Addressable, Coin, Coins, ContractBuilder, Duration, MultiplyFraction, NumberConst,
-        ResultExt, Udec128, Uint128,
+        Addr, Addressable, Coin, Coins, Duration, MultiplyFraction, NumberConst, ResultExt,
+        Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     std::sync::LazyLock,
@@ -11,29 +11,12 @@ use {
 };
 
 fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
-    let (mut suite, mut accounts, ..) = setup_test_naive();
-    suite.block_time = Duration::default();
+    let (mut suite, accounts, _codes, contracts) = setup_test_naive();
+
+    suite.block_time = Duration::from_seconds(0);
     suite.block.timestamp = Duration::from_seconds(100);
 
-    let code = ContractBuilder::new(Box::new(dango_vesting::instantiate))
-        .with_execute(Box::new(dango_vesting::execute))
-        .with_query(Box::new(dango_vesting::query))
-        .build();
-
-    let vesting = suite
-        .upload_and_instantiate(
-            &mut accounts.owner,
-            code,
-            &vesting::InstantiateMsg {},
-            "salt",
-            Some("label"),
-            None,
-            Coins::default(),
-        )
-        .should_succeed()
-        .address;
-
-    (suite, accounts, vesting)
+    (suite, accounts, contracts.vesting)
 }
 
 static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new("uusdc", 100).unwrap());

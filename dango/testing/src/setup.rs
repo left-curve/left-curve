@@ -195,6 +195,11 @@ fn build_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
+    let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
+        .with_execute(Box::new(dango_vesting::execute))
+        .with_query(Box::new(dango_vesting::query))
+        .build();
+
     Codes {
         account_factory,
         account_margin,
@@ -207,5 +212,6 @@ fn build_codes() -> Codes<ContractWrapper> {
         oracle,
         taxman,
         token_factory,
+        vesting,
     }
 }

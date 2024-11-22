@@ -11,7 +11,7 @@ use {
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
         },
-        taxman, token_factory,
+        taxman, token_factory, vesting,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
@@ -36,6 +36,7 @@ pub struct Contracts {
     pub oracle: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
+    pub vesting: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -51,6 +52,7 @@ pub struct Codes<T> {
     pub oracle: T,
     pub taxman: T,
     pub token_factory: T,
+    pub vesting: T,
 }
 
 pub struct GenesisUser {
@@ -71,6 +73,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
+    let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
 
     Ok(Codes {
         account_factory,
@@ -84,6 +87,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         oracle,
         taxman,
         token_factory,
+        vesting,
     })
 }
 
@@ -117,6 +121,7 @@ where
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
+    let vesting_code_hash = upload(&mut msgs, codes.vesting);
 
     // Instantiate account factory.
     let keys = genesis_users
@@ -296,6 +301,14 @@ where
         "dango/oracle",
     )?;
 
+    let vesting = instantiate(
+        &mut msgs,
+        vesting_code_hash,
+        &vesting::InstantiateMsg {},
+        "dango/vesting",
+        "dango/vesting",
+    )?;
+
     let contracts = Contracts {
         account_factory,
         amm,
@@ -305,6 +318,7 @@ where
         oracle,
         taxman,
         token_factory,
+        vesting,
     };
 
     let permissions = Permissions {
