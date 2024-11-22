@@ -31,24 +31,29 @@ module grug_ics23 {
   // MinPrefixLength = 4
   // MaxPrefixLength = 12
   // ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
-  // !!! UPDATE !!!
-  // ICS23 specs are placed in grug/jellyfish-merkle/src/ics23.rs
-  // https://github.com/left-curve/left-curve/blob/7a0451dfad14d607722c33bec20ae56dd5c3bffa/grug/jellyfish-merkle/src/ics23.rs#L18-L37
-  // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
-  pure val MinPrefixLen = 1
-  pure val MaxPrefixLen = 1
-  // It is crucial to make sure that ChildSize > MaxPrefixLen
-  // !!! UPDATE!!! 
-  //  this parameter is set to 32 because that is the size of SHA256 
-  //  and that value is used in configuring ics23 verification spec
-  //  in LeftCurve Grug JellyFish Merkle Tree implementation
-  pure val ChildSize = 32 //32 bytes in SHA256
 
+  type Ics23ProofSpecification = {
+    MinPrefixLen: int, 
+    MaxPrefixLen: int,
+    ChildSize: int,
+    EmptyChild: Term_t
+  }
 
-  // Empty child is a predefined sequence that fills an absent child.
-  // It's defined in InnerSpec and it has the value of Hash256::ZERO
-  // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
-  pure val EmptyChild = Hash256_ZERO
+  pure val Ics23ProofSpec: Ics23ProofSpecification= {
+    // ICS23 specs are placed in grug/jellyfish-merkle/src/ics23.rs
+    // https://github.com/left-curve/left-curve/blob/7a0451dfad14d607722c33bec20ae56dd5c3bffa/grug/jellyfish-merkle/src/ics23.rs#L18-L37
+    // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
+    MinPrefixLen: 1,
+    MaxPrefixLen: 1,
+    //  this parameter is set to 32 because that is the size of SHA256 
+    //  and that value is used in configuring ics23 verification spec
+    //  in LeftCurve Grug JellyFish Merkle Tree implementation
+    ChildSize: 32,
+    // Empty child is a predefined sequence that fills an absent child.
+    // It's defined in InnerSpec and it has the value of Hash256::ZERO
+    // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
+    EmptyChild: Hash256_ZERO
+  }
 
   type LEAF_T = {
     // The implementation additionally stores hashing and length functions:
@@ -138,11 +143,11 @@ module grug_ics23 {
     //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
     // !!! UPDATE !!!
     // The same applies for Left Curve Grug JellyFish Merkle Tree
-    if (hasPadding(inner, MinPrefixLen, MaxPrefixLen, ChildSize)) {
+    if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
       // the node turns left
       (0, true)
-    } else if (hasPadding(inner, ChildSize + MinPrefixLen,
-                          ChildSize + MaxPrefixLen, 0)) {
+    } else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
+                          Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
       // the node turns right
       (1, true)
     } else {
@@ -164,7 +169,7 @@ module grug_ics23 {
     // For Left Curve Grug we have changed ChildSize to accustom their JellyFish Merkle Tree, 
     // therefore previous comment is outdated
     // actualPrefix = len(inner.prefix) - 32
-    termLen(inner.prefix) >= ChildSize,
+    termLen(inner.prefix) >= Ics23ProofSpec.ChildSize,
     // !!!!!!! IMPLEMENTATION SPECIFIC NOTE
     // We have adopted the following approach in order to fix problem with Quint hashing:
     //  In the event when left branches are empty, 
@@ -192,8 +197,8 @@ module grug_ics23 {
     //  and simply just return `EmptyChild`, or: Map([0, 0] -> Raw([0]), [0] -> Hash), 
     //  which is the same as trimming of the first zero, which represents `INTERNAL_NODE_HASH_PREFIX`.
     
-    val fromIndex = termLen(inner.prefix) - ChildSize
-    termSlice(inner.prefix, fromIndex, fromIndex + ChildSize)== EmptyChild
+    val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
+    termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
   }
 
   /// IsLeftMost returns true if this is the left-most path in the tree,
@@ -209,7 +214,7 @@ module grug_ics23 {
       val pathStep = path[i]
       or {
         // the path goes left
-        hasPadding(pathStep, MinPrefixLen, MaxPrefixLen, ChildSize),
+        hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
         // the path goes right, but the left child is empty (a gap)
         leftBranchesAreEmpty(pathStep)
       }
@@ -224,9 +229,9 @@ module grug_ics23 {
     val order = orderFromPadding(inner)
     order._2 and order._1 != 1,
     // the remaining case is rightBranches == 1, see orderFromPadding
-    termLen(inner.suffix) == ChildSize,
+    termLen(inner.suffix) == Ics23ProofSpec.ChildSize,
     // getPosition(0) returns 0, hence, from == 0
-    inner.suffix == EmptyChild
+    inner.suffix == Ics23ProofSpec.EmptyChild
   }
 
   /// IsRightMost returns true if this is the left-most path in the tree,
@@ -241,7 +246,7 @@ module grug_ics23 {
       val pathStep = path[i]
       or {
         // the path goes right
-        hasPadding(pathStep, ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0),
+        hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
         // the path goes left, but the right child is empty (a gap)
         rightBranchesAreEmpty(pathStep)
       }
