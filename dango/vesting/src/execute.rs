@@ -1,7 +1,7 @@
 use {
     crate::{NEXT_POSITION_INDEX, POSITIONS},
     anyhow::ensure,
-    dango_types::vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule},
+    dango_types::vesting::{ExecuteMsg, InstantiateMsg, Position, PositionIndex, Schedule},
     grug::{Addr, Coin, Duration, IsZero, Message, MutableCtx, Response, StdResult},
 };
 
@@ -33,7 +33,7 @@ fn create_position(
     Ok(Response::new())
 }
 
-fn claim(ctx: MutableCtx, idx: u64) -> anyhow::Result<Response> {
+fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
     let mut position = POSITIONS.load(ctx.storage, idx)?;
 
     ensure!(

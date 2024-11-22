@@ -1,6 +1,6 @@
 use {
     crate::POSITIONS,
-    dango_types::vesting::{ClaimablePosition, QueryMsg},
+    dango_types::vesting::{ClaimablePosition, PositionIndex, QueryMsg},
     grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, StdResult},
     std::collections::BTreeMap,
 };
@@ -22,7 +22,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     }
 }
 
-fn position(ctx: ImmutableCtx, idx: u64) -> StdResult<ClaimablePosition> {
+fn position(ctx: ImmutableCtx, idx: PositionIndex) -> StdResult<ClaimablePosition> {
     POSITIONS
         .load(ctx.storage, idx)
         .map(|val| val.with_claimable_amount(ctx.block.timestamp))
@@ -30,9 +30,9 @@ fn position(ctx: ImmutableCtx, idx: u64) -> StdResult<ClaimablePosition> {
 
 fn positions(
     ctx: ImmutableCtx,
-    start_after: Option<u64>,
+    start_after: Option<PositionIndex>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<u64, ClaimablePosition>> {
+) -> StdResult<BTreeMap<PositionIndex, ClaimablePosition>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     POSITIONS
@@ -45,9 +45,9 @@ fn positions(
 fn positions_by_user(
     ctx: ImmutableCtx,
     user: Addr,
-    start_after: Option<u64>,
+    start_after: Option<PositionIndex>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<u64, ClaimablePosition>> {
+) -> StdResult<BTreeMap<PositionIndex, ClaimablePosition>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
     POSITIONS

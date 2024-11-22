@@ -6,6 +6,8 @@ use {
     std::collections::BTreeMap,
 };
 
+pub type PositionIndex = u32;
+
 pub type ClaimablePosition = Position<Uint128>;
 
 #[grug::derive(Serde)]
@@ -18,23 +20,23 @@ pub enum ExecuteMsg {
         schedule: Schedule<Option<Timestamp>>,
     },
     Claim {
-        idx: u64,
+        idx: PositionIndex,
     },
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     #[returns(ClaimablePosition)]
-    Position { idx: u64 },
-    #[returns(BTreeMap<u64, ClaimablePosition>)]
+    Position { idx: PositionIndex },
+    #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
     Positions {
-        start_after: Option<u64>,
+        start_after: Option<PositionIndex>,
         limit: Option<u32>,
     },
-    #[returns(BTreeMap<u64, ClaimablePosition>)]
+    #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
     PositionsByUser {
         user: Addr,
-        start_after: Option<u64>,
+        start_after: Option<PositionIndex>,
         limit: Option<u32>,
     },
 }
