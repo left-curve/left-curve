@@ -61,12 +61,12 @@ export const MenuNotifications: React.FC = () => {
       <div
         ref={menuRef}
         className={twMerge(
-          "transition-all bg-gray-200 backdrop-blur-3xl w-full md:w-[19.5rem] fixed top-0 md:top-[72px] md:rounded-3xl p-4 md:p-2 md:py-4 flex flex-col gap-4 h-[100vh] md:h-fit md:max-h-[calc(100vh-78px)] z-50",
+          "transition-all bg-surface-green-300 backdrop-blur-3xl w-full md:w-[19.5rem] fixed top-0 md:top-[72px] md:rounded-3xl p-4 md:p-2 md:py-4 flex flex-col gap-4 h-[100vh] md:h-fit md:max-h-[calc(100vh-78px)] z-50",
           showMenu ? "right-0 md:right-4" : "right-[-100vh]",
         )}
       >
         <div className={twMerge("flex items-center justify-between md:hidden")}>
-          <p className="text-2xl font-bold font-diatype-rounded mx-2 tracking-widest flex-1">
+          <p className="text-2xl font-bold font-diatype-rounded mx-2 tracking-widest flex-1 text-typography-green-500">
             Notifications
           </p>
           <div className="flex gap-2">
@@ -79,7 +79,7 @@ export const MenuNotifications: React.FC = () => {
           {mockNotifications.map((notification, i) => (
             <Fragment key={notification.txHash}>
               <NotificationCard notification={notification} />
-              <span className="last:hidden bg-black h-[1px] w-full" />
+              <span className="last:hidden bg-surface-green-400 h-[1px] w-full" />
             </Fragment>
           ))}
         </div>
