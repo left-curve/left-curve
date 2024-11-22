@@ -4,9 +4,10 @@
       "composite": false
     }
   },
-  "bundle": true,
+  "bundle": false,
   "outDir": "build",
   "platform": "neutral",
   "format": ["cjs", "esm"],
-  "treeshake": "recommended"
+  "treeshake": false,
+  "splitting": false
 }

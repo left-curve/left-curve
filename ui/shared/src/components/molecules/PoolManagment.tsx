@@ -20,7 +20,7 @@ export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
 
   return (
     <div className="flex flex-col gap-12 w-full items-center">
-      <div className="dango-grid-landscape-flat-mini-l flex flex-col gap-2 w-full items-center text-typography-black-200">
+      <div className="dango-grid-3x8-S flex flex-col w-full items-center justify-center text-typography-black-200">
         <div className="h-[104px] w-[104px] flex items-center justify-center bg-surface-rose-200 rounded-full">
           <img
             src="/images/applets/deposit-and-withdraw.svg"

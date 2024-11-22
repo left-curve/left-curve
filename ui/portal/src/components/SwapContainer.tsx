@@ -9,7 +9,7 @@ export const SwapContainer: React.FC = () => {
   const arrayOfCoins = Object.values(coins);
 
   return (
-    <div className="dango-grid-square-xl-l gap-4 flex flex-col justify-center items-center">
+    <div className="dango-grid-4x4-L gap-4 flex flex-col justify-center items-center">
       <p className="font-extrabold text-typography-black-200 tracking-widest uppercase">Swap</p>
 
       <div className="flex flex-col gap-4 w-full max-w-[31.5rem] items-center justify-center">

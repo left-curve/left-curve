@@ -71,9 +71,6 @@ export const MenuConnections: React.FC = () => {
               </Button>
             </div>
           )}
-          <Button color="purple" variant="bordered" size="sm">
-            Manage Access
-          </Button>
           <Button size="sm" onClick={() => disconnect({ connectorUId: connector.uid })}>
             Log out
           </Button>
