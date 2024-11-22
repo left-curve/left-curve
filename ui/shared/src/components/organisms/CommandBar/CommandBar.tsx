@@ -80,7 +80,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
               )}
             >
               <SearchIcon className="h-6 w-6" />
-              <p className="flex-1 pt-1">Search for apps and commands</p>
+              <p className="flex-1 pt-1 truncate">Search for apps and commands</p>
               <p className="px-1.5 py-0.5 inline-flex items-center font-sans font-normal text-center bg-surface-green-200 rounded-small text-sm shadow-sm">
                 ⌥ K
               </p>
