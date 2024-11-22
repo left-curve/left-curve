@@ -8,6 +8,9 @@ module apply_state_machine {
   import node.* from "./node"
   import utils.* from "./utils"
 
+  import grug_ics23.* from "./grug_ics23"
+  import proofs.* from "./proofs"
+
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
   import apply_super_simple as super_simple from "./apply_super_simple"
@@ -28,7 +31,7 @@ module apply_state_machine {
     // For now, we always start with an empty tree
     tree' = { nodes: Map(), orphans: Set() },
     version' = 1,
-    smallest_unpruned_version' = 0,
+    smallest_unpruned_version' = 1,
     ops_history' = [],
   }
 
@@ -289,9 +292,6 @@ module apply_state_machine {
   }
 
 
-
-
-
   val operationSuccessInv: bool =
     pure def treeContainsKV(t: TreeMap, n: LeafNode): bool =
       t.values().contains(Leaf(n))
@@ -314,6 +314,29 @@ module apply_state_machine {
           | Delete => treeNotContainsKey(tm, op.key_hash)
         })
 
+  val verifyMembershipInv =
+    activeTreeVersions.forall(version => 
+      tree.nodes.values().forall (nodes =>
+        // this check is added because in the event of first (version 0 -> version 1) batch being only deletes
+        // in this case there will be no root for version 1
+        if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else 
+        match nodes {
+          | Internal => true
+          | Leaf(l) =>
+              val proof = ics23_prove(tree, l.key_hash, version)
+              val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
+              match proof {
+                | Some(p) =>
+                  match p {
+                    | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l)))
+                                      verifyMembership(root, ep, l.key_hash,l.value_hash)
+                                    else not(verifyMembership(root, ep, l.key_hash, l.value_hash))
+                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l))) 
+                                          not(verifyNonMembership(root, nep,l.key_hash))
+                                        else verifyNonMembership(root, nep, l.key_hash)
+                  }
+                | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
+    )
 
   val allInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
@@ -327,7 +350,8 @@ module apply_state_machine {
     if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
-    if (operationSuccessInv) true else  q::debug("operationSuccessInv", false),
+    if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
+    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
 }
 

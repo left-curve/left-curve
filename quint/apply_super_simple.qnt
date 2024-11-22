@@ -94,6 +94,7 @@ module apply_super_simple {
 
   pure def super_simple_apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = 
       val treeForVersion = tree.treeAtVersion(old_version)
+      val treeRoot = { key_hash: ROOT_BITS, version: new_version }
       pure val existing_keys_with_values = treeForVersion.keys().fold(Set(), (acc, k) => {
           match tree.nodes.get(k) {
             | Leaf(leaf) => acc.union(Set(leaf))
