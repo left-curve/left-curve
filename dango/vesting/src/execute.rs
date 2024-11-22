@@ -24,7 +24,7 @@ fn create_position(
     schedule: Schedule<Option<Duration>>,
 ) -> anyhow::Result<Response> {
     let amount = ctx.funds.into_one_coin()?;
-    let index = NEXT_POSITION_INDEX.increment(ctx.storage)?.1;
+    let (_, index) = NEXT_POSITION_INDEX.increment(ctx.storage)?;
     let schedule = schedule.set_start_time(ctx.block.timestamp)?;
     let position = Position::new(user, schedule, amount);
 
