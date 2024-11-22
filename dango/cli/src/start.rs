@@ -38,6 +38,11 @@ impl StartCmd {
         let vm = WasmVm::new(self.wasm_cache_capacity);
         #[cfg(feature = "indexer")]
         let app = {
+            // I tried using `null_indexer` but since indexer is a App generic parameter, the
+            // created `App` has a different type and I'd have to duplicate lots of code, use an
+            // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
+            // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
+            // indexer when running this binary.
             let indexer = non_blocking_indexer::Indexer::new().expect("Can't create indexer");
             indexer.start().expect("Can't start indexer");
             let mut app = App::new(

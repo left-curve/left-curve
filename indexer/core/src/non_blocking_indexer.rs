@@ -27,6 +27,8 @@ pub struct Indexer {
     pub context: Context,
     pub runtime: Arc<Runtime>,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
+    // TODO: this should be Arc<> because if this Indexer is cloned all instances should be
+    // stopping when it's stopped.
     indexing: bool,
 }
 
