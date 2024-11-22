@@ -38,12 +38,54 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
 
 static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new("uusdc", 100).unwrap());
 
-#[test_case(None, None, None, Coins::default(), Some("invalid payment: expecting 1 coins, found 0"); "no funds")]
-#[test_case(Some(99), None, None, TEST_AMOUNT.clone().into(), Some("invalid start time"); "invalid start time")]
-#[test_case(Some(100), None, None, TEST_AMOUNT.clone().into(), None; "ok no cliff no vesting")]
-#[test_case(Some(100), Some(200), None, TEST_AMOUNT.clone().into(), None; "ok no vesting")]
-#[test_case(Some(100), None, Some(300), TEST_AMOUNT.clone().into(), None; "ok no cliff")]
-#[test_case(Some(100), Some(200), Some(300), TEST_AMOUNT.clone().into(), None; "ok")]
+#[test_case(
+    None,
+    None,
+    None,
+    Coins::default(),
+    Some("invalid payment: expecting 1 coins, found 0");
+    "no funds"
+)]
+#[test_case(
+    Some(99),
+    None,
+    None,
+    TEST_AMOUNT.clone().into(),
+    Some("invalid start time");
+    "invalid start time"
+)]
+#[test_case(
+    Some(100),
+    None,
+    None,
+    TEST_AMOUNT.clone().into(),
+    None;
+    "ok no cliff no vesting"
+)]
+#[test_case(
+    Some(100),
+    Some(200),
+    None,
+    TEST_AMOUNT.clone().into(),
+    None;
+    "ok no vesting"
+)]
+#[test_case(
+    Some(100),
+    None,
+    Some(300),
+    TEST_AMOUNT.clone().into(),
+    None;
+    "ok no cliff"
+)]
+#[test_case(
+    Some(100),
+    Some(200),
+    Some(300),
+    TEST_AMOUNT.clone().into(),
+    None;
+    "ok"
+)]
 fn creation_cases(
     start_time: Option<u128>,
     cliff: Option<u128>,
@@ -97,6 +139,7 @@ fn cliff() {
     // Go 50 sec forward (before cliff ends). Claim should not be possible
     {
         suite.block_time = Duration::from_seconds(50);
+
         suite
             .execute(
                 &mut accounts.relayer,
@@ -115,15 +158,17 @@ fn cliff() {
     {
         // Create an empty block to check the query (sanity check)
         suite.make_empty_block();
+
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
             .should_succeed_and(|res| res.claimable_amount == res.amount.amount);
 
         let balance_before = suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
+            .should_succeed();
 
         suite.block_time = Duration::from_seconds(0);
+
         suite
             .execute(
                 &mut accounts.relayer,
@@ -139,11 +184,9 @@ fn cliff() {
             .should_fail_with_error("not found");
 
         // Check if the balance is correct
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(balance_after, balance_before + TEST_AMOUNT.amount);
+            .should_succeed_and_equal(balance_before + TEST_AMOUNT.amount);
     }
 }
 
@@ -184,7 +227,7 @@ fn vesting() {
 
     let initial_balance = suite
         .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-        .unwrap();
+        .should_succeed();
 
     // Go at 10% of the vesting period and claim
     {
@@ -199,18 +242,15 @@ fn vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(
-            balance_after,
-            initial_balance
-                + TEST_AMOUNT
-                    .amount
-                    .checked_mul_dec_floor(Udec128::new_percent(10))
-                    .unwrap()
-        );
+            .should_succeed_and_equal(
+                initial_balance
+                    + TEST_AMOUNT
+                        .amount
+                        .checked_mul_dec_floor(Udec128::new_percent(10))
+                        .unwrap(),
+            );
     }
 
     // Go at 70% of the vesting period and claim
@@ -226,18 +266,15 @@ fn vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(
-            balance_after,
-            initial_balance
-                + TEST_AMOUNT
-                    .amount
-                    .checked_mul_dec_floor(Udec128::new_percent(70))
-                    .unwrap()
-        );
+            .should_succeed_and_equal(
+                initial_balance
+                    + TEST_AMOUNT
+                        .amount
+                        .checked_mul_dec_floor(Udec128::new_percent(70))
+                        .unwrap(),
+            );
     }
 
     // Go at 120% of the vesting period and claim
@@ -253,11 +290,9 @@ fn vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(balance_after, initial_balance + TEST_AMOUNT.amount);
+            .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
         // Check if the position is removed
         suite
@@ -289,6 +324,7 @@ fn cliff_and_vesting() {
     // Go 25 sec forward (before cliff ends). Claim should not be possible
     {
         suite.block_time = Duration::from_seconds(25);
+
         suite
             .execute(
                 &mut accounts.relayer,
@@ -305,7 +341,7 @@ fn cliff_and_vesting() {
 
     let initial_balance = suite
         .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-        .unwrap();
+        .should_succeed();
 
     // Go after cliff at 25% of vesting
     {
@@ -320,18 +356,15 @@ fn cliff_and_vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(
-            balance_after,
-            initial_balance
-                + TEST_AMOUNT
-                    .amount
-                    .checked_mul_dec_floor(Udec128::new_percent(25))
-                    .unwrap()
-        );
+            .should_succeed_and_equal(
+                initial_balance
+                    + TEST_AMOUNT
+                        .amount
+                        .checked_mul_dec_floor(Udec128::new_percent(25))
+                        .unwrap(),
+            );
     }
 
     // Go at 99% of vesting
@@ -347,18 +380,15 @@ fn cliff_and_vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(
-            balance_after,
-            initial_balance
-                + TEST_AMOUNT
-                    .amount
-                    .checked_mul_dec_floor(Udec128::new_percent(99))
-                    .unwrap()
-        );
+            .should_succeed_and_equal(
+                initial_balance
+                    + TEST_AMOUNT
+                        .amount
+                        .checked_mul_dec_floor(Udec128::new_percent(99))
+                        .unwrap(),
+            );
     }
 
     // Go at 100% of vesting
@@ -374,11 +404,9 @@ fn cliff_and_vesting() {
             )
             .should_succeed();
 
-        let balance_after = suite
+        suite
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
-            .unwrap();
-
-        assert_eq!(balance_after, initial_balance + TEST_AMOUNT.amount);
+            .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
         // Check if the position is removed
         suite
