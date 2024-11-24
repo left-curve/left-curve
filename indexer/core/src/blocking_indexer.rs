@@ -18,8 +18,8 @@ pub struct Indexer {
     db_txn: Arc<Mutex<Option<(u64, DatabaseTransaction)>>>,
 }
 
-impl IndexerTrait for Indexer {
-    fn new() -> Result<Self, anyhow::Error> {
+impl Indexer {
+    pub fn new() -> Result<Indexer, anyhow::Error> {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
@@ -35,6 +35,24 @@ impl IndexerTrait for Indexer {
         })
     }
 
+    pub fn new_with_database(database_url: &str) -> Result<Indexer, anyhow::Error> {
+        let runtime = Arc::new(Builder::new_multi_thread()
+                //.worker_threads(4)  // Adjust as needed
+                .enable_all()
+                .build()
+                .unwrap());
+
+        let db = runtime.block_on(async { Context::connect_db_with_url(database_url).await })?;
+
+        Ok(Indexer {
+            context: Context { db },
+            runtime: runtime.clone(),
+            db_txn: Arc::new(Mutex::new(None)),
+        })
+    }
+}
+
+impl IndexerTrait for Indexer {
     fn start(&self) -> Result<(), anyhow::Error> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;

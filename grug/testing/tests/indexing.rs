@@ -10,7 +10,8 @@ use {
 #[test]
 fn index_block_with_blocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
-    let indexer = indexer_core::blocking_indexer::Indexer::new().expect("can't create appindexer");
+    let indexer = indexer_core::blocking_indexer::Indexer::new_with_database("sqlite::memory:")
+        .expect("can't create indexer");
     indexer.start().expect("Can't start indexer");
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -96,8 +97,8 @@ fn index_block_with_blocking_indexer() {
 #[test]
 fn index_block_with_nonblocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
-    let indexer =
-        indexer_core::non_blocking_indexer::Indexer::new().expect("can't create appindexer");
+    let indexer = indexer_core::blocking_indexer::Indexer::new_with_database("sqlite::memory:")
+        .expect("can't create indexer");
     indexer.start().expect("Can't start indexer");
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)

@@ -68,6 +68,40 @@ impl BlockToIndex {
 }
 
 impl Indexer {
+    pub fn new() -> Result<Indexer, anyhow::Error> {
+        let runtime = Arc::new(Builder::new_multi_thread()
+                //.worker_threads(4)  // Adjust as needed
+                .enable_all()
+                .build()
+                .unwrap());
+
+        let db = runtime.block_on(async { Context::connect_db().await })?;
+
+        Ok(Indexer {
+            context: Context { db },
+            runtime: runtime.clone(),
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: true,
+        })
+    }
+
+    pub fn new_with_database_url(database_url: &str) -> Result<Indexer, anyhow::Error> {
+        let runtime = Arc::new(Builder::new_multi_thread()
+                //.worker_threads(4)  // Adjust as needed
+                .enable_all()
+                .build()
+                .unwrap());
+
+        let db = runtime.block_on(async { Context::connect_db_with_url(database_url).await })?;
+
+        Ok(Indexer {
+            context: Context { db },
+            runtime: runtime.clone(),
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: true,
+        })
+    }
+
     fn find_or_create<F, R>(&self, block: &BlockInfo, action: F) -> Result<R, anyhow::Error>
     where
         F: FnOnce(&mut BlockToIndex) -> Result<R, anyhow::Error>,
@@ -110,23 +144,6 @@ impl Indexer {
 }
 
 impl IndexerTrait for Indexer {
-    fn new() -> Result<Self, anyhow::Error> {
-        let runtime = Arc::new(Builder::new_multi_thread()
-                //.worker_threads(4)  // Adjust as needed
-                .enable_all()
-                .build()
-                .unwrap());
-
-        let db = runtime.block_on(async { Context::connect_db().await })?;
-
-        Ok(Indexer {
-            context: Context { db },
-            runtime: runtime.clone(),
-            blocks: Arc::new(Mutex::new(HashMap::new())),
-            indexing: true,
-        })
-    }
-
     fn start(&self) -> Result<(), anyhow::Error> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;

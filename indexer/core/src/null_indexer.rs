@@ -6,11 +6,13 @@ use super::IndexerTrait;
 #[derive(Debug, Clone)]
 pub struct Indexer;
 
-impl IndexerTrait for Indexer {
-    fn new() -> Result<Self, anyhow::Error> {
+impl Indexer {
+    pub fn new() -> Result<Self, anyhow::Error> {
         Ok(Indexer {})
     }
+}
 
+impl IndexerTrait for Indexer {
     fn shutdown(&mut self) -> Result<(), anyhow::Error> {
         Ok(())
     }

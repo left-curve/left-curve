@@ -30,6 +30,10 @@ pub struct StartCmd {
     /// Enable the internal indexer
     #[arg(long, default_value = "true")]
     indexer_enabled: bool,
+
+    /// The indexer database url
+    #[arg(long)]
+    indexer_database_url: Option<String>,
 }
 
 impl StartCmd {
@@ -43,7 +47,12 @@ impl StartCmd {
             // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
             // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
             // indexer when running this binary.
-            let indexer = non_blocking_indexer::Indexer::new().expect("Can't create indexer");
+            let indexer = non_blocking_indexer::Indexer::new_with_database_url(
+                self.indexer_database_url
+                    .as_deref()
+                    .unwrap_or("postgres://localhost"),
+            )
+            .expect("Can't create indexer");
             indexer.start().expect("Can't start indexer");
             let mut app = App::new(
                 db,

@@ -14,9 +14,14 @@ impl Context {
     }
 
     pub(crate) async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
-        // TODO: Use the settings to connect to the database
         let database_url = "sqlite::memory:";
 
+        Self::connect_db_with_url(database_url).await
+    }
+
+    pub(crate) async fn connect_db_with_url(
+        database_url: &str,
+    ) -> Result<DatabaseConnection, sea_orm::DbErr> {
         let mut opt = ConnectOptions::new(database_url.to_owned());
         opt.max_connections(10);
         // .min_connections(5)
