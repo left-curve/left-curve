@@ -28,7 +28,7 @@ pub struct StartCmd {
     query_gas_limit: Option<u64>,
 
     /// Enable the internal indexer
-    #[arg(long)]
+    #[arg(long, default_value = "true")]
     indexer_enabled: bool,
 }
 
