@@ -1,7 +1,7 @@
 use {
-    super::{Context, IndexerTrait},
     crate::active_model::Models,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    indexer_core::{Context, IndexerTrait},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,

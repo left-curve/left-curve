@@ -1,7 +1,7 @@
 use {
-    super::{Context, IndexerTrait},
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    indexer_core::{Context, IndexerTrait},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,

@@ -9,7 +9,8 @@ use {
         QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    indexer_core::{blocking_indexer::Indexer as AppIndexer, IndexerTrait as IndexerAppTrait},
+    indexer_core::IndexerTrait,
+    indexer_sql::blocking_indexer::Indexer,
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -114,7 +115,7 @@ pub struct TestSuite<
 > where
     DB: Db,
     VM: Vm,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     PP: ProposalPreparer,
 {
     pub app: App<DB, VM, INDEXER, PP>,
@@ -156,7 +157,7 @@ impl TestSuite {
 impl<VM> TestSuite<MemDb, VM, indexer_core::null_indexer::Indexer, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
-    // Indexer: IndexerAppTrait,
+    // Indexer: IndexerTrait,
     AppError: From<VM::Error>,
 {
     /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
@@ -183,7 +184,7 @@ where
     }
 }
 
-impl<PP> TestSuite<MemDb, RustVm, AppIndexer, PP>
+impl<PP> TestSuite<MemDb, RustVm, Indexer, PP>
 where
     PP: ProposalPreparer,
     AppError: From<PP::Error>,
@@ -198,7 +199,7 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        let indexer = AppIndexer::new().expect("Can't create AppIndexer");
+        let indexer = Indexer::new().expect("Can't create Indexer");
         indexer.start().expect("Can't start indexer");
 
         Self::new_with_db_vm_and_pp(
@@ -219,7 +220,7 @@ impl<DB, VM, INDEXER, PP> TestSuite<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

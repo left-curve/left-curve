@@ -1724,6 +1724,7 @@ dependencies = [
  "hex",
  "home",
  "indexer-core",
+ "indexer-sql",
  "serde",
  "tokio",
  "tower 0.5.1",
@@ -2826,6 +2827,7 @@ dependencies = [
  "grug-vm-rust",
  "indexer-core",
  "indexer-entity",
+ "indexer-sql",
  "k256",
  "prost",
  "rand",
@@ -3513,6 +3515,25 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "sea-orm-migration",
+]
+
+[[package]]
+name = "indexer-sql"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "grug-math",
+ "grug-types",
+ "indexer-core",
+ "indexer-entity",
+ "indexer-migration",
+ "sea-orm",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

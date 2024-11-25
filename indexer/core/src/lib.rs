@@ -1,10 +1,8 @@
 use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
 
 pub mod active_model;
-pub mod blocking_indexer;
 pub mod context;
 pub mod error;
-pub mod non_blocking_indexer;
 pub mod null_indexer;
 
 pub use context::Context;

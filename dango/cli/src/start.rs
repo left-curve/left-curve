@@ -1,5 +1,5 @@
 #[cfg(feature = "indexer")]
-use {indexer_core::non_blocking_indexer, indexer_core::IndexerTrait};
+use {indexer_core::IndexerTrait, indexer_sql::non_blocking_indexer};
 
 use {
     anyhow::anyhow,

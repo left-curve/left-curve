@@ -13,13 +13,13 @@ impl Context {
         Migrator::up(&self.db, None).await
     }
 
-    pub(crate) async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
+    pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
         let database_url = "sqlite::memory:";
 
         Self::connect_db_with_url(database_url).await
     }
 
-    pub(crate) async fn connect_db_with_url(
+    pub async fn connect_db_with_url(
         database_url: &str,
     ) -> Result<DatabaseConnection, sea_orm::DbErr> {
         let mut opt = ConnectOptions::new(database_url.to_owned());

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["dango/*", "grug/*", "indexer/core", "indexer/entity", "indexer/migration"]
+members = ["dango/*", "grug/*", "indexer/*"]
+exclude = ["indexer/.data"]
 
 [workspace.package]
 version       = "0.0.0"
@@ -124,10 +125,11 @@ dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
 
 # Indexer packages
-indexer-core = { path = "indexer/core" }
-indexer-migration = { path = "indexer/migration" }
-indexer-entity = { path = "indexer/entity" }
-assertor = { version = "0.0", git = "https://github.com/google/assertor" }
+indexer-sql       = { path = "indexer/sql" }
+indexer-core      = { path = "indexer/core" }
+indexer-migration = { path = "indexer/sql-migration" }
+indexer-entity    = { path = "indexer/entity" }
+assertor          = { version = "0.0", git = "https://github.com/google/assertor" }
 
 [profile.release]
 codegen-units    = 1
