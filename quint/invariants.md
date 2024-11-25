@@ -14,9 +14,11 @@ module apply_state_machine {
   import node.* from "./node"
   import utils.* from "./utils"
 
+  import grug_ics23.* from "./grug_ics23"
+  import proofs.* from "./proofs"
+
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
-  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
@@ -34,7 +36,7 @@ module apply_state_machine {
     // For now, we always start with an empty tree
     tree' = { nodes: Map(), orphans: Set() },
     version' = 1,
-    smallest_unpruned_version' = 0,
+    smallest_unpruned_version' = 1,
     ops_history' = [],
   }
 
@@ -48,43 +50,27 @@ module apply_state_machine {
     nondet_value.mapToTuples().take(MAX_OPS).map(key_hash_map_to_op)
   }
 
-  action step_fancy = {
+  action step_parametrized(
+    apply_op: (Tree, int, int, Set[OperationOnKey]) => Tree,
+    assign_result: (Set[OperationOnKey], Tree) => bool
+  ): bool = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      key_hashes_as_maps != Set(),
-      tree' = fancy::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops),
-    }
+    pure val ops = if (key_hashes_as_maps.empty()) Set() else kms_with_value.to_operations()
+    pure val new_tree = apply_op(tree, version - 1, version, ops)
+
+    assign_result(ops, new_tree)
   }
 
-  action step_simple = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      key_hashes_as_maps != Set(),
-      tree' = simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops),
-    }
+  action assign_result(ops: Set[OperationOnKey], new_tree: Tree): bool = all {
+    tree' = new_tree,
+    version' = version + 1,
+    smallest_unpruned_version' = smallest_unpruned_version,
+    ops_history' = ops_history.append(ops),
   }
 
-  action step_super_simple = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-    all {
-      tree' = super_simple::apply(tree, version - 1, version, ops),
-      version' = version + 1,
-      smallest_unpruned_version' = smallest_unpruned_version,
-      ops_history' = ops_history.append(ops)
-    }
-  }
+  action step_fancy = step_parametrized(fancy::apply, assign_result)
+  action step_simple = step_parametrized(simple::apply, assign_result)
 
   /********* INVARIANTS ***********/
 
@@ -563,6 +549,80 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
+### Operations are properly applied
+
+TODO: describe
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
+  val operationSuccessInv: bool =
+    pure def treeContainsKV(t: TreeMap, n: LeafNode): bool =
+      t.values().contains(Leaf(n))
+
+    pure def treeNotContainsKey(t: TreeMap, key: BitArray): bool =
+      t.values()
+        .filter(node =>
+          match node {
+            | Leaf(n) => n.key_hash == key
+            | Internal(_) => false
+        })
+        .size() == 0
+            
+    val tm = tree.treeAtVersion(version - 1)
+    ops_history.length() > 0 implies
+      ops_history.last().forall(op => {
+        match op.op {
+          | Insert(value) => treeContainsKV(tm, { key_hash: op.key_hash, value_hash: value })
+          | Delete => treeNotContainsKey(tm, op.key_hash)
+        }
+      })
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
+
+```
+-->
+
+### Proofs are properly verified
+
+TODO: describe
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
+  val verifyMembershipInv =
+    activeTreeVersions.forall(version => 
+      tree.nodes.values().forall (nodes =>
+        // this check is added because in the event of first (version 0 -> version 1) batch being only deletes
+        // in this case there will be no root for version 1
+        if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else 
+        match nodes {
+          | Internal => true
+          | Leaf(l) =>
+              val proof = ics23_prove(tree, l.key_hash, version)
+              val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
+              match proof {
+                | Some(p) =>
+                  match p {
+                    | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l)))
+                                      verifyMembership(root, ep, l.key_hash,l.value_hash)
+                                    else not(verifyMembership(root, ep, l.key_hash, l.value_hash))
+                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l))) 
+                                          not(verifyNonMembership(root, nep,l.key_hash))
+                                        else verifyNonMembership(root, nep, l.key_hash)
+                  }
+                | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
+    )
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
+
+```
+-->
+
 <!--
 ```bluespec apply_state_machine.qnt +=
   val allInvariants = all {
@@ -577,17 +637,9 @@ This inserts a line break that is not rendered in the markdown
     if (uniqueHashesInv) true else q::debug("uniqueHashesInv", false),
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
+    if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
+    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
 }
-
-module pruning_state_machine {
-  import apply_state_machine.*
-
-  var unpruned_tree: Tree
-
-  // just an idea to investigate pruning separatey agains an unpruned version of the tree
-
-}
-
 ```
 -->
