@@ -1,5 +1,5 @@
 use {
-    crate::active_model::Models,
+    crate::{active_model::Models, entity},
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
     indexer_core::{Context, IndexerTrait},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
@@ -54,13 +54,13 @@ impl BlockToIndex {
         // reinsert existing data. We should use `on_conflict()` to avoid this, return the
         // existing block and change `block_id` when/if we added foreign keys
         models.block.insert(db).await?;
-        indexer_entity::transactions::Entity::insert_many(models.transactions)
+        entity::transactions::Entity::insert_many(models.transactions)
             .exec(db)
             .await?;
-        indexer_entity::messages::Entity::insert_many(models.messages)
+        entity::messages::Entity::insert_many(models.messages)
             .exec(db)
             .await?;
-        indexer_entity::events::Entity::insert_many(models.events)
+        entity::events::Entity::insert_many(models.events)
             .exec(db)
             .await?;
         Ok(())

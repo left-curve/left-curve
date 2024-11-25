@@ -2826,7 +2826,6 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "indexer-core",
- "indexer-entity",
  "indexer-sql",
  "k256",
  "prost",
@@ -3492,7 +3491,6 @@ dependencies = [
  "assertor",
  "grug-math",
  "grug-types",
- "indexer-entity",
  "indexer-migration",
  "sea-orm",
  "serde_json",
@@ -3500,13 +3498,6 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
-]
-
-[[package]]
-name = "indexer-entity"
-version = "0.0.0"
-dependencies = [
- "sea-orm",
 ]
 
 [[package]]
@@ -3526,7 +3517,6 @@ dependencies = [
  "grug-math",
  "grug-types",
  "indexer-core",
- "indexer-entity",
  "indexer-migration",
  "sea-orm",
  "serde_json",

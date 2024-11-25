@@ -1,6 +1,5 @@
 use grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome};
 
-pub mod active_model;
 pub mod context;
 pub mod error;
 pub mod null_indexer;

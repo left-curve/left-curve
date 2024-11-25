@@ -21,7 +21,6 @@ tokio                = { workspace = true }
 tracing              = { workspace = true, optional = true }
 anyhow               = { workspace = true }
 indexer-migration    = { workspace = true }
-indexer-entity       = { workspace = true }
 indexer-core         = { workspace = true }
 uuid                 = { version     = "1", features = ["serde", "v4"] }
 grug-types           = { workspace = true }

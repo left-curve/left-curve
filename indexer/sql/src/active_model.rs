@@ -1,4 +1,5 @@
 use {
+    crate::entity,
     grug_math::Inner,
     grug_types::{BlockInfo, Tx, TxOutcome},
     sea_orm::{prelude::*, sqlx::types::chrono::TimeZone, Set},
@@ -6,17 +7,17 @@ use {
 
 #[derive(Debug, Default)]
 pub struct Models {
-    pub block: indexer_entity::blocks::ActiveModel,
-    pub transactions: Vec<indexer_entity::transactions::ActiveModel>,
-    pub messages: Vec<indexer_entity::messages::ActiveModel>,
-    pub events: Vec<indexer_entity::events::ActiveModel>,
+    pub block: entity::blocks::ActiveModel,
+    pub transactions: Vec<entity::transactions::ActiveModel>,
+    pub messages: Vec<entity::messages::ActiveModel>,
+    pub events: Vec<entity::events::ActiveModel>,
 }
 
 impl Models {
     pub fn push(&mut self, tx: &Tx, tx_outcome: &TxOutcome) {
         let transaction_id = Uuid::new_v4();
         let sender = tx.sender.to_string();
-        let new_transaction = indexer_entity::transactions::ActiveModel {
+        let new_transaction = entity::transactions::ActiveModel {
             id: Set(transaction_id),
             has_succeeded: Set(tx_outcome.result.is_ok()),
             error_message: Set(tx_outcome.clone().result.err()),
@@ -42,7 +43,7 @@ impl Models {
                 .and_then(|obj| obj.keys().next().cloned())
                 .unwrap_or_default();
 
-            let new_message = indexer_entity::messages::ActiveModel {
+            let new_message = entity::messages::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 transaction_id: Set(transaction_id),
                 block_height: self.block.block_height.clone(),
@@ -56,7 +57,7 @@ impl Models {
 
         for event in tx_outcome.events.iter() {
             let serialized_attributes = serde_json::to_value(&event.attributes).unwrap();
-            let new_event = indexer_entity::events::ActiveModel {
+            let new_event = entity::events::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 transaction_id: Set(transaction_id),
                 block_height: self.block.block_height.clone(),
@@ -79,7 +80,7 @@ impl Models {
             .unwrap_or_default()
             .naive_utc();
 
-        let block = indexer_entity::blocks::ActiveModel {
+        let block = entity::blocks::ActiveModel {
             id: Set(Uuid::new_v4()),
             block_height: Set(block.height.try_into().unwrap()),
             created_at: Set(naive_datetime),

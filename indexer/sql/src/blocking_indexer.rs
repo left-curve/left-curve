@@ -1,4 +1,5 @@
 use {
+    crate::entity,
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
     indexer_core::{Context, IndexerTrait},
@@ -111,7 +112,7 @@ impl IndexerTrait for Indexer {
                 .unwrap_or_default()
                 .naive_utc();
 
-            let new_block = indexer_entity::blocks::ActiveModel {
+            let new_block = entity::blocks::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 block_height: Set(block.height.try_into().unwrap()),
                 created_at: Set(naive_datetime),
@@ -149,7 +150,7 @@ impl IndexerTrait for Indexer {
         self.runtime.block_on(async {
             let transaction_id = Uuid::new_v4();
             let sender = tx.sender.to_string();
-            let new_transaction = indexer_entity::transactions::ActiveModel {
+            let new_transaction = entity::transactions::ActiveModel {
                 id: Set(transaction_id),
                 has_succeeded: Set(tx_outcome.result.is_ok()),
                 error_message: Set(tx_outcome.clone().result.err()),
@@ -177,7 +178,7 @@ impl IndexerTrait for Indexer {
                     .and_then(|obj| obj.keys().next().cloned())
                     .unwrap_or_default();
 
-                let new_message = indexer_entity::messages::ActiveModel {
+                let new_message = entity::messages::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     transaction_id: Set(transaction_id),
                     block_height: Set(block.height.try_into().unwrap()),
@@ -190,7 +191,7 @@ impl IndexerTrait for Indexer {
             }
             for event in tx_outcome.events.iter() {
                 let serialized_attributes = serde_json::to_value(&event.attributes).unwrap();
-                let new_event = indexer_entity::events::ActiveModel {
+                let new_event = entity::events::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     transaction_id: Set(transaction_id),
                     block_height: Set(block.height.try_into().unwrap()),
@@ -297,7 +298,7 @@ mod tests {
 
         // create the block
         app.runtime.block_on(async {
-            let new_block = indexer_entity::blocks::ActiveModel {
+            let new_block = entity::blocks::ActiveModel {
                 id: Set(Default::default()),
                 block_height: Set(10),
                 created_at: Set(Default::default()),
@@ -318,7 +319,7 @@ mod tests {
         // ensure block was saved
         app.runtime
             .block_on(async {
-                let block = indexer_entity::blocks::Entity::find()
+                let block = entity::blocks::Entity::find()
                     .one(&app.context.db)
                     .await
                     .expect("Can't fetch blocks")
@@ -338,19 +339,19 @@ mod tests {
     }
 
     async fn check_empty_and_create_block<C: ConnectionTrait>(db: &C) {
-        let blocks = indexer_entity::blocks::Entity::find()
+        let blocks = entity::blocks::Entity::find()
             .all(db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(blocks).is_empty();
-        let new_block = indexer_entity::blocks::ActiveModel {
+        let new_block = entity::blocks::ActiveModel {
             id: Set(Default::default()),
             block_height: Set(10),
             created_at: Set(Default::default()),
             hash: Set(Default::default()),
         };
         new_block.insert(db).await.expect("Can't save block");
-        let block = indexer_entity::blocks::Entity::find()
+        let block = entity::blocks::Entity::find()
             .one(db)
             .await
             .expect("Can't fetch blocks")

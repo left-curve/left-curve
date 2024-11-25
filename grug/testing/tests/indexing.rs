@@ -3,6 +3,7 @@ use {
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message},
     indexer_core::IndexerTrait,
+    indexer_sql::entity,
     sea_orm::{EntityTrait, QueryOrder},
     std::str::FromStr,
 };
@@ -36,7 +37,7 @@ fn index_block_with_blocking_indexer() {
         .indexer_app
         .runtime
         .block_on(async {
-            let block = indexer_entity::blocks::Entity::find()
+            let block = entity::blocks::Entity::find()
                 .one(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch blocks");
@@ -44,21 +45,21 @@ fn index_block_with_blocking_indexer() {
             // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let transactions = indexer_entity::transactions::Entity::find()
+            let transactions = entity::transactions::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
             // dbg!(&transactions);
 
-            let messages = indexer_entity::messages::Entity::find()
+            let messages = entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
             // dbg!(&messages);
 
-            let events = indexer_entity::events::Entity::find()
+            let events = entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
@@ -81,8 +82,8 @@ fn index_block_with_blocking_indexer() {
         .indexer_app
         .runtime
         .block_on(async {
-            let block = indexer_entity::blocks::Entity::find()
-                .order_by_desc(indexer_entity::blocks::Column::BlockHeight)
+            let block = entity::blocks::Entity::find()
+                .order_by_desc(entity::blocks::Column::BlockHeight)
                 .one(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch blocks");
@@ -131,7 +132,7 @@ fn index_block_with_nonblocking_indexer() {
         .indexer_app
         .runtime
         .block_on(async {
-            let block = indexer_entity::blocks::Entity::find()
+            let block = entity::blocks::Entity::find()
                 .one(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch blocks");
@@ -139,21 +140,21 @@ fn index_block_with_nonblocking_indexer() {
             // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let transactions = indexer_entity::transactions::Entity::find()
+            let transactions = entity::transactions::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
             // dbg!(&transactions);
 
-            let messages = indexer_entity::messages::Entity::find()
+            let messages = entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
             // dbg!(&messages);
 
-            let events = indexer_entity::events::Entity::find()
+            let events = entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
