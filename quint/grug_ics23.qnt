@@ -122,16 +122,6 @@ module grug_ics23 {
     // that is, we store the hash of the left child in the prefix.
    termLen( inner.suffix) == suffixLen
   }
-    def hasPadding1(inner: INNER_T,
-      minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
-    termLen(inner.prefix) >= minPrefixLen,
-    termLen(inner.prefix) <= maxPrefixLen,
-    // When inner turns left, suffixLen == ChildSize,
-    // that is, we store the hash of the right child in the suffix.
-    // When inner turns right, suffixLen == 0,
-    // that is, we store the hash of the left child in the prefix.
-   termLen( inner.suffix) == suffixLen
-  }
   /// This will look at the proof and determine which order it is...
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
   /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411

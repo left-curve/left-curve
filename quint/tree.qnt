@@ -169,6 +169,11 @@ module tree {
   /// Is the node a leaf node?
   pure def isLeaf(n) = (not(isInternal(n)))
 
+  pure val all_key_hashes = {
+    pure val kms = (0.to(MAX_HASH_LENGTH - 1).setOfMaps(Set(0, 1)))
+    kms.map(km => range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km.get(i))))
+  }
+  
   pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
     new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
   }

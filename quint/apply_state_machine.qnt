@@ -51,12 +51,10 @@ module apply_state_machine {
   ): bool = {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
+    pure val ops = if (key_hashes_as_maps.empty()) Set() else kms_with_value.to_operations()
     pure val new_tree = apply_op(tree, version - 1, version, ops)
-    all {
-      key_hashes_as_maps != Set(),
-      assign_result(ops, new_tree)
-    }
+
+    assign_result(ops, new_tree)
   }
 
   action assign_result(ops: Set[OperationOnKey], new_tree: Tree): bool = all {
