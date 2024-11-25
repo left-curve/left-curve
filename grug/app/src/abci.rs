@@ -5,7 +5,7 @@ use {
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, TxOutcome,
         GENESIS_BLOCK_HASH,
     },
-    indexer_core::IndexerTrait as IndexerAppTrait,
+    indexer_core::IndexerTrait,
     prost::bytes::Bytes,
     std::{
         any::type_name,
@@ -32,7 +32,7 @@ impl<DB, VM, INDEXER, PP> Service<Request> for App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerAppTrait + Clone + Send + 'static,
+    INDEXER: IndexerTrait + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -55,7 +55,7 @@ impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerAppTrait + Clone + Send + 'static,
+    INDEXER: IndexerTrait + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

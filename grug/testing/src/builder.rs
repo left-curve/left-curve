@@ -9,7 +9,7 @@ use {
         Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    indexer_core::{null_indexer::Indexer as NullIndexer, IndexerTrait as IndexerAppTrait},
+    indexer_core::{null_indexer, IndexerTrait},
     serde::Serialize,
     std::{
         collections::BTreeMap,
@@ -42,7 +42,7 @@ struct CodeOption<B> {
 pub struct TestBuilder<
     VM = RustVm,
     PP = NaiveProposalPreparer,
-    INDEXER = NullIndexer,
+    INDEXER = null_indexer::Indexer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
@@ -77,12 +77,12 @@ pub struct TestBuilder<
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
 #[allow(clippy::new_without_default)]
-impl TestBuilder<RustVm, NaiveProposalPreparer, NullIndexer> {
+impl TestBuilder<RustVm, NaiveProposalPreparer, null_indexer::Indexer> {
     pub fn new() -> Self {
         Self::new_with_vm_and_pp_and_indexer(
             RustVm::new(),
             NaiveProposalPreparer,
-            NullIndexer::new().unwrap(),
+            null_indexer::Indexer::new().unwrap(),
         )
     }
 }
@@ -92,14 +92,18 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer::new().unwrap())
+        Self::new_with_vm_and_pp_and_indexer(
+            vm,
+            NaiveProposalPreparer,
+            null_indexer::Indexer::new().unwrap(),
+        )
     }
 }
 
 impl<INDEXER> TestBuilder<RustVm, NaiveProposalPreparer, INDEXER> {
     pub fn new_with_indexer(indexer: INDEXER) -> Self
     where
-        INDEXER: IndexerAppTrait,
+        INDEXER: IndexerTrait,
     {
         Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, indexer)
     }
@@ -107,14 +111,18 @@ impl<INDEXER> TestBuilder<RustVm, NaiveProposalPreparer, INDEXER> {
 
 impl<PP> TestBuilder<RustVm, PP> {
     pub fn new_with_pp(pp: PP) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer::new().unwrap())
+        Self::new_with_vm_and_pp_and_indexer(
+            RustVm::new(),
+            pp,
+            null_indexer::Indexer::new().unwrap(),
+        )
     }
 }
 
 impl<VM, PP, INDEXER> TestBuilder<VM, PP, INDEXER>
 where
     VM: TestVm,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
 {
     pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: INDEXER) -> Self {
         Self {
@@ -160,7 +168,7 @@ where
 
 impl<VM, PP, INDEXER, M1, M2, M3, OW, TA> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA>
 where
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -401,45 +409,10 @@ where
     }
 }
 
-impl<VM, PP, INDEXER, M1, M2, M3, OW, TA> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA>
-where
-    INDEXER: IndexerAppTrait,
-    M1: Serialize,
-    M2: Serialize,
-    M3: Serialize,
-    OW: MaybeDefined<Addr>,
-    TA: MaybeDefined<TestAccounts>,
-    VM: TestVm + Clone,
-    AppError: From<VM::Error>,
-{
-    pub fn set_indexer(self, indexer: INDEXER) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA> {
-        TestBuilder {
-            vm: self.vm,
-            pp: self.pp,
-            indexer,
-            tracing_level: self.tracing_level,
-            chain_id: self.chain_id,
-            genesis_time: self.genesis_time,
-            block_time: self.block_time,
-            default_gas_limit: self.default_gas_limit,
-            app_config: self.app_config,
-            owner: self.owner,
-            account_opt: self.account_opt,
-            accounts: self.accounts,
-            bank_opt: self.bank_opt,
-            balances: self.balances,
-            taxman_opt: self.taxman_opt,
-            fee_denom: self.fee_denom,
-            fee_rate: self.fee_rate,
-            max_orphan_age: self.max_orphan_age,
-        }
-    }
-}
-
 impl<VM, PP, INDEXER, M1, M2, M3, OW>
     TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -559,7 +532,7 @@ where
     VM: TestVm + Clone,
     PP: ProposalPreparer,
     AppError: From<VM::Error> + From<PP::Error>,
-    INDEXER: IndexerAppTrait,
+    INDEXER: IndexerTrait,
 {
     pub fn build(self) -> (TestSuite<MemDb, VM, INDEXER, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
@@ -670,13 +643,6 @@ where
             msgs,
             app_config: self.app_config,
         };
-
-        // let indexer = self
-        //    .indexer
-        //    .unwrap_or(AppIndexer::new().expect("Can't create AppIndexer"));
-
-        // let indexer = AppIndexer::new().expect("Can't create AppIndexer");
-        // indexer.start();
 
         let suite = TestSuite::new_with_db_vm_and_pp(
             MemDb::new(),
