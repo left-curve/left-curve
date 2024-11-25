@@ -8,7 +8,6 @@ module tree_test {
   import apply_state_machine.* from "../apply_state_machine"
   import apply_simple as simple from "../apply_simple"
   import apply_fancy as fancy from "../apply_fancy"
-  import apply_super_simple as super_simple from "../apply_super_simple"
 
   pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId =
     { orphaned_since_version: osv, version: v, key_hash: kh }
@@ -156,24 +155,12 @@ module tree_test {
     Prune1Test.then(Prune2Test).then(Prune3Test)
   }
 
-  // FIXME: this test fails and is skipped
-  run simpleVsFancyTestSkipped = {
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
+  run simpleVsFancyTest = init.then(3.reps(_ => {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
 
-    pure val reference = simple::apply(empty_tree, 0, 0, ops)
-    pure val result = fancy::apply(empty_tree, 0, 0, ops)
-    assert(reference == result)
-  }
-
-  run superSimpleVsFancyTest = init.then(3.reps(_ => {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-
-    val reference = super_simple::apply(tree, version - 1, version, ops)
+    val reference = simple::apply(tree, version - 1, version, ops)
     val result = fancy::apply(tree, version - 1, version, ops)
     val failure = reference != result
     all {
@@ -181,19 +168,7 @@ module tree_test {
       version' = version + 1,
       ops_history' = if (failure) q::debug("ops_history", ops_history.append(ops)) else ops_history.append(ops),
       smallest_unpruned_version' = smallest_unpruned_version,
-      if (failure) assert(q::debug("super_simple", reference) == q::debug("fancy", result)) else true,
+      if (failure) assert(q::debug("simple", reference) == q::debug("fancy", result)) else true,
     }
   }))
-
-  // FIXME: this test fails and is skipped
-  run superSimpleVsSimpleTestSkipped = {
-    pure val empty_tree = { nodes: Map(), orphans: Set() }
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
-
-    pure val reference = super_simple::apply(empty_tree, 0, 0, ops)
-    pure val result = simple::apply(empty_tree, 0, 0, ops)
-    assert(reference == result)
-  }
 }

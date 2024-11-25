@@ -3,7 +3,7 @@
 module proofs_test {
   import proofs.* from "../proofs"
   import basicSpells.* from "../spells/basicSpells"
-  import apply_super_simple.* from "../apply_super_simple"
+  import apply_simple.* from "../apply_simple"
   import rareSpells.* from "../spells/rareSpells"
   import node.* from "../node"
   import grug_ics23.* from "../grug_ics23"

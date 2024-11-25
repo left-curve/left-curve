@@ -13,7 +13,6 @@ module apply_state_machine {
 
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
-  import apply_super_simple as super_simple from "./apply_super_simple"
 
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
@@ -66,7 +65,6 @@ module apply_state_machine {
 
   action step_fancy = step_parametrized(fancy::apply, assign_result)
   action step_simple = step_parametrized(simple::apply, assign_result)
-  action step_super_simple = step_parametrized(super_simple::apply, assign_result)
 
   /********* INVARIANTS ***********/
 
@@ -359,7 +357,6 @@ module pruning_state_machine {
   import apply_state_machine as base
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
-  import apply_super_simple as super_simple from "./apply_super_simple"
 
   var unpruned_tree: Tree
 
@@ -393,11 +390,6 @@ module pruning_state_machine {
   action step_simple = any {
     prune_action,
     base::step_parametrized(simple::apply, assign_result)
-  }
-
-  action step_super_simple = any {
-    prune_action,
-    base::step_parametrized(super_simple::apply, assign_result)
   }
 
   def pruningDoesNotAffectActiveTreesInv =
