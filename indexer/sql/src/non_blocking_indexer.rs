@@ -1,7 +1,7 @@
 use {
     crate::{active_model::Models, entity},
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    indexer_core::{Context, IndexerTrait},
+    indexer_core::{bail, error, Context, IndexerTrait},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,
@@ -85,7 +85,7 @@ impl Indexer {
         })
     }
 
-    pub fn new_with_database_url(database_url: &str) -> Result<Indexer, anyhow::Error> {
+    pub fn new_with_database_url(database_url: &str) -> error::Result<Indexer> {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
@@ -102,9 +102,9 @@ impl Indexer {
         })
     }
 
-    fn find_or_create<F, R>(&self, block: &BlockInfo, action: F) -> Result<R, anyhow::Error>
+    fn find_or_create<F, R>(&self, block: &BlockInfo, action: F) -> error::Result<R>
     where
-        F: FnOnce(&mut BlockToIndex) -> Result<R, anyhow::Error>,
+        F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
         let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex {
@@ -114,12 +114,12 @@ impl Indexer {
         action(block_to_index)
     }
 
-    fn find_or_fail(&self, block_height: &u64) -> Result<BlockToIndex, anyhow::Error> {
+    fn find_or_fail(&self, block_height: &u64) -> error::Result<BlockToIndex> {
         let blocks = self.blocks.lock().expect("Can't lock blocks");
 
         let block_to_index = match blocks.get(block_height) {
             Some(block_to_index) => block_to_index,
-            None => anyhow::bail!("Block {} not found", block_height),
+            None => bail!("Block {} not found", block_height),
         };
         Ok(block_to_index.clone())
     }
@@ -127,11 +127,11 @@ impl Indexer {
     fn remove_or_fail(
         blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
         block_height: &u64,
-    ) -> Result<BlockToIndex, anyhow::Error> {
+    ) -> error::Result<BlockToIndex> {
         let mut blocks = blocks.lock().expect("Can't lock blocks");
         let block_to_index = match blocks.remove_entry(block_height) {
             Some(block) => block,
-            None => anyhow::bail!("Block {} not found", block_height),
+            None => indexer_core::bail!("Block {} not found", block_height),
         };
         #[cfg(feature = "tracing")]
         tracing::debug!(
@@ -144,13 +144,13 @@ impl Indexer {
 }
 
 impl IndexerTrait for Indexer {
-    fn start(&self) -> Result<(), anyhow::Error> {
+    fn start(&self) -> error::Result<()> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
         Ok(())
     }
 
-    fn shutdown(&mut self) -> Result<(), anyhow::Error> {
+    fn shutdown(&mut self) -> error::Result<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -181,16 +181,12 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(&self, _block_height: u64) -> Result<(), anyhow::Error> {
+    fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
         assert!(self.indexing, "Can't index after shutdown");
         Ok(())
     }
 
-    fn index_block(
-        &self,
-        block: &BlockInfo,
-        _block_outcome: &BlockOutcome,
-    ) -> Result<(), anyhow::Error> {
+    fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]
@@ -207,7 +203,7 @@ impl IndexerTrait for Indexer {
         block: &BlockInfo,
         tx: &Tx,
         tx_outcome: &TxOutcome,
-    ) -> Result<(), anyhow::Error> {
+    ) -> error::Result<()> {
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]
@@ -225,7 +221,7 @@ impl IndexerTrait for Indexer {
         })
     }
 
-    fn post_indexing(&self, block_height: u64) -> Result<(), anyhow::Error> {
+    fn post_indexing(&self, block_height: u64) -> error::Result<()> {
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]

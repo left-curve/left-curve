@@ -2,7 +2,7 @@ use {
     crate::entity,
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    indexer_core::{Context, IndexerTrait},
+    indexer_core::{bail, error, Context, IndexerTrait},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,
@@ -54,13 +54,13 @@ impl Indexer {
 }
 
 impl IndexerTrait for Indexer {
-    fn start(&self) -> Result<(), anyhow::Error> {
+    fn start(&self) -> error::Result<()> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
         Ok(())
     }
 
-    fn shutdown(&mut self) -> Result<(), anyhow::Error> {
+    fn shutdown(&mut self) -> error::Result<()> {
         //// This is making sure the current transaction is being committed before we shutdown the
         //// process
         let mut db_txn = self.db_txn.lock().unwrap();
@@ -76,7 +76,7 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(&self, block_height: u64) -> Result<(), anyhow::Error> {
+    fn pre_indexing(&self, block_height: u64) -> error::Result<()> {
         let db_transaction = self
             .runtime
             .block_on(async { self.context.db.begin().await })?;
@@ -89,14 +89,10 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
-    fn index_block(
-        &self,
-        block: &BlockInfo,
-        _block_outcome: &BlockOutcome,
-    ) -> Result<(), anyhow::Error> {
+    fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
         let db_txn = self.db_txn.lock().unwrap();
         let Some((block_height, txn)) = db_txn.as_ref() else {
-            anyhow::bail!("No transaction to commit");
+            bail!("No transaction to commit");
         };
 
         assert_eq!(*block_height, block.height);
@@ -129,10 +125,10 @@ impl IndexerTrait for Indexer {
         block: &BlockInfo,
         tx: &Tx,
         tx_outcome: &TxOutcome,
-    ) -> Result<(), anyhow::Error> {
+    ) -> error::Result<()> {
         let db_txn = self.db_txn.lock().unwrap();
         let Some((block_height, txn)) = db_txn.as_ref() else {
-            anyhow::bail!("No transaction to commit");
+            bail!("No transaction to commit");
         };
 
         assert_eq!(*block_height, block.height);
@@ -207,10 +203,10 @@ impl IndexerTrait for Indexer {
     }
 
     /// NOTE: when calling this, the DB transaction Mutex but be unlocked!
-    fn post_indexing(&self, block_height: u64) -> Result<(), anyhow::Error> {
+    fn post_indexing(&self, block_height: u64) -> error::Result<()> {
         let mut db_txn = self.db_txn.lock().unwrap();
         let Some((txn_block_height, txn)) = db_txn.take() else {
-            anyhow::bail!("No transaction to commit");
+            bail!("No transaction to commit");
         };
 
         assert_eq!(block_height, txn_block_height);
