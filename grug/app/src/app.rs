@@ -211,7 +211,6 @@ where
         let mut tx_outcomes = vec![];
 
         #[cfg(feature = "indexer")]
-        // TODO: use my own indexer error and `?`
         if self.indexing_enabled {
             self.indexer_app
                 .pre_indexing(block.height)
