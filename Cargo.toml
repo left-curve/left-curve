@@ -125,9 +125,9 @@ dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
 
 # Indexer packages
-indexer-sql       = { path = "indexer/sql" }
 indexer-core      = { path = "indexer/core" }
-indexer-migration = { path = "indexer/sql-migration" }
+indexer-sql       = { path = "indexer/sql" }
+indexer-sql-migration = { path = "indexer/sql-migration" }
 assertor          = { version = "0.0", git = "https://github.com/google/assertor" }
 
 [profile.release]
