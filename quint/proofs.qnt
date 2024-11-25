@@ -36,7 +36,6 @@ module proofs {
     | Exist(ExistenceProof) 
     | NonExist(NonExistenceProof)
 
-
   /// Returns optional list of InnerOps as a path to the leaf with particular key_hash
   pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
   : Option[List[InnerOp]] = 
@@ -59,17 +58,13 @@ module proofs {
                 if(prefixes_list[iterator.i + 1] == next_bit_0) 
                   { prefix: InternalNodeHashPrefix, 
                     suffix: match internal.right_child {
-                              // used to be Map(), now is Hash256_ZERO which is representation of Hash256::ZERO in Quint.
-                              // Hash256_ZERO == termHash(raw([0]))
                               | None => Hash256_ZERO
                               | Some(c) => c.hash} }
                 else 
                   { prefix: InternalNodeHashPrefix
                               .termConcat(match internal.left_child {
-                                // used to be Map(), now is Hash256_ZERO which is representation of Hash256::ZERO in Quint.
-                                // Hash256_ZERO == termHash(raw([0]))
-                                | None => Hash256_ZERO
-                                | Some(c) => c.hash}), 
+                                            | None => Hash256_ZERO
+                                            | Some(c) => c.hash}), 
                     suffix: Map() }
 
               { ...iterator, path: iterator.path.append(innerOp),  
