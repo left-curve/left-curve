@@ -41,7 +41,7 @@ module hashes {
   import basicSpells.* from "./spells/basicSpells"
   /// A sequence of bytes is simply a list of integers
   type Bytes_t = List[int]
-  val Hash256_ZERO = termHash(raw([0]))
+  val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   /// compare two lists of integers (e.g., bytes) lexicographically
   pure def lessThan(w1: Bytes_t, w2: Bytes_t): bool = {
     pure val len1 = length(w1)
@@ -160,12 +160,7 @@ module hashes {
     // As previously documented in grug_ics23.qnt, this is modification of previous `termSlice(...)`
     // In order not to break other usages of termSlice and in order to accustom trimming first bit of inner.prefix
     // we have placed rigorous safeguards around this branch of execution.
-    if (term.get([ 0 ]) == Raw([0]) and 
-        start == 1 and 
-        end == 33 and 
-        term == raw([0]).termConcat(Hash256_ZERO))
-      Hash256_ZERO
-    else if (size(keys(term)) != 1) 
+    if (size(keys(term)) != 1) 
       term
     else 
       pure val first = term.get([ 0 ])
