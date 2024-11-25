@@ -156,10 +156,6 @@ module hashes {
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
-    // !!! UPDATE !!! 
-    // As previously documented in grug_ics23.qnt, this is modification of previous `termSlice(...)`
-    // In order not to break other usages of termSlice and in order to accustom trimming first bit of inner.prefix
-    // we have placed rigorous safeguards around this branch of execution.
     if (size(keys(term)) != 1) 
       term
     else 
