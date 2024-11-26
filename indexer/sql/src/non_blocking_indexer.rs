@@ -1,6 +1,6 @@
 use {
     crate::{active_model::Models, entity},
-    grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    grug_types::{BlockInfo, BlockOutcome, Defined, MaybeDefined, Tx, TxOutcome, Undefined},
     indexer_core::{bail, error, Context, IndexerTrait},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
@@ -10,8 +10,70 @@ use {
         thread::sleep,
         time::Duration,
     },
-    tokio::runtime::{Builder, Runtime},
+    tokio::runtime::{Builder, Handle, Runtime},
 };
+
+pub struct IndexerBuilder<DB = Undefined<String>> {
+    runtime: Option<Arc<Runtime>>,
+    handle: tokio::runtime::Handle,
+    db_url: DB,
+}
+
+impl Default for IndexerBuilder {
+    fn default() -> IndexerBuilder {
+        let (runtime, handle) = match Handle::try_current() {
+            Ok(handle) => (None, handle),
+            Err(_) => {
+                let runtime = Arc::new(Builder::new_multi_thread().enable_all().build().unwrap());
+                let handle = runtime.handle().clone();
+                (Some(runtime), handle)
+            },
+        };
+
+        IndexerBuilder {
+            runtime,
+            handle,
+            db_url: Undefined::default(),
+        }
+    }
+}
+
+impl IndexerBuilder {
+    pub fn with_database_url<URL>(self, db_url: URL) -> IndexerBuilder<Defined<String>>
+    where
+        URL: ToString,
+    {
+        IndexerBuilder {
+            runtime: self.runtime,
+            handle: self.handle,
+            db_url: Defined::new(db_url.to_string()),
+        }
+    }
+}
+
+impl<DB> IndexerBuilder<DB>
+where
+    DB: MaybeDefined<String>,
+{
+    pub fn build(self) -> error::Result<Indexer> {
+        let db = match self.db_url.maybe_into_inner() {
+            Some(url) => block_call(&self.runtime, &self.handle, async {
+                Context::connect_db_with_url(&url).await
+            }),
+            None => block_call(&self.runtime, &self.handle, async {
+                Context::connect_db().await
+            }),
+        }?;
+
+        Ok(Indexer {
+            context: Context { db },
+            handle: self.handle,
+            runtime: self.runtime,
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: false,
+        })
+    }
+}
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
 /// data to live as long as the spawned task.
@@ -176,36 +238,15 @@ impl Indexer {
         );
         Ok(block_to_index.1)
     }
-
-    /// Code in the indexer is running without async context (within Grug) and with an async
-    /// context (Dango). This is to ensure it works in both cases.
-    /// NOTE: The Tokio runtime *must* be multi-threaded with either:
-    /// - #[tokio::main]
-    /// - #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    fn call<F>(&self, closure: F) -> error::Result<()>
-    where
-        F: Future<Output = Result<(), indexer_core::error::Error>> + Send + 'static,
-    {
-        match self.runtime.as_ref() {
-            Some(runtime) => {
-                runtime.block_on(closure)?;
-            },
-            None => {
-                tokio::task::block_in_place(|| self.handle.block_on(closure))?;
-            },
-        }
-
-        Ok(())
-    }
 }
 
 impl IndexerTrait for Indexer {
     fn start(&mut self) -> error::Result<()> {
         let context = self.context.clone();
-        self.call(async move {
-            context.migrate_db().await.expect("Can't run migration");
-            Ok(())
-        })?;
+        block_call(&self.runtime, &self.handle, async move {
+            context.migrate_db().await
+        })
+        .expect("Can't run migration");
 
         self.indexing = true;
         Ok(())
@@ -325,6 +366,21 @@ impl Drop for Indexer {
     }
 }
 
+/// Code in the indexer is running without async context (within Grug) and with an async
+/// context (Dango). This is to ensure it works in both cases.
+/// NOTE: The Tokio runtime *must* be multi-threaded with either:
+/// - #[tokio::main]
+/// - #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+fn block_call<F, R>(runtime: &Option<Arc<Runtime>>, handle: &Handle, closure: F) -> R
+where
+    F: Future<Output = R>,
+{
+    match runtime.as_ref() {
+        Some(runtime) => runtime.block_on(closure),
+        None => tokio::task::block_in_place(|| handle.block_on(closure)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -334,11 +390,10 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let handle = tokio::runtime::Handle::current();
+        let mut indexer = IndexerBuilder::default()
+            .with_database_url("sqlite::memory:")
+            .build()?;
 
-        let mut indexer = Indexer::async_new_with_database_url(&handle, "sqlite::memory:")
-            .await
-            .expect("Can't create indexer");
         assert!(!indexer.indexing);
         indexer.start().expect("Can't start Indexer");
         assert!(indexer.indexing);
