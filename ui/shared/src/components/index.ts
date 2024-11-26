@@ -10,6 +10,7 @@ export { TabItem as Tab } from "./atoms/tabs/TabItem";
 export { Select, Item as SelectItem } from "./atoms/Select";
 export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
 export { QRCode } from "./atoms/QRCode";
+export { Hamburger } from "./atoms/Hamburger";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Molecules                                 */
@@ -68,3 +69,4 @@ export { SwapArrowDownIcon } from "./icons/SwapArrowDown";
 export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
 export { CopyCheckIcon } from "./icons/CopyCheck";
+export { ConnectorIcon } from "./icons/Connector";

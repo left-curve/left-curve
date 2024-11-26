@@ -7,29 +7,30 @@ import { useClickAway } from "react-use";
 import { twMerge } from "../../../utils";
 
 import { Command } from "cmdk";
-import { Button } from "../../";
-import { CloseIcon, SearchIcon } from "../../";
+import { SearchIcon } from "../../";
 import { CommandBody } from "./CommandBody";
 
-import type { AppletMetadata } from "../../../types";
+import type { AppletMetadata, VisibleRef } from "../../../types";
 
 interface Props {
   applets: AppletMetadata[];
+  hamburgerRef: React.RefObject<VisibleRef>;
+  isVisible: boolean;
+  changeVisibility: (isVisible: boolean) => void;
   action: (applet: AppletMetadata) => void;
 }
 
-export const CommandBar: React.FC<Props> = ({ applets, action }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const CommandBar: React.FC<Props> = ({ applets, action, isVisible, changeVisibility }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen && e.key === "k" && e.ctrlKey) {
-        setIsOpen(true);
-      } else if (isOpen && e.key === "Escape") {
-        setIsOpen(false);
+      if (!isVisible && e.key === "k" && e.ctrlKey) {
+        changeVisibility(true);
+      } else if (isVisible && e.key === "Escape") {
+        changeVisibility(false);
         setSearchText("");
         inputRef.current?.blur();
       } else if (
@@ -38,7 +39,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
         /\w/i.test(e.key)
       ) {
         e.preventDefault();
-        setIsOpen(true);
+        changeVisibility(true);
         inputRef.current?.focus();
         setSearchText((prev) => prev + e.key);
       }
@@ -46,93 +47,83 @@ export const CommandBar: React.FC<Props> = ({ applets, action }) => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isVisible]);
 
-  useClickAway(menuRef, (e) => {
-    setIsOpen(false);
+  useClickAway(menuRef, (e: any) => {
+    if (e.target.getAttribute("hamburger-element") === "true") return;
+    changeVisibility(false);
     setSearchText("");
   });
 
   const triggerAction = (applet: AppletMetadata) => {
     action(applet);
-    setIsOpen(false);
+    changeVisibility(false);
     setSearchText("");
     inputRef.current?.blur();
   };
 
   const handleInteraction = () => {
-    setIsOpen(true);
+    changeVisibility(true);
     inputRef.current?.focus();
   };
 
   return (
     <>
-      <div className="xl:col-span-2  min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-center justify-center relative">
-        <div className="relative rounded-2xl w-full lg:max-w-xl">
+      <div className="relative rounded-2xl w-full lg:max-w-xl">
+        <div
+          onClick={handleInteraction}
+          className={twMerge(
+            "bg-surface-green-200 p-1 rounded-2xl flex items-center justify-center w-full lg:max-w-xl z-10 relative group group-hover:bg-surface-green-400 hover:bg-surface-green-400 pr-[3rem] lg:pr-1",
+          )}
+        >
           <div
-            onClick={handleInteraction}
-            className="bg-surface-green-200 p-1 rounded-2xl flex items-center justify-center w-full lg:max-w-xl z-10 relative group group-hover:bg-surface-green-400 hover:bg-surface-green-400"
+            className={twMerge(
+              "bg-surface-green-300 flex-1 rounded-xl h-10 transition-all text-typography-green-300 flex items-center justify-center gap-2 px-2 cursor-text text-start",
+              { "bg-surface-green-400": isVisible },
+            )}
           >
-            <div
-              className={twMerge(
-                "bg-surface-green-300 flex-1 rounded-xl h-9 transition-all text-typography-green-300 flex items-center gap-2 px-2 cursor-text text-start",
-                { "bg-surface-green-400": isOpen },
-              )}
-            >
-              <SearchIcon className="h-6 w-6" />
-              <p className="flex-1 pt-1 truncate">Search for apps and commands</p>
-              <p className="px-1.5 py-0.5 inline-flex items-center font-sans font-normal text-center bg-surface-green-200 rounded-small text-sm shadow-sm">
-                ⌥ K
-              </p>
-            </div>
+            <SearchIcon className="h-6 w-6" />
+            <p className="flex-1 pt-1 truncate w-0">Search for apps and commands</p>
+            <p className="px-1.5 py-0.5 items-center font-sans font-normal text-center bg-surface-green-200 rounded-small text-sm shadow-sm hidden lg:inline-flex">
+              ⌥ K
+            </p>
           </div>
-          <Command>
-            <motion.div
-              ref={menuRef}
-              className={twMerge(
-                "absolute w-full h-full top-0 left-0 transition-all rounded-2xl flex flex-col gap-8 md:p-1 md:gap-2 overflow-y-hidden",
-                isOpen
-                  ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none top-[-72px] left-[-1rem] p-4 md:w-full md:h-fit md:top-0 md:left-0 md:rounded-2xl overflow-scroll scrollbar-none"
-                  : "z-0",
-              )}
-            >
-              <div className="flex">
-                <div
-                  className={twMerge(
-                    "flex items-center gap-2 px-3 md:px-2 w-full bg-transparent rounded-xl h-9 text-typography-green-300",
-                    isOpen ? "bg-surface-green-300 h-10" : "",
-                  )}
-                >
-                  <SearchIcon className="h-6 w-6" />
-                  <Command.Input
-                    ref={inputRef}
-                    onValueChange={setSearchText}
-                    value={searchText}
-                    placeholder="Search for apps and commands"
-                    className="flex-1 bg-transparent text-typography-green-500 placeholder-typography-green-300 pt-1 outline-none"
-                  />
-                </div>
-                <Button
-                  className={twMerge(
-                    "overflow-hidden md:hidden",
-                    isOpen ? "w-10 px-2 ml-3" : "w-0 p-0 opacity-0",
-                  )}
-                  onClick={() => setIsOpen(false)}
-                  isIconOnly
-                  radius="lg"
-                >
-                  <CloseIcon className="h-6 w-6" />
-                </Button>
-              </div>
-              <CommandBody
-                isOpen={isOpen}
-                applets={applets}
-                action={triggerAction}
-                isSearching={!!searchText}
-              />
-            </motion.div>
-          </Command>
         </div>
+        <Command>
+          <motion.div
+            ref={menuRef}
+            className={twMerge(
+              "absolute w-full h-full bottom-0 left-0 transition-all rounded-2xl flex flex-col justify-end gap-8 lg:p-1 lg:gap-2 overflow-y-hidden",
+              isVisible
+                ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none bottom-0 left-0 p-4 lg:w-full lg:h-fit lg:top-0 lg:left-0 lg:rounded-2xl overflow-scroll scrollbar-none"
+                : "z-0",
+            )}
+          >
+            <div className="flex order-2 lg:order-1 pr-[3.125rem] lg:pr-0">
+              <div
+                className={twMerge(
+                  "flex items-center gap-2 px-3 lg:px-2 w-full bg-transparent rounded-xl h-10 text-typography-green-300",
+                  isVisible ? "bg-surface-green-300 h-10" : "",
+                )}
+              >
+                <SearchIcon className="h-6 w-6" />
+                <Command.Input
+                  ref={inputRef}
+                  onValueChange={setSearchText}
+                  value={searchText}
+                  placeholder="Search for apps and commands"
+                  className="flex-1 bg-transparent text-typography-green-500 placeholder-typography-green-300 pt-1 outline-none"
+                />
+              </div>
+            </div>
+            <CommandBody
+              isOpen={isVisible}
+              applets={applets}
+              action={triggerAction}
+              isSearching={!!searchText}
+            />
+          </motion.div>
+        </Command>
       </div>
     </>
   );

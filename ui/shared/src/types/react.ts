@@ -41,3 +41,8 @@ export type InternalForwardRefRenderFunction<
   propTypes?: React.WeakValidationMap<Props> | undefined;
   displayName?: string | undefined;
 };
+
+export type VisibleRef = {
+  isVisible: boolean;
+  changeVisibility: (isVisible: boolean) => void;
+};
