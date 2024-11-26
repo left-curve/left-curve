@@ -1,8 +1,8 @@
-# Tree manipulation
+# Proofs
 
 This document describes how ics23 proof generation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, since Quint does not support hashing, there were some challenges.
 
-Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on early returns, which do not exist in Quint. We are explaining this in detail on [].
+Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on early returns and panics, which do not exist in Quint. We are explaining this in detail in [`ics23_prove_existence`](#ics23-proving-existence) and [`ics23_prove`](#generating-commitment-proof).
 
 This document covers:
 
@@ -123,7 +123,7 @@ pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray)
 : Option[List[InnerOp]] =
 ```
 
-As clearly visible, the function signature is differnt. In our specification, we are returning `Option[List[InnerOp]]`. Returning `None` is reserved for any error that has occured when traversing the tree. In Rust implementation, looping is done until leaf is reached. However, since Quint does not support early returns, we had to have a finite set of key prefixes that we can fold over.
+As clearly visible, the function signature is different. In our specification, we are returning `Option[List[InnerOp]]`. Returning `None` is reserved for any error that has occured when traversing the tree. In Rust implementation, looping is done until leaf is reached. However, since Quint does not support early returns, we had to have a finite set of key prefixes that we can fold over.
 
 ```bluespec "definitions" +=
   val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
