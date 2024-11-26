@@ -1,6 +1,6 @@
 use {
     crate::account::margin::CollateralPower,
-    grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive},
+    grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -23,6 +23,14 @@ pub struct AppConfig {
     /// and becomes liquidatable, liquidators can pay off the accounts debts (in return for some of
     /// its collateral) until the account's utilization rate is at this value.
     pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    /// The minimum liquidation bonus that liquidators receive when liquidating an
+    /// undercollateralized margin account.
+    /// The liquidation bonus is defined as a percentage of the repaid debt value.
+    pub min_liquidation_bonus: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+
+    /// The maximum liquidation bonus that liquidators receive when liquidating an
+    /// undercollateralized margin account.
+    pub max_liquidation_bonus: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }
 
 /// Addresses of relevant Dango contracts.
@@ -32,4 +40,29 @@ pub struct AppAddresses {
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
+}
+
+/// Default implementation that can be used in tests when the addresses are not
+/// needed.
+impl Default for AppAddresses {
+    fn default() -> Self {
+        AppAddresses {
+            account_factory: Addr::mock(0),
+            ibc_transfer: Addr::mock(0),
+            lending: Addr::mock(0),
+            oracle: Addr::mock(0),
+        }
+    }
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        AppConfig {
+            addresses: Default::default(),
+            collateral_powers: Default::default(),
+            target_utilization_rate: Bounded::new(Udec128::new_percent(90)).unwrap(),
+            min_liquidation_bonus: Bounded::new(Udec128::new_percent(2)).unwrap(),
+            max_liquidation_bonus: Bounded::new(Udec128::new_percent(20)).unwrap(),
+        }
+    }
 }

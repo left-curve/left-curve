@@ -26,15 +26,16 @@ impl MarginQuerier for QuerierWrapper<'_> {
 
         // Calculate the total value of the debts.
         let mut total_debt_value = Udec128::ZERO;
-        for debt in debts {
-            let price = self.query_price(app_cfg.addresses.oracle, &debt.denom)?;
-            let value = price.value_of_unit_amount(debt.amount)?;
+        for debt in &debts {
+            let price = self.query_price(app_cfg.addresses.oracle, debt.denom)?;
+            let value = price.value_of_unit_amount(*debt.amount)?;
 
             total_debt_value.checked_add_assign(value)?;
         }
 
         // Calculate the total value of the account's collateral adjusted for the
         // collateral power.
+        let mut total_collateral_value = Udec128::ZERO;
         let mut total_adjusted_collateral_value = Udec128::ZERO;
         for (denom, power) in app_cfg.collateral_powers {
             let collateral_balance = self.query_balance(account, denom.clone())?;
@@ -49,6 +50,7 @@ impl MarginQuerier for QuerierWrapper<'_> {
             let value = price.value_of_unit_amount(collateral_balance)?;
             let adjusted_value = value.checked_mul(power.into_inner())?;
 
+            total_collateral_value.checked_add_assign(value)?;
             total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
         }
 
@@ -68,7 +70,9 @@ impl MarginQuerier for QuerierWrapper<'_> {
         Ok(HealthResponse {
             utilization_rate,
             total_debt_value,
+            total_collateral_value,
             total_adjusted_collateral_value,
+            debts,
         })
     }
 }
