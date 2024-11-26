@@ -11,14 +11,15 @@ import type React from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
 interface Props {
-  commandBarRef: React.RefObject<VisibleRef>;
+  isOpen?: boolean;
+  onClose?: () => void;
   menuAccountsRef: React.RefObject<VisibleRef>;
   menuNotificationsRef: React.RefObject<VisibleRef>;
   menuConnectionsRef: React.RefObject<VisibleRef>;
 }
 
 export const HamburgerMenu = forwardRef<VisibleRef, Props>(
-  ({ commandBarRef, menuAccountsRef, menuNotificationsRef, menuConnectionsRef }, ref) => {
+  ({ isOpen, menuAccountsRef, menuNotificationsRef, menuConnectionsRef, onClose }, ref) => {
     const [showOptions, setShowOptions] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +36,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
         className={twMerge(
           "flex flex-col lg:hidden h-10 w-10 z-[60] transition-all fixed right-5 bottom-[1.25rem] duration-300",
           {
-            "bottom-4": commandBarRef.current?.isVisible,
+            "bottom-4": isOpen,
           },
         )}
       >
@@ -79,14 +80,14 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
           className="flex flex-col items-center justify-center p-1 gap-1 h-10 w-10 bg-surface-green-300 rounded-xl z-[60] cursor-pointer"
           hamburger-element="true"
           onClick={() => {
-            if (commandBarRef.current?.isVisible) {
-              commandBarRef.current.changeVisibility(false);
+            if (isOpen) {
+              onClose?.();
             } else {
               setShowOptions(!showOptions);
             }
           }}
         >
-          <Hamburger isOpen={showOptions || Boolean(commandBarRef.current?.isVisible)} />
+          <Hamburger isOpen={showOptions || Boolean(isOpen)} />
         </div>
       </div>
     );

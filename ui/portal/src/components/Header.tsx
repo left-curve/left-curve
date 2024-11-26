@@ -9,15 +9,15 @@ import {
 
 import { AccountType } from "@leftcurve/types";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { applets } from "../../applets";
 import { HamburgerMenu } from "./HamburguerMenu";
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const [showCommandBar, setShowCommandBar] = useState(false);
 
-  const commandBarRef = useRef<VisibleRef>(null);
   const hamburgerRef = useRef<VisibleRef>(null);
   const menuAccountsRef = useRef<VisibleRef>(null);
   const menuConnectionsRef = useRef<VisibleRef>(null);
@@ -42,18 +42,20 @@ export const Header: React.FC = () => {
         <div
           className={twMerge(
             "xl:col-span-2 z-50 min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-end justify-center gap-2 fixed lg:relative lg:bottom-auto bottom-0 left-0 transition-all p-4 lg:p-0",
-            { "p-0 ": commandBarRef.current?.isVisible },
+            { "p-0 ": showCommandBar },
           )}
         >
           <CommandBar
             applets={applets}
             action={({ path }) => navigate(path)}
-            ref={commandBarRef}
+            changeVisibility={setShowCommandBar}
+            isVisible={showCommandBar}
             hamburgerRef={hamburgerRef}
           />
           <HamburgerMenu
             ref={hamburgerRef}
-            commandBarRef={commandBarRef}
+            isOpen={showCommandBar}
+            onClose={() => setShowCommandBar(false)}
             menuAccountsRef={menuAccountsRef}
             menuConnectionsRef={menuConnectionsRef}
             menuNotificationsRef={menuNotificationsRef}
