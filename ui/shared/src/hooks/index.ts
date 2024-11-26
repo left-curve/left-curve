@@ -1,5 +1,5 @@
 export * from "./useMediaQuery";
-export { useDebounce } from "react-use";
+export { useDebounce, useClickAway } from "react-use";
 
 export {
   type UseAccountNameParameters,
