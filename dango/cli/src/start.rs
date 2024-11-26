@@ -28,7 +28,7 @@ pub struct StartCmd {
     query_gas_limit: Option<u64>,
 
     /// Enable the internal indexer
-    #[arg(long, default_value = "true")]
+    #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
     /// The indexer database url
@@ -47,11 +47,13 @@ impl StartCmd {
             // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
             // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
             // indexer when running this binary.
-            let indexer = non_blocking_indexer::Indexer::new_with_database_url(
+            let mut indexer = non_blocking_indexer::Indexer::async_new_with_database_url(
+                &tokio::runtime::Handle::current(),
                 self.indexer_database_url
                     .as_deref()
                     .unwrap_or("postgres://localhost"),
             )
+            .await
             .expect("Can't create indexer");
             indexer.start().expect("Can't start indexer");
             let mut app = App::new(

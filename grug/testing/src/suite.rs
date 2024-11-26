@@ -199,7 +199,7 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        let indexer = Indexer::new().expect("Can't create Indexer");
+        let mut indexer = Indexer::new().expect("Can't create Indexer");
         indexer.start().expect("Can't start indexer");
 
         Self::new_with_db_vm_and_pp(

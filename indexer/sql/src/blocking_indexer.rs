@@ -54,7 +54,7 @@ impl Indexer {
 }
 
 impl IndexerTrait for Indexer {
-    fn start(&self) -> error::Result<()> {
+    fn start(&mut self) -> error::Result<()> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
         Ok(())
@@ -329,7 +329,7 @@ mod tests {
     }
 
     fn app() -> Indexer {
-        let app = Indexer::new().expect("Can't create indexer");
+        let mut app = Indexer::new().expect("Can't create indexer");
         app.start().expect("Can't start Indexer");
         app
     }

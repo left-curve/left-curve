@@ -5,6 +5,7 @@ use {
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,
+        future::Future,
         sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
@@ -25,7 +26,8 @@ use {
 #[derive(Debug, Clone)]
 pub struct Indexer {
     pub context: Context,
-    pub runtime: Arc<Runtime>,
+    pub runtime: Option<Arc<Runtime>>,
+    pub handle: tokio::runtime::Handle,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
     // TODO: this should be Arc<> because if this Indexer is cloned all instances should be
     // stopping when it's stopped.
@@ -79,9 +81,10 @@ impl Indexer {
 
         Ok(Indexer {
             context: Context { db },
-            runtime: runtime.clone(),
+            handle: runtime.handle().clone(),
+            runtime: Some(runtime),
             blocks: Arc::new(Mutex::new(HashMap::new())),
-            indexing: true,
+            indexing: false,
         })
     }
 
@@ -96,9 +99,40 @@ impl Indexer {
 
         Ok(Indexer {
             context: Context { db },
-            runtime: runtime.clone(),
+            handle: runtime.handle().clone(),
+            runtime: Some(runtime),
             blocks: Arc::new(Mutex::new(HashMap::new())),
-            indexing: true,
+            indexing: false,
+        })
+    }
+
+    pub async fn async_new_with_database_url(
+        handle: &tokio::runtime::Handle,
+        database_url: &str,
+    ) -> error::Result<Indexer> {
+        let db = Context::connect_db_with_url(database_url).await?;
+
+        Ok(Indexer {
+            context: Context { db },
+            handle: handle.clone(),
+            runtime: None,
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: false,
+        })
+    }
+
+    pub fn new_with_handle_and_database_url(
+        handle: &tokio::runtime::Handle,
+        database_url: &str,
+    ) -> error::Result<Indexer> {
+        let db = handle.block_on(async { Context::connect_db_with_url(database_url).await })?;
+
+        Ok(Indexer {
+            context: Context { db },
+            handle: handle.clone(),
+            runtime: None,
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: false,
         })
     }
 
@@ -141,12 +175,50 @@ impl Indexer {
         );
         Ok(block_to_index.1)
     }
+
+    /// Code in the indexer is running without async context (within Grug) and with an async
+    /// context (Dango). This is to ensure it works in both cases.
+    /// NOTE: The Tokio runtime *must* be multi-threaded:
+    /// - #[tokio::main]
+    /// - #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    fn call<F>(&self, closure: F) -> error::Result<()>
+    where
+        F: Future<Output = Result<(), indexer_core::error::Error>> + Send + 'static,
+    {
+        match self.runtime.as_ref() {
+            Some(runtime) => {
+                runtime.block_on(closure)?;
+            },
+            None => {
+                // let handle = self.handle.clone();
+                // println!("Spawn blocking");
+                // let join_handle = self.handle.spawn_blocking(move || {
+                //    println!("Spawn blocking closure");
+                //    handle.block_on(closure)?;
+                //    println!("Spawn blocking closure finished");
+                //    Ok::<(), error::Error>(())
+                //});
+                //
+                //// Use `block_on` to wait for the `spawn_blocking` task synchronously
+                // self.handle.block_on(async { join_handle.await? })?;
+
+                tokio::task::block_in_place(|| self.handle.block_on(closure))?;
+            },
+        }
+
+        Ok(())
+    }
 }
 
 impl IndexerTrait for Indexer {
-    fn start(&self) -> error::Result<()> {
-        self.runtime
-            .block_on(async { self.context.migrate_db().await })?;
+    fn start(&mut self) -> error::Result<()> {
+        let context = self.context.clone();
+        self.call(async move {
+            context.migrate_db().await.expect("Can't run migration");
+            Ok(())
+        })?;
+
+        self.indexing = true;
         Ok(())
     }
 
@@ -235,7 +307,7 @@ impl IndexerTrait for Indexer {
         // the shutdown method could be called and see no current block being indexed, and quit.
         // The block would then not be indexed.
 
-        self.runtime.spawn(async move {
+        self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing started");
 
@@ -261,5 +333,29 @@ impl Drop for Indexer {
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
         self.shutdown().expect("Can't shutdown indexer");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// This is when used from Dango, which is async. In such case `App` does not have its own
+    /// Tokio runtime and use the main handler. Making sure `start` can be called in an async
+    /// context.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn should_start() -> anyhow::Result<()> {
+        let handle = tokio::runtime::Handle::current();
+
+        let mut app = Indexer::async_new_with_database_url(&handle, "sqlite::memory:")
+            .await
+            .expect("Can't create indexer");
+        assert!(!app.indexing);
+        app.start().expect("Can't start Indexer");
+        assert!(app.indexing);
+        app.shutdown().expect("Can't shutdown Indexer");
+        assert!(!app.indexing);
+
+        Ok(())
     }
 }

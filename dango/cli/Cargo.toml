@@ -38,5 +38,5 @@ tower              = { workspace = true, features = ["full"] }
 tower-abci         = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-indexer-core       = { workspace = true, optional = true }
-indexer-sql        = { workspace = true, optional = true }
+indexer-core       = { workspace = true, optional = true, features = ["tracing"] }
+indexer-sql        = { workspace = true, optional = true, features = ["tracing"] }

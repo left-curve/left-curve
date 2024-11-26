@@ -9,7 +9,7 @@ pub use context::Context;
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
 pub trait IndexerTrait: Clone {
     /// Called when initializing the indexer, allowing for DB migration if needed
-    fn start(&self) -> error::Result<()> {
+    fn start(&mut self) -> error::Result<()> {
         Ok(())
     }
     /// Called when terminating the indexer, allowing for DB transactions to be committed

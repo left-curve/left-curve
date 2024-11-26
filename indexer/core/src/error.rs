@@ -5,6 +5,9 @@ pub enum Error {
 
     #[error("anyhow error: {0}")]
     Anyhow(#[from] anyhow::Error),
+
+    #[error("JoinError: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

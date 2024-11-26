@@ -14,11 +14,11 @@ impl Indexer {
 }
 
 impl IndexerTrait for Indexer {
-    fn shutdown(&mut self) -> error::Result<()> {
+    fn start(&mut self) -> error::Result<()> {
         Ok(())
     }
 
-    fn start(&self) -> error::Result<()> {
+    fn shutdown(&mut self) -> error::Result<()> {
         Ok(())
     }
 
