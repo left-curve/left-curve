@@ -1,6 +1,6 @@
 use {
     crate::account::margin::CollateralPower,
-    grug::{Addr, Denom},
+    grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive},
     std::{collections::BTreeMap, sync::LazyLock},
 };
 
@@ -17,6 +17,12 @@ pub struct AppConfig {
     /// collateral token has a power of 0.9, then the value of the collateral
     /// token is 90% of its actual value.
     pub collateral_powers: BTreeMap<Denom, CollateralPower>,
+
+    /// The margin account utilization rate down to which an account can be liquidated.
+    /// E.g. if this is set to 0.9, then as soon as the account's utilization rate reaches 1.0
+    /// and becomes liquidatable, liquidators can pay off the accounts debts (in return for some of
+    /// its collateral) until the account's utilization rate is at this value.
+    pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }
 
 /// Addresses of relevant Dango contracts.
