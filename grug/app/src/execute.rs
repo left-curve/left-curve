@@ -454,7 +454,6 @@ where
         old_code_hash = Some(info.code_hash);
 
         // Ensure the sender is the admin of the contract.
-        dbg!(info.admin);
         if Some(sender) != info.admin {
             return Err(AppError::Unauthorized);
         }
