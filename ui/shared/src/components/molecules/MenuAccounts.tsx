@@ -4,13 +4,12 @@ import { useAccount } from "@leftcurve/react";
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
-import { twMerge, useDOMRef } from "../../utils";
+import { twMerge } from "../../utils";
 
 import { AccountCard, Button } from "../";
 
 import { type Account, AccountType } from "@leftcurve/types";
 import { capitalize } from "@leftcurve/utils";
-import { parseAsBoolean, useQueryState } from "nuqs";
 import { useAccountName } from "../../hooks";
 import type { VisibleRef } from "../../types";
 import { CrossIcon } from "../icons/Cross";
@@ -27,10 +26,8 @@ interface Props {
 export const MenuAccounts = forwardRef<VisibleRef, Props>(({ images, manageAction }, ref) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [showMenu, setShowMenu] = useQueryState(
-    "accountsVisible",
-    parseAsBoolean.withDefault(false),
-  );
+  const [showMenu, setShowMenu] = useState(false);
+
   const { account: selectedAccount, accounts, changeAccount } = useAccount();
   const [accountName] = useAccountName();
   const [expanded, setExpanded] = useState(false);

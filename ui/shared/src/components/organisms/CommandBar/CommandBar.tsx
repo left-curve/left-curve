@@ -7,7 +7,7 @@ import { useClickAway } from "react-use";
 import { twMerge } from "../../../utils";
 
 import { Command } from "cmdk";
-import { CloseIcon, SearchIcon } from "../../";
+import { SearchIcon } from "../../";
 import { CommandBody } from "./CommandBody";
 
 import type { AppletMetadata, VisibleRef } from "../../../types";

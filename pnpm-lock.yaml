@@ -46,8 +46,8 @@ catalogs:
       specifier: 14.2.5
       version: 14.2.5
     nuqs:
-      specifier: ^2.1.1
-      version: 2.1.1
+      specifier: ^2.2.3
+      version: 2.2.3
     postcss:
       specifier: ^8
       version: 8.4.47
@@ -453,7 +453,7 @@ importers:
         version: 11.11.7(@emotion/is-prop-valid@0.8.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       nuqs:
         specifier: 'catalog:'
-        version: 2.1.1(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 2.2.3(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -638,7 +638,7 @@ importers:
         version: 10.4.20(postcss@8.4.47)
       nuqs:
         specifier: 'catalog:'
-        version: 2.1.1(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 2.2.3(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       postcss:
         specifier: 'catalog:'
         version: 8.4.47
@@ -3743,13 +3743,13 @@ packages:
     resolution: {integrity: sha512-S48WzZW777zhNIrn7gxOlISNAqi9ZC/uQFnRdbeIHhZhCA6UqpkOT8T1G7BvfdgP4Er8gF4sUbaS0i7QvIfCWw==}
     engines: {node: '>=8'}
 
-  nuqs@2.1.1:
-    resolution: {integrity: sha512-iM2H8lMmhvk9bxupUs2oRle9usRNEAqppOkTMXOxD/uK85gOKAubU7T2zmPo8fnYQS4n5e/XswTiq+gLYGpy3w==}
+  nuqs@2.2.3:
+    resolution: {integrity: sha512-nMCcUW06KSqEXA0xp+LiRqDpIE59BVYbjZLe0HUisJAlswfihHYSsAjYTzV0lcE1thfh8uh+LqUHGdQ8qq8rfA==}
     peerDependencies:
-      '@remix-run/react': '>= 2'
-      next: '>= 14.2.0'
-      react: '>= 18.2.0'
-      react-router-dom: '>= 6'
+      '@remix-run/react': '>=2'
+      next: '>=14.2.0'
+      react: '>=18.2.0 || ^19.0.0-0'
+      react-router-dom: '>=6'
     peerDependenciesMeta:
       '@remix-run/react':
         optional: true
@@ -7831,7 +7831,7 @@ snapshots:
     dependencies:
       path-key: 3.1.1
 
-  nuqs@2.1.1(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  nuqs@2.2.3(next@14.2.5(@babel/core@7.25.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-router-dom@6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       mitt: 3.0.1
       react: 18.3.1

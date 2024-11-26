@@ -9,8 +9,8 @@ import {
 
 import { AccountType } from "@leftcurve/types";
 
-import { useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { applets } from "../../applets";
 import { HamburgerMenu } from "./HamburguerMenu";
 
@@ -22,6 +22,16 @@ export const Header: React.FC = () => {
   const menuAccountsRef = useRef<VisibleRef>(null);
   const menuConnectionsRef = useRef<VisibleRef>(null);
   const menuNotificationsRef = useRef<VisibleRef>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showAccounts = searchParams.get("showAccounts");
+
+  useEffect(() => {
+    if (showAccounts === "true") {
+      menuAccountsRef.current?.changeVisibility(true);
+      setSearchParams(new URLSearchParams());
+    }
+  }, [showAccounts]);
 
   return (
     <>

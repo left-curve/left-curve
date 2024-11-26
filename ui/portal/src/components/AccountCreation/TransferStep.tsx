@@ -41,7 +41,7 @@ export const TransferStep: React.FC = () => {
     );
     await wait(1000);
     await refreshAccounts?.();
-    navigate("/?accountsVisible=true");
+    navigate("/?showAccounts=true");
   });
 
   return (
