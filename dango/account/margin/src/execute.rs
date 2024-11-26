@@ -1,6 +1,6 @@
 use {
     crate::MarginQuerier,
-    anyhow::{anyhow, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_auth::authenticate_tx,
     dango_lending::DEBTS,
     dango_oracle::OracleQuerier,
@@ -13,8 +13,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Message, MutableCtx, NumberConst,
-        Response, StdResult, Tx, Udec128,
+        AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, IsZero, Message, MutableCtx,
+        NumberConst, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -99,6 +99,11 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Calculate value of maximum repayable debt (MRD) to reach the target utilization rate.
     // See derivation of the equation in (`liquidation-math.md`)[book/notes/liquidation-math.md].
+    let average_collateral_power = if total_collateral_value.is_non_zero() {
+        total_adjusted_collateral_value / total_collateral_value
+    } else {
+        Udec128::ZERO
+    };
     let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?;
 
     // If either numerator or denominator is negative, then no amount of debt repayment will make
@@ -138,6 +143,12 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     .into_iter()
     .min()
     .ok_or_else(|| anyhow!("unable to calculate debt repay value"))?;
+
+    if debt_repay_value.is_zero() {
+        bail!(
+            "Debt repay value is zero. Probably the account either has no debt, or no collateral."
+        );
+    }
 
     // Repay the account's debts with the sent funds, up to the maximum value
     // of the repayable debt.
