@@ -1,16 +1,7 @@
-use grug::{Bound, Bounded, Bounds, NumberConst, Udec128};
+use grug::{Bounded, Coins, Denom, Udec128, ZeroExclusiveOneInclusive};
 
-/// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
-#[grug::derive(Serde)]
-pub struct CollateralPowerBounds;
-
-impl Bounds<Udec128> for CollateralPowerBounds {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
-}
-
-/// A decimal bounded by the collateral power bounds.
-pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
+/// A decimal bounded by the bounds: 0 < CollateralPower <= 1.
+pub type CollateralPower = Bounded<Udec128, ZeroExclusiveOneInclusive>;
 
 /// The response type for a margin account's `Health` query.
 #[grug::derive(Serde)]
