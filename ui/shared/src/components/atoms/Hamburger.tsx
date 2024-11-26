@@ -11,9 +11,18 @@ export const Hamburger: React.FC<ComponentPropsWithoutRef<"button"> & Props> = (
   ...props
 }) => {
   return (
-    <button className={twMerge("relative group", className)} type="button" {...props}>
-      <div className="relative flex overflow-hidden items-center justify-center transform transition-allduration-200">
+    <button
+      className={twMerge("relative group", className)}
+      hamburger-element="true"
+      type="button"
+      {...props}
+    >
+      <div
+        hamburger-element="true"
+        className="relative flex overflow-hidden items-center justify-center transform transition-allduration-200"
+      >
         <div
+          hamburger-element="true"
           className={twMerge(
             "flex flex-col justify-between transform transition-all duration-200 origin-center overflow-hidden",
             isOpen ? "gap-2" : "gap-1",
