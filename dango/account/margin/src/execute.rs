@@ -98,22 +98,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     );
 
     // Calculate value of maximum repayable debt (MRD) to reach the target utilization rate.
-    // MRD is defined as:
-    //
-    //            (c - (1 + b) * d) * v
-    // MRD = d -  ---------------------
-    //               t - (1 + b) * v
-    //
-    // where:
-    //       t = target health factor (the maximum health factor to liquidate to)
-    //       v = average collateral power
-    //       d = total debt value
-    //       c = total collateral value
-    //       b = liquidation bonus
-    //
-    // See derivation of above equation in [TODO: INSERT LINK]
-    //
-    let average_collateral_power = total_adjusted_collateral_value / total_collateral_value; // TODO: Ensure non-zero and not divide by zero
+    // See derivation of the equation in (`liquidation-math.md`)[book/notes/liquidation-math.md].
     let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?;
 
     // If either numerator or denominator is negative, then no amount of debt repayment will make
