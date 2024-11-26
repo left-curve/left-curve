@@ -15,7 +15,7 @@ This document covers:
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](./proofs.qnt).
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec qroofs.qnt
+```bluespec proofs.qnt
 // -*- mode: Bluespec; -*-
 
 module proofs {
@@ -121,36 +121,42 @@ pub fn ics23_prove_existence(
 ```bluespec "definitions" +=
 pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
 : Option[List[InnerOp]] =
+  <<<ics23_prove_existence>>>
 ```
 
 As clearly visible, the function signature is different. In our specification, we are returning `Option[List[InnerOp]]`. Returning `None` is reserved for any error that has occured when traversing the tree. In Rust implementation, looping is done until leaf is reached. However, since Quint does not support early returns, we had to have a finite set of key prefixes that we can fold over.
 
-```bluespec "definitions" +=
-  val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
+```bluespec "ics23_prove_existence" +=
+val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toList(listCompare)
 ```
 
 We set our `iterator` to a record that stores `path` - empty list, index of `key_prefix` in a `prefixes_list` - `0`, boolean value which indicates wether leaf has been found - `false` and a `child_version` which helps us find the correct version of internal node's child - `version` for which `ics23_prove_existence` is called.
 
-```bluespec "definitions" +=
-  val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) => 
-```
-
-`iterator.found` is used in our early return workaround. If the algorithm has found the leaf with adequate `key_hash` or if it cannot find a leaf with corresponding `key_prefix` and `iterator.child_version`, iterator won't be changed until fold has finished.
-
-```bluespec "definitions" +=
-    if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) 
-      iterator 
+```bluespec "ics23_prove_existence" +=
+val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) => 
 ```
 <!--
-```bluespec "definitions" +=
-    else
+```bluespec "ics23_prove_existence" +=
+  <<<ics23_prove_existence_1>>>
+```
+-->
+`iterator.found` is used in our early return workaround. If the algorithm has found the leaf with adequate `key_hash` or if it cannot find a leaf with corresponding `key_prefix` and `iterator.child_version`, iterator won't be changed until fold has finished.
+
+```bluespec "ics23_prove_existence_1" +=
+if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) 
+  iterator 
+```
+<!--
+```bluespec "ics23_prove_existence_1" +=
+else
+  <<<ics23_prove_existence_2>>>
 ```
 -->
 
 In first fold iteration `key_prefix` will take ROOT_BITS value and root will be fetched from the state.
 
-```bluespec "definitions" +=
-      val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
+```bluespec "ics23_prove_existence_2" +=
+val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
 ```
 
 This corresponds to the following Rust parts of code:
@@ -204,31 +210,39 @@ match node {
 
 Since Quint's pattern matching is not as strong as Rust's we had to figure a way around it. First we will append `0` to the `key_prefix` and then try to see if in the `prefixes_list`, the next element will have the same `key_prefix`.
 
-```bluespec "definitions" +=
-      match node {
-        | Leaf(l) => { ...iterator, i: iterator.i + 1, 
-                                  found: l.key_hash == key_hash }
-        | Internal(internal) => 
-          val next_bit_0 = key_prefix.append(0)
-          val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
-                                internal.left_child.unwrap().version
-                              else 
-                                internal.right_child.unwrap().version
+```bluespec "ics23_prove_existence_2" +=
+match node {
+  | Leaf(l) => { ...iterator, i: iterator.i + 1, 
+                            found: l.key_hash == key_hash }
+  | Internal(internal) => 
+    val next_bit_0 = key_prefix.append(0)
+    val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
+                          internal.left_child.unwrap().version
+                        else 
+                          internal.right_child.unwrap().version
 ```
-
+<!--
+```bluespec "ics23_prove_existence_2" +=
+    <<<ics23_prove_existence_3>>>
+```
+-->
 Then, we will take its version and declare it `child_version`. After doing so, we check wether we should end up in the `(Some(0), Some(child), sibling)` or `(Some(1), sibling, Some(child))` `match` branch.
 
 - If we are to end up in the `(Some(0), Some(child), sibling)` branch, that means that we will create `innerOp` variable with `prefix` being `InternalNodeHashPrefix` and `suffix` being either hash of the right child or zeroed out hash (Hash256_ZERO).
 
-```bluespec "definitions" +=
-          val innerOp = 
-            if(prefixes_list[iterator.i + 1] == next_bit_0) 
-              { prefix: InternalNodeHashPrefix, 
-                suffix: match internal.right_child {
-                          | None => Hash256_ZERO
-                          | Some(c) => c.hash} }
+```bluespec "ics23_prove_existence_3" +=
+val innerOp = 
+  if(prefixes_list[iterator.i + 1] == next_bit_0) 
+    { prefix: InternalNodeHashPrefix, 
+      suffix: match internal.right_child {
+                | None => Hash256_ZERO
+                | Some(c) => c.hash} }
 ```
-
+<!--
+```bluespec "ics23_prove_existence_3" +=
+  <<<ics23_prove_existence_4>>>
+```
+-->
 This part closely resembles this part of Rust implementation:
 
 ```rust
@@ -243,15 +257,19 @@ path.push(InnerOp {
 
 - If we are to end up in the `(Some(1), sibling, Some(child))` branch, that means that we will create `innerOp` variable with `prefix` being concatanated values of InternalNodeHashPrefix and either hash of the left child or zeroed out hash (Hash256_ZERO). In this case, `suffix` will be an empty Map(), which corresponds to an empty vector in Rust implementation.
 
-```bluespec "definitions" +=
-            else 
-              { prefix: InternalNodeHashPrefix
-                          .termConcat(match internal.left_child {
-                                        | None => Hash256_ZERO
-                                        | Some(c) => c.hash}), 
-                suffix: Map() }
+```bluespec "ics23_prove_existence_4" +=
+else 
+  { prefix: InternalNodeHashPrefix
+              .termConcat(match internal.left_child {
+                            | None => Hash256_ZERO
+                            | Some(c) => c.hash}), 
+    suffix: Map() }
 ```
+<!-- Empty line, to be tangled but not rendered
+```bluespec "ics23_prove_existence_4" +=
 
+```
+-->
 This part closely resembles this part of Rust implementation:
 
 ```rust
@@ -267,19 +285,15 @@ path.push(InnerOp {
 ```
 
 After creating new innter op, we update iterator with new values, such as new index of `key_prefix`, `child_version` that we have created before creating `innerOp` and new entry in the `path` list.
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
 
-```
--->
-```bluespec "definitions" +=
-          { ...iterator, path: iterator.path.append(innerOp),  
-            i: iterator.i + 1, child_version: child_version }
+```bluespec "ics23_prove_existence_3" +=
+{ ...iterator, path: iterator.path.append(innerOp),  
+  i: iterator.i + 1, child_version: child_version }
 ```
 <!--
-```bluespec "definitions" +=
-      }
-  )
+```bluespec "ics23_prove_existence" +=
+    }
+)
 ```
 -->
 After completing the fold, we are supposed to reverse the path:
@@ -336,41 +350,49 @@ In order to get the same outcome, we implemented `leftNeighbor` function.
 ```bluespec "definitions" +=
 pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
 ```
-
+<!---
+```bluespec "definitions" +=
+  <<<leftNeighbor>>>
+```
+--->
 First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `lessThan` function defined in the [hashes.qnt](./hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
 
-```bluespec "definitions" +=
-  val smallerKeyNodes = t.values().filter(n => match n {
-    | Leaf(l) => lessThan(l.key_hash, k)
-    | Internal(_) => false
-  }) 
+```bluespec "leftNeighbor" +=
+val smallerKeyNodes = t.values().filter(n => match n {
+  | Leaf(l) => lessThan(l.key_hash, k)
+  | Internal(_) => false
+}) 
 ```
 
 If there is no leaf nodes with smaller `key_hash`, we will return `None`.
 
-```bluespec "definitions" +=
-  if(smallerKeyNodes.empty()) None else 
+```bluespec "leftNeighbor" +=
+if(smallerKeyNodes.empty()) None else 
 ```
-
+<!---
+```bluespec "leftNeighbor" +=
+  <<<leftNeighbor1>>>
+```
+--->
 If there are some leafs `smallerKeyNodes` set in algorithm will find leaf that is the closest to the leaf for which we are trying to get the left neighbor.
 
-```bluespec "definitions" +=
-    val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
-      match x {
-        | Leaf(l) =>  
-              l
-        | Internal(_) => s
-        })
-    Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
-      match x {
-        | Leaf(l) =>  
-            if (lessThan(s.key_hash, l.key_hash) )
-              l
-            else 
-              s
-        | Internal(_) => s
-      }
-    ))
+```bluespec "leftNeighbor1" +=
+val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
+  match x {
+    | Leaf(l) =>  
+          l
+    | Internal(_) => s
+    })
+Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
+  match x {
+    | Leaf(l) =>  
+        if (lessThan(s.key_hash, l.key_hash) )
+          l
+        else 
+          s
+    | Internal(_) => s
+  }
+))
 ```
 
 ## Get right neighbor
@@ -454,12 +476,16 @@ let state_storage = self.state_storage(Some(version))?;
 ```
 
 Then get all leaves in that `version`. Then we perform filtering, which will leave either the leaf which we are looking for, or an empty list. Then we map that leaf into `Some` of that leaf's `value_hash`.
-
+<!---
 ```bluespec "definitions" +=
-  val optionalValueForKey = t.treeAtVersion(version)
-                          .allLeafs()
-                          .filter(l => l.key_hash == key_hash)
-                          .map( l => Some(l.value_hash))
+  <<<ics23_prove>>>
+```
+--->
+```bluespec "ics23_prove" +=
+val optionalValueForKey = t.treeAtVersion(version)
+                        .allLeafs()
+                        .filter(l => l.key_hash == key_hash)
+                        .map( l => Some(l.value_hash))
 ```
 
 Next we needed to emualte the following Rust code.
@@ -473,28 +499,30 @@ let proof = match state_storage.read(&key) {
 
 To get as close as possible to the Rust implementation, we created `state_storage_read` variable.
 
-```bluespec "definitions" +=
-  val state_storage_read = if(optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
+```bluespec "ics23_prove" +=
+val state_storage_read = if(optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
 ```
 <!---
-```bluespec "definitions" +=
-  match state_storage_read {
-    | Some(value) =>
-      <<<existence>>>
-    | None =>
-      <<<nonexistence>>>
-  }
+```bluespec "ics23_prove" +=
+match state_storage_read {
+  | Some(value) =>
+    <<<existence>>>
+  | None =>
+    <<<nonexistence>>>
+}
 ```
 --->
 Then we match `state_storage_read` variable.
 
 ```bluespec
-  match state_storage_read {
-      | Some(value) =>
-        // generating existence proof
-      | None => 
-        // generating non-existence proof
-  }
+match state_storage_read {
+    | Some(value) =>
+      // generating existence proof
+      (...)
+    | None => 
+      // generating non-existence proof
+      (...)
+}
 ```
 
 If the value is found, we will generate an ICS-23 existence proof, like it was done in Rust implementation:
