@@ -36,6 +36,7 @@
 ///
 /// Igor Konnov, Informal Systems, 2022-2023
 /// Josef Widder, Informal Systems, 2024
+/// Aleksandar Ignjatijevic, Informal Systems, 2024
 
 module hashes {
   import basicSpells.* from "./spells/basicSpells"
