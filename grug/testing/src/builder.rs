@@ -644,7 +644,7 @@ where
             app_config: self.app_config,
         };
 
-        let suite = TestSuite::new_with_db_vm_and_pp(
+        let suite = TestSuite::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             self.vm,
             self.indexer,

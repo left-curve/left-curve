@@ -6,8 +6,11 @@ pub enum Error {
     #[error("anyhow error: {0}")]
     Anyhow(#[from] anyhow::Error),
 
-    #[error("JoinError: {0}")]
+    #[error("join error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+
+    #[error("indexing error: {0}")]
+    Indexing(String),
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -18,6 +21,6 @@ macro_rules! bail {
         return Err($variant($msg.into()).into());
     };
     ($($arg:tt)*) => {
-        return Err($crate::error::Error::Anyhow(anyhow::anyhow!(format!($($arg)*))));
+        return Err($crate::error::Error::Indexing(format!($($arg)*)));
     };
 }

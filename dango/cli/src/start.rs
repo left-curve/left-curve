@@ -59,9 +59,9 @@ impl StartCmd {
             let mut app = App::new(
                 db,
                 vm,
+                indexer,
                 ProposalPreparer::new(),
                 self.query_gas_limit.unwrap_or(u64::MAX),
-                indexer,
             );
             app.indexing_enabled = self.indexer_enabled;
             app

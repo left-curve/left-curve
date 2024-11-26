@@ -55,7 +55,7 @@ pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
 
 impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
     #[cfg(feature = "indexer")]
-    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64, indexer_app: INDEXER) -> Self {
+    pub fn new(db: DB, vm: VM, indexer_app: INDEXER, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,

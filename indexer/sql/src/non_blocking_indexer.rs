@@ -29,8 +29,9 @@ pub struct Indexer {
     pub runtime: Option<Arc<Runtime>>,
     pub handle: tokio::runtime::Handle,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
-    // TODO: this should be Arc<> because if this Indexer is cloned all instances should be
-    // stopping when it's stopped.
+    // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
+    // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
+    // as I understand it doesn't clone `App` in a way it'd raise concern.
     indexing: bool,
 }
 
@@ -178,7 +179,7 @@ impl Indexer {
 
     /// Code in the indexer is running without async context (within Grug) and with an async
     /// context (Dango). This is to ensure it works in both cases.
-    /// NOTE: The Tokio runtime *must* be multi-threaded:
+    /// NOTE: The Tokio runtime *must* be multi-threaded with either:
     /// - #[tokio::main]
     /// - #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     fn call<F>(&self, closure: F) -> error::Result<()>
@@ -190,18 +191,6 @@ impl Indexer {
                 runtime.block_on(closure)?;
             },
             None => {
-                // let handle = self.handle.clone();
-                // println!("Spawn blocking");
-                // let join_handle = self.handle.spawn_blocking(move || {
-                //    println!("Spawn blocking closure");
-                //    handle.block_on(closure)?;
-                //    println!("Spawn blocking closure finished");
-                //    Ok::<(), error::Error>(())
-                //});
-                //
-                //// Use `block_on` to wait for the `spawn_blocking` task synchronously
-                // self.handle.block_on(async { join_handle.await? })?;
-
                 tokio::task::block_in_place(|| self.handle.block_on(closure))?;
             },
         }
@@ -230,7 +219,7 @@ impl IndexerTrait for Indexer {
         self.indexing = false;
 
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
-        // async
+        // async. It just loops quickly making sure no indexing blocks are remaining.
         for _ in 0..10 {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if blocks.is_empty() {
@@ -340,21 +329,21 @@ impl Drop for Indexer {
 mod tests {
     use super::*;
 
-    /// This is when used from Dango, which is async. In such case `App` does not have its own
-    /// Tokio runtime and use the main handler. Making sure `start` can be called in an async
+    /// This is when used from Dango, which is async. In such case the indexer does not have its
+    /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
         let handle = tokio::runtime::Handle::current();
 
-        let mut app = Indexer::async_new_with_database_url(&handle, "sqlite::memory:")
+        let mut indexer = Indexer::async_new_with_database_url(&handle, "sqlite::memory:")
             .await
             .expect("Can't create indexer");
-        assert!(!app.indexing);
-        app.start().expect("Can't start Indexer");
-        assert!(app.indexing);
-        app.shutdown().expect("Can't shutdown Indexer");
-        assert!(!app.indexing);
+        assert!(!indexer.indexing);
+        indexer.start().expect("Can't start Indexer");
+        assert!(indexer.indexing);
+        indexer.shutdown().expect("Can't shutdown Indexer");
+        assert!(!indexer.indexing);
 
         Ok(())
     }

@@ -21,9 +21,6 @@ fn index_block_with_blocking_indexer() {
         .build();
 
     let to = accounts["owner"].address;
-    // let from = accounts["owner"].address;
-
-    // dbg!(&accounts);
 
     let _outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
@@ -42,7 +39,6 @@ fn index_block_with_blocking_indexer() {
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
-            // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
             let transactions = entity::transactions::Entity::find()
@@ -50,21 +46,18 @@ fn index_block_with_blocking_indexer() {
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
-            // dbg!(&transactions);
 
             let messages = entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
-            // dbg!(&messages);
 
             let events = entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();
-            // dbg!(&events);
 
             Ok::<(), sea_orm::DbErr>(())
         })
@@ -88,7 +81,6 @@ fn index_block_with_blocking_indexer() {
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
-            // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(2);
             Ok::<(), sea_orm::DbErr>(())
         })
@@ -109,9 +101,6 @@ fn index_block_with_nonblocking_indexer() {
         .build();
 
     let to = accounts["owner"].address;
-    // let from = accounts["owner"].address;
-
-    // dbg!(&accounts);
 
     let _outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
@@ -137,7 +126,6 @@ fn index_block_with_nonblocking_indexer() {
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
-            // dbg!(&block);
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
             let transactions = entity::transactions::Entity::find()
@@ -145,21 +133,18 @@ fn index_block_with_nonblocking_indexer() {
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
-            // dbg!(&transactions);
 
             let messages = entity::messages::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
-            // dbg!(&messages);
 
             let events = entity::events::Entity::find()
                 .all(&suite.app.indexer_app.context.db)
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();
-            // dbg!(&events);
 
             Ok::<(), sea_orm::DbErr>(())
         })

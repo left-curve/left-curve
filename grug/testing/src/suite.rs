@@ -9,8 +9,7 @@ use {
         QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    indexer_core::IndexerTrait,
-    indexer_sql::blocking_indexer::Indexer,
+    indexer_core::{null_indexer, IndexerTrait},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -110,7 +109,7 @@ impl ResultExt for UploadAndInstantiateOutcome {
 pub struct TestSuite<
     DB = MemDb,
     VM = RustVm,
-    INDEXER = indexer_core::null_indexer::Indexer,
+    INDEXER = null_indexer::Indexer,
     PP = NaiveProposalPreparer,
 > where
     DB: Db,
@@ -154,10 +153,9 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, indexer_core::null_indexer::Indexer, NaiveProposalPreparer>
+impl<VM> TestSuite<MemDb, VM, null_indexer::Indexer, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
-    // Indexer: IndexerTrait,
     AppError: From<VM::Error>,
 {
     /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
@@ -170,10 +168,10 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        Self::new_with_db_vm_and_pp(
+        Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
-            indexer_core::null_indexer::Indexer::new().unwrap(),
+            null_indexer::Indexer::new().unwrap(),
             NaiveProposalPreparer,
             chain_id,
             block_time,
@@ -184,7 +182,7 @@ where
     }
 }
 
-impl<PP> TestSuite<MemDb, RustVm, Indexer, PP>
+impl<PP> TestSuite<MemDb, RustVm, null_indexer::Indexer, PP>
 where
     PP: ProposalPreparer,
     AppError: From<PP::Error>,
@@ -199,10 +197,9 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        let mut indexer = Indexer::new().expect("Can't create Indexer");
-        indexer.start().expect("Can't start indexer");
+        let indexer = null_indexer::Indexer::new().expect("Can't create Indexer");
 
-        Self::new_with_db_vm_and_pp(
+        Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             RustVm::new(),
             indexer,
@@ -225,7 +222,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     /// Create a new test suite with the given DB and VM.
-    pub fn new_with_db_vm_and_pp(
+    pub fn new_with_db_vm_indexer_and_pp(
         db: DB,
         vm: VM,
         indexer: INDEXER,
@@ -237,7 +234,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, u64::MAX, indexer);
+        let app = App::new(db, vm, indexer, pp, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

@@ -137,7 +137,7 @@ where
     )
     .unwrap();
 
-    let suite = grug::TestSuite::new_with_db_vm_and_pp(
+    let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
         indexer,
