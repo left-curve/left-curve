@@ -1,10 +1,12 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { twMerge } from "../../utils";
 
 import { useClickAway } from "react-use";
 import { BellIcon, Button, CloseIcon } from "../";
+import type { VisibleRef } from "../../types";
+import { CrossIcon } from "../icons/Cross";
 import { NotificationCard } from "./NotificationCard";
 
 const mockNotifications = [
@@ -35,45 +37,52 @@ const mockNotifications = [
   },
 ];
 
-export const MenuNotifications: React.FC = () => {
-  const [showMenu, setShowMenu] = useState(false);
+export const MenuNotifications = forwardRef<VisibleRef>((props, ref) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    isVisible: showNotifications,
+    changeVisibility: (v) => setShowNotifications(v),
+  }));
 
   useClickAway(menuRef, (e) => {
-    if (buttonRef.current?.contains(e.target as Node)) return;
-    setShowMenu(false);
+    if (buttonRef?.current?.contains(e.target as Node)) return;
+    setShowNotifications(false);
   });
 
   return (
     <>
       <Button
         ref={buttonRef}
-        onClick={() => setShowMenu(!showMenu)}
+        aria-description="Notifications"
+        onClick={() => setShowNotifications((prev) => !prev)}
         color="gray"
         radius="lg"
         isIconOnly
-        className="font-bold"
+        className="font-bold hidden lg:flex"
       >
-        <BellIcon className="h-6 w-6" />
+        <BellIcon className="h-5 w-5" />
       </Button>
 
       <div
         ref={menuRef}
         className={twMerge(
-          "transition-all bg-surface-green-300 backdrop-blur-3xl w-full md:w-[19.5rem] fixed top-0 md:top-[72px] md:rounded-3xl p-4 md:p-2 md:py-4 flex flex-col gap-4 h-[100vh] md:h-fit md:max-h-[calc(100vh-78px)] z-50",
-          showMenu ? "right-0 md:right-4" : "right-[-100vh]",
+          "transition-all bg-surface-green-200 backdrop-blur-3xl w-full md:w-[19.5rem] fixed top-0 md:top-[72px] md:rounded-3xl p-4 md:p-2 md:py-4 flex flex-col gap-4 h-[100vh] md:h-fit md:max-h-[calc(100vh-78px)] z-50 duration-300 delay-100",
+          showNotifications ? "right-0 md:right-4" : "right-[-100vh]",
         )}
       >
         <div className={twMerge("flex items-center justify-between md:hidden")}>
           <p className="text-2xl font-bold font-diatype-rounded mx-2 tracking-widest flex-1 text-typography-green-500">
             Notifications
           </p>
-          <div className="flex gap-2">
-            <Button isIconOnly radius="lg" onClick={() => setShowMenu(false)}>
-              <CloseIcon className="h-6 w-6" />
-            </Button>
-          </div>
+          <p
+            className="p-2 bg-surface-green-300 rounded-xl text-typography-black-300 lg:hidden"
+            onClick={() => setShowNotifications(false)}
+          >
+            <CrossIcon className="w-4 h-4" />
+          </p>
         </div>
         <div className="flex flex-col gap-3 relative flex-1 scrollbar-none">
           {mockNotifications.map((notification, i) => (
@@ -86,4 +95,4 @@ export const MenuNotifications: React.FC = () => {
       </div>
     </>
   );
-};
+});

@@ -48,7 +48,7 @@ export const CommandBody: React.FC<Props> = ({ isOpen, isSearching, applets, act
           initial={{ opacity: 0, translateY: -100 }}
           animate={{ opacity: 1, translateY: 0 }}
           exit={{ opacity: 0 }}
-          className="w-full flex flex-col gap-6 max-w-[calc(100vh-3.5rem)] overflow-scroll scrollbar-none md:p-4"
+          className="w-full flex flex-col gap-6 max-w-[calc(100vh-3.5rem)] overflow-scroll scrollbar-none lg:p-4 order-1 lg:order-2 "
         >
           <Command.List>
             <Command.Empty>
