@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
     "clean:build": "rm -rf ./build",

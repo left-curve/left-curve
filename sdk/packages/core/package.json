@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
     "clean:build": "rm -rf ./build",
@@ -19,7 +20,9 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build"],
+  "files": [
+    "build"
+  ],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -76,5 +79,12 @@
   "license": "TBD",
   "homepage": "https://grug.build",
   "repository": "left-curve/left-curve",
-  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }
