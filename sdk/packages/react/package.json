@@ -1,6 +1,7 @@
 {
   "name": "@left-curve/react",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
@@ -15,12 +16,7 @@
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "sideEffects": false,
-  "type": "module",
-  "files": [
-    "build",
-    "src",
-    "!**/*.spec.ts"
-  ],
+  "files": ["build"],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -48,5 +44,9 @@
     "@tanstack/react-query": ">=5.0.0",
     "react": "^18",
     "react-dom": "^18"
-  }
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
 }
