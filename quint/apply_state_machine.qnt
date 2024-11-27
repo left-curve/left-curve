@@ -14,6 +14,9 @@ module apply_state_machine {
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
 
+  import completeness.* from "./completeness"
+  import soundness.* from "./soundness"
+
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
   // Operation will be Delete if value between 16 and 20
@@ -311,7 +314,7 @@ module apply_state_machine {
 
   val verifyMembershipInv =
     activeTreeVersions.forall(version => 
-      tree.nodes.values().forall (nodes =>
+      tree.nodes.values().forall(nodes =>
         // this check is added because in the event of first (version 0 -> version 1) batch being only deletes
         // in this case there will be no root for version 1
         if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else 
@@ -333,6 +336,11 @@ module apply_state_machine {
                 | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
     )
 
+  val membershipCompletenessInv = activeTreeVersions.forall(v => membershipCompleteness(tree, v))
+  val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
+  val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
+  val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
+
   val allInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
@@ -347,5 +355,9 @@ module apply_state_machine {
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
     if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
     if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
+    if (membershipCompletenessInv) true else q::debug("membershipCompletenessInv", false),
+    if (nonMembershipCompletenessInv) true else q::debug("nonMembershipCompletenessInv", false),
+    if (membershipSoundnessInv) true else q::debug("membershipSoundnessInv", false),
+    if (nonMembershipSoundnessInv) true else q::debug("nonMembershipSoundnessInv", false),
   }
 }
