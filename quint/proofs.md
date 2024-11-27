@@ -153,7 +153,7 @@ else
 ```
 -->
 
-In first fold iteration `key_prefix` will take ROOT_BITS value and root will be fetched from the state.
+In first fold iteration `key_prefix` will take `ROOT_BITS` value and root will be fetched from the state.
 
 ```bluespec "ics23_prove_existence_2" +=
 val node = t.nodes.get({key_hash: key_prefix, version: iterator.child_version})
