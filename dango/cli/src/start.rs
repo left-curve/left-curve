@@ -56,8 +56,8 @@ impl StartCmd {
         let app = App::new(
             db,
             vm,
-            indexer,
             ProposalPreparer::new(),
+            indexer,
             self.query_gas_limit.unwrap_or(u64::MAX),
         );
 

@@ -8,8 +8,8 @@ use {
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
         query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker, Indexer,
-        NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, QuerierProvider, Shared, Vm,
-        APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        NaiveProposalPreparer, NaiveQuerier, NullIndexer, ProposalPreparer, QuerierProvider,
+        Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -31,10 +31,11 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM, ID, PP = NaiveProposalPreparer> {
+pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     db: DB,
     vm: VM,
     pp: PP,
+    pub indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -48,22 +49,21 @@ pub struct App<DB, VM, ID, PP = NaiveProposalPreparer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
-    pub indexer: ID,
 }
 
-impl<DB, VM, ID, PP> App<DB, VM, ID, PP> {
-    pub fn new(db: DB, vm: VM, indexer: ID, pp: PP, query_gas_limit: u64) -> Self {
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn new(db: DB, vm: VM, pp: PP, indexer: ID, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
             pp,
-            query_gas_limit,
             indexer,
+            query_gas_limit,
         }
     }
 }
 
-impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
@@ -528,7 +528,7 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,

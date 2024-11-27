@@ -524,7 +524,7 @@ where
     AppError: From<VM::Error> + From<PP::Error>,
     ID: Indexer,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM, ID, PP>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }

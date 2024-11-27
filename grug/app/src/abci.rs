@@ -27,7 +27,7 @@ use {
     tower_abci::BoxError,
 };
 
-impl<DB, VM, ID, PP> Service<Request> for App<DB, VM, ID, PP>
+impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
@@ -50,7 +50,7 @@ where
     }
 }
 
-impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,

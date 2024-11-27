@@ -108,14 +108,14 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub struct TestSuite<DB = MemDb, VM = RustVm, ID = NullIndexer, PP = NaiveProposalPreparer>
+pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
 where
     DB: Db,
     VM: Vm,
-    ID: Indexer,
     PP: ProposalPreparer,
+    ID: Indexer,
 {
-    pub app: App<DB, VM, ID, PP>,
+    pub app: App<DB, VM, PP, ID>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -151,7 +151,7 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, NullIndexer, NaiveProposalPreparer>
+impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer, NullIndexer>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -180,7 +180,7 @@ where
     }
 }
 
-impl<PP> TestSuite<MemDb, RustVm, NullIndexer, PP>
+impl<PP> TestSuite<MemDb, RustVm, PP, NullIndexer>
 where
     PP: ProposalPreparer,
     AppError: From<PP::Error>,
@@ -209,12 +209,12 @@ where
     }
 }
 
-impl<DB, VM, ID, PP> TestSuite<DB, VM, ID, PP>
+impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: Indexer,
     PP: ProposalPreparer,
+    ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     /// Create a new test suite with the given DB and VM.
@@ -230,7 +230,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, id, pp, u64::MAX);
+        let app = App::new(db, vm, pp, id, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

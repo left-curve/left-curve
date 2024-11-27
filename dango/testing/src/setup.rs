@@ -20,7 +20,7 @@ pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
-    grug::TestSuite<DB, VM, ID, PP>;
+    grug::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {

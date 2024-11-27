@@ -35,7 +35,7 @@ impl Default for IndexerBuilder {
             runtime,
             handle,
             db_url: Undefined::default(),
-            enabled: false,
+            enabled: true,
         }
     }
 }
