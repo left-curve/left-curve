@@ -20,7 +20,7 @@ module tree_test {
     assert(reference == result)
   }
 
-  run superSimpleVsFancyTest = init.then(3.reps(_ => {
+  run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
