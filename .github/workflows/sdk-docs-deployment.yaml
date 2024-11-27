@@ -40,7 +40,7 @@ jobs:
           pnpm doc
           # Cloudflare issue: https://github.com/cloudflare/workers-sdk/issues/2240
           curl -O https://gist.githubusercontent.com/j0nl1/7f9b5210c9e6ecbabe322baa16dcb5db/raw/760de77327bf83671cfb6bd4e64181299ba26113/typedoc-fix-cf.mjs
-          node typedoc-fix-cf.mjs docs
+          node typedoc-fix-cf.mjs sdk/docs
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
