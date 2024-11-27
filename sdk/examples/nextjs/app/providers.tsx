@@ -1,10 +1,10 @@
 "use client";
 
-import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
-import { devnet } from "@leftcurve/connect-kit/chains";
-import { GrunnectProvider } from "@leftcurve/react";
+import { http, createConfig, eip1193, passkey } from "@left-curve/connect-kit";
+import { devnet } from "@left-curve/connect-kit/chains";
+import { GrunnectProvider } from "@left-curve/react";
 import type React from "react";
-import "@leftcurve/types/window";
+import "@left-curve/types/window";
 
 export const config = createConfig({
   ssr: true,

@@ -1,14 +1,14 @@
 // This file type is partially forked from viem types in the following repository: https://github.com/wevm/mipd/blob/main/src/store.ts
 
-import { debounce } from "@leftcurve/utils";
+import { debounce } from "@left-curve/utils";
 
 import type {
   EIP6963AnnounceProviderEvent,
   EIP6963ProviderDetail,
   MipdStore,
   MipdStoreListener,
-} from "@leftcurve/types";
-import "@leftcurve/types/window";
+} from "@left-curve/types";
+import "@left-curve/types/window";
 
 export function requestProviders(
   listener: (providerDetail: EIP6963ProviderDetail) => void,

@@ -27,32 +27,32 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
   }
 }%%
 stateDiagram-v2
-    @leftcurve/config --> @leftcurve/types
-    @leftcurve/config --> @leftcurve/utils
-    @leftcurve/types --> @leftcurve/utils
-    @leftcurve/config --> @leftcurve/sdk
-    @leftcurve/types --> @leftcurve/sdk
-    @leftcurve/utils --> @leftcurve/sdk
-    @leftcurve/crypto --> @leftcurve/sdk
-    @leftcurve/encoding --> @leftcurve/sdk
-    @leftcurve/config --> @leftcurve/react
-    @leftcurve/types --> @leftcurve/react
-    @leftcurve/connectkit --> @leftcurve/react
-    @leftcurve/crypto --> @leftcurve/react
-    @leftcurve/encoding --> @leftcurve/react
-    @leftcurve/utils --> @leftcurve/react
-    @leftcurve/config --> @leftcurve/encoding
-    @leftcurve/types --> @leftcurve/encoding
-    @leftcurve/utils --> @leftcurve/encoding
-    @leftcurve/config --> @leftcurve/crypto
-    @leftcurve/types --> @leftcurve/crypto
-    @leftcurve/encoding --> @leftcurve/crypto
-    @leftcurve/config --> @leftcurve/connectkit
-    @leftcurve/crypto --> @leftcurve/connectkit
-    @leftcurve/encoding --> @leftcurve/connectkit
-    @leftcurve/sdk --> @leftcurve/connectkit
-    @leftcurve/types --> @leftcurve/connectkit
-    @leftcurve/utils --> @leftcurve/connectkit
+    @left-curve/config --> @left-curve/types
+    @left-curve/config --> @left-curve/utils
+    @left-curve/types --> @left-curve/utils
+    @left-curve/config --> @left-curve/sdk
+    @left-curve/types --> @left-curve/sdk
+    @left-curve/utils --> @left-curve/sdk
+    @left-curve/crypto --> @left-curve/sdk
+    @left-curve/encoding --> @left-curve/sdk
+    @left-curve/config --> @left-curve/react
+    @left-curve/types --> @left-curve/react
+    @left-curve/connectkit --> @left-curve/react
+    @left-curve/crypto --> @left-curve/react
+    @left-curve/encoding --> @left-curve/react
+    @left-curve/utils --> @left-curve/react
+    @left-curve/config --> @left-curve/encoding
+    @left-curve/types --> @left-curve/encoding
+    @left-curve/utils --> @left-curve/encoding
+    @left-curve/config --> @left-curve/crypto
+    @left-curve/types --> @left-curve/crypto
+    @left-curve/encoding --> @left-curve/crypto
+    @left-curve/config --> @left-curve/connectkit
+    @left-curve/crypto --> @left-curve/connectkit
+    @left-curve/encoding --> @left-curve/connectkit
+    @left-curve/sdk --> @left-curve/connectkit
+    @left-curve/types --> @left-curve/connectkit
+    @left-curve/utils --> @left-curve/connectkit
 ```
 
 ## Supported JS environments

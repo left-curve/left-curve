@@ -1,12 +1,12 @@
 import { Button, Input, useWizard } from "@dango/shared";
-import { useAccount, useBalances, useConfig } from "@leftcurve/react";
+import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 
-import type { AccountTypes, NativeCoin } from "@leftcurve/types";
-import { formatUnits, parseUnits, wait } from "@leftcurve/utils";
+import type { AccountTypes, NativeCoin } from "@left-curve/types";
+import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
-import type { SignerClient } from "@leftcurve/sdk/clients";
+import type { SignerClient } from "@left-curve/sdk/clients";
 import { useNavigate } from "react-router-dom";
 
 export const TransferStep: React.FC = () => {

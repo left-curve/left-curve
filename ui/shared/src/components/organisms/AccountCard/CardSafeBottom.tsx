@@ -1,4 +1,4 @@
-import type { Power, Username } from "@leftcurve/types";
+import type { Power, Username } from "@left-curve/types";
 import { AvatarStack } from "../../atoms/AvatarStack";
 
 interface Props {

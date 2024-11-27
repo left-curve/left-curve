@@ -113,10 +113,10 @@ importers:
 
   sdk/examples/nextjs:
     dependencies:
-      '@leftcurve/connect-kit':
+      '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../packages/connect-kit
-      '@leftcurve/react':
+      '@left-curve/react':
         specifier: workspace:^
         version: link:../../packages/react
       next:
@@ -129,10 +129,10 @@ importers:
         specifier: 'catalog:'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../packages/types
       '@types/node':
@@ -156,26 +156,26 @@ importers:
 
   sdk/examples/nodejs:
     dependencies:
-      '@leftcurve/crypto':
+      '@left-curve/crypto':
         specifier: workspace:^
         version: link:../../packages/crypto
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../packages/encoding
-      '@leftcurve/sdk':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../packages/core
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../../packages/utils
       tsx:
         specifier: ^4.17.0
         version: 4.19.1
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../packages/types
       '@types/node':
@@ -184,10 +184,10 @@ importers:
 
   sdk/examples/vite:
     dependencies:
-      '@leftcurve/connect-kit':
+      '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../packages/connect-kit
-      '@leftcurve/react':
+      '@left-curve/react':
         specifier: workspace:^
         version: link:../../packages/react
       '@tanstack/react-query':
@@ -200,10 +200,10 @@ importers:
         specifier: 'catalog:'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../packages/types
       '@types/react':
@@ -248,19 +248,19 @@ importers:
 
   sdk/packages/connect-kit:
     dependencies:
-      '@leftcurve/crypto':
+      '@left-curve/crypto':
         specifier: workspace:^
         version: link:../crypto
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
-      '@leftcurve/sdk':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../core
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../utils
       eventemitter3:
@@ -270,7 +270,7 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@types/react@18.3.11)(react@18.3.1)(use-sync-external-store@1.2.2(react@18.3.1))
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
       '@tanstack/query-core':
@@ -282,20 +282,20 @@ importers:
 
   sdk/packages/core:
     dependencies:
-      '@leftcurve/crypto':
+      '@left-curve/crypto':
         specifier: workspace:^
         version: link:../crypto
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../utils
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
       vitest:
@@ -320,13 +320,13 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
       vitest:
@@ -335,17 +335,17 @@ importers:
 
   sdk/packages/encoding:
     dependencies:
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../utils
       superjson:
         specifier: ^2.2.1
         version: 2.2.1
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
       vitest:
@@ -354,16 +354,16 @@ importers:
 
   sdk/packages/react:
     dependencies:
-      '@leftcurve/connect-kit':
+      '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../connect-kit
-      '@leftcurve/crypto':
+      '@left-curve/crypto':
         specifier: workspace:^
         version: link:../crypto
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../utils
       react-dom:
@@ -373,10 +373,10 @@ importers:
         specifier: ^1.2.2
         version: 1.2.2(react@18.3.1)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
       '@tanstack/react-query':
@@ -397,7 +397,7 @@ importers:
 
   sdk/packages/types:
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
 
@@ -407,10 +407,10 @@ importers:
         specifier: ^2.21.34
         version: 2.21.34(typescript@5.6.3)(zod@3.23.8)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../types
       vitest:
@@ -427,22 +427,22 @@ importers:
       '@dango/shared':
         specifier: workspace:^
         version: link:../shared
-      '@leftcurve/connect-kit':
+      '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../sdk/packages/connect-kit
-      '@leftcurve/crypto':
+      '@left-curve/crypto':
         specifier: workspace:^
         version: link:../../sdk/packages/crypto
-      '@leftcurve/encoding':
+      '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../sdk/packages/encoding
-      '@leftcurve/react':
+      '@left-curve/react':
         specifier: workspace:^
         version: link:../../sdk/packages/react
-      '@leftcurve/sdk':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../sdk/packages/core
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../../sdk/packages/utils
       '@tanstack/react-query':
@@ -467,10 +467,10 @@ importers:
         specifier: 'catalog:'
         version: 6.26.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../sdk/packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../sdk/packages/types
       '@rsbuild/core':
@@ -512,16 +512,16 @@ importers:
       '@dango/assets':
         specifier: workspace:^
         version: link:../assets
-      '@leftcurve/connect-kit':
+      '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../sdk/packages/connect-kit
-      '@leftcurve/react':
+      '@left-curve/react':
         specifier: workspace:^
         version: link:../../sdk/packages/react
-      '@leftcurve/sdk':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../sdk/packages/core
-      '@leftcurve/utils':
+      '@left-curve/utils':
         specifier: workspace:^
         version: link:../../sdk/packages/utils
       '@radix-ui/react-label':
@@ -597,10 +597,10 @@ importers:
         specifier: ^0.2.1
         version: 0.2.1(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3)))
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../sdk/packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../sdk/packages/types
       '@react-types/select':
@@ -682,7 +682,7 @@ importers:
         specifier: 'catalog:'
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../sdk/packages/config
       '@types/node':
@@ -706,17 +706,17 @@ importers:
 
   ui/workers/mock-ibc:
     dependencies:
-      '@leftcurve/sdk':
+      '@left-curve/sdk':
         specifier: workspace:^
         version: link:../../../sdk/packages/core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20241022.0
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/packages/config
-      '@leftcurve/types':
+      '@left-curve/types':
         specifier: workspace:^
         version: link:../../../sdk/packages/types
       typescript:
@@ -731,7 +731,7 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20241022.0
-      '@leftcurve/config':
+      '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/packages/config
       typescript:

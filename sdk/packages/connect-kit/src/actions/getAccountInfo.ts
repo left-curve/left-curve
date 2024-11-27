@@ -1,7 +1,7 @@
-import { getAccountInfo as getAccountInfoSdkAction } from "@leftcurve/sdk/actions";
+import { getAccountInfo as getAccountInfoSdkAction } from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { Account, AccountTypes, Address, ChainId, Config } from "@leftcurve/types";
+import type { Account, AccountTypes, Address, ChainId, Config } from "@left-curve/types";
 
 export type GetAccountInfoParameters = {
   address: Address;

@@ -1,7 +1,7 @@
 "use client";
 
-import { useAccount } from "@leftcurve/react";
-import { AccountType, ConnectionStatus } from "@leftcurve/types";
+import { useAccount } from "@left-curve/react";
+import { AccountType, ConnectionStatus } from "@left-curve/types";
 import { ConnectButton, MenuAccounts, MenuConnections, MenuNotifications } from "../";
 
 export const ExampleHeader: React.FC = () => {

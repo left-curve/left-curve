@@ -1,4 +1,4 @@
-import { type Config, ConnectionStatus, type State } from "@leftcurve/types";
+import { type Config, ConnectionStatus, type State } from "@left-curve/types";
 import { reconnect } from "./actions/index.js";
 import { eip6963 } from "./connectors/eip6963.js";
 

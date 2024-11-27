@@ -1,4 +1,4 @@
-import type { Config, Connector, ConnectorUId } from "@leftcurve/types";
+import type { Config, Connector, ConnectorUId } from "@left-curve/types";
 
 export type GetConnectorParameters = {
   connectorUId?: ConnectorUId;

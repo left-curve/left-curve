@@ -1,7 +1,7 @@
 "use client";
 
-import { type GetConnectorsReturnType, getConnectors } from "@leftcurve/connect-kit";
-import type { ConfigParameter } from "@leftcurve/types";
+import { type GetConnectorsReturnType, getConnectors } from "@left-curve/connect-kit";
+import type { ConfigParameter } from "@left-curve/types";
 
 import { useConfig } from "./useConfig.js";
 

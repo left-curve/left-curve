@@ -1,6 +1,6 @@
-import { http, createConfig, passkey } from "@leftcurve/connect-kit";
-import { devnet } from "@leftcurve/connect-kit/chains";
-import "@leftcurve/types/window";
+import { http, createConfig, passkey } from "@left-curve/connect-kit";
+import { devnet } from "@left-curve/connect-kit/chains";
+import "@left-curve/types/window";
 
 const dango = devnet;
 

@@ -1,5 +1,5 @@
-import { encodeHex } from "@leftcurve/encoding";
-import type { Chain, Client, QueryAbciResponse, Signer, Transport } from "@leftcurve/types";
+import { encodeHex } from "@left-curve/encoding";
+import type { Chain, Client, QueryAbciResponse, Signer, Transport } from "@left-curve/types";
 
 export type QueryAbciParameters = {
   path: string;

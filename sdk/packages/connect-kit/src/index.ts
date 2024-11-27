@@ -1,4 +1,4 @@
-export { http } from "@leftcurve/sdk";
+export { http } from "@left-curve/sdk";
 export { createConfig } from "./createConfig.js";
 export { hydrate } from "./hydrate.js";
 

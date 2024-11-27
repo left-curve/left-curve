@@ -1,4 +1,4 @@
-import { encodeUtf8 } from "@leftcurve/encoding";
+import { encodeUtf8 } from "@left-curve/encoding";
 import { decode } from "cbor-x";
 import { ripemd160 } from "../ripemd.js";
 

@@ -1,4 +1,4 @@
-import type { AccountTypes, Address, Config, ConnectorUId, Username } from "@leftcurve/types";
+import type { AccountTypes, Address, Config, ConnectorUId, Username } from "@left-curve/types";
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
 

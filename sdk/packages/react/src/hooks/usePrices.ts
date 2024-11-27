@@ -1,4 +1,4 @@
-import { createStorage } from "@leftcurve/connect-kit";
+import { createStorage } from "@left-curve/connect-kit";
 import type {
   AnyCoin,
   CoinGeckoId,
@@ -7,8 +7,8 @@ import type {
   Language,
   Prettify,
   Storage,
-} from "@leftcurve/types";
-import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@leftcurve/utils";
+} from "@left-curve/types";
+import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@left-curve/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 

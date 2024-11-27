@@ -1,9 +1,9 @@
-import { ethHashMessage, secp256k1RecoverPubKey } from "@leftcurve/crypto";
-import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@leftcurve/encoding";
-import { createKeyHash, createSignerClient } from "@leftcurve/sdk";
-import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
-import { KeyAlgo } from "@leftcurve/types";
-import { composeTypedData, getRootDomain, hashTypedData } from "@leftcurve/utils";
+import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
+import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
+import { createKeyHash, createSignerClient } from "@left-curve/sdk";
+import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
+import { KeyAlgo } from "@left-curve/types";
+import { composeTypedData, getRootDomain, hashTypedData } from "@left-curve/utils";
 import { createConnector } from "./createConnector.js";
 
 import type {
@@ -13,11 +13,11 @@ import type {
   EIP1193Provider,
   Eip712Credential,
   Transport,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
-import "@leftcurve/types/window";
-import type { SignerClient } from "@leftcurve/sdk/clients";
-import { ConnectorSigner } from "@leftcurve/sdk/signers";
+import "@left-curve/types/window";
+import type { SignerClient } from "@left-curve/sdk/clients";
+import { ConnectorSigner } from "@left-curve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
   id: ConnectorId;

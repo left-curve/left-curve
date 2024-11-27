@@ -9,7 +9,7 @@ import type {
   Tx,
   TxMessageType,
   TypedDataParameter,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { getAccountSequence } from "../public/getAccountSequence.js";
 import { getChainInfo } from "../public/getChainInfo.js";
 import { simulate } from "../public/simulate.js";

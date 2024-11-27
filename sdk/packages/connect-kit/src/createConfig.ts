@@ -1,9 +1,9 @@
 import { createEmitter } from "./createEmitter.js";
 import { createStorage } from "./storages/createStorage.js";
 
-import { createBaseClient } from "@leftcurve/sdk";
-import { ConnectionStatus } from "@leftcurve/types";
-import { uid } from "@leftcurve/utils";
+import { createBaseClient } from "@left-curve/sdk";
+import { ConnectionStatus } from "@left-curve/types";
+import { uid } from "@left-curve/utils";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
@@ -23,7 +23,7 @@ import type {
   State,
   StoreApi,
   Transport,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { eip6963 } from "./connectors/eip6963.js";
 import { createMipdStore } from "./mipd.js";
 

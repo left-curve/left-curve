@@ -1,8 +1,8 @@
 import { Button, Input, Select, SelectItem } from "@dango/shared";
-import { useConfig } from "@leftcurve/react";
+import { useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 
-import type { NativeCoin } from "@leftcurve/types";
+import type { NativeCoin } from "@left-curve/types";
 
 export const TransferStep: React.FC = () => {
   const { chains, coins } = useConfig();

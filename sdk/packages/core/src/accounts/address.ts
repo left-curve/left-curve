@@ -1,4 +1,4 @@
-import { isHex } from "@leftcurve/encoding";
+import { isHex } from "@left-curve/encoding";
 
 export function isValidAddress(address: string): boolean {
   if (!address.startsWith("0x")) return false;

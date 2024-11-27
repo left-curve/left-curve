@@ -1,8 +1,8 @@
 "use client";
 
-import { useChainId } from "@leftcurve/react";
-import type { Connector, Username } from "@leftcurve/types";
-import { wait } from "@leftcurve/utils";
+import { useChainId } from "@left-curve/react";
+import type { Connector, Username } from "@left-curve/types";
+import { wait } from "@left-curve/utils";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { BackArrowIcon, Button, WalletIcon } from "../../";

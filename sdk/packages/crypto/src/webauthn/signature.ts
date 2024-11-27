@@ -1,4 +1,4 @@
-import { decodeBase64Url } from "@leftcurve/encoding";
+import { decodeBase64Url } from "@left-curve/encoding";
 
 export type CredentialAssertion = {
   credentialId: string;

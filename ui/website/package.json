@@ -18,7 +18,7 @@
     "framer-motion": "catalog:"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
+    "@left-curve/config": "workspace:^",
     "typescript": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

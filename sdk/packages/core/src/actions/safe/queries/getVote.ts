@@ -7,7 +7,7 @@ import type {
   Transport,
   Username,
   Vote,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { queryWasmSmart } from "../../public/queryWasmSmart.js";
 
 export type SafeAccountGetVoteParameters = {

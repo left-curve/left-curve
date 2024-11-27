@@ -2,23 +2,23 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { ArrowSelectorIcon, ConnectorButtonOptions, twMerge, useWizard } from "@dango/shared";
-import { useAccount, useConfig, useConnectors, usePublicClient } from "@leftcurve/react";
+import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
 
 import {
   createWebAuthnCredential,
   ethHashMessage,
   secp256k1RecoverPubKey,
-} from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8 } from "@leftcurve/encoding";
-import { computeAddress, createAccountSalt, createKeyHash } from "@leftcurve/sdk";
-import { AccountType, ConnectionStatus, KeyAlgo } from "@leftcurve/types";
-import { getNavigatorOS, getRootDomain, wait } from "@leftcurve/utils";
+} from "@left-curve/crypto";
+import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
+import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/sdk";
+import { AccountType, ConnectionStatus, KeyAlgo } from "@left-curve/types";
+import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
 
 import { Button } from "@dango/shared";
 
-import type { EIP1193Provider, Key } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { EIP1193Provider, Key } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export const ConnectStep: React.FC = () => {
   const [connectorLoading, setConnectorLoading] = useState<string>();

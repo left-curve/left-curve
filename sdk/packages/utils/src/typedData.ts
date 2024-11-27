@@ -11,7 +11,7 @@ import type {
   TypedDataParameter,
   TypedDataProperty,
   Username,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { recursiveTransform } from "./mappers.js";
 import { camelToSnake } from "./strings.js";
 

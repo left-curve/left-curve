@@ -54,10 +54,10 @@
   },
   "dependencies": {
     "@dango/assets": "workspace:^",
-    "@leftcurve/react": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
-    "@leftcurve/connect-kit": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
+    "@left-curve/react": "workspace:^",
+    "@left-curve/sdk": "workspace:^",
+    "@left-curve/connect-kit": "workspace:^",
+    "@left-curve/utils": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@react-aria/button": "^3.9.8",
@@ -82,8 +82,8 @@
     "tailwind-variants": "^0.2.1"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "@react-types/select": "^3.9.6",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",

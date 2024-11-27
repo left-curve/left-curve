@@ -5,7 +5,7 @@ import type {
   JsonValue,
   Signer,
   Transport,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
 import {
   type GetBalanceParameters,

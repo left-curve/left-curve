@@ -1,8 +1,8 @@
-import { useAccount, useConfig } from "@leftcurve/react";
+import { useAccount, useConfig } from "@left-curve/react";
 import { Navigate, Outlet } from "react-router-dom";
 
 import { Spinner } from "@dango/shared";
-import { ConnectionStatus } from "@leftcurve/types";
+import { ConnectionStatus } from "@left-curve/types";
 import { useState } from "react";
 import { Header } from "./Header";
 

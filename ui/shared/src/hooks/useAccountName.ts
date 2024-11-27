@@ -1,5 +1,5 @@
-import { useAccount, useStorage } from "@leftcurve/react";
-import type { Account } from "@leftcurve/types";
+import { useAccount, useStorage } from "@left-curve/react";
+import type { Account } from "@left-curve/types";
 
 export type UseAccountNameParameters = {
   account?: Account;

@@ -6,7 +6,7 @@ import type {
   Config,
   Connector,
   Username,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 

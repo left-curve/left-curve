@@ -1,4 +1,4 @@
-import type { CometBftRpcSchema, RpcSchema, Transport, TransportConfig } from "@leftcurve/types";
+import type { CometBftRpcSchema, RpcSchema, Transport, TransportConfig } from "@left-curve/types";
 
 /**
  * @description Creates an transport intended to be used with a client.

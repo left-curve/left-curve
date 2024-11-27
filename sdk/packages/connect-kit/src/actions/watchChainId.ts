@@ -1,4 +1,4 @@
-import type { Config } from "@leftcurve/types";
+import type { Config } from "@left-curve/types";
 import type { GetChainIdReturnType } from "./getChainId.js";
 
 export type WatchChainIdParameters<config extends Config = Config> = {

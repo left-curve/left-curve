@@ -3,12 +3,12 @@ import {
   type GetPublicClientReturnType,
   getPublicClient,
   watchPublicClient,
-} from "@leftcurve/connect-kit";
+} from "@left-curve/connect-kit";
 
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
+import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
 
 export type UsePublicClientParameters<config extends Config = Config> = Prettify<
   GetPublicClientParameters & ConfigParameter<config>

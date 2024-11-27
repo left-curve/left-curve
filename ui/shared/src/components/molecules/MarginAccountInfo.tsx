@@ -1,9 +1,9 @@
-import { useAccount } from "@leftcurve/react";
+import { useAccount } from "@left-curve/react";
 import type React from "react";
 import { Button } from "../atoms/Button";
 import { BorrowingBar } from "./BorrowingBar";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   avatarUrl: string;

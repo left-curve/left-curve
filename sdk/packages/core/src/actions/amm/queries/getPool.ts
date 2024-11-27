@@ -1,8 +1,8 @@
 import { getAppConfig } from "../../public/getAppConfig.js";
 import { queryWasmSmart } from "../../public/queryWasmSmart.js";
 
-import type { AmmQueryMsg, Chain, Client, Pool, PoolId, Signer, Transport } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { AmmQueryMsg, Chain, Client, Pool, PoolId, Signer, Transport } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetPoolParameters = {
   height?: number;

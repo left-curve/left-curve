@@ -1,7 +1,7 @@
-import { getChainInfo } from "@leftcurve/sdk/actions";
+import { getChainInfo } from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { BlockInfo, ChainId, Config } from "@leftcurve/types";
+import type { BlockInfo, ChainId, Config } from "@left-curve/types";
 
 export type GetBlockParameters = {
   chainId?: ChainId;

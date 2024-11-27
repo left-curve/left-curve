@@ -1,4 +1,4 @@
-import { tailwindConfig } from "@leftcurve/config/tailwind/config";
+import { tailwindConfig } from "@left-curve/config/tailwind/config";
 import type { Config } from "tailwindcss";
 
 const config: Config = {

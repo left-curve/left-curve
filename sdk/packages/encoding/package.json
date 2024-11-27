@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/encoding",
+  "name": "@left-curve/encoding",
   "version": "0.1.0",
   "private": true,
   "main": "./build/index.cjs",
@@ -22,12 +22,12 @@
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@leftcurve/utils": "workspace:^",
+    "@left-curve/utils": "workspace:^",
     "superjson": "^2.2.1"
   }
 }

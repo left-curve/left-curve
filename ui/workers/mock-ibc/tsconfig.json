@@ -1,5 +1,5 @@
 {
-  "extends": "@leftcurve/config/ts/common.json",
+  "extends": "@left-curve/config/ts/common.json",
   "include": ["src"],
   "exclude": ["node_modules"],
   "references": [

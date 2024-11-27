@@ -1,4 +1,4 @@
-import { getMembersTypedData } from "@leftcurve/utils";
+import { getMembersTypedData } from "@left-curve/utils";
 import { type ExecuteReturnType, execute, getAppConfig } from "../index.js";
 
 import type {
@@ -10,8 +10,8 @@ import type {
   Transport,
   TxParameters,
   TypedDataParameter,
-} from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+} from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type RegisterAccountParameters = {
   sender: Address;

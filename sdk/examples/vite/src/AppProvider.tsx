@@ -1,10 +1,10 @@
-import { GrunnectProvider as Provider } from "@leftcurve/react";
+import { GrunnectProvider as Provider } from "@left-curve/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
-import { http, createConfig, passkey } from "@leftcurve/connect-kit";
-import { devnet } from "@leftcurve/connect-kit/chains";
-import "@leftcurve/types/window";
+import { http, createConfig, passkey } from "@left-curve/connect-kit";
+import { devnet } from "@left-curve/connect-kit/chains";
+import "@left-curve/types/window";
 
 export const config = createConfig({
   chains: [devnet],

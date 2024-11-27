@@ -1,4 +1,4 @@
-import type { AnyCoin } from "@leftcurve/types";
+import type { AnyCoin } from "@left-curve/types";
 import { Item, Select, type SelectProps } from "../atoms/Select";
 
 interface Props extends Omit<SelectProps, "children"> {

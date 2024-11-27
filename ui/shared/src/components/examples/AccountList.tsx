@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "@leftcurve/react";
+import { useAccount } from "@left-curve/react";
 
 export const ExampleAccountList: React.FC = () => {
   const { isConnected, accounts } = useAccount();

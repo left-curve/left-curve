@@ -1,7 +1,7 @@
-import { useChainId, useConfig, usePrices } from "@leftcurve/react";
-import { formatUnits } from "@leftcurve/utils";
+import { useChainId, useConfig, usePrices } from "@left-curve/react";
+import { formatUnits } from "@left-curve/utils";
 
-import type { Pool, PoolId } from "@leftcurve/types";
+import type { Pool, PoolId } from "@left-curve/types";
 
 interface Props {
   poolId: PoolId;
