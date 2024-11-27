@@ -72,8 +72,7 @@ module proofs {
         }
     )
     if (r.found)
-      Some(r.path.foldr(List(), (path_element, reversed_path ) => 
-                                          reversed_path.append(path_element)))    
+      Some(r.path.reverse())
     else
       None
 
@@ -89,11 +88,11 @@ module proofs {
           | Leaf(l) =>  
                 l
           | Internal(_) => s
-          })
+        })
       Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
         match x {
           | Leaf(l) =>  
-              if (lessThan(s.key_hash, l.key_hash) )
+              if (lessThan(s.key_hash, l.key_hash))
                 l
               else 
                 s
@@ -114,7 +113,7 @@ module proofs {
                 l
           | Internal(_) => s
           })
-      Some(largerKeyNodes.fold( someLeaf, (s,x) =>
+      Some(largerKeyNodes.fold(someLeaf, (s, x) =>
         match x {
           | Leaf(l) =>  
               if (lessThan(l.key_hash, s.key_hash) )
@@ -127,12 +126,12 @@ module proofs {
 
   /// Returns optional CommitmentProof based for the given key_hash. 
   /// In implementation the key is passed instead of the key_hash.
-  pure def ics23_prove (t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
+  pure def ics23_prove(t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
     val optionalValueForKey = t.treeAtVersion(version)
-                            .allLeafs()
-                            .filter(l => l.key_hash == key_hash)
-                            .map( l => Some(l.value_hash))
-    val state_storage_read = if(optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
+                               .allLeafs()
+                               .filter(l => l.key_hash == key_hash)
+                               .map(l => Some(l.value_hash))
+    val state_storage_read = if (optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
     match state_storage_read {
       | Some(value) =>
         val p = ics23_prove_existence(t, version, key_hash)
@@ -177,9 +176,9 @@ module proofs {
             }
           | None => None
         }
-        val nep : NonExistenceProof = { key: key_hash,
-                                        left: leftNeighborExistenceProof,
-                                        right: rightNeighborExistenceProof }
+        val nep: NonExistenceProof = { key: key_hash,
+                                       left: leftNeighborExistenceProof,
+                                       right: rightNeighborExistenceProof }
         Some(NonExist(nep))
     }
 }

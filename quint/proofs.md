@@ -308,12 +308,11 @@ Our specification does the same, in the event that we have found the leaf we wer
 ```bluespec "definitions" +=
 ```
 -->
-```bluespec "definitions" +=
-  if (r.found)
-    Some(r.path.foldr(List(), (path_element, reversed_path ) => 
-                                        reversed_path.append(path_element)))    
-  else
-    None
+```bluespec "ics23_prove_existence" +=
+if (r.found)
+  Some(r.path.reverse())
+else
+  None
 ```
 <!--- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
