@@ -208,7 +208,7 @@ match node {
 }
 ```
 
-Since Quint's pattern matching is not as strong as Rust's we had to figure a way around it. First we will append `0` to the `key_prefix` and then try to see if in the `prefixes_list`, the next element will have the same `key_prefix`.
+Since Quint's pattern matching is not as strong as Rust's we had to figure a way around it. First we will append `0` to the `key_prefix` and then try to see if, in the `prefixes_list`, the next element will have the same `key_prefix`.
 
 ```bluespec "ics23_prove_existence_2" +=
 match node {
