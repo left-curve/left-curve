@@ -83,6 +83,7 @@ impl Position {
 
     pub fn with_claimable_amount(self, now: Timestamp) -> Position<Uint128> {
         let claimable_amount = self.compute_claimable_amount(now).unwrap_or_default();
+
         Position {
             user: self.user,
             schedule: self.schedule,
