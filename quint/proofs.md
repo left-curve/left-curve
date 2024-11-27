@@ -255,7 +255,7 @@ path.push(InnerOp {
 });
 ```
 
-- If we are to end up in the `(Some(1), sibling, Some(child))` branch, that means that we will create `innerOp` variable with `prefix` being concatanated values of InternalNodeHashPrefix and either hash of the left child or zeroed out hash (Hash256_ZERO). In this case, `suffix` will be an empty Map(), which corresponds to an empty vector in Rust implementation.
+- If we are to end up in the `(Some(1), sibling, Some(child))` branch, that means that we will create `innerOp` variable with `prefix` being concatanated values of InternalNodeHashPrefix and either hash of the left child or zeroed out hash (`Hash256_ZERO`). In this case, `suffix` will be an empty `Map()`, which corresponds to an empty vector in Rust implementation.
 
 ```bluespec "ics23_prove_existence_4" +=
 else 
