@@ -8,7 +8,7 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
 | Package                                  | Description                                                                                                                                                 |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc and tailwind                                                                                       |
+| [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc                                                                                                    |
 | [`connect-kit`](./packages/connect-kit/) | It allows connection to multiple blockchains and wallets, manages accounts, and enables interaction with smart contracts.                                   |
 | [`crypto`](./packages/crypto)            | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
 | [`encoding`](./packages/encoding)        | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |

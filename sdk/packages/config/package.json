@@ -6,5 +6,9 @@
     "biome",
     "tsup",
     "typedoc"
-  ]
+  ],
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
 }
