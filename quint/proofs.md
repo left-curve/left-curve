@@ -106,7 +106,7 @@ type CommitmentProof =
 
 ## ICS23 proving existence
 
-Like mentioned in [tree_manipulation.md](./tree_manipulation.md), Quint does not support early breaks, which meant that we had to improvise.
+Like mentioned in [tree_manipulation.md](./tree_manipulation.md), Quint does not support early breaks, which meant that we had use different strategies.
 First, the signature:
 
 ```rust
