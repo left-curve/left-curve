@@ -27,32 +27,41 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
   }
 }%%
 stateDiagram-v2
-    @left-curve/config --> @left-curve/types
-    @left-curve/config --> @left-curve/utils
-    @left-curve/types --> @left-curve/utils
-    @left-curve/config --> @left-curve/sdk
-    @left-curve/types --> @left-curve/sdk
-    @left-curve/utils --> @left-curve/sdk
-    @left-curve/crypto --> @left-curve/sdk
-    @left-curve/encoding --> @left-curve/sdk
-    @left-curve/config --> @left-curve/react
-    @left-curve/types --> @left-curve/react
-    @left-curve/connectkit --> @left-curve/react
-    @left-curve/crypto --> @left-curve/react
-    @left-curve/encoding --> @left-curve/react
-    @left-curve/utils --> @left-curve/react
-    @left-curve/config --> @left-curve/encoding
-    @left-curve/types --> @left-curve/encoding
-    @left-curve/utils --> @left-curve/encoding
-    @left-curve/config --> @left-curve/crypto
-    @left-curve/types --> @left-curve/crypto
-    @left-curve/encoding --> @left-curve/crypto
-    @left-curve/config --> @left-curve/connectkit
-    @left-curve/crypto --> @left-curve/connectkit
-    @left-curve/encoding --> @left-curve/connectkit
-    @left-curve/sdk --> @left-curve/connectkit
-    @left-curve/types --> @left-curve/connectkit
-    @left-curve/utils --> @left-curve/connectkit
+    state "@left-curve/config" as left_curve_config
+    state "@left-curve/types" as left_curve_types
+    state "@left-curve/utils" as left_curve_utils
+    state "@left-curve/sdk" as left_curve_sdk
+    state "@left-curve/crypto" as left_curve_crypto
+    state "@left-curve/encoding" as left_curve_encoding
+    state "@left-curve/react" as left_curve_react
+    state "@left-curve/connectkit" as left_curve_connectkit
+
+    left_curve_config --> left_curve_types
+    left_curve_config --> left_curve_utils
+    left_curve_types --> left_curve_utils
+    left_curve_config --> left_curve_sdk
+    left_curve_types --> left_curve_sdk
+    left_curve_utils --> left_curve_sdk
+    left_curve_crypto --> left_curve_sdk
+    left_curve_encoding --> left_curve_sdk
+    left_curve_config --> left_curve_react
+    left_curve_types --> left_curve_react
+    left_curve_connectkit --> left_curve_react
+    left_curve_crypto --> left_curve_react
+    left_curve_encoding --> left_curve_react
+    left_curve_utils --> left_curve_react
+    left_curve_config --> left_curve_encoding
+    left_curve_types --> left_curve_encoding
+    left_curve_utils --> left_curve_encoding
+    left_curve_config --> left_curve_crypto
+    left_curve_types --> left_curve_crypto
+    left_curve_encoding --> left_curve_crypto
+    left_curve_config --> left_curve_connectkit
+    left_curve_crypto --> left_curve_connectkit
+    left_curve_encoding --> left_curve_connectkit
+    left_curve_sdk --> left_curve_connectkit
+    left_curve_types --> left_curve_connectkit
+    left_curve_utils --> left_curve_connectkit
 ```
 
 ## Supported JS environments
