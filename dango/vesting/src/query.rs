@@ -11,11 +11,11 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::Position { idx } => {
-            let res = position(ctx, idx)?;
+            let res = query_position(ctx, idx)?;
             res.to_json_value()
         },
         QueryMsg::Positions { start_after, limit } => {
-            let res = positions(ctx, start_after, limit)?;
+            let res = query_positions(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::PositionsByUser {
@@ -23,19 +23,19 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             start_after,
             limit,
         } => {
-            let res = positions_by_user(ctx, user, start_after, limit)?;
+            let res = query_positions_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
     }
 }
 
-fn position(ctx: ImmutableCtx, idx: PositionIndex) -> StdResult<ClaimablePosition> {
+fn query_position(ctx: ImmutableCtx, idx: PositionIndex) -> StdResult<ClaimablePosition> {
     POSITIONS
         .load(ctx.storage, idx)
         .map(|val| val.with_claimable_amount(ctx.block.timestamp))
 }
 
-fn positions(
+fn query_positions(
     ctx: ImmutableCtx,
     start_after: Option<PositionIndex>,
     limit: Option<u32>,
@@ -50,7 +50,7 @@ fn positions(
         .collect()
 }
 
-fn positions_by_user(
+fn query_positions_by_user(
     ctx: ImmutableCtx,
     user: Addr,
     start_after: Option<PositionIndex>,
