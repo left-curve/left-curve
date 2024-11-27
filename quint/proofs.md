@@ -167,7 +167,7 @@ let mut bits = ROOT_BITS;
 let mut node = self.nodes.load(storage, (version, &bits))?;
 ```
 
-After node has been fetched from the tree, we perform match operation, because node can either be `Leaf` or `Internal`. If the algorithm has reached the leaf, iterator will take value: `{ ...iterator, i: iterator.i + 1, found: l.key_hash == key_hash }`, `...iterator` being the spread operator which will take values of old iterator and apply it to new one. This means that if `key_hashes` are the same, we have found the leaf we are looking for and we should early break, therefore we are putting setting adequate value for `iterator.found`.  However if the algorithm has reached an internal node, that means that there is more things to do to reach the leaf. Here is the `match` statement in Rust implementation, that we emulated in Quint. As previously mentioned, we will not have record of `hash` in our `InnerOp` type.
+After node has been fetched from the tree, we perform match operation, because node can either be `Leaf` or `Internal`. If the algorithm has reached the leaf, iterator will take value: `{ ...iterator, i: iterator.i + 1, found: l.key_hash == key_hash }`, `...iterator` being the spread operator which will take values of old iterator and apply it to new one. This means that if `key_hashes` are the same, we have found the leaf we are looking for and we should early break, setting `iterator.found` to true. However if the algorithm has reached an internal node, that means that there are more things to do to reach the leaf. Here is the `match` statement in Rust implementation, that we emulated in Quint. As previously mentioned, we will not have record of `hash` in our `InnerOp` type.
 
 ```rust
 match node {
