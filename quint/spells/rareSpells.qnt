@@ -137,4 +137,18 @@ module rareSpells {
       assert(toList(Set(), intCompare) == List()),
       assert(toSet(List()) == Set())
   }
+
+    //// Reverse the list
+  ////
+  //// - @param __list a list to reverse
+  //// - @returns a reversed list
+  pure def reverse(__list: List[a]) : List[a] = {
+    __list.foldr(List(), (el, rev_list ) => rev_list.append(el))
+  }
+
+  run reverseListTest = all{
+    assert(List(1,2,3,4).reverse() == List(4,3,2,1)),
+    assert(List().reverse() == List()),
+    assert(List(1).reverse() == List(1))
+  }
 }
