@@ -9,14 +9,7 @@ module tree_test {
   import apply_fancy as fancy from "../apply_fancy"
   import apply_super_simple as super_simple from "../apply_super_simple"
 
-  pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId =
-    { orphaned_since_version: osv, version: v, key_hash: kh }
-
-  pure def makeNodeId(v: Version, kh: BitArray): NodeId =
-    { version: v, key_hash: kh }
-
-
-  run simpleVsFancyTestSkipped = {
+  run simpleVsFancyTest = {
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
