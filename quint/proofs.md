@@ -228,7 +228,7 @@ match node {
 -->
 Then, we will take its version and declare it `child_version`. After doing so, we check wether we should end up in the `(Some(0), Some(child), sibling)` or `(Some(1), sibling, Some(child))` `match` branch.
 
-- If we are to end up in the `(Some(0), Some(child), sibling)` branch, that means that we will create `innerOp` variable with `prefix` being `InternalNodeHashPrefix` and `suffix` being either hash of the right child or zeroed out hash (Hash256_ZERO).
+- If we are to end up in the `(Some(0), Some(child), sibling)` branch, that means that we will create `innerOp` variable with `prefix` being `InternalNodeHashPrefix` and `suffix` being either hash of the right child or zeroed out hash (`Hash256_ZERO`).
 
 ```bluespec "ics23_prove_existence_3" +=
 val innerOp = 
