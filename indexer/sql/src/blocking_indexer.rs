@@ -1,9 +1,9 @@
 use {
-    crate::entity,
+    crate::{entity, Context},
     grug_app::Indexer,
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    indexer_core::{bail, error, Context},
+    indexer_core::{bail, error},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,

@@ -1,8 +1,8 @@
 use {
-    crate::{active_model::Models, entity},
+    crate::{active_model::Models, entity, Context},
     grug_app::Indexer,
     grug_types::{BlockInfo, BlockOutcome, Defined, MaybeDefined, Tx, TxOutcome, Undefined},
-    indexer_core::{bail, error, Context},
+    indexer_core::{bail, error},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,

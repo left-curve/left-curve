@@ -35,7 +35,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     db: DB,
     vm: VM,
     pp: PP,
-    pub indexer: ID,
+    indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that

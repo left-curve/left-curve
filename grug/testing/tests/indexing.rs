@@ -15,7 +15,7 @@ fn index_block_with_blocking_indexer() {
         indexer_sql::blocking_indexer::BlockingIndexer::new_with_database("sqlite::memory:")
             .expect("can't create indexer");
     indexer.start().expect("Can't start indexer");
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer.clone())
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
@@ -30,32 +30,30 @@ fn index_block_with_blocking_indexer() {
     );
 
     // ensure block was saved
-    suite
-        .app
-        .indexer
+    indexer
         .runtime
         .block_on(async {
             let block = entity::blocks::Entity::find()
-                .one(&suite.app.indexer.context.db)
+                .one(&indexer.context.db)
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
             let transactions = entity::transactions::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
 
             let messages = entity::messages::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
 
             let events = entity::events::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();
@@ -71,14 +69,12 @@ fn index_block_with_blocking_indexer() {
     );
 
     // ensure block was saved
-    suite
-        .app
-        .indexer
+    indexer
         .runtime
         .block_on(async {
             let block = entity::blocks::Entity::find()
                 .order_by_desc(entity::blocks::Column::BlockHeight)
-                .one(&suite.app.indexer.context.db)
+                .one(&indexer.context.db)
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
@@ -99,7 +95,7 @@ fn index_block_with_nonblocking_indexer() {
 
     indexer.start().expect("Can't start indexer");
 
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer.clone())
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
@@ -114,41 +110,35 @@ fn index_block_with_nonblocking_indexer() {
     );
 
     // Force the runtime to wait for the async indexer to finish
-    suite
-        .app
-        .indexer
-        .shutdown()
-        .expect("Can't shutdown indexer");
+    indexer.shutdown().expect("Can't shutdown indexer");
 
     // ensure block was saved
-    suite
-        .app
-        .indexer
+    indexer
         .runtime
         .clone()
         .expect("Can't get runtime")
         .block_on(async {
             let block = entity::blocks::Entity::find()
-                .one(&suite.app.indexer.context.db)
+                .one(&indexer.context.db)
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
             let transactions = entity::transactions::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
 
             let messages = entity::messages::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
 
             let events = entity::events::Entity::find()
-                .all(&suite.app.indexer.context.db)
+                .all(&indexer.context.db)
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();
