@@ -1,9 +1,8 @@
 use {
-    crate::{entity, Context},
+    crate::{bail, entity, error, Context},
     grug_app::Indexer,
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    indexer_core::{bail, error},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,
@@ -55,7 +54,7 @@ impl BlockingIndexer {
 }
 
 impl Indexer for BlockingIndexer {
-    type Error = indexer_core::error::Error;
+    type Error = error::Error;
 
     fn start(&mut self) -> error::Result<()> {
         self.runtime

@@ -1,8 +1,7 @@
 use {
-    crate::{active_model::Models, entity, Context},
+    crate::{active_model::Models, bail, entity, error, Context},
     grug_app::Indexer,
     grug_types::{BlockInfo, BlockOutcome, Defined, MaybeDefined, Tx, TxOutcome, Undefined},
-    indexer_core::{bail, error},
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,
@@ -169,7 +168,9 @@ impl NonBlockingIndexer {
 
         let block_to_index = match blocks.get(block_height) {
             Some(block_to_index) => block_to_index,
-            None => bail!("Block {} not found", block_height),
+            None => {
+                bail!("Block {} not found", block_height);
+            },
         };
         Ok(block_to_index.clone())
     }
@@ -181,7 +182,9 @@ impl NonBlockingIndexer {
         let mut blocks = blocks.lock().expect("Can't lock blocks");
         let block_to_index = match blocks.remove_entry(block_height) {
             Some(block) => block,
-            None => indexer_core::bail!("Block {} not found", block_height),
+            None => {
+                bail!("Block {} not found", block_height);
+            },
         };
         #[cfg(feature = "tracing")]
         tracing::debug!(
@@ -194,7 +197,7 @@ impl NonBlockingIndexer {
 }
 
 impl Indexer for NonBlockingIndexer {
-    type Error = indexer_core::error::Error;
+    type Error = crate::error::Error;
 
     fn start(&mut self) -> error::Result<()> {
         if !self.enabled {

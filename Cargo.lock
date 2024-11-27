@@ -1723,7 +1723,6 @@ dependencies = [
  "grug-vm-wasm",
  "hex",
  "home",
- "indexer-core",
  "indexer-sql",
  "serde",
  "tokio",
@@ -1812,7 +1811,6 @@ dependencies = [
  "grug-db-memory",
  "grug-vm-rust",
  "grug-vm-wasm",
- "indexer-core",
  "k256",
  "pyth-sdk 0.8.0",
  "rand",
@@ -2824,7 +2822,6 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "grug-vm-rust",
- "indexer-core",
  "indexer-sql",
  "k256",
  "prost",
@@ -3483,23 +3480,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
-name = "indexer-core"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assertor",
- "grug-math",
- "grug-types",
- "indexer-sql-migration",
- "sea-orm",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "uuid",
-]
-
-[[package]]
 name = "indexer-sql"
 version = "0.0.0"
 dependencies = [
@@ -3508,7 +3488,6 @@ dependencies = [
  "grug-app",
  "grug-math",
  "grug-types",
- "indexer-core",
  "indexer-sql-migration",
  "sea-orm",
  "serde_json",
