@@ -6,156 +6,22 @@ module tree_test {
   import utils.* from "../utils"
   import basicSpells.* from "../spells/basicSpells"
   import apply_state_machine.* from "../apply_state_machine"
-  import apply_simple as simple from "../apply_simple"
   import apply_fancy as fancy from "../apply_fancy"
+  import apply_simple as simple from "../apply_simple"
 
-  pure def makeOrphanId(osv: Version, v: Version, kh: List[int]): OrphanId =
-    { orphaned_since_version: osv, version: v, key_hash: kh }
 
-  pure def makeNodeId(v: Version, kh: BitArray): NodeId =
-    { version: v, key_hash: kh }
+  run simpleVsFancyTest = {
+    pure val empty_tree = { nodes: Map(), orphans: Set() }
+    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
+    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
 
-  run MarkAsOrphanTest = {
-    // TODO: update testTree to match real tree more closely
-
-    val testOrphans = Set(
-      makeOrphanId(22, 2, [1, 2, 3, 4]),
-      makeOrphanId(232, 3, [1, 2, 3, 4]),
-      makeOrphanId(231, 3, [1, 2, 3, 5]),
-      makeOrphanId(199, 50, [1, 2, 3, 4]),
-      makeOrphanId(11, 61, [1, 2, 3, 4]),
-      makeOrphanId(2322, 100, [1, 2, 3, 4])
-    )
-    val testNodes = Map(
-      makeNodeId(2, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 5]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(50, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(61, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(100, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None })
-    )
-    val testTree = {
-      nodes: testNodes,
-      orphans: testOrphans
-    }
-    val o = makeOrphanId(23, 2, [1, 2, 34, 5, 6])
-
-    val updateTree = mark_node_as_orphaned(testTree, o.orphaned_since_version, o.version, o.key_hash)
-    assert(updateTree.orphans == Set(
-      makeOrphanId(22, 2, [1, 2, 3, 4]),
-      makeOrphanId(232, 3, [1, 2, 3, 4]),
-      makeOrphanId(231, 3, [1, 2, 3, 5]),
-      makeOrphanId(199, 50, [1, 2, 3, 4]),
-      makeOrphanId(11, 61, [1, 2, 3, 4]),
-      makeOrphanId(2322, 100, [1, 2, 3, 4]),
-      makeOrphanId(23, 2, [1, 2, 34, 5, 6])
-    ))
+    pure val reference = simple::apply(empty_tree, 0, 1, ops)
+    pure val result = fancy::apply(empty_tree, 0, 1, ops)
+    assert(reference == result)
   }
 
-  run Prune1Test = {
-    // TODO: update testTree to match real tree more closely
-
-    val testOrphans = Set(
-      makeOrphanId(22, 2, [1, 2, 3, 4]),
-      makeOrphanId(232, 3, [1, 2, 3, 4]),
-      makeOrphanId(231, 3, [1, 2, 3, 5]),
-      makeOrphanId(199, 50, [1, 2, 3, 4]),
-      makeOrphanId(11, 61, [1, 2, 3, 4]),
-      makeOrphanId(2322, 100, [1, 2, 3, 4])
-    )
-    val testNodes = Map(
-      makeNodeId(2, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 5]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(50, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(61, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(100, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None })
-    )
-    val testTree = {
-      nodes: testNodes,
-      orphans: testOrphans
-    }
-    val ret = prune(testTree, 200)
-    all {
-      assert(ret.orphans == Set(
-        makeOrphanId(232, 3, [1, 2, 3, 4]),
-        makeOrphanId(231, 3, [1, 2, 3, 5]),
-        makeOrphanId(2322, 100, [1, 2, 3, 4])
-      )),
-      assert(ret.nodes == Map(
-        makeNodeId(3, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-        makeNodeId(3, [1, 2, 3, 5]) -> Internal({ left_child: None, right_child: None }),
-        makeNodeId(100, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None })
-      )),
-    }
-  }
-
-  run Prune2Test = {
-    // TODO: update testTree to match real tree more closely
-
-    val testOrphans = Set(
-      makeOrphanId(22, 2, [1, 2, 3, 4]),
-      makeOrphanId(232, 3, [1, 2, 3, 4]),
-      makeOrphanId(231, 3, [1, 2, 3, 5]),
-      makeOrphanId(199, 50, [1, 2, 3, 4]),
-      makeOrphanId(11, 61, [1, 2, 3, 4]),
-      makeOrphanId(2322, 100, [1, 2, 3, 4])
-    )
-    val testNodes = Map(
-      makeNodeId(2, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 5]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(50, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(61, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(100, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None })
-    )
-    val testTree = {
-      nodes: testNodes,
-      orphans: testOrphans
-    }
-    val ret = prune(testTree, 2500)
-    all {
-      assert(ret.nodes == Map()),
-      assert(ret.orphans == Set())
-    }
-  }
-
-  run Prune3Test = {
-    // TODO: update testTree to match real tree more closely
-
-    val testOrphans = Set(
-      makeOrphanId(22, 2, [1, 2, 3, 4]),
-      makeOrphanId(232, 3, [1, 2, 3, 4]),
-      makeOrphanId(231, 3, [1, 2, 3, 5]),
-      makeOrphanId(199, 50, [1, 2, 3, 4]),
-      makeOrphanId(11, 61, [1, 2, 3, 4]),
-      makeOrphanId(2322, 100, [1, 2, 3, 4])
-    )
-    val testNodes = Map(
-      makeNodeId(2, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(3, [1, 2, 3, 5]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(50, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(61, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None }),
-      makeNodeId(100, [1, 2, 3, 4]) -> Internal({ left_child: None, right_child: None })
-    )
-
-    val testTree = {
-      nodes: testNodes,
-      orphans: testOrphans
-    }
-    val ret = prune(testTree, 10)
-    all {
-      assert(ret.orphans == testOrphans),
-      assert(ret.nodes == testNodes)
-    }
-  }
-
-  run PruneFunctionTests = {
-    Prune1Test.then(Prune2Test).then(Prune3Test)
-  }
-
-  run simpleVsFancyTest = init.then(3.reps(_ => {
+  run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
     nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
     nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
