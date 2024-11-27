@@ -6,5 +6,5 @@ module instantiatable_tree {
 
   const fancy: bool
 
-  action step = if (fancy) step_fancy else step_super_simple
+  action step = if (fancy) step_fancy else step_simple
 }
