@@ -500,7 +500,7 @@ let proof = match state_storage.read(&key) {
 To get as close as possible to the Rust implementation, we created `state_storage_read` variable.
 
 ```bluespec "ics23_prove" +=
-val state_storage_read = if(optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
+val state_storage_read = if (optionalValueForKey.empty()) None else optionalValueForKey.getOnlyElement()
 ```
 <!---
 ```bluespec "ics23_prove" +=
