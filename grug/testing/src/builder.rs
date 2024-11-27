@@ -1,6 +1,6 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
-    grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
+    grug_app::{AppError, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
@@ -9,7 +9,6 @@ use {
         Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
     },
     grug_vm_rust::RustVm,
-    indexer_core::{null_indexer, IndexerTrait},
     serde::Serialize,
     std::{
         collections::BTreeMap,
@@ -42,7 +41,7 @@ struct CodeOption<B> {
 pub struct TestBuilder<
     VM = RustVm,
     PP = NaiveProposalPreparer,
-    ID = null_indexer::Indexer,
+    ID = NullIndexer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
@@ -77,12 +76,12 @@ pub struct TestBuilder<
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
 #[allow(clippy::new_without_default)]
-impl TestBuilder<RustVm, NaiveProposalPreparer, null_indexer::Indexer> {
+impl TestBuilder<RustVm, NaiveProposalPreparer, NullIndexer> {
     pub fn new() -> Self {
         Self::new_with_vm_and_pp_and_indexer(
             RustVm::new(),
             NaiveProposalPreparer,
-            null_indexer::Indexer::new().unwrap(),
+            NullIndexer::new(),
         )
     }
 }
@@ -92,18 +91,14 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(
-            vm,
-            NaiveProposalPreparer,
-            null_indexer::Indexer::new().unwrap(),
-        )
+        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer::new())
     }
 }
 
 impl<ID> TestBuilder<RustVm, NaiveProposalPreparer, ID> {
     pub fn new_with_indexer(indexer: ID) -> Self
     where
-        ID: IndexerTrait,
+        ID: Indexer,
     {
         Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, indexer)
     }
@@ -111,18 +106,14 @@ impl<ID> TestBuilder<RustVm, NaiveProposalPreparer, ID> {
 
 impl<PP> TestBuilder<RustVm, PP> {
     pub fn new_with_pp(pp: PP) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(
-            RustVm::new(),
-            pp,
-            null_indexer::Indexer::new().unwrap(),
-        )
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer::new())
     }
 }
 
 impl<VM, PP, ID> TestBuilder<VM, PP, ID>
 where
     VM: TestVm,
-    ID: IndexerTrait,
+    ID: Indexer,
 {
     pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: ID) -> Self {
         Self {
@@ -168,7 +159,7 @@ where
 
 impl<VM, PP, ID, M1, M2, M3, OW, TA> TestBuilder<VM, PP, ID, M1, M2, M3, OW, TA>
 where
-    ID: IndexerTrait,
+    ID: Indexer,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -411,7 +402,7 @@ where
 
 impl<VM, PP, ID, M1, M2, M3, OW> TestBuilder<VM, PP, ID, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
-    ID: IndexerTrait,
+    ID: Indexer,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -531,7 +522,7 @@ where
     VM: TestVm + Clone,
     PP: ProposalPreparer,
     AppError: From<VM::Error> + From<PP::Error>,
-    ID: IndexerTrait,
+    ID: Indexer,
 {
     pub fn build(self) -> (TestSuite<MemDb, VM, ID, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {

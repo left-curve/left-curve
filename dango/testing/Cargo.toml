@@ -9,10 +9,6 @@ repository    = { workspace = true }
 license       = { workspace = true }
 categories    = { workspace = true }
 
-[features]
-default = ["indexer"]
-indexer = ["indexer-core"]
-
 [dependencies]
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-account-margin  = { workspace = true, features = ["library"] }
@@ -34,7 +30,7 @@ grug-db-disk          = { workspace = true }
 grug-db-memory        = { workspace = true }
 grug-vm-rust          = { workspace = true }
 grug-vm-wasm          = { workspace = true }
-indexer-core          = { workspace = true, optional = true }
+indexer-core          = { workspace = true }
 k256                  = { workspace = true }
 
 [dev-dependencies]

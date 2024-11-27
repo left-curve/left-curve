@@ -1,10 +1,13 @@
+#[cfg(feature = "tracing")]
+use tracing::error;
+
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
-        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
+        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker, Indexer,
         NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, QuerierProvider, Shared, Vm,
         APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
@@ -15,9 +18,7 @@ use {
         QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxOutcome,
         UnsignedTx, GENESIS_SENDER,
     },
-    indexer_core::IndexerTrait,
     prost::bytes::Bytes,
-    tracing::error,
 };
 #[cfg(feature = "abci")]
 use {
@@ -47,19 +48,17 @@ pub struct App<DB, VM, ID, PP = NaiveProposalPreparer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
-    pub indexer_app: ID,
-    pub indexing_enabled: bool,
+    pub indexer: ID,
 }
 
 impl<DB, VM, ID, PP> App<DB, VM, ID, PP> {
-    pub fn new(db: DB, vm: VM, indexer_app: ID, pp: PP, query_gas_limit: u64) -> Self {
+    pub fn new(db: DB, vm: VM, indexer: ID, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
             pp,
             query_gas_limit,
-            indexer_app,
-            indexing_enabled: true,
+            indexer,
         }
     }
 }
@@ -68,7 +67,7 @@ impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait,
+    ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -154,10 +153,10 @@ where
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|err| {
+            .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
                 error!(
-                    err = err.to_string(),
+                    err = _err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
 
@@ -197,11 +196,9 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        if self.indexing_enabled {
-            self.indexer_app
-                .pre_indexing(block.height)
-                .expect("Cant set DB txn");
-        }
+        self.indexer
+            .pre_indexing(block.height)
+            .expect("Cant set DB txn");
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -303,11 +300,9 @@ where
                 AuthMode::Finalize,
             );
 
-            if self.indexing_enabled {
-                self.indexer_app
-                    .index_transaction(&block, &tx, &tx_outcome)
-                    .unwrap();
-            }
+            self.indexer
+                .index_transaction(&block, &tx, &tx_outcome)
+                .unwrap();
 
             tx_outcomes.push(tx_outcome);
         }
@@ -344,11 +339,7 @@ where
             tx_outcomes,
         };
 
-        if self.indexing_enabled {
-            self.indexer_app
-                .index_block(&block, &block_outcome)
-                .unwrap();
-        }
+        self.indexer.index_block(&block, &block_outcome).unwrap();
 
         Ok(block_outcome)
     }
@@ -359,10 +350,8 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
-        if self.indexing_enabled {
-            if let Some(block_height) = self.db.latest_version() {
-                self.indexer_app.post_indexing(block_height).unwrap();
-            }
+        if let Some(block_height) = self.db.latest_version() {
+            self.indexer.post_indexing(block_height).unwrap();
         }
 
         Ok(())
@@ -543,7 +532,7 @@ impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait,
+    ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

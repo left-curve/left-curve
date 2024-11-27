@@ -1,13 +1,11 @@
-#[cfg(feature = "indexer")]
-use {indexer_core::IndexerTrait, indexer_sql::non_blocking_indexer};
-
 use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::App,
+    grug_app::{App, Indexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
+    indexer_sql::non_blocking_indexer,
     std::{path::PathBuf, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
@@ -40,37 +38,25 @@ impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
-        #[cfg(feature = "indexer")]
-        let app = {
-            // I tried using `null_indexer` but since indexer is a App generic parameter, the
-            // created `App` has a different type and I'd have to duplicate lots of code, use an
-            // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
-            // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
-            // indexer when running this binary.
-            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_database_url(
-                    self.indexer_database_url
-                        .as_deref()
-                        .unwrap_or("postgres://localhost"),
-                )
-                .build()
-                .expect("Can't create indexer");
-            indexer.start().expect("Can't start indexer");
-            let mut app = App::new(
-                db,
-                vm,
-                indexer,
-                ProposalPreparer::new(),
-                self.query_gas_limit.unwrap_or(u64::MAX),
-            );
-            app.indexing_enabled = self.indexer_enabled;
-            app
-        };
-
-        #[cfg(not(feature = "indexer"))]
+        // I tried using `null_indexer` but since indexer is a App generic parameter, the
+        // created `App` has a different type and I'd have to duplicate lots of code, use an
+        // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
+        // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
+        // indexer when running this binary.
+        let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+            .with_database_url(
+                self.indexer_database_url
+                    .as_deref()
+                    .unwrap_or("postgres://localhost"),
+            )
+            .enabled(self.indexer_enabled)
+            .build()
+            .expect("Can't create indexer");
+        indexer.start().expect("Can't start indexer");
         let app = App::new(
             db,
             vm,
+            indexer,
             ProposalPreparer::new(),
             self.query_gas_limit.unwrap_or(u64::MAX),
         );

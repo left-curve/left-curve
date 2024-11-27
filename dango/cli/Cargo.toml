@@ -13,10 +13,6 @@ categories    = { workspace = true }
 name = "dango"
 path = "src/main.rs"
 
-[features]
-default = ["indexer"]
-indexer = ["indexer-core", "indexer-sql"]
-
 [dependencies]
 anyhow             = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
@@ -38,5 +34,5 @@ tower              = { workspace = true, features = ["full"] }
 tower-abci         = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-indexer-core       = { workspace = true, optional = true, features = ["tracing"] }
-indexer-sql        = { workspace = true, optional = true, features = ["tracing"] }
+indexer-core       = { workspace = true, features = ["tracing"] }
+indexer-sql        = { workspace = true, features = ["tracing"] }

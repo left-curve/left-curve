@@ -1,11 +1,10 @@
 use {
-    crate::{App, AppError, AppResult, Db, ProposalPreparer, Vm},
+    crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, TxOutcome,
         GENESIS_BLOCK_HASH,
     },
-    indexer_core::IndexerTrait,
     prost::bytes::Bytes,
     std::{
         any::type_name,
@@ -32,7 +31,7 @@ impl<DB, VM, ID, PP> Service<Request> for App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait + Clone + Send + 'static,
+    ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -55,7 +54,7 @@ impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait + Clone + Send + 'static,
+    ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

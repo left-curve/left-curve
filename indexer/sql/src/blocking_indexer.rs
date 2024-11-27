@@ -1,8 +1,9 @@
 use {
     crate::entity,
+    grug_app::Indexer,
     grug_math::Inner,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    indexer_core::{bail, error, Context, IndexerTrait},
+    indexer_core::{bail, error, Context},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,
@@ -12,15 +13,15 @@ use {
 };
 
 #[derive(Debug, Clone)]
-pub struct Indexer {
+pub struct BlockingIndexer {
     pub context: Context,
     pub runtime: Arc<Runtime>,
     /// Stores the current block height and the associated database transaction.
     db_txn: Arc<Mutex<Option<(u64, DatabaseTransaction)>>>,
 }
 
-impl Indexer {
-    pub fn new() -> Result<Indexer, anyhow::Error> {
+impl BlockingIndexer {
+    pub fn new() -> Result<Self, anyhow::Error> {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
@@ -29,14 +30,14 @@ impl Indexer {
 
         let db = runtime.block_on(async { Context::connect_db().await })?;
 
-        Ok(Indexer {
+        Ok(BlockingIndexer {
             context: Context { db },
             runtime: runtime.clone(),
             db_txn: Arc::new(Mutex::new(None)),
         })
     }
 
-    pub fn new_with_database(database_url: &str) -> Result<Indexer, anyhow::Error> {
+    pub fn new_with_database(database_url: &str) -> Result<Self, anyhow::Error> {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
@@ -45,7 +46,7 @@ impl Indexer {
 
         let db = runtime.block_on(async { Context::connect_db_with_url(database_url).await })?;
 
-        Ok(Indexer {
+        Ok(BlockingIndexer {
             context: Context { db },
             runtime: runtime.clone(),
             db_txn: Arc::new(Mutex::new(None)),
@@ -53,7 +54,9 @@ impl Indexer {
     }
 }
 
-impl IndexerTrait for Indexer {
+impl Indexer for BlockingIndexer {
+    type Error = indexer_core::error::Error;
+
     fn start(&mut self) -> error::Result<()> {
         self.runtime
             .block_on(async { self.context.migrate_db().await })?;
@@ -217,7 +220,7 @@ impl IndexerTrait for Indexer {
     }
 }
 
-impl Indexer {
+impl BlockingIndexer {
     /// This will be used to ensure the tokio has no more tasks to run, when we gracefully stop
     /// Grug. We don't inject async tasks yet (they all block) but could.
     pub fn wait_for_all_tasks(&self) {
@@ -225,7 +228,7 @@ impl Indexer {
     }
 }
 
-impl Drop for Indexer {
+impl Drop for BlockingIndexer {
     fn drop(&mut self) {
         self.shutdown().expect("Can't shutdown Indexer");
     }
@@ -328,8 +331,8 @@ mod tests {
         Ok(())
     }
 
-    fn app() -> Indexer {
-        let mut app = Indexer::new().expect("Can't create indexer");
+    fn app() -> BlockingIndexer {
+        let mut app = BlockingIndexer::new().expect("Can't create indexer");
         app.start().expect("Can't start Indexer");
         app
     }

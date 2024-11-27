@@ -1,5 +1,8 @@
 use {
-    grug_app::{App, AppError, AppResult, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
+    grug_app::{
+        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
+        ProposalPreparer, Vm,
+    },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -9,7 +12,6 @@ use {
         QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    indexer_core::{null_indexer, IndexerTrait},
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{collections::BTreeMap, fmt::Debug},
 };
@@ -106,15 +108,11 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub struct TestSuite<
-    DB = MemDb,
-    VM = RustVm,
-    ID = null_indexer::Indexer,
-    PP = NaiveProposalPreparer,
-> where
+pub struct TestSuite<DB = MemDb, VM = RustVm, ID = NullIndexer, PP = NaiveProposalPreparer>
+where
     DB: Db,
     VM: Vm,
-    ID: IndexerTrait,
+    ID: Indexer,
     PP: ProposalPreparer,
 {
     pub app: App<DB, VM, ID, PP>,
@@ -153,7 +151,7 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, null_indexer::Indexer, NaiveProposalPreparer>
+impl<VM> TestSuite<MemDb, VM, NullIndexer, NaiveProposalPreparer>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -171,7 +169,7 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
-            null_indexer::Indexer::new().unwrap(),
+            NullIndexer::new(),
             NaiveProposalPreparer,
             chain_id,
             block_time,
@@ -182,7 +180,7 @@ where
     }
 }
 
-impl<PP> TestSuite<MemDb, RustVm, null_indexer::Indexer, PP>
+impl<PP> TestSuite<MemDb, RustVm, NullIndexer, PP>
 where
     PP: ProposalPreparer,
     AppError: From<PP::Error>,
@@ -197,12 +195,10 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        let indexer = null_indexer::Indexer::new().expect("Can't create Indexer");
-
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             RustVm::new(),
-            indexer,
+            NullIndexer::new(),
             pp,
             chain_id,
             block_time,
@@ -217,7 +213,7 @@ impl<DB, VM, ID, PP> TestSuite<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait,
+    ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -560,14 +556,10 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(
-            signer,
-            gas_limit,
-            vec![
-                Message::upload(code),
-                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-            ],
-        );
+        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
+            Message::upload(code),
+            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+        ]);
 
         UploadAndInstantiateOutcome {
             address,

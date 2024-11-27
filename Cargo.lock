@@ -2633,7 +2633,6 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "ics23",
- "indexer-core",
  "prost",
  "serde",
  "tendermint",
@@ -3506,6 +3505,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "grug-app",
  "grug-math",
  "grug-types",
  "indexer-core",

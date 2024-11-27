@@ -6,12 +6,11 @@ use {
         btree_map, Binary, BlockInfo, Coin, Coins, ContractBuilder, ContractWrapper, Duration,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
+    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
-    indexer_core::{null_indexer, IndexerTrait},
     std::{env, path::PathBuf, sync::LazyLock},
 };
 
@@ -20,7 +19,7 @@ pub const CHAIN_ID: &str = "dev-1";
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
-pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = null_indexer::Indexer> =
+pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
     grug::TestSuite<DB, VM, ID, PP>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
@@ -32,7 +31,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         RustVm::new(),
         codes,
         ProposalPreparer::new(),
-        null_indexer::Indexer::new().expect("Can't create indexer"),
+        NullIndexer::new(),
     )
 }
 
@@ -50,7 +49,7 @@ pub fn setup_test_naive() -> (
         RustVm::new(),
         codes,
         NaiveProposalPreparer,
-        null_indexer::Indexer::new().expect("Can't create indexer"),
+        NullIndexer::new(),
     )
 }
 
@@ -60,7 +59,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, null_indexer::Indexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,
@@ -72,13 +71,7 @@ pub fn setup_benchmark(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(
-        db,
-        vm,
-        codes,
-        NaiveProposalPreparer,
-        null_indexer::Indexer::new().expect("Can't create indexer"),
-    )
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer::new())
 }
 
 /// Set up a test with the given DB, VM, and codes.
@@ -93,7 +86,7 @@ where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
-    ID: IndexerTrait,
+    ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
