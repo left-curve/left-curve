@@ -483,9 +483,9 @@ Then get all leaves in that `version`. Then we perform filtering, which will lea
 --->
 ```bluespec "ics23_prove" +=
 val optionalValueForKey = t.treeAtVersion(version)
-                        .allLeafs()
-                        .filter(l => l.key_hash == key_hash)
-                        .map( l => Some(l.value_hash))
+                           .allLeafs()
+                           .filter(l => l.key_hash == key_hash)
+                           .map(l => Some(l.value_hash))
 ```
 
 Next we needed to emualte the following Rust code.
