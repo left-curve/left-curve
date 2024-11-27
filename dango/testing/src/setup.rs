@@ -20,12 +20,8 @@ pub const CHAIN_ID: &str = "dev-1";
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
-pub type TestSuite<
-    PP = ProposalPreparer,
-    DB = MemDb,
-    VM = RustVm,
-    INDEXER = null_indexer::Indexer,
-> = grug::TestSuite<DB, VM, INDEXER, PP>;
+pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = null_indexer::Indexer> =
+    grug::TestSuite<DB, VM, ID, PP>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
@@ -86,23 +82,18 @@ pub fn setup_benchmark(
 }
 
 /// Set up a test with the given DB, VM, and codes.
-fn setup_suite_with_db_and_vm<DB, VM, T, PP, INDEXER>(
+fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
     pp: PP,
-    indexer: INDEXER,
-) -> (
-    TestSuite<PP, DB, VM, INDEXER>,
-    Accounts,
-    Codes<T>,
-    Contracts,
-)
+    indexer: ID,
+) -> (TestSuite<PP, DB, VM, ID>, Accounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

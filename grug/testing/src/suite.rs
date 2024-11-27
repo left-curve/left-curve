@@ -109,15 +109,15 @@ impl ResultExt for UploadAndInstantiateOutcome {
 pub struct TestSuite<
     DB = MemDb,
     VM = RustVm,
-    INDEXER = null_indexer::Indexer,
+    ID = null_indexer::Indexer,
     PP = NaiveProposalPreparer,
 > where
     DB: Db,
     VM: Vm,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     PP: ProposalPreparer,
 {
-    pub app: App<DB, VM, INDEXER, PP>,
+    pub app: App<DB, VM, ID, PP>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -213,11 +213,11 @@ where
     }
 }
 
-impl<DB, VM, INDEXER, PP> TestSuite<DB, VM, INDEXER, PP>
+impl<DB, VM, ID, PP> TestSuite<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -225,7 +225,7 @@ where
     pub fn new_with_db_vm_indexer_and_pp(
         db: DB,
         vm: VM,
-        indexer: INDEXER,
+        id: ID,
         pp: PP,
         chain_id: String,
         block_time: Duration,
@@ -234,7 +234,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, indexer, pp, u64::MAX);
+        let app = App::new(db, vm, id, pp, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
@@ -560,10 +560,14 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
-            Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        ]);
+        let outcome = self.send_messages_with_gas(
+            signer,
+            gas_limit,
+            vec![
+                Message::upload(code),
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            ],
+        );
 
         UploadAndInstantiateOutcome {
             address,

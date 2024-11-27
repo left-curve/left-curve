@@ -28,11 +28,11 @@ use {
     tower_abci::BoxError,
 };
 
-impl<DB, VM, INDEXER, PP> Service<Request> for App<DB, VM, INDEXER, PP>
+impl<DB, VM, ID, PP> Service<Request> for App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait + Clone + Send + 'static,
+    ID: IndexerTrait + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -51,11 +51,11 @@ where
     }
 }
 
-impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
+impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait + Clone + Send + 'static,
+    ID: IndexerTrait + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {

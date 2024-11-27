@@ -10,10 +10,8 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = ["indexer"]
 abci    = ["data-encoding", "tower", "tower-abci"]
 tracing = ["chrono", "dep:tracing"]
-indexer = ["indexer-core"]
 
 [dependencies]
 borsh         = { workspace = true }
@@ -30,6 +28,6 @@ tower         = { workspace = true, optional = true }
 tower-abci    = { workspace = true, optional = true }
 thiserror     = { workspace = true }
 tracing       = { workspace = true, optional = true }
-indexer-core  = { workspace = true, optional = true }
+indexer-core  = { workspace = true }
 
 [dev-dependencies]

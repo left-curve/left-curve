@@ -42,7 +42,7 @@ struct CodeOption<B> {
 pub struct TestBuilder<
     VM = RustVm,
     PP = NaiveProposalPreparer,
-    INDEXER = null_indexer::Indexer,
+    ID = null_indexer::Indexer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
@@ -51,7 +51,7 @@ pub struct TestBuilder<
 > {
     vm: VM,
     pp: PP,
-    indexer: INDEXER,
+    indexer: ID,
     // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
@@ -100,10 +100,10 @@ where
     }
 }
 
-impl<INDEXER> TestBuilder<RustVm, NaiveProposalPreparer, INDEXER> {
-    pub fn new_with_indexer(indexer: INDEXER) -> Self
+impl<ID> TestBuilder<RustVm, NaiveProposalPreparer, ID> {
+    pub fn new_with_indexer(indexer: ID) -> Self
     where
-        INDEXER: IndexerTrait,
+        ID: IndexerTrait,
     {
         Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, indexer)
     }
@@ -119,12 +119,12 @@ impl<PP> TestBuilder<RustVm, PP> {
     }
 }
 
-impl<VM, PP, INDEXER> TestBuilder<VM, PP, INDEXER>
+impl<VM, PP, ID> TestBuilder<VM, PP, ID>
 where
     VM: TestVm,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
 {
-    pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: INDEXER) -> Self {
+    pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: ID) -> Self {
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
@@ -166,9 +166,9 @@ where
     }
 }
 
-impl<VM, PP, INDEXER, M1, M2, M3, OW, TA> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, TA>
+impl<VM, PP, ID, M1, M2, M3, OW, TA> TestBuilder<VM, PP, ID, M1, M2, M3, OW, TA>
 where
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -266,7 +266,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, INDEXER, M1, M2A, M3, OW, TA>
+    ) -> TestBuilder<VM, PP, ID, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -331,7 +331,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3A, OW, TA>
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(Denom, Udec128) -> M3A + 'static,
@@ -365,7 +365,7 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, Defined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3, OW, Defined<TestAccounts>>
     where
         C: TryInto<Coins>,
         C::Error: Debug,
@@ -409,10 +409,9 @@ where
     }
 }
 
-impl<VM, PP, INDEXER, M1, M2, M3, OW>
-    TestBuilder<VM, PP, INDEXER, M1, M2, M3, OW, Undefined<TestAccounts>>
+impl<VM, PP, ID, M1, M2, M3, OW> TestBuilder<VM, PP, ID, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -455,7 +454,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, INDEXER, M1A, M2, M3, OW, Undefined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, ID, M1A, M2, M3, OW, Undefined<TestAccounts>>
     where
         T: Into<Binary>,
         F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
@@ -488,13 +487,13 @@ where
 
 // `set_owner` can only be called if `add_accounts` has been called at least
 // once, and `set_owner` hasn't already been called.
-impl<VM, PP, INDEXER, M1, M2, M3>
-    TestBuilder<VM, PP, INDEXER, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>>
+impl<VM, PP, ID, M1, M2, M3>
+    TestBuilder<VM, PP, ID, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>>
 {
     pub fn set_owner(
         self,
         name: &'static str,
-    ) -> TestBuilder<VM, PP, INDEXER, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
         let owner = self.accounts.inner().get(name).unwrap_or_else(|| {
             panic!("failed to set owner: can't find account with name `{name}`")
         });
@@ -523,8 +522,8 @@ impl<VM, PP, INDEXER, M1, M2, M3>
 }
 
 // `build` can only be called if both `owner` and `accounts` have been set.
-impl<VM, PP, INDEXER, M1, M2, M3>
-    TestBuilder<VM, PP, INDEXER, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
+impl<VM, PP, ID, M1, M2, M3>
+    TestBuilder<VM, PP, ID, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
@@ -532,9 +531,9 @@ where
     VM: TestVm + Clone,
     PP: ProposalPreparer,
     AppError: From<VM::Error> + From<PP::Error>,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM, INDEXER, PP>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, ID, PP>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }

@@ -30,7 +30,7 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
+pub struct App<DB, VM, ID, PP = NaiveProposalPreparer> {
     db: DB,
     vm: VM,
     pp: PP,
@@ -47,15 +47,12 @@ pub struct App<DB, VM, INDEXER, PP = NaiveProposalPreparer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
-    #[cfg(feature = "indexer")]
-    pub indexer_app: INDEXER,
-    #[cfg(feature = "indexer")]
+    pub indexer_app: ID,
     pub indexing_enabled: bool,
 }
 
-impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
-    #[cfg(feature = "indexer")]
-    pub fn new(db: DB, vm: VM, indexer_app: INDEXER, pp: PP, query_gas_limit: u64) -> Self {
+impl<DB, VM, ID, PP> App<DB, VM, ID, PP> {
+    pub fn new(db: DB, vm: VM, indexer_app: ID, pp: PP, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
@@ -65,23 +62,13 @@ impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP> {
             indexing_enabled: true,
         }
     }
-
-    #[cfg(not(feature = "indexer"))]
-    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64) -> Self {
-        Self {
-            db,
-            vm,
-            pp,
-            query_gas_limit,
-        }
-    }
 }
 
-impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
+impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
@@ -210,7 +197,6 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        #[cfg(feature = "indexer")]
         if self.indexing_enabled {
             self.indexer_app
                 .pre_indexing(block.height)
@@ -317,7 +303,6 @@ where
                 AuthMode::Finalize,
             );
 
-            #[cfg(feature = "indexer")]
             if self.indexing_enabled {
                 self.indexer_app
                     .index_transaction(&block, &tx, &tx_outcome)
@@ -359,7 +344,6 @@ where
             tx_outcomes,
         };
 
-        #[cfg(feature = "indexer")]
         if self.indexing_enabled {
             self.indexer_app
                 .index_block(&block, &block_outcome)
@@ -375,7 +359,6 @@ where
         #[cfg(feature = "tracing")]
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
-        #[cfg(feature = "indexer")]
         if self.indexing_enabled {
             if let Some(block_height) = self.db.latest_version() {
                 self.indexer_app.post_indexing(block_height).unwrap();
@@ -556,11 +539,11 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM, INDEXER, PP> App<DB, VM, INDEXER, PP>
+impl<DB, VM, ID, PP> App<DB, VM, ID, PP>
 where
     DB: Db,
     VM: Vm + Clone,
-    INDEXER: IndexerTrait,
+    ID: IndexerTrait,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
