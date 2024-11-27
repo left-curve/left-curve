@@ -373,7 +373,7 @@ if(smallerKeyNodes.empty()) None else
   <<<leftNeighbor1>>>
 ```
 --->
-If there are some leafs `smallerKeyNodes` set in algorithm will find leaf that is the closest to the leaf for which we are trying to get the left neighbor.
+If there are some leafs in `smallerKeyNodes`, the algorithm will find leaf that is the closest to the leaf with a `key_hash` passed into the function.
 
 ```bluespec "leftNeighbor1" +=
 val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
