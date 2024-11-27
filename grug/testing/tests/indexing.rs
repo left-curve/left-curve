@@ -90,8 +90,12 @@ fn index_block_with_blocking_indexer() {
 #[test]
 fn index_block_with_nonblocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
-    let mut indexer = indexer_sql::blocking_indexer::Indexer::new_with_database("sqlite::memory:")
-        .expect("can't create indexer");
+
+    let mut indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_memory_database()
+        .build()
+        .expect("Can't create indexer");
+
     indexer.start().expect("Can't start indexer");
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
@@ -120,6 +124,8 @@ fn index_block_with_nonblocking_indexer() {
         .app
         .indexer_app
         .runtime
+        .clone()
+        .expect("Can't get runtime")
         .block_on(async {
             let block = entity::blocks::Entity::find()
                 .one(&suite.app.indexer_app.context.db)

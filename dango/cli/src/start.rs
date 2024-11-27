@@ -47,14 +47,14 @@ impl StartCmd {
             // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
             // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
             // indexer when running this binary.
-            let mut indexer = non_blocking_indexer::Indexer::async_new_with_database_url(
-                &tokio::runtime::Handle::current(),
-                self.indexer_database_url
-                    .as_deref()
-                    .unwrap_or("postgres://localhost"),
-            )
-            .await
-            .expect("Can't create indexer");
+            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_database_url(
+                    self.indexer_database_url
+                        .as_deref()
+                        .unwrap_or("postgres://localhost"),
+                )
+                .build()
+                .expect("Can't create indexer");
             indexer.start().expect("Can't start indexer");
             let mut app = App::new(
                 db,
