@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "files": [
     "ts",
-    "biome"
+    "biome",
+    "tsup",
+    "typedoc",
+    "tailwind"
   ],
   "devDependencies": {
     "tailwind-scrollbar": "^3.1.0",
