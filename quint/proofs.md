@@ -382,7 +382,7 @@ val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) =>
     | Leaf(l) =>  
           l
     | Internal(_) => s
-    })
+  })
 Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
   match x {
     | Leaf(l) =>  
