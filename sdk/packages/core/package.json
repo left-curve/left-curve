@@ -1,6 +1,7 @@
 {
   "name": "@left-curve/sdk",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
@@ -18,14 +19,7 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "type": "module",
-  "files": [
-    "build",
-    "src",
-    "!**/*.spec.ts",
-    "!typedoc.json",
-    "!tsup.config.ts"
-  ],
+  "files": ["build"],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -78,5 +72,9 @@
     "@left-curve/encoding": "workspace:^",
     "@left-curve/types": "workspace:^",
     "@left-curve/utils": "workspace:^"
-  }
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
 }
