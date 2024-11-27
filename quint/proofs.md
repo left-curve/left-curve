@@ -284,7 +284,7 @@ path.push(InnerOp {
 })
 ```
 
-After creating new innter op, we update iterator with new values, such as new index of `key_prefix`, `child_version` that we have created before creating `innerOp` and new entry in the `path` list.
+After creating the new inner op, we update `iterator` with new values, such as new index of `key_prefix`, `child_version` that we have created before creating `innerOp` and new entry in the `path` list.
 
 ```bluespec "ics23_prove_existence_3" +=
 { ...iterator, path: iterator.path.append(innerOp),  
