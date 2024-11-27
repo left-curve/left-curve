@@ -386,7 +386,7 @@ val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) =>
 Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
   match x {
     | Leaf(l) =>  
-        if (lessThan(s.key_hash, l.key_hash) )
+        if (lessThan(s.key_hash, l.key_hash))
           l
         else 
           s
