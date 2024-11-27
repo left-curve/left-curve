@@ -1,7 +1,8 @@
 {
   "name": "Leftcurve Grug",
   "entryPoints": [
-    "./sdk/packages/sdk",
+    "./sdk/packages/connect-kit",
+    "./sdk/packages/core",
     "./sdk/packages/crypto",
     "./sdk/packages/encoding",
     "./sdk/packages/types",
