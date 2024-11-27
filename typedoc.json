@@ -1,20 +1,22 @@
 {
-  "name": "Leftcurve Grug",
+  "name": "Left Curve Software - Grug SDK",
   "entryPoints": [
     "./sdk/packages/connect-kit",
     "./sdk/packages/core",
     "./sdk/packages/crypto",
     "./sdk/packages/encoding",
+    "./sdk/packages/react",
     "./sdk/packages/types",
     "./sdk/packages/utils"
   ],
   "navigationLinks": {
-    "GitHub": "https://github.com/left-curve/interface"
+    "Home": "https://grug.build",
+    "GitHub": "https://github.com/left-curve/left-curve/tree/main/sdk"
   },
   "entryPointStrategy": "packages",
   "includeVersion": true,
   "githubPages": true,
-  "readme": "./README.md",
+  "readme": "./sdk/README.md",
   "darkHighlightTheme": "dark-plus",
   "out": "./sdk/docs"
 }
