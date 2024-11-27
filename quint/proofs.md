@@ -466,7 +466,7 @@ fn ics23_prove(
 In Quint, we are using `Option` to handle all possible errors that could occur in `ics23_prove`.
 
 ```bluespec "definitions" +=
-pure def ics23_prove (t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
+pure def ics23_prove(t: Tree, key_hash: BitArray, version: Version): Option[CommitmentProof] =
 ```
 
 We get a tree for the given `version`. This corresponds to the following Rust code.
