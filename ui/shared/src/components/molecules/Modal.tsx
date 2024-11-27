@@ -25,7 +25,6 @@ export const Modal = forwardRef<ModalRef, PropsWithChildren<ModalProps>>(
     };
     const showModal = () => setIsModalOpen(true);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: It's okay to not include closeModal
     useEffect(() => {
       if (!ref) return;
       if (typeof ref === "function") {

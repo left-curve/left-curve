@@ -6,8 +6,7 @@
     "build:cf": "pnpx @cloudflare/next-on-pages",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "@dango/config": "workspace:^",
