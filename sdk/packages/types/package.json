@@ -1,7 +1,7 @@
 {
   "name": "@left-curve/types",
   "version": "0.1.0",
-  "private": true,
+  "license": "TBD",
   "main": "./build/index.cjs",
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
