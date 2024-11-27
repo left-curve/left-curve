@@ -53,7 +53,7 @@
     }
   },
   "dependencies": {
-    "@dango/assets": "workspace:^",
+    "@dango/config": "workspace:^",
     "@left-curve/react": "workspace:^",
     "@left-curve/sdk": "workspace:^",
     "@left-curve/connect-kit": "workspace:^",
@@ -79,7 +79,10 @@
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
     "react-use": "^17.5.1",
-    "tailwind-variants": "^0.2.1"
+    "tailwind-variants": "^0.2.1",
+    "tailwind-scrollbar": "^3.1.0",
+    "tailwindcss": "catalog:",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

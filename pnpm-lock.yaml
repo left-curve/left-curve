@@ -234,17 +234,7 @@ importers:
         specifier: 'catalog:'
         version: 5.4.8(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
-  sdk/packages/config:
-    devDependencies:
-      tailwind-scrollbar:
-        specifier: ^3.1.0
-        version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
+  sdk/packages/config: {}
 
   sdk/packages/connect-kit:
     dependencies:
@@ -417,13 +407,23 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
-  ui/assets: {}
+  ui/config:
+    dependencies:
+      tailwind-scrollbar:
+        specifier: ^3.1.0
+        version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
 
   ui/portal:
     dependencies:
-      '@dango/assets':
+      '@dango/config':
         specifier: workspace:^
-        version: link:../assets
+        version: link:../config
       '@dango/shared':
         specifier: workspace:^
         version: link:../shared
@@ -509,9 +509,9 @@ importers:
 
   ui/shared:
     dependencies:
-      '@dango/assets':
+      '@dango/config':
         specifier: workspace:^
-        version: link:../assets
+        version: link:../config
       '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../sdk/packages/connect-kit
@@ -593,9 +593,18 @@ importers:
       react-use:
         specifier: ^17.5.1
         version: 17.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      tailwind-scrollbar:
+        specifier: ^3.1.0
+        version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3)))
       tailwind-variants:
         specifier: ^0.2.1
         version: 0.2.1(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3)))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3)))
     devDependencies:
       '@left-curve/config':
         specifier: workspace:^
@@ -651,9 +660,6 @@ importers:
       storybook:
         specifier: ^8.3.2
         version: 8.3.4
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
       vite:
         specifier: 'catalog:'
         version: 5.4.8(@types/node@20.16.10)(lightningcss@1.27.0)(terser@5.34.1)
@@ -663,9 +669,9 @@ importers:
 
   ui/website:
     dependencies:
-      '@dango/assets':
+      '@dango/config':
         specifier: workspace:^
-        version: link:../assets
+        version: link:../config
       '@fullpage/react-fullpage':
         specifier: ^0.1.45
         version: 0.1.45
@@ -8461,6 +8467,10 @@ snapshots:
 
   tailwind-merge@2.5.2: {}
 
+  tailwind-scrollbar@3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))):
+    dependencies:
+      tailwindcss: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
+
   tailwind-scrollbar@3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))):
     dependencies:
       tailwindcss: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))
@@ -8468,6 +8478,10 @@ snapshots:
   tailwind-variants@0.2.1(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))):
     dependencies:
       tailwind-merge: 2.5.2
+      tailwindcss: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
+
+  tailwindcss-animate@1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))):
+    dependencies:
       tailwindcss: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@20.16.10)(typescript@5.6.3))
 
   tailwindcss-animate@1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))):

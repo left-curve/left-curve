@@ -8,7 +8,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@dango/assets": "workspace:^",
+    "@dango/config": "workspace:^",
     "@dango/shared": "workspace:^",
     "@left-curve/connect-kit": "workspace:^",
     "@left-curve/crypto": "workspace:^",

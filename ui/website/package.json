@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dango/assets": "workspace:^",
+    "@dango/config": "workspace:^",
     "@fullpage/react-fullpage": "^0.1.45",
     "next": "catalog:",
     "react": "catalog:",
