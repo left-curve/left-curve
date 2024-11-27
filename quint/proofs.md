@@ -610,9 +610,9 @@ val rightNeighborExistenceProof: Option[ExistenceProof] = match rneighborOption 
 After that, the algorithm wraps those two `ExistenceProof`s together into `NonExistenceProof` and returns `Some` of that `NonExistenceProof`.
 
 ```bluespec "nonexistence" +=
-val nep : NonExistenceProof = { key: key_hash,
-                                left: leftNeighborExistenceProof,
-                                right: rightNeighborExistenceProof }
+val nep: NonExistenceProof = { key: key_hash,
+                               left: leftNeighborExistenceProof,
+                               right: rightNeighborExistenceProof }
 Some(NonExist(nep))
 ```
 
