@@ -433,7 +433,7 @@ pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
               l
         | Internal(_) => s
         })
-    Some(largerKeyNodes.fold( someLeaf, (s,x) =>
+    Some(largerKeyNodes.fold(someLeaf, (s, x) =>
       match x {
         | Leaf(l) =>  
             if (lessThan(l.key_hash, s.key_hash) )
