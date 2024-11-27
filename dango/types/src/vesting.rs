@@ -14,24 +14,28 @@ pub struct InstantiateMsg {}
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Create a vesting position for a user with the given schedule.
+    /// Sender must attach a single coin.
     CreatePosition {
         user: Addr,
         schedule: Schedule<Option<Timestamp>>,
     },
-    Claim {
-        idx: PositionIndex,
-    },
+    /// Claim the withdrawable amount from the vesting position.
+    Claim { idx: PositionIndex },
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query a single vesting position by index.
     #[returns(ClaimablePosition)]
     Position { idx: PositionIndex },
+    /// Enumerate all vesting positions.
     #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
     Positions {
         start_after: Option<PositionIndex>,
         limit: Option<u32>,
     },
+    /// Enumerate all vesting positions belonging to a given user.
     #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
     PositionsByUser {
         user: Addr,
