@@ -5,12 +5,20 @@ use {
     std::ops::{Add, Sub},
 };
 
-/// How many nanoseconds are there in a second.
-const NANOS_PER_SECOND: u128 = 1_000_000_000;
-/// How many nanoseconds are there in a millisecond.
-const NANOS_PER_MILLI: u128 = 1_000_000;
-/// How many nenoseconds are there in a microsecond.
+/// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: u128 = 1_000;
+/// The number of microseconds in a millisecond.
+const MICROS_PER_MILLI: u128 = 1_000;
+/// The number of milliseconds in a second.
+const MILLIS_PER_SECOND: u128 = 1_000;
+/// The number of seconds in a minute.
+const SECONDS_PER_MINUTE: u128 = 60;
+/// The number of minutes in an hour.
+const MINUTES_PER_HOUR: u128 = 60;
+/// The number of hours in a day.
+const HOURS_PER_DAY: u128 = 24;
+/// The number of days in a week.
+const DAYS_PER_WEEK: u128 = 7;
 
 /// UNIX epoch timestamp, in nanosecond precision.
 ///
@@ -40,36 +48,68 @@ pub type Timestamp = Duration;
 pub struct Duration(Uint128);
 
 impl Duration {
-    pub const fn from_seconds(seconds: u128) -> Self {
-        Self(Uint128::new(seconds * NANOS_PER_SECOND))
-    }
-
-    pub const fn from_millis(millis: u128) -> Self {
-        Self(Uint128::new(millis * NANOS_PER_MILLI))
-    }
-
-    pub const fn from_micros(micros: u128) -> Self {
-        Self(Uint128::new(micros * NANOS_PER_MICRO))
-    }
-
     pub const fn from_nanos(nanos: u128) -> Self {
         Self(Uint128::new(nanos))
     }
 
-    pub fn into_seconds(self) -> u128 {
-        self.0.into_inner() / NANOS_PER_SECOND
+    pub const fn from_micros(micros: u128) -> Self {
+        Self::from_nanos(micros * NANOS_PER_MICRO)
     }
 
-    pub fn into_millis(self) -> u128 {
-        self.0.into_inner() / NANOS_PER_MILLI
+    pub const fn from_millis(millis: u128) -> Self {
+        Self::from_micros(millis * MICROS_PER_MILLI)
     }
 
-    pub fn into_micros(self) -> u128 {
-        self.0.into_inner() / NANOS_PER_MICRO
+    pub const fn from_seconds(seconds: u128) -> Self {
+        Self::from_millis(seconds * MILLIS_PER_SECOND)
+    }
+
+    pub const fn from_minutes(minutes: u128) -> Self {
+        Self::from_seconds(minutes * SECONDS_PER_MINUTE)
+    }
+
+    pub const fn from_hours(hours: u128) -> Self {
+        Self::from_minutes(hours * MINUTES_PER_HOUR)
+    }
+
+    pub const fn from_days(days: u128) -> Self {
+        Self::from_hours(days * HOURS_PER_DAY)
+    }
+
+    pub const fn from_weeks(weeks: u128) -> Self {
+        Self::from_days(weeks * DAYS_PER_WEEK)
     }
 
     pub fn into_nanos(self) -> u128 {
         self.0.into_inner()
+    }
+
+    pub fn into_micros(self) -> u128 {
+        self.into_nanos() / NANOS_PER_MICRO
+    }
+
+    pub fn into_millis(self) -> u128 {
+        self.into_micros() / MICROS_PER_MILLI
+    }
+
+    pub fn into_seconds(self) -> u128 {
+        self.into_millis() / MILLIS_PER_SECOND
+    }
+
+    pub fn into_minutes(self) -> u128 {
+        self.into_seconds() / SECONDS_PER_MINUTE
+    }
+
+    pub fn into_hours(self) -> u128 {
+        self.into_minutes() / MINUTES_PER_HOUR
+    }
+
+    pub fn into_days(self) -> u128 {
+        self.into_hours() / HOURS_PER_DAY
+    }
+
+    pub fn into_weeks(self) -> u128 {
+        self.into_days() / DAYS_PER_WEEK
     }
 }
 
