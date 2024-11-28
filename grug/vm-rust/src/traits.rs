@@ -138,7 +138,7 @@ pub type InstantiateFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> 
 
 pub type ExecuteFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
 
-pub type MigrateFn<M, E> = Box<dyn Fn(MutableCtx, M) -> Result<Response, E> + Send + Sync>;
+pub type MigrateFn<M, E> = Box<dyn Fn(SudoCtx, M) -> Result<Response, E> + Send + Sync>;
 
 pub type ReceiveFn<E> = Box<dyn Fn(MutableCtx) -> Result<Response, E> + Send + Sync>;
 

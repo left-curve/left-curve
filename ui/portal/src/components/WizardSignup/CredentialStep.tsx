@@ -25,7 +25,7 @@ export const CredentialStep: React.FC = () => {
 
   const {
     refetch,
-    data: isUsernameAvailable,
+    data: isUsernameAvailable = null,
     isFetching,
   } = useQuery({
     enabled: false,
@@ -39,7 +39,14 @@ export const CredentialStep: React.FC = () => {
     },
   });
 
-  useDebounce(refetch, 300, [username]);
+  useDebounce(
+    () => {
+      if (errors.username) return;
+      refetch();
+    },
+    300,
+    [username],
+  );
 
   const onSubmit = handleSubmit(async () => {
     setData({ username });

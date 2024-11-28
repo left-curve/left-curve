@@ -15,8 +15,8 @@ export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) =>
     <div className="flex flex-col items-center justify-center w-full gap-8">
       <div
         className={twMerge("flex flex-col items-center", {
-          "dango-grid-landscape-fat-l": isFirstStep || retry,
-          "dango-grid-square-l": !isFirstStep && !retry,
+          "dango-grid-3x4-L": isFirstStep || retry,
+          "dango-grid-4x4-M": !isFirstStep && !retry,
         })}
       >
         <div className="flex flex-col gap-4 items-center">
@@ -60,7 +60,7 @@ export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) =>
         className="text-lg"
         onClick={() => (isFirstStep ? navigate("/auth/signup") : previousStep())}
       >
-        {isFirstStep ? "Already have an account?" : "Back"}
+        {isFirstStep ? "Don't have an account?" : "Back"}
       </Button>
     </div>
   );

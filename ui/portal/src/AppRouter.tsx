@@ -15,6 +15,7 @@ const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Accou
 const TransferView = lazy(() => import(/* webpackPrefetch: true */ "./views/Transfer"));
 const SwapView = lazy(() => import(/* webpackPrefetch: true */ "./views/Swap"));
 const PoolView = lazy(() => import(/* webpackPrefetch: true */ "./views/Pool"));
+const BlockExplorerView = lazy(() => import(/* webpackPrefetch: true */ "./views/BlockExplorer"));
 const AccountCreationView = lazy(
   () => import(/* webpackPrefetch: true */ "./views/AccountCreation"),
 );
@@ -34,8 +35,9 @@ export const AppRouter: React.FC = () => {
           <Route path="signup" element={<SignupView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
-          <Route path="accounts/:index" element={<AccountView />} />
+          <Route path="accounts" element={<AccountView />} />
           <Route path="/account-creation" element={<AccountCreationView />} />
+          <Route path="/block-explorer" element={<BlockExplorerView />} />
           <Route path="/transfer" element={<TransferView />} />
           <Route path="/swap" element={<SwapView />} />
           <Route path="/amm" element={<PoolView />} />

@@ -1,13 +1,15 @@
-import { useAccount, useBalances } from "@leftcurve/react";
+import { useBalances } from "@leftcurve/react";
 import { AssetCard } from "./AssetCard";
 
+import type { Account } from "@leftcurve/types";
+
 interface Props {
+  account: Account;
   topComponent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
 }
 
-export const PortfolioTable: React.FC<Props> = ({ topComponent, bottomComponent }) => {
-  const { account } = useAccount();
+export const PortfolioTable: React.FC<Props> = ({ topComponent, bottomComponent, account }) => {
   const { data: balances = {} } = useBalances({ address: account?.address });
 
   return (
