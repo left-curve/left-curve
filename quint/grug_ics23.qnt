@@ -27,78 +27,44 @@ module grug_ics23 {
   type CommitmentRoot_t = Term_t
   type CommitmentProof_t = Term_t
 
-  // ICS23 IavlSpec has:
-  // MinPrefixLength = 4
-  // MaxPrefixLength = 12
-  // ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
-
-  type Ics23ProofSpecification = {
+  type Ics23InnerSpec = {
     MinPrefixLen: int, 
     MaxPrefixLen: int,
     ChildSize: int,
     EmptyChild: Term_t
   }
 
-  pure val Ics23ProofSpec: Ics23ProofSpecification= {
-    // ICS23 specs are placed in grug/jellyfish-merkle/src/ics23.rs
-    // https://github.com/left-curve/left-curve/blob/7a0451dfad14d607722c33bec20ae56dd5c3bffa/grug/jellyfish-merkle/src/ics23.rs#L18-L37
-    // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
+  pure val Ics23ProofSpec: Ics23InnerSpec= {
     MinPrefixLen: 1,
     MaxPrefixLen: 1,
-    //  this parameter is set to 32 because that is the size of SHA256 
-    //  and that value is used in configuring ics23 verification spec
-    //  in LeftCurve Grug JellyFish Merkle Tree implementation
     ChildSize: 32,
-    // Empty child is a predefined sequence that fills an absent child.
-    // It's defined in InnerSpec and it has the value of Hash256::ZERO
-    // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
     EmptyChild: Hash256_ZERO
   }
 
   type LEAF_T = {
-    // The implementation additionally stores hashing and length functions:
-    // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL,
-    // we do not have to carry them around.
-    // !!! UPDATE !!! 
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
     prefix: Term_t
   }
 
   type INNER_T = {
-    // The implementation additionally stores the hashing function.
-    // Since we fix the spec to IAVL, we do not have to carry it around.
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
     prefix: Term_t,
     suffix: Term_t
   }
 
   /// a proof of existence of (key, value)
   type ExistsProof_t = {
-    key: Key_t, value: Value_t, leaf: LEAF_T, path: List[INNER_T]
+    key: Key_t, 
+    value: Value_t, 
+    leaf: LEAF_T, 
+    path: List[INNER_T]
   }
 
   /// a proof of non-existence of a key
   type NonExistsProof_t = {
-    key: Key_t, left: Option[ExistsProof_t], right: Option[ExistsProof_t]
+    key: Key_t, 
+    left: Option[ExistsProof_t], 
+    right: Option[ExistsProof_t]
   }
-
-  /// calculate a hash from an exists proof
-  def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
-    // using specific hashLeafNode for Grug JMT
-    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
-    // the inner node nodeHashes are concatenated and hashed upwards
-    p.path.foldl(leafHash,
-      (child, inner) =>
-        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
-
-  /// verify that a proof matches a root
-  def verify(proof, root, key, value) = and {
-    key == proof.key,
-    value == proof.value,
-    root == existsCalculate(proof)
-  }
-
+  
   /// VerifyMembership returns true iff
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
@@ -111,6 +77,22 @@ module grug_ics23 {
     //       by the spec checker
     verify(proof, root, key, value)
   }
+  
+  /// verify that a proof matches a root
+  def verify(proof, root, key, value) = and {
+    key == proof.key,
+    value == proof.value,
+    root == existsCalculate(proof)
+  }
+
+  /// calculate a hash from an exists proof
+  def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
+    // using specific hashLeafNode for Grug JMT
+    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
+    // the inner node nodeHashes are concatenated and hashed upwards
+    p.path.foldl(leafHash,
+      (child, inner) =>
+        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
   /// checks if an op has the expected padding
   def hasPadding(inner: INNER_T,
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
