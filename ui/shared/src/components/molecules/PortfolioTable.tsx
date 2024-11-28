@@ -1,7 +1,7 @@
-import { useBalances } from "@leftcurve/react";
+import { useBalances } from "@left-curve/react";
 import { AssetCard } from "./AssetCard";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

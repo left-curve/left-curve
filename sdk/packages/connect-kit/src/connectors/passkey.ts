@@ -1,15 +1,15 @@
-import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@leftcurve/crypto";
-import { encodeBase64, encodeUtf8, serialize } from "@leftcurve/encoding";
-import { createKeyHash, createSignerClient } from "@leftcurve/sdk";
-import { getAccountsByUsername, getKeysByUsername } from "@leftcurve/sdk/actions";
+import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/crypto";
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
+import { createKeyHash, createSignerClient } from "@left-curve/sdk";
+import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
 import { createConnector } from "./createConnector.js";
 
-import type { SignerClient } from "@leftcurve/sdk/clients";
-import { ConnectorSigner } from "@leftcurve/sdk/signers";
-import { KeyAlgo } from "@leftcurve/types";
-import { getRootDomain } from "@leftcurve/utils";
+import type { SignerClient } from "@left-curve/sdk/clients";
+import { ConnectorSigner } from "@left-curve/sdk/signers";
+import { KeyAlgo } from "@left-curve/types";
+import { getRootDomain } from "@left-curve/utils";
 
-import type { AccountTypes, Address, Transport } from "@leftcurve/types";
+import type { AccountTypes, Address, Transport } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;

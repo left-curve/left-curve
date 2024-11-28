@@ -1,10 +1,10 @@
 import {
   type GetBalancesParameters as _GetBalancesParameters_,
   getBalances as getBalancesAction,
-} from "@leftcurve/sdk/actions";
+} from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { ChainId, Coins, Config, Prettify } from "@leftcurve/types";
+import type { ChainId, Coins, Config, Prettify } from "@left-curve/types";
 
 export type GetBalanceParameters = Prettify<
   _GetBalancesParameters_ & {

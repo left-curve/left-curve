@@ -57,7 +57,7 @@ pub trait MeteredItem<T> {
     fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<T>;
 }
 
-impl<'a, T, C> MeteredItem<T> for Item<'a, T, C>
+impl<T, C> MeteredItem<T> for Item<'_, T, C>
 where
     C: Codec<T>,
 {
@@ -106,7 +106,7 @@ where
     ) -> StdResult<()>;
 }
 
-impl<'a, K, T, C> MeteredMap<K, T> for Map<'a, K, T, C>
+impl<K, T, C> MeteredMap<K, T> for Map<'_, K, T, C>
 where
     K: PrimaryKey,
     C: Codec<T>,
@@ -195,7 +195,7 @@ where
 
 // ------------------------------------ index map ------------------------------------
 
-impl<'a, K, T, I, C> MeteredMap<K, T> for IndexedMap<'a, K, T, I, C>
+impl<K, T, I, C> MeteredMap<K, T> for IndexedMap<'_, K, T, I, C>
 where
     K: PrimaryKey,
     C: Codec<T>,

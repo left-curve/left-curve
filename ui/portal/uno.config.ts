@@ -1,4 +1,4 @@
-import { leftCurvePreset } from "@leftcurve/config/unocss/config";
+import { leftCurvePreset } from "@left-curve/config/unocss/config";
 import { defineConfig, presetUno } from "unocss";
 
 export default defineConfig({

@@ -1,5 +1,5 @@
 import { Button, Input, useWizard } from "@dango/shared";
-import { usePublicClient } from "@leftcurve/react";
+import { usePublicClient } from "@left-curve/react";
 import type React from "react";
 import { useForm } from "react-hook-form";
 

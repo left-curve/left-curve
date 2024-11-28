@@ -264,7 +264,7 @@ impl<'a> BitIterator<'a> {
     }
 }
 
-impl<'a> Iterator for BitIterator<'a> {
+impl Iterator for BitIterator<'_> {
     type Item = u8;
 
     fn next(&mut self) -> Option<Self::Item> {

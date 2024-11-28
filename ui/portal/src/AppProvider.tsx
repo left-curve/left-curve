@@ -1,4 +1,4 @@
-import { GrunnectProvider } from "@leftcurve/react";
+import { GrunnectProvider } from "@left-curve/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/react-router";
 import type { PropsWithChildren } from "react";

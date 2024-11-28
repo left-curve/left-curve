@@ -23,7 +23,7 @@ where
     pub idx: I,
 }
 
-impl<'a, K, T, I, C> IndexedMap<'a, K, T, I, C>
+impl<K, T, I, C> IndexedMap<'_, K, T, I, C>
 where
     K: PrimaryKey,
     C: Codec<T>,
@@ -394,7 +394,7 @@ mod tests {
         pub id: UniqueIndex<'a, (u64, u64), u32, Foo>,
     }
 
-    impl<'a> IndexList<(u64, u64), Foo> for FooIndexes<'a> {
+    impl IndexList<(u64, u64), Foo> for FooIndexes<'_> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<(u64, u64), Foo>> + '_> {
             let v: Vec<&dyn Index<(u64, u64), Foo>> =
                 vec![&self.name, &self.id, &self.name_surname];
@@ -790,7 +790,7 @@ mod cosmwasm_tests {
     }
 
     // Future Note: this can likely be macro-derived
-    impl<'a, PK> IndexList<PK, Data> for DataCompositeMultiIndex<'a, PK>
+    impl<PK> IndexList<PK, Data> for DataCompositeMultiIndex<'_, PK>
     where
         PK: PrimaryKey,
     {
@@ -1858,7 +1858,7 @@ mod cosmwasm_tests {
             secondary: UniqueIndex<'a, PK, u64, u64>,
         }
 
-        impl<'a, PK> IndexList<PK, u64> for Indexes<'a, PK>
+        impl<PK> IndexList<PK, u64> for Indexes<'_, PK>
         where
             PK: PrimaryKey,
         {

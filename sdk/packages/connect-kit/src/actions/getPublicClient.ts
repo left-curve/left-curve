@@ -1,6 +1,6 @@
-import { publicActions } from "@leftcurve/sdk";
-import type { PublicClient } from "@leftcurve/sdk/clients";
-import type { Config } from "@leftcurve/types";
+import { publicActions } from "@left-curve/sdk";
+import type { PublicClient } from "@left-curve/sdk/clients";
+import type { Config } from "@left-curve/types";
 
 export type GetPublicClientParameters = {
   chainId?: string;

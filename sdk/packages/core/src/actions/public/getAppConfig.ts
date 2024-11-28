@@ -1,4 +1,4 @@
-import type { AppConfigResponse, Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { AppConfigResponse, Chain, Client, Signer, Transport } from "@left-curve/types";
 import { queryApp } from "./queryApp.js";
 
 export type GetAppConfigParameters = {

@@ -7,7 +7,7 @@ import {
   useDebounce,
   useWizard,
 } from "@dango/shared";
-import { usePublicClient } from "@leftcurve/react";
+import { usePublicClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 

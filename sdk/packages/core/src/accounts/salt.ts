@@ -1,4 +1,4 @@
-import { decodeBase64, decodeHex, encodeUtf8 } from "@leftcurve/encoding";
+import { decodeBase64, decodeHex, encodeUtf8 } from "@left-curve/encoding";
 import {
   type AccountIndex,
   type Key,
@@ -6,7 +6,7 @@ import {
   KeyTag,
   type OneRequired,
   type Username,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
 type CreateAccountSaltParameters = {
   key: Key;

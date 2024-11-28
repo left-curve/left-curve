@@ -1,5 +1,5 @@
-import type { Language } from "@leftcurve/types";
-import { formatNumber } from "@leftcurve/utils";
+import type { Language } from "@left-curve/types";
+import { formatNumber } from "@left-curve/utils";
 import type React from "react";
 import { twMerge } from "../../utils";
 

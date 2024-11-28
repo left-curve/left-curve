@@ -7,7 +7,7 @@ import {
   Tabs,
 } from "@dango/shared";
 
-import type { Account, AccountType } from "@leftcurve/types";
+import type { Account, AccountType } from "@left-curve/types";
 
 interface Props {
   account: Account;

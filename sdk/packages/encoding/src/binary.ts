@@ -1,5 +1,5 @@
-import type { Binary, Json, JsonValue } from "@leftcurve/types";
-import { camelToSnake, recursiveTransform, snakeToCamel } from "@leftcurve/utils";
+import type { Binary, Json, JsonValue } from "@left-curve/types";
+import { camelToSnake, recursiveTransform, snakeToCamel } from "@left-curve/utils";
 import { decodeUtf8, encodeUtf8 } from "./utf8.js";
 
 /**

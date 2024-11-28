@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { SafeMemberRow } from "./SafeMemberRow";
 
-import type { Account, AccountType } from "@leftcurve/types";
+import type { Account, AccountType } from "@left-curve/types";
 import { Button } from "../atoms/Button";
 
 interface Props {

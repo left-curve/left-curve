@@ -1,4 +1,4 @@
-import config from "@leftcurve/config/tsup/common.json" with { type: "json" };
+import config from "@left-curve/config/tsup/common.json" with { type: "json" };
 import { type Options, defineConfig } from "tsup";
 
 /**

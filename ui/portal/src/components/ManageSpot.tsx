@@ -2,7 +2,7 @@ import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@dango/shared"
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

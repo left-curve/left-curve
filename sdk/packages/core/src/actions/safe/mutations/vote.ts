@@ -8,7 +8,7 @@ import type {
   TxParameters,
   TypedDataParameter,
   Vote,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type SafeAccountVoteParameters = {

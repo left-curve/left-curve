@@ -1,7 +1,0 @@
-{
-  "name": "@dango/assets",
-  "version": "0.1.0",
-  "exports": {
-    "./fonts/*": "./fonts/*"
-  }
-}

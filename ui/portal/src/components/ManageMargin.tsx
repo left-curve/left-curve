@@ -1,6 +1,6 @@
 import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@dango/shared";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

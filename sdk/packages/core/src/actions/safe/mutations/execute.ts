@@ -7,7 +7,7 @@ import type {
   Transport,
   TxParameters,
   TypedDataParameter,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 export type SafeAccountExecuteParameters = {

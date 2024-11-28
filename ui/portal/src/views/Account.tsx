@@ -1,11 +1,11 @@
-import { isValidAddress } from "@leftcurve/sdk";
+import { isValidAddress } from "@left-curve/sdk";
 import { useQueryState } from "nuqs";
 import { useEffect } from "react";
 import { redirect } from "react-router-dom";
 
 import { AccountRouter } from "~/components/AccountRouter";
 
-import type { Address } from "@leftcurve/types";
+import type { Address } from "@left-curve/types";
 
 const AccountView: React.FC = () => {
   const [address] = useQueryState("address");

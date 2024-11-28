@@ -2,8 +2,8 @@ import type React from "react";
 import { Button } from "../atoms/Button";
 import { PortfolioTable } from "./PortfolioTable";
 
-import { useAccount } from "@leftcurve/react";
-import type { Account } from "@leftcurve/types";
+import { useAccount } from "@left-curve/react";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

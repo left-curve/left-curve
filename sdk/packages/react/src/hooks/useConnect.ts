@@ -9,14 +9,14 @@ import {
   type ConnectMutateAsync,
   type ConnectVariables,
   connectMutationOptions,
-} from "@leftcurve/connect-kit/handlers";
+} from "@left-curve/connect-kit/handlers";
 
 import {
   type Config,
   type ConfigParameter,
   ConnectionStatus,
   type Prettify,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 
 import { useConfig } from "./useConfig.js";

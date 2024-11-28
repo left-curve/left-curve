@@ -11,12 +11,12 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@leftcurve/sdk": "workspace:^"
+    "@left-curve/sdk": "workspace:^"
   },
   "sideEffects": false,
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
     "wrangler": "catalog:"

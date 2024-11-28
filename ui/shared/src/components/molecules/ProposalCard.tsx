@@ -1,8 +1,8 @@
-import { usePublicClient } from "@leftcurve/react";
+import { usePublicClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
 import { ProposalBar } from "../atoms/ProposalBar";
 
-import type { Address, Proposal } from "@leftcurve/types";
+import type { Address, Proposal } from "@left-curve/types";
 
 interface Props {
   proposalId: number;

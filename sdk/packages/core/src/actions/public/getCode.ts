@@ -1,4 +1,4 @@
-import type { Chain, Client, CodeResponse, Hex, Signer, Transport } from "@leftcurve/types";
+import type { Chain, Client, CodeResponse, Hex, Signer, Transport } from "@left-curve/types";
 import { queryApp } from "./queryApp.js";
 
 export type GetCodeParameters = {

@@ -1,8 +1,8 @@
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
 
-import type { AccountTypes, Chain, Client, Hex, Signer, Transport } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { AccountTypes, Chain, Client, Hex, Signer, Transport } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetAccountTypeCodeHashParameters = {
   accountType: AccountTypes;

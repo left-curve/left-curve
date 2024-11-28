@@ -7,7 +7,7 @@ import {
   twMerge,
 } from "@dango/shared";
 
-import { AccountType } from "@leftcurve/types";
+import { AccountType } from "@left-curve/types";
 
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";

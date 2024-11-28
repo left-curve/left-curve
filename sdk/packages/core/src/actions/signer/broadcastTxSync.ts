@@ -1,4 +1,4 @@
-import { encodeBase64, serialize } from "@leftcurve/encoding";
+import { encodeBase64, serialize } from "@left-curve/encoding";
 import type {
   Chain,
   Client,
@@ -8,7 +8,7 @@ import type {
   Tx,
   TxData,
   UnsignedTx,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
 export type BroadcastTxSyncParameters = {
   tx: Tx | UnsignedTx;

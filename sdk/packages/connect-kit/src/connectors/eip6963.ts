@@ -1,4 +1,4 @@
-import type { EIP6963ProviderDetail } from "@leftcurve/types";
+import type { EIP6963ProviderDetail } from "@left-curve/types";
 import { eip1193 } from "./eip1193.js";
 
 export function eip6963({ info, provider }: EIP6963ProviderDetail) {

@@ -1,7 +1,7 @@
 "use client";
 
-import { hydrate } from "@leftcurve/connect-kit";
-import type { Config, State } from "@leftcurve/types";
+import { hydrate } from "@left-curve/connect-kit";
+import type { Config, State } from "@left-curve/types";
 import { type ReactElement, useEffect, useRef } from "react";
 
 export type HydrateProps = {

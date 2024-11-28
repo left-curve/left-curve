@@ -1,10 +1,12 @@
-import { http, createConfig, passkey } from "@leftcurve/connect-kit";
-import { devnet } from "@leftcurve/connect-kit/chains";
-import "@leftcurve/types/window";
+import { http, createConfig, passkey } from "@left-curve/react";
+import { devnet } from "@left-curve/react/chains";
+
+import "@left-curve/types/window";
+import type { Config } from "@left-curve/types";
 
 const dango = devnet;
 
-export const config = createConfig({
+export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chains: [dango],
   transports: {

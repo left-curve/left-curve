@@ -1,6 +1,6 @@
-import { Sha256 } from "@leftcurve/crypto";
-import { decodeHex, encodeHex } from "@leftcurve/encoding";
-import type { MembershipProof, NonMembershipProof, Proof } from "@leftcurve/types";
+import { Sha256 } from "@left-curve/crypto";
+import { decodeHex, encodeHex } from "@left-curve/encoding";
+import type { MembershipProof, NonMembershipProof, Proof } from "@left-curve/types";
 
 export function verifyProof(
   rootHash: Uint8Array,

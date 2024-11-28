@@ -1,5 +1,5 @@
 import { Button, CoinSelector, Input, SwapArrowDownIcon } from "@dango/shared";
-import { useAccount, useConfig } from "@leftcurve/react";
+import { useAccount, useConfig } from "@left-curve/react";
 import type React from "react";
 
 export const SwapContainer: React.FC = () => {

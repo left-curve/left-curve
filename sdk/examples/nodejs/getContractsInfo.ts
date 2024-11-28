@@ -1,6 +1,6 @@
-import { http, createPublicClient } from "@leftcurve/sdk";
-import { devnet } from "@leftcurve/sdk/chains";
-import type { Address } from "@leftcurve/types";
+import { http, createPublicClient } from "@left-curve/sdk";
+import { devnet } from "@left-curve/sdk/chains";
+import type { Address } from "@left-curve/types";
 
 async function getContractsInfo() {
   const client = createPublicClient({

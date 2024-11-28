@@ -1,4 +1,4 @@
-import { type Config, ConnectionStatus, type Connector } from "@leftcurve/types";
+import { type Config, ConnectionStatus, type Connector } from "@left-curve/types";
 
 export type ConnectParameters = {
   chainId: string;
