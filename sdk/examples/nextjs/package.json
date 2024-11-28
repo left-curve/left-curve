@@ -8,13 +8,12 @@
   },
   "dependencies": {
     "@left-curve/react": "workspace:^",
-    "@left-curve/connect-kit": "workspace:^",
+    "@tanstack/react-query": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@left-curve/config": "workspace:^",
     "@left-curve/types": "workspace:^",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

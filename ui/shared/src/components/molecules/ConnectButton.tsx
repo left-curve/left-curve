@@ -14,11 +14,7 @@ export const ConnectButton: React.FC = () => {
       <Button
         color="gray"
         className="relative group font-bold px-4 py-2 gap-2"
-        onClick={() =>
-          isConnected
-            ? [connector?.disconnect(), console.log(connector, "test")]
-            : modalRef.current?.showModal()
-        }
+        onClick={() => (isConnected ? connector?.disconnect() : modalRef.current?.showModal())}
       >
         {!isConnected ? <p>Connect</p> : null}
         {isConnected ? (

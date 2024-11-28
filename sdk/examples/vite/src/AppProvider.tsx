@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
 import { devnet } from "@left-curve/react/chains";
-import "@left-curve/types/window";
 
 export const config = createConfig({
   chains: [devnet],
@@ -30,6 +29,7 @@ export const config = createConfig({
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <GrunnectProvider config={config}>
+      {/* "@tanstack/react-query" is required in combination with GrunnectProvider */}
       <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
     </GrunnectProvider>
   );

@@ -28,12 +28,20 @@
       "types": "./build/chains.d.ts",
       "import": "./build/chains.js",
       "default": "./build/chains.cjs"
+    },
+    "./types": {
+      "types": "./build/types.d.ts",
+      "import": "./build/types.js",
+      "default": "./build/types.cjs"
     }
   },
   "typesVersions": {
     "*": {
       "chains": [
         "./build/chains.d.ts"
+      ],
+       "types": [
+        "./build/types.d.ts"
       ]
     }
   },

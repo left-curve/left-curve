@@ -6,7 +6,7 @@ import {
   useConnect,
   usePublicClient,
 } from "@left-curve/react";
-import { ConnectionStatus } from "@left-curve/types";
+import { ConnectionStatus } from "@left-curve/react/types";
 import { useQuery } from "@tanstack/react-query";
 
 function App() {
