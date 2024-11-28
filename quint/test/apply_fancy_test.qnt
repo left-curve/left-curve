@@ -209,7 +209,7 @@ module apply_fancy_test {
     all {
       // Make sure that no node has been marked as orphaned (other than the
       // old root node, which is always orphaned).
-      assert(q::debug("orphans", result.orphans).forall(o => and {
+      assert(result.orphans.forall(o => and {
         o.orphaned_since_version == 1,
         o.version == 0,
         o.key_hash == ROOT_BITS
