@@ -147,6 +147,14 @@ impl Sub for Duration {
     }
 }
 
+impl Mul for Duration {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
 impl<U> Mul<U> for Duration
 where
     U: Into<Uint128>,
@@ -155,14 +163,6 @@ where
 
     fn mul(self, rhs: U) -> Self::Output {
         Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
-    }
-}
-
-impl Mul for Duration {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Self(self.0 * rhs.0)
     }
 }
 
