@@ -1,9 +1,8 @@
-import { GrunnectProvider as Provider } from "@left-curve/react";
+import { http, GrunnectProvider, createConfig, passkey } from "@left-curve/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
-import { http, createConfig, passkey } from "@left-curve/connect-kit";
-import { devnet } from "@left-curve/connect-kit/chains";
+import { devnet } from "@left-curve/react/chains";
 import "@left-curve/types/window";
 
 export const config = createConfig({
@@ -30,8 +29,8 @@ export const config = createConfig({
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <Provider config={config}>
+    <GrunnectProvider config={config}>
       <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
-    </Provider>
+    </GrunnectProvider>
   );
 };
