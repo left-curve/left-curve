@@ -17,7 +17,6 @@ pub struct IndexerBuilder<DB = Undefined<String>> {
     runtime: Option<Arc<Runtime>>,
     handle: tokio::runtime::Handle,
     db_url: DB,
-    enabled: bool,
 }
 
 impl Default for IndexerBuilder {
@@ -34,7 +33,6 @@ impl Default for IndexerBuilder {
             runtime,
             handle,
             db_url: Undefined::default(),
-            enabled: true,
         }
     }
 }
@@ -47,24 +45,12 @@ impl IndexerBuilder {
         IndexerBuilder {
             runtime: self.runtime,
             handle: self.handle,
-            enabled: self.enabled,
             db_url: Defined::new(db_url.to_string()),
         }
     }
 
     pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>> {
         self.with_database_url("sqlite::memory:")
-    }
-}
-
-impl IndexerBuilder<Defined<String>> {
-    pub fn enabled(self, enabled: bool) -> IndexerBuilder<Defined<String>> {
-        IndexerBuilder {
-            runtime: self.runtime,
-            handle: self.handle,
-            enabled,
-            db_url: self.db_url,
-        }
     }
 }
 
@@ -87,7 +73,6 @@ where
             runtime: self.runtime,
             blocks: Arc::new(Mutex::new(HashMap::new())),
             indexing: false,
-            enabled: self.enabled,
         })
     }
 }
@@ -112,7 +97,6 @@ pub struct NonBlockingIndexer {
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     indexing: bool,
-    enabled: bool,
 }
 
 /// Saves the block and its transactions in memory
@@ -200,10 +184,6 @@ impl Indexer for NonBlockingIndexer {
     type Error = crate::error::Error;
 
     fn start(&mut self) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
-
         let context = self.context.clone();
         block_call(self.runtime.as_ref(), &self.handle, async move {
             context.migrate_db().await
@@ -214,10 +194,6 @@ impl Indexer for NonBlockingIndexer {
     }
 
     fn shutdown(&mut self) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
-
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
@@ -249,17 +225,11 @@ impl Indexer for NonBlockingIndexer {
     }
 
     fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
         assert!(self.indexing, "Can't index after shutdown");
         Ok(())
     }
 
     fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]
@@ -277,9 +247,6 @@ impl Indexer for NonBlockingIndexer {
         tx: &Tx,
         tx_outcome: &TxOutcome,
     ) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]
@@ -298,9 +265,6 @@ impl Indexer for NonBlockingIndexer {
     }
 
     fn post_indexing(&self, block_height: u64) -> error::Result<()> {
-        if !self.enabled {
-            return Ok(());
-        }
         assert!(self.indexing, "Can't index after shutdown");
 
         #[cfg(feature = "tracing")]
@@ -336,9 +300,6 @@ impl Indexer for NonBlockingIndexer {
 
 impl Drop for NonBlockingIndexer {
     fn drop(&mut self) {
-        if !self.enabled {
-            return;
-        }
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
         // context.
@@ -370,10 +331,7 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer = IndexerBuilder::default()
-            .with_memory_database()
-            .enabled(true)
-            .build()?;
+        let mut indexer = IndexerBuilder::default().with_memory_database().build()?;
         assert!(!indexer.indexing);
         indexer.start().expect("Can't start Indexer");
         assert!(indexer.indexing);

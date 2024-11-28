@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, Indexer},
+    grug_app::{App, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,
@@ -36,23 +36,28 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
+        if self.indexer_enabled {
+            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_database_url(
+                    self.indexer_database_url
+                        .as_deref()
+                        .unwrap_or("postgres://localhost"),
+                )
+                .build()
+                .expect("Can't create indexer");
+            indexer.start().expect("Can't start indexer");
+            self.run_with_indexer(data_dir, indexer).await
+        } else {
+            self.run_with_indexer(data_dir, NullIndexer::new()).await
+        }
+    }
+
+    async fn run_with_indexer<ID>(self, data_dir: PathBuf, indexer: ID) -> anyhow::Result<()>
+    where
+        ID: Indexer + Send + 'static,
+    {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
-        // I tried using `null_indexer` but since indexer is a App generic parameter, the
-        // created `App` has a different type and I'd have to duplicate lots of code, use an
-        // `enum Indexer` with all potential indexer, or use dyn IndexerTrait. Instead I added
-        // a `indexing_enabled` field on `App` to not call the indexer so you can disable the
-        // indexer when running this binary.
-        let mut indexer = non_blocking_indexer::IndexerBuilder::default()
-            .with_database_url(
-                self.indexer_database_url
-                    .as_deref()
-                    .unwrap_or("postgres://localhost"),
-            )
-            .enabled(self.indexer_enabled)
-            .build()
-            .expect("Can't create indexer");
-        indexer.start().expect("Can't start indexer");
         let app = App::new(
             db,
             vm,
