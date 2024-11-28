@@ -126,7 +126,7 @@ where
     }
 }
 
-impl<'a, K, V, R, T> DoubleEndedIterator for VersionedIterator<'a, K, V, R, T>
+impl<K, V, R, T> DoubleEndedIterator for VersionedIterator<'_, K, V, R, T>
 where
     K: Borrow<T> + Ord,
     T: Ord + ?Sized,

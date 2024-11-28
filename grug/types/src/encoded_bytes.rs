@@ -37,7 +37,7 @@ where
     }
 }
 
-impl<'a, B, E> PartialEq<EncodedBytes<B, E>> for &'a EncodedBytes<B, E>
+impl<B, E> PartialEq<EncodedBytes<B, E>> for &EncodedBytes<B, E>
 where
     B: Bytes,
     E: Encoder,
@@ -277,7 +277,7 @@ where
 
 struct Visitor<B, E>(PhantomData<B>, PhantomData<E>);
 
-impl<'de, B, E> de::Visitor<'de> for Visitor<B, E>
+impl<B, E> de::Visitor<'_> for Visitor<B, E>
 where
     B: Bytes,
     E: Encoder,

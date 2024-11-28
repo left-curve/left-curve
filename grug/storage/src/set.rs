@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<'a, T, C> Set<'a, T, C>
+impl<T, C> Set<'_, T, C>
 where
     T: PrimaryKey,
     C: Codec<Empty>,
@@ -177,7 +177,7 @@ mod tests {
         fn all(&self, storage: &mut dyn Storage) -> StdResult<Vec<Self::T>>;
     }
 
-    impl<'a, T, C> SetExt for Set<'a, T, C>
+    impl<T, C> SetExt for Set<'_, T, C>
     where
         T: PrimaryKey,
         C: Codec<Empty>,

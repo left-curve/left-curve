@@ -290,7 +290,7 @@ where
     }
 }
 
-impl<'a, PK, IK, T, C> Index<PK, T> for MultiIndex<'a, PK, IK, T, C>
+impl<PK, IK, T, C> Index<PK, T> for MultiIndex<'_, PK, IK, T, C>
 where
     PK: PrimaryKey,
     IK: PrimaryKey + Prefixer,

@@ -36,7 +36,7 @@ pub static ICS23_PROOF_SPEC: LazyLock<ProofSpec> = LazyLock::new(|| ProofSpec {
     prehash_key_before_comparison: true,
 });
 
-impl<'a> MerkleTree<'a> {
+impl MerkleTree<'_> {
     /// Traverse the tree, find the leaf node containing the key hash, and
     /// return the ICS-23 path (the list of `InnerOp`'s) that can prove this
     /// key's existence.

@@ -10,7 +10,7 @@ pub trait MarginQuerier {
     fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse>;
 }
 
-impl<'a> MarginQuerier for QuerierWrapper<'a> {
+impl MarginQuerier for QuerierWrapper<'_> {
     fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse> {
         let app_cfg: AppConfig = self.query_app_config()?;
 
