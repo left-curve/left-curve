@@ -35,20 +35,12 @@
       "types": "./build/components/index.d.ts",
       "import": "./build/components/index.js",
       "default": "./build/components/index.cjs"
-    },
-    "./components/examples": {
-      "types": "./build/components/examples/index.d.ts",
-      "import": "./build/components/examples/index.js",
-      "default": "./build/components/examples/index.cjs"
     }
   },
   "typesVersions": {
     "*": {
       "components": [
         "./build/components/index.d.ts"
-      ],
-      "components/examples": [
-        "./build/components/examples/index.d.ts"
       ]
     }
   },
