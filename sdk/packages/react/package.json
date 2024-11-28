@@ -23,6 +23,18 @@
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
+    },
+    "./chains": {
+      "types": "./build/chains.d.ts",
+      "import": "./build/chains.js",
+      "default": "./build/chains.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "chains": [
+        "./build/chains.d.ts"
+      ]
     }
   },
   "dependencies": {

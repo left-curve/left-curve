@@ -1,3 +1,5 @@
+export * from "@left-curve/connect-kit";
+
 export {
   type GrunnectProviderProps,
   GrunnectProvider,

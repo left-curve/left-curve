@@ -28,8 +28,11 @@ import { eip6963 } from "./connectors/eip6963.js";
 import { createMipdStore } from "./mipd.js";
 
 export function createConfig<
-  const chains extends readonly [Chain, ...Chain[]],
-  transports extends Record<chains[number]["id"], Transport>,
+  const chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
+  transports extends Record<chains[number]["id"], Transport> = Record<
+    chains[number]["id"],
+    Transport
+  >,
   coin extends AnyCoin = AnyCoin,
 >(parameters: CreateConfigParameters<chains, transports, coin>): Config<chains, transports, coin> {
   const {
