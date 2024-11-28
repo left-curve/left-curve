@@ -507,7 +507,7 @@ where
         chain_id: app_ctx.chain_id.clone(),
         block: app_ctx.block,
         contract: msg.contract,
-        sender: Some(sender),
+        sender: None,
         funds: None,
         mode: None,
     };

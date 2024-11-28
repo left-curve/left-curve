@@ -110,7 +110,7 @@ where
 }
 
 pub fn do_migrate<M, E>(
-    migrate_fn: &dyn Fn(MutableCtx, M) -> Result<Response, E>,
+    migrate_fn: &dyn Fn(SudoCtx, M) -> Result<Response, E>,
     ctx_ptr: usize,
     msg_ptr: usize,
 ) -> usize
@@ -123,7 +123,7 @@ where
 
     let res = (|| {
         let ctx: Context = unwrap_into_generic_result!(ctx_bytes.deserialize_borsh());
-        let ctx = make_mutable_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
+        let ctx = make_sudo_ctx!(ctx, &mut ExternalStorage, &ExternalApi, &ExternalQuerier);
 
         let msg = unwrap_into_generic_result!(msg_bytes.deserialize_borsh::<Json>());
         let msg = unwrap_into_generic_result!(msg.deserialize_json());
