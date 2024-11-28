@@ -1,7 +1,9 @@
 use {
-    dango_types::vesting::{Position, PositionIndex},
-    grug::{Addr, Counter, IndexedMap, MultiIndex},
+    dango_types::vesting::{Config, Position, PositionIndex},
+    grug::{Addr, Counter, IndexedMap, Item, MultiIndex},
 };
+
+pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const NEXT_POSITION_INDEX: Counter<PositionIndex> = Counter::new("index", 0, 1);
 

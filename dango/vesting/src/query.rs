@@ -1,5 +1,5 @@
 use {
-    crate::POSITIONS,
+    crate::{CONFIG, POSITIONS},
     dango_types::vesting::{ClaimablePosition, PositionIndex, QueryMsg},
     grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
@@ -30,9 +30,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 fn query_position(ctx: ImmutableCtx, idx: PositionIndex) -> StdResult<ClaimablePosition> {
+    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+
     POSITIONS
         .load(ctx.storage, idx)
-        .map(|val| val.with_claimable_amount(ctx.block.timestamp))
+        .map(|val| val.with_claimable_amount(ctx.block.timestamp, &unlocking_schedule))
 }
 
 fn query_positions(
@@ -43,10 +45,19 @@ fn query_positions(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
+    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+
     POSITIONS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| res.map(|(k, v)| (k, v.with_claimable_amount(ctx.block.timestamp))))
+        .map(|res| {
+            res.map(|(k, v)| {
+                (
+                    k,
+                    v.with_claimable_amount(ctx.block.timestamp, &unlocking_schedule),
+                )
+            })
+        })
         .collect()
 }
 
@@ -59,12 +70,21 @@ fn query_positions_by_user(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
+    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+
     POSITIONS
         .idx
         .user
         .prefix(user)
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| res.map(|(k, v)| (k, v.with_claimable_amount(ctx.block.timestamp))))
+        .map(|res| {
+            res.map(|(k, v)| {
+                (
+                    k,
+                    v.with_claimable_amount(ctx.block.timestamp, &unlocking_schedule),
+                )
+            })
+        })
         .collect()
 }

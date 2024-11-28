@@ -304,7 +304,14 @@ where
     let vesting = instantiate(
         &mut msgs,
         vesting_code_hash,
-        &vesting::InstantiateMsg {},
+        &vesting::InstantiateMsg {
+            owner: addresses.get(owner).cloned().unwrap(),
+            unlocking_schedule: vesting::Schedule {
+                start_time: None,
+                cliff: Duration::from_seconds(60 * 60 * 24 * 30 * 9),
+                vesting: Duration::from_seconds(60 * 60 * 24 * 30 * 27),
+            },
+        },
         "dango/vesting",
         "dango/vesting",
     )?;
