@@ -146,3 +146,30 @@ impl Sub for Duration {
         Self(self.0 - rhs.0)
     }
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use crate::{BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ResultExt, Timestamp};
+
+    #[test]
+    fn serialization_works() {
+        const TIMESTAMP: Timestamp = Timestamp::from_nanos(1732770602144737024);
+        const TIMESTAMP_JSON: &str = "\"1732770602.144737024\"";
+
+        // json
+        TIMESTAMP
+            .to_json_string()
+            .should_succeed_and_equal(TIMESTAMP_JSON)
+            .deserialize_json::<Timestamp>()
+            .should_succeed_and_equal(TIMESTAMP);
+
+        // borsh
+        TIMESTAMP
+            .to_borsh_vec()
+            .should_succeed()
+            .deserialize_borsh::<Timestamp>()
+            .should_succeed_and_equal(TIMESTAMP);
+    }
+}
