@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@leftcurve/react";
+import { useAccount, useBalances, usePrices } from "@left-curve/react";
 import { useQueryState } from "nuqs";
 import type React from "react";
 import { Button, Input } from "../";

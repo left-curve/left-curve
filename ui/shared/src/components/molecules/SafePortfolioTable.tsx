@@ -3,7 +3,7 @@ import type React from "react";
 import { Button } from "../atoms/Button";
 import { PortfolioTable } from "./PortfolioTable";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

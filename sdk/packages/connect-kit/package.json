@@ -1,7 +1,9 @@
 {
-  "name": "@leftcurve/connect-kit",
+  "name": "@left-curve/connect-kit",
   "version": "0.1.0",
+  "type": "module",
   "scripts": {
+    "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
     "clean:build": "rm -rf ./build",
@@ -18,14 +20,7 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "type": "module",
-  "files": [
-    "build",
-    "src",
-    "!**/*.spec.ts",
-    "!typedoc.json",
-    "!tsup.config.ts"
-  ],
+  "files": ["build"],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -54,16 +49,16 @@
     }
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
+    "@left-curve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/encoding": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
-    "@leftcurve/types": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/sdk": "workspace:^",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/utils": "workspace:^",
     "eventemitter3": "^5.0.1",
     "zustand": "catalog:"
   },
@@ -74,5 +69,9 @@
     "@tanstack/query-core": {
       "optional": true
     }
-  }
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
 }

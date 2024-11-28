@@ -1,5 +1,5 @@
 {
-  "name": "@leftcurve/example-nextjs",
+  "name": "@left-curve/example-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,15 +7,14 @@
     "start": "next start"
   },
   "dependencies": {
-    "@leftcurve/react": "workspace:^",
-    "@leftcurve/connect-kit": "workspace:^",
+    "@left-curve/react": "workspace:^",
+    "@tanstack/react-query": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

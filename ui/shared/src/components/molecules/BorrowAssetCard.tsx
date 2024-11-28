@@ -1,6 +1,6 @@
-import { useConfig, usePrices } from "@leftcurve/react";
-import type { Coin } from "@leftcurve/types";
-import { formatUnits } from "@leftcurve/utils";
+import { useConfig, usePrices } from "@left-curve/react";
+import type { Coin } from "@left-curve/types";
+import { formatUnits } from "@left-curve/utils";
 import { twMerge } from "../../utils";
 
 interface Props {

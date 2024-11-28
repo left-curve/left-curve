@@ -1,7 +1,9 @@
 {
-  "name": "@leftcurve/react",
-  "version": "0.1.0",
+  "name": "@left-curve/react",
+  "version": "0.1.1",
+  "type": "module",
   "scripts": {
+    "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
     "clean": "rm -rf ./build && rm -rf node_modules",
     "clean:build": "rm -rf ./build",
@@ -15,29 +17,46 @@
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
   "sideEffects": false,
-  "type": "module",
   "files": [
-    "build",
-    "src",
-    "!**/*.spec.ts"
+    "build"
   ],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
+    },
+    "./chains": {
+      "types": "./build/chains.d.ts",
+      "import": "./build/chains.js",
+      "default": "./build/chains.cjs"
+    },
+    "./types": {
+      "types": "./build/types.d.ts",
+      "import": "./build/types.js",
+      "default": "./build/types.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "chains": [
+        "./build/chains.d.ts"
+      ],
+      "types": [
+        "./build/types.d.ts"
+      ]
     }
   },
   "dependencies": {
-    "@leftcurve/connect-kit": "workspace:^",
-    "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/encoding": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
+    "@left-curve/connect-kit": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^",
     "use-sync-external-store": "^1.2.2"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -48,5 +67,16 @@
     "@tanstack/react-query": ">=5.0.0",
     "react": "^18",
     "react-dom": "^18"
-  }
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }

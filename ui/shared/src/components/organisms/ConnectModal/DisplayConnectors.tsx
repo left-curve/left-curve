@@ -1,6 +1,6 @@
 "use client";
 
-import type { Connector } from "@leftcurve/types";
+import type { Connector } from "@left-curve/types";
 
 import { Button, WalletIcon } from "../../";
 import { twMerge } from "../../../utils";

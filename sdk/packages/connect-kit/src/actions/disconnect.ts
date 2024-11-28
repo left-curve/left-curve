@@ -5,7 +5,7 @@ import {
   type Connector,
   type ConnectorUId,
   type OneRequired,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
 export type DisconnectParameters = OneRequired<
   {

@@ -7,7 +7,7 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type StoreCodeParameters = {

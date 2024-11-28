@@ -1,5 +1,5 @@
-import type { HttpRpcClientOptions, RpcClient } from "@leftcurve/types";
-import { withTimeout } from "@leftcurve/utils";
+import type { HttpRpcClientOptions, RpcClient } from "@left-curve/types";
+import { withTimeout } from "@left-curve/utils";
 import { HttpRequestError } from "../errors/request.js";
 import { TimeoutError } from "../errors/timeout.js";
 

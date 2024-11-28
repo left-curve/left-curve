@@ -1,4 +1,4 @@
-import type { Config } from "@leftcurve/types";
+import type { Config } from "@left-curve/types";
 import { type GetPublicClientReturnType, getPublicClient } from "./getPublicClient.js";
 
 export type WatchPublicClientParameters = {

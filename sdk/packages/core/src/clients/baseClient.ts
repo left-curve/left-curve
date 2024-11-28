@@ -5,8 +5,8 @@ import type {
   ClientExtend,
   Signer,
   Transport,
-} from "@leftcurve/types";
-import { uid } from "@leftcurve/utils";
+} from "@left-curve/types";
+import { uid } from "@left-curve/utils";
 
 export function createBaseClient<
   transport extends Transport = Transport,

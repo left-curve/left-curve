@@ -8,8 +8,8 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@leftcurve/types";
-import { getCoinsTypedData } from "@leftcurve/utils";
+} from "@left-curve/types";
+import { getCoinsTypedData } from "@left-curve/utils";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 export type ExecuteParameters = {

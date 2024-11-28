@@ -6,11 +6,10 @@
     "build:cf": "pnpx @cloudflare/next-on-pages",
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
-    "@dango/assets": "workspace:^",
+    "@dango/config": "workspace:^",
     "@fullpage/react-fullpage": "^0.1.45",
     "next": "catalog:",
     "react": "catalog:",
@@ -18,7 +17,7 @@
     "framer-motion": "catalog:"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
+    "@left-curve/config": "workspace:^",
     "typescript": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

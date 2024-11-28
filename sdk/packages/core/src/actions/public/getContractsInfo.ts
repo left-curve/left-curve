@@ -5,7 +5,7 @@ import type {
   ContractsResponse,
   Signer,
   Transport,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { queryApp } from "./queryApp.js";
 
 export type GetContractsInfoParameters = {

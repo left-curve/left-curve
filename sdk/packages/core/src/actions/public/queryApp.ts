@@ -1,4 +1,4 @@
-import { decodeBase64, deserialize, serialize } from "@leftcurve/encoding";
+import { decodeBase64, deserialize, serialize } from "@left-curve/encoding";
 
 import type {
   Chain,
@@ -7,7 +7,7 @@ import type {
   QueryResponse,
   Signer,
   Transport,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { queryAbci } from "./queryAbci.js";
 
 export type QueryAppParameters = {

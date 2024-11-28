@@ -1,4 +1,4 @@
-import type { Config } from "@leftcurve/types";
+import type { Config } from "@left-curve/types";
 
 export type GetChainIdReturnType<config extends Config = Config> = config["chains"][number]["id"];
 

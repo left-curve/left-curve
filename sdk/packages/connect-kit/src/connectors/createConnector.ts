@@ -1,4 +1,4 @@
-import type { Chain, CreateConnectorFn, SignDoc, Signer, Transport } from "@leftcurve/types";
+import type { Chain, CreateConnectorFn, SignDoc, Signer, Transport } from "@left-curve/types";
 
 export function createConnector<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,

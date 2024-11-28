@@ -1,0 +1,13 @@
+{
+  "name": "@dango/config",
+  "version": "0.1.0",
+  "exports": {
+    "./fonts/*": "./fonts/*",
+    "./tailwind/*": "./tailwind/*"
+  },
+  "dependencies": {
+    "tailwind-scrollbar": "^3.1.0",
+    "tailwindcss": "catalog:",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

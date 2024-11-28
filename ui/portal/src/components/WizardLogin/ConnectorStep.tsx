@@ -1,5 +1,5 @@
 import { Button, ConnectorButtonOptions, useWizard } from "@dango/shared";
-import { useConfig, useConnectors } from "@leftcurve/react";
+import { useConfig, useConnectors } from "@left-curve/react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 

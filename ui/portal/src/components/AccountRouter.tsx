@@ -1,11 +1,11 @@
-import { useAccountInfo } from "@leftcurve/react";
+import { useAccountInfo } from "@left-curve/react";
 
 import { Spinner } from "@dango/shared";
 import { ManageMargin } from "./ManageMargin";
 import { ManageSafe } from "./ManageSafe";
 import { ManageSpot } from "./ManageSpot";
 
-import { AccountType, type Address } from "@leftcurve/types";
+import { AccountType, type Address } from "@left-curve/types";
 import { Navigate } from "react-router-dom";
 
 interface Props {

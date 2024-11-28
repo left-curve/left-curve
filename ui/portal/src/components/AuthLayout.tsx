@@ -1,6 +1,6 @@
 import { twMerge } from "@dango/shared";
-import { useAccount } from "@leftcurve/react";
-import { ConnectionStatus } from "@leftcurve/types";
+import { useAccount } from "@left-curve/react";
+import { ConnectionStatus } from "@left-curve/types";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export const AuthLayout: React.FC = () => {

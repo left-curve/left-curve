@@ -1,7 +1,7 @@
 "use client";
 
-import { type GetAccountReturnType, getAccount, watchAccount } from "@leftcurve/connect-kit";
-import type { AccountTypes, Config, ConfigParameter } from "@leftcurve/types";
+import { type GetAccountReturnType, getAccount, watchAccount } from "@left-curve/connect-kit";
+import type { AccountTypes, Config, ConfigParameter } from "@left-curve/types";
 import { useConfig } from "./useConfig.js";
 import { useSyncExternalStoreWithTracked } from "./useSyncExternalStoreWithTRacked.js";
 

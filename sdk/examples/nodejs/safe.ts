@@ -1,7 +1,7 @@
-import { http, createSignerClient } from "@leftcurve/sdk";
-import { safeActions } from "@leftcurve/sdk/actions";
-import { devnet } from "@leftcurve/sdk/chains";
-import { PrivateKeySigner } from "@leftcurve/sdk/signers";
+import { http, createSignerClient } from "@left-curve/sdk";
+import { safeActions } from "@left-curve/sdk/actions";
+import { devnet } from "@left-curve/sdk/chains";
+import { PrivateKeySigner } from "@left-curve/sdk/signers";
 
 async function execute() {
   const client = createSignerClient({

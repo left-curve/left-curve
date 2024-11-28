@@ -1,5 +1,5 @@
-import { sha256 } from "@leftcurve/crypto";
-import { decodeHex, encodeUtf8 } from "@leftcurve/encoding";
+import { sha256 } from "@left-curve/crypto";
+import { decodeHex, encodeUtf8 } from "@left-curve/encoding";
 import { describe, expect, test } from "vitest";
 import { verifyMembershipProof, verifyNonMembershipProof } from "./proof.js";
 

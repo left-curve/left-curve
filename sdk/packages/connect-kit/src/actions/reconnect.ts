@@ -1,4 +1,4 @@
-import { type Config, ConnectionStatus } from "@leftcurve/types";
+import { type Config, ConnectionStatus } from "@left-curve/types";
 
 export type ReconnectReturnType = void;
 

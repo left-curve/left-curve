@@ -1,7 +1,7 @@
-import { useConfig, usePrices } from "@leftcurve/react";
-import { formatNumber, formatUnits } from "@leftcurve/utils";
+import { useConfig, usePrices } from "@left-curve/react";
+import { formatNumber, formatUnits } from "@left-curve/utils";
 
-import type { Coin } from "@leftcurve/types";
+import type { Coin } from "@left-curve/types";
 
 interface Props {
   coin: Coin;
