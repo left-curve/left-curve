@@ -284,7 +284,7 @@ impl<U, const S: u32> DecVisitor<U, S> {
     }
 }
 
-impl<'de, U, const S: u32> de::Visitor<'de> for DecVisitor<U, S>
+impl<U, const S: u32> de::Visitor<'_> for DecVisitor<U, S>
 where
     Dec<U, S>: FromStr,
     <Dec<U, S> as FromStr>::Err: Display,

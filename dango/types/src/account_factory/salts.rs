@@ -25,7 +25,7 @@ pub struct NewUserSalt<'a> {
     pub key_hash: Hash160,
 }
 
-impl<'a> NewUserSalt<'a> {
+impl NewUserSalt<'_> {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain

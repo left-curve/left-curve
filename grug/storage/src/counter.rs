@@ -73,7 +73,7 @@ where
         }
     }
 }
-impl<'a, K, T, C> Counters<'a, K, T, C>
+impl<K, T, C> Counters<'_, K, T, C>
 where
     K: PrimaryKey + Copy,
     T: Number + Copy,

@@ -30,7 +30,7 @@ where
     }
 }
 
-impl<'a, K, T, C> Map<'a, K, T, C>
+impl<K, T, C> Map<'_, K, T, C>
 where
     K: PrimaryKey,
     C: Codec<T>,

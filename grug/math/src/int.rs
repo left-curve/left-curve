@@ -105,7 +105,7 @@ impl<U> IntVisitor<U> {
     }
 }
 
-impl<'de, U> de::Visitor<'de> for IntVisitor<U>
+impl<U> de::Visitor<'_> for IntVisitor<U>
 where
     Int<U>: FromStr,
     <Int<U> as FromStr>::Err: Display,
