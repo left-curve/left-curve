@@ -12,8 +12,8 @@ pub type ClaimablePosition = Position<Uint128>;
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub unlocking_schedule: Schedule<Option<Timestamp>>,
-    pub owner: Addr,
+    pub unlocking_cliff: Duration,
+    pub unlocking_vesting: Duration,
 }
 
 #[grug::derive(Serde)]
@@ -22,7 +22,7 @@ pub enum ExecuteMsg {
     /// Sender must attach a single coin.
     CreatePosition {
         user: Addr,
-        schedule: Schedule<Option<Timestamp>>,
+        schedule: Schedule,
     },
     /// Claim the withdrawable amount from the vesting position.
     Claim {
@@ -57,25 +57,14 @@ pub enum QueryMsg {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
-    pub owner: Addr,
     pub unlocking_schedule: Schedule,
 }
 
 #[grug::derive(Serde, Borsh)]
-pub struct Schedule<T = Timestamp> {
-    pub start_time: T,
+pub struct Schedule {
+    pub start_time: Timestamp,
     pub cliff: Duration,
     pub vesting: Duration,
-}
-
-impl Schedule<Option<Timestamp>> {
-    pub fn set_start_time(self, now: Timestamp) -> anyhow::Result<Schedule> {
-        Ok(Schedule {
-            start_time: self.start_time.unwrap_or(now),
-            cliff: self.cliff,
-            vesting: self.vesting,
-        })
-    }
 }
 
 impl Schedule {

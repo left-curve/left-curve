@@ -305,12 +305,8 @@ where
         &mut msgs,
         vesting_code_hash,
         &vesting::InstantiateMsg {
-            owner: addresses.get(owner).cloned().unwrap(),
-            unlocking_schedule: vesting::Schedule {
-                start_time: None,
-                cliff: Duration::from_seconds(60 * 60 * 24 * 30 * 9),
-                vesting: Duration::from_seconds(60 * 60 * 24 * 30 * 27),
-            },
+            unlocking_cliff: Duration::from_seconds(60 * 60 * 24 * 30 * 9),
+            unlocking_vesting: Duration::from_seconds(60 * 60 * 24 * 30 * 27),
         },
         "dango/vesting",
         "dango/vesting",

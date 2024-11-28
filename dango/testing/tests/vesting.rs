@@ -22,7 +22,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
 }
 
 #[test_case(
-    None,
+    0,
     0,
     0,
     Coins::default(),
@@ -30,7 +30,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "no funds"
 )]
 #[test_case(
-    Some(99),
+    99,
     0,
     0,
     TEST_AMOUNT.clone().into(),
@@ -38,7 +38,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "ok start time before now"
 )]
 #[test_case(
-    Some(100),
+    100,
     0,
     0,
     TEST_AMOUNT.clone().into(),
@@ -46,7 +46,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "ok no cliff no vesting"
 )]
 #[test_case(
-    Some(100),
+    100,
     200,
     0,
     TEST_AMOUNT.clone().into(),
@@ -54,7 +54,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "ok no vesting"
 )]
 #[test_case(
-    Some(100),
+    100,
     0,
     300,
     TEST_AMOUNT.clone().into(),
@@ -62,7 +62,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "ok no cliff"
 )]
 #[test_case(
-    Some(100),
+    100,
     200,
     300,
     TEST_AMOUNT.clone().into(),
@@ -70,7 +70,7 @@ fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
     "ok"
 )]
 fn creation_cases(
-    start_time: Option<u128>,
+    start_time: u128,
     cliff: u128,
     vesting: u128,
     coins: Coins,
@@ -84,7 +84,7 @@ fn creation_cases(
         &vesting::ExecuteMsg::CreatePosition {
             user: accounts.relayer.address(),
             schedule: Schedule {
-                start_time: start_time.map(Duration::from_seconds),
+                start_time: Duration::from_seconds(start_time),
                 cliff: Duration::from_seconds(cliff),
                 vesting: Duration::from_seconds(vesting),
             },
@@ -110,7 +110,7 @@ fn before_unlocking_starting_time() {
             &vesting::ExecuteMsg::CreatePosition {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
-                    start_time: Some(suite.block.timestamp - MONTH_IN_SECONDS),
+                    start_time: suite.block.timestamp - MONTH_IN_SECONDS,
                     cliff: MONTH_IN_SECONDS * 9,
                     vesting: MONTH_IN_SECONDS * 27,
                 },
@@ -220,7 +220,7 @@ fn after_unlocking_starting_time() {
             &vesting::ExecuteMsg::CreatePosition {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
-                    start_time: Some(suite.block.timestamp + MONTH_IN_SECONDS),
+                    start_time: suite.block.timestamp + MONTH_IN_SECONDS,
                     cliff: MONTH_IN_SECONDS * 9,
                     vesting: MONTH_IN_SECONDS * 27,
                 },
@@ -345,7 +345,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             &vesting::ExecuteMsg::CreatePosition {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
-                    start_time: Some(suite.block.timestamp - MONTH_IN_SECONDS),
+                    start_time: suite.block.timestamp - MONTH_IN_SECONDS,
                     cliff: MONTH_IN_SECONDS * 9,
                     vesting: MONTH_IN_SECONDS * 27,
                 },
@@ -439,7 +439,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             &vesting::ExecuteMsg::CreatePosition {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
-                    start_time: Some(suite.block.timestamp - MONTH_IN_SECONDS),
+                    start_time: suite.block.timestamp - MONTH_IN_SECONDS,
                     cliff: MONTH_IN_SECONDS * 9,
                     vesting: MONTH_IN_SECONDS * 27,
                 },
@@ -543,7 +543,7 @@ fn terminate_after_unlocking_starting_time() {
             &vesting::ExecuteMsg::CreatePosition {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
-                    start_time: Some(suite.block.timestamp + MONTH_IN_SECONDS),
+                    start_time: suite.block.timestamp + MONTH_IN_SECONDS,
                     cliff: MONTH_IN_SECONDS * 9,
                     vesting: MONTH_IN_SECONDS * 27,
                 },

@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, POSITIONS},
+    crate::{POSITIONS, UNLOCKING_SCHEDULE},
     dango_types::vesting::{ClaimablePosition, PositionIndex, QueryMsg},
     grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
@@ -30,7 +30,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 fn query_position(ctx: ImmutableCtx, idx: PositionIndex) -> StdResult<ClaimablePosition> {
-    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+    let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
     POSITIONS
         .load(ctx.storage, idx)
@@ -45,7 +45,7 @@ fn query_positions(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+    let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
     POSITIONS
         .range(ctx.storage, start, None, Order::Ascending)
@@ -70,7 +70,7 @@ fn query_positions_by_user(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    let unlocking_schedule = CONFIG.load(ctx.storage)?.unlocking_schedule;
+    let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
     POSITIONS
         .idx

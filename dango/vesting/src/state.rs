@@ -1,9 +1,9 @@
 use {
-    dango_types::vesting::{Config, Position, PositionIndex},
+    dango_types::vesting::{Position, PositionIndex, Schedule},
     grug::{Addr, Counter, IndexedMap, Item, MultiIndex},
 };
 
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const UNLOCKING_SCHEDULE: Item<Schedule> = Item::new("unlocking_schedule");
 
 pub const NEXT_POSITION_INDEX: Counter<PositionIndex> = Counter::new("index", 0, 1);
 
