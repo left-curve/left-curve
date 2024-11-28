@@ -4,7 +4,7 @@ use {
     dango_types::vesting::{
         ExecuteMsg, InstantiateMsg, Position, PositionIndex, Schedule, VestingStatus,
     },
-    grug::{Addr, Coin, IsZero, Message, MutableCtx, Response},
+    grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, Response},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -52,7 +52,9 @@ fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
 
     ensure!(!claimable_amount.is_zero(), "nothing to claim");
 
-    position.claimed_amount += claimable_amount;
+    position
+        .claimed_amount
+        .checked_add_assign(claimable_amount)?;
 
     if position.full_claimed() {
         POSITIONS.remove(ctx.storage, idx)?;

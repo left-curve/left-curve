@@ -17,7 +17,7 @@ use {
 pub const CHAIN_ID: &str = "dev-1";
 
 /// The chain's genesis timestamp.
-pub const GENESIS_TIMESTAMP: Timestamp = Timestamp::from_seconds(60 * 60 * 24 * 365);
+pub const GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());

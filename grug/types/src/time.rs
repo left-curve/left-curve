@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Inner, Int, IsZero, Udec128_9},
+    grug_math::{Dec, Inner, Int, IsZero, Udec128_9, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Mul, Sub},
 };
@@ -147,6 +147,25 @@ impl Sub for Duration {
     }
 }
 
+impl<U> Mul<U> for Duration
+where
+    U: Into<Uint128>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: U) -> Self::Output {
+        Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
+    }
+}
+
+impl Mul for Duration {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
@@ -171,16 +190,5 @@ mod tests {
             .should_succeed()
             .deserialize_borsh::<Timestamp>()
             .should_succeed_and_equal(TIMESTAMP);
-    }
-}
-
-impl<U> Mul<U> for Duration
-where
-    U: Into<Uint128>,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: U) -> Self::Output {
-        Self(self.0 * rhs.into())
     }
 }
