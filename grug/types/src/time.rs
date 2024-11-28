@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Inner, IsZero, Uint128},
+    grug_math::{Dec, Inner, Int, IsZero, Udec128_9},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Sub},
 };
@@ -45,11 +45,11 @@ pub type Timestamp = Duration;
     PartialOrd,
     Ord,
 )]
-pub struct Duration(Uint128);
+pub struct Duration(Dec<u128, 9>);
 
 impl Duration {
     pub const fn from_nanos(nanos: u128) -> Self {
-        Self(Uint128::new(nanos))
+        Self(Dec::raw(Int::new(nanos)))
     }
 
     pub const fn from_micros(micros: u128) -> Self {
@@ -114,7 +114,7 @@ impl Duration {
 }
 
 impl Inner for Duration {
-    type U = Uint128;
+    type U = Udec128_9;
 
     fn inner(&self) -> &Self::U {
         &self.0

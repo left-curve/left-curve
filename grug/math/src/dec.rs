@@ -496,6 +496,15 @@ generate_decimal! {
 
 generate_decimal! {
     type              = Unsigned,
+    name              = Udec128_9,
+    precision         = 9,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    doc               = "128-bit unsigned fixed-point number with 9 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
     name              = Udec128,
     precision         = 18,
     inner_type        = u128,
