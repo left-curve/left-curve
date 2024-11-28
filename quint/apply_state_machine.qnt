@@ -302,7 +302,7 @@ module apply_state_machine {
             | Internal(_) => false
         })
         .size() == 0
-            
+
     val tm = tree.treeAtVersion(version - 1)
     ops_history.length() > 0 implies
       ops_history.last().forall(op => {
@@ -311,30 +311,6 @@ module apply_state_machine {
           | Delete => treeNotContainsKey(tm, op.key_hash)
         }
       })
-
-  val verifyMembershipInv =
-    activeTreeVersions.forall(version => 
-      tree.nodes.values().forall(nodes =>
-        // this check is added because in the event of first (version 0 -> version 1) batch being only deletes
-        // in this case there will be no root for version 1
-        if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else 
-        match nodes {
-          | Internal => true
-          | Leaf(l) =>
-              val proof = ics23_prove(tree, l.key_hash, version)
-              val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
-              match proof {
-                | Some(p) =>
-                  match p {
-                    | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l)))
-                                      verifyMembership(root, ep, l.key_hash,l.value_hash)
-                                    else not(verifyMembership(root, ep, l.key_hash, l.value_hash))
-                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l))) 
-                                          not(verifyNonMembership(root, nep,l.key_hash))
-                                        else verifyNonMembership(root, nep, l.key_hash)
-                  }
-                | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
-    )
 
   val membershipCompletenessInv = activeTreeVersions.forall(v => membershipCompleteness(tree, v))
   val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
@@ -354,7 +330,6 @@ module apply_state_machine {
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
     if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
-    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
     if (membershipCompletenessInv) true else q::debug("membershipCompletenessInv", false),
     if (nonMembershipCompletenessInv) true else q::debug("nonMembershipCompletenessInv", false),
     if (membershipSoundnessInv) true else q::debug("membershipSoundnessInv", false),

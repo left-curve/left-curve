@@ -20,6 +20,9 @@ module apply_state_machine {
   import apply_simple as simple from "./apply_simple"
   import apply_fancy as fancy from "./apply_fancy"
 
+  import completeness.* from "./completeness"
+  import soundness.* from "./soundness"
+
   pure val MAX_OPS = 5
   // Try to pick values with a balanced chance of collision
   // Operation will be Delete if value between 16 and 20
@@ -355,8 +358,8 @@ This inserts a line break that is not rendered in the markdown
 
 ### Internal nodes share the version with at least one child
 
-Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading 
-- in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been. 
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading
+- in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been.
 - in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
 However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
@@ -568,7 +571,7 @@ TODO: describe
             | Internal(_) => false
         })
         .size() == 0
-            
+
     val tm = tree.treeAtVersion(version - 1)
     ops_history.length() > 0 implies
       ops_history.last().forall(op => {
@@ -585,36 +588,26 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
-### Proofs are properly verified
+#### Completeness and Soundness
 
-TODO: describe
+These are invariants fro completeness and soundness of both membership and non-membership proofs.
+
+Completeness:
+    - Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
+    - Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
+
+Soundness:
+  - Membership: If we can get an existence proof for a key_hash, there should be a leaf in the tree with that key hash.
+  - Non-Membership: If we can get a non-existence proof for a key_hash, there should not be a leaf in the tree with that key hash.
+
+See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for the formal definitions.
 
 *Status:* TRUE
-
 ```bluespec apply_state_machine.qnt +=
-  val verifyMembershipInv =
-    activeTreeVersions.forall(version => 
-      tree.nodes.values().forall (nodes =>
-        // this check is added because in the event of first (version 0 -> version 1) batch being only deletes
-        // in this case there will be no root for version 1
-        if(not(tree.nodes.has({ key_hash: ROOT_BITS, version: version }))) true else 
-        match nodes {
-          | Internal => true
-          | Leaf(l) =>
-              val proof = ics23_prove(tree, l.key_hash, version)
-              val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
-              match proof {
-                | Some(p) =>
-                  match p {
-                    | Exist(ep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l)))
-                                      verifyMembership(root, ep, l.key_hash,l.value_hash)
-                                    else not(verifyMembership(root, ep, l.key_hash, l.value_hash))
-                    | NonExist(nep) =>  if(tree.treeAtVersion(version).values().contains(Leaf(l))) 
-                                          not(verifyNonMembership(root, nep,l.key_hash))
-                                        else verifyNonMembership(root, nep, l.key_hash)
-                  }
-                | None => true}}) // None in Quint means panic in the rust code comment on the line 44 ics23.rs
-    )
+  val membershipCompletenessInv = activeTreeVersions.forall(v => membershipCompleteness(tree, v))
+  val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
+  val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
+  val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
@@ -638,7 +631,10 @@ This inserts a line break that is not rendered in the markdown
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
     if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
-    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
+    if (membershipCompletenessInv) true else q::debug("membershipCompletenessInv", false),
+    if (nonMembershipCompletenessInv) true else q::debug("nonMembershipCompletenessInv", false),
+    if (membershipSoundnessInv) true else q::debug("membershipSoundnessInv", false),
+    if (nonMembershipSoundnessInv) true else q::debug("nonMembershipSoundnessInv", false),
   }
 }
 ```
