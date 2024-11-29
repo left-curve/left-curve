@@ -58,7 +58,7 @@ export const CredentialStep: React.FC = () => {
   });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col w-full gap-2">
+    <form onSubmit={onSubmit} className="flex flex-col w-full">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),

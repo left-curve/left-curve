@@ -13,8 +13,8 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-8">
-      <div className="flex flex-col items-center bg-surface-rose-100 px-8 py-6 rounded-3xl max-w-2xl gap-12 shadow-md">
-        <div className="flex flex-col gap-10">
+      <div className="flex flex-col items-center w-full bg-surface-rose-100 px-8 py-6 rounded-3xl max-w-2xl gap-12 shadow-md">
+        <div className="flex flex-col gap-8 md:gap-10 w-full">
           <div className="flex flex-col gap-4 items-center">
             <p className="font-extrabold text-typography-rose-700 tracking-widest uppercase text-lg">
               {[0, 1].includes(activeStep) ? "signup" : null}

@@ -30,7 +30,7 @@ export const LoginStep: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col w-full">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),

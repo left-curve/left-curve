@@ -120,7 +120,7 @@ export const ConnectStep: React.FC = () => {
   }, [navigate, status]);
 
   return (
-    <div className="flex flex-col w-full gap-3 md:gap-6">
+    <div className="flex flex-col w-full gap-6">
       <Button fullWidth onClick={() => createAccount("passkey")} isLoading={isPending}>
         Signup with Passkey
       </Button>
