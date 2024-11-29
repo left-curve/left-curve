@@ -67,7 +67,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         )?)
     };
 
-    if position.full_claimed() {
+    if position.is_fully_claimed() {
         POSITIONS.remove(ctx.storage, user);
     } else {
         POSITIONS.save(ctx.storage, user, &position)?;
@@ -88,7 +88,7 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     position.claimed.checked_add_assign(claimable)?;
 
-    if position.full_claimed() {
+    if position.is_fully_claimed() {
         POSITIONS.remove(ctx.storage, ctx.sender);
     } else {
         POSITIONS.save(ctx.storage, ctx.sender, &position)?;
