@@ -33,7 +33,7 @@ fn missing_funds() {
                 schedule: Schedule {
                     start_time: Duration::from_seconds(0),
                     cliff: Duration::from_seconds(0),
-                    vesting: Duration::from_seconds(0),
+                    period: Duration::from_seconds(0),
                 },
             },
             Coins::default(),
@@ -54,7 +54,7 @@ fn before_unlocking_starting_time() {
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
-                    vesting: ONE_MONTH * 27,
+                    period: ONE_MONTH * 27,
                 },
             },
             TEST_AMOUNT.clone(),
@@ -164,7 +164,7 @@ fn after_unlocking_starting_time() {
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
                     cliff: ONE_MONTH * 9,
-                    vesting: ONE_MONTH * 27,
+                    period: ONE_MONTH * 27,
                 },
             },
             TEST_AMOUNT.clone(),
@@ -289,7 +289,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
-                    vesting: ONE_MONTH * 27,
+                    period: ONE_MONTH * 27,
                 },
             },
             TEST_AMOUNT.clone(),
@@ -383,7 +383,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
-                    vesting: ONE_MONTH * 27,
+                    period: ONE_MONTH * 27,
                 },
             },
             TEST_AMOUNT.clone(),
@@ -487,7 +487,7 @@ fn terminate_after_unlocking_starting_time() {
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
                     cliff: ONE_MONTH * 9,
-                    vesting: ONE_MONTH * 27,
+                    period: ONE_MONTH * 27,
                 },
             },
             TEST_AMOUNT.clone(),

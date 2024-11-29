@@ -12,7 +12,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     UNLOCKING_SCHEDULE.save(ctx.storage, &Schedule {
         start_time: ctx.block.timestamp,
         cliff: msg.unlocking_cliff,
-        vesting: msg.unlocking_vesting,
+        period: msg.unlocking_period,
     })?;
 
     Ok(Response::new())

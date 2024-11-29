@@ -13,7 +13,7 @@ pub type ClaimablePosition = Position<Uint128>;
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub unlocking_cliff: Duration,
-    pub unlocking_vesting: Duration,
+    pub unlocking_period: Duration,
 }
 
 #[grug::derive(Serde)]
@@ -64,7 +64,7 @@ pub struct Config {
 pub struct Schedule {
     pub start_time: Timestamp,
     pub cliff: Duration,
-    pub vesting: Duration,
+    pub period: Duration,
 }
 
 impl Schedule {
@@ -76,12 +76,12 @@ impl Schedule {
         let claim_percent = if now < self.start_time + self.cliff {
             // Before the cliff, no token is vested/unlocked.
             Udec128::ZERO
-        } else if now < self.start_time + self.vesting {
+        } else if now < self.start_time + self.period {
             // After the cliff but before the period finishes, tokens vest/unlock
             // linearly through time.
             Udec128::checked_from_ratio(
                 (now - self.start_time).into_nanos(),
-                self.vesting.into_nanos(),
+                self.period.into_nanos(),
             )?
         } else {
             // After the period, all tokens are vested/unlocked.

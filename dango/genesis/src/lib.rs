@@ -306,7 +306,7 @@ where
         vesting_code_hash,
         &vesting::InstantiateMsg {
             unlocking_cliff: Duration::from_weeks(4 * 9),
-            unlocking_vesting: Duration::from_weeks(4 * 27),
+            unlocking_period: Duration::from_weeks(4 * 27),
         },
         "dango/vesting",
         "dango/vesting",
