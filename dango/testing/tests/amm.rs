@@ -1,8 +1,11 @@
 use {
     dango_testing::setup_test,
-    dango_types::amm::{
-        self, ExecuteMsg, FeeRate, Pool, PoolParams, QueryPoolRequest, QueryPoolsRequest,
-        XykParams, XykPool, MINIMUM_LIQUIDITY,
+    dango_types::{
+        amm::{
+            self, ExecuteMsg, FeeRate, Pool, PoolParams, QueryPoolRequest, QueryPoolsRequest,
+            XykParams, XykPool, MINIMUM_LIQUIDITY,
+        },
+        config::DANGO_DENOM,
     },
     grug::{
         btree_map, Coin, CoinPair, Coins, Denom, Message, ResultExt, Udec128, Uint128, UniqueVec,
@@ -115,6 +118,7 @@ fn amm() {
     suite
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+            DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 100,000,000,000,000 - 657,761,324,779 - 224,078,907,873
             ATOM.clone() => Uint128::new(99_118_159_767_348),
             // 100,000,000,000,000 - 5,886,161,498,040
@@ -257,6 +261,7 @@ fn amm() {
     suite
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+            DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99_118_159_767_348 - 6_577_613 - 100_000_000
             ATOM.clone() => Uint128::new(99_118_053_189_735),
             // 94_113_838_501_960 - 58_861_614
@@ -389,6 +394,7 @@ fn amm() {
     suite
         .query_balances(&accounts.relayer)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+            DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99,118,053,189,735 + 219,296,717,672
             ATOM.clone() => Uint128::new(99_337_349_907_407),
             // 94,113,779,640,346 + 1,961,670,389,167

@@ -122,6 +122,7 @@ dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
+dango-vesting         = { path = "dango/vesting" }
 
 [profile.release]
 codegen-units    = 1

@@ -9,3 +9,4 @@ pub mod lending;
 pub mod oracle;
 pub mod taxman;
 pub mod token_factory;
+pub mod vesting;

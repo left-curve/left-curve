@@ -1,8 +1,8 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Inner, Int, IsZero, Udec128_9},
+    grug_math::{Dec, Inner, Int, IsZero, Udec128_9, Uint128},
     serde::{Deserialize, Serialize},
-    std::ops::{Add, Sub},
+    std::ops::{Add, Mul, Sub},
 };
 
 /// The number of nanoseconds in a microsecond.
@@ -144,6 +144,25 @@ impl Sub for Duration {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self(self.0 - rhs.0)
+    }
+}
+
+impl Mul for Duration {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self(self.0 * rhs.0)
+    }
+}
+
+impl<U> Mul<U> for Duration
+where
+    U: Into<Uint128>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: U) -> Self::Output {
+        Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
     }
 }
 

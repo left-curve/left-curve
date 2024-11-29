@@ -106,6 +106,18 @@ impl Coins {
         Ok(CoinRef { denom, amount })
     }
 
+    /// If the `Coins` is exactly one coin, and is of the given denom, return a
+    /// reference to this coin; otherwise throw error.
+    pub fn as_one_coin_of_denom(&self, denom: &Denom) -> StdResult<CoinRef> {
+        let coin = self.as_one_coin()?;
+
+        if coin.denom != denom {
+            return Err(StdError::invalid_payment(denom, coin.denom));
+        }
+
+        Ok(coin)
+    }
+
     /// If the `Coins` is exactly one coin, consume self and return this coin as
     /// an owned value; otherwise throw error.
     pub fn into_one_coin(self) -> StdResult<Coin> {
@@ -116,6 +128,18 @@ impl Coins {
         let (denom, amount) = self.0.into_iter().next().unwrap();
 
         Ok(Coin { denom, amount })
+    }
+
+    /// If the `Coins` is exactly one coin, and is of the given denom, consume
+    /// self and return this coin as an owned value; otherwise throw error.
+    pub fn into_one_coin_of_denom(self, denom: &Denom) -> StdResult<Coin> {
+        let coin = self.into_one_coin()?;
+
+        if coin.denom != *denom {
+            return Err(StdError::invalid_payment(denom, coin.denom));
+        }
+
+        Ok(coin)
     }
 
     /// If the `Coins` is exactly two coins, return these two coins as a tuple,
