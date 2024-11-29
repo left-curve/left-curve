@@ -87,12 +87,64 @@ module grug_ics23 {
 
   /// calculate a hash from an exists proof
   def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
-    // using specific hashLeafNode for Grug JMT
     val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
       (child, inner) =>
         termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
+  
+  /// VerifyNonMembership returns true iff
+  /// proof is (contains) a NonExistenceProof,
+  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
+  /// left and right proofs are neighbors (or left/right most if one is nil),
+  /// provided key is between the keys of the two proofs
+  def verifyNonMembership(root: CommitmentRoot_t,
+      np: NonExistsProof_t, key: Key_t): bool = and {
+    // getNonExistProofForKey
+    np.left == None or lessThan(np.left.unwrap().key, key),
+    np.right == None or lessThan(key, np.right.unwrap().key),
+    // implicit assumption, missing in the code:
+    // https://github.com/informalsystems/ics23-audit/issues/14
+    np.key == key,
+    // Verify
+    np.left != None or np.right != None,
+    np.left == None or and {
+      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
+      lessThan(np.left.unwrap().key, key),
+    },
+    np.right == None or and {
+      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
+      lessThan(key, np.right.unwrap().key),
+    },
+    if (np.left == None) {
+      isLeftMost(np.right.unwrap().path)
+    } else if (np.right == None) {
+      isRightMost(np.left.unwrap().path)
+    } else {
+      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
+    }
+  }
+  
+  /// IsLeftMost returns true if this is the left-most path in the tree,
+  /// excluding placeholder (empty child) nodes
+  def isLeftMost(path: List[INNER_T]): bool = {
+    // Calls getPadding(0) => idx = 0, prefix = 0.
+    // We specialize the constants to IavlSpec.
+    // !!! UPDATE !!!
+    // For Left Curve Grug we have changed: MinPrefixLen, MaxPrefixLen and ChildSize in order to
+    // accustom their JellyFish Merkle Tree, 
+    // therefore previous comment about specializing constants for IavlSpec is outdated
+    path.indices().forall(i =>
+      val pathStep = path[i]
+      or {
+        // the path goes left
+        hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
+        // the path goes right, but the left child is empty (a gap)
+        leftBranchesAreEmpty(pathStep)
+      }
+    )
+  }
+
   /// checks if an op has the expected padding
   def hasPadding(inner: INNER_T,
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
@@ -102,8 +154,9 @@ module grug_ics23 {
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-   termLen( inner.suffix) == suffixLen
+   termLen(inner.suffix) == suffixLen
   }
+
   /// This will look at the proof and determine which order it is...
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
   /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411
@@ -171,26 +224,6 @@ module grug_ics23 {
     
     val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
     termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
-  }
-
-  /// IsLeftMost returns true if this is the left-most path in the tree,
-  /// excluding placeholder (empty child) nodes
-  def isLeftMost(path: List[INNER_T]): bool = {
-    // Calls getPadding(0) => idx = 0, prefix = 0.
-    // We specialize the constants to IavlSpec.
-    // !!! UPDATE !!!
-    // For Left Curve Grug we have changed: MinPrefixLen, MaxPrefixLen and ChildSize in order to
-    // accustom their JellyFish Merkle Tree, 
-    // therefore previous comment about specializing constants for IavlSpec is outdated
-    path.indices().forall(i =>
-      val pathStep = path[i]
-      or {
-        // the path goes left
-        hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
-        // the path goes right, but the left child is empty (a gap)
-        leftBranchesAreEmpty(pathStep)
-      }
-    )
   }
 
   /// rightBranchesAreEmpty returns true if the padding bytes correspond
@@ -278,37 +311,5 @@ module grug_ics23 {
         isLeftMost(rpath.slice(0, ri)),
       })
     )
-  }
-
-  /// VerifyNonMembership returns true iff
-  /// proof is (contains) a NonExistenceProof,
-  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
-  /// left and right proofs are neighbors (or left/right most if one is nil),
-  /// provided key is between the keys of the two proofs
-  def verifyNonMembership(root: CommitmentRoot_t,
-      np: NonExistsProof_t, key: Key_t): bool = and {
-    // getNonExistProofForKey
-    np.left == None or lessThan(np.left.unwrap().key, key),
-    np.right == None or lessThan(key, np.right.unwrap().key),
-    // implicit assumption, missing in the code:
-    // https://github.com/informalsystems/ics23-audit/issues/14
-    np.key == key,
-    // Verify
-    np.left != None or np.right != None,
-    np.left == None or and {
-      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
-      lessThan(np.left.unwrap().key, key),
-    },
-    np.right == None or and {
-      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
-      lessThan(key, np.right.unwrap().key),
-    },
-    if (np.left == None) {
-      isLeftMost(np.right.unwrap().path)
-    } else if (np.right == None) {
-      isRightMost(np.left.unwrap().path)
-    } else {
-      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
-    }
   }
 }

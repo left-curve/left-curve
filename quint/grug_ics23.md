@@ -172,7 +172,11 @@ pub struct LeafOp {
   pub prefix: ::prost::alloc::vec::Vec<u8>,
 }
 ```
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
 
+```
+-->
 ```bluespec "definitions" +=
 type LEAF_T = {
   prefix: Term_t
@@ -232,7 +236,8 @@ type NonExistsProof_t = {
 }
 ```
 
-They correspond to the [following Rust structures](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L48C2):
+They correspond to the [following Rust structures](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L48C2).
+
 ```rust
 pub struct ExistenceProof {
     #[prost(bytes = "vec", tag = "1")]
@@ -266,7 +271,8 @@ pub struct NonExistenceProof {
 
 ## Verifying Membership Proof
 
-Our `verifyMembership` function emulates the following Rust code:
+Our `verifyMembership` function emulates [`verify_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L16-L42) Rust function.
+
 ```rust
 pub fn verify_membership<H: HostFunctionsProvider>(
     proof: &ics23::CommitmentProof,
@@ -312,7 +318,8 @@ def verifyMembership(root: CommitmentRoot_t,
 
 ## Verifying existence
 
-Verifying membership emulates the [following Rust code](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L18C1-L32C2).
+Verifying membership emulates the [`verify_existence`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L18C1-L32C2) Rust function.
+
 ```rust
 pub fn verify_existence<H: HostFunctionsProvider>(
     proof: &ics23::ExistenceProof,
@@ -331,11 +338,11 @@ pub fn verify_existence<H: HostFunctionsProvider>(
 }
 ```
 
-Our implementations assumes that proof and spec are alligned and therefore we did not implemnt `check_existence_spec` function.
+Our implementations assumes that proof and spec are alligned and therefore we did not implement `check_existence_spec` function.
 <!--
 ```bluespec "definitions" +=
 
-  /// verify that a proof matches a root
+/// verify that a proof matches a root
 ```
 -->
 ```bluespec "definitions" +=
@@ -388,7 +395,9 @@ After getting the hash of the leaf, it concatanates hashes of other nodes that a
     (child, inner) =>
       termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
 ```
-This part emulates the [`apply_inner`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/ops.rs#L8-L14) Rust function:
+
+This part emulates the [`apply_inner`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/ops.rs#L8-L14) Rust function.
+
 ```rust
 pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> Result<Hash> {
   ensure!(!child.is_empty(), "Missing child hash");
@@ -405,7 +414,7 @@ pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> R
 -->
 
 The function `existsCalculate` closely resembles
-[`calculate_existence_root_for_spec`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L90-L115) Rust function:
+[`calculate_existence_root_for_spec`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L90-L115) Rust function.
 
 ```rust
 fn calculate_existence_root_for_spec<H: HostFunctionsProvider>(
@@ -435,8 +444,12 @@ fn calculate_existence_root_for_spec<H: HostFunctionsProvider>(
   }
 }
 ```
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
 
-## Verifying NonExistence proof
+```
+-->
+## Verifying NonMembership proof
 
 ## has padding
 

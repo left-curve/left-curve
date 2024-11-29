@@ -40,6 +40,7 @@ module grug_ics23 {
     ChildSize: 32,
     EmptyChild: Hash256_ZERO
   }
+
   type LEAF_T = {
     prefix: Term_t
   }
@@ -59,12 +60,32 @@ module grug_ics23 {
 
   /// a proof of non-existence of a key
   type NonExistsProof_t = {
-    key: Key_t, left: Option[ExistsProof_t], right: Option[ExistsProof_t]
+    key: Key_t, 
+    left: Option[ExistsProof_t], 
+    right: Option[ExistsProof_t]
   }
 
+  /// VerifyMembership returns true iff
+  /// proof is an ExistenceProof for the given key and value AND
+  /// calculating the root for the ExistenceProof matches
+  /// the provided CommitmentRoot
+  def verifyMembership(root: CommitmentRoot_t,
+      proof: ExistsProof_t, key: Key_t, value: Value_t): bool = {
+    // TODO: specify Decompress
+    // TODO: specify the case of CommitmentProof_Batch
+    // TODO: CheckAgainstSpec ensures that the proof can be verified
+    //       by the spec checker
+    verify(proof, root, key, value)
+  }
+
+  /// verify that a proof matches a root
+  def verify(proof, root, key, value) = and {
+    key == proof.key,
+    value == proof.value,
+    root == existsCalculate(proof)
+  }
   /// calculate a hash from an exists proof
   def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
-    // using specific hashLeafNode for Grug JMT
     val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
