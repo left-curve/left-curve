@@ -70,7 +70,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     position.vesting_status = VestingStatus::Terminated(vested);
 
-    let refund = position.total - vested;
+    let refund = position.total.checked_sub(vested)?;
     let refund_msg = if refund.is_non_zero() {
         Some(Message::transfer(
             cfg.owner,
@@ -80,20 +80,16 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         None
     };
 
-    if position.is_fully_claimed() {
-        POSITIONS.remove(ctx.storage, user);
-    } else {
-        POSITIONS.save(ctx.storage, user, &position)?;
-    }
+    POSITIONS.save(ctx.storage, user, &position)?;
 
     Ok(Response::new().may_add_message(refund_msg))
 }
 
 fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg: AppConfig = ctx.querier.query_app_config()?;
-    let mut position = POSITIONS.load(ctx.storage, ctx.sender)?;
 
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
+    let mut position = POSITIONS.load(ctx.storage, ctx.sender)?;
 
     let claimable = position.compute_claimable(ctx.block.timestamp, &unlocking_schedule)?;
 
@@ -101,11 +97,7 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     position.claimed.checked_add_assign(claimable)?;
 
-    if position.is_fully_claimed() {
-        POSITIONS.remove(ctx.storage, ctx.sender);
-    } else {
-        POSITIONS.save(ctx.storage, ctx.sender, &position)?;
-    }
+    POSITIONS.save(ctx.storage, ctx.sender, &position)?;
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,

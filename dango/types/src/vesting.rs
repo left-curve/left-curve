@@ -76,13 +76,6 @@ impl Position {
 
         Ok(claimable.checked_sub(self.claimed).unwrap_or_default())
     }
-
-    pub fn is_fully_claimed(&self) -> bool {
-        match &self.vesting_status {
-            VestingStatus::Active(_) => self.total == self.claimed,
-            VestingStatus::Terminated(vested) => *vested == self.claimed,
-        }
-    }
 }
 
 #[grug::derive(Serde)]
