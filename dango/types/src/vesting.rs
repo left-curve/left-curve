@@ -20,17 +20,17 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Create a vesting position for a user with the given schedule.
     /// Sender must attach a single coin.
-    CreatePosition {
+    Create {
         user: Addr,
         schedule: Schedule,
     },
-    /// Claim the withdrawable amount from the vesting position.
-    Claim {
-        idx: PositionIndex,
-    },
     // Terminate the vesting position.
     // When terminated, the snapshot of the vested so far is taken and stored
-    TerminatePosition {
+    Terminate {
+        idx: PositionIndex,
+    },
+    /// Claim the withdrawable amount from the vesting position.
+    Claim {
         idx: PositionIndex,
     },
 }

@@ -28,7 +28,7 @@ fn missing_funds() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: Duration::from_seconds(0),
@@ -49,7 +49,7 @@ fn before_unlocking_starting_time() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
@@ -159,7 +159,7 @@ fn after_unlocking_starting_time() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
@@ -284,7 +284,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
@@ -315,7 +315,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::TerminatePosition { idx: 1 },
+                &vesting::ExecuteMsg::Terminate { idx: 1 },
                 Coins::default(),
             )
             .should_succeed();
@@ -378,7 +378,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
@@ -434,7 +434,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::TerminatePosition { idx: 1 },
+                &vesting::ExecuteMsg::Terminate { idx: 1 },
                 Coins::default(),
             )
             .should_succeed();
@@ -482,7 +482,7 @@ fn terminate_after_unlocking_starting_time() {
         .execute(
             &mut accounts.owner,
             vesting_addr,
-            &vesting::ExecuteMsg::CreatePosition {
+            &vesting::ExecuteMsg::Create {
                 user: accounts.relayer.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
@@ -511,7 +511,7 @@ fn terminate_after_unlocking_starting_time() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::TerminatePosition { idx: 1 },
+                &vesting::ExecuteMsg::Terminate { idx: 1 },
                 Coins::default(),
             )
             .should_succeed();

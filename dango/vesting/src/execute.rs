@@ -21,13 +21,13 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::CreatePosition { user, schedule } => create_position(ctx, user, schedule),
+        ExecuteMsg::Create { user, schedule } => create(ctx, user, schedule),
+        ExecuteMsg::Terminate { idx } => terminate(ctx, idx),
         ExecuteMsg::Claim { idx } => claim(ctx, idx),
-        ExecuteMsg::TerminatePosition { idx } => terminate_position(ctx, idx),
     }
 }
 
-fn create_position(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
+fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
     let amount = ctx.funds.into_one_coin()?;
     let (_, index) = NEXT_POSITION_INDEX.increment(ctx.storage)?;
     let position = Position::new(user, schedule, amount);
@@ -37,38 +37,7 @@ fn create_position(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::R
     Ok(Response::new())
 }
 
-fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
-    let mut position = POSITIONS.load(ctx.storage, idx)?;
-
-    ensure!(
-        position.user == ctx.sender,
-        "you don't have the right, O you don't have the right"
-    );
-
-    let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
-
-    let claimable_amount =
-        position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
-
-    ensure!(!claimable_amount.is_zero(), "nothing to claim");
-
-    position
-        .claimed_amount
-        .checked_add_assign(claimable_amount)?;
-
-    if position.full_claimed() {
-        POSITIONS.remove(ctx.storage, idx)?;
-    } else {
-        POSITIONS.save(ctx.storage, idx, &position)?;
-    }
-
-    Ok(Response::new().add_message(Message::transfer(
-        ctx.sender,
-        Coin::new(position.vested_token.denom, claimable_amount)?,
-    )?))
-}
-
-fn terminate_position(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
+fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
 
     ensure!(
@@ -104,4 +73,35 @@ fn terminate_position(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Res
     }
 
     Ok(Response::new().may_add_message(refund_msg))
+}
+
+fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
+    let mut position = POSITIONS.load(ctx.storage, idx)?;
+
+    ensure!(
+        position.user == ctx.sender,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
+
+    let claimable_amount =
+        position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
+
+    ensure!(!claimable_amount.is_zero(), "nothing to claim");
+
+    position
+        .claimed_amount
+        .checked_add_assign(claimable_amount)?;
+
+    if position.full_claimed() {
+        POSITIONS.remove(ctx.storage, idx)?;
+    } else {
+        POSITIONS.save(ctx.storage, idx, &position)?;
+    }
+
+    Ok(Response::new().add_message(Message::transfer(
+        ctx.sender,
+        Coin::new(position.vested_token.denom, claimable_amount)?,
+    )?))
 }
