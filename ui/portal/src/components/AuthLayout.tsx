@@ -33,7 +33,7 @@ export const AuthLayout: React.FC = () => {
           src={isSignup ? "/images/chars/green-octopus.svg" : "/images/chars/purple-bird.svg"}
           alt="character"
           className={twMerge(
-            "hidden md:block  object-contain absolute bottom-[3.75rem] ",
+            "hidden lg:block  object-contain absolute bottom-[3.75rem] ",
             isSignup ? "max-w-[16rem] w-[16%] left-[10%]" : "max-w-[23rem] w-[23%] left-[3%]",
           )}
         />
