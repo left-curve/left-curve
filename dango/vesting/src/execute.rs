@@ -70,6 +70,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     position.vesting_status = VestingStatus::Terminated(vested);
 
+    // Any unvested tokens is clawed back.
     let refund = position.total.checked_sub(vested)?;
     let refund_msg = if refund.is_non_zero() {
         Some(Message::transfer(
@@ -93,7 +94,7 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let claimable = position.compute_claimable(ctx.block.timestamp, &unlocking_schedule)?;
 
-    ensure!(!claimable.is_zero(), "nothing to claim");
+    ensure!(claimable.is_non_zero(), "nothing to claim");
 
     position.claimed.checked_add_assign(claimable)?;
 
