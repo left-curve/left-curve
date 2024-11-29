@@ -5,8 +5,8 @@ use {
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
     grug::{
-        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, ResultExt, Timestamp,
-        Udec128, Uint128,
+        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, ResultExt, StdError,
+        Timestamp, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     std::sync::LazyLock,
@@ -42,6 +42,48 @@ fn missing_funds() {
             Coins::default(),
         )
         .should_fail_with_error("invalid payment: expecting 1, found 0");
+}
+
+#[test]
+fn non_owner_creating_position() {
+    let (mut suite, mut accounts, vesting_addr) = setup_test();
+
+    suite
+        .execute(
+            &mut accounts.relayer,
+            vesting_addr,
+            &vesting::ExecuteMsg::Create {
+                user: accounts.owner.address(),
+                schedule: Schedule {
+                    start_time: Duration::from_seconds(0),
+                    cliff: Duration::from_seconds(0),
+                    period: Duration::from_seconds(0),
+                },
+            },
+            Coins::one(DANGO_DENOM.clone(), 100).unwrap(),
+        )
+        .should_fail_with_error("you don't have the right");
+}
+
+#[test]
+fn not_dango_token() {
+    let (mut suite, mut accounts, vesting_addr) = setup_test();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            vesting_addr,
+            &vesting::ExecuteMsg::Create {
+                user: accounts.relayer.address(),
+                schedule: Schedule {
+                    start_time: Duration::from_seconds(0),
+                    cliff: Duration::from_seconds(0),
+                    period: Duration::from_seconds(0),
+                },
+            },
+            Coins::one("uusdc", 100).unwrap(),
+        )
+        .should_fail_with_error(StdError::invalid_payment(DANGO_DENOM.clone(), "uusdc"));
 }
 
 #[test]

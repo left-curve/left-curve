@@ -89,7 +89,7 @@ where
                 key_hash: owner.key_hash,
                 balances: btree_map! {
                     "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
                 }
                 .try_into()
                 .unwrap(),
@@ -98,6 +98,7 @@ where
                 key: relayer.key,
                 key_hash: relayer.key_hash,
                 balances: btree_map! {
+                    "udng"  => 100_000_000_000_000,
                     "uusdc" => 100_000_000_000_000,
                     "uatom" => 100_000_000_000_000,
                     "uosmo" => 100_000_000_000_000,
