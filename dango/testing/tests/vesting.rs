@@ -333,7 +333,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
-                    && res.claimable_amount == Uint128::new(37)
+                    && res.claimable == Uint128::new(37)
             });
 
         suite.block_time = Timestamp::default();
@@ -458,8 +458,8 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
-                    && res.position.claimed_amount == Uint128::new(37)
-                    && res.claimable_amount == Uint128::new(3)
+                    && res.position.claimed == Uint128::new(37)
+                    && res.claimable == Uint128::new(3)
             });
 
         // 4 epoche is needed to claim all tokens
@@ -541,7 +541,7 @@ fn terminate_after_unlocking_starting_time() {
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
-                    && res.claimable_amount == Uint128::new(37)
+                    && res.claimable == Uint128::new(37)
             });
 
         suite.block_time = Timestamp::default();

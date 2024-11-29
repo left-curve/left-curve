@@ -24,12 +24,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 fn query_position(ctx: ImmutableCtx, user: Addr) -> StdResult<PositionResponse> {
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
     let position = POSITIONS.load(ctx.storage, user)?;
-    let claimable_amount =
-        position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
+    let claimable = position.compute_claimable(ctx.block.timestamp, &unlocking_schedule)?;
 
     Ok(PositionResponse {
         position,
-        claimable_amount,
+        claimable,
     })
 }
 
@@ -47,12 +46,11 @@ fn query_positions(
         .take(limit)
         .map(|res| {
             let (user, position) = res?;
-            let claimable_amount =
-                position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
+            let claimable = position.compute_claimable(ctx.block.timestamp, &unlocking_schedule)?;
 
             Ok((user, PositionResponse {
                 position,
-                claimable_amount,
+                claimable,
             }))
         })
         .collect()

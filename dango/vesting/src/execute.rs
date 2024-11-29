@@ -49,21 +49,21 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut position = POSITIONS.load(ctx.storage, user)?;
 
-    let vested_amount = if let VestingStatus::Active(schedule) = &position.vesting_status {
-        schedule.compute_claimable_amount(ctx.block.timestamp, position.total_amount)?
+    let vested = if let VestingStatus::Active(schedule) = &position.vesting_status {
+        schedule.compute_claimable(ctx.block.timestamp, position.total)?
     } else {
         bail!("position is already terminated")
     };
 
-    position.vesting_status = VestingStatus::Terminated(vested_amount);
+    position.vesting_status = VestingStatus::Terminated(vested);
 
-    let refund_amount = position.total_amount - vested_amount;
-    let refund_msg = if refund_amount.is_zero() {
+    let refund = position.total - vested;
+    let refund_msg = if refund.is_zero() {
         None
     } else {
         Some(Message::transfer(
             cfg.owner,
-            Coin::new(app_cfg.dango, refund_amount)?,
+            Coin::new(app_cfg.dango, refund)?,
         )?)
     };
 
@@ -82,14 +82,11 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
-    let claimable_amount =
-        position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
+    let claimable = position.compute_claimable(ctx.block.timestamp, &unlocking_schedule)?;
 
-    ensure!(!claimable_amount.is_zero(), "nothing to claim");
+    ensure!(!claimable.is_zero(), "nothing to claim");
 
-    position
-        .claimed_amount
-        .checked_add_assign(claimable_amount)?;
+    position.claimed.checked_add_assign(claimable)?;
 
     if position.full_claimed() {
         POSITIONS.remove(ctx.storage, ctx.sender);
@@ -99,6 +96,6 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,
-        Coin::new(cfg.dango, claimable_amount)?,
+        Coin::new(cfg.dango, claimable)?,
     )?))
 }

@@ -49,11 +49,7 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    pub fn compute_claimable_amount(
-        &self,
-        now: Timestamp,
-        vesting_amount: Uint128,
-    ) -> MathResult<Uint128> {
+    pub fn compute_claimable(&self, now: Timestamp, total: Uint128) -> MathResult<Uint128> {
         let claim_percent = if now < self.start_time + self.cliff {
             // Before the cliff, no token is vested/unlocked.
             Udec128::ZERO
@@ -69,48 +65,45 @@ impl Schedule {
             Udec128::ONE
         };
 
-        vesting_amount.checked_mul_dec_floor(claim_percent)
+        total.checked_mul_dec_floor(claim_percent)
     }
 }
 
 #[grug::derive(Serde, Borsh)]
 pub struct Position {
     pub vesting_status: VestingStatus,
-    pub total_amount: Uint128,
-    pub claimed_amount: Uint128,
+    pub total: Uint128,
+    pub claimed: Uint128,
 }
 
 impl Position {
-    pub fn new(vesting_schedule: Schedule, total_amount: Uint128) -> Self {
+    pub fn new(vesting_schedule: Schedule, total: Uint128) -> Self {
         Self {
             vesting_status: VestingStatus::Active(vesting_schedule),
-            total_amount,
-            claimed_amount: Uint128::ZERO,
+            total,
+            claimed: Uint128::ZERO,
         }
     }
 
-    pub fn compute_claimable_amount(
+    pub fn compute_claimable(
         &self,
         now: Timestamp,
         unlocking_schedule: &Schedule,
     ) -> MathResult<Uint128> {
         // The claimable amount is the minimum between the claimable amount
         // from the vesting status and the unlocking schedule
-        let claimable_amount = min(
-            self.vesting_status
-                .compute_claimable_amount(now, self.total_amount)?,
-            unlocking_schedule.compute_claimable_amount(now, self.total_amount)?,
+        let claimable = min(
+            self.vesting_status.compute_claimable(now, self.total)?,
+            unlocking_schedule.compute_claimable(now, self.total)?,
         );
 
-        Ok(claimable_amount
-            .checked_sub(self.claimed_amount)
-            .unwrap_or_default())
+        Ok(claimable.checked_sub(self.claimed).unwrap_or_default())
     }
 
     pub fn full_claimed(&self) -> bool {
         match &self.vesting_status {
-            VestingStatus::Active(_) => self.total_amount == self.claimed_amount,
-            VestingStatus::Terminated(vested_amount) => *vested_amount == self.claimed_amount,
+            VestingStatus::Active(_) => self.total == self.claimed,
+            VestingStatus::Terminated(vested) => *vested == self.claimed,
         }
     }
 }
@@ -127,16 +120,10 @@ pub enum VestingStatus {
 }
 
 impl VestingStatus {
-    pub fn compute_claimable_amount(
-        &self,
-        now: Timestamp,
-        vesting_amount: Uint128,
-    ) -> MathResult<Uint128> {
+    pub fn compute_claimable(&self, now: Timestamp, total: Uint128) -> MathResult<Uint128> {
         match self {
-            VestingStatus::Active(schedule) => {
-                schedule.compute_claimable_amount(now, vesting_amount)
-            },
-            VestingStatus::Terminated(amount) => Ok(*amount),
+            VestingStatus::Active(schedule) => schedule.compute_claimable(now, total),
+            VestingStatus::Terminated(vested) => Ok(*vested),
         }
     }
 }
@@ -144,5 +131,5 @@ impl VestingStatus {
 #[grug::derive(Serde)]
 pub struct PositionResponse {
     pub position: Position,
-    pub claimable_amount: Uint128,
+    pub claimable: Uint128,
 }
