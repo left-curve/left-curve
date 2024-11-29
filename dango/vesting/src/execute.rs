@@ -11,6 +11,9 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     UNLOCKING_SCHEDULE.save(ctx.storage, &Schedule {
+        // Unlocking start time is defined as the token generation time.
+        // Since this contract is to be deployed at genesis, and the token is
+        // generated also at genesis, the start time is simply the block time.
         start_time: ctx.block.timestamp,
         cliff: msg.unlocking_cliff,
         period: msg.unlocking_period,
