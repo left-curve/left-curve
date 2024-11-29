@@ -5,7 +5,7 @@ use {
         config::AppConfig,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
-    grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, Response},
+    grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -41,9 +41,12 @@ fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Res
     );
 
     let coin = ctx.funds.into_one_coin_of_denom(&app_cfg.dango)?;
-    let position = Position::new(schedule, coin.amount);
 
-    POSITIONS.save(ctx.storage, user, &position)?;
+    POSITIONS.save(ctx.storage, user, &Position {
+        vesting_status: VestingStatus::Active(schedule),
+        total: coin.amount,
+        claimed: Uint128::ZERO,
+    })?;
 
     Ok(Response::new())
 }

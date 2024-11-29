@@ -62,14 +62,6 @@ pub struct Position {
 }
 
 impl Position {
-    pub fn new(vesting_schedule: Schedule, total: Uint128) -> Self {
-        Self {
-            vesting_status: VestingStatus::Active(vesting_schedule),
-            total,
-            claimed: Uint128::ZERO,
-        }
-    }
-
     pub fn compute_claimable(
         &self,
         now: Timestamp,
