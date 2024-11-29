@@ -3,7 +3,7 @@ use {
     dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, Binary, BlockInfo, Coin, Coins, ContractBuilder, ContractWrapper, Duration,
+        btree_map, Binary, BlockInfo, Coin, ContractBuilder, ContractWrapper, Duration,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
@@ -87,7 +87,12 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
+                balances: btree_map! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000,
+                }
+                .try_into()
+                .unwrap(),
             },
             relayer.username.clone() => GenesisUser {
                 key: relayer.key,

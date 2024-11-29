@@ -1,6 +1,9 @@
 use {
     dango_testing::{setup_test_naive, Accounts, TestSuite},
-    dango_types::vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
+    dango_types::{
+        config::DANGO_DENOM,
+        vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
+    },
     grug::{
         Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, ResultExt, Timestamp,
         Udec128, Uint128,
@@ -9,7 +12,7 @@ use {
     std::sync::LazyLock,
 };
 
-static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new("uusdc", 100).unwrap());
+static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new(DANGO_DENOM.clone(), 100).unwrap());
 
 const ONE_MONTH: Duration = Duration::from_weeks(4);
 const ONE_DAY: Duration = Duration::from_days(1);
@@ -38,7 +41,7 @@ fn missing_funds() {
             },
             Coins::default(),
         )
-        .should_fail_with_error("invalid payment: expecting 1 coins, found 0");
+        .should_fail_with_error("invalid payment: expecting 1, found 0");
 }
 
 #[test]
@@ -144,12 +147,12 @@ fn before_unlocking_starting_time() {
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
-        // Check if the position is removed
+        // Check if the position is updated
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_fail_with_error("not found");
+            .should_succeed_and(|res| res.position.claimed == res.position.total);
     }
 }
 
@@ -271,12 +274,12 @@ fn after_unlocking_starting_time() {
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
-        // Check if the position is removed
+        // Check if the position is updated
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_fail_with_error("not found");
+            .should_succeed_and(|res| res.position.claimed == res.position.total);
     }
 }
 
@@ -371,7 +374,10 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_fail_with_error("not found");
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
+                    && res.position.claimed == Uint128::new(40)
+            });
 
         // Check the balance of the user
         suite
@@ -481,7 +487,10 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_fail_with_error("not found");
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
+                    && res.position.claimed == Uint128::new(44)
+            });
 
         // Check the balance of the user
         suite
@@ -561,7 +570,10 @@ fn terminate_after_unlocking_starting_time() {
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_fail_with_error("not found");
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
+                    && res.position.claimed == Uint128::new(37)
+            });
 
         // Check the balance of the user
         suite
