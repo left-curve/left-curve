@@ -30,9 +30,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
     let cfg: AppConfig = ctx.querier.query_app_config()?;
-    let amount = ctx.funds.into_one_coin_of_denom(&cfg.dango)?;
+    let coin = ctx.funds.into_one_coin_of_denom(&cfg.dango)?;
     let (_, index) = NEXT_POSITION_INDEX.increment(ctx.storage)?;
-    let position = Position::new(user, schedule, amount);
+    let position = Position::new(user, schedule, coin.amount);
 
     POSITIONS.save(ctx.storage, index, &position)?;
 
@@ -41,6 +41,7 @@ fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Res
 
 fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     ensure!(
         cfg.owner == ctx.sender,
@@ -50,21 +51,21 @@ fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
     let mut position = POSITIONS.load(ctx.storage, idx)?;
 
     let terminal_amount = if let VestingStatus::Active(schedule) = &position.vesting_status {
-        schedule.compute_claimable_amount(ctx.block.timestamp, position.vested_token.amount)?
+        schedule.compute_claimable_amount(ctx.block.timestamp, position.total_amount)?
     } else {
         bail!("position is already terminated")
     };
 
     position.vesting_status = VestingStatus::Terminated(terminal_amount);
 
-    let refund_amount = position.vested_token.amount - terminal_amount;
+    let refund_amount = position.total_amount - terminal_amount;
 
     let refund_msg = if refund_amount.is_zero() {
         None
     } else {
         Some(Message::transfer(
             cfg.owner,
-            Coin::new(position.vested_token.denom.clone(), refund_amount)?,
+            Coin::new(app_cfg.dango, refund_amount)?,
         )?)
     };
 
@@ -78,6 +79,7 @@ fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
 }
 
 fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
+    let cfg: AppConfig = ctx.querier.query_app_config()?;
     let mut position = POSITIONS.load(ctx.storage, idx)?;
 
     ensure!(
@@ -104,6 +106,6 @@ fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,
-        Coin::new(position.vested_token.denom, claimable_amount)?,
+        Coin::new(cfg.dango, claimable_amount)?,
     )?))
 }

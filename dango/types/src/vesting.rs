@@ -1,7 +1,7 @@
 use {
     grug::{
-        Addr, Coin, Duration, MathResult, MultiplyFraction, Number, NumberConst, Timestamp,
-        Udec128, Uint128, Undefined,
+        Addr, Duration, MathResult, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
+        Uint128, Undefined,
     },
     std::{cmp::min, collections::BTreeMap},
 };
@@ -96,17 +96,17 @@ impl Schedule {
 pub struct Position<C = Undefined> {
     pub user: Addr,
     pub vesting_status: VestingStatus,
-    pub vested_token: Coin,
+    pub total_amount: Uint128,
     pub claimed_amount: Uint128,
     pub claimable_amount: C,
 }
 
 impl Position {
-    pub fn new(user: Addr, vesting_schedule: Schedule, amount: Coin) -> Self {
+    pub fn new(user: Addr, vesting_schedule: Schedule, total_amount: Uint128) -> Self {
         Self {
             user,
             vesting_status: VestingStatus::Active(vesting_schedule),
-            vested_token: amount,
+            total_amount,
             claimed_amount: Uint128::ZERO,
             claimable_amount: Undefined::new(),
         }
@@ -124,7 +124,7 @@ impl Position {
         Position {
             user: self.user,
             vesting_status: self.vesting_status,
-            vested_token: self.vested_token,
+            total_amount: self.total_amount,
             claimed_amount: self.claimed_amount,
             claimable_amount,
         }
@@ -141,8 +141,8 @@ impl<T> Position<T> {
         // from the vesting status and the unlocking schedule
         let claimable_amount = min(
             self.vesting_status
-                .compute_claimable_amount(now, self.vested_token.amount)?,
-            unlocking_schedule.compute_claimable_amount(now, self.vested_token.amount)?,
+                .compute_claimable_amount(now, self.total_amount)?,
+            unlocking_schedule.compute_claimable_amount(now, self.total_amount)?,
         );
 
         Ok(claimable_amount
@@ -152,7 +152,7 @@ impl<T> Position<T> {
 
     pub fn full_claimed(&self) -> bool {
         match &self.vesting_status {
-            VestingStatus::Active(_) => self.vested_token.amount == self.claimed_amount,
+            VestingStatus::Active(_) => self.total_amount == self.claimed_amount,
             VestingStatus::Terminated(terminated_amount) => {
                 *terminated_amount == self.claimed_amount
             },
