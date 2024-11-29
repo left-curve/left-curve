@@ -271,6 +271,7 @@ pub struct NonExistenceProof {
 
 ## Verifying Membership Proof
 
+`verifyMembership` returns true iff proof is an ExistenceProof for the given key and value AND calculating the root for the ExistenceProof matches the provided CommitmentRoot.
 Our `verifyMembership` function emulates [`verify_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L16-L42) Rust function.
 
 ```rust
@@ -447,6 +448,11 @@ fn calculate_existence_root_for_spec<H: HostFunctionsProvider>(
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
+/// VerifyNonMembership returns true iff
+/// proof is (contains) a NonExistenceProof,
+/// both left and right sub-proofs are valid existence proofs (see above) or nil,
+/// left and right proofs are neighbors (or left/right most if one is nil),
+/// provided key is between the keys of the two proofs
 ```
 -->
 ## Verifying NonMembership proof
