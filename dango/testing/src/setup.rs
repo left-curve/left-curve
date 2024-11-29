@@ -87,9 +87,11 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
+                // Some of the tests depend on the number of tokens, so careful
+                // when changing these. They may break tests...
                 balances: btree_map! {
                     "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000,
                 }
                 .try_into()
                 .unwrap(),
