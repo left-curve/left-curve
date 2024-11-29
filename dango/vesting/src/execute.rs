@@ -29,8 +29,15 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
-    let cfg: AppConfig = ctx.querier.query_app_config()?;
-    let coin = ctx.funds.into_one_coin_of_denom(&cfg.dango)?;
+    let cfg = ctx.querier.query_config()?;
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+
+    ensure!(
+        cfg.owner == ctx.sender,
+        "you don't have the right, O you don't have the right"
+    );
+
+    let coin = ctx.funds.into_one_coin_of_denom(&app_cfg.dango)?;
     let position = Position::new(schedule, coin.amount);
 
     POSITIONS.save(ctx.storage, user, &position)?;
