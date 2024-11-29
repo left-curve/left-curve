@@ -1,10 +1,11 @@
 use {
+    crate::Indexer,
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
     std::convert::Infallible,
 };
 
 /// This is a null indexer that does nothing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct NullIndexer;
 
 impl NullIndexer {
@@ -13,13 +14,7 @@ impl NullIndexer {
     }
 }
 
-impl Default for NullIndexer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl super::Indexer for NullIndexer {
+impl Indexer for NullIndexer {
     type Error = Infallible;
 
     fn start(&mut self) -> Result<(), Self::Error> {

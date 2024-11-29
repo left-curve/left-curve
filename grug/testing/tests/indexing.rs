@@ -2,7 +2,7 @@ use {
     assertor::*,
     grug_app::Indexer,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message},
+    grug_types::{Coins, Denom, Message, ResultExt},
     indexer_sql::entity,
     sea_orm::{EntityTrait, QueryOrder},
     std::str::FromStr,
@@ -23,50 +23,49 @@ fn index_block_with_blocking_indexer() {
 
     let to = accounts["owner"].address;
 
-    let _outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        2000,
-        Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
-    );
+    suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            2000,
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+        )
+        .should_succeed();
 
     // ensure block was saved
-    indexer
-        .runtime
-        .block_on(async {
-            let block = entity::blocks::Entity::find()
-                .one(&indexer.context.db)
-                .await
-                .expect("Can't fetch blocks");
-            assert_that!(block).is_some();
-            assert_that!(block.unwrap().block_height).is_equal_to(1);
+    indexer.runtime.block_on(async {
+        let block = entity::blocks::Entity::find()
+            .one(&indexer.context.db)
+            .await
+            .expect("Can't fetch blocks");
+        assert_that!(block).is_some();
+        assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let transactions = entity::transactions::Entity::find()
-                .all(&indexer.context.db)
-                .await
-                .expect("Can't fetch transactions");
-            assert_that!(transactions).is_not_empty();
+        let transactions = entity::transactions::Entity::find()
+            .all(&indexer.context.db)
+            .await
+            .expect("Can't fetch transactions");
+        assert_that!(transactions).is_not_empty();
 
-            let messages = entity::messages::Entity::find()
-                .all(&indexer.context.db)
-                .await
-                .expect("Can't fetch messages");
-            assert_that!(messages).is_not_empty();
+        let messages = entity::messages::Entity::find()
+            .all(&indexer.context.db)
+            .await
+            .expect("Can't fetch messages");
+        assert_that!(messages).is_not_empty();
 
-            let events = entity::events::Entity::find()
-                .all(&indexer.context.db)
-                .await
-                .expect("Can't fetch events");
-            assert_that!(events).is_not_empty();
+        let events = entity::events::Entity::find()
+            .all(&indexer.context.db)
+            .await
+            .expect("Can't fetch events");
+        assert_that!(events).is_not_empty();
+    });
 
-            Ok::<(), sea_orm::DbErr>(())
-        })
-        .expect("Can't commit txn");
-
-    let _outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        3000,
-        Message::transfer(to, Coins::new()).unwrap(),
-    );
+    suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            3000,
+            Message::transfer(to, Coins::new()).unwrap(),
+        )
+        .should_succeed();
 
     // ensure block was saved
     indexer
@@ -103,11 +102,13 @@ fn index_block_with_nonblocking_indexer() {
 
     let to = accounts["owner"].address;
 
-    let _outcome = suite.send_message_with_gas(
-        &mut accounts["sender"],
-        2000,
-        Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
-    );
+    suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            2000,
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+        )
+        .should_succeed();
 
     // Force the runtime to wait for the async indexer to finish
     indexer.shutdown().expect("Can't shutdown indexer");
@@ -142,8 +143,5 @@ fn index_block_with_nonblocking_indexer() {
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();
-
-            Ok::<(), sea_orm::DbErr>(())
-        })
-        .expect("Can't commit txn");
+        });
 }

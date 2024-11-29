@@ -69,7 +69,7 @@ where
     VM: Vm + Clone,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain(
         &self,
@@ -153,10 +153,10 @@ where
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|_err| {
+            .unwrap_or_else(|err| {
                 #[cfg(feature = "tracing")]
                 error!(
-                    err = _err.to_string(),
+                    err = err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
 
@@ -196,9 +196,7 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        self.indexer
-            .pre_indexing(block.height)
-            .expect("Cant set DB txn");
+        self.indexer.pre_indexing(block.height)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -300,9 +298,7 @@ where
                 AuthMode::Finalize,
             );
 
-            self.indexer
-                .index_transaction(&block, &tx, &tx_outcome)
-                .unwrap();
+            self.indexer.index_transaction(&block, &tx, &tx_outcome)?;
 
             tx_outcomes.push(tx_outcome);
         }
@@ -339,7 +335,7 @@ where
             tx_outcomes,
         };
 
-        self.indexer.index_block(&block, &block_outcome).unwrap();
+        self.indexer.index_block(&block, &block_outcome)?;
 
         Ok(block_outcome)
     }
@@ -351,7 +347,7 @@ where
         tracing::info!(height = self.db.latest_version(), "Committed state");
 
         if let Some(block_height) = self.db.latest_version() {
-            self.indexer.post_indexing(block_height).unwrap();
+            self.indexer.post_indexing(block_height)?;
         }
 
         Ok(())
@@ -534,7 +530,7 @@ where
     VM: Vm + Clone,
     ID: Indexer,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain_raw(
         &self,

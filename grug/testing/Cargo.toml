@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+assertor           = { workspace = true }
 grug-app           = { workspace = true, features = ["tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
@@ -21,22 +22,11 @@ grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
 k256               = { workspace = true }
 rand               = { workspace = true }
+sea-orm            = { workspace = true }
 serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }
-assertor           = { workspace = true }
-
-[dependencies.sea-orm]
-version = "1.1.0"
-features = [
-  "runtime-tokio-rustls",
-  "sqlx-postgres",
-  "sqlx-sqlite",
-  "with-json",
-  "with-chrono",
-  "with-uuid",
-]
 
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }

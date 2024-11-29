@@ -209,8 +209,8 @@ pub trait ProposalPreparer {
 // ------------------------------- indexer -------------------------------------
 
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
-pub trait Indexer: Clone {
-    type Error: ToString + std::fmt::Debug;
+pub trait Indexer {
+    type Error: ToString;
 
     /// Called when initializing the indexer, allowing for DB migration if needed
     fn start(&mut self) -> Result<(), Self::Error> {

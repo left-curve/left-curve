@@ -125,9 +125,33 @@ dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
 
 # Indexer packages
+assertor              = { version = "0.0", git = "https://github.com/google/assertor" }
+async-std             = { version = "1", features = ["attributes", "tokio1"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
-assertor              = { version = "0.0", git = "https://github.com/google/assertor" }
+uuid                  = { version = "1", features = ["serde", "v4"] }
+
+[workspace.dependencies.sea-orm]
+version = "1.1.0"
+features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+  "sqlx-sqlite",
+  "with-json",
+  "with-chrono",
+  "with-uuid",
+]
+
+[workspace.dependencies.sea-orm-migration]
+version  = "1.1.0"
+features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+  "sqlx-sqlite",
+  "with-json",
+  "with-chrono",
+  "with-uuid",
+]
 
 [profile.release]
 codegen-units    = 1

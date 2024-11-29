@@ -88,7 +88,7 @@ where
     VM: Vm + Clone,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");

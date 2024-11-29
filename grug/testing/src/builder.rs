@@ -521,7 +521,7 @@ where
     M3: Serialize,
     VM: TestVm + Clone,
     PP: ProposalPreparer,
-    AppError: From<VM::Error> + From<PP::Error>,
+    AppError: From<VM::Error> + From<PP::Error> + From<ID::Error>,
     ID: Indexer,
 {
     pub fn build(self) -> (TestSuite<MemDb, VM, PP, ID>, TestAccounts) {

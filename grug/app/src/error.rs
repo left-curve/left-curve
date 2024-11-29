@@ -1,5 +1,6 @@
 use {
     grug_types::{Addr, Hash256, StdError},
+    std::convert::Infallible,
     thiserror::Error,
 };
 
@@ -8,11 +9,17 @@ pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
 
+    #[error(transparent)]
+    Infallible(#[from] Infallible),
+
     #[error("VM error: {0}")]
     Vm(String),
 
     #[error("DB error: {0}")]
     Db(String),
+
+    #[error("ID error: {0}")]
+    Id(String),
 
     #[error("proposal preparer error: {0}")]
     PrepareProposal(String),
@@ -24,7 +31,7 @@ pub enum AppError {
         msg: String,
     },
 
-    #[error("Merkle proof is not supported for `/app` query; use `/store` instead")]
+    #[error("merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
 
     #[error("simulating a transaction at past block height is not supported")]

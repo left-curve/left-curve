@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, Indexer, NullIndexer},
+    grug_app::{App, AppError, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,
@@ -54,7 +54,8 @@ impl StartCmd {
 
     async fn run_with_indexer<ID>(self, data_dir: PathBuf, indexer: ID) -> anyhow::Result<()>
     where
-        ID: Indexer + Send + 'static,
+        ID: Indexer + Send + Clone + 'static,
+        AppError: From<ID::Error>,
     {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);

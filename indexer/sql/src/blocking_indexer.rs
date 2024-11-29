@@ -2,7 +2,7 @@ use {
     crate::{bail, entity, error, Context},
     grug_app::Indexer,
     grug_math::Inner,
-    grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    grug_types::{BlockInfo, BlockOutcome, JsonSerExt, Tx, TxOutcome},
     sea_orm::{
         prelude::*, sqlx::types::chrono::TimeZone, ActiveModelTrait, DatabaseTransaction, Set,
         TransactionTrait,
@@ -24,14 +24,13 @@ impl BlockingIndexer {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
-                .build()
-                .unwrap());
+                .build()?);
 
         let db = runtime.block_on(async { Context::connect_db().await })?;
 
         Ok(BlockingIndexer {
             context: Context { db },
-            runtime: runtime.clone(),
+            runtime,
             db_txn: Arc::new(Mutex::new(None)),
         })
     }
@@ -40,21 +39,20 @@ impl BlockingIndexer {
         let runtime = Arc::new(Builder::new_multi_thread()
                 //.worker_threads(4)  // Adjust as needed
                 .enable_all()
-                .build()
-                .unwrap());
+                .build()?);
 
         let db = runtime.block_on(async { Context::connect_db_with_url(database_url).await })?;
 
         Ok(BlockingIndexer {
             context: Context { db },
-            runtime: runtime.clone(),
+            runtime,
             db_txn: Arc::new(Mutex::new(None)),
         })
     }
 }
 
 impl Indexer for BlockingIndexer {
-    type Error = error::Error;
+    type Error = error::IndexerError;
 
     fn start(&mut self) -> error::Result<()> {
         self.runtime
@@ -65,14 +63,12 @@ impl Indexer for BlockingIndexer {
     fn shutdown(&mut self) -> error::Result<()> {
         //// This is making sure the current transaction is being committed before we shutdown the
         //// process
-        let mut db_txn = self.db_txn.lock().unwrap();
+        let mut db_txn = self.db_txn.lock()?;
         let Some((_, txn)) = db_txn.take() else {
             return Ok(());
         };
 
-        self.runtime.block_on(async {
-            txn.commit().await.expect("Can't commit txn");
-        });
+        self.runtime.block_on(async { txn.commit().await })?;
 
         *db_txn = None;
         Ok(())
@@ -83,16 +79,13 @@ impl Indexer for BlockingIndexer {
             .runtime
             .block_on(async { self.context.db.begin().await })?;
 
-        self.db_txn
-            .lock()
-            .unwrap()
-            .replace((block_height, db_transaction));
+        self.db_txn.lock()?.replace((block_height, db_transaction));
 
         Ok(())
     }
 
     fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
-        let db_txn = self.db_txn.lock().unwrap();
+        let db_txn = self.db_txn.lock()?;
         let Some((block_height, txn)) = db_txn.as_ref() else {
             bail!("No transaction to commit");
         };
@@ -112,12 +105,14 @@ impl Indexer for BlockingIndexer {
 
             let new_block = entity::blocks::ActiveModel {
                 id: Set(Uuid::new_v4()),
-                block_height: Set(block.height.try_into().unwrap()),
+                block_height: Set(block.height.try_into()?),
                 created_at: Set(naive_datetime),
                 hash: Set(block.hash.to_string()),
             };
-            new_block.insert(txn).await.expect("Can't save block");
-        });
+            new_block.insert(txn).await?;
+
+            Ok::<_, error::IndexerError>(())
+        })?;
 
         Ok(())
     }
@@ -128,7 +123,7 @@ impl Indexer for BlockingIndexer {
         tx: &Tx,
         tx_outcome: &TxOutcome,
     ) -> error::Result<()> {
-        let db_txn = self.db_txn.lock().unwrap();
+        let db_txn = self.db_txn.lock()?;
         let Some((block_height, txn)) = db_txn.as_ref() else {
             bail!("No transaction to commit");
         };
@@ -152,25 +147,25 @@ impl Indexer for BlockingIndexer {
                 id: Set(transaction_id),
                 has_succeeded: Set(tx_outcome.result.is_ok()),
                 error_message: Set(tx_outcome.clone().result.err()),
-                gas_wanted: Set(tx.gas_limit.try_into().unwrap()),
-                gas_used: Set(tx_outcome.gas_used.try_into().unwrap()),
+                gas_wanted: Set(tx.gas_limit.try_into()?),
+                gas_used: Set(tx_outcome.gas_used.try_into()?),
                 created_at: Set(naive_datetime),
-                block_height: Set(block.height.try_into().unwrap()),
+                block_height: Set(block.height.try_into()?),
                 hash: Set("".to_string()),
                 data: Set(tx.data.clone().into_inner()),
                 sender: Set(sender.clone()),
                 credential: Set(tx.credential.clone().into_inner()),
             };
-            new_transaction
-                .insert(txn)
-                .await
-                .expect("Can't save transaction");
+            new_transaction.insert(txn).await?;
+
             for message in tx.msgs.iter() {
-                let serialized_message = serde_json::to_value(message).unwrap();
+                let serialized_message = message.to_json_value()?;
+
                 let contract_addr = serialized_message
                     .get("contract")
                     .and_then(|c| c.as_str())
                     .map(|c| c.to_string());
+
                 let method_name = serialized_message
                     .as_object()
                     .and_then(|obj| obj.keys().next().cloned())
@@ -179,35 +174,38 @@ impl Indexer for BlockingIndexer {
                 let new_message = entity::messages::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     transaction_id: Set(transaction_id),
-                    block_height: Set(block.height.try_into().unwrap()),
+                    block_height: Set(block.height.try_into()?),
                     created_at: Set(naive_datetime),
                     method_name: Set(method_name),
-                    data: Set(serialized_message),
+                    data: Set(serialized_message.into_inner()),
                     contract_addr: Set(contract_addr),
                     owner_addr: Set(sender.clone()),
                 };
-                new_message.insert(txn).await.expect("Can't save message");
+
+                new_message.insert(txn).await?;
             }
             for event in tx_outcome.events.iter() {
-                let serialized_attributes = serde_json::to_value(&event.attributes).unwrap();
+                let serialized_attributes = event.attributes.to_json_value()?;
+
                 let new_event = entity::events::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     transaction_id: Set(transaction_id),
-                    block_height: Set(block.height.try_into().unwrap()),
+                    block_height: Set(block.height.try_into()?),
                     created_at: Set(naive_datetime),
                     r#type: Set(event.r#type.clone()),
-                    attributes: Set(serialized_attributes),
+                    attributes: Set(serialized_attributes.into_inner()),
                 };
-                new_event.insert(txn).await.expect("Can't save event");
-            }
-        });
 
-        Ok(())
+                new_event.insert(txn).await?;
+            }
+
+            Ok(())
+        })
     }
 
     /// NOTE: when calling this, the DB transaction Mutex but be unlocked!
     fn post_indexing(&self, block_height: u64) -> error::Result<()> {
-        let mut db_txn = self.db_txn.lock().unwrap();
+        let mut db_txn = self.db_txn.lock()?;
         let Some((txn_block_height, txn)) = db_txn.take() else {
             bail!("No transaction to commit");
         };
@@ -249,7 +247,7 @@ mod tests {
     fn should_migrate_db_and_create_block() -> anyhow::Result<()> {
         let app = app();
         app.pre_indexing(1).expect("Can't create db txn");
-        let db = app.db_txn.lock().unwrap();
+        let db = app.db_txn.lock().expect("Can't get lock");
         let Some((_, db)) = db.as_ref() else {
             anyhow::bail!("No transaction to commit");
         };
@@ -274,7 +272,7 @@ mod tests {
         app.pre_indexing(1)?;
         app.runtime
             .block_on(async {
-                let db_guard = app.db_txn.lock().unwrap();
+                let db_guard = app.db_txn.lock().expect("Can't get lock");
                 let Some((_, db)) = db_guard.as_ref() else {
                     panic!("No transaction to commit");
                 };
@@ -290,7 +288,7 @@ mod tests {
     fn should_use_db_transaction_in_multiple_steps() -> Result<(), anyhow::Error> {
         let app = app();
         app.pre_indexing(1)?;
-        let mut guard_db = app.db_txn.lock().unwrap();
+        let mut guard_db = app.db_txn.lock().expect("Can't get lock");
         let Some((_, db)) = guard_db.as_ref() else {
             anyhow::bail!("No transaction to commit");
         };

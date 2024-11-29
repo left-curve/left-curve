@@ -108,13 +108,13 @@ struct BlockToIndex {
 
 impl BlockToIndex {
     /// Takes care of inserting the data in the database
-    pub async fn save(self, db: &DatabaseTransaction) -> Result<(), sea_orm::DbErr> {
+    pub async fn save(self, db: &DatabaseTransaction) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block_info.height, "Indexing block");
 
-        let mut models = Models::build(&self.block_info);
+        let mut models = Models::build(&self.block_info)?;
         for tx in self.txs.iter() {
-            models.push(&tx.0, &tx.1);
+            models.push(&tx.0, &tx.1)?;
         }
 
         // TODO: if the process was to crash in the middle and restarted, we could try to
@@ -181,7 +181,7 @@ impl NonBlockingIndexer {
 }
 
 impl Indexer for NonBlockingIndexer {
-    type Error = crate::error::Error;
+    type Error = crate::error::IndexerError;
 
     fn start(&mut self) -> error::Result<()> {
         let context = self.context.clone();
