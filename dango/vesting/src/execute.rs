@@ -1,8 +1,9 @@
 use {
     crate::{NEXT_POSITION_INDEX, POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
-    dango_types::vesting::{
-        ExecuteMsg, InstantiateMsg, Position, PositionIndex, Schedule, VestingStatus,
+    dango_types::{
+        config::AppConfig,
+        vesting::{ExecuteMsg, InstantiateMsg, Position, PositionIndex, Schedule, VestingStatus},
     },
     grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, Response},
 };
@@ -28,7 +29,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
-    let amount = ctx.funds.into_one_coin()?;
+    let cfg: AppConfig = ctx.querier.query_app_config()?;
+    let amount = ctx.funds.into_one_coin_of_denom(&cfg.dango)?;
     let (_, index) = NEXT_POSITION_INDEX.increment(ctx.storage)?;
     let position = Position::new(user, schedule, amount);
 
