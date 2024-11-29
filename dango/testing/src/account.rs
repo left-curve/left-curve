@@ -1,5 +1,6 @@
 use {
     crate::TestSuite,
+    bip32::{Language, Mnemonic, XPrv},
     dango_types::{
         account::single,
         account_factory::{
@@ -18,6 +19,8 @@ use {
     },
     std::{collections::BTreeMap, str::FromStr},
 };
+
+pub const HD_PATH: &str = "m/44'/60'/0'/0/0";
 
 pub struct Accounts {
     pub owner: TestAccount,
@@ -56,6 +59,36 @@ impl TestAccount<Undefined<Addr>> {
             username,
             key,
             key_hash,
+            sequence: 0,
+            sk,
+            address: Undefined::new(),
+        }
+    }
+
+    pub fn new_from_seed_phrase(username: &str, seed_phrase: &str) -> TestAccount<Undefined<Addr>> {
+        let mnemonic = Mnemonic::new(seed_phrase, Language::English).unwrap();
+        let seed = mnemonic.to_seed(""); // empty password
+        let path = HD_PATH.parse().unwrap();
+        let pk = XPrv::derive_from_path(seed, &path).unwrap();
+
+        let sk = SigningKey::from_bytes(&pk.to_bytes().into()).unwrap();
+
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .as_ref()
+            .try_into()
+            .expect("pk is of wrong length");
+
+        let key = Key::Secp256k1(pk);
+
+        let username = Username::from_str(username).unwrap();
+
+        Self {
+            username,
+            key,
+            key_hash: pk.hash160(),
             sequence: 0,
             sk,
             address: Undefined::new(),
@@ -101,6 +134,17 @@ impl TestAccount<Undefined<Addr>> {
             sequence: self.sequence,
             sk: self.sk,
             address: Defined::new(address),
+        }
+    }
+
+    pub fn with_address(self, addr: Addr) -> TestAccount {
+        TestAccount {
+            username: self.username,
+            key: self.key,
+            key_hash: self.key_hash,
+            sequence: self.sequence,
+            sk: self.sk,
+            address: Defined::new(addr),
         }
     }
 }

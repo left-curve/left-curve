@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+bip32                 = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }

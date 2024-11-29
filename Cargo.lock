@@ -1561,6 +1561,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-scripts"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "bip32",
+ "dango-testing",
+ "dango-types",
+ "grug",
+ "grug-client",
+ "hex",
+ "tokio",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -1574,6 +1588,7 @@ name = "dango-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "bip32",
  "criterion",
  "dango-account-factory",
  "dango-account-margin",

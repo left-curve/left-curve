@@ -177,6 +177,17 @@ impl Client {
             .map(|res| res.as_config())
     }
 
+    pub async fn query_app_config<T>(&self, height: Option<u64>) -> anyhow::Result<T>
+    where
+        T: DeserializeOwned,
+    {
+        Ok(self
+            .query_app(&Query::app_config(), height)
+            .await
+            .map(|res| res.as_app_config())?
+            .deserialize_json()?)
+    }
+
     /// Query an account's balance in a single denom.
     pub async fn query_balance(
         &self,
