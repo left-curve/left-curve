@@ -13,30 +13,27 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
 
   return (
     <div className="flex flex-col items-center justify-center w-full gap-8">
-      <div
-        className={twMerge("flex flex-col items-center", {
-          "dango-grid-3x4-L": isFirstStep,
-          "dango-grid-4x4-M": !isFirstStep,
-        })}
-      >
-        <div className="flex flex-col gap-4 items-center">
-          <p className="font-extrabold text-typography-black-200 tracking-widest uppercase text-lg">
-            {[0, 1].includes(activeStep) ? "signup" : null}
-            {isThirdStep ? "new spot account" : null}
-          </p>
-          <p className="text-typography-black-100 text-lg text-center">
-            {isFirstStep
-              ? "Choose your username. It will be public onchain and cannot be changed afterwards."
-              : null}
-            {isSecondStep
-              ? "Choose a sign-in credential. You can add or remove credentials afterwards."
-              : null}
-            {isThirdStep
-              ? "Fund your first spot account with USDC from other existing wallets of yours."
-              : null}
-          </p>
+      <div className="flex flex-col items-center w-full bg-surface-rose-100 px-8 py-6 rounded-3xl max-w-2xl gap-12 shadow-md">
+        <div className="flex flex-col gap-8 md:gap-10 w-full">
+          <div className="flex flex-col gap-4 items-center">
+            <p className="font-extrabold text-typography-rose-700 tracking-widest uppercase text-lg">
+              {[0, 1].includes(activeStep) ? "signup" : null}
+              {isThirdStep ? "new spot account" : null}
+            </p>
+            <p className="text-typography-rose-600 text-lg text-center">
+              {isFirstStep
+                ? "Choose your username. It will be public onchain and cannot be changed afterwards."
+                : null}
+              {isSecondStep
+                ? "Choose a sign-in credential. You can add or remove credentials afterwards."
+                : null}
+              {isThirdStep
+                ? "Fund your first spot account with USDC from other existing wallets of yours."
+                : null}
+            </p>
+          </div>
+          <div className="flex flex-1 justify-center items-center w-full">{children}</div>
         </div>
-        <div className="flex flex-1 justify-center items-center w-full">{children}</div>
         <div className="flex gap-4">
           <p
             className={twMerge(
@@ -68,7 +65,7 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
         type="button"
         variant="light"
         color="rose"
-        className="text-lg italic"
+        className="italic"
         onClick={() => (isFirstStep ? navigate("/auth/login") : previousStep())}
       >
         {isFirstStep ? "Already have an account?" : "Back"}

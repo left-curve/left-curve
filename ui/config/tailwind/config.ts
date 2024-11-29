@@ -52,16 +52,17 @@ export const tailwindConfig: Partial<Config> = {
         "typography-rose": {
           500: "#E0B989",
           600: "#C9A274",
+          700: "#B88447",
         },
         "typography-yellow": {
           300: "#CFBA4F",
           400: "#C8B137",
         },
         "surface-rose": {
-          100: "#FFFAF5",
-          200: "#FEF1E1",
-          300: "#FDE8CE",
-          400: "#FCDFBA",
+          100: "#FEF1E1",
+          200: "#FDE8CE",
+          300: "#FCDFBB",
+          400: "#FBD6A7",
           600: "#C9A274",
         },
         "surface-purple": {

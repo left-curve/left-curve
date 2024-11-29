@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { ArrowSelectorIcon, ConnectorButtonOptions, twMerge, useWizard } from "@dango/shared";
+import { Select, SelectItem, useWizard } from "@dango/shared";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -21,7 +21,6 @@ import type { EIP1193Provider, Key } from "@left-curve/types";
 import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export const ConnectStep: React.FC = () => {
-  const [connectorLoading, setConnectorLoading] = useState<string>();
   const navigate = useNavigate();
 
   const config = useConfig();
@@ -33,10 +32,13 @@ export const ConnectStep: React.FC = () => {
   const { data } = useWizard<{ username: string }>();
   const { username } = data;
 
-  const { mutateAsync: createAccount, isError } = useMutation({
+  const {
+    mutateAsync: createAccount,
+    isError,
+    isPending,
+  } = useMutation({
     mutationFn: async (connectorId: string) => {
       try {
-        setConnectorLoading(connectorId);
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("error: missing connector");
         const challenge = "Please sign this message to confirm your identity.";
@@ -108,8 +110,6 @@ export const ConnectStep: React.FC = () => {
       } catch (err) {
         console.log(err);
         throw err;
-      } finally {
-        setConnectorLoading(undefined);
       }
     },
   });
@@ -119,15 +119,9 @@ export const ConnectStep: React.FC = () => {
     navigate("/");
   }, [navigate, status]);
 
-  const [showOtherSignup, setShowOtherSignup] = useState(false);
-
   return (
-    <div className="flex flex-col w-full gap-3 md:gap-6">
-      <Button
-        fullWidth
-        onClick={() => createAccount("passkey")}
-        isLoading={connectorLoading === "passkey"}
-      >
+    <div className="flex flex-col w-full gap-6">
+      <Button fullWidth onClick={() => createAccount("passkey")} isLoading={isPending}>
         Signup with Passkey
       </Button>
       {isError ? (
@@ -135,34 +129,30 @@ export const ConnectStep: React.FC = () => {
           We couldn't complete the request
         </p>
       ) : null}
-      <div className="flex items-center justify-center">
-        <span className="h-[1px] w-full flex-1 bg-typography-purple-400" />
-        <button
-          className="px-3 flex gap-2 items-center justify-center"
-          type="button"
-          onClick={() => setShowOtherSignup((current) => !current)}
-        >
-          <span>Other wallets </span>
-          <span>
-            <ArrowSelectorIcon
-              className={twMerge("w-4 h-4 transition-all", { "rotate-180": showOtherSignup })}
-            />
-          </span>
-        </button>
-        <span className="h-[1px] w-full flex-1 bg-typography-purple-400" />
-      </div>
-      <div
-        className={twMerge("transition-all w-full flex flex-col gap-2 h-0 overflow-hidden", {
-          "h-fit": showOtherSignup,
-        })}
+      <Select
+        label="login-methods"
+        placeholder="Alternative sign up methods"
+        isDisabled={isPending}
+        position="static"
+        onSelectionChange={(connectorId) => createAccount(connectorId.toString())}
       >
-        <ConnectorButtonOptions
-          mode="signup"
-          connectors={connectors}
-          selectedConnector={connectorLoading}
-          onClick={createAccount}
-        />
-      </div>
+        {connectors
+          .filter((c) => c.id !== "passkey")
+          .map((connector) => {
+            return (
+              <SelectItem key={connector.id}>
+                <div className="flex gap-2">
+                  <img
+                    src={connector.icon}
+                    aria-label="connector-image"
+                    className="w-6 h-6 rounded"
+                  />
+                  <span>{connector.name}</span>
+                </div>
+              </SelectItem>
+            );
+          })}
+      </Select>
     </div>
   );
 };
