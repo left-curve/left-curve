@@ -27,7 +27,7 @@ impl Models {
             block_height: self.block.block_height.clone(),
             hash: Set("".to_string()),
             data: Set(tx.data.clone().into_inner()),
-            sender: Set(sender),
+            sender: Set(sender.clone()),
             credential: Set(tx.credential.clone().into_inner()),
         };
         self.transactions.push(new_transaction);
@@ -50,7 +50,8 @@ impl Models {
                 created_at: self.block.created_at.clone(),
                 method_name: Set(method_name),
                 data: Set(serialized_message),
-                addr: Set(contract_addr),
+                contract_addr: Set(contract_addr),
+                owner_addr: Set(sender.clone()),
             };
             self.messages.push(new_message);
         }

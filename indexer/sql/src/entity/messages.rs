@@ -13,7 +13,8 @@ pub struct Model {
     pub data: Json,
     pub method_name: String,
     pub block_height: i64,
-    pub addr: Option<String>,
+    pub contract_addr: Option<String>,
+    pub owner_addr: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

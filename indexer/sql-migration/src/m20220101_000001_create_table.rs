@@ -69,7 +69,8 @@ impl MigrationTrait for Migration {
                             .big_unsigned()
                             .not_null(),
                     )
-                    .col(string_null(Message::Addr))
+                    .col(string_null(Message::ContractAddr))
+                    .col(string(Message::OwnerAddr))
                     .to_owned(),
             )
             .await?;

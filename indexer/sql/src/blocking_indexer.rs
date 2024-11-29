@@ -158,7 +158,7 @@ impl Indexer for BlockingIndexer {
                 block_height: Set(block.height.try_into().unwrap()),
                 hash: Set("".to_string()),
                 data: Set(tx.data.clone().into_inner()),
-                sender: Set(sender),
+                sender: Set(sender.clone()),
                 credential: Set(tx.credential.clone().into_inner()),
             };
             new_transaction
@@ -183,7 +183,8 @@ impl Indexer for BlockingIndexer {
                     created_at: Set(naive_datetime),
                     method_name: Set(method_name),
                     data: Set(serialized_message),
-                    addr: Set(contract_addr),
+                    contract_addr: Set(contract_addr),
+                    owner_addr: Set(sender.clone()),
                 };
                 new_message.insert(txn).await.expect("Can't save message");
             }
