@@ -6,21 +6,21 @@ Most of the correspondance is shown by comparing the Rust code with Quint code s
 
 This document covers main verification functions:
 
-- [`verifyMembership`](#verifying-existence-proof)
-- [`verifyNonMembership`](#verifying-non-existence-proof)
+- [`verifyMembership`](#verifying-membership-proof)
+- [`verifyNonMembership`](#verifying-nonmembership-proof)
 
 And other helper functions that are used:
 
-- [`verify`](#verify-parts-of-proof)
-- [`existsCalculate`](#calculating-hash-from-existence-proof)
-- [`hasPadding`](#has_padding)
-- [`orderFromPadding`](#order_from_padding)
-- [`leftBranchesAreEmpty`](#left_branches_empty)
-- [`isLeftMost`](#is_left_most)
-- [`rightBranchesAreEmpty`](#right_branches_empty)
-- [`isRightMost`](#is_right_most)
-- [`isLeftStep`](#is_left_step)
-- [`isLeftNeighbor`](#is_left_neighbor)
+- [`verify`](#verifying-existence)
+- [`existsCalculate`](#calculating-root-hash-from-existence-proof)
+- [`hasPadding`](#has-padding)
+- [`orderFromPadding`](#order-from-padding)
+- [`leftBranchesAreEmpty`](#left-branches-empty)
+- [`isLeftMost`](#is-left-most)
+- [`rightBranchesAreEmpty`](#right-branches-empty)
+- [`isRightMost`](#is-right-most)
+- [`isLeftStep`](#is-left-step)
+- [`isLeftNeighbor`](#is-left-neighbor)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [grug_ics23.qnt](./grug_ics23.qnt).
@@ -226,14 +226,126 @@ type ExistsProof_t = {
 -->
 ```bluespec "definitions" +=
 type NonExistsProof_t = {
-  key: Key_t, left: Option[ExistsProof_t], right: Option[ExistsProof_t]
+  key: Key_t, 
+  left: Option[ExistsProof_t], 
+  right: Option[ExistsProof_t]
 }
 ```
-<!-- Empty line, to be tangled but not rendered
+
+They correspond to the [following Rust structures](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L48C2):
+```rust
+pub struct ExistenceProof {
+    #[prost(bytes = "vec", tag = "1")]
+    pub key: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes = "vec", tag = "2")]
+    pub value: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "3")]
+    pub leaf: ::core::option::Option<LeafOp>,
+    #[prost(message, repeated, tag = "4")]
+    pub path: ::prost::alloc::vec::Vec<InnerOp>,
+}
+
+pub struct NonExistenceProof {
+    #[prost(bytes = "vec", tag = "1")]
+    pub key: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "2")]
+    pub left: ::core::option::Option<ExistenceProof>,
+    #[prost(message, optional, tag = "3")]
+    pub right: ::core::option::Option<ExistenceProof>,
+}
+```
+<!--
 ```bluespec "definitions" +=
 
+/// VerifyMembership returns true iff
+/// proof is an ExistenceProof for the given key and value AND
+/// calculating the root for the ExistenceProof matches
+/// the provided CommitmentRoot
 ```
 -->
+
+## Verifying Membership Proof
+
+Our `verifyMembership` function emulates the following Rust code:
+```rust
+pub fn verify_membership<H: HostFunctionsProvider>(
+    proof: &ics23::CommitmentProof,
+    spec: &ics23::ProofSpec,
+    root: &CommitmentRoot,
+    key: &[u8],
+    value: &[u8],
+) -> bool {
+    // ugly attempt to conditionally decompress...
+    let mut proof = proof;
+    let my_proof;
+    if is_compressed(proof) {
+        if let Ok(p) = decompress(proof) {
+            my_proof = p;
+            proof = &my_proof;
+        } else {
+            return false;
+        }
+    }
+
+    //    if let Some(ics23::commitment_proof::Proof::Exist(ex)) = &proof.proof {
+    if let Some(ex) = get_exist_proof(proof, key) {
+        let valid = verify_existence::<H>(ex, spec, root, key, value);
+        valid.is_ok()
+    } else {
+        false
+    }
+}
+```
+
+We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
+
+```bluespec "definitions" +=
+def verifyMembership(root: CommitmentRoot_t,
+    proof: ExistsProof_t, key: Key_t, value: Value_t): bool = {
+  // TODO: specify Decompress
+  // TODO: specify the case of CommitmentProof_Batch
+  // TODO: CheckAgainstSpec ensures that the proof can be verified
+  //       by the spec checker
+  verify(proof, root, key, value)
+}
+```
+
+## Verifying existence
+
+Verifying membership emulates the [following Rust code](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L18C1-L32C2).
+```rust
+pub fn verify_existence<H: HostFunctionsProvider>(
+    proof: &ics23::ExistenceProof,
+    spec: &ics23::ProofSpec,
+    root: &[u8],
+    key: &[u8],
+    value: &[u8],
+) -> Result<()> {
+    check_existence_spec(proof, spec)?;
+    ensure!(proof.key == key, "Provided key doesn't match proof");
+    ensure!(proof.value == value, "Provided value doesn't match proof");
+
+    let calc = calculate_existence_root_for_spec::<H>(proof, Some(spec))?;
+    ensure!(calc == root, "Root hash doesn't match");
+    Ok(())
+}
+```
+
+Our implementations assumes that proof and spec are alligned and therefore we did not implemnt `check_existence_spec` function.
+<!--
+```bluespec "definitions" +=
+
+  /// verify that a proof matches a root
+```
+-->
+```bluespec "definitions" +=
+def verify(proof, root, key, value) = and {
+  key == proof.key,
+  value == proof.value,
+  root == existsCalculate(proof)
+}
+```
+
 ## Calculating root hash from existence proof
 
 This function uses existence proof to calculate root hash out of it. To do so, first it calculates hash of the leaf based on `key` and `value` from the proof. To do so, we are using a specific hash function from Grug JMT implementation.
@@ -326,22 +438,18 @@ fn calculate_existence_root_for_spec<H: HostFunctionsProvider>(
 
 ## Verifying NonExistence proof
 
-## verify parts of proof
+## has padding
 
-## calculating_hash_from_existence_proof
+## order from padding
 
-## has_padding
+## left branches empty
 
-## order_from_padding
+## is left most
 
-## left_branches_empty
+## right branches empty
 
-## is_left_most
+## is right most
 
-## right_branches_empty
+## is left step
 
-## is_right_most
-
-## is_left_step
-
-## is_left_neighbor
+## is left neighbor
