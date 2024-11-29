@@ -303,7 +303,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         )
         .should_succeed();
 
-    let epoche = epoche(ONE_MONTH * 27, TEST_AMOUNT.amount);
+    let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
 
     let initial_balance = suite
         .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
@@ -356,8 +356,8 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(37));
 
-        // Go forward 3 epoche to claim all tokens
-        suite.block_time = epoche * 3;
+        // Go forward 3 epoch to claim all tokens
+        suite.block_time = epoch * 3;
 
         // Claim
         suite
@@ -406,7 +406,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         )
         .should_succeed();
 
-    let epoche = epoche(ONE_MONTH * 27, TEST_AMOUNT.amount);
+    let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
 
     let initial_balance = suite
         .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
@@ -468,9 +468,9 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                     && res.claimable == Uint128::new(3)
             });
 
-        // 4 epoche is needed to claim all tokens
-        // Instead wait for 8 epoche to check if there are any problems waiting more than needed
-        suite.block_time = epoche * 8;
+        // 4 epoch is needed to claim all tokens
+        // Instead wait for 8 epoch to check if there are any problems waiting more than needed
+        suite.block_time = epoch * 8;
 
         // Claim
         suite
@@ -583,6 +583,6 @@ fn terminate_after_unlocking_starting_time() {
 }
 
 // Duration for unlock 1 token
-fn epoche(total_duration: Duration, vesting_amount: Uint128) -> Duration {
+fn epoch(total_duration: Duration, vesting_amount: Uint128) -> Duration {
     Duration::from_nanos(total_duration.into_nanos() / vesting_amount.into_inner())
 }
