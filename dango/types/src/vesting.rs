@@ -56,11 +56,6 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde, Borsh)]
-pub struct Config {
-    pub unlocking_schedule: Schedule,
-}
-
-#[grug::derive(Serde, Borsh)]
 pub struct Schedule {
     pub start_time: Timestamp,
     pub cliff: Duration,
