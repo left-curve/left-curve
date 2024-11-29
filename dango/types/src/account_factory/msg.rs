@@ -1,4 +1,5 @@
 use {
+    super::SignMode,
     crate::{
         account::multi::ParamUpdates,
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
@@ -47,8 +48,12 @@ pub enum ExecuteMsg {
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
+    /// Register a new key for an existing user.
+    RegisterKey { key_hash: Hash160, key: Key },
     /// Update a Safe account's parameters.
     ConfigureSafe { updates: ParamUpdates },
+    /// Update a single account's parameters.
+    ConfigureSingle { sign_mode: SignMode },
 }
 
 #[grug::derive(Serde, QueryRequest)]

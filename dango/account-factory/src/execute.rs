@@ -8,7 +8,7 @@ use {
         account::{self, multi, single},
         account_factory::{
             Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
-            Username,
+            SignMode, Username,
         },
         auth::Key,
         config::AppConfig,
@@ -114,7 +114,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
+        ExecuteMsg::RegisterKey { key_hash, key } => register_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
+        ExecuteMsg::ConfigureSingle { sign_mode } => configure_single(ctx, sign_mode),
     }
 }
 
@@ -126,7 +128,7 @@ fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
         "only IBC transfer contract can make deposits"
     );
 
-    // 1. If someone makes a depsoit twice, then we simply merge the deposits.
+    // 1. If someone makes a deposit twice, then we simply merge the deposits.
     // 2. We trust the IBC transfer contract is implemented correctly and won't
     // make empty deposits.
     DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
@@ -181,7 +183,7 @@ fn register_user(
     )?))
 }
 
-// Onboarding a new user involves saving an initial key, and intantiate an
+// Onboarding a new user involves saving an initial key, and instantiate an
 // initial account, under the username.
 fn onboard_new_user(
     storage: &mut dyn Storage,
@@ -227,6 +229,7 @@ fn onboard_new_user(
         index,
         params: AccountParams::Spot(single::Params {
             owner: username.clone(),
+            sign_mode: SignMode::Single,
         }),
     };
 
@@ -302,6 +305,22 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
+fn register_key(ctx: MutableCtx, key_hash: Hash160, key: Key) -> anyhow::Result<Response> {
+    let username = derive_username_by_address(ctx.storage, ctx.sender)?;
+
+    KEYS.may_update(ctx.storage, key_hash, |maybe_key| {
+        if let Some(existing_key) = maybe_key {
+            ensure!(key == existing_key, "reusing an existing key but mismatch");
+        }
+        Ok(key)
+    })?;
+
+    KEYS_BY_USER.insert(ctx.storage, (&username, key_hash))?;
+    USERS_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
+
+    Ok(Response::new())
+}
+
 fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
     for member in updates.members.add().keys() {
         ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
@@ -328,4 +347,46 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
     })?;
 
     Ok(Response::new())
+}
+
+fn configure_single(ctx: MutableCtx, sign_mode: SignMode) -> anyhow::Result<Response> {
+    let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
+
+    match &mut account.params {
+        AccountParams::Spot(existing) | AccountParams::Margin(existing) => {
+            if let SignMode::Restricted {
+                threshold,
+                allowed_keys,
+            } = &sign_mode
+            {
+                ensure!(
+                    *threshold <= allowed_keys.len() as u8,
+                    "threshold can't be greater than total power."
+                );
+
+                for key in allowed_keys {
+                    ensure!(
+                        KEYS_BY_USER.has(ctx.storage, (&existing.owner, *key)),
+                        "key {} doesn't exist for user {}.",
+                        key,
+                        existing.owner
+                    )
+                }
+            }
+
+            existing.sign_mode = sign_mode
+        },
+        _ => bail!("only spot and margin accounts can be updated"),
+    }
+
+    ACCOUNTS.save(ctx.storage, ctx.sender, &account)?;
+
+    Ok(Response::new())
+}
+
+fn derive_username_by_address(storage: &dyn Storage, addr: Addr) -> anyhow::Result<Username> {
+    match ACCOUNTS.load(storage, addr)?.params {
+        AccountParams::Spot(params) | AccountParams::Margin(params) => Ok(params.owner),
+        AccountParams::Safe(_) => bail!("can't derive username from Safe account"),
+    }
 }

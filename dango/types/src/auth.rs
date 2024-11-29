@@ -1,7 +1,10 @@
 use {
     crate::account_factory::Username,
     grug::{Addr, Binary, ByteArray, Hash160, Message},
+    std::collections::BTreeMap,
 };
+
+pub type Credential = BTreeMap<Hash160, Signature>;
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
@@ -16,7 +19,7 @@ pub enum Key {
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
 /// field.
 #[grug::derive(Serde)]
-pub enum Credential {
+pub enum Signature {
     /// An Secp256r1 signature signed by a Passkey, along with necessary metadata.
     Passkey(PasskeySignature),
     /// An Secp256k1 signature.
@@ -43,8 +46,6 @@ pub struct SignDoc {
 pub struct Metadata {
     /// Identifies the user who signed this transaction.
     pub username: Username,
-    /// Identifies the key which the user used to sign this transaction.
-    pub key_hash: Hash160,
     /// The sequence number this transaction was signed with.
     pub sequence: u32,
 }

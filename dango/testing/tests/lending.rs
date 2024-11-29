@@ -3,7 +3,7 @@ use {
     dango_testing::{setup_test_naive, Accounts, TestSuite},
     dango_types::{
         account::{margin::CollateralPower, single},
-        account_factory::AccountParams,
+        account_factory::{AccountParams, SignMode},
         config::AppConfig,
         lending::{
             self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
@@ -297,6 +297,7 @@ fn cant_borrow_if_no_collateral() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -338,6 +339,7 @@ fn cant_borrow_if_undercollateralized() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -387,6 +389,7 @@ fn borrowing_works() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -556,6 +559,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -609,6 +613,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )
@@ -682,6 +687,7 @@ fn repay_works() {
             codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params {
                 owner: accounts.relayer.username.clone(),
+                sign_mode: SignMode::Single,
             }),
             Coins::new(),
         )

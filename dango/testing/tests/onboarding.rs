@@ -2,7 +2,7 @@ use {
     dango_testing::{setup_test, Factory, TestAccount},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, Username},
+        account_factory::{self, Account, AccountParams, SignMode, Username},
         auth::Key,
         ibc_transfer,
     },
@@ -18,7 +18,7 @@ use {
 fn user_onboarding() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
-    // Create a new key offchain; then, predict what its address would be.
+    // Create a new key off chain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
         codes.account_spot.to_bytes().hash256(),
@@ -48,8 +48,8 @@ fn user_onboarding() {
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
                 username: user.username.clone(),
-                key: user.key,
-                key_hash: user.key_hash,
+                key: user.key(),
+                key_hash: user.key_hash(),
             },
             Coins::new(),
         )
@@ -63,7 +63,7 @@ fn user_onboarding() {
                 username: user.username.clone(),
             },
         )
-        .should_succeed_and_equal(btree_map! { user.key_hash => user.key });
+        .should_succeed_and_equal(btree_map! { user.key_hash() => user.key()});
 
     // The user's account info should have been recorded in account factory.
     // Note: a user's first ever account is always a spot account.
@@ -79,7 +79,7 @@ fn user_onboarding() {
                 // We have 2 genesis accounts (0 owner, 1 relayer) so this one should have
                 // the index of 2.
                 index: 2,
-                params: AccountParams::Spot(single::Params { owner: user.username.clone() }),
+                params: AccountParams::Spot(single::Params { owner: user.username.clone(), sign_mode: SignMode::Single }),
             },
         });
 
@@ -124,8 +124,8 @@ fn onboarding_existing_user() {
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
+                    key: user.key(),
+                    key_hash: user.key_hash(),
                 },
                 Coins::new(),
             )
@@ -167,8 +167,8 @@ fn onboarding_without_deposit() {
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    key: user.key,
-                    key_hash: user.key_hash,
+                    key: user.key(),
+                    key_hash: user.key_hash(),
                 },
                 Coins::new(),
             )
@@ -229,8 +229,8 @@ fn false_factory_tx(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: false_username.unwrap_or_else(|| user.username.clone()),
-                    key: false_key.unwrap_or(user.key),
-                    key_hash: false_key_hash.unwrap_or(user.key_hash),
+                    key: false_key.unwrap_or(user.key()),
+                    key_hash: false_key_hash.unwrap_or(user.key_hash()),
                 },
                 Coins::new(),
             )

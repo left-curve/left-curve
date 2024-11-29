@@ -7,12 +7,13 @@ use {
         },
         account_factory::{
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
+            SignMode,
         },
         ibc_transfer,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
-        Message, NonZero, ResultExt, Signer, Timestamp, Uint128,
+        btree_map, btree_set, json, Addr, Addressable, ChangeSet, Coins, HashExt, Inner,
+        JsonSerExt, Message, NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
@@ -50,8 +51,8 @@ fn safe() {
                     contracts.account_factory,
                     &account_factory::ExecuteMsg::RegisterUser {
                         username: user.username.clone(),
-                        key: user.key,
-                        key_hash: user.key_hash,
+                        key: user.key(),
+                        key_hash: user.key_hash(),
                     },
                     Coins::new(),
                 )
@@ -123,7 +124,8 @@ fn safe() {
                 member.address() => Account {
                     index,
                     params: AccountParams::Spot(single::Params {
-                        owner: member.username.clone()
+                        owner: member.username.clone(),
+                        sign_mode: SignMode::Single,
                     }),
                 },
                 safe.address() => Account {
@@ -383,25 +385,25 @@ fn safe() {
         (
             attacker.username.clone(),
             member2.username.clone(),
-            attacker.key_hash,
+            attacker.key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             attacker.username.clone(),
             member2.username.clone(),
-            member2.key_hash,
+            member2.key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash,
+            attacker.key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            member2.key_hash,
+            member2.key_hash(),
             "can't vote with a different username".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
@@ -410,7 +412,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash,
+            attacker.key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -420,7 +422,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            member2.key_hash,
+            member2.key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -431,16 +433,17 @@ fn safe() {
         (
             member2.username.clone(),
             member2.username.clone(),
-            attacker.key_hash,
+            attacker.key_hash(),
             format!(
                 "key hash {} isn't associated with user `{}`",
-                attacker.key_hash, member2.username
+                attacker.key_hash(),
+                member2.username
             ),
         ),
         (
             member2.username.clone(),
             member2.username.clone(),
-            member2.key_hash,
+            member2.key_hash(),
             "signature is unauthentic".to_string(),
         ),
     ] {
@@ -470,10 +473,12 @@ fn safe() {
             username.to_json_value().unwrap().into_inner(),
         );
 
-        tx.data.as_object_mut().unwrap().insert(
-            "key_hash".to_string(),
-            key_hash.to_json_value().unwrap().into_inner(),
-        );
+        // replace the key hash in the tx with the one we want to test
+        let value = tx.credential.as_object().unwrap().iter().next().unwrap().1;
+
+        tx.credential = json!({
+            key_hash.to_string(): value
+        });
 
         suite.send_transaction(tx).should_fail_with_error(error);
     }
