@@ -49,16 +49,15 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     let mut position = POSITIONS.load(ctx.storage, user)?;
 
-    let terminal_amount = if let VestingStatus::Active(schedule) = &position.vesting_status {
+    let vested_amount = if let VestingStatus::Active(schedule) = &position.vesting_status {
         schedule.compute_claimable_amount(ctx.block.timestamp, position.total_amount)?
     } else {
         bail!("position is already terminated")
     };
 
-    position.vesting_status = VestingStatus::Terminated(terminal_amount);
+    position.vesting_status = VestingStatus::Terminated(vested_amount);
 
-    let refund_amount = position.total_amount - terminal_amount;
-
+    let refund_amount = position.total_amount - vested_amount;
     let refund_msg = if refund_amount.is_zero() {
         None
     } else {
@@ -68,7 +67,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         )?)
     };
 
-    if position.claimed_amount == terminal_amount {
+    if position.full_claimed() {
         POSITIONS.remove(ctx.storage, user);
     } else {
         POSITIONS.save(ctx.storage, user, &position)?;

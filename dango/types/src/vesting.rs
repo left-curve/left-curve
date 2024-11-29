@@ -110,19 +110,19 @@ impl Position {
     pub fn full_claimed(&self) -> bool {
         match &self.vesting_status {
             VestingStatus::Active(_) => self.total_amount == self.claimed_amount,
-            VestingStatus::Terminated(terminated_amount) => {
-                *terminated_amount == self.claimed_amount
-            },
+            VestingStatus::Terminated(vested_amount) => *vested_amount == self.claimed_amount,
         }
     }
 }
 
 #[grug::derive(Serde, Borsh)]
 pub enum VestingStatus {
-    // Position is active. When active, the token stil being distributed
+    /// Position is actively being vested.
     Active(Schedule),
-    // Position is terminated.
-    // When terminated, the snapshot of the vested so far is taken and stored
+    /// Position has been terminated.
+    ///
+    /// The amount of tokens that have been vested at the time of termination is
+    /// stored here.
     Terminated(Uint128),
 }
 
