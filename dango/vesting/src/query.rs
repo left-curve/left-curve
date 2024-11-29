@@ -1,6 +1,6 @@
 use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
-    dango_types::vesting::{ClaimablePosition, QueryMsg},
+    dango_types::vesting::{PositionResponse, QueryMsg},
     grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
@@ -21,34 +21,39 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     }
 }
 
-fn query_position(ctx: ImmutableCtx, user: Addr) -> StdResult<ClaimablePosition> {
+fn query_position(ctx: ImmutableCtx, user: Addr) -> StdResult<PositionResponse> {
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
+    let position = POSITIONS.load(ctx.storage, user)?;
+    let claimable_amount =
+        position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
 
-    POSITIONS
-        .load(ctx.storage, user)
-        .map(|val| val.with_claimable_amount(ctx.block.timestamp, &unlocking_schedule))
+    Ok(PositionResponse {
+        position,
+        claimable_amount,
+    })
 }
 
 fn query_positions(
     ctx: ImmutableCtx,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, ClaimablePosition>> {
+) -> StdResult<BTreeMap<Addr, PositionResponse>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
     POSITIONS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {
-            res.map(|(k, v)| {
-                (
-                    k,
-                    v.with_claimable_amount(ctx.block.timestamp, &unlocking_schedule),
-                )
-            })
+            let (user, position) = res?;
+            let claimable_amount =
+                position.compute_claimable_amount(ctx.block.timestamp, &unlocking_schedule)?;
+
+            Ok((user, PositionResponse {
+                position,
+                claimable_amount,
+            }))
         })
         .collect()
 }

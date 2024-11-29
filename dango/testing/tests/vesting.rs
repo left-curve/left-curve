@@ -331,9 +331,9 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_succeed_and(|position| {
-                position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
-                    && position.claimable_amount == Uint128::new(37)
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
+                    && res.claimable_amount == Uint128::new(37)
             });
 
         suite.block_time = Timestamp::default();
@@ -456,10 +456,10 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_succeed_and(|position| {
-                position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
-                    && position.claimable_amount == Uint128::new(3)
-                    && position.claimed_amount == Uint128::new(37)
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
+                    && res.position.claimed_amount == Uint128::new(37)
+                    && res.claimable_amount == Uint128::new(3)
             });
 
         // 4 epoche is needed to claim all tokens
@@ -539,9 +539,9 @@ fn terminate_after_unlocking_starting_time() {
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
                 user: accounts.relayer.address(),
             })
-            .should_succeed_and(|position| {
-                position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
-                    && position.claimable_amount == Uint128::new(37)
+            .should_succeed_and(|res| {
+                res.position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
+                    && res.claimable_amount == Uint128::new(37)
             });
 
         suite.block_time = Timestamp::default();

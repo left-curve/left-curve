@@ -1,12 +1,10 @@
 use {
     grug::{
         Addr, Duration, MathResult, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
-        Uint128, Undefined,
+        Uint128,
     },
     std::{cmp::min, collections::BTreeMap},
 };
-
-pub type ClaimablePosition = Position<Uint128>;
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
@@ -33,10 +31,10 @@ pub enum ExecuteMsg {
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query a single vesting position by index.
-    #[returns(ClaimablePosition)]
+    #[returns(PositionResponse)]
     Position { user: Addr },
     /// Enumerate all vesting positions.
-    #[returns(BTreeMap<Addr, ClaimablePosition>)]
+    #[returns(BTreeMap<Addr, PositionResponse>)]
     Positions {
         start_after: Option<Addr>,
         limit: Option<u32>,
@@ -76,11 +74,10 @@ impl Schedule {
 }
 
 #[grug::derive(Serde, Borsh)]
-pub struct Position<C = Undefined> {
+pub struct Position {
     pub vesting_status: VestingStatus,
     pub total_amount: Uint128,
     pub claimed_amount: Uint128,
-    pub claimable_amount: C,
 }
 
 impl Position {
@@ -89,34 +86,14 @@ impl Position {
             vesting_status: VestingStatus::Active(vesting_schedule),
             total_amount,
             claimed_amount: Uint128::ZERO,
-            claimable_amount: Undefined::new(),
         }
     }
 
-    pub fn with_claimable_amount(
-        self,
-        now: Timestamp,
-        unlocking_schedule: &Schedule,
-    ) -> Position<Uint128> {
-        let claimable_amount = self
-            .compute_claimable_amount(now, unlocking_schedule)
-            .unwrap_or_default();
-
-        Position {
-            vesting_status: self.vesting_status,
-            total_amount: self.total_amount,
-            claimed_amount: self.claimed_amount,
-            claimable_amount,
-        }
-    }
-}
-
-impl<T> Position<T> {
     pub fn compute_claimable_amount(
         &self,
         now: Timestamp,
         unlocking_schedule: &Schedule,
-    ) -> anyhow::Result<Uint128> {
+    ) -> MathResult<Uint128> {
         // The claimable amount is the minimum between the claimable amount
         // from the vesting status and the unlocking schedule
         let claimable_amount = min(
@@ -162,4 +139,10 @@ impl VestingStatus {
             VestingStatus::Terminated(amount) => Ok(*amount),
         }
     }
+}
+
+#[grug::derive(Serde)]
+pub struct PositionResponse {
+    pub position: Position,
+    pub claimable_amount: Uint128,
 }
