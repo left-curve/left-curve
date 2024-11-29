@@ -73,7 +73,7 @@ fn before_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_fail_with_error("nothing to claim");
@@ -87,7 +87,7 @@ fn before_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -111,7 +111,7 @@ fn before_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -135,7 +135,7 @@ fn before_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -146,7 +146,9 @@ fn before_unlocking_starting_time() {
 
         // Check if the position is removed
         suite
-            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_fail_with_error("not found");
     }
 }
@@ -183,7 +185,7 @@ fn after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_fail_with_error("nothing to claim");
@@ -197,7 +199,7 @@ fn after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_fail_with_error("nothing to claim");
@@ -212,7 +214,7 @@ fn after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -236,7 +238,7 @@ fn after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -260,7 +262,7 @@ fn after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -271,7 +273,9 @@ fn after_unlocking_starting_time() {
 
         // Check if the position is removed
         suite
-            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_fail_with_error("not found");
     }
 }
@@ -315,14 +319,18 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::Terminate { idx: 1 },
+                &vesting::ExecuteMsg::Terminate {
+                    user: accounts.relayer.address(),
+                },
                 Coins::default(),
             )
             .should_succeed();
 
         // Check the status of the position after terminate
         suite
-            .query_wasm_smart(vesting_addr, QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_succeed_and(|position| {
                 position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
                     && position.claimable_amount == Uint128::new(37)
@@ -335,7 +343,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -353,14 +361,16 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
 
         // Check if the position is removed
         suite
-            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_fail_with_error("not found");
 
         // Check the balance of the user
@@ -410,7 +420,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
@@ -434,14 +444,18 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::Terminate { idx: 1 },
+                &vesting::ExecuteMsg::Terminate {
+                    user: accounts.relayer.address(),
+                },
                 Coins::default(),
             )
             .should_succeed();
 
         // Check the status of the position after terminate
         suite
-            .query_wasm_smart(vesting_addr, QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_succeed_and(|position| {
                 position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
                     && position.claimable_amount == Uint128::new(3)
@@ -457,14 +471,16 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
 
         // Check if the position is removed
         suite
-            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_fail_with_error("not found");
 
         // Check the balance of the user
@@ -511,14 +527,18 @@ fn terminate_after_unlocking_starting_time() {
             .execute(
                 &mut accounts.owner,
                 vesting_addr,
-                &vesting::ExecuteMsg::Terminate { idx: 1 },
+                &vesting::ExecuteMsg::Terminate {
+                    user: accounts.relayer.address(),
+                },
                 Coins::default(),
             )
             .should_succeed();
 
         // Check the status of the position after terminate
         suite
-            .query_wasm_smart(vesting_addr, QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_succeed_and(|position| {
                 position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
                     && position.claimable_amount == Uint128::new(37)
@@ -531,14 +551,16 @@ fn terminate_after_unlocking_starting_time() {
             .execute(
                 &mut accounts.relayer,
                 vesting_addr,
-                &vesting::ExecuteMsg::Claim { idx: 1 },
+                &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
             )
             .should_succeed();
 
         // Check if the position is removed
         suite
-            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest { idx: 1 })
+            .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
+                user: accounts.relayer.address(),
+            })
             .should_fail_with_error("not found");
 
         // Check the balance of the user

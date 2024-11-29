@@ -6,8 +6,6 @@ use {
     std::{cmp::min, collections::BTreeMap},
 };
 
-pub type PositionIndex = u32;
-
 pub type ClaimablePosition = Position<Uint128>;
 
 #[grug::derive(Serde)]
@@ -19,38 +17,28 @@ pub struct InstantiateMsg {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create a vesting position for a user with the given schedule.
-    /// Sender must attach a single coin.
+    /// Sender must attach a non-zero amount of Dango token and nothing else.
     Create {
         user: Addr,
         schedule: Schedule,
     },
-    // Terminate the vesting position.
-    // When terminated, the snapshot of the vested so far is taken and stored
+    // Terminate a user's vesting position.
     Terminate {
-        idx: PositionIndex,
+        user: Addr,
     },
     /// Claim the withdrawable amount from the vesting position.
-    Claim {
-        idx: PositionIndex,
-    },
+    Claim {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query a single vesting position by index.
     #[returns(ClaimablePosition)]
-    Position { idx: PositionIndex },
+    Position { user: Addr },
     /// Enumerate all vesting positions.
-    #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
+    #[returns(BTreeMap<Addr, ClaimablePosition>)]
     Positions {
-        start_after: Option<PositionIndex>,
-        limit: Option<u32>,
-    },
-    /// Enumerate all vesting positions belonging to a given user.
-    #[returns(BTreeMap<PositionIndex, ClaimablePosition>)]
-    PositionsByUser {
-        user: Addr,
-        start_after: Option<PositionIndex>,
+        start_after: Option<Addr>,
         limit: Option<u32>,
     },
 }
@@ -89,7 +77,6 @@ impl Schedule {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Position<C = Undefined> {
-    pub user: Addr,
     pub vesting_status: VestingStatus,
     pub total_amount: Uint128,
     pub claimed_amount: Uint128,
@@ -97,9 +84,8 @@ pub struct Position<C = Undefined> {
 }
 
 impl Position {
-    pub fn new(user: Addr, vesting_schedule: Schedule, total_amount: Uint128) -> Self {
+    pub fn new(vesting_schedule: Schedule, total_amount: Uint128) -> Self {
         Self {
-            user,
             vesting_status: VestingStatus::Active(vesting_schedule),
             total_amount,
             claimed_amount: Uint128::ZERO,
@@ -117,7 +103,6 @@ impl Position {
             .unwrap_or_default();
 
         Position {
-            user: self.user,
             vesting_status: self.vesting_status,
             total_amount: self.total_amount,
             claimed_amount: self.claimed_amount,

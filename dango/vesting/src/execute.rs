@@ -1,9 +1,9 @@
 use {
-    crate::{NEXT_POSITION_INDEX, POSITIONS, UNLOCKING_SCHEDULE},
+    crate::{POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
     dango_types::{
         config::AppConfig,
-        vesting::{ExecuteMsg, InstantiateMsg, Position, PositionIndex, Schedule, VestingStatus},
+        vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
     grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, Response},
 };
@@ -23,23 +23,22 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Create { user, schedule } => create(ctx, user, schedule),
-        ExecuteMsg::Terminate { idx } => terminate(ctx, idx),
-        ExecuteMsg::Claim { idx } => claim(ctx, idx),
+        ExecuteMsg::Terminate { user } => terminate(ctx, user),
+        ExecuteMsg::Claim {} => claim(ctx),
     }
 }
 
 fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
     let cfg: AppConfig = ctx.querier.query_app_config()?;
     let coin = ctx.funds.into_one_coin_of_denom(&cfg.dango)?;
-    let (_, index) = NEXT_POSITION_INDEX.increment(ctx.storage)?;
-    let position = Position::new(user, schedule, coin.amount);
+    let position = Position::new(schedule, coin.amount);
 
-    POSITIONS.save(ctx.storage, index, &position)?;
+    POSITIONS.save(ctx.storage, user, &position)?;
 
     Ok(Response::new())
 }
 
-fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
+fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     let cfg = ctx.querier.query_config()?;
     let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
@@ -48,7 +47,7 @@ fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
         "you don't have the right, O you don't have the right"
     );
 
-    let mut position = POSITIONS.load(ctx.storage, idx)?;
+    let mut position = POSITIONS.load(ctx.storage, user)?;
 
     let terminal_amount = if let VestingStatus::Active(schedule) = &position.vesting_status {
         schedule.compute_claimable_amount(ctx.block.timestamp, position.total_amount)?
@@ -70,22 +69,17 @@ fn terminate(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
     };
 
     if position.claimed_amount == terminal_amount {
-        POSITIONS.remove(ctx.storage, idx)?;
+        POSITIONS.remove(ctx.storage, user);
     } else {
-        POSITIONS.save(ctx.storage, idx, &position)?;
+        POSITIONS.save(ctx.storage, user, &position)?;
     }
 
     Ok(Response::new().may_add_message(refund_msg))
 }
 
-fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
+fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
     let cfg: AppConfig = ctx.querier.query_app_config()?;
-    let mut position = POSITIONS.load(ctx.storage, idx)?;
-
-    ensure!(
-        position.user == ctx.sender,
-        "you don't have the right, O you don't have the right"
-    );
+    let mut position = POSITIONS.load(ctx.storage, ctx.sender)?;
 
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
 
@@ -99,9 +93,9 @@ fn claim(ctx: MutableCtx, idx: PositionIndex) -> anyhow::Result<Response> {
         .checked_add_assign(claimable_amount)?;
 
     if position.full_claimed() {
-        POSITIONS.remove(ctx.storage, idx)?;
+        POSITIONS.remove(ctx.storage, ctx.sender);
     } else {
-        POSITIONS.save(ctx.storage, idx, &position)?;
+        POSITIONS.save(ctx.storage, ctx.sender, &position)?;
     }
 
     Ok(Response::new().add_message(Message::transfer(
