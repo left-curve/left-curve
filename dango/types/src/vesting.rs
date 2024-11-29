@@ -6,41 +6,6 @@ use {
     std::{cmp::min, collections::BTreeMap},
 };
 
-#[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub unlocking_cliff: Duration,
-    pub unlocking_period: Duration,
-}
-
-#[grug::derive(Serde)]
-pub enum ExecuteMsg {
-    /// Create a vesting position for a user with the given schedule.
-    /// Sender must attach a non-zero amount of Dango token and nothing else.
-    Create {
-        user: Addr,
-        schedule: Schedule,
-    },
-    // Terminate a user's vesting position.
-    Terminate {
-        user: Addr,
-    },
-    /// Claim the withdrawable amount from the vesting position.
-    Claim {},
-}
-
-#[grug::derive(Serde, QueryRequest)]
-pub enum QueryMsg {
-    /// Query a single vesting position by index.
-    #[returns(PositionResponse)]
-    Position { user: Addr },
-    /// Enumerate all vesting positions.
-    #[returns(BTreeMap<Addr, PositionResponse>)]
-    Positions {
-        start_after: Option<Addr>,
-        limit: Option<u32>,
-    },
-}
-
 #[grug::derive(Serde, Borsh)]
 pub struct Schedule {
     pub start_time: Timestamp,
@@ -66,6 +31,26 @@ impl Schedule {
         };
 
         total.checked_mul_dec_floor(claim_percent)
+    }
+}
+
+#[grug::derive(Serde, Borsh)]
+pub enum VestingStatus {
+    /// Position is actively being vested.
+    Active(Schedule),
+    /// Position has been terminated.
+    ///
+    /// The amount of tokens that have been vested at the time of termination is
+    /// stored here.
+    Terminated(Uint128),
+}
+
+impl VestingStatus {
+    pub fn compute_claimable(&self, now: Timestamp, total: Uint128) -> MathResult<Uint128> {
+        match self {
+            VestingStatus::Active(schedule) => schedule.compute_claimable(now, total),
+            VestingStatus::Terminated(vested) => Ok(*vested),
+        }
     }
 }
 
@@ -108,28 +93,43 @@ impl Position {
     }
 }
 
-#[grug::derive(Serde, Borsh)]
-pub enum VestingStatus {
-    /// Position is actively being vested.
-    Active(Schedule),
-    /// Position has been terminated.
-    ///
-    /// The amount of tokens that have been vested at the time of termination is
-    /// stored here.
-    Terminated(Uint128),
-}
-
-impl VestingStatus {
-    pub fn compute_claimable(&self, now: Timestamp, total: Uint128) -> MathResult<Uint128> {
-        match self {
-            VestingStatus::Active(schedule) => schedule.compute_claimable(now, total),
-            VestingStatus::Terminated(vested) => Ok(*vested),
-        }
-    }
-}
-
 #[grug::derive(Serde)]
 pub struct PositionResponse {
     pub position: Position,
     pub claimable: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct InstantiateMsg {
+    pub unlocking_cliff: Duration,
+    pub unlocking_period: Duration,
+}
+
+#[grug::derive(Serde)]
+pub enum ExecuteMsg {
+    /// Create a vesting position for a user with the given schedule.
+    /// Sender must attach a non-zero amount of Dango token and nothing else.
+    Create {
+        user: Addr,
+        schedule: Schedule,
+    },
+    // Terminate a user's vesting position.
+    Terminate {
+        user: Addr,
+    },
+    /// Claim the withdrawable amount from the vesting position.
+    Claim {},
+}
+
+#[grug::derive(Serde, QueryRequest)]
+pub enum QueryMsg {
+    /// Query a single vesting position by index.
+    #[returns(PositionResponse)]
+    Position { user: Addr },
+    /// Enumerate all vesting positions.
+    #[returns(BTreeMap<Addr, PositionResponse>)]
+    Positions {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
 }
