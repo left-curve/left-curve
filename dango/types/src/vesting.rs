@@ -1,7 +1,7 @@
 use {
     grug::{
-        Addr, Coin, Duration, MultiplyFraction, Number, NumberConst, Timestamp, Udec128, Uint128,
-        Undefined,
+        Addr, Coin, Duration, MathResult, MultiplyFraction, Number, NumberConst, Timestamp,
+        Udec128, Uint128, Undefined,
     },
     std::{cmp::min, collections::BTreeMap},
 };
@@ -72,21 +72,23 @@ impl Schedule {
         &self,
         now: Timestamp,
         vesting_amount: Uint128,
-    ) -> anyhow::Result<Uint128> {
-        if self.start_time + self.cliff > now {
-            return Ok(Uint128::ZERO);
-        }
-
-        let claim_percent = if now >= self.start_time + self.vesting {
-            Udec128::ONE
-        } else {
+    ) -> MathResult<Uint128> {
+        let claim_percent = if now < self.start_time + self.cliff {
+            // Before the cliff, no token is vested/unlocked.
+            Udec128::ZERO
+        } else if now < self.start_time + self.vesting {
+            // After the cliff but before the period finishes, tokens vest/unlock
+            // linearly through time.
             Udec128::checked_from_ratio(
                 (now - self.start_time).into_nanos(),
                 self.vesting.into_nanos(),
             )?
+        } else {
+            // After the period, all tokens are vested/unlocked.
+            Udec128::ONE
         };
 
-        Ok(vesting_amount.checked_mul_dec_floor(claim_percent)?)
+        vesting_amount.checked_mul_dec_floor(claim_percent)
     }
 }
 
@@ -172,7 +174,7 @@ impl VestingStatus {
         &self,
         now: Timestamp,
         vesting_amount: Uint128,
-    ) -> anyhow::Result<Uint128> {
+    ) -> MathResult<Uint128> {
         match self {
             VestingStatus::Active(schedule) => {
                 schedule.compute_claimable_amount(now, vesting_amount)
