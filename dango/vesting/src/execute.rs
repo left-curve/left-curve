@@ -71,13 +71,13 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     position.vesting_status = VestingStatus::Terminated(vested);
 
     let refund = position.total - vested;
-    let refund_msg = if refund.is_zero() {
-        None
-    } else {
+    let refund_msg = if refund.is_non_zero() {
         Some(Message::transfer(
             cfg.owner,
             Coin::new(app_cfg.dango, refund)?,
         )?)
+    } else {
+        None
     };
 
     if position.is_fully_claimed() {
