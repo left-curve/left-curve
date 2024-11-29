@@ -64,7 +64,7 @@ module grug_ics23 {
     left: Option[ExistsProof_t], 
     right: Option[ExistsProof_t]
   }
-  
+
   /// VerifyMembership returns true iff
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
@@ -77,7 +77,7 @@ module grug_ics23 {
     //       by the spec checker
     verify(proof, root, key, value)
   }
-  
+
   /// verify that a proof matches a root
   def verify(proof, root, key, value) = and {
     key == proof.key,
@@ -92,7 +92,7 @@ module grug_ics23 {
     p.path.foldl(leafHash,
       (child, inner) =>
         termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
-  
+
   /// VerifyNonMembership returns true iff
   /// proof is (contains) a NonExistenceProof,
   /// both left and right sub-proofs are valid existence proofs (see above) or nil,
@@ -124,16 +124,12 @@ module grug_ics23 {
       isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
     }
   }
-  
+
   /// IsLeftMost returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
   def isLeftMost(path: List[INNER_T]): bool = {
+    // Specialize to Grug JMT
     // Calls getPadding(0) => idx = 0, prefix = 0.
-    // We specialize the constants to IavlSpec.
-    // !!! UPDATE !!!
-    // For Left Curve Grug we have changed: MinPrefixLen, MaxPrefixLen and ChildSize in order to
-    // accustom their JellyFish Merkle Tree, 
-    // therefore previous comment about specializing constants for IavlSpec is outdated
     path.indices().forall(i =>
       val pathStep = path[i]
       or {
@@ -141,6 +137,23 @@ module grug_ics23 {
         hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
         // the path goes right, but the left child is empty (a gap)
         leftBranchesAreEmpty(pathStep)
+      }
+    )
+  }
+
+  /// IsRightMost returns true if this is the left-most path in the tree,
+  /// excluding placeholder (empty child) nodes
+  def isRightMost(path: List[INNER_T]): bool = {
+    // Specialize to Grug JMT
+    // Calls getPadding(1) => minPrefix, maxPrefix,
+    //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+    path.indices().forall(i =>
+      val pathStep = path[i]
+      or {
+        // the path goes right
+        hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
+        // the path goes left, but the right child is empty (a gap)
+        rightBranchesAreEmpty(pathStep)
       }
     )
   }
@@ -157,17 +170,14 @@ module grug_ics23 {
    termLen(inner.suffix) == suffixLen
   }
 
-  /// This will look at the proof and determine which order it is...
+  /// This will look at the proof and determine which order it is.
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
-  /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411
   def orderFromPadding(inner: INNER_T): (int, bool) = {
-    // Specialize orderFromPadding to IavlSpec:
-    // ChildOrder = { 0, 1 }
+    // Specialize orderFromPadding to Grug JMT:
+    // ChildOrder = [ 0, 1 ]
     // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
     // branch = 1: minp, maxp, suffix =
     //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
     if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
       // the node turns left
       (0, true)
@@ -189,39 +199,8 @@ module grug_ics23 {
     val order = orderFromPadding(inner)
     order._2 and order._1 != 0,
     // the remaining case is leftBranches == 1, see orderFromPadding
-    // actualPrefix = len(inner.prefix) - 33
-    // !!! UPDATE !!!
-    // For Left Curve Grug we have changed ChildSize to accustom their JellyFish Merkle Tree, 
-    // therefore previous comment is outdated
     // actualPrefix = len(inner.prefix) - 32
     termLen(inner.prefix) >= Ics23ProofSpec.ChildSize,
-    // !!!!!!! IMPLEMENTATION SPECIFIC NOTE
-    // We have adopted the following approach in order to fix problem with Quint hashing:
-    //  In the event when left branches are empty, 
-    //  inner.prefix will be: InternalNodeHashPrefix.termConcat(Hash256_ZERO)
-    //  Hash256_ZERO being termHash(raw([0]))
-    //  which will result in: Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash).
-    //  In Rust implementation this equals to:
-    //  prefix: [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat()
-    //        Note: here we are concatenating [0] and 
-    //              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    //  
-    //  After concatanation, prefix will have lenght 33 and look like this:
-    //  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    //  It is obvious that this is simply an array of zeros with length 33.
-    //  In Rust implementation of ics23, in leftBranchesAreEmpty branch of execution, this array is sliced like:
-    //  op.prefix[from..from + child_size], `from` being `1` and `child_size` being 33. 
-    //  Result of this slice should be equal to `spec.empty_child` which is Hash256::ZERO, 
-    //  or simply put, the first zero which represents `INTERNAL_NODE_HASH_PREFIX`.
-    //  However, this is not tha t simple to do in Quint.
-
-    //  In order to do so, we have changed `termSlice(...)` function. When prefix has value
-    //  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash), 
-    //  which is Quint equivalent of [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat(),
-    //  we will mimic the behaviour of Rust code, 
-    //  and simply just return `EmptyChild`, or: Map([0, 0] -> Raw([0]), [0] -> Hash), 
-    //  which is the same as trimming of the first zero, which represents `INTERNAL_NODE_HASH_PREFIX`.
-    
     val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
     termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
   }
@@ -230,32 +209,13 @@ module grug_ics23 {
   /// to all empty siblings on the right side of a branch,
   /// i.e. it's a valid placeholder on a rightmost path
   def rightBranchesAreEmpty(inner: INNER_T): bool = and {
-    // the case of rightBranches == 0 returns false
+    // the case of rightBranches == 1 returns false
     val order = orderFromPadding(inner)
     order._2 and order._1 != 1,
-    // the remaining case is rightBranches == 1, see orderFromPadding
+    // the remaining case is rightBranches == 0, see orderFromPadding
     termLen(inner.suffix) == Ics23ProofSpec.ChildSize,
     // getPosition(0) returns 0, hence, from == 0
     inner.suffix == Ics23ProofSpec.EmptyChild
-  }
-
-  /// IsRightMost returns true if this is the left-most path in the tree,
-  /// excluding placeholder (empty child) nodes
-  def isRightMost(path: List[INNER_T]): bool = {
-    // Specialize to IavlSpec
-    // Calls getPadding(1) => minPrefix, maxPrefix,
-    //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
-    path.indices().forall(i =>
-      val pathStep = path[i]
-      or {
-        // the path goes right
-        hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
-        // the path goes left, but the right child is empty (a gap)
-        rightBranchesAreEmpty(pathStep)
-      }
-    )
   }
 
   /// isLeftStep assumes left and right have common parents
