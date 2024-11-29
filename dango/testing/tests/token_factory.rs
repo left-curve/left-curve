@@ -35,7 +35,7 @@ fn token_factory() {
             )
             .unwrap(),
         )
-        .should_fail_with_error("invalid payment: expecting 1 coins, found 0");
+        .should_fail_with_error("invalid payment: expecting 1, found 0");
 
     // Attempt to create a denom with more fee than needed. Should fail.
     suite
