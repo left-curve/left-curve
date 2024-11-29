@@ -36,7 +36,7 @@ fn main() {
             key: Key::Secp256k1(PK_OWNER.into()),
             key_hash: PK_OWNER.hash160(),
             balances: [
-                Coin::new("udg", 30_000_000_000).unwrap(),
+                Coin::new("udng", 30_000_000_000).unwrap(),
                 Coin::new("uusdc", 100_000_000_000_000).unwrap(),
             ]
             .try_into()

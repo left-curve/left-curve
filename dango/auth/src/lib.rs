@@ -225,7 +225,10 @@ pub fn authenticate_tx(
 mod tests {
     use {
         super::*,
-        dango_types::{account_factory::Username, config::AppAddresses},
+        dango_types::{
+            account_factory::Username,
+            config::{AppAddresses, DANGO_DENOM},
+        },
         grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
@@ -275,6 +278,7 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -318,6 +322,7 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -417,6 +422,7 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.

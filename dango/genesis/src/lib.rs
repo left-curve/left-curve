@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{AppAddresses, AppConfig},
+        config::{AppAddresses, AppConfig, DANGO_DENOM},
         ibc_transfer,
         lending::{self, MarketUpdates},
         oracle::{
@@ -339,6 +339,7 @@ where
     };
 
     let app_config = AppConfig {
+        dango: DANGO_DENOM.clone(),
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,

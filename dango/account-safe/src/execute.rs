@@ -251,7 +251,7 @@ mod tests {
         dango_types::{
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
-            config::AppAddresses,
+            config::{AppAddresses, DANGO_DENOM},
         },
         grug::{
             btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
@@ -272,6 +272,7 @@ mod tests {
     fn only_factory_can_instantiate() {
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -314,6 +315,7 @@ mod tests {
         // Create a Safe with 3 signers.
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -442,6 +444,7 @@ mod tests {
         let params_clone = params.clone();
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
