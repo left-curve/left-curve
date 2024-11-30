@@ -83,6 +83,10 @@ tracing-subscriber         = "0.3"
 wasmer                     = "5.0.0"
 wasmer-middlewares         = "5.0.0"
 
+# IBC packages
+ibc-proto             = { version = "0.51", default-features = false }
+# ibc-core-client-types = { version = "0.56", default-features = false }
+
 # Grug packages
 grug              = { path = "grug/std" }
 grug-app          = { path = "grug/app" }
