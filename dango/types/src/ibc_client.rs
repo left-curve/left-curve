@@ -2,15 +2,16 @@
 
 #![deny(clippy::nursery, clippy::pedantic, warnings, missing_docs)]
 
+use grug::Binary;
 use ibc_proto::ibc::core::client::v1::Height;
 
 /// Instantiate message for all light client contracts
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     /// The initial client state.
-    pub client_state: Vec<u8>,
+    pub client_state: Binary,
     /// The initial consensus state.
-    pub consensus_state: Vec<u8>,
+    pub consensus_state: Binary,
 }
 
 /// Execute message for all light client contracts
@@ -48,25 +49,25 @@ pub struct TimestampAtHeightMsg {
 #[grug::derive(Serde)]
 pub struct UpdateClientMsg {
     /// Update message.
-    pub client_message: Vec<u8>,
+    pub client_message: Binary,
 }
 
 /// Misbehaviour message.
 #[grug::derive(Serde)]
 pub struct MisbehaviourMsg {
     /// Misbehaviour message.
-    pub client_message: Vec<u8>,
+    pub client_message: Binary,
 }
 
 /// Update client on upgrade.
 #[grug::derive(Serde)]
 pub struct UpgradeClientMsg {
     /// Client state after upgrade.
-    pub upgrade_client_state: Vec<u8>,
+    pub upgrade_client_state: Binary,
     /// Consensus state after upgrade.
-    pub upgrade_consensus_state: Vec<u8>,
+    pub upgrade_consensus_state: Binary,
     /// Proof of upgrade client state.
-    pub proof_upgrade_client_state: Vec<u8>,
+    pub proof_upgrade_client_state: Binary,
     /// Proof of upgrade consensus state.
-    pub proof_upgrade_consensus_state: Vec<u8>,
+    pub proof_upgrade_consensus_state: Binary,
 }
