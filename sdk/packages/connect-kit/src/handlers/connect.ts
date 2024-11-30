@@ -7,7 +7,7 @@ import {
 export { type ConnectErrorType } from "../actions/connect.js";
 import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
 
-import type { Config } from "@leftcurve/types";
+import type { Config } from "@left-curve/types";
 
 export function connectMutationOptions<config extends Config>(config: config) {
   return {

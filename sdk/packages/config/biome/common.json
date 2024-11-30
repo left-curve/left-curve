@@ -13,6 +13,9 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      },
       "performance": {
         "noDelete": "off"
       },

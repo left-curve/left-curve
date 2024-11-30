@@ -1,4 +1,4 @@
-import type { KeyHash, SignDoc, SignedDoc, Signer } from "@leftcurve/types";
+import type { KeyHash, SignDoc, SignedDoc, Signer } from "@left-curve/types";
 
 type Connectorish = {
   getKeyHash(): Promise<KeyHash>;

@@ -1,4 +1,4 @@
-import { encodeHex } from "@leftcurve/encoding";
+import { encodeHex } from "@left-curve/encoding";
 import { describe, expect, it } from "vitest";
 import { Sha256, Sha512, sha256, sha512 } from "./sha.js";
 

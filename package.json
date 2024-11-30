@@ -1,7 +1,10 @@
 {
   "name": "leftcurve-monorepo",
-  "version": "0.1.0",
-  "author": "left-curve software",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "pnpm": ">=9.0.0",
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "turbo": "turbo",
     "doc": "typedoc",
@@ -34,11 +37,8 @@
     "storybook": "pnpm shared sb:dev",
     "shared": "pnpm -F shared",
     "website": "pnpm -F website",
-    "portal": "pnpm -F portal"
-  },
-  "engines": {
-    "pnpm": ">=9.0.0",
-    "node": ">=18.0.0"
+    "portal": "pnpm -F portal",
+    "bump": "pnpm -r 'bump'"
   },
   "devDependencies": {
     "@types/node": "catalog:",
@@ -48,7 +48,6 @@
     "typedoc": "^0.26.5",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@9.0.0",
   "pnpm": {
     "peerDependencyRules": {
       "ignoreMissing": [

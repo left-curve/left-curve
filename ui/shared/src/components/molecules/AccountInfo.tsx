@@ -1,25 +1,28 @@
 "use client";
 
-import { useAccount, useBalances, useConfig } from "@leftcurve/react";
-import { formatNumber, formatUnits } from "@leftcurve/utils";
+import { useAccount, useBalances, useConfig } from "@left-curve/react";
+import { formatNumber, formatUnits } from "@left-curve/utils";
 import { useAccountName } from "../../hooks";
 import { Button } from "../atoms/Button";
 
+import type { Account } from "@left-curve/types";
+
 interface Props {
   avatarUri?: string;
+  account: Account;
   triggerEdit?: () => void;
 }
 
-export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit }) => {
+export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit, account }) => {
   const config = useConfig();
-  const { account } = useAccount();
+  const { account: selectedAccount } = useAccount();
   const [accountName] = useAccountName();
   const { nativeCoin } = config.chains.find((chain) => chain.id === config.state.chainId)!;
 
-  const { data: balances = {} } = useBalances({ address: account?.address });
-  const nativeCoinBalance = formatUnits(balances[nativeCoin.denom] || 0, nativeCoin.decimals);
+  const isCurrentAccount = selectedAccount?.address === account.address;
 
-  if (!account) return null;
+  const { data: balances = {} } = useBalances({ address: account.address });
+  const nativeCoinBalance = formatUnits(balances[nativeCoin.denom] || 0, nativeCoin.decimals);
 
   return (
     <div className="dango-grid-4x4-S flex flex-col gap-3 items-center justify-center text-sand-900">
@@ -42,9 +45,11 @@ export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit }) => {
           </div>
         </div>
       </div>
-      <Button variant="light" className="py-0" onClick={triggerEdit}>
-        Rename
-      </Button>
+      {isCurrentAccount ? (
+        <Button variant="light" className="py-0" onClick={triggerEdit}>
+          Rename
+        </Button>
+      ) : null}
     </div>
   );
 };

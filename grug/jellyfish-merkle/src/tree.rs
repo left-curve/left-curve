@@ -47,7 +47,7 @@ pub struct MerkleTree<'a> {
     pub(crate) orphans: Set<'a, (u64, u64, &'a BitArray)>,
 }
 
-impl<'a> Default for MerkleTree<'a> {
+impl Default for MerkleTree<'_> {
     fn default() -> Self {
         Self::new_default()
     }

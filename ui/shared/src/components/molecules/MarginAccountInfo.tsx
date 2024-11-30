@@ -1,15 +1,19 @@
-import { useAccount } from "@leftcurve/react";
+import { useAccount } from "@left-curve/react";
 import type React from "react";
 import { Button } from "../atoms/Button";
 import { BorrowingBar } from "./BorrowingBar";
 
+import type { Account } from "@left-curve/types";
+
 interface Props {
   avatarUrl: string;
+  account: Account;
 }
 
-export const MarginAccountInfo: React.FC<Props> = ({ avatarUrl }) => {
-  const { account } = useAccount();
-  if (!account) return null;
+export const MarginAccountInfo: React.FC<Props> = ({ avatarUrl, account }) => {
+  const { account: selectedAccount } = useAccount();
+
+  const isCurrentAccount = selectedAccount?.address === account.address;
 
   return (
     <div className="dango-grid-4x8-L flex flex-col gap-3 items-center justify-center text-sand-900">
@@ -46,7 +50,7 @@ export const MarginAccountInfo: React.FC<Props> = ({ avatarUrl }) => {
         <BorrowingBar total={120000} current={85000} threshold={100000} />
       </div>
 
-      <Button variant="light">Edit</Button>
+      {isCurrentAccount ? <Button variant="light">Rename</Button> : null}
     </div>
   );
 };

@@ -521,9 +521,9 @@ where
             return Err(VmError::function_not_found("migrate"));
         };
 
-        let mutable_ctx = make_mutable_ctx!(ctx, storage, api, querier);
+        let sudo_ctx = make_sudo_ctx!(ctx, storage, api, querier);
         let msg = msg.deserialize_borsh::<Json>()?.deserialize_json()?;
-        let res = migrate_fn(mutable_ctx, msg);
+        let res = migrate_fn(sudo_ctx, msg);
 
         Ok(res.into_generic_result())
     }

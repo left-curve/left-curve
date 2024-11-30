@@ -57,8 +57,8 @@ pub enum StdError {
     #[error("invalid coins: {reason}")]
     InvalidCoins { reason: String },
 
-    #[error("invalid payment: expecting {expect} coins, found {actual}")]
-    InvalidPayment { expect: usize, actual: usize },
+    #[error("invalid payment: expecting {expect}, found {actual}")]
+    InvalidPayment { expect: String, actual: String },
 
     #[error("cannot find denom `{denom}` in coins")]
     DenomNotFound { denom: Denom },
@@ -139,8 +139,15 @@ impl StdError {
         }
     }
 
-    pub fn invalid_payment(expect: usize, actual: usize) -> Self {
-        Self::InvalidPayment { expect, actual }
+    pub fn invalid_payment<A, B>(expect: A, actual: B) -> Self
+    where
+        A: ToString,
+        B: ToString,
+    {
+        Self::InvalidPayment {
+            expect: expect.to_string(),
+            actual: actual.to_string(),
+        }
     }
 
     pub fn data_not_found<T>(key: &[u8]) -> Self {

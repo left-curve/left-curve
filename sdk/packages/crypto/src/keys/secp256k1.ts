@@ -1,9 +1,9 @@
-import { encodeHex, hexToBigInt, isHex } from "@leftcurve/encoding";
+import { encodeHex, hexToBigInt, isHex } from "@left-curve/encoding";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 
-import type { Hex, Signature } from "@leftcurve/types";
+import type { Hex, Signature } from "@left-curve/types";
 import type { KeyPair } from "./keypair.js";
 
 /**

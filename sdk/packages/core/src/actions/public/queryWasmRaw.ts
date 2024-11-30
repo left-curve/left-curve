@@ -6,7 +6,7 @@ import type {
   Signer,
   Transport,
   WasmRawResponse,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 import { queryApp } from "./queryApp.js";
 
 export type QueryWasmRawParameters = {

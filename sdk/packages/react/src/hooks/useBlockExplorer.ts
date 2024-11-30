@@ -1,5 +1,5 @@
-import { type GetBlockExplorerParameters, getBlockExplorer } from "@leftcurve/connect-kit";
-import type { Config, ConfigParameter, Prettify } from "@leftcurve/types";
+import { type GetBlockExplorerParameters, getBlockExplorer } from "@left-curve/connect-kit";
+import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
 import { useConfig } from "./useConfig.js";
 
 export type UseBlockExplorerParameters<config extends Config = Config> = Prettify<

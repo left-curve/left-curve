@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import "@dango/assets/fonts/ABCDiatypeRounded/index.css";
-import "@dango/assets/fonts/Exposure/index.css";
+import "@dango/config/fonts/ABCDiatypeRounded/index.css";
+import "@dango/config/fonts/Exposure/index.css";
 
 export const metadata: Metadata = {
   title: "Dango",

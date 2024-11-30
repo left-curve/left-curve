@@ -1,8 +1,8 @@
 import { getAppConfig } from "../../public/getAppConfig.js";
 import { queryWasmSmart } from "../../public/queryWasmSmart.js";
 
-import type { AmmConfig, AmmQueryMsg, Chain, Client, Signer, Transport } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { AmmConfig, AmmQueryMsg, Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetAmmConfigParameters = {
   height?: number;

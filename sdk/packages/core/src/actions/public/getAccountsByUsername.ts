@@ -9,8 +9,8 @@ import type {
   Signer,
   Transport,
   Username,
-} from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+} from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetAccountsByUsernameParameters = {
   username: Username;

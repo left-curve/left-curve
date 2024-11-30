@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport, TxParameters } from "@leftcurve/types";
+import type { Chain, Client, Signer, Transport, TxParameters } from "@left-curve/types";
 
 import {
   type CreatePoolParameters,

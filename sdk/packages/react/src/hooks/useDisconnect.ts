@@ -5,8 +5,8 @@ import {
   type DisconnectMutateAsync,
   type DisconnectVariables,
   disconnectMutationOptions,
-} from "@leftcurve/connect-kit/handlers";
-import type { ConfigParameter, Connector, Prettify } from "@leftcurve/types";
+} from "@left-curve/connect-kit/handlers";
+import type { ConfigParameter, Connector, Prettify } from "@left-curve/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 import { useConfig } from "./useConfig.js";
 import { useConnectors } from "./useConnectors.js";

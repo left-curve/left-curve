@@ -1,4 +1,4 @@
-import { useAccount } from "@leftcurve/react";
+import { useAccount } from "@left-curve/react";
 import { BorrowAssetCard } from "./BorrowAssetCard";
 
 export const MarginAssetsTable: React.FC = () => {

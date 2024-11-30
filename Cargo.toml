@@ -123,6 +123,7 @@ dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
+dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
 assertor              = { version = "0.0", git = "https://github.com/google/assertor" }

@@ -1,17 +1,17 @@
 "use client";
 
-import { http, createConfig, eip1193, passkey } from "@leftcurve/connect-kit";
-import { devnet } from "@leftcurve/connect-kit/chains";
-import { GrunnectProvider } from "@leftcurve/react";
+import { http, GrunnectProvider, createConfig, passkey } from "@left-curve/react";
+import { devnet } from "@left-curve/react/chains";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
 import type React from "react";
-import "@leftcurve/types/window";
 
 export const config = createConfig({
   ssr: true,
-  multiInjectedProviderDiscovery: false,
+  multiInjectedProviderDiscovery: true,
   chains: [devnet],
   transports: {
-    [devnet.id]: http("http://localhost:26657"),
+    [devnet.id]: http(devnet.rpcUrls.default.http.at(0), { batch: true }),
   },
   coins: {
     [devnet.id]: {
@@ -27,18 +27,7 @@ export const config = createConfig({
       },
     },
   },
-  connectors: [
-    eip1193({
-      id: "metamask",
-      name: "Metamask",
-    }),
-    eip1193({
-      id: "keplr",
-      name: "Keplr",
-      provider: () => window.keplr?.ethereum,
-    }),
-    passkey(),
-  ],
+  connectors: [passkey()],
 });
 
 export interface ProvidersProps {
@@ -46,5 +35,10 @@ export interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
-  return <GrunnectProvider config={config}>{children}</GrunnectProvider>;
+  return (
+    <GrunnectProvider config={config}>
+      {/* "@tanstack/react-query" is required in combination with GrunnectProvider */}
+      <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+    </GrunnectProvider>
+  );
 }

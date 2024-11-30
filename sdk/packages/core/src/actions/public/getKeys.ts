@@ -1,8 +1,8 @@
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
 
-import type { Chain, Client, Key, KeyHash, Signer, Transport } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { Chain, Client, Key, KeyHash, Signer, Transport } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetKeysParameters = {
   startAfter?: KeyHash;

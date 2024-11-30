@@ -1,4 +1,4 @@
-import type { Address, Chain, Client, Signer, Transport } from "@leftcurve/types";
+import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
 import { queryWasmSmart } from "./queryWasmSmart.js";
 
 export type GetAccountSequenceParameters = {

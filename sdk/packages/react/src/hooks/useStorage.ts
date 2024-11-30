@@ -1,6 +1,6 @@
-import { createStorage } from "@leftcurve/connect-kit";
+import { createStorage } from "@left-curve/connect-kit";
 
-import type { Storage } from "@leftcurve/types";
+import type { Storage } from "@left-curve/types";
 import type { Dispatch, SetStateAction } from "react";
 import { useQuery } from "../query.js";
 

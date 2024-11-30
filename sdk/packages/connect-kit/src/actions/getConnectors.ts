@@ -1,5 +1,5 @@
-import type { Config, Connector } from "@leftcurve/types";
-import { assertDeepEqual } from "@leftcurve/utils";
+import type { Config, Connector } from "@left-curve/types";
+import { assertDeepEqual } from "@left-curve/utils";
 
 export type GetConnectorsReturnType = readonly Connector[];
 

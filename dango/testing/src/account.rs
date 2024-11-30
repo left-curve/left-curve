@@ -271,7 +271,7 @@ pub struct Safe<'a> {
     sequence: u32,
 }
 
-impl<'a> Safe<'a> {
+impl Safe<'_> {
     pub fn new(address: Addr) -> Self {
         Self {
             address,
@@ -293,13 +293,13 @@ impl<'a> Safe<'a> {
     }
 }
 
-impl<'a> Addressable for Safe<'a> {
+impl Addressable for Safe<'_> {
     fn address(&self) -> Addr {
         self.address
     }
 }
 
-impl<'a> Signer for Safe<'a> {
+impl Signer for Safe<'_> {
     fn sign_transaction(
         &mut self,
         msgs: Vec<Message>,

@@ -267,7 +267,7 @@ where
                     ..Default::default()
                 },
                 Err(err) => response::Query {
-                    code: Code::Ok,
+                    code: into_tm_code_error(1),
                     codespace: "app".into(),
                     log: err.to_string(),
                     ..Default::default()

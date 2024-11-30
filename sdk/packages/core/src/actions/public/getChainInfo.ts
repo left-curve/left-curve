@@ -1,4 +1,4 @@
-import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "@leftcurve/types";
+import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "@left-curve/types";
 import { queryApp } from "./queryApp.js";
 
 export type GetChainInfoParameters = {

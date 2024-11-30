@@ -3,7 +3,7 @@ use {
     dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, Binary, BlockInfo, Coin, Coins, ContractBuilder, ContractWrapper, Duration,
+        btree_map, Binary, BlockInfo, Coin, ContractBuilder, ContractWrapper, Duration,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
@@ -15,6 +15,9 @@ use {
 };
 
 pub const CHAIN_ID: &str = "dev-1";
+
+/// The chain's genesis timestamp.
+pub const GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
@@ -99,12 +102,20 @@ where
             owner.username.clone() => GenesisUser {
                 key: owner.key,
                 key_hash: owner.key_hash,
-                balances: Coins::one("uusdc", 100_000_000_000).unwrap(),
+                // Some of the tests depend on the number of tokens, so careful
+                // when changing these. They may break tests...
+                balances: btree_map! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000,
+                }
+                .try_into()
+                .unwrap(),
             },
             relayer.username.clone() => GenesisUser {
                 key: relayer.key,
                 key_hash: relayer.key_hash,
                 balances: btree_map! {
+                    "udng"  => 100_000_000_000_000,
                     "uusdc" => 100_000_000_000_000,
                     "uatom" => 100_000_000_000_000,
                     "uosmo" => 100_000_000_000_000,
@@ -132,7 +143,7 @@ where
         BlockInfo {
             hash: GENESIS_BLOCK_HASH,
             height: GENESIS_BLOCK_HEIGHT,
-            timestamp: Timestamp::from_seconds(0),
+            timestamp: GENESIS_TIMESTAMP,
         },
         genesis_state,
     );
@@ -211,6 +222,11 @@ fn build_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_token_factory::query))
         .build();
 
+    let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
+        .with_execute(Box::new(dango_vesting::execute))
+        .with_query(Box::new(dango_vesting::query))
+        .build();
+
     Codes {
         account_factory,
         account_margin,
@@ -223,5 +239,6 @@ fn build_codes() -> Codes<ContractWrapper> {
         oracle,
         taxman,
         token_factory,
+        vesting,
     }
 }

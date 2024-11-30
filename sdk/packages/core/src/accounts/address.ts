@@ -1,7 +1,6 @@
-import { isHex } from "@leftcurve/encoding";
-import type { Address } from "@leftcurve/types";
+import { isHex } from "@left-curve/encoding";
 
-export function isValidAddress(address: Address): boolean {
+export function isValidAddress(address: string): boolean {
   if (!address.startsWith("0x")) return false;
   if (address.length !== 42) return false;
   return isHex(address.substring(2));

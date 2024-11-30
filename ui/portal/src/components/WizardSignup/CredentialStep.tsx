@@ -7,7 +7,7 @@ import {
   useDebounce,
   useWizard,
 } from "@dango/shared";
-import { usePublicClient } from "@leftcurve/react";
+import { usePublicClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 
@@ -25,8 +25,9 @@ export const CredentialStep: React.FC = () => {
 
   const {
     refetch,
-    data: isUsernameAvailable,
+    data: isUsernameAvailable = null,
     isFetching,
+    isError,
   } = useQuery({
     enabled: false,
     queryKey: ["username", username],
@@ -34,12 +35,22 @@ export const CredentialStep: React.FC = () => {
       if (!username) return null;
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
-      if (!isUsernameAvailable) setError("username", { message: "Username is not available" });
+      if (!isUsernameAvailable) {
+        setError("username", { message: "Username is not available" });
+        throw new Error("Username is not available");
+      }
       return isUsernameAvailable;
     },
   });
 
-  useDebounce(refetch, 300, [username]);
+  useDebounce(
+    () => {
+      if (errors.username) return;
+      refetch();
+    },
+    300,
+    [username],
+  );
 
   const onSubmit = handleSubmit(async () => {
     setData({ username });
@@ -47,7 +58,7 @@ export const CredentialStep: React.FC = () => {
   });
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col w-full gap-4 md:gap-6">
+    <form onSubmit={onSubmit} className="flex flex-col w-full">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
@@ -72,7 +83,7 @@ export const CredentialStep: React.FC = () => {
         }
         error={errors.username?.message}
       />
-      <Button type="submit" fullWidth isLoading={isSubmitting}>
+      <Button type="submit" fullWidth isLoading={isSubmitting} isDisabled={isError}>
         Choose username
       </Button>
     </form>

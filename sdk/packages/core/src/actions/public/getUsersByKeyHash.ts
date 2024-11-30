@@ -1,8 +1,8 @@
 import { getAppConfig } from "./getAppConfig.js";
 import { queryWasmSmart } from "./queryWasmSmart.js";
 
-import type { Chain, Client, Hex, Signer, Transport, Username } from "@leftcurve/types";
-import type { DangoAppConfigResponse } from "@leftcurve/types/dango";
+import type { Chain, Client, Hex, Signer, Transport, Username } from "@left-curve/types";
+import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type GetUsersByKeyhashParameters = {
   hash: Hex;

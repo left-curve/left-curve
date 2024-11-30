@@ -1,4 +1,4 @@
-import type { Chain, Client, ClientConfig, Transport } from "@leftcurve/types";
+import type { Chain, Client, ClientConfig, Transport } from "@left-curve/types";
 import type { PublicActions } from "../actions/publicActions.js";
 
 import { publicActions } from "../actions/publicActions.js";

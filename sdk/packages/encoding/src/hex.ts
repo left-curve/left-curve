@@ -1,4 +1,4 @@
-import type { Hex } from "@leftcurve/types";
+import type { Hex } from "@left-curve/types";
 
 /**
  * Encode a byte array to a string using the Hex scheme, lowercase

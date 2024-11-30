@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@leftcurve/config/ts/browser.json",
+  "extends": "@left-curve/config/ts/browser.json",
   "compilerOptions": {
     "outDir": "build",
     "rootDir": "src"

@@ -1,4 +1,4 @@
-import type { Account, Config, ConnectorUId } from "@leftcurve/types";
+import type { Account, Config, ConnectorUId } from "@left-curve/types";
 
 export type ChangeAccountParameters = {
   account: Account;

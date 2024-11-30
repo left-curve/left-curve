@@ -8,12 +8,12 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
 | Package                                  | Description                                                                                                                                                 |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc and tailwind                                                                                       |
+| [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc                                                                                                    |
 | [`connect-kit`](./packages/connect-kit/) | It allows connection to multiple blockchains and wallets, manages accounts, and enables interaction with smart contracts.                                   |
 | [`crypto`](./packages/crypto)            | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
 | [`encoding`](./packages/encoding)        | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
 | [`react`](./packages/react)              | It wrap connect-kit actions into react-hooks and wrap the state in a react provider with hydration for ssr                                                  |
-| [`sdk`](./packages/sdk)                  | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
+| [`sdk`](./packages/core)                 | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
 | [`types`](./packages/types)              | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./packages/utils)              | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 
@@ -27,32 +27,41 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
   }
 }%%
 stateDiagram-v2
-    @leftcurve/config --> @leftcurve/types
-    @leftcurve/config --> @leftcurve/utils
-    @leftcurve/types --> @leftcurve/utils
-    @leftcurve/config --> @leftcurve/sdk
-    @leftcurve/types --> @leftcurve/sdk
-    @leftcurve/utils --> @leftcurve/sdk
-    @leftcurve/crypto --> @leftcurve/sdk
-    @leftcurve/encoding --> @leftcurve/sdk
-    @leftcurve/config --> @leftcurve/react
-    @leftcurve/types --> @leftcurve/react
-    @leftcurve/connectkit --> @leftcurve/react
-    @leftcurve/crypto --> @leftcurve/react
-    @leftcurve/encoding --> @leftcurve/react
-    @leftcurve/utils --> @leftcurve/react
-    @leftcurve/config --> @leftcurve/encoding
-    @leftcurve/types --> @leftcurve/encoding
-    @leftcurve/utils --> @leftcurve/encoding
-    @leftcurve/config --> @leftcurve/crypto
-    @leftcurve/types --> @leftcurve/crypto
-    @leftcurve/encoding --> @leftcurve/crypto
-    @leftcurve/config --> @leftcurve/connectkit
-    @leftcurve/crypto --> @leftcurve/connectkit
-    @leftcurve/encoding --> @leftcurve/connectkit
-    @leftcurve/sdk --> @leftcurve/connectkit
-    @leftcurve/types --> @leftcurve/connectkit
-    @leftcurve/utils --> @leftcurve/connectkit
+    state "@left-curve/config" as left_curve_config
+    state "@left-curve/types" as left_curve_types
+    state "@left-curve/utils" as left_curve_utils
+    state "@left-curve/sdk" as left_curve_sdk
+    state "@left-curve/crypto" as left_curve_crypto
+    state "@left-curve/encoding" as left_curve_encoding
+    state "@left-curve/react" as left_curve_react
+    state "@left-curve/connectkit" as left_curve_connectkit
+
+    left_curve_config --> left_curve_types
+    left_curve_config --> left_curve_utils
+    left_curve_types --> left_curve_utils
+    left_curve_config --> left_curve_sdk
+    left_curve_types --> left_curve_sdk
+    left_curve_utils --> left_curve_sdk
+    left_curve_crypto --> left_curve_sdk
+    left_curve_encoding --> left_curve_sdk
+    left_curve_config --> left_curve_react
+    left_curve_types --> left_curve_react
+    left_curve_connectkit --> left_curve_react
+    left_curve_crypto --> left_curve_react
+    left_curve_encoding --> left_curve_react
+    left_curve_utils --> left_curve_react
+    left_curve_config --> left_curve_encoding
+    left_curve_types --> left_curve_encoding
+    left_curve_utils --> left_curve_encoding
+    left_curve_config --> left_curve_crypto
+    left_curve_types --> left_curve_crypto
+    left_curve_encoding --> left_curve_crypto
+    left_curve_config --> left_curve_connectkit
+    left_curve_crypto --> left_curve_connectkit
+    left_curve_encoding --> left_curve_connectkit
+    left_curve_sdk --> left_curve_connectkit
+    left_curve_types --> left_curve_connectkit
+    left_curve_utils --> left_curve_connectkit
 ```
 
 ## Supported JS environments
@@ -75,7 +84,7 @@ We are grateful to both the [Wevm] and [Confio] team for their open-source contr
 
 TBD
 
-[Grug]: https://github.com/left-curve/grug
+[Grug]: https://grug.build/
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
 [Viem]: https://github.com/wevm/viem

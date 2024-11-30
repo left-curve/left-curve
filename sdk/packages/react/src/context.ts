@@ -1,6 +1,6 @@
 "use client";
 
-import type { Config, State } from "@leftcurve/types";
+import type { Config, State } from "@left-curve/types";
 import { type PropsWithChildren, createContext, createElement } from "react";
 import { Hydrate } from "./hydrate.js";
 

@@ -172,7 +172,7 @@ impl<'a, S> SharedIter<'a, S> {
     }
 }
 
-impl<'a, S> SharedIter<'a, S>
+impl<S> SharedIter<'_, S>
 where
     S: Storage,
 {
@@ -195,7 +195,7 @@ where
     }
 }
 
-impl<'a, S> Iterator for SharedIter<'a, S>
+impl<S> Iterator for SharedIter<'_, S>
 where
     S: Storage,
 {

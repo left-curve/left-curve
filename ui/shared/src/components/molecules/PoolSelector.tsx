@@ -2,7 +2,7 @@ import { parseAsInteger, useQueryState } from "nuqs";
 import type React from "react";
 import { Button, Input, PoolCard, SearchIcon } from "../";
 
-import type { Pool, PoolId } from "@leftcurve/types";
+import type { Pool, PoolId } from "@left-curve/types";
 
 interface Props {
   onPoolSelected: () => void;

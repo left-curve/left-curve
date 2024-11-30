@@ -1,3 +1,5 @@
+export * from "@left-curve/connect-kit";
+
 export {
   type GrunnectProviderProps,
   GrunnectProvider,
@@ -83,3 +85,9 @@ export {
   type UseSigningClientReturnType,
   useSigningClient,
 } from "./hooks/useSigningClient.js";
+
+export {
+  type UseAccountInfoParameters,
+  type UseAccountInfoReturnType,
+  useAccountInfo,
+} from "./hooks/useAccountInfo.js";

@@ -24,6 +24,7 @@ dango-oracle          = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-token-factory   = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
+dango-vesting         = { workspace = true, features = ["library"] }
 grug                  = { workspace = true }
 grug-app              = { workspace = true }
 grug-db-disk          = { workspace = true }

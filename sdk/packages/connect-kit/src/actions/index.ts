@@ -88,3 +88,10 @@ export {
   type GetConnectorClientErrorType,
   getConnectorClient,
 } from "./getConnectorClient.js";
+
+export {
+  type GetAccountInfoParameters,
+  type GetAccountInfoErrorType,
+  type GetAccountInfoReturnType,
+  getAccountInfo,
+} from "./getAccountInfo.js";

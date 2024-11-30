@@ -2,7 +2,13 @@ import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@dango/shared"
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export const ManageSpot: React.FC = () => {
+import type { Account } from "@left-curve/types";
+
+interface Props {
+  account: Account;
+}
+
+export const ManageSpot: React.FC<Props> = ({ account }) => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -13,10 +19,12 @@ export const ManageSpot: React.FC = () => {
       ) : (
         <>
           <AccountInfo
+            account={account}
             avatarUri="/images/avatars/spot.svg"
             triggerEdit={() => setIsEditing(true)}
           />
           <SpotPortfolioTable
+            account={account}
             sendAction={() => navigate("/transfer?action=send")}
             receiveAction={() => navigate("/transfer?action=receive")}
           />

@@ -22,7 +22,7 @@ export const SpotEditAccount: React.FC<Props> = ({ goBack }) => {
   return (
     <div className="text-center">
       <form
-        className="dango-grid-landscape-flat-mini-l flex flex-col gap-4 text-[18px] uppercase justify-center"
+        className="dango-grid-3x8-S flex flex-col gap-4 text-[18px] uppercase justify-center"
         onSubmit={onSubmit}
       >
         <p className="text-typography-black-200 text-center font-extrabold tracking-[4.5px]">

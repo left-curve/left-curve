@@ -284,7 +284,7 @@ impl<U, const S: u32> DecVisitor<U, S> {
     }
 }
 
-impl<'de, U, const S: u32> de::Visitor<'de> for DecVisitor<U, S>
+impl<U, const S: u32> de::Visitor<'_> for DecVisitor<U, S>
 where
     Dec<U, S>: FromStr,
     <Dec<U, S> as FromStr>::Err: Display,
@@ -492,6 +492,15 @@ generate_decimal! {
     inner_type        = u128,
     inner_constructor = Uint128::new,
     doc               = "128-bit unsigned fixed-point number with 6 decimal places.",
+}
+
+generate_decimal! {
+    type              = Unsigned,
+    name              = Udec128_9,
+    precision         = 9,
+    inner_type        = u128,
+    inner_constructor = Uint128::new,
+    doc               = "128-bit unsigned fixed-point number with 9 decimal places.",
 }
 
 generate_decimal! {

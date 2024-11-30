@@ -9,8 +9,8 @@ import type {
   JsonRpcRequest,
   RequestFn,
   Transport,
-} from "@leftcurve/types";
-import { createBatchScheduler } from "@leftcurve/utils";
+} from "@left-curve/types";
+import { createBatchScheduler } from "@left-curve/utils";
 
 export type HttpTransportConfig = {
   /**

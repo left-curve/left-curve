@@ -1,19 +1,19 @@
 {
-  "name": "@leftcurve/example-nodejs",
+  "name": "@left-curve/example-nodejs",
   "private": true,
   "scripts": {
     "x": "tsx --"
   },
   "devDependencies": {
-    "@leftcurve/config": "workspace:^",
-    "@leftcurve/types": "workspace:^",
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^",
     "@types/node": "catalog:"
   },
   "dependencies": {
-    "@leftcurve/crypto": "workspace:^",
-    "@leftcurve/encoding": "workspace:^",
-    "@leftcurve/utils": "workspace:^",
-    "@leftcurve/sdk": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/utils": "workspace:^",
+    "@left-curve/sdk": "workspace:^",
     "tsx": "^4.17.0"
   }
 }

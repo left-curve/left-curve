@@ -1,9 +1,9 @@
-import { ConnectorIds } from "@leftcurve/types";
-import { capitalize } from "@leftcurve/utils";
+import { ConnectorIds } from "@left-curve/types";
+import { capitalize } from "@left-curve/utils";
 
 import { Button } from "../atoms/Button";
 
-import type { Connector, ConnectorId } from "@leftcurve/types";
+import type { Connector, ConnectorId } from "@left-curve/types";
 import { WalletIcon } from "../icons/Wallet";
 
 interface Props {

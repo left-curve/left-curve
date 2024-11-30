@@ -1,8 +1,8 @@
 import { AccountSearchInput, Button, CoinSelector, Input } from "@dango/shared";
-import { useAccount, useBalances, useConfig, useSigningClient } from "@leftcurve/react";
-import { isValidAddress } from "@leftcurve/sdk";
-import type { Address } from "@leftcurve/types";
-import { formatUnits, parseUnits, wait } from "@leftcurve/utils";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/react";
+import { isValidAddress } from "@left-curve/sdk";
+import type { Address } from "@left-curve/types";
+import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
 export const SendContainer: React.FC = () => {

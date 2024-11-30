@@ -1,10 +1,10 @@
-import { usePublicClient } from "@leftcurve/react";
-import { safeAccountGetProposals } from "@leftcurve/sdk/actions";
+import { usePublicClient } from "@left-curve/react";
+import { safeAccountGetProposals } from "@left-curve/sdk/actions";
 import { useQuery } from "@tanstack/react-query";
 
 import { ProposalCard } from "./ProposalCard";
 
-import type { Account } from "@leftcurve/types";
+import type { Account } from "@left-curve/types";
 
 interface Props {
   account: Account;

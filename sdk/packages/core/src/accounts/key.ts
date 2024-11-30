@@ -1,12 +1,12 @@
-import { ripemd160, secp256k1CompressPubKey } from "@leftcurve/crypto";
-import { encodeHex, encodeUtf8 } from "@leftcurve/encoding";
+import { ripemd160, secp256k1CompressPubKey } from "@left-curve/crypto";
+import { encodeHex, encodeUtf8 } from "@left-curve/encoding";
 import {
   KeyAlgo,
   type KeyAlgoType,
   type KeyHash,
   type OneRequired,
   type Prettify,
-} from "@leftcurve/types";
+} from "@left-curve/types";
 
 type CreateKeyHashParameters = Prettify<
   { keyAlgo: KeyAlgoType } & OneRequired<

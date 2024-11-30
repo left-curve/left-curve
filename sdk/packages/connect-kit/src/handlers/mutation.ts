@@ -2,7 +2,7 @@ import type { MutateOptions } from "@tanstack/query-core";
 
 export type { MutationOptions } from "@tanstack/query-core";
 
-import type { Prettify } from "@leftcurve/types";
+import type { Prettify } from "@left-curve/types";
 
 export type Mutate<data = unknown, error = unknown, variables = void, context = unknown> = (
   ...args: Parameters<MutateFn<data, error, Prettify<variables>, context>>

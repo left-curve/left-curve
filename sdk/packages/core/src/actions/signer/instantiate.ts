@@ -1,4 +1,4 @@
-import { encodeBase64 } from "@leftcurve/encoding";
+import { encodeBase64 } from "@left-curve/encoding";
 import type {
   Address,
   Chain,
@@ -10,8 +10,8 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@leftcurve/types";
-import { getCoinsTypedData } from "@leftcurve/utils";
+} from "@left-curve/types";
+import { getCoinsTypedData } from "@left-curve/utils";
 import { computeAddress } from "../public/computeAddress.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 

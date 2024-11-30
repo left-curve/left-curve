@@ -1,5 +1,5 @@
 import { Button, Input, useWizard } from "@dango/shared";
-import { usePublicClient } from "@leftcurve/react";
+import { usePublicClient } from "@left-curve/react";
 import type React from "react";
 import { useForm } from "react-hook-form";
 
@@ -30,7 +30,7 @@ export const LoginStep: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col w-full">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
