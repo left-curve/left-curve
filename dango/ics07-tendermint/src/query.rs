@@ -8,6 +8,9 @@ use grug::{ImmutableCtx, Json, StdResult};
 /// Returns an error if the underlying query handler encounters an error.
 #[cfg_attr(not(feature = "library"), grug::export)]
 #[allow(clippy::needless_pass_by_value)]
-pub fn query(_ctx: ImmutableCtx, _msg: QueryMsg) -> StdResult<Json> {
-    todo!()
+pub fn query(_ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+    match msg {
+        QueryMsg::Status(_) => todo!(),
+        QueryMsg::TimestampAtHeight(_) => todo!(),
+    }
 }

@@ -15,6 +15,10 @@ pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response
 /// Returns an error if the underlying message handler encounters an error.
 #[cfg_attr(not(feature = "library"), grug::export)]
 #[allow(clippy::needless_pass_by_value)]
-pub fn execute(_ctx: MutableCtx, _msg: ExecuteMsg) -> anyhow::Result<Response> {
-    todo!()
+pub fn execute(_ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    match msg {
+        ExecuteMsg::UpdateClient(_) => todo!(),
+        ExecuteMsg::Misbehaviour(_) => todo!(),
+        ExecuteMsg::UpgradeClient(_) => todo!(),
+    }
 }

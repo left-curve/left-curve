@@ -4,6 +4,7 @@
 #![deny(clippy::nursery, clippy::pedantic, warnings, missing_docs)]
 
 mod execute;
+pub mod ibc_rs_ctx;
 mod query;
 mod state;
 
