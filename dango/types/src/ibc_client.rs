@@ -32,6 +32,10 @@ pub enum QueryMsg {
     Status(StatusMsg),
     /// Query the timestamp at a given height.
     TimestampAtHeight(TimestampAtHeightMsg),
+    /// Verify membership of a key-value pair in a Merkle tree.
+    VerifyMembership(VerifyMembershipMsg),
+    /// Verify non-membership of a key-value pair in a Merkle tree.
+    VerifyNonMembership(VerifyNonMembershipMsg),
 }
 
 /// Status Query message.
@@ -42,6 +46,30 @@ pub struct StatusMsg {}
 #[grug::derive(Serde)]
 pub struct TimestampAtHeightMsg {
     /// The counterparty chain height.
+    pub height: Height,
+}
+
+/// Verify membership of a key-value pair in a Merkle tree.
+#[grug::derive(Serde)]
+pub struct VerifyMembershipMsg {
+    /// The proof to verify.
+    pub proof: Binary,
+    /// The path at which the value is stored.
+    pub path: Vec<Binary>,
+    /// The value to verify the membership of.
+    pub value: Binary,
+    /// The height of the proof.
+    pub height: Height,
+}
+
+/// Verify non-membership of a key-value pair in a Merkle tree.
+#[grug::derive(Serde)]
+pub struct VerifyNonMembershipMsg {
+    /// The proof to verify.
+    pub proof: Binary,
+    /// The path to verify non-membership at.
+    pub path: Vec<Binary>,
+    /// The height of the proof.
     pub height: Height,
 }
 

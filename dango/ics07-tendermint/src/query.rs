@@ -10,6 +10,8 @@ use grug::{ImmutableCtx, Json, StdResult};
 #[allow(clippy::needless_pass_by_value)]
 pub fn query(_ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
+        QueryMsg::VerifyMembership(_) => todo!(),
+        QueryMsg::VerifyNonMembership(_) => todo!(),
         QueryMsg::Status(_) => todo!(),
         QueryMsg::TimestampAtHeight(_) => todo!(),
     }
