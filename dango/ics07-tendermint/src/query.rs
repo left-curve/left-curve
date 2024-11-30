@@ -1,13 +1,7 @@
 //! Defines the query interface for the ics07-tendermint contract.
 
+use dango_types::ibc_client::QueryMsg;
 use grug::{ImmutableCtx, Json, StdResult};
-
-/// The query messages for the contract.
-#[grug::derive(Serde)]
-#[allow(clippy::module_name_repetitions)]
-pub enum QueryMsg {
-    // TODO: Replace this with the actual query messages.
-}
 
 /// The query entrypoint for the contract.
 /// # Errors

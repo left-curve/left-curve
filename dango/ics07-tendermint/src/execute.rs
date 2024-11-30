@@ -1,17 +1,5 @@
+use dango_types::ibc_client::{ExecuteMsg, InstantiateMsg};
 use grug::{MutableCtx, Response, StdResult};
-
-/// The execute entrypoint for the contract.
-#[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    // TODO: remove this example and add your own custom msg types
-}
-
-/// The execute entrypoint for the contract.
-#[grug::derive(Serde)]
-#[allow(clippy::module_name_repetitions)]
-pub enum ExecuteMsg {
-    // TODO: remove this example and add your own custom msg types
-}
 
 /// The instantiate entrypoint for the contract.
 /// # Errors
