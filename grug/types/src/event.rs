@@ -34,6 +34,7 @@ pub enum Event {
     Cron(EvtCron),
     /// A contract emitted a custom event.
     Guest(EvtGuest),
+    // TODO: IBC events
 }
 
 /// An event indicating that the chain- or app-level configurations were updated.
