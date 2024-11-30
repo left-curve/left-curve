@@ -36,12 +36,14 @@ pub enum Event {
     Guest(EvtGuest),
 }
 
+/// An event indicating that the chain- or app-level configurations were updated.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtConfigure {
     pub sender: Addr,
     // TODO: not sure what else we need here. the old and new configs?
 }
 
+/// An event indicating that coins were transferred from one account to another.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtTransfer {
     pub sender: Addr,
@@ -49,12 +51,14 @@ pub struct EvtTransfer {
     pub coins: Coins,
 }
 
+/// An event indicating that a wasm binary code was uploaded.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtUpload {
     pub sender: Addr,
     pub code_hash: Hash256,
 }
 
+/// An event indicating that a new contract was instantiated.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtInstantiate {
@@ -66,6 +70,7 @@ pub struct EvtInstantiate {
     // TODO: is it necessary to include the InstantiateMsg?
 }
 
+/// An event indicating that a contract was executed.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtExecute {
     pub sender: Addr,
@@ -73,6 +78,7 @@ pub struct EvtExecute {
     // TODO: is it necessary to include the ExecuteMsg?
 }
 
+/// An event indicating that a contract was migrated to a new code hash.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtMigrate {
     pub sender: Addr,
@@ -82,35 +88,41 @@ pub struct EvtMigrate {
     // TODO: is it necessary to include the MigrateMsg?
 }
 
+/// An event indicating that a contract was replied the outcome of its submessage.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtReply {
     pub contract: Addr,
     pub reply_on: ReplyOn,
 }
 
+/// An event indicating that a contract authenticated a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtAuthenticate {
     pub sender: Addr,
     pub backrun_requested: bool,
 }
 
+/// An event indicating that a contract backran a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtBackrun {
     pub sender: Addr,
 }
 
+/// An event indicating that The taxman withheld the fee for a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtWithhold {
     pub sender: Addr,
     pub taxman: Addr,
 }
 
+/// An event indicating that the taxman finalized the fee for a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtFinalize {
     pub sender: Addr,
     pub taxman: Addr,
 }
 
+/// An event indicating that a cronjob was executed.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtCron {
     pub contract: Addr,
@@ -120,6 +132,7 @@ pub struct EvtCron {
     pub next: Timestamp,
 }
 
+/// An event indicating that a contract emitted a custom event.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtGuest {
     pub contract: Addr,
