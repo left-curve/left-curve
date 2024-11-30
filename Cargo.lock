@@ -1541,6 +1541,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-ics07-tendermint"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-lending"
 version = "0.0.0"
 dependencies = [
