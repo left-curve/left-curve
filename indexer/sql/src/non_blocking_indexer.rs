@@ -291,7 +291,7 @@ impl Indexer for NonBlockingIndexer {
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");
 
-            Ok::<(), anyhow::Error>(())
+            Ok::<_, error::IndexerError>(())
         });
 
         Ok(())
