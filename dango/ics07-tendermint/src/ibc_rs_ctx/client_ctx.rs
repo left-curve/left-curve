@@ -55,7 +55,6 @@ impl ClientValidationContext for TendermintContext<'_> {
         height: &Height,
     ) -> Result<(Timestamp, Height), HostError> {
         let time_key = self.client_update_time_key(height);
-
         let time_vec = self.retrieve(time_key)?;
 
         let time = u64::from_be_bytes(
@@ -67,7 +66,6 @@ impl ClientValidationContext for TendermintContext<'_> {
         let timestamp = Timestamp::from_nanoseconds(time);
 
         let height_key = self.client_update_height_key(height);
-
         let revision_height_vec = self.retrieve(height_key)?;
 
         let revision_height = u64::from_be_bytes(revision_height_vec.try_into().map_err(|_| {
@@ -88,12 +86,10 @@ impl ClientExecutionContext for TendermintContext<'_> {
         _client_state_path: ClientStatePath,
         client_state: Self::ClientStateMut,
     ) -> Result<(), HostError> {
-        let prefixed_key = self.prefixed_key(ClientStatePath::leaf());
-
         let encoded_client_state =
             <ClientStateWrapper as Protobuf<RawTmClientState>>::encode_vec(client_state);
 
-        self.insert(prefixed_key, encoded_client_state);
+        self.insert(ClientStatePath::leaf(), encoded_client_state);
 
         Ok(())
     }
@@ -103,12 +99,10 @@ impl ClientExecutionContext for TendermintContext<'_> {
         consensus_state_path: ClientConsensusStatePath,
         consensus_state: Self::ConsensusStateRef,
     ) -> Result<(), HostError> {
-        let prefixed_key = self.prefixed_key(consensus_state_path.leaf());
-
         let encoded_consensus_state =
             <ConsensusStateWrapper as Protobuf<RawTmConsensusState>>::encode_vec(consensus_state);
 
-        self.insert(prefixed_key, encoded_consensus_state);
+        self.insert(consensus_state_path.leaf(), encoded_consensus_state);
 
         Ok(())
     }
@@ -117,9 +111,7 @@ impl ClientExecutionContext for TendermintContext<'_> {
         &mut self,
         consensus_state_path: ClientConsensusStatePath,
     ) -> Result<(), HostError> {
-        let prefixed_key = self.prefixed_key(consensus_state_path.leaf());
-
-        self.remove(prefixed_key);
+        self.remove(consensus_state_path.leaf());
 
         Ok(())
     }
@@ -132,20 +124,14 @@ impl ClientExecutionContext for TendermintContext<'_> {
         host_height: Height,
     ) -> Result<(), HostError> {
         let time_key = self.client_update_time_key(&height);
-
-        let prefixed_time_key = self.prefixed_key(time_key);
-
         let time_vec = host_timestamp.nanoseconds().to_be_bytes();
 
-        self.insert(prefixed_time_key, time_vec);
+        self.insert(time_key, time_vec);
 
         let height_key = self.client_update_height_key(&height);
-
-        let prefixed_height_key = self.prefixed_key(height_key);
-
         let revision_height_vec = host_height.revision_height().to_be_bytes();
 
-        self.insert(prefixed_height_key, revision_height_vec);
+        self.insert(height_key, revision_height_vec);
 
         CONSENSUS_STATE_HEIGHT_MAP
             .save(
@@ -165,15 +151,11 @@ impl ClientExecutionContext for TendermintContext<'_> {
     ) -> Result<(), HostError> {
         let time_key = self.client_update_time_key(&height);
 
-        let prefixed_time_key = self.prefixed_key(time_key);
-
-        self.remove(prefixed_time_key);
+        self.remove(time_key);
 
         let height_key = self.client_update_height_key(&height);
 
-        let prefixed_height_key = self.prefixed_key(height_key);
-
-        self.remove(prefixed_height_key);
+        self.remove(height_key);
 
         CONSENSUS_STATE_HEIGHT_MAP.remove(
             self.storage_mut(),

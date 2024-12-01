@@ -68,24 +68,13 @@ impl<'a> TendermintContext<'a> {
         self.client_id.clone()
     }
 
-    /// Prefixes the given key with the migration prefix.
-    pub fn prefixed_key(&self, key: impl AsRef<[u8]>) -> Vec<u8> {
-        // No prefixing is required for the key at the moment.
-        let mut prefixed_key = Vec::new();
-        prefixed_key.extend_from_slice(key.as_ref());
-
-        prefixed_key
-    }
-
     /// Retrieves the value of the given key.
     /// # Errors
     /// Returns an error if the key is not found.
     pub fn retrieve(&self, key: impl AsRef<[u8]>) -> Result<Vec<u8>, HostError> {
-        let prefixed_key = self.prefixed_key(key);
-
         let value = self
             .storage_ref()
-            .read(prefixed_key.as_ref())
+            .read(key.as_ref())
             .ok_or_else(|| HostError::failed_to_retrieve("key not found upon retrieval"))?;
 
         Ok(value)
