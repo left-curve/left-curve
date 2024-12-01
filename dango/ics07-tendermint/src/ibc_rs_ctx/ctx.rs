@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use anyhow::Result;
-use grug::{Addressable, Bound, Empty, ImmutableCtx, Map, MutableCtx, Order, Storage};
+use grug::{Addressable, BlockInfo, Bound, Empty, ImmutableCtx, Map, MutableCtx, Order, Storage};
 use ibc_core_client::types::Height;
 use ibc_core_host_types::error::HostError;
 use ibc_core_host_types::identifiers::ClientId;
@@ -195,6 +195,15 @@ impl<'a> TendermintContext<'a> {
         match self.ctx {
             Ctx::Mutable(ref mut ctx_mut) => ctx_mut.storage,
             Ctx::Immutable(_) => panic!("Mutable context should be available"),
+        }
+    }
+
+    /// Returns the block info of the context.
+    #[must_use]
+    pub const fn block(&self) -> BlockInfo {
+        match self.ctx {
+            Ctx::Mutable(ref ctx_mut) => ctx_mut.block,
+            Ctx::Immutable(ref ctx) => ctx.block,
         }
     }
 }
