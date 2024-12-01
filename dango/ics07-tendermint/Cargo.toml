@@ -21,5 +21,12 @@ library = []
 anyhow      = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
+prost       = { workspace = true }
+
+ibc-primitives        = { workspace = true }
+ibc-core-client       = { workspace = true }
+ibc-core-host-types   = { workspace = true, features = ["std"] }
+ibc-client-tendermint = { workspace = true }
+ibc-client-wasm-types = { workspace = true }
 
 [dev-dependencies]

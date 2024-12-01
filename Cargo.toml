@@ -85,7 +85,11 @@ wasmer-middlewares         = "5.0.0"
 
 # IBC packages
 ibc-proto             = { version = "0.51", default-features = false }
-# ibc-core-client-types = { version = "0.56", default-features = false }
+ibc-primitives        = { version = "0.56", default-features = false }
+ibc-core-client       = { version = "0.56", default-features = false }
+ibc-core-host-types   = { version = "0.56", default-features = false }
+ibc-client-tendermint = { version = "0.56", default-features = false }
+ibc-client-wasm-types = { version = "0.56", default-features = false }
 
 # Grug packages
 grug              = { path = "grug/std" }
