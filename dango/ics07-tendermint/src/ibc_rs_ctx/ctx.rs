@@ -124,7 +124,7 @@ impl<'a> TendermintContext<'a> {
         height: &Height,
         travel: HeightTravel,
     ) -> Result<Option<Height>, HostError> {
-        let iterator = match travel {
+        match travel {
             HeightTravel::Prev => CONSENSUS_STATE_HEIGHT_MAP.range(
                 self.storage_ref(),
                 None,
@@ -143,40 +143,38 @@ impl<'a> TendermintContext<'a> {
                 None,
                 Order::Ascending,
             ),
-        };
-
-        iterator
-            .map(|deserialized_result| {
-                let ((rev_number, rev_height), _) =
-                    deserialized_result.map_err(HostError::failed_to_retrieve)?;
-                Height::new(rev_number, rev_height).map_err(HostError::invalid_state)
-            })
-            .next()
-            .transpose()
+        }
+        .map(|deserialized_result| {
+            let ((rev_number, rev_height), _) =
+                deserialized_result.map_err(HostError::failed_to_retrieve)?;
+            Height::new(rev_number, rev_height).map_err(HostError::invalid_state)
+        })
+        .next()
+        .transpose()
     }
 
     /// Returns the key for the client update time.
     #[must_use]
     pub fn client_update_time_key(&self, height: &Height) -> Vec<u8> {
-        let client_update_time_path = ClientUpdateTimePath::new(
+        ClientUpdateTimePath::new(
             self.client_id(),
             height.revision_number(),
             height.revision_height(),
-        );
-
-        client_update_time_path.leaf().into_bytes()
+        )
+        .leaf()
+        .into_bytes()
     }
 
     /// Returns the key for the client update height.
     #[must_use]
     pub fn client_update_height_key(&self, height: &Height) -> Vec<u8> {
-        let client_update_height_path = ClientUpdateHeightPath::new(
+        ClientUpdateHeightPath::new(
             self.client_id(),
             height.revision_number(),
             height.revision_height(),
-        );
-
-        client_update_height_path.leaf().into_bytes()
+        )
+        .leaf()
+        .into_bytes()
     }
 
     /// Returns the storage reference of the context.

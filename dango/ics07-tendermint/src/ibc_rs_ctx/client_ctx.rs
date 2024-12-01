@@ -19,9 +19,7 @@ use ibc_core_host_types::path::{ClientConsensusStatePath, ClientStatePath};
 use ibc_primitives::proto::Protobuf;
 use ibc_primitives::Timestamp;
 
-use super::HeightTravel;
-use super::TendermintContext;
-use super::CONSENSUS_STATE_HEIGHT_MAP;
+use super::{HeightTravel, TendermintContext, CONSENSUS_STATE_HEIGHT_MAP};
 
 impl ClientValidationContext for TendermintContext<'_> {
     type ClientStateRef = ClientStateWrapper;
@@ -188,24 +186,19 @@ impl ClientExecutionContext for TendermintContext<'_> {
 
 impl ExtClientValidationContext for TendermintContext<'_> {
     fn host_timestamp(&self) -> Result<Timestamp, HostError> {
-        let time = self.block().timestamp;
-
-        let host_timestamp = Timestamp::from_nanoseconds(time.into_nanos().try_into().unwrap());
-
-        Ok(host_timestamp)
+        Ok(Timestamp::from_nanoseconds(
+            self.block().timestamp.into_nanos().try_into().unwrap(),
+        ))
     }
 
     fn host_height(&self) -> Result<Height, HostError> {
-        let host_height = Height::new(0, self.block().height).map_err(HostError::invalid_state)?;
-
-        Ok(host_height)
+        Height::new(0, self.block().height).map_err(HostError::invalid_state)
     }
 
     fn consensus_state_heights(&self, _client_id: &ClientId) -> Result<Vec<Height>, HostError> {
-        let heights = self.get_heights()?;
-
-        Ok(heights)
+        self.get_heights()
     }
+
     fn next_consensus_state(
         &self,
         client_id: &ClientId,
