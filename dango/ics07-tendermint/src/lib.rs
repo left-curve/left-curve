@@ -3,8 +3,8 @@
 
 #![deny(clippy::nursery, clippy::pedantic, warnings, missing_docs)]
 
+pub mod ctx;
 mod execute;
-pub mod ibc_rs_ctx;
 mod query;
 
 pub use execute::*;
