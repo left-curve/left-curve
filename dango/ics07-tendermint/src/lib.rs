@@ -6,7 +6,6 @@
 mod execute;
 pub mod ibc_rs_ctx;
 mod query;
-mod state;
 
 pub use execute::*;
 pub use query::*;
