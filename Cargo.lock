@@ -3039,6 +3039,7 @@ dependencies = [
  "ibc-core-host-types",
  "ibc-primitives",
  "ibc-proto",
+ "serde",
  "sha2 0.10.8",
  "subtle-encoding",
  "tendermint",
@@ -3121,6 +3122,7 @@ dependencies = [
  "ibc-core-host-types",
  "ibc-primitives",
  "ibc-proto",
+ "serde",
  "subtle-encoding",
  "tendermint",
 ]
@@ -3141,6 +3143,7 @@ dependencies = [
  "ibc-core-router-types",
  "ibc-primitives",
  "ibc-proto",
+ "serde",
  "subtle-encoding",
  "tendermint",
 ]
@@ -3189,6 +3192,7 @@ dependencies = [
  "ibc-core-host-types",
  "ibc-primitives",
  "ibc-proto",
+ "serde",
  "subtle-encoding",
  "tendermint",
 ]
