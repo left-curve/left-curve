@@ -5,7 +5,7 @@
     "ci": "pnpm lint",
     "lint": "pnpm biome check --write ./src",
     "lint:fix": "pnpm biome ci ./src",
-    "clean": "rm -rf ./build && rm -rf node_modules",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "sb:dev": "storybook dev -p 6006",
     "sb:build": "storybook build",

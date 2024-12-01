@@ -12,7 +12,7 @@
     "bump": "npm version --no-git-tag-version",
     "ci": "pnpm lint",
     "tsup": "tsup",
-    "clean": "rm -rf ./build && rm -rf node_modules",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
