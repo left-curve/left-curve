@@ -25,11 +25,15 @@ pub enum HeightTravel {
 pub const CONSENSUS_STATE_HEIGHT_MAP: Map<(u64, u64), Empty> =
     Map::new(ITERATE_CONSENSUS_STATE_PREFIX);
 
+enum Ctx<'a> {
+    Immutable(ImmutableCtx<'a>),
+    Mutable(MutableCtx<'a>),
+}
+
 /// Context is a wrapper around the deps and env that provides access
 /// to the methods under the ibc-rs Validation and Execution traits.
 pub struct TendermintContext<'a> {
-    ctx: Option<ImmutableCtx<'a>>,
-    ctx_mut: Option<MutableCtx<'a>>,
+    ctx: Ctx<'a>,
     client_id: ClientId,
 }
 
@@ -41,8 +45,7 @@ impl<'a> TendermintContext<'a> {
         let client_id = ClientId::from_str(&ctx.contract.address().to_string())?;
 
         Ok(Self {
-            ctx: Some(ctx),
-            ctx_mut: None,
+            ctx: Ctx::Immutable(ctx),
             client_id,
         })
     }
@@ -54,8 +57,7 @@ impl<'a> TendermintContext<'a> {
         let client_id = ClientId::from_str(&ctx_mut.contract.address().to_string())?;
 
         Ok(Self {
-            ctx: None,
-            ctx_mut: Some(ctx_mut),
+            ctx: Ctx::Mutable(ctx_mut),
             client_id,
         })
     }
@@ -177,11 +179,22 @@ impl<'a> TendermintContext<'a> {
         client_update_height_path.leaf().into_bytes()
     }
 
-    fn storage_ref(&self) -> &dyn Storage {
-        todo!()
+    /// Returns the storage reference of the context.
+    #[must_use]
+    pub fn storage_ref(&self) -> &dyn Storage {
+        match self.ctx {
+            Ctx::Mutable(ref ctx_mut) => ctx_mut.storage,
+            Ctx::Immutable(ref ctx) => ctx.storage,
+        }
     }
 
-    fn storage_mut(&mut self) -> &mut dyn Storage {
-        todo!()
+    /// Returns the mutable storage of the context.
+    /// # Panics
+    /// Panics if the mutable context is not available.
+    pub fn storage_mut(&mut self) -> &mut dyn Storage {
+        match self.ctx {
+            Ctx::Mutable(ref mut ctx_mut) => ctx_mut.storage,
+            Ctx::Immutable(_) => panic!("Mutable context should be available"),
+        }
     }
 }
