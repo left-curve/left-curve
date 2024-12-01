@@ -1560,7 +1560,6 @@ dependencies = [
  "dango-types",
  "grug",
  "ibc-client-tendermint",
- "ibc-client-wasm-types",
  "ibc-core-client",
  "ibc-core-host-types",
  "ibc-primitives",
@@ -1651,6 +1650,7 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex-literal",
+ "ibc-core-client-types",
  "ibc-proto",
  "paste",
  "pyth-sdk 0.8.0",
@@ -3026,20 +3026,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ibc-client-wasm-types"
-version = "0.56.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39bd8f0ed74bbccce9e322bf337a886b028c2db4f4c484a8e245040a9605e5a7"
-dependencies = [
- "base64 0.22.1",
- "displaydoc",
- "ibc-core-client",
- "ibc-core-host-types",
- "ibc-primitives",
- "ibc-proto",
-]
-
-[[package]]
 name = "ibc-core-channel-types"
 version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3101,6 +3087,7 @@ dependencies = [
  "ibc-core-host-types",
  "ibc-primitives",
  "ibc-proto",
+ "serde",
  "subtle-encoding",
  "tendermint",
 ]
@@ -3117,6 +3104,7 @@ dependencies = [
  "ibc-primitives",
  "ibc-proto",
  "ics23",
+ "serde",
  "subtle-encoding",
 ]
 
@@ -3187,6 +3175,7 @@ dependencies = [
  "displaydoc",
  "ibc-primitives",
  "prost",
+ "serde",
 ]
 
 [[package]]

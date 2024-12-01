@@ -24,6 +24,7 @@ serde                      = { workspace = true, features = ["derive"] }
 serde_json                 = { workspace = true }
 thiserror                  = { workspace = true }
 ibc-proto                  = { workspace = true, features = ["serde"] }
+ibc-core-client-types      = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 tokio = { workspace = true }
