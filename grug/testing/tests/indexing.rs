@@ -37,6 +37,9 @@ fn index_block_with_nonblocking_indexer() {
         )
         .should_succeed();
 
+    tracing::warn!("FOO");
+    indexer.start(&storage).expect("Can't start indexer");
+
     // Force the runtime to wait for the async indexer to finish
     indexer.shutdown().expect("Can't shutdown indexer");
 
