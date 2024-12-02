@@ -25,11 +25,11 @@ Consider the below graph showing an undercollateralized margin account:
 
 ![undercollateralized margin account](./liquidation-graph.png)
 
-The x-axis represents the value of account's debt and the y-axis represents the value of account's collateral (not adjusted for the collateral power). The point $p(t_0)$ is the account's current status. Since it is below the green line, it is undercollateralized and eligible for liquidation. The blue line represents the trajectory of the liquidation. The black line represents all points at which the account's utilization rate is equal to the target utilization rate. The maximum repayable debt therefore is found at the intersection of the blue line and the black line.
+The x-axis represents the value of account's debt and the y-axis represents the value of account's collateral adjusted for the collateral power. The point $p(t_0)$ is the account's current status. Since it is below the orange line, it is undercollateralized and eligible for liquidation. The blue line represents the trajectory of the liquidation. The black line represents all points at which the account's utilization rate is equal to the target utilization rate. The maximum repayable debt therefore is found at the intersection of the blue line and the black line.
 
 ### Liquidation Trajectory
 
-To derive the equation for the liquidation trajectory, we can use the point slope form of the equation for a line:
+We can think of a user’s position at time t as a point p(t) = (d(t), c(t)) in the debt and adjusted collateral plane. To derive the equation for the liquidation trajectory, we can use the point slope form of the equation for a line:
 
 $$
 y - y_0 = m(x - x_0)
@@ -40,19 +40,21 @@ where $m$ is the slope or gradient of the line and $(x_0, y_0)$ is a point on th
 For a liquidation amount $a$, the gradient is given by
 
 $$
-\frac{\Delta d}{\Delta c} = \frac{d(t_1) - d(t_0)}{c(t_1) - c(t_0)} = \frac{c(t_0) - (1 + b(t_0))a - c(t_0)}{d(t0) − a − d(t0)} = 1 + b(t0)
+\frac{\Delta d}{\Delta c} = \frac{d(t_1) - d(t_0)}{c(t_1) - c(t_0)} = \frac{c(t_0) - (1 + b(t_0))va - c(t_0)}{d(t0) − a − d(t0)} = 1 + b(t0)v
 $$
+
+where $v$ is the collateral power of the liquidator's requested collateral denom.
 
 Therefore, we can rewrite the equation for the liquidation trajectory as:
 
 $$
-y - c = m(x - d) = (1 + b)(x - d)
+y - c = m(x - d) = (1 + b)v(x - d)
 $$
 
 which can be rewritten as:
 
 $$
-y = (1 + b)x + c - (1 + b)d
+y = (1 + b)vx + c - (1 + b)vd
 $$
 
 ### Target Health Factor
@@ -60,15 +62,15 @@ $$
 Since the health factor is the value of the collateral (adjusted for the collateral power) divided by the value of the debts, we can express it as:
 
 $$
-\mathrm{health\ factor} = \frac{y}{x} \cdot v
+\mathrm{health\ factor} = \frac{y}{x}
 $$
 
-where $y$ is the value of the collateral (not adjusted for the collateral power), $x$ is the value of the debts, and $v$ is the average collateral power.
+where $y$ is the value of the collateral adjusted for the collateral power, and $x$ is the value of the debts.
 
 Therefore, we can rewrite the equation for the line which defines all points at which the health factor is equal to the target health factor as:
 
 $$
-y = \frac{t \cdot x}{v}
+y = t \cdot x
 $$
 
 where $t$ is the target health factor.
@@ -78,35 +80,29 @@ where $t$ is the target health factor.
 The maximum repayable debt is found at the intersection of the liquidation trajectory and the line which defines all points at which the health factor is equal to the target health factor. To find this intersection, we set the two above equations equal to each other:
 
 $$
-\frac{t \cdot x}{v} = (1 + b)x + c - (1 + b)d
+t \cdot x = (1 + b)vx + c - (1 + b)vd
 $$
 
 Solving for $x$:
 
 $$
-t \cdot x = (1 + b)xv + cv - (1 + b)dv
+tx - (1 + b)vx = c - (1 + b)vd
 $$
 
 ...
 
 $$
-tx - (1 + b)xv = cv - (1 + b)dv
+(t - (1 + b)v)x = c - (1 + b)vd
 $$
 
 ...
 
 $$
-(t - (1 + b)v)x = cv - (1 + b)dv
-$$
-
-...
-
-$$
-x = \frac{(c - (1 + b)d)v}{t - (1 + b)v}
+x = \frac{c - (1 + b)vd}{t - (1 + b)v}
 $$
 
 This x defines the amount of debt after the liquidation if the new health factor is equal to the target health factor. Thus, the maximum repayable debt is equal to the prior debt minus this amount:
 
 $$
-\mathrm{max\ repayable\ debt} = d - x = d - \frac{(c - (1 + b)d)v}{t - (1 + b)v}
+\mathrm{max\ repayable\ debt} = d - x = d - \frac{c - (1 + b)vd}{t - (1 + b)v}
 $$
