@@ -2,7 +2,7 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, AppError, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,
@@ -41,20 +41,23 @@ impl StartCmd {
                 .with_database_url(&self.indexer_database_url)
                 .build()
                 .expect("Can't create indexer");
-            indexer.start().expect("Can't start indexer");
             self.run_with_indexer(data_dir, indexer).await
         } else {
             self.run_with_indexer(data_dir, NullIndexer).await
         }
     }
 
-    async fn run_with_indexer<ID>(self, data_dir: PathBuf, indexer: ID) -> anyhow::Result<()>
+    async fn run_with_indexer<ID>(self, data_dir: PathBuf, mut indexer: ID) -> anyhow::Result<()>
     where
         ID: Indexer + Send + Clone + 'static,
         AppError: From<ID::Error>,
+        ID::Error: std::fmt::Debug,
     {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
+        indexer
+            .start(&db.state_storage(None)?)
+            .expect("Can't start indexer");
         let app = App::new(
             db,
             vm,
