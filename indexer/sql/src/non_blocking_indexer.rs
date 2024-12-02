@@ -203,6 +203,8 @@ impl Indexer for NonBlockingIndexer {
 
         let _block = LAST_FINALIZED_BLOCK.load(storage)?;
 
+        // TODO: ensure we indexed all previous blocks
+
         self.indexing = true;
 
         Ok(())
@@ -351,8 +353,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use grug_types::MockStorage;
+    use {super::*, grug_types::MockStorage};
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
