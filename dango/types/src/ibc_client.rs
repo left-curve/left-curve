@@ -128,13 +128,15 @@ mod query {
         #[grug::derive(Serde)]
         pub struct TimestampAtHeightResponse {
             /// The timestamp at the given height
+            /// in nanoseconds since the Unix epoch.
             pub timestamp: u64,
         }
 
         /// The response to both membership queries.
         #[grug::derive(Serde)]
         pub struct MembershipResponse {
-            /// The timestamp at height of the proof.
+            /// The timestamp at height of the proof
+            /// in nanoseconds since the Unix epoch.
             pub timestamp: u64,
         }
     }

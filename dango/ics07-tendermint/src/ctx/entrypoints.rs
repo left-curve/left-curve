@@ -1,8 +1,11 @@
 //! This module contains the contract entrypoints for [`TendermintContext`].
 
 use anyhow::Result;
-use dango_types::ibc_client::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use grug::Json;
+use dango_types::ibc_client::{
+    ExecuteMsg, InstantiateMsg, MembershipResponse, QueryMsg, StatusResponse,
+    TimestampAtHeightResponse,
+};
+use grug::{Json, JsonSerExt};
 //use grug::Binary;
 //use ibc_client_tendermint::types::proto::v1::{
 //    ClientState as RawTmClientState, ConsensusState as RawTmConsensusState,
@@ -12,11 +15,11 @@ use ibc_client_tendermint::{
     //consensus_state::ConsensusState as ConsensusStateWrapper,
 };
 use ibc_core_client::context::{
-    prelude::{ClientStateCommon, ClientStateExecution, ConsensusState},
+    prelude::{ClientStateCommon, ClientStateExecution, ClientStateValidation, ConsensusState},
     ClientValidationContext,
 };
-use ibc_core_commitment_types::commitment::CommitmentProofBytes;
-use ibc_core_host_types::path::ClientConsensusStatePath;
+use ibc_core_commitment_types::commitment::{CommitmentPrefix, CommitmentProofBytes};
+use ibc_core_host_types::path::{ClientConsensusStatePath, PathBytes};
 use ibc_primitives::proto::{Any, Protobuf};
 use prost::Message;
 
@@ -103,13 +106,91 @@ impl TendermintContext<'_> {
     #[allow(clippy::needless_pass_by_value)]
     pub fn query(&self, msg: QueryMsg) -> Result<Json> {
         let client_id = self.client_id();
-        let _client_state = self.client_state(&client_id)?;
+        let client_state = self.client_state(&client_id)?;
 
         match msg {
-            QueryMsg::Status(_) => todo!(),
-            QueryMsg::TimestampAtHeight(_) => todo!(),
-            QueryMsg::VerifyMembership(_) => todo!(),
-            QueryMsg::VerifyNonMembership(_) => todo!(),
+            QueryMsg::Status(_) => {
+                let status = client_state.status(self, &client_id)?;
+                Ok(StatusResponse { status }.to_json_value()?)
+            },
+            QueryMsg::TimestampAtHeight(msg) => {
+                let client_cons_state_path = ClientConsensusStatePath::new(
+                    client_id,
+                    msg.height.revision_number,
+                    msg.height.revision_height,
+                );
+
+                let consensus_state = self.consensus_state(&client_cons_state_path)?;
+                let timestamp = consensus_state
+                    .timestamp()
+                    .unix_timestamp_nanos()
+                    .try_into()?;
+
+                Ok(TimestampAtHeightResponse { timestamp }.to_json_value()?)
+            },
+            QueryMsg::VerifyMembership(mut msg) => {
+                if msg.path.len() < 2 {
+                    anyhow::bail!("path length must be greater than 1")
+                }
+
+                let proof = CommitmentProofBytes::try_from(msg.proof.to_vec())?;
+                let prefix = CommitmentPrefix::from_bytes(msg.path.remove(0));
+                let path_bz = PathBytes::flatten(msg.path);
+
+                let client_cons_state_path = ClientConsensusStatePath::new(
+                    self.client_id(),
+                    msg.height.revision_number,
+                    msg.height.revision_height,
+                );
+
+                let consensus_state = self.consensus_state(&client_cons_state_path)?;
+
+                client_state.verify_membership_raw(
+                    &prefix,
+                    &proof,
+                    consensus_state.root(),
+                    path_bz,
+                    msg.value.to_vec(),
+                )?;
+
+                let timestamp = consensus_state
+                    .timestamp()
+                    .unix_timestamp_nanos()
+                    .try_into()?;
+
+                Ok(MembershipResponse { timestamp }.to_json_value()?)
+            },
+            QueryMsg::VerifyNonMembership(mut msg) => {
+                if msg.path.len() < 2 {
+                    anyhow::bail!("path length must be greater than 1")
+                }
+
+                let proof = CommitmentProofBytes::try_from(msg.proof.to_vec())?;
+                let prefix = CommitmentPrefix::from_bytes(msg.path.remove(0));
+                let path_bz = PathBytes::flatten(msg.path);
+
+                let client_cons_state_path = ClientConsensusStatePath::new(
+                    self.client_id(),
+                    msg.height.revision_number,
+                    msg.height.revision_height,
+                );
+
+                let consensus_state = self.consensus_state(&client_cons_state_path)?;
+
+                client_state.verify_non_membership_raw(
+                    &prefix,
+                    &proof,
+                    consensus_state.root(),
+                    path_bz,
+                )?;
+
+                let timestamp = consensus_state
+                    .timestamp()
+                    .unix_timestamp_nanos()
+                    .try_into()?;
+
+                Ok(MembershipResponse { timestamp }.to_json_value()?)
+            },
         }
     }
 }
