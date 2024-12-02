@@ -16,7 +16,7 @@ interface Props {
 export const AccountInfo: React.FC<Props> = ({ avatarUri, triggerEdit, account }) => {
   const config = useConfig();
   const { account: selectedAccount } = useAccount();
-  const [accountName] = useAccountName();
+  const [accountName] = useAccountName({ account });
   const { nativeCoin } = config.chains.find((chain) => chain.id === config.state.chainId)!;
 
   const isCurrentAccount = selectedAccount?.address === account.address;
