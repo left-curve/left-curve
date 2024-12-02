@@ -23,9 +23,10 @@ dango-types = { workspace = true }
 grug        = { workspace = true }
 prost       = { workspace = true }
 
-ibc-primitives        = { workspace = true }
-ibc-core-client       = { workspace = true, features = ["std"] }
-ibc-core-host-types   = { workspace = true, features = ["std"] }
-ibc-client-tendermint = { workspace = true }
+ibc-primitives            = { workspace = true }
+ibc-core-client           = { workspace = true, features = ["std"] }
+ibc-core-host-types       = { workspace = true, features = ["std"] }
+ibc-client-tendermint     = { workspace = true }
+ibc-core-commitment-types = { workspace = true }
 
 [dev-dependencies]

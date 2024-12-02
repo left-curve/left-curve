@@ -1561,6 +1561,7 @@ dependencies = [
  "grug",
  "ibc-client-tendermint",
  "ibc-core-client",
+ "ibc-core-commitment-types",
  "ibc-core-host-types",
  "ibc-primitives",
  "prost",
