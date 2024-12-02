@@ -932,6 +932,8 @@ fn is_left_step(
 -->
 ## Is Left Neighbor
 
+`isLeftNeighbor` function returns true if `right` is the next possible path right of `left`. This function emulates [`ensure_left_neighbor`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L247) Rust function.
+
 ```bluespec "definitions" +=
 def isLeftNeighbor(lpath: List[INNER_T], rpath: List[INNER_T]): bool = {
   // count common tail (from end, near root)
@@ -952,18 +954,100 @@ def isLeftNeighbor(lpath: List[INNER_T], rpath: List[INNER_T]): bool = {
           lnode.suffix == rnode.suffix
         }
       ),
+```
+
+This part emulates the first part of `ensure_left_neighbor` Rust function:
+
+```rust
+  let mut mut_left = left.to_vec();
+  let mut mut_right = right.to_vec();
+
+  let mut top_left = mut_left.pop().unwrap();
+  let mut top_right = mut_right.pop().unwrap();
+
+  while top_left.prefix == top_right.prefix && top_left.suffix == top_right.suffix {
+      top_left = mut_left.pop().unwrap();
+      top_right = mut_right.pop().unwrap();
+  }
+```
+<!--- 
+```bluespec "definitions" +=
       // Now topleft and topright are the first divergent nodes
       // make sure they are left and right of each other.
       // Actually, lpath[li] and rpath[ri] are an abstraction
       // of the same tree node:
       //  the left one stores the hash of the right one, whereas
       //  the right one stores the hash of the left one.
-      isLeftStep(lpath[li], rpath[ri]),
-      // left and right are remaining children below the split,
-      // ensure left child is the rightmost path, and visa versa
-      isRightMost(lpath.slice(0, li)),
-      isLeftMost(rpath.slice(0, ri)),
+      <<<extensionLeftNeighbor>>>
+```
+--->
+Now topleft and topright are the first divergent nodes, and algorithm makes sure they are left and right of each other. Actually, `lpath[li]` and `rpath[ri]` are an abstraction of the same tree node:
+
+- the left one stores the hash of the right one, whereas
+- the right one stores the hash of the left one.
+
+```bluespec "extensionLeftNeighbor" +=
+isLeftStep(lpath[li], rpath[ri]),
+```
+
+Since we have wrapped all checks in one big `and`, we can just call `isLeftStep` which will emualte the following Rust code:
+
+```rust
+  if !is_left_step(spec, &top_left, &top_right)? {
+      bail!("Not left neighbor at first divergent step");
+  }
+```
+<!--- 
+```bluespec "extensionLeftNeighbor" +=
+// left and right are remaining children below the split,
+// ensure left child is the rightmost path, and visa versa
+```
+--->
+Left and right are remaining children below the split, and algorithm ensures left child is the rightmost path, and visa versa.
+
+```bluespec "extensionLeftNeighbor" +=
+isRightMost(lpath.slice(0, li)),
+isLeftMost(rpath.slice(0, ri)),
+```
+
+This emulates the following Rust code:
+
+```rust
+ensure_right_most(spec, &mut_left)?;
+ensure_left_most(spec, &mut_right)?;
+```
+<!--- 
+```bluespec "definitions" +=
     })
   )
+}
+```
+--->
+Here is the full Rust implementation of `ensure_left_neighbor` Rust function.
+
+```rust
+fn ensure_left_neighbor(
+    spec: &ics23::InnerSpec,
+    left: &[ics23::InnerOp],
+    right: &[ics23::InnerOp],
+) -> Result<()> {
+  let mut mut_left = left.to_vec();
+  let mut mut_right = right.to_vec();
+
+  let mut top_left = mut_left.pop().unwrap();
+  let mut top_right = mut_right.pop().unwrap();
+
+  while top_left.prefix == top_right.prefix && top_left.suffix == top_right.suffix {
+      top_left = mut_left.pop().unwrap();
+      top_right = mut_right.pop().unwrap();
+  }
+
+  if !is_left_step(spec, &top_left, &top_right)? {
+      bail!("Not left neighbor at first divergent step");
+  }
+
+  ensure_right_most(spec, &mut_left)?;
+  ensure_left_most(spec, &mut_right)?;
+  Ok(())
 }
 ```
