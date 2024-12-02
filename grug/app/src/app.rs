@@ -301,12 +301,16 @@ where
             tx_outcomes.push(tx_outcome);
         }
 
+        // TODO: save the indexed data on disk here?
+
         // Save the last committed block.
         //
         // Note that we do this _after_ the transactions have been executed.
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+
+        // NOTE: What happens if the process crashes here?
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.

@@ -190,6 +190,33 @@ impl NonBlockingIndexer {
     }
 }
 
+impl NonBlockingIndexer {
+    /// Save this block on disk to ensure it'll be indexed when process is crashed
+    fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
+        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        if let Some(block) = blocks.get(&block_height).cloned() {
+            drop(blocks);
+
+            // TODO: 1. serialize block 2. write to disk
+            // use tempfile and `mv` for atomic and ensure file isn't half written
+        }
+        Ok(())
+    }
+
+    // TODO: run once when `start` is called
+    fn load_all_from_disk(&self, latest_block_height: u64) -> error::Result<()> {
+        // TODO: look at the local cache and ensure all blocks were indexed, delete anything with
+        // higher number than latest_block_height
+        // fetch latest block_height from indexer DB
+        todo!()
+    }
+
+    // TODO: remove the on-disk cache, block was indexed
+    fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
+        todo!();
+    }
+}
+
 impl Indexer for NonBlockingIndexer {
     type Error = crate::error::IndexerError;
 
@@ -201,9 +228,20 @@ impl Indexer for NonBlockingIndexer {
             self.context.migrate_db().await
         })?;
 
-        let _block = LAST_FINALIZED_BLOCK.load(storage)?;
-
-        // TODO: ensure we indexed all previous blocks
+        let _block = match LAST_FINALIZED_BLOCK.load(storage) {
+            Err(_) => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!("No block found in storage");
+                None
+            },
+            Ok(block) => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!("block found in storage");
+                // TODO: ensure we indexed all previous blocks
+                self.load_all_from_disk(block.height)?;
+                Some(block)
+            },
+        };
 
         self.indexing = true;
 
