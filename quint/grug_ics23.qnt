@@ -100,13 +100,6 @@ module grug_ics23 {
   /// provided key is between the keys of the two proofs
   def verifyNonMembership(root: CommitmentRoot_t,
       np: NonExistsProof_t, key: Key_t): bool = and {
-    // getNonExistProofForKey
-    np.left == None or lessThan(np.left.unwrap().key, key),
-    np.right == None or lessThan(key, np.right.unwrap().key),
-    // implicit assumption, missing in the code:
-    // https://github.com/informalsystems/ics23-audit/issues/14
-    np.key == key,
-    // Verify
     np.left != None or np.right != None,
     np.left == None or and {
       verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 

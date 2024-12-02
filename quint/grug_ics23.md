@@ -454,30 +454,81 @@ fn calculate_existence_root_for_spec<H: HostFunctionsProvider>(
 ## Verifying NonMembership proof
 
 `verifyNonMembership` returns true iff proof is a NonExistenceProof, both left and right sub-proofs are valid existence proofs or nil, left and right proofs are neighbors (or left/right most if one is nil), provided key is between the keys of the two proofs. We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
-The function `verifyNonMembership` emulates
-[`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L90-L115) Rust function.
-
-//TODO: it more closely resembles golang implementation
+The function `verifyNonMembership` emulates [`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34-L79) Rust function.
 
 ```bluespec "definitions" +=
 def verifyNonMembership(root: CommitmentRoot_t,
     np: NonExistsProof_t, key: Key_t): bool = and {
-  // getNonExistProofForKey
-  np.left == None or lessThan(np.left.unwrap().key, key),
-  np.right == None or lessThan(key, np.right.unwrap().key),
-  // implicit assumption, missing in the code:
-  // https://github.com/informalsystems/ics23-audit/issues/14
-  np.key == key,
-  // Verify
+```
+
+```rust
+pub fn verify_non_existence<H: HostFunctionsProvider>(
+    proof: &ics23::NonExistenceProof,
+    spec: &ics23::ProofSpec,
+    root: &[u8],
+    key: &[u8],
+) -> Result<()> {
+```
+First we check if both `np.left == np.right == None`. This is our way of emulating the following part of the Rust code. This way we are assured that either `np.left` or `np.right` will have some value, and later when we check if `np.left == None`, we are certain that `np.right != None`, and vice versa.
+
+```bluespec "definitions" +=
   np.left != None or np.right != None,
+```
+
+```rust
+  if let Some(inner) = &spec.inner_spec {
+      match (&proof.left, &proof.right) {
+          ...
+          (None, None) => bail!("neither left nor right proof defined"),
+      }
+  }
+```
+
+After that, we check if `np.left == None` or we can unwrap it and verify it. In Quint specification we are using already hashed keys, and to compare keys we are using Quint function `lessThan()` in which we can safely pass `np.left.unwrap().key` and `key`. This means that we did not have to emulate Rust's `key_for_comparison` that either hashes key if it is not hashed, or returns the already hashed key.
+
+```bluespec "definitions" +=
   np.left == None or and {
     verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
     lessThan(np.left.unwrap().key, key),
   },
+```
+
+Here is the snippet from the Rust implementation.
+
+```rust
+  if let Some(left) = &proof.left {
+      verify_existence::<H>(left, spec, root, &left.key, &left.value)?;
+      ensure!(
+          key_for_comparison(key) > key_for_comparison(&left.key),
+          "left key isn't before key"
+      );
+  }
+```
+
+The same is done for `np.right`.
+
+```bluespec "definitions" +=
   np.right == None or and {
     verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
     lessThan(key, np.right.unwrap().key),
   },
+```
+
+Here is the snippet from the Rust implementation.
+
+```rust
+  if let Some(right) = &proof.right {
+      verify_existence::<H>(right, spec, root, &right.key, &right.value)?;
+      ensure!(
+          key_for_comparison(key) < key_for_comparison(&right.key),
+          "right key isn't after key"
+      );
+  }
+```
+
+Since Quint's matching is not as powerful as Rust's, we had to find a work-around solution. Utilizing previously placed checks, we emulated Rust `match` statement in the following way.
+
+```bluespec "definitions" +=
   if (np.left == None) {
     isLeftMost(np.right.unwrap().path)
   } else if (np.right == None) {
@@ -485,6 +536,70 @@ def verifyNonMembership(root: CommitmentRoot_t,
   } else {
     isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
   }
+}
+```
+
+Here is the snippet from the Rust implementation.
+
+```rust
+  if let Some(inner) = &spec.inner_spec {
+    match (&proof.left, &proof.right) {
+        (Some(left), None) => ensure_right_most(inner, &left.path),
+        (None, Some(right)) => ensure_left_most(inner, &right.path),
+        (Some(left), Some(right)) => ensure_left_neighbor(inner, &left.path, &right.path),
+        ...
+    }
+  } 
+```
+
+Here is the full `verify_non_existence` Rust implementation.
+
+```rust
+pub fn verify_non_existence<H: HostFunctionsProvider>(
+    proof: &ics23::NonExistenceProof,
+    spec: &ics23::ProofSpec,
+    root: &[u8],
+    key: &[u8],
+) -> Result<()> {
+    let key_for_comparison = |key: &[u8]| -> Vec<u8> {
+        match spec.prehash_key_before_comparison {
+            true => do_hash::<H>(
+                spec.leaf_spec
+                    .as_ref()
+                    .map(Cow::Borrowed)
+                    .unwrap_or_default()
+                    .prehash_key(),
+                key,
+            ),
+            false => key.to_vec(),
+        }
+    };
+
+    if let Some(left) = &proof.left {
+        verify_existence::<H>(left, spec, root, &left.key, &left.value)?;
+        ensure!(
+            key_for_comparison(key) > key_for_comparison(&left.key),
+            "left key isn't before key"
+        );
+    }
+    if let Some(right) = &proof.right {
+        verify_existence::<H>(right, spec, root, &right.key, &right.value)?;
+        ensure!(
+            key_for_comparison(key) < key_for_comparison(&right.key),
+            "right key isn't after key"
+        );
+    }
+
+    if let Some(inner) = &spec.inner_spec {
+        match (&proof.left, &proof.right) {
+            (Some(left), None) => ensure_right_most(inner, &left.path),
+            (None, Some(right)) => ensure_left_most(inner, &right.path),
+            (Some(left), Some(right)) => ensure_left_neighbor(inner, &left.path, &right.path),
+            (None, None) => bail!("neither left nor right proof defined"),
+        }
+    } else {
+        bail!("Inner Spec missing")
+    }
 }
 ```
 <!-- Empty line, to be tangled but not rendered
