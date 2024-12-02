@@ -71,6 +71,12 @@ impl PrecisionedPrice {
         Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
             .checked_mul_dec(value / self.humanized_price)?)
     }
+
+    /// Returns the unit amount of a given value, rounded up.
+    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> StdResult<Uint128> {
+        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec_ceil(value / self.humanized_price)?)
+    }
 }
 
 impl TryFrom<PriceFeed> for PrecisionlessPrice {
