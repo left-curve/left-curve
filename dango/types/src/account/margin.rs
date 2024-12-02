@@ -17,6 +17,8 @@ pub struct HealthResponse {
     pub total_adjusted_collateral_value: Udec128,
     /// All of the accounts debts.
     pub debts: Coins,
+    /// All of the account's collateral balances.
+    pub collaterals: Coins,
 }
 
 #[grug::derive(Serde)]

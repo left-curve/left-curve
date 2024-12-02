@@ -2,16 +2,35 @@ use {
     dango_lending::DEBTS,
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
-    grug::{Addr, BorshDeExt, Coins, Inner, IsZero, Number, NumberConst, QuerierWrapper, Udec128},
+    grug::{
+        Addr, BorshDeExt, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierWrapper, Udec128,
+    },
 };
 
 /// Margin account query methods.
 pub trait MarginQuerier {
-    fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse>;
+    /// Queries the health of the margin account.
+    ///
+    /// Arguments:
+    ///
+    /// - `account`: The margin account to query.
+    /// - `discount_collateral`: If set, does not include the value of these
+    ///    coins in the total collateral value. Used when liquidating the
+    ///    account as the liquidator has sent additional funds to the account
+    ///    that should not be included in the total collateral value.
+    fn query_health(
+        &self,
+        account: Addr,
+        discount_collateral: Option<Coins>,
+    ) -> anyhow::Result<HealthResponse>;
 }
 
-impl MarginQuerier for QuerierWrapper<'_> {
-    fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse> {
+impl<'a> MarginQuerier for QuerierWrapper<'a> {
+    fn query_health(
+        &self,
+        account: Addr,
+        discount_collateral: Option<Coins>,
+    ) -> anyhow::Result<HealthResponse> {
         let app_cfg: AppConfig = self.query_app_config()?;
 
         // Query all debts for the account.
@@ -34,8 +53,13 @@ impl MarginQuerier for QuerierWrapper<'_> {
         // collateral power.
         let mut total_collateral_value = Udec128::ZERO;
         let mut total_adjusted_collateral_value = Udec128::ZERO;
+        let mut collaterals = Coins::new();
         for (denom, power) in app_cfg.collateral_powers {
-            let collateral_balance = self.query_balance(account, denom.clone())?;
+            let mut collateral_balance = self.query_balance(account, denom.clone())?;
+
+            if let Some(discount_collateral) = discount_collateral.as_ref() {
+                collateral_balance.checked_sub_assign(discount_collateral.amount_of(&denom))?;
+            }
 
             // As an optimization, don't query the price if the collateral balance
             // is zero.
@@ -47,6 +71,7 @@ impl MarginQuerier for QuerierWrapper<'_> {
             let value = price.value_of_unit_amount(collateral_balance)?;
             let adjusted_value = value.checked_mul(power.into_inner())?;
 
+            collaterals.insert(Coin::new(denom, collateral_balance)?)?;
             total_collateral_value.checked_add_assign(value)?;
             total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
         }
@@ -70,6 +95,7 @@ impl MarginQuerier for QuerierWrapper<'_> {
             total_collateral_value,
             total_adjusted_collateral_value,
             debts,
+            collaterals,
         })
     }
 }
