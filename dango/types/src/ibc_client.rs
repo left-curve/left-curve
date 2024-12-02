@@ -2,9 +2,8 @@
 
 #![deny(clippy::nursery, clippy::pedantic, warnings)]
 
-pub use execute::*;
 use grug::Binary;
-pub use query::*;
+pub use {execute::*, query::*};
 
 /// Instantiate message for all light client contracts
 #[grug::derive(Serde)]
@@ -75,9 +74,8 @@ mod execute {
 }
 
 mod query {
-    use super::Binary;
-    use ibc_proto::ibc::core::client::v1::Height;
     pub use responses::*;
+    use {super::Binary, ibc_proto::ibc::core::client::v1::Height};
 
     /// Status Query message.
     #[grug::derive(Serde)]

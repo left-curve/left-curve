@@ -1,6 +1,8 @@
-use anyhow::Result;
-use dango_types::ibc_client::{ExecuteMsg, InstantiateMsg};
-use grug::{MutableCtx, Response};
+use {
+    anyhow::Result,
+    dango_types::ibc_client::{ExecuteMsg, InstantiateMsg},
+    grug::{MutableCtx, Response},
+};
 
 use crate::ctx::TendermintContext;
 

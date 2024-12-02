@@ -1,23 +1,26 @@
 //! Implementation of the [`ClientValidationContext`], [`ClientExecutionContext`] and
 //! [`ExtClientValidationContext`] traits for the [`TendermintContext`] type.
 
-use grug::Empty;
-use ibc_client_tendermint::types::proto::v1::{
-    ClientState as RawTmClientState, ConsensusState as RawTmConsensusState,
+use {
+    grug::Empty,
+    ibc_client_tendermint::{
+        client_state::ClientState as ClientStateWrapper,
+        consensus_state::ConsensusState as ConsensusStateWrapper,
+        types::proto::v1::{
+            ClientState as RawTmClientState, ConsensusState as RawTmConsensusState,
+        },
+    },
+    ibc_core_client::{
+        context::{ClientExecutionContext, ClientValidationContext, ExtClientValidationContext},
+        types::Height,
+    },
+    ibc_core_host_types::{
+        error::HostError,
+        identifiers::ClientId,
+        path::{ClientConsensusStatePath, ClientStatePath},
+    },
+    ibc_primitives::{proto::Protobuf, Timestamp},
 };
-use ibc_client_tendermint::{
-    client_state::ClientState as ClientStateWrapper,
-    consensus_state::ConsensusState as ConsensusStateWrapper,
-};
-use ibc_core_client::context::{
-    ClientExecutionContext, ClientValidationContext, ExtClientValidationContext,
-};
-use ibc_core_client::types::Height;
-use ibc_core_host_types::error::HostError;
-use ibc_core_host_types::identifiers::ClientId;
-use ibc_core_host_types::path::{ClientConsensusStatePath, ClientStatePath};
-use ibc_primitives::proto::Protobuf;
-use ibc_primitives::Timestamp;
 
 use super::{HeightTravel, TendermintContext, CONSENSUS_STATE_HEIGHT_MAP};
 

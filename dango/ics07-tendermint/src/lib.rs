@@ -7,5 +7,4 @@ pub mod ctx;
 mod execute;
 mod query;
 
-pub use execute::*;
-pub use query::*;
+pub use {execute::*, query::*};

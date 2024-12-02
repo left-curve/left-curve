@@ -1,27 +1,31 @@
 //! This module contains the contract entrypoints for [`TendermintContext`].
 
-use anyhow::Result;
-use dango_types::ibc_client::{
-    ExecuteMsg, InstantiateMsg, MembershipResponse, QueryMsg, StatusResponse,
-    TimestampAtHeightResponse,
+use {
+    anyhow::Result,
+    dango_types::ibc_client::{
+        ExecuteMsg, InstantiateMsg, MembershipResponse, QueryMsg, StatusResponse,
+        TimestampAtHeightResponse,
+    },
+    grug::{Json, JsonSerExt},
 };
-use grug::{Json, JsonSerExt};
-//use grug::Binary;
-//use ibc_client_tendermint::types::proto::v1::{
+// use grug::Binary;
+// use ibc_client_tendermint::types::proto::v1::{
 //    ClientState as RawTmClientState, ConsensusState as RawTmConsensusState,
 //};
 use ibc_client_tendermint::{
     client_state::ClientState as ClientStateWrapper,
-    //consensus_state::ConsensusState as ConsensusStateWrapper,
+    // consensus_state::ConsensusState as ConsensusStateWrapper,
 };
-use ibc_core_client::context::{
-    prelude::{ClientStateCommon, ClientStateExecution, ClientStateValidation, ConsensusState},
-    ClientValidationContext,
+use {
+    ibc_core_client::context::{
+        prelude::{ClientStateCommon, ClientStateExecution, ClientStateValidation, ConsensusState},
+        ClientValidationContext,
+    },
+    ibc_core_commitment_types::commitment::{CommitmentPrefix, CommitmentProofBytes},
+    ibc_core_host_types::path::{ClientConsensusStatePath, PathBytes},
+    ibc_primitives::proto::{Any, Protobuf},
+    prost::Message,
 };
-use ibc_core_commitment_types::commitment::{CommitmentPrefix, CommitmentProofBytes};
-use ibc_core_host_types::path::{ClientConsensusStatePath, PathBytes};
-use ibc_primitives::proto::{Any, Protobuf};
-use prost::Message;
 
 use super::TendermintContext;
 

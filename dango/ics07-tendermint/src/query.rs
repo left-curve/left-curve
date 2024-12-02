@@ -1,8 +1,10 @@
 //! Defines the query interface for the ics07-tendermint contract.
 
-use anyhow::Result;
-use dango_types::ibc_client::QueryMsg;
-use grug::{ImmutableCtx, Json};
+use {
+    anyhow::Result,
+    dango_types::ibc_client::QueryMsg,
+    grug::{ImmutableCtx, Json},
+};
 
 use crate::ctx::TendermintContext;
 

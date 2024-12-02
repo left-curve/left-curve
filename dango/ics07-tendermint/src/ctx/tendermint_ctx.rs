@@ -1,12 +1,14 @@
 use std::str::FromStr;
 
-use anyhow::Result;
-use grug::{Addressable, BlockInfo, Bound, Empty, ImmutableCtx, Map, MutableCtx, Order, Storage};
-use ibc_core_client::types::Height;
-use ibc_core_host_types::error::HostError;
-use ibc_core_host_types::identifiers::ClientId;
-use ibc_core_host_types::path::{
-    ClientUpdateHeightPath, ClientUpdateTimePath, ITERATE_CONSENSUS_STATE_PREFIX,
+use {
+    anyhow::Result,
+    grug::{Addressable, BlockInfo, Bound, Empty, ImmutableCtx, Map, MutableCtx, Order, Storage},
+    ibc_core_client::types::Height,
+    ibc_core_host_types::{
+        error::HostError,
+        identifiers::ClientId,
+        path::{ClientUpdateHeightPath, ClientUpdateTimePath, ITERATE_CONSENSUS_STATE_PREFIX},
+    },
 };
 
 /// Travel is an enum to represent the direction of travel in the context of
