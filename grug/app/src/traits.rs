@@ -227,8 +227,8 @@ pub trait Indexer {
     fn index_transaction(
         &self,
         block: &BlockInfo,
-        tx: &Tx,
-        tx_outcome: &TxOutcome,
+        tx: Tx,
+        tx_outcome: TxOutcome,
     ) -> Result<(), Self::Error>;
 
     /// Called when indexing the block, happens at the end of the block creation

@@ -14,7 +14,7 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn push(&mut self, tx: &Tx, tx_outcome: &TxOutcome) -> crate::error::Result<()> {
+    pub fn push(&mut self, tx: Tx, tx_outcome: TxOutcome) -> crate::error::Result<()> {
         let transaction_id = Uuid::new_v4();
         let sender = tx.sender.to_string();
         let new_transaction = entity::transactions::ActiveModel {
@@ -53,7 +53,7 @@ impl Models {
                 method_name: Set(method_name),
                 data: Set(serialized_message.into_inner()),
                 contract_addr: Set(contract_addr),
-                owner_addr: Set(sender.clone()),
+                sender_addr: Set(sender.clone()),
             };
 
             self.messages.push(new_message);

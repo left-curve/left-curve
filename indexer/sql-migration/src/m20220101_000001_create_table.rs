@@ -70,7 +70,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(string_null(Message::ContractAddr))
-                    .col(string(Message::OwnerAddr))
+                    .col(string(Message::SenderAddr))
                     .to_owned(),
             )
             .await?;

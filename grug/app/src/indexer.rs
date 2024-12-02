@@ -40,8 +40,8 @@ impl Indexer for NullIndexer {
     fn index_transaction(
         &self,
         _block: &BlockInfo,
-        _tx: &Tx,
-        _tx_outcome: &TxOutcome,
+        _tx: Tx,
+        _tx_outcome: TxOutcome,
     ) -> Result<(), Self::Error> {
         Ok(())
     }

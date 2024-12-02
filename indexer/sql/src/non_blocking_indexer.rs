@@ -113,8 +113,8 @@ impl BlockToIndex {
         tracing::info!(block_height = self.block_info.height, "Indexing block");
 
         let mut models = Models::build(&self.block_info)?;
-        for tx in self.txs.iter() {
-            models.push(&tx.0, &tx.1)?;
+        for (tx, tx_outcome) in self.txs.into_iter() {
+            models.push(tx, tx_outcome)?;
         }
 
         // TODO: if the process was to crash in the middle and restarted, we could try to
@@ -147,10 +147,10 @@ impl NonBlockingIndexer {
         action(block_to_index)
     }
 
-    fn find_or_fail(&self, block_height: &u64) -> error::Result<BlockToIndex> {
+    fn find_or_fail(&self, block_height: u64) -> error::Result<BlockToIndex> {
         let blocks = self.blocks.lock().expect("Can't lock blocks");
 
-        let block_to_index = match blocks.get(block_height) {
+        let block_to_index = match blocks.get(&block_height) {
             Some(block_to_index) => block_to_index,
             None => {
                 bail!("Block {} not found", block_height);
@@ -184,9 +184,8 @@ impl Indexer for NonBlockingIndexer {
     type Error = crate::error::IndexerError;
 
     fn start(&mut self) -> error::Result<()> {
-        let context = self.context.clone();
-        block_call(self.runtime.as_ref(), &self.handle, async move {
-            context.migrate_db().await
+        block_call(self.runtime.as_ref(), &self.handle, async {
+            self.context.migrate_db().await
         })?;
 
         self.indexing = true;
@@ -203,12 +202,9 @@ impl Indexer for NonBlockingIndexer {
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
         // async. It just loops quickly making sure no indexing blocks are remaining.
         for _ in 0..10 {
-            let blocks = self.blocks.lock().expect("Can't lock blocks");
-            if blocks.is_empty() {
+            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
                 break;
             }
-
-            drop(blocks);
 
             sleep(Duration::from_millis(10));
         }
@@ -225,12 +221,17 @@ impl Indexer for NonBlockingIndexer {
     }
 
     fn pre_indexing(&self, _block_height: u64) -> error::Result<()> {
-        assert!(self.indexing, "Can't index after shutdown");
+        if !self.indexing {
+            bail!("Can't index after shutdown");
+        }
+
         Ok(())
     }
 
     fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
-        assert!(self.indexing, "Can't index after shutdown");
+        if !self.indexing {
+            bail!("Can't index after shutdown");
+        }
 
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = block.height, "index_block called");
@@ -244,10 +245,12 @@ impl Indexer for NonBlockingIndexer {
     fn index_transaction(
         &self,
         block: &BlockInfo,
-        tx: &Tx,
-        tx_outcome: &TxOutcome,
+        tx: Tx,
+        tx_outcome: TxOutcome,
     ) -> error::Result<()> {
-        assert!(self.indexing, "Can't index after shutdown");
+        if !self.indexing {
+            bail!("Can't index after shutdown");
+        }
 
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = block.height, "index_transaction called");
@@ -256,7 +259,7 @@ impl Indexer for NonBlockingIndexer {
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block.height, "index_transaction started");
 
-            block_to_index.txs.push((tx.clone(), tx_outcome.clone()));
+            block_to_index.txs.push((tx, tx_outcome));
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block.height, "index_transaction finished");
@@ -265,13 +268,15 @@ impl Indexer for NonBlockingIndexer {
     }
 
     fn post_indexing(&self, block_height: u64) -> error::Result<()> {
-        assert!(self.indexing, "Can't index after shutdown");
+        if !self.indexing {
+            bail!("Can't index after shutdown");
+        }
 
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = block_height, "post_indexing called");
 
         let context = self.context.clone();
-        let block_to_index = self.find_or_fail(&block_height)?;
+        let block_to_index = self.find_or_fail(block_height)?;
         let blocks = self.blocks.clone();
 
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or

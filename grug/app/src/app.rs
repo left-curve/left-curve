@@ -298,7 +298,8 @@ where
                 AuthMode::Finalize,
             );
 
-            self.indexer.index_transaction(&block, &tx, &tx_outcome)?;
+            self.indexer
+                .index_transaction(&block, tx, tx_outcome.clone())?;
 
             tx_outcomes.push(tx_outcome);
         }

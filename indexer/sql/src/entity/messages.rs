@@ -14,7 +14,7 @@ pub struct Model {
     pub method_name: String,
     pub block_height: i64,
     pub contract_addr: Option<String>,
-    pub owner_addr: String,
+    pub sender_addr: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
