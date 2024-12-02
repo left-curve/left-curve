@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount, useBalances, usePrices } from "@left-curve/react";
+import { useBalances, usePrices } from "@left-curve/react";
 
 import { motion } from "framer-motion";
 
@@ -13,73 +13,109 @@ import { CardSafeBottom } from "./CardSafeBottom";
 import { CardSpotBottom } from "./CardSpotBottom";
 
 import { type Account, AccountType } from "@left-curve/types";
-import { useAccountName } from "../../../hooks";
+import { useAccountName, useMediaQuery } from "../../../hooks";
 
 export interface CardProps extends VariantProps<typeof cardVariants> {
   className?: string;
   avatarUrl: string;
   account: Account;
-  onClick?: () => void;
-  expanded?: boolean;
+  isActive: boolean;
+  index: number;
+  expandedIndex: number;
+  onChangeExpand: (address?: string) => void;
+  onAccountSelection: () => void;
 }
 
 export const AccountCard: React.FC<CardProps> = ({
   className,
-  onClick,
+  onAccountSelection,
   account,
   avatarUrl,
-  expanded,
+  isActive,
+  onChangeExpand,
+  index,
+  expandedIndex,
 }) => {
   const { calculateBalance } = usePrices();
-  const { account: selectedAccount } = useAccount();
   const [accountName] = useAccountName({ account });
   const { isLoading, data: balances = {} } = useBalances({ address: account.address });
   const totalBalance = calculateBalance(balances, { format: true });
-  const color = cardColors[account.type];
-  const isActive = account.address === selectedAccount?.address;
+  const isMd = useMediaQuery("md");
+
+  const isExpanded = expandedIndex === index;
 
   const { base, title, subtitle } = cardVariants();
 
+  const handleInteraction = () => {
+    if (isExpanded) {
+      onAccountSelection();
+    } else {
+      onChangeExpand(account.address);
+    }
+  };
+
   return (
-    <motion.div
-      className={twMerge("flex flex-col gap-2 transition-all cursor-pointer mt-0", {
-        "first:mt-0 mt-[-9rem] md:mt-[-6.5rem]": !expanded,
-      })}
-      onClick={onClick}
-    >
-      <div className={twMerge(base({ color: account.type, isActive }), className)}>
-        <div className="flex items-start justify-between">
-          <div className="flex gap-1 flex-col">
-            <p className={twMerge(title({ color: account.type, isActive }))}>
-              {capitalize(accountName)}
-            </p>
-            <p className={twMerge(subtitle({ color: account.type, isActive }))}>
-              {truncateAddress(account.address)}
-            </p>
-          </div>
-          <img
-            src={avatarUrl}
-            alt={`account ${account.type} - index ${account.index}`}
-            className="h-16 w-16"
-          />
-        </div>
-        <div>
-          {account.type === AccountType.Spot ? (
-            <CardSpotBottom isLoading={isLoading} totalBalance={totalBalance} />
-          ) : null}
-          {account.type === AccountType.Margin ? (
-            <CardMarginBottom isLoading={isLoading} totalBalance={totalBalance} />
-          ) : null}
-          {account.type === AccountType.Safe ? (
-            <CardSafeBottom
-              isLoading={isLoading}
-              totalBalance={totalBalance}
-              members={(account as Account<typeof AccountType.Safe>).params.safe.members}
+    <>
+      <motion.div
+        className={twMerge(
+          "flex flex-col gap-2 transition-all cursor-pointer absolute w-full",
+          { "z-[222] mb-[9rem] last:mb-0 md:mb-[6rem]": isExpanded },
+          { " z-[2222]": isActive },
+        )}
+        animate={{
+          top: (() => {
+            const expandSize = isMd ? 110 : 125;
+            const cardSize = isMd ? 160 : 180;
+            const cardInvisibleArea = 96;
+
+            const startPosition = cardSize - 52 + index * (cardSize - cardInvisibleArea);
+            if (index === 0) return 0;
+            if (expandedIndex > 0 && index > expandedIndex) return startPosition + expandSize;
+            return startPosition;
+          })(),
+        }}
+        transition={{
+          ease: "easeIn",
+          duration: expandedIndex > 0 ? 0.2 : 0.3,
+        }}
+        onMouseEnter={() => isMd && onChangeExpand(account.address)}
+        onMouseLeave={() => isMd && onChangeExpand()}
+        onClick={handleInteraction}
+      >
+        <div className={twMerge(base({ color: account.type, isActive }), className)}>
+          <div className="flex items-start justify-between">
+            <div className="flex gap-1 flex-col">
+              <p className={twMerge(title({ color: account.type, isActive }))}>
+                {capitalize(accountName)}
+              </p>
+              <p className={twMerge(subtitle({ color: account.type, isActive }))}>
+                {truncateAddress(account.address)}
+              </p>
+            </div>
+            <img
+              src={avatarUrl}
+              alt={`account ${account.type} - index ${account.index}`}
+              className="h-16 w-16"
             />
-          ) : null}
+          </div>
+          <div>
+            {account.type === AccountType.Spot ? (
+              <CardSpotBottom isLoading={isLoading} totalBalance={totalBalance} />
+            ) : null}
+            {account.type === AccountType.Margin ? (
+              <CardMarginBottom isLoading={isLoading} totalBalance={totalBalance} />
+            ) : null}
+            {account.type === AccountType.Safe ? (
+              <CardSafeBottom
+                isLoading={isLoading}
+                totalBalance={totalBalance}
+                members={(account as Account<typeof AccountType.Safe>).params.safe.members}
+              />
+            ) : null}
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 
@@ -129,9 +165,3 @@ const cardVariants = tv({
     },
   ],
 });
-
-const cardColors = {
-  [AccountType.Spot]: "rose",
-  [AccountType.Margin]: "purple",
-  [AccountType.Safe]: "yellow",
-} as const;
