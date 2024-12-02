@@ -1,7 +1,9 @@
 use {
     crate::{active_model::Models, bail, entity, error, Context},
-    grug_app::Indexer,
-    grug_types::{BlockInfo, BlockOutcome, Defined, MaybeDefined, Tx, TxOutcome, Undefined},
+    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_types::{
+        BlockInfo, BlockOutcome, Defined, MaybeDefined, Storage, Tx, TxOutcome, Undefined,
+    },
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
     std::{
         collections::HashMap,
@@ -183,10 +185,15 @@ impl NonBlockingIndexer {
 impl Indexer for NonBlockingIndexer {
     type Error = crate::error::IndexerError;
 
-    fn start(&mut self) -> error::Result<()> {
+    fn start<S>(&mut self, storage: &S) -> error::Result<()>
+    where
+        S: Storage,
+    {
         block_call(self.runtime.as_ref(), &self.handle, async {
             self.context.migrate_db().await
         })?;
+
+        let _block = LAST_FINALIZED_BLOCK.load(storage)?;
 
         self.indexing = true;
         Ok(())
@@ -330,6 +337,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use grug_types::MockStorage;
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
@@ -337,8 +345,10 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
         let mut indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let storage = MockStorage::new();
+
         assert!(!indexer.indexing);
-        indexer.start().expect("Can't start Indexer");
+        indexer.start(&storage).expect("Can't start Indexer");
         assert!(indexer.indexing);
         indexer.shutdown().expect("Can't shutdown Indexer");
         assert!(!indexer.indexing);

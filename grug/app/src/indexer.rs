@@ -17,7 +17,7 @@ impl NullIndexer {
 impl Indexer for NullIndexer {
     type Error = Infallible;
 
-    fn start(&mut self) -> Result<(), Self::Error> {
+    fn start<S>(&mut self, _storage: &S) -> Result<(), Self::Error> {
         Ok(())
     }
 

@@ -2,7 +2,7 @@ use {
     assertor::*,
     grug_app::Indexer,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, ResultExt},
+    grug_types::{Coins, Denom, Message, MockStorage, ResultExt},
     indexer_sql::entity,
     sea_orm::EntityTrait,
     std::str::FromStr,
@@ -17,7 +17,9 @@ fn index_block_with_nonblocking_indexer() {
         .build()
         .expect("Can't create indexer");
 
-    indexer.start().expect("Can't start indexer");
+    let storage = MockStorage::new();
+
+    indexer.start(&storage).expect("Can't start indexer");
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer.clone())
         .add_account("owner", Coins::new())
