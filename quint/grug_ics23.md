@@ -611,43 +611,105 @@ def hasPadding(inner: INNER_T,
 -->
 ## Order from padding
 
-`orderFromPadding` Quint function emulates [`order_from_padding`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L282-L291) Rust function. This function will take the proof and determine which order it is, so we can see if it is branch 0, 1, 2, etc to determine neighbors.
-
-```rust
-fn order_from_padding(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<i32> {
-  let len = spec.child_order.len() as i32;
-  for branch in 0..len {
-      let padding = get_padding(spec, branch)?;
-      if has_padding(op, &padding) {
-          return Ok(branch);
-      }
-  }
-  bail!("padding doesn't match any branch");
-}
-```
-
-//TODO: this part is also a bit different, needs further looking into.
+`orderFromPadding` Quint function emulates [`order_from_padding`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L282-L291) Rust function. This function will take the proof and determine which order it is, so we can see if it is branch 0, 1 to determine neighbors.
+Here is the signature of Quint function:
 
 ```bluespec "definitions" +=
 def orderFromPadding(inner: INNER_T): (int, bool) = {
+```
+<!---
+```bluespec "definitions" +=
   // Specialize orderFromPadding to Grug JMT:
   // ChildOrder = [ 0, 1 ]
   // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
   // branch = 1: minp, maxp, suffix =
   //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-  if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
-    // the node turns left
-    (0, true)
-  } else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
-                        Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
-    // the node turns right
-    (1, true)
+```
+--->
+```rust
+fn order_from_padding(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<i32> {
+  let len = spec.child_order.len() as i32;
+  for branch in 0..len {
+    let padding = get_padding(spec, branch)?;
+    if has_padding(op, &padding) {
+        return Ok(branch);
+    }
+  }
+  bail!("padding doesn't match any branch");
+}
+```
+This Rust funciton calls `get_padding`:
+
+```rust
+fn get_padding(spec: &ics23::InnerSpec, branch: i32) -> Result<Padding> {
+  if let Some(&idx) = spec.child_order.iter().find(|&&x| x == branch) {
+    let prefix = idx * spec.child_size;
+    let suffix = spec.child_size as usize * (spec.child_order.len() - 1 - idx as usize);
+    Ok(Padding {
+        min_prefix: (prefix + spec.min_prefix_length) as usize,
+        max_prefix: (prefix + spec.max_prefix_length) as usize,
+        suffix,
+    })
   } else {
-    // error
-    (0, false)
+      bail!("Branch {} not found", branch);
   }
 }
 ```
+
+Since `spec.child_order.len()=2`, there will be two iterations of for loop.
+
+- In the first iteration, `get_padding()` will be called with `branch = 0`, which will result in `prefix = 0` and `suffix = 32`. Since `spec.min_prefix_length == spec.max_prefix_length == 1`, output of `get_padding()` will be:
+  
+  ```rust
+  Padding{
+    min_prefix: 1,
+    max_prefix: 1,
+    suffix: 32
+  }
+  ```
+
+  After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`0`) means that algorithm ended up in `branch = 0`.
+  
+  ```bluespec "definitions" +=
+    if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
+      // the node turns left
+      (0, true)
+    }
+  ```
+
+- In the second iteration, `get_padding()` will be called with `branch = 1`, which will result in `prefix = 32` and `suffix = 0`. Since `spec.min_prefix_length == spec.max_prefix_length = 1`, output of `get_padding()` will be:
+
+  ```rust
+  Padding{
+    min_prefix: 32 + 1,
+    max_prefix: 32 + 1,
+    suffix: 0
+  }
+  ```
+
+  After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`1`) means that algorithm ended up in `branch = 1`.
+  
+  ```bluespec "definitions" +=
+    else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
+                          Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
+      // the node turns right
+      (1, true)
+    }
+  ```
+
+- If neither `if`s did not return true, algoritghm ends up in catch-all `else` statement and returns `(0, false)`.
+
+  ```bluespec "definitions" +=
+    else {
+      // error
+      (0, false)
+    }
+  ```
+<!---
+```bluespec "definitions" +=
+}
+```
+--->
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 

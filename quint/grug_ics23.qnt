@@ -167,7 +167,7 @@ module grug_ics23 {
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-   termLen(inner.suffix) == suffixLen
+    termLen(inner.suffix) == suffixLen
   }
 
   /// This will look at the proof and determine which order it is.
@@ -181,11 +181,13 @@ module grug_ics23 {
     if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
       // the node turns left
       (0, true)
-    } else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
+    }
+    else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
                           Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
       // the node turns right
       (1, true)
-    } else {
+    }
+    else {
       // error
       (0, false)
     }
