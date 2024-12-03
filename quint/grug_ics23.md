@@ -64,7 +64,7 @@ module grug_ics23 {
 
 Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
 
-This specification was inspired by [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt). The original specification was tuned to IAVL, which meant that certain parameters had different values, comparing to JMT.
+This specification was inspired by [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt). The original specification was tuned to IAVL, which meant that certain parameters had different values, comparing to Grug JMT.
 Firstly, we opted to create a record Ics23ProofSpecification that will emulate and simplify the following Rust structure:
 
 ```rust
@@ -146,13 +146,15 @@ val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ```
 
 > [!TIP]
-> Values defined here were previously fixed to needs of IAVL tree.
+> Values defined in [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt) are fixed to the IAVL tree. In that specification the following parameters were used:
 >
 > ```bluespec
 >  MinPrefixLength = 4
 >  MaxPrefixLength = 12
 >  ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
 > ```
+>
+> They can be found [here](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L197-L221).
 
 We defined other records, such as `LEAF_T` and `INNER_T` a bit differently than Rust implementation. Rust of `LEAF_T` is `LeafOp`, and the implementation additionally stores hashing and length functions: `hash`, `prehashKey`, `prehashValue`, `len`. Since we fixed the specification to Grug JMT, we do not have to carry them around.
 
@@ -251,6 +253,7 @@ pub struct ExistenceProof {
 }
 
 pub struct NonExistenceProof {
+    /// TODO: remove this as unnecessary??? we prove a range
     #[prost(bytes = "vec", tag = "1")]
     pub key: ::prost::alloc::vec::Vec<u8>,
     #[prost(message, optional, tag = "2")]
@@ -259,6 +262,9 @@ pub struct NonExistenceProof {
     pub right: ::core::option::Option<ExistenceProof>,
 }
 ```
+
+> [!TIP]
+> In Rust implementation of ICS23, there is a comment that suggests removing `NonExistenceProof.key` because it is unnecessary. Rust function [`verify_non_existence()`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34) never uses `proof.key`.
 <!--
 ```bluespec "definitions" +=
 

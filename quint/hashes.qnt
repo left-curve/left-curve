@@ -147,13 +147,6 @@ module hashes {
     }
   }
 
-  // prepend the hash with the length marker
-  // TODO: it seems that this is specific to a usecase rather than being general for hashes
-  //       ... especially with the magic 32
-  pure def termHashWithLen(term: Term_t): Term_t = {
-    raw([ 32 ]).termConcat(termHash(term))
-  }
-
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term_t, start: int, end: int): Term_t = {
