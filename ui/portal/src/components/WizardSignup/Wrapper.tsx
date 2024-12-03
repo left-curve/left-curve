@@ -16,11 +16,11 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
       <div className="flex flex-col items-center w-full bg-surface-rose-100 px-8 py-6 rounded-3xl max-w-2xl gap-12 shadow-md">
         <div className="flex flex-col gap-8 md:gap-10 w-full">
           <div className="flex flex-col gap-4 items-center">
-            <p className="font-extrabold text-typography-rose-700 tracking-widest uppercase text-lg">
-              {[0, 1].includes(activeStep) ? "signup" : null}
+            <p className="text-typography-rose-700 typography-headline-m uppercase">
+              {[0, 1].includes(activeStep) ? "sign up" : null}
               {isThirdStep ? "new spot account" : null}
             </p>
-            <p className="text-typography-rose-600 text-lg text-center">
+            <p className="text-typography-rose-600 typography-body-l text-center">
               {isFirstStep
                 ? "Choose your username. It will be public onchain and cannot be changed afterwards."
                 : null}
@@ -34,7 +34,7 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
           </div>
           <div className="flex flex-1 justify-center items-center w-full">{children}</div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-8">
           <p
             className={twMerge(
               "text-[10px] font-semibold tracking-[0.125rem]",
