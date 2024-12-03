@@ -17,6 +17,8 @@ categories    = ["cryptography::cryptocurrencies"]
 alloy-dyn-abi              = { version = "0.8.9", features = ["eip712"] }
 alloy-primitives           = "0.8.9"
 anyhow                     = "1"
+assertor                   = { version = "0.0", git = "https://github.com/google/assertor" }
+async-std                  = { version = "1", features = ["attributes", "tokio1"] }
 base64                     = "0.22"
 bip32                      = "0.5"
 blake2                     = "0.10"
@@ -80,6 +82,7 @@ tower                      = "0.5"
 tower-abci                 = "0.18"
 tracing                    = "0.1"
 tracing-subscriber         = "0.3"
+uuid                       = { version = "1", features = ["serde", "v4"] }
 wasmer                     = "5.0.0"
 wasmer-middlewares         = "5.0.0"
 
@@ -125,11 +128,8 @@ dango-types           = { path = "dango/types" }
 dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
-assertor              = { version = "0.0", git = "https://github.com/google/assertor" }
-async-std             = { version = "1", features = ["attributes", "tokio1"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
-uuid                  = { version = "1", features = ["serde", "v4"] }
 
 [workspace.dependencies.sea-orm]
 version = "1.1.0"

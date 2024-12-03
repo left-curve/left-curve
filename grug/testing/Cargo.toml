@@ -20,13 +20,13 @@ grug-mock-bank     = { workspace = true, features = ["library"] }
 grug-mock-taxman   = { workspace = true, features = ["library"] }
 grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
+indexer-sql        = { workspace = true, features = ["tracing"] }
 k256               = { workspace = true }
 rand               = { workspace = true }
 sea-orm            = { workspace = true }
 serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
-indexer-sql        = { workspace = true, features = ["tracing"] }
 
 [dev-dependencies]
 borsh        = { workspace = true, features = ["derive", "de_strict_order"] }

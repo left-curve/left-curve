@@ -1,5 +1,5 @@
 [package]
-name = "indexer-sql"
+name          = "indexer-sql"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -17,10 +17,10 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
-indexer-sql-migration = { workspace = true }
 grug-app              = { workspace = true }
 grug-types            = { workspace = true }
 grug-math             = { workspace = true }
+indexer-sql-migration = { workspace = true }
 sea-orm               = { workspace = true }
 serde_json            = { workspace = true }
 thiserror             = { workspace = true }
