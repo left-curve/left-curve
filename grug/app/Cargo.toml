@@ -10,7 +10,6 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [features]
-default = []
 abci    = ["data-encoding", "tower", "tower-abci"]
 tracing = ["chrono", "dep:tracing"]
 
