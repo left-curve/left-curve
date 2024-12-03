@@ -1,6 +1,3 @@
-#[cfg(feature = "tracing")]
-use tracing::error;
-
 use {
     crate::{
         do_authenticate, do_backrun, do_configure, do_cron_execute, do_execute, do_finalize_fee,
@@ -155,7 +152,7 @@ where
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|err| {
                 #[cfg(feature = "tracing")]
-                error!(
+                tracing::error!(
                     err = err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
