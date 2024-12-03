@@ -135,8 +135,8 @@ where
     let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
-        indexer,
         pp,
+        indexer,
         CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,

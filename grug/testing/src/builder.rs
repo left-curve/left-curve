@@ -633,8 +633,8 @@ where
         let suite = TestSuite::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             self.vm,
-            self.indexer,
             self.pp,
+            self.indexer,
             chain_id,
             block_time,
             default_gas_limit,

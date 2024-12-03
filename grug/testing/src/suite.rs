@@ -169,8 +169,8 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
-            NullIndexer,
             NaiveProposalPreparer,
+            NullIndexer,
             chain_id,
             block_time,
             default_gas_limit,
@@ -198,8 +198,8 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             RustVm::new(),
-            NullIndexer,
             pp,
+            NullIndexer,
             chain_id,
             block_time,
             default_gas_limit,
@@ -221,8 +221,8 @@ where
     pub fn new_with_db_vm_indexer_and_pp(
         db: DB,
         vm: VM,
-        id: ID,
         pp: PP,
+        id: ID,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
