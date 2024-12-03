@@ -30,19 +30,15 @@ pub struct StartCmd {
     indexer_enabled: bool,
 
     /// The indexer database url
-    #[arg(long)]
-    indexer_database_url: Option<String>,
+    #[arg(long, default_value = "postgres://localhost")]
+    indexer_database_url: String,
 }
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         if self.indexer_enabled {
             let mut indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_database_url(
-                    self.indexer_database_url
-                        .as_deref()
-                        .unwrap_or("postgres://localhost"),
-                )
+                .with_database_url(&self.indexer_database_url)
                 .build()
                 .expect("Can't create indexer");
             indexer.start().expect("Can't start indexer");
