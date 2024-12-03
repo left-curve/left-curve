@@ -69,13 +69,11 @@ const buttonVariants = tv(
       "select-none",
       "whitespace-nowrap",
       "min-w-max",
-      "font-bold",
       "subpixel-antialiased",
       "overflow-hidden",
       "tap-highlight-transparent",
       "data-[pressed=true]:scale-[0.97]",
       "italic",
-      "font-exposure",
       "transition-all",
     ],
     variants: {
@@ -93,8 +91,8 @@ const buttonVariants = tv(
         purple: "",
       },
       size: {
-        sm: "px-12 py-2 text-xs max-h-[2rem]",
-        md: "px-12 py-3 max-h-[3rem] text-[20px]",
+        sm: "px-12 py-2 max-h-[2rem] typography-button-s",
+        md: "px-12 py-3 max-h-[3rem] typography-button-l",
       },
       radius: {
         none: "rounded-none",
