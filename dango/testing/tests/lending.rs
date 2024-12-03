@@ -13,8 +13,8 @@ use {
         token_factory,
     },
     grug::{
-        btree_map, Addressable, Binary, Coin, Coins, Denom, HashExt, JsonSerExt, Message,
-        MsgConfigure, MsgTransfer, NonEmpty, NumberConst, ResultExt, Udec128, Uint128,
+        btree_map, Addressable, Binary, Coin, Coins, Denom, JsonSerExt, Message, MsgConfigure,
+        MsgTransfer, NonEmpty, NumberConst, ResultExt, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -284,7 +284,7 @@ fn non_margin_accounts_cant_borrow() {
 
 #[test]
 fn cant_borrow_if_no_collateral() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -294,7 +294,6 @@ fn cant_borrow_if_no_collateral() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
@@ -323,7 +322,7 @@ fn cant_borrow_if_no_collateral() {
 
 #[test]
 fn cant_borrow_if_undercollateralized() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -333,7 +332,6 @@ fn cant_borrow_if_undercollateralized() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
@@ -370,7 +368,7 @@ fn cant_borrow_if_undercollateralized() {
 
 #[test]
 fn borrowing_works() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -380,7 +378,6 @@ fn borrowing_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
@@ -537,7 +534,7 @@ fn composite_denom() {
 
 #[test]
 fn all_coins_refunded_if_repaying_when_no_debts() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -547,7 +544,6 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
@@ -588,7 +584,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
 
 #[test]
 fn excess_refunded_when_repaying_more_than_debts() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -598,7 +594,6 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
@@ -659,7 +654,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
 
 #[test]
 fn repay_works() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     feed_oracle_usdc_price(&mut suite, &mut accounts, &contracts);
 
@@ -669,7 +664,6 @@ fn repay_works() {
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
             AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )

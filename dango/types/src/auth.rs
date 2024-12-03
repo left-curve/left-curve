@@ -58,7 +58,7 @@ pub struct SessionCredential {
 pub struct SessionInfo {
     pub session_key: ByteArray<33>,
     pub expire_at: Timestamp,
-    pub account: BTreeSet<Addr>,
+    pub whitelisted_accounts: BTreeSet<Addr>,
 }
 
 /// Data that a transaction's sender must sign with their private key.

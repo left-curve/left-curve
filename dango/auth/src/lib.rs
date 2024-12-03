@@ -133,7 +133,7 @@ pub fn authenticate_tx(
         AuthMode::Simulate => (),
     }
 
-    let sign_docs = SignDoc {
+    let sign_doc = SignDoc {
         sender: ctx.contract,
         messages: tx.msgs.into_inner(),
         chain_id: ctx.chain_id,
@@ -149,10 +149,25 @@ pub fn authenticate_tx(
                     key,
                     standard_credential,
                     maybe_otp_key,
-                    VerifyData::SignDoc(&sign_docs),
+                    VerifyData::SignDoc(&sign_doc),
                 )?;
             },
             Credential::Session(session) => {
+                ensure!(
+                    session.session_info.expire_at > ctx.block.timestamp,
+                    "session expired at {:?}",
+                    session.session_info.expire_at
+                );
+
+                ensure!(
+                    session
+                        .session_info
+                        .whitelisted_accounts
+                        .contains(&tx.sender),
+                    "account {} not whitelisted",
+                    tx.sender
+                );
+
                 // Verify the session info signs are valids
                 verify_standard_credential(
                     ctx.api,
@@ -167,7 +182,7 @@ pub fn authenticate_tx(
                     ctx.api,
                     Key::Secp256k1(session.session_info.session_key),
                     Signature::Secp256k1(session.session_signature),
-                    &VerifyData::SignDoc(&sign_docs),
+                    &VerifyData::SignDoc(&sign_doc),
                 )?;
             },
         },
@@ -229,7 +244,7 @@ fn verify_signature(
                     json!({
                         "session_key": session_info.session_key,
                         "expire_at": session_info.expire_at,
-                        "account": session_info.account,
+                        "account": session_info.whitelisted_accounts,
                     }),
                 ),
             };

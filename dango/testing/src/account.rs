@@ -3,7 +3,8 @@ use {
     dango_types::{
         account::single,
         account_factory::{
-            self, AccountParams, NewUserSalt, QueryNextAccountIndexRequest, Salt, Username,
+            self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
+            QueryNextAccountIndexRequest, Salt, Username,
         },
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
@@ -45,32 +46,14 @@ where
     T: MaybeDefined<Addr>,
 {
     pub fn with_random_otp(&mut self) {
-        let sk = SigningKey::random(&mut OsRng);
-        let pk = sk
-            .verifying_key()
-            .to_encoded_point(true)
-            .to_bytes()
-            .to_vec()
-            .try_into()
-            .unwrap();
-
-        self.opt = Some((sk, pk));
+        self.opt = Some(generate_random_key());
         self.use_otp = true;
     }
 }
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn new_random(username: &str) -> Self {
-        // Generate a random Secp256k1 key pair.
-        let sk = SigningKey::random(&mut OsRng);
-        let pk = sk
-            .verifying_key()
-            .to_encoded_point(true)
-            .to_bytes()
-            .to_vec()
-            .try_into()
-            .unwrap();
-
+        let (sk, pk) = generate_random_key();
         let username = Username::from_str(username).unwrap();
         let key = Key::Secp256k1(pk);
         let key_hash = pk.hash160();
@@ -150,19 +133,7 @@ where
         }
         .to_json_vec()?;
 
-        let sk = &self.keys.get(&self.sign_with).unwrap().0;
-
-        let signature = self.create_signature(sk, &sign_bytes)?;
-
-        let otp_signature = if let Some((sk, _)) = &self.opt {
-            if self.use_otp {
-                Some(self.create_signature(sk, &sign_bytes)?)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        let standard_credential = self.create_standard_credential(&sign_bytes)?;
 
         let data = Metadata {
             username: self.username.clone(),
@@ -170,19 +141,28 @@ where
             sequence,
         };
 
-        let credential = Credential::Standard(StandardCredential {
-            signature: Signature::Secp256k1(signature),
-            otp: otp_signature,
-        });
-
-        Ok((data, credential))
+        Ok((data, Credential::Standard(standard_credential)))
     }
 
-    fn create_signature(&self, sk: &SigningKey, sign_bytes: &[u8]) -> StdResult<ByteArray<64>> {
-        // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
-        // use another hash, it's necessary to update this.
-        let signature: EcdsaSignature = sk.sign(sign_bytes);
-        signature.to_bytes().to_vec().try_into()
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<StandardCredential> {
+        let sk = &self.keys.get(&self.sign_with).unwrap().0;
+
+        let signature = create_signature(sk, sign_bytes)?;
+
+        let otp_signature = if let Some((sk, _)) = &self.opt {
+            if self.use_otp {
+                Some(create_signature(sk, sign_bytes)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(StandardCredential {
+            signature: Signature::Secp256k1(signature),
+            otp: otp_signature,
+        })
     }
 }
 
@@ -197,7 +177,6 @@ where
         &mut self,
         test_suite: &mut TestSuite<PP>,
         factory: Addr,
-        code_hash: Hash256,
         params: AccountParams,
         funds: Coins,
     ) -> StdResult<TestAccount>
@@ -206,18 +185,27 @@ where
         AppError: From<PP::Error>,
     {
         // If registering a single account, ensure the supplied username matches this account's username.
-        match &params {
-            AccountParams::Spot(single::Params { owner, .. })
-            | AccountParams::Margin(single::Params { owner, .. }) => {
+        let account_type = match &params {
+            AccountParams::Spot(single::Params { owner, .. }) => {
                 assert_eq!(owner, &self.username);
+                AccountType::Spot
             },
-            _ => {},
-        }
+            AccountParams::Margin(single::Params { owner, .. }) => {
+                assert_eq!(owner, &self.username);
+                AccountType::Margin
+            },
+            AccountParams::Safe(_) => AccountType::Safe,
+        };
 
         // Derive the new accounts address.
         let index = test_suite
             .query_wasm_smart(factory, QueryNextAccountIndexRequest {})
             .unwrap();
+
+        let code_hash = test_suite
+            .query_wasm_smart(factory, QueryCodeHashRequest { account_type })
+            .should_succeed();
+
         let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
 
         // Create a new account
@@ -307,6 +295,25 @@ impl Signer for TestAccount {
             credential: credential.to_json_value()?,
         })
     }
+}
+
+pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
+    let sk = SigningKey::random(&mut OsRng);
+    let pk = sk
+        .verifying_key()
+        .to_encoded_point(true)
+        .to_bytes()
+        .to_vec()
+        .try_into()
+        .unwrap();
+    (sk, pk)
+}
+
+pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> StdResult<ByteArray<64>> {
+    // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
+    // use another hash, it's necessary to update this.
+    let signature: EcdsaSignature = sk.sign(sign_bytes);
+    signature.to_bytes().to_vec().try_into()
 }
 
 // ---------------------------------- factory ----------------------------------

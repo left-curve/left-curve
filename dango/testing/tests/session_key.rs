@@ -1,0 +1,323 @@
+use {
+    dango_testing::setup_test_naive,
+    dango_types::{
+        account::single::Params,
+        account_factory::{AccountParams, Username},
+    },
+    grug::{btree_set, Addressable, Coin, Coins, Duration, ResultExt},
+    session_account::SessionAccount,
+    std::str::FromStr,
+};
+
+mod session_account {
+
+    use {
+        dango_testing::{create_signature, generate_random_key, TestAccount},
+        dango_types::auth::{
+            Credential, Metadata, SessionCredential, SessionInfo, SignDoc, StandardCredential,
+        },
+        grug::{
+            Addr, Addressable, ByteArray, Defined, JsonSerExt, NonEmpty, Signer, StdResult,
+            Timestamp, Tx, Undefined,
+        },
+        k256::ecdsa::SigningKey,
+        std::{
+            collections::BTreeSet,
+            ops::{Deref, DerefMut},
+        },
+    };
+
+    /// Contains both SessionInfo and the SessionInfo signed with the user keys.
+    #[derive(Clone)]
+    pub struct SessionInfoBuffer {
+        pub session_info: SessionInfo,
+        pub sign_info_signature: StandardCredential,
+    }
+
+    pub struct SessionAccount<T> {
+        pub account: TestAccount,
+        session_sk: SigningKey,
+        session_pk: ByteArray<33>,
+        /// Contains both SessionInfo and the SessionInfo signed with the user keys.
+        session_buffer: T,
+    }
+
+    impl SessionAccount<Undefined<SessionInfoBuffer>> {
+        pub fn new(account: TestAccount) -> Self {
+            let (session_sk, session_pk) = generate_random_key();
+
+            Self {
+                account,
+                session_sk,
+                session_pk,
+                session_buffer: Undefined::default(),
+            }
+        }
+
+        /// Create a new account copying the session key from another account.
+        /// it's used to simulate 2 accounts under the same username sharing the same session key.
+        pub fn new_from_same_username(
+            other: &SessionAccount<Defined<SessionInfoBuffer>>,
+            account: TestAccount,
+        ) -> SessionAccount<Defined<SessionInfoBuffer>> {
+            SessionAccount::<Defined<SessionInfoBuffer>> {
+                account,
+                session_sk: other.session_sk.clone(),
+                session_pk: other.session_pk,
+                session_buffer: other.session_buffer.clone(),
+            }
+        }
+    }
+
+    impl<T> SessionAccount<T> {
+        /// Generate a new session key.
+        pub fn refresh_session_key(
+            self,
+        ) -> anyhow::Result<SessionAccount<Undefined<SessionInfoBuffer>>> {
+            let (session_sk, session_pk) = generate_random_key();
+
+            Ok(SessionAccount {
+                account: self.account,
+                session_sk,
+                session_pk,
+                session_buffer: Undefined::default(),
+            })
+        }
+
+        // Sign the `SessionInfo` with the username key.
+        pub fn sign_session_key(
+            self,
+            expiration: Timestamp,
+            whitelisted_accounts: BTreeSet<Addr>,
+        ) -> anyhow::Result<SessionAccount<Defined<SessionInfoBuffer>>> {
+            let session_info = SessionInfo {
+                session_key: self.session_pk,
+                expire_at: expiration,
+                whitelisted_accounts,
+            };
+
+            let session_credential = self
+                .account
+                .create_standard_credential(&session_info.to_json_vec()?)?;
+
+            let session_buffer = SessionInfoBuffer {
+                session_info,
+                sign_info_signature: session_credential,
+            };
+
+            Ok(SessionAccount {
+                account: self.account,
+                session_sk: self.session_sk,
+                session_pk: self.session_pk,
+                session_buffer: Defined::new(session_buffer),
+            })
+        }
+    }
+
+    impl<T> Deref for SessionAccount<T> {
+        type Target = TestAccount;
+
+        fn deref(&self) -> &Self::Target {
+            &self.account
+        }
+    }
+
+    impl<T> DerefMut for SessionAccount<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.account
+        }
+    }
+
+    impl<T> Addressable for SessionAccount<T> {
+        fn address(&self) -> Addr {
+            self.account.address()
+        }
+    }
+
+    impl Signer for SessionAccount<Defined<SessionInfoBuffer>> {
+        fn sign_transaction(
+            &mut self,
+            msgs: Vec<grug::Message>,
+            chain_id: &str,
+            gas_limit: u64,
+        ) -> StdResult<grug::Tx> {
+            let sign_doc = SignDoc {
+                sender: self.address(),
+                messages: msgs.clone(),
+                chain_id: chain_id.to_string(),
+                sequence: self.sequence,
+            };
+
+            let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?)?;
+
+            let credential = Credential::Session(SessionCredential {
+                session_info: self.session_buffer.inner().session_info.clone(),
+                session_signature,
+                session_info_signature: self.session_buffer.inner().sign_info_signature.clone(),
+            });
+
+            let data = Metadata {
+                username: self.username.clone(),
+                key_hash: self.sign_with(),
+                sequence: self.sequence,
+            };
+
+            self.sequence += 1;
+
+            Ok(Tx {
+                sender: self.address(),
+                gas_limit,
+                msgs: NonEmpty::new(msgs)?,
+                data: data.to_json_value()?,
+                credential: credential.to_json_value()?,
+            })
+        }
+    }
+}
+
+#[test]
+fn session_key() {
+    let (mut suite, accounts, _, contracts) = setup_test_naive();
+
+    suite.block_time = Duration::from_seconds(10);
+
+    let expiration = suite.block.timestamp + Duration::from_seconds(100);
+    let mut whitelisted_accounts = btree_set! { accounts.owner.address() };
+
+    let mut owner = SessionAccount::new(accounts.owner)
+        .sign_session_key(expiration, whitelisted_accounts.clone())
+        .unwrap();
+
+    // Ok transfer
+    {
+        suite
+            .transfer(
+                &mut owner,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Expire the timestamp
+    {
+        suite.block_time = Duration::from_seconds(91);
+        suite
+            .transfer(
+                &mut owner,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
+        owner.sequence -= 1;
+
+        suite.block_time = Duration::from_seconds(10);
+    }
+
+    // Sign the session key again refreshing the timestamp
+    {
+        owner = owner
+            .sign_session_key(
+                suite.block.timestamp + Duration::from_seconds(100),
+                whitelisted_accounts.clone(),
+            )
+            .unwrap();
+
+        suite
+            .transfer(
+                &mut owner,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Remove the address as whitelisted
+    {
+        owner = owner
+            .sign_session_key(
+                suite.block.timestamp + Duration::from_seconds(100),
+                btree_set! {},
+            )
+            .unwrap();
+
+        suite
+            .transfer(
+                &mut owner,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_fail_with_error("not whitelisted");
+
+        owner.sequence -= 1;
+    }
+
+    // Try use the same session key signature with a different account.
+    // We need to create a new account under the same username.
+    // Then create a new SessionAccount with new_from_same_username,
+    // which will use the same session key signature generated with owner1.
+    {
+        let owner2 = owner
+            .register_new_account(
+                &mut suite,
+                contracts.account_factory,
+                AccountParams::Spot(Params::new(Username::from_str("owner").unwrap())),
+                Coins::default(),
+            )
+            .unwrap();
+
+        // Add the new account as whitelisted.
+        whitelisted_accounts.insert(owner2.address());
+
+        // Refresh the session key signature
+        owner = owner
+            .sign_session_key(
+                suite.block.timestamp + Duration::from_seconds(100),
+                whitelisted_accounts.clone(),
+            )
+            .unwrap();
+
+        // Create a SessionAccount from the new account
+        // using the same session key signature of the first account.
+        let mut owner2 = SessionAccount::new_from_same_username(&owner, owner2);
+
+        // Send some coins to the new account
+        suite
+            .transfer(
+                &mut owner,
+                owner2.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_succeed();
+
+        // The new account should be able to send coins to the relayer
+        suite
+            .transfer(
+                &mut owner2,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_succeed();
+    }
+
+    // Generate a new fresh session_key
+    {
+        owner = owner
+            .refresh_session_key()
+            .unwrap()
+            .sign_session_key(
+                suite.block.timestamp + Duration::from_seconds(100),
+                whitelisted_accounts,
+            )
+            .unwrap();
+
+        // Send some coins to the relayer
+        suite
+            .transfer(
+                &mut owner,
+                accounts.relayer.address(),
+                Coin::new("uusdc", 100).unwrap(),
+            )
+            .should_succeed();
+    }
+}

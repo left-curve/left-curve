@@ -6,7 +6,7 @@ use {
 
 #[test]
 fn otp() {
-    let (mut suite, accounts, _codes, contracts) = setup_test_naive();
+    let (mut suite, accounts, _, contracts) = setup_test_naive();
 
     let mut sender = accounts.owner;
 
