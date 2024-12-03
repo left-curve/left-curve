@@ -1,6 +1,5 @@
 use {
     grug_types::{Addr, Hash256, StdError},
-    std::convert::Infallible,
     thiserror::Error,
 };
 
@@ -9,20 +8,17 @@ pub enum AppError {
     #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error(transparent)]
-    Infallible(#[from] Infallible),
-
     #[error("VM error: {0}")]
     Vm(String),
 
     #[error("DB error: {0}")]
     Db(String),
 
-    #[error("ID error: {0}")]
-    Id(String),
-
     #[error("proposal preparer error: {0}")]
     PrepareProposal(String),
+
+    #[error("indexer error: {0}")]
+    Indexer(String),
 
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {

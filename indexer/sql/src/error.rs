@@ -29,7 +29,7 @@ pub enum IndexerError {
 
 impl From<IndexerError> for AppError {
     fn from(err: IndexerError) -> Self {
-        AppError::Id(err.to_string())
+        AppError::Indexer(err.to_string())
     }
 }
 

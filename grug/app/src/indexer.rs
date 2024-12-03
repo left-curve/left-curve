@@ -1,7 +1,10 @@
 use {
-    crate::Indexer,
+    crate::{AppError, Indexer},
     grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
-    std::convert::Infallible,
+    std::{
+        convert::Infallible,
+        fmt::{self, Display},
+    },
 };
 
 /// This is a null indexer that does nothing.
@@ -9,7 +12,7 @@ use {
 pub struct NullIndexer;
 
 impl Indexer for NullIndexer {
-    type Error = Infallible;
+    type Error = NullIndexerError;
 
     fn start(&mut self) -> Result<(), Self::Error> {
         Ok(())
@@ -42,5 +45,21 @@ impl Indexer for NullIndexer {
 
     fn post_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
         Ok(())
+    }
+}
+
+/// An error type that is never encountered.
+/// Used in conjunction with [`NullIndexer`](crate::NullIndexer).
+pub struct NullIndexerError(Infallible);
+
+impl Display for NullIndexerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<NullIndexerError> for AppError {
+    fn from(err: NullIndexerError) -> Self {
+        AppError::Indexer(err.to_string())
     }
 }
