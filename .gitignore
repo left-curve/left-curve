@@ -34,3 +34,6 @@ next-env.d.ts
 
 # Workers
 **/.wrangler
+
+# Database
+indexer/.data
