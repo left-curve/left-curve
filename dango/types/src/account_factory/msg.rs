@@ -77,7 +77,7 @@ pub enum QueryMsg {
     #[returns(Key)]
     Key { hash: Hash160, username: Username },
     /// Enumerate all keys.
-    #[returns(BTreeMap<(Username, Hash160), Key>)]
+    #[returns(Vec<QueryKeyResponseItem>)]
     Keys {
         start_after: Option<(Username, Hash160)>,
         limit: Option<u32>,
@@ -100,4 +100,12 @@ pub enum QueryMsg {
     /// Query a single user by username.
     #[returns(User)]
     User { username: Username },
+}
+
+#[grug::derive(Serde)]
+
+pub struct QueryKeyResponseItem {
+    pub username: Username,
+    pub key_hash: Hash160,
+    pub key: Key,
 }

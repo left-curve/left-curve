@@ -149,16 +149,8 @@ fn register_user(
         bail!("username `{}` already exists", username);
     }
 
-    // Save the key if not already registered for the.
-    KEYS.may_update(ctx.storage, (&username, key_hash), |maybe_key| {
-        ensure!(
-            maybe_key.is_none(),
-            "key hash {} already associated with username `{}`",
-            key_hash,
-            username
-        );
-        Ok(key)
-    })?;
+    // Save the key.
+    KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
     Ok(Response::new().add_message(onboard_new_user(
         ctx.storage,
