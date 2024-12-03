@@ -1,8 +1,5 @@
 use {
-    crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, KEYS_BY_USER, NEXT_ACCOUNT_INDEX,
-        USERS_BY_KEY,
-    },
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{Account, AccountIndex, AccountType, QueryMsg, User, Username},
         auth::Key,
@@ -11,7 +8,7 @@ use {
         Addr, Bound, Coins, Hash160, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Storage,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
@@ -39,8 +36,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_deposits(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Key { hash } => {
-            let res = query_key(ctx.storage, hash)?;
+        QueryMsg::Key { hash, username } => {
+            let res = query_key(ctx.storage, hash, username)?;
             res.to_json_value()
         },
         QueryMsg::Keys { start_after, limit } => {
@@ -65,10 +62,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::User { username } => {
             let res = query_user(ctx.storage, username)?;
-            res.to_json_value()
-        },
-        QueryMsg::UsersByKey { hash } => {
-            let res = query_users_by_key(ctx.storage, hash)?;
             res.to_json_value()
         },
     }
@@ -115,16 +108,16 @@ fn query_deposits(
         .collect()
 }
 
-fn query_key(storage: &dyn Storage, hash: Hash160) -> StdResult<Key> {
-    KEYS.load(storage, hash)
+fn query_key(storage: &dyn Storage, hash: Hash160, username: Username) -> StdResult<Key> {
+    KEYS.load(storage, (&username, hash))
 }
 
 fn query_keys(
     storage: &dyn Storage,
-    start_after: Option<Hash160>,
+    start_after: Option<(Username, Hash160)>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Hash160, Key>> {
-    let start = start_after.map(Bound::Exclusive);
+) -> StdResult<BTreeMap<(Username, Hash160), Key>> {
+    let start = start_after.as_ref().map(|(u, k)| Bound::Exclusive((u, *k)));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     KEYS.range(storage, start, None, Order::Ascending)
@@ -136,14 +129,8 @@ fn query_keys_by_user(
     storage: &dyn Storage,
     username: &Username,
 ) -> StdResult<BTreeMap<Hash160, Key>> {
-    KEYS_BY_USER
-        .prefix(username)
-        .keys(storage, None, None, Order::Ascending)
-        .map(|res| -> StdResult<_> {
-            let hash = res?;
-            let key = KEYS.load(storage, hash)?;
-            Ok((hash, key))
-        })
+    KEYS.prefix(username)
+        .range(storage, None, None, Order::Ascending)
         .collect()
 }
 
@@ -185,98 +172,4 @@ fn query_user(storage: &dyn Storage, username: Username) -> StdResult<User> {
     let accounts = query_accounts_by_user(storage, &username)?;
 
     Ok(User { keys, accounts })
-}
-
-fn query_users_by_key(storage: &dyn Storage, hash: Hash160) -> StdResult<BTreeSet<Username>> {
-    USERS_BY_KEY
-        .prefix(hash)
-        .keys(storage, None, None, Order::Ascending)
-        .collect()
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use {
-        crate::{
-            query::{query_user, query_users_by_key},
-            KEYS, KEYS_BY_USER, USERS_BY_KEY,
-        },
-        dango_types::{account_factory::Username, auth::Key},
-        grug::{btree_set, Hash160, MockStorage},
-        std::{collections::BTreeSet, str::FromStr},
-    };
-
-    /// Given a key and finding all the key IDs (i.e. usernames and key hashes)
-    /// associated with the key.
-    ///
-    /// This feature is useful if a user forgets their username, but still has
-    /// the key. We can recover the username from the key.
-    #[test]
-    fn querying_username_by_key() {
-        let mut storage = MockStorage::new();
-
-        let u1 = Username::from_str("larry").unwrap();
-        let u2 = Username::from_str("jake").unwrap();
-        let u3 = Username::from_str("pumpkin").unwrap();
-
-        let k1 = Key::Secp256r1([1; 33].into());
-        let k2 = Key::Secp256k1([2; 33].into());
-        let k3 = Key::Secp256k1([3; 33].into());
-
-        let h1 = Hash160::from_inner([1; 20]);
-        let h2 = Hash160::from_inner([2; 20]);
-        let h3 = Hash160::from_inner([3; 20]);
-        let h4 = Hash160::from_inner([4; 20]);
-
-        // Save the following records:
-        //
-        // (u1, h1) => k1
-        // (u1, h2) => k2
-        // (u2, h1) => k1
-        // (u2, h3) => k3
-        //
-        // Note:
-        // - A username can own multiple keys
-        // - A key can be owned by multiple accounts
-        // - A key must have a unique hash; that is, no two different hashes can
-        //   point to the same key.
-        for (username, hash, key) in [
-            // comment inserted to prevent undesirable rustfmt formatting
-            (&u1, h1, k1),
-            (&u1, h2, k2),
-            (&u2, h1, k1),
-            (&u2, h3, k3),
-        ] {
-            KEYS.save(&mut storage, hash, &key).unwrap();
-            KEYS_BY_USER.insert(&mut storage, (username, hash)).unwrap();
-            USERS_BY_KEY.insert(&mut storage, (hash, username)).unwrap();
-        }
-
-        // Find all usernames associated with each key hash.
-        for (hash, usernames) in [
-            (h1, btree_set! { u1.clone(), u2.clone() }),
-            (h2, btree_set! { u1.clone() }),
-            (h3, btree_set! { u2.clone() }),
-            (h4, btree_set! {}),
-        ] {
-            let actual = query_users_by_key(&storage, hash).unwrap();
-            assert_eq!(actual, usernames);
-        }
-
-        // Find all key hashes associated with each username.
-        for (username, hashes) in [
-            (u1, btree_set! { h1, h2 }),
-            (u2, btree_set! { h1, h3 }),
-            (u3, btree_set! {}),
-        ] {
-            let actual = query_user(&storage, username)
-                .unwrap()
-                .keys
-                .into_keys()
-                .collect::<BTreeSet<_>>();
-            assert_eq!(actual, hashes);
-        }
-    }
 }

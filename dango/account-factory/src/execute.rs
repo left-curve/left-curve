@@ -1,8 +1,5 @@
 use {
-    crate::{
-        ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, KEYS_BY_USER, NEXT_ACCOUNT_INDEX,
-        USERS_BY_KEY,
-    },
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -26,22 +23,12 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         CODE_HASHES.save(ctx.storage, *account_type, code_hash)?;
     }
 
-    for (key_hash, key) in &msg.keys {
-        KEYS.save(ctx.storage, *key_hash, key)?;
-    }
-
     let instantiate_msgs = msg
         .users
         .into_iter()
-        .map(|(username, key_hash)| {
-            onboard_new_user(
-                ctx.storage,
-                ctx.contract,
-                username,
-                msg.keys.get(&key_hash).cloned(),
-                key_hash,
-                false,
-            )
+        .map(|(username, (key_hash, key))| {
+            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
+            onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, false)
         })
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -153,7 +140,7 @@ fn register_user(
     // We ensure this by asserting there isn't any key already associated with
     // this username, since any existing username necessarily has at least one
     // key associated with it. (However, this key isn't necessarily index 1.)
-    if KEYS_BY_USER
+    if KEYS
         .prefix(&username)
         .keys(ctx.storage, None, None, Order::Ascending)
         .next()
@@ -162,12 +149,14 @@ fn register_user(
         bail!("username `{}` already exists", username);
     }
 
-    // Save the key.
-    // If the key exists (already used by another account), they must match.
-    KEYS.may_update(ctx.storage, key_hash, |maybe_key| {
-        if let Some(existing_key) = maybe_key {
-            ensure!(key == existing_key, "reusing an existing key but mismatch");
-        }
+    // Save the key if not already registered for the.
+    KEYS.may_update(ctx.storage, (&username, key_hash), |maybe_key| {
+        ensure!(
+            maybe_key.is_none(),
+            "key hash {} already associated with username `{}`",
+            key_hash,
+            username
+        );
         Ok(key)
     })?;
 
@@ -175,7 +164,7 @@ fn register_user(
         ctx.storage,
         ctx.contract,
         username,
-        None,
+        key,
         key_hash,
         true,
     )?))
@@ -187,26 +176,16 @@ fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
-    key: Option<Key>,
+    key: Key,
     key_hash: Hash160,
     must_have_deposit: bool,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
-    // Associate the key with the user.
-    KEYS_BY_USER.insert(storage, (&username, key_hash))?;
-    USERS_BY_KEY.insert(storage, (key_hash, &username))?;
-
     // Increment the global account index, predict its address, and save the
     // account info under the username.
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
-
-    let key = if let Some(key) = key {
-        key
-    } else {
-        KEYS.load(storage, key_hash)?
-    };
 
     let salt = NewUserSalt {
         username: &username,

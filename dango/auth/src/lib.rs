@@ -3,7 +3,7 @@ use {
     alloy_primitives::U160,
     anyhow::{anyhow, bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
-    dango_account_factory::{ACCOUNTS_BY_USER, KEYS, KEYS_BY_USER},
+    dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         auth::{ClientData, Credential, Key, Metadata, SignDoc},
         config::AppConfig,
@@ -50,22 +50,17 @@ pub fn authenticate_tx(
 
     // Query the account factory. We need to do three things:
     // - ensure the `tx.sender` is associated with the username;
-    // - ensure the `key_hash` is associated wit the username;
-    // - query the key by key hash.
+    // - query the key by key hash and username.
     //
     // We use Wasm raw queries instead of smart queries to optimize on gas.
     // We also user the multi query to reduce the number of FFI calls.
     let key = {
-        let [res1, res2, res3] = ctx.querier.query_multi([
+        let [res1, res2] = ctx.querier.query_multi([
             Query::wasm_raw(
                 factory,
                 ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             ),
-            Query::wasm_raw(
-                factory,
-                KEYS_BY_USER.path((&metadata.username, metadata.key_hash)),
-            ),
-            Query::wasm_raw(factory, KEYS.path(metadata.key_hash)),
+            Query::wasm_raw(factory, KEYS.path((&metadata.username, metadata.key_hash))),
         ])?;
 
         // If the sender account is associated with the username, then an entry
@@ -78,17 +73,8 @@ pub fn authenticate_tx(
             metadata.username,
         );
 
-        // Similarly, if the key hash is associated with the username, it must
-        // be present in the `KEYS_BY_USER` set.
-        ensure!(
-            res2.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
-            "key hash {} isn't associated with user `{}`",
-            metadata.key_hash,
-            metadata.username
-        );
-
         // Deserialize the key from Borsh bytes.
-        res3.as_wasm_raw()
+        res2.as_wasm_raw()
             .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
             .deserialize_borsh()?
     };
@@ -293,10 +279,8 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
-                    .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -337,10 +321,8 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
-                    .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -437,10 +419,9 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-                KEYS_BY_USER
-                    .insert(storage, (&user_username, user_keyhash))
-                    .unwrap();
-                KEYS.save(storage, user_keyhash, &user_key).unwrap()
+
+                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
