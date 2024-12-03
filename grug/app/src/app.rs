@@ -4,9 +4,9 @@ use {
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
-        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker,
-        NaiveProposalPreparer, NaiveQuerier, ProposalPreparer, QuerierProvider, Shared, Vm,
-        APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker, Indexer,
+        NaiveProposalPreparer, NaiveQuerier, NullIndexer, ProposalPreparer, QuerierProvider,
+        Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -16,7 +16,6 @@ use {
         UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
-    tracing::error,
 };
 #[cfg(feature = "abci")]
 use {
@@ -29,10 +28,11 @@ use {
 /// Must be clonable which is required by `tendermint-abci` library:
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
-pub struct App<DB, VM, PP = NaiveProposalPreparer> {
+pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     db: DB,
     vm: VM,
     pp: PP,
+    indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -48,23 +48,25 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer> {
     query_gas_limit: u64,
 }
 
-impl<DB, VM, PP> App<DB, VM, PP> {
-    pub fn new(db: DB, vm: VM, pp: PP, query_gas_limit: u64) -> Self {
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn new(db: DB, vm: VM, pp: PP, indexer: ID, query_gas_limit: u64) -> Self {
         Self {
             db,
             vm,
             pp,
+            indexer,
             query_gas_limit,
         }
     }
 }
 
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain(
         &self,
@@ -150,7 +152,7 @@ where
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|err| {
                 #[cfg(feature = "tracing")]
-                error!(
+                tracing::error!(
                     err = err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
@@ -190,6 +192,8 @@ where
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
+
+        self.indexer.pre_indexing(block.height)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
@@ -282,14 +286,19 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            tx_outcomes.push(process_tx(
+            let tx_outcome = process_tx(
                 self.vm.clone(),
                 buffer.clone(),
                 chain_id.clone(),
                 block,
-                tx,
+                tx.clone(),
                 AuthMode::Finalize,
-            ));
+            );
+
+            self.indexer
+                .index_transaction(&block, tx, tx_outcome.clone())?;
+
+            tx_outcomes.push(tx_outcome);
         }
 
         // Save the last committed block.
@@ -318,11 +327,15 @@ where
             "Finalized block"
         );
 
-        Ok(BlockOutcome {
+        let block_outcome = BlockOutcome {
             app_hash: app_hash.unwrap(),
             cron_outcomes,
             tx_outcomes,
-        })
+        };
+
+        self.indexer.index_block(&block, &block_outcome)?;
+
+        Ok(block_outcome)
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
@@ -330,6 +343,10 @@ where
 
         #[cfg(feature = "tracing")]
         tracing::info!(height = self.db.latest_version(), "Committed state");
+
+        if let Some(block_height) = self.db.latest_version() {
+            self.indexer.post_indexing(block_height)?;
+        }
 
         Ok(())
     }
@@ -505,12 +522,13 @@ where
 // Borsh encoding. This is because these are the methods that clients interact
 // with, and it's difficult to do Borsh encoding in JS client (JS sucks).
 #[cfg(feature = "abci")]
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain_raw(
         &self,

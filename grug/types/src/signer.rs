@@ -34,6 +34,7 @@ pub trait Signer: Addressable {
 ///
 /// For example, it may need to query necessary data from an RPC node in order
 /// to perform the signing, which can be async.
+/// NOTE: could use `async_trait` here
 pub trait AsyncSigner: Addressable {
     fn sign_transaction(
         &mut self,

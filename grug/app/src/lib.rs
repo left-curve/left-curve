@@ -7,6 +7,7 @@ mod error;
 mod events;
 mod execute;
 mod gas;
+mod indexer;
 mod proposal;
 mod providers;
 mod query;
@@ -17,6 +18,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, context::*, error::*, events::*, execute::*, gas::*, proposal::*,
-    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    app::*, buffer::*, context::*, error::*, events::*, execute::*, gas::*, indexer::*,
+    proposal::*, providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
 };

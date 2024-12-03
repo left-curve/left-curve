@@ -1,5 +1,8 @@
 use {
-    grug_app::{App, AppError, AppResult, Db, NaiveProposalPreparer, ProposalPreparer, Vm},
+    grug_app::{
+        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
+        ProposalPreparer, Vm,
+    },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -105,13 +108,14 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer>
+pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
 where
     DB: Db,
     VM: Vm,
     PP: ProposalPreparer,
+    ID: Indexer,
 {
-    pub app: App<DB, VM, PP>,
+    pub app: App<DB, VM, PP, ID>,
     /// The chain ID can be queries from the `app`, but we internally track it in
     /// the test suite, so we don't need to query it every time we need it.
     pub chain_id: String,
@@ -147,7 +151,7 @@ impl TestSuite {
     }
 }
 
-impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer>
+impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer, NullIndexer>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -162,10 +166,11 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        Self::new_with_db_vm_and_pp(
+        Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
             NaiveProposalPreparer,
+            NullIndexer,
             chain_id,
             block_time,
             default_gas_limit,
@@ -175,7 +180,7 @@ where
     }
 }
 
-impl<PP> TestSuite<MemDb, RustVm, PP>
+impl<PP> TestSuite<MemDb, RustVm, PP, NullIndexer>
 where
     PP: ProposalPreparer,
     AppError: From<PP::Error>,
@@ -190,10 +195,11 @@ where
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
-        Self::new_with_db_vm_and_pp(
+        Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             RustVm::new(),
             pp,
+            NullIndexer,
             chain_id,
             block_time,
             default_gas_limit,
@@ -203,18 +209,20 @@ where
     }
 }
 
-impl<DB, VM, PP> TestSuite<DB, VM, PP>
+impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     /// Create a new test suite with the given DB and VM.
-    pub fn new_with_db_vm_and_pp(
+    pub fn new_with_db_vm_indexer_and_pp(
         db: DB,
         vm: VM,
         pp: PP,
+        id: ID,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -222,7 +230,7 @@ where
         genesis_state: GenesisState,
     ) -> Self {
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, u64::MAX);
+        let app = App::new(db, vm, pp, id, u64::MAX);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

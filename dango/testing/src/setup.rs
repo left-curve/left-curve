@@ -6,7 +6,7 @@ use {
         btree_map, Binary, BlockInfo, Coin, ContractBuilder, ContractWrapper, Duration,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, NaiveProposalPreparer, Vm},
+    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
@@ -22,13 +22,20 @@ pub const GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
 
-pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm> = grug::TestSuite<DB, VM, PP>;
+pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
+    grug::TestSuite<DB, VM, PP, ID>;
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
     let codes = build_codes();
 
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, ProposalPreparer::new())
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        codes,
+        ProposalPreparer::new(),
+        NullIndexer,
+    )
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer` and `ContractWrapper` codes.
@@ -40,7 +47,13 @@ pub fn setup_test_naive() -> (
 ) {
     let codes = build_codes();
 
-    setup_suite_with_db_and_vm(MemDb::new(), RustVm::new(), codes, NaiveProposalPreparer)
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        codes,
+        NaiveProposalPreparer,
+        NullIndexer,
+    )
 }
 
 /// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
@@ -49,7 +62,7 @@ pub fn setup_benchmark(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm>,
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
     Accounts,
     Codes<Vec<u8>>,
     Contracts,
@@ -61,22 +74,24 @@ pub fn setup_benchmark(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer)
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
 }
 
 /// Set up a test with the given DB, VM, and codes.
-fn setup_suite_with_db_and_vm<DB, VM, T, PP>(
+fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     db: DB,
     vm: VM,
     codes: Codes<T>,
     pp: PP,
-) -> (TestSuite<PP, DB, VM>, Accounts, Codes<T>, Contracts)
+    indexer: ID,
+) -> (TestSuite<PP, DB, VM, ID>, Accounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
     VM: Vm + Clone,
+    ID: Indexer,
     PP: grug_app::ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");
@@ -117,10 +132,11 @@ where
     )
     .unwrap();
 
-    let suite = grug::TestSuite::new_with_db_vm_and_pp(
+    let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(
         db,
         vm,
         pp,
+        indexer,
         CHAIN_ID.to_string(),
         Duration::from_millis(250),
         1_000_000,
