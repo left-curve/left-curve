@@ -8,12 +8,6 @@ use {
 #[derive(Debug, Clone, Default)]
 pub struct NullIndexer;
 
-impl NullIndexer {
-    pub fn new() -> NullIndexer {
-        NullIndexer {}
-    }
-}
-
 impl Indexer for NullIndexer {
     type Error = Infallible;
 

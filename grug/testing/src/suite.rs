@@ -169,7 +169,7 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             vm,
-            NullIndexer::new(),
+            NullIndexer,
             NaiveProposalPreparer,
             chain_id,
             block_time,
@@ -198,7 +198,7 @@ where
         Self::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             RustVm::new(),
-            NullIndexer::new(),
+            NullIndexer,
             pp,
             chain_id,
             block_time,

@@ -44,7 +44,7 @@ impl StartCmd {
             indexer.start().expect("Can't start indexer");
             self.run_with_indexer(data_dir, indexer).await
         } else {
-            self.run_with_indexer(data_dir, NullIndexer::new()).await
+            self.run_with_indexer(data_dir, NullIndexer).await
         }
     }
 

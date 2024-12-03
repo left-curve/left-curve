@@ -34,7 +34,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
         RustVm::new(),
         codes,
         ProposalPreparer::new(),
-        NullIndexer::new(),
+        NullIndexer,
     )
 }
 
@@ -52,7 +52,7 @@ pub fn setup_test_naive() -> (
         RustVm::new(),
         codes,
         NaiveProposalPreparer,
-        NullIndexer::new(),
+        NullIndexer,
     )
 }
 
@@ -74,7 +74,7 @@ pub fn setup_benchmark(
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
-    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer::new())
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
 }
 
 /// Set up a test with the given DB, VM, and codes.

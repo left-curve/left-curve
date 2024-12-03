@@ -78,11 +78,7 @@ pub struct TestBuilder<
 #[allow(clippy::new_without_default)]
 impl TestBuilder<RustVm, NaiveProposalPreparer, NullIndexer> {
     pub fn new() -> Self {
-        Self::new_with_vm_and_pp_and_indexer(
-            RustVm::new(),
-            NaiveProposalPreparer,
-            NullIndexer::new(),
-        )
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, NullIndexer)
     }
 }
 
@@ -91,7 +87,7 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer::new())
+        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer)
     }
 }
 
@@ -106,7 +102,7 @@ impl<ID> TestBuilder<RustVm, NaiveProposalPreparer, ID> {
 
 impl<PP> TestBuilder<RustVm, PP> {
     pub fn new_with_pp(pp: PP) -> Self {
-        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer::new())
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer)
     }
 }
 
