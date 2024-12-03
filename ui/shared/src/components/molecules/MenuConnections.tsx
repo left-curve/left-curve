@@ -46,10 +46,9 @@ export const MenuConnections = forwardRef<VisibleRef>((props, ref) => {
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
-        radius="lg"
-        className="font-bold px-4 py-2 gap-2 hidden lg:flex"
+        className="font-bold px-4 py-2 gap-2 hidden lg:flex rounded-[20px]"
       >
-        <ProfileIcon className="h-6 w-6 text-surface-green-300" />
+        <ProfileIcon className="h-6 w-6 text-surface-green-100" />
         <p className="truncate">{account?.username}</p>
       </Button>
 

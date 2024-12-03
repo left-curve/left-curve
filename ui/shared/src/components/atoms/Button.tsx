@@ -136,7 +136,7 @@ const buttonVariants = tv(
         variant: "solid",
         color: "gray",
         class:
-          "bg-surface-green-200 hover:bg-surface-green-300 text-typography-black-300 not-italic font-diatype-rounded",
+          "bg-surface-green-200 hover:bg-surface-green-300 focus:bg-surface-green-300 text-typography-black-300 not-italic font-diatype-rounded",
       },
       {
         variant: "solid",

@@ -84,7 +84,7 @@ export const tailwindConfig: Partial<Config> = {
           300: "#CFBFC5",
         },
         "surface-green": {
-          100: "#EEF2F0",
+          100: "#F9FBFA",
           200: "#EEF2F0",
           300: "#DCE4E0",
           400: "#C2D0C9",
