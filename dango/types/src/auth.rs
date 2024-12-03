@@ -1,6 +1,7 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash160, Json, Message},
+    grug::{Addr, Binary, ByteArray, Hash160, Json, Message, Timestamp},
+    std::collections::BTreeSet,
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -22,13 +23,42 @@ pub struct OtpKey {
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
 /// field.
 #[grug::derive(Serde)]
-pub enum Credential {
+pub enum Signature {
     /// An Secp256r1 signature signed by a Passkey, along with necessary metadata.
     Passkey(PasskeySignature),
     /// An Secp256k1 signature.
     Secp256k1(ByteArray<64>),
     /// An EIP712 signature signed by a compatible eth wallet.
     Eip712(Eip712Signature),
+}
+
+#[grug::derive(Serde)]
+pub enum Credential {
+    Standard(StandardCredential),
+    Session(SessionCredential),
+}
+
+#[grug::derive(Serde)]
+pub struct StandardCredential {
+    pub signature: Signature,
+    pub otp: Option<ByteArray<64>>,
+}
+
+#[grug::derive(Serde)]
+pub struct SessionCredential {
+    /// The `SessionInfo` that contains data to be signed with user key and otp key.
+    pub session_info: SessionInfo,
+    /// Signature of the `SignDoc` by the session key.
+    pub session_signature: ByteArray<64>,
+    /// Signatures of the `SessionInfo` bytes and hased.
+    pub session_info_signature: StandardCredential,
+}
+
+#[grug::derive(Serde)]
+pub struct SessionInfo {
+    pub session_key: ByteArray<33>,
+    pub expire_at: Timestamp,
+    pub account: BTreeSet<Addr>,
 }
 
 /// Data that a transaction's sender must sign with their private key.

@@ -46,7 +46,9 @@ pub enum ExecuteMsg {
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
     /// Configure an OTP key for a username.
-    ConfigureOtp { key: Op<OtpKey> },
+    ConfigureUserOtp { key: Op<OtpKey> },
+    /// Enable/Disable a OTP for an account.
+    ConfigureAccountOtp { enabled: bool },
     /// Configure a key for a username.
     ConfigureKey { key_hash: Hash160, key: Op<Key> },
     /// Update a Safe account's parameters.

@@ -122,9 +122,9 @@ fn safe() {
                 // well as the Safe.
                 member.address() => Account {
                     index,
-                    params: AccountParams::Spot(single::Params {
-                        owner: member.username.clone()
-                    }),
+                    params: AccountParams::Spot(single::Params::new(
+                        member.username.clone()
+                    )),
                 },
                 safe.address() => Account {
                     index: 6,

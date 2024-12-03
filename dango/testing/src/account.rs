@@ -5,7 +5,7 @@ use {
         account_factory::{
             self, AccountParams, NewUserSalt, QueryNextAccountIndexRequest, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc},
+        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
     grug::{
         Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
@@ -13,7 +13,7 @@ use {
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{
-        ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
+        ecdsa::{signature::Signer as SignerTrait, Signature as EcdsaSignature, SigningKey},
         elliptic_curve::rand_core::OsRng,
     },
     std::{collections::BTreeMap, str::FromStr},
@@ -126,7 +126,7 @@ where
 
         // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
         // use another hash, it's necessary to update this.
-        let signature: Signature = self.sk.sign(&sign_bytes);
+        let signature: EcdsaSignature = self.sk.sign(&sign_bytes);
 
         let data = Metadata {
             username: self.username.clone(),
@@ -134,7 +134,10 @@ where
             sequence,
         };
 
-        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into()?);
+        let credential = Credential::Standard(StandardCredential {
+            signature: Signature::Secp256k1(signature.to_bytes().to_vec().try_into()?),
+            otp: None,
+        });
 
         Ok((data, credential))
     }

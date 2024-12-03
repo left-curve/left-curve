@@ -79,7 +79,7 @@ fn user_onboarding() {
                 // We have 2 genesis accounts (0 owner, 1 relayer) so this one should have
                 // the index of 2.
                 index: 2,
-                params: AccountParams::Spot(single::Params { owner: user.username.clone() }),
+                params: AccountParams::Spot(single::Params::new(user.username.clone() )),
             },
         });
 

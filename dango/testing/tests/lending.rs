@@ -295,9 +295,7 @@ fn cant_borrow_if_no_collateral() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -336,9 +334,7 @@ fn cant_borrow_if_undercollateralized() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -385,9 +381,7 @@ fn borrowing_works() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -554,9 +548,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -607,9 +599,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -680,9 +670,7 @@ fn repay_works() {
             &mut suite,
             contracts.account_factory,
             codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
             Coins::new(),
         )
         .unwrap();
