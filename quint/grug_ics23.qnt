@@ -86,7 +86,7 @@ module grug_ics23 {
   }
 
   /// calculate a hash from an exists proof
-  def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
+  def existsCalculate(p: ExistsProof_t): CommitmentProof_t =
     val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
