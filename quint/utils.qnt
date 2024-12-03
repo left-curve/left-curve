@@ -37,7 +37,7 @@ module utils {
                                     b.slice(0, x) 
                                 else s )
 
-  pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes_t =
+  pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes =
     val indList = range(1, keylength + 1)
     indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
                                     b.key_hash.slice(0, x) 
@@ -92,6 +92,14 @@ module utils {
         | _ => false
       }
       | _ => false
+    }
+  }
+
+  pure def checked_sub(a: int, b: int): Option[int] = {
+    if (b > a) {
+      None
+    } else {
+      Some(a - b)
     }
   }
 }

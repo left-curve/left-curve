@@ -39,7 +39,7 @@ module apply_state_machine {
 
   pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH - 1).setOfMaps(Set(0, 1))).powerset()
   pure def key_hash_map_to_op(km: (int -> int, { id: int, op: Operation })): OperationOnKey = {
-    pure val key_hash: Bytes_t = range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km._1.get(i)))
+    pure val key_hash: Bytes = range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km._1.get(i)))
     { key_hash: key_hash, op: km._2.op }
   }
 
@@ -97,7 +97,7 @@ module apply_state_machine {
   /// tree that is the common prefix
   val nodeAtCommonPrefixInv: bool = {
     // Check whether there is a node with the given prefix
-    pure def existsNode(t: TreeMap, b: Bytes_t): bool =
+    pure def existsNode(t: TreeMap, b: Bytes): bool =
       t.keys().filter(nId => nId.key_hash == b).size() > 0
 
     // For any two leaf nodes, is there a nodeId in the tree that is the common prefix

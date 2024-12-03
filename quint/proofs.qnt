@@ -6,35 +6,9 @@ module proofs {
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
-  export tree.*
+  import proof_types.* from "./proof_types"
   import node.* from "./node"
   import utils.* from "./utils"
-
-  type LeafOp = {
-    prefix: Term_t
-  }
-
-  type InnerOp = {
-    prefix: Term_t,
-    suffix: Term_t
-  }
-
-  type ExistenceProof = {
-    key: BitArray,
-    value: BitArray,
-    leaf: LeafOp,
-    path: List[InnerOp],
-  }
-
-  type NonExistenceProof = {
-    key: BitArray,
-    left: Option[ExistenceProof],
-    right: Option[ExistenceProof],
-  }
-
-  type CommitmentProof =
-    | Exist(ExistenceProof) 
-    | NonExist(NonExistenceProof)
 
   /// Returns optional list of InnerOps as a path to the leaf with particular key_hash
   pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
