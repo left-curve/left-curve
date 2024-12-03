@@ -45,7 +45,7 @@ export const ConnectStep: React.FC = () => {
             const { id, getPublicKey } = await createWebAuthnCredential({
               challenge: encodeUtf8(challenge),
               user: {
-                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+                name: `${username} - ${getNavigatorOS()} ${new Date().toLocaleString()}`,
               },
               rp: {
                 name: window.document.title,
