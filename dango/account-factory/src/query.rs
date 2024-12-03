@@ -1,7 +1,9 @@
 use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
-        account_factory::{Account, AccountIndex, AccountType, QueryMsg, User, Username},
+        account_factory::{
+            Account, AccountIndex, AccountType, QueryKeyResponseItem, QueryMsg, User, Username,
+        },
         auth::Key,
     },
     grug::{
@@ -116,12 +118,19 @@ fn query_keys(
     storage: &dyn Storage,
     start_after: Option<(Username, Hash160)>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<(Username, Hash160), Key>> {
+) -> StdResult<Vec<QueryKeyResponseItem>> {
     let start = start_after.as_ref().map(|(u, k)| Bound::Exclusive((u, *k)));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     KEYS.range(storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|res| {
+            res.map(|((username, key_hash), key)| QueryKeyResponseItem {
+                username,
+                key_hash,
+                key,
+            })
+        })
         .collect()
 }
 

@@ -17,6 +17,7 @@ use {
 
 /// A signer that tracks a sequence number and signs transactions in a way
 /// corresponding to the mock account used in Grug test suite.
+#[derive(Debug)]
 pub struct TestAccount {
     pub address: Addr,
     pub sk: SigningKey,
@@ -115,7 +116,7 @@ impl Signer for TestAccount {
 /// instead which is quite verbose.
 ///
 /// To fix this, we make a wrapper over `HashMap` and implement `IndexMut` ourselves.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TestAccounts(HashMap<&'static str, TestAccount>);
 
 impl Deref for TestAccounts {
