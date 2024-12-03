@@ -91,8 +91,8 @@ const buttonVariants = tv(
         purple: "",
       },
       size: {
-        sm: "px-12 py-2 max-h-[2rem] typography-button-s",
-        md: "px-12 py-3 max-h-[3rem] typography-button-l",
+        sm: "px-12 py-2 h-[2rem] typography-button-s",
+        md: "px-12 py-3 h-[3rem] typography-button-l",
       },
       radius: {
         none: "rounded-none",
