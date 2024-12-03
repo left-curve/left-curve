@@ -50,8 +50,8 @@ fn safe() {
                     contracts.account_factory,
                     &account_factory::ExecuteMsg::RegisterUser {
                         username: user.username.clone(),
-                        key: user.key,
-                        key_hash: user.key_hash,
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
                     },
                     Coins::new(),
                 )
@@ -383,25 +383,25 @@ fn safe() {
         (
             attacker.username.clone(),
             member2.username.clone(),
-            attacker.key_hash,
+            attacker.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             attacker.username.clone(),
             member2.username.clone(),
-            member2.key_hash,
+            member2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash,
+            attacker.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             member2.username.clone(),
             attacker.username.clone(),
-            member2.key_hash,
+            member2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
@@ -410,7 +410,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            attacker.key_hash,
+            attacker.first_key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -420,7 +420,7 @@ fn safe() {
         (
             attacker.username.clone(),
             attacker.username.clone(),
-            member2.key_hash,
+            member2.first_key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
@@ -431,13 +431,13 @@ fn safe() {
         (
             member2.username.clone(),
             member2.username.clone(),
-            attacker.key_hash,
-            format!("key hash {} not found", attacker.key_hash),
+            attacker.first_key_hash(),
+            format!("key hash {} not found", attacker.first_key_hash()),
         ),
         (
             member2.username.clone(),
             member2.username.clone(),
-            member2.key_hash,
+            member2.first_key_hash(),
             "signature is unauthentic".to_string(),
         ),
     ] {

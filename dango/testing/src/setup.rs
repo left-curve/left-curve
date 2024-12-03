@@ -100,8 +100,8 @@ where
         codes.clone(),
         btree_map! {
             owner.username.clone() => GenesisUser {
-                key: owner.key,
-                key_hash: owner.key_hash,
+                key: *owner.key(),
+                key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
                 balances: btree_map! {
@@ -112,8 +112,8 @@ where
                 .unwrap(),
             },
             relayer.username.clone() => GenesisUser {
-                key: relayer.key,
-                key_hash: relayer.key_hash,
+                key: *relayer.key(),
+                key_hash: relayer.key_hash(),
                 balances: btree_map! {
                     "udng"  => 100_000_000_000_000,
                     "uusdc" => 100_000_000_000_000,
