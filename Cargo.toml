@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["dango/*", "grug/*", "indexer/*"]
-exclude = ["indexer/.data"]
 
 [workspace.package]
 version       = "0.0.0"
