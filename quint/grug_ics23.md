@@ -39,7 +39,7 @@ And other helper functions that are used:
 // https://github.com/cosmos/ics23
 //
 // We still have to parameterize the spec with the data structure parameters
-// such as MinPrefixLen, MaxPrefixLen, ChildSize, and hash.
+// such as min_prefix_length, max_prefix_length, child_size, and hash.
 //
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
@@ -92,10 +92,10 @@ pub struct InnerSpec {
 
 ```bluespec "definitions" +=
 type Ics23InnerSpec = {
-  MinPrefixLen: int, 
-  MaxPrefixLen: int,
-  ChildSize: int,
-  EmptyChild: Term_t
+  min_prefix_length: int, 
+  max_prefix_length: int,
+  child_size: int,
+  empty_child: Term_t
 }
 ```
 <!-- Empty line, to be tangled but not rendered
@@ -128,14 +128,14 @@ pub static ICS23_PROOF_SPEC: LazyLock<ProofSpec> = LazyLock::new(|| ProofSpec {
 });
 ```
 
-As it can be seen, `Ics23ProofSpec.MinPrefixLen` and `Ics23ProofSpec.MaxPrefixLen` have the value `INTERNAL_NODE_HASH_PREFIX.len()` which is `1`. `Ics23ProofSpec.ChildSize` is `32` because `Hash256::LENGTH` returns `32`, and `Ics23ProofSpec.EmptyChild` is `Hash256_ZERO` to correspond to `Hash256::ZERO.to_vec()`.
+As it can be seen, `Ics23ProofSpec.min_prefix_length` and `Ics23ProofSpec.max_prefix_length` have the value `INTERNAL_NODE_HASH_PREFIX.len()` which is `1`. `Ics23ProofSpec.child_size` is `32` because `Hash256::LENGTH` returns `32`, and `Ics23ProofSpec.empty_child` is `Hash256_ZERO` to correspond to `Hash256::ZERO.to_vec()`.
 
 ```bluespec "definitions" +=
 pure val Ics23ProofSpec: Ics23InnerSpec= {
-  MinPrefixLen: 1,
-  MaxPrefixLen: 1,
-  ChildSize: 32,
-  EmptyChild: Hash256_ZERO
+  min_prefix_length: 1,
+  max_prefix_length: 1,
+  child_size: 32,
+  empty_child: Hash256_ZERO
 }
 ```
 
@@ -617,7 +617,7 @@ pub fn verify_non_existence<H: HostFunctionsProvider>(
 -->
 ## Is Left Most
 
-This function returns true if this is the left-most path in the tree, excluding placeholder (empty child) nodes. This function emulates the [`ensure_left_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L222C1-L232C2) Rust function. Quint implementation uses fixed constants for Grug JMT implementation: `MinPrefixLen`, `MaxPrefixLen` and `ChildSize`. Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
+This function returns true if this is the left-most path in the tree, excluding placeholder (empty child) nodes. This function emulates the [`ensure_left_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L222C1-L232C2) Rust function. Quint implementation uses fixed constants for Grug JMT implementation: `min_prefix_length`, `max_prefix_length` and `child_size`. Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
 
 ```rust
 // ensure_left_most fails unless this is the left-most path in the tree, excluding placeholder (empty child) nodes
@@ -641,7 +641,7 @@ def isLeftMost(path: List[INNER_T]): bool = {
     val pathStep = path[i]
     or {
       // the path goes left
-      hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
+      hasPadding(pathStep, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size),
       // the path goes right, but the left child is empty (a gap)
       leftBranchesAreEmpty(pathStep)
     }
@@ -657,19 +657,19 @@ def isLeftMost(path: List[INNER_T]): bool = {
 -->
 ## Is Right Most
 
-`isRightMost` function performs in the same way as `isLeftMost`, with only difference being the parameters passed into `hasPadding` function. In `isRightMost` function, when `hasPadding` is called, `minPrefixLen` parameter is `Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen`, `maxPrefixLen` has is `Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen` and `suffixLen` is `0`.
+`isRightMost` function performs in the same way as `isLeftMost`, with only difference being the parameters passed into `hasPadding` function. In `isRightMost` function, when `hasPadding` is called, `minPrefixLen` parameter is `Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length`, `maxPrefixLen` has is `Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length` and `suffixLen` is `0`.
 This function emulates the [`ensure_right_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L234-L245) Rust function Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
 
 ```bluespec "definitions" +=
 def isRightMost(path: List[INNER_T]): bool = {
   // Specialize to Grug JMT
   // Calls getPadding(1) => minPrefix, maxPrefix,
-  //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+  //   suffix = child_size + min_prefix_length, child_size + max_prefix_length, 0
   path.indices().forall(i =>
     val pathStep = path[i]
     or {
       // the path goes right
-      hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
+      hasPadding(pathStep, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0),
       // the path goes left, but the right child is empty (a gap)
       rightBranchesAreEmpty(pathStep)
     }
@@ -716,7 +716,7 @@ def hasPadding(inner: INNER_T,
     minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
   termLen(inner.prefix) >= minPrefixLen,
   termLen(inner.prefix) <= maxPrefixLen,
-  // When inner turns left, suffixLen == ChildSize,
+  // When inner turns left, suffixLen == child_size,
   // that is, we store the hash of the right child in the suffix.
   // When inner turns right, suffixLen == 0,
   // that is, we store the hash of the left child in the prefix.
@@ -742,9 +742,9 @@ def orderFromPadding(inner: INNER_T): (int, bool) = {
 ```bluespec "definitions" +=
   // Specialize orderFromPadding to Grug JMT:
   // ChildOrder = [ 0, 1 ]
-  // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
+  // branch = 0: minp, maxp, suffix = min_prefix_length, max_prefix_length, child_size
   // branch = 1: minp, maxp, suffix =
-  //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+  //             child_size + min_prefix_length, child_size + max_prefix_length, 0
 ```
 --->
 ```rust
@@ -792,7 +792,7 @@ Since `spec.child_order.len()=2`, there will be two iterations of for loop.
   After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`0`) means that algorithm ended up in `branch = 0`.
   
   ```bluespec "definitions" +=
-    if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
+    if (hasPadding(inner, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size)) {
       // the node turns left
       (0, true)
     }
@@ -811,8 +811,8 @@ Since `spec.child_order.len()=2`, there will be two iterations of for loop.
   After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`1`) means that algorithm ended up in `branch = 1`.
   
   ```bluespec "definitions" +=
-    else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
-                          Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
+    else if (hasPadding(inner, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length,
+                          Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0)) {
       // the node turns right
       (1, true)
     }
@@ -864,7 +864,7 @@ if left_branches == 0 {
 }
 ```
 
-The case of `leftBranches == 0` returns false, and the remaining case is `leftBranches == 1`. Then we check if length of prefix is larger or equal to `Ics23ProofSpec.ChildSize`.
+The case of `leftBranches == 0` returns false, and the remaining case is `leftBranches == 1`. Then we check if length of prefix is larger or equal to `Ics23ProofSpec.child_size`.
 <!---
 ```bluespec "definitions" +=
   // the remaining case is leftBranches == 1, see orderFromPadding
@@ -872,7 +872,7 @@ The case of `leftBranches == 0` returns false, and the remaining case is `leftBr
 ```
 --->
 ```bluespec "definitions" +=
-  termLen(inner.prefix) >= Ics23ProofSpec.ChildSize,
+  termLen(inner.prefix) >= Ics23ProofSpec.child_size,
 ```
 
 This corresponds to the following Rust code. `checked_sub` function will return Some(n) if `op.prefix.len() >= left_branches * child_size`. Since we assume that `leftBranches == 1`, we reduced `left_branches * child_size` to `child_size` in our specification.
@@ -886,11 +886,11 @@ let actual_prefix = match op.prefix.len().checked_sub(left_branches * child_size
 };
 ```
 
-After comparing length of `inner.prefix` and `Ics23ProofSpec.ChildSize`, we create variable `fromIndex` which corresponds to `actual_prefix` in Rust implementation. Then we slice the `inner.prefix` from `fromIndex` to `fromIndex + Ics23ProofSpec.ChildSize`, and compare it to `Ics23ProofSpec.EmptyChild`.
+After comparing length of `inner.prefix` and `Ics23ProofSpec.child_size`, we create variable `fromIndex` which corresponds to `actual_prefix` in Rust implementation. Then we slice the `inner.prefix` from `fromIndex` to `fromIndex + Ics23ProofSpec.child_size`, and compare it to `Ics23ProofSpec.empty_child`.
 
 ```bluespec "definitions" +=
-  val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
-  termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
+  val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.child_size
+  termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.child_size) == Ics23ProofSpec.empty_child
 }
 ```
 
@@ -955,13 +955,13 @@ if right_branches == 0 {
 }
 ```
 
-The case of `rightBranches == 0` returns false, and the remaining case is `rightBranches == 1`. Then we check if length of prefix is equal to `Ics23ProofSpec.ChildSize`. After doing so, we check if `inner.suffix == Ics23ProofSpec.EmptyChild`.
+The case of `rightBranches == 0` returns false, and the remaining case is `rightBranches == 1`. Then we check if length of prefix is equal to `Ics23ProofSpec.child_size`. After doing so, we check if `inner.suffix == Ics23ProofSpec.empty_child`.
 
 ```bluespec "definitions" +=
   // the remaining case is rightBranches == 0, see orderFromPadding
-  termLen(inner.suffix) == Ics23ProofSpec.ChildSize,
+  termLen(inner.suffix) == Ics23ProofSpec.child_size,
   // getPosition(0) returns 0, hence, from == 0
-  inner.suffix == Ics23ProofSpec.EmptyChild
+  inner.suffix == Ics23ProofSpec.empty_child
 }
 ```
 

@@ -10,7 +10,7 @@
 // https://github.com/cosmos/ics23
 //
 // We still have to parameterize the spec with the data structure parameters
-// such as MinPrefixLen, MaxPrefixLen, ChildSize, and hash.
+// such as min_prefix_length, max_prefix_length, child_size, and hash.
 //
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
@@ -28,17 +28,17 @@ module grug_ics23 {
   type CommitmentProof_t = Term_t
 
   type Ics23InnerSpec = {
-    MinPrefixLen: int, 
-    MaxPrefixLen: int,
-    ChildSize: int,
-    EmptyChild: Term_t
+    min_prefix_length: int, 
+    max_prefix_length: int,
+    child_size: int,
+    empty_child: Term_t
   }
 
   pure val Ics23ProofSpec: Ics23InnerSpec= {
-    MinPrefixLen: 1,
-    MaxPrefixLen: 1,
-    ChildSize: 32,
-    EmptyChild: Hash256_ZERO
+    min_prefix_length: 1,
+    max_prefix_length: 1,
+    child_size: 32,
+    empty_child: Hash256_ZERO
   }
 
   type LEAF_T = {
@@ -127,7 +127,7 @@ module grug_ics23 {
       val pathStep = path[i]
       or {
         // the path goes left
-        hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
+        hasPadding(pathStep, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size),
         // the path goes right, but the left child is empty (a gap)
         leftBranchesAreEmpty(pathStep)
       }
@@ -139,12 +139,12 @@ module grug_ics23 {
   def isRightMost(path: List[INNER_T]): bool = {
     // Specialize to Grug JMT
     // Calls getPadding(1) => minPrefix, maxPrefix,
-    //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
+    //   suffix = child_size + min_prefix_length, child_size + max_prefix_length, 0
     path.indices().forall(i =>
       val pathStep = path[i]
       or {
         // the path goes right
-        hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
+        hasPadding(pathStep, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0),
         // the path goes left, but the right child is empty (a gap)
         rightBranchesAreEmpty(pathStep)
       }
@@ -156,7 +156,7 @@ module grug_ics23 {
       minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
     termLen(inner.prefix) >= minPrefixLen,
     termLen(inner.prefix) <= maxPrefixLen,
-    // When inner turns left, suffixLen == ChildSize,
+    // When inner turns left, suffixLen == child_size,
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
@@ -168,15 +168,15 @@ module grug_ics23 {
   def orderFromPadding(inner: INNER_T): (int, bool) = {
     // Specialize orderFromPadding to Grug JMT:
     // ChildOrder = [ 0, 1 ]
-    // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
+    // branch = 0: minp, maxp, suffix = min_prefix_length, max_prefix_length, child_size
     // branch = 1: minp, maxp, suffix =
-    //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-    if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
+    //             child_size + min_prefix_length, child_size + max_prefix_length, 0
+    if (hasPadding(inner, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size)) {
       // the node turns left
       (0, true)
     }
-    else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
-                          Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
+    else if (hasPadding(inner, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length,
+                          Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0)) {
       // the node turns right
       (1, true)
     }
@@ -195,9 +195,9 @@ module grug_ics23 {
     order._2 and order._1 != 0,
     // the remaining case is leftBranches == 1, see orderFromPadding
     // actualPrefix = len(inner.prefix) - 32
-    termLen(inner.prefix) >= Ics23ProofSpec.ChildSize,
-    val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
-    termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
+    termLen(inner.prefix) >= Ics23ProofSpec.child_size,
+    val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.child_size
+    termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.child_size) == Ics23ProofSpec.empty_child
   }
 
   /// rightBranchesAreEmpty returns true if the padding bytes correspond
@@ -208,9 +208,9 @@ module grug_ics23 {
     val order = orderFromPadding(inner)
     order._2 and order._1 != 1,
     // the remaining case is rightBranches == 0, see orderFromPadding
-    termLen(inner.suffix) == Ics23ProofSpec.ChildSize,
+    termLen(inner.suffix) == Ics23ProofSpec.child_size,
     // getPosition(0) returns 0, hence, from == 0
-    inner.suffix == Ics23ProofSpec.EmptyChild
+    inner.suffix == Ics23ProofSpec.empty_child
   }
 
   /// isLeftStep assumes left and right have common parents
