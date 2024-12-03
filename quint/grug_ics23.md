@@ -64,7 +64,7 @@ module grug_ics23 {
 
 Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
 
-This specification was inspired by [IAVL Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt). Original specification was tuned to IAVL, which meant that certain parameters had different values, comparing to JMT.
+This specification was inspired by [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt). The original specification was tuned to IAVL, which meant that certain parameters had different values, comparing to JMT.
 Firstly, we opted to create a record Ics23ProofSpecification that will emulate and simplify the following Rust structure:
 
 ```rust
