@@ -4,7 +4,7 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::{Key, OtpKey},
     },
-    grug::{Addr, Coins, Hash160, Hash256},
+    grug::{Addr, Coins, Hash160, Hash256, Op},
     std::collections::BTreeMap,
 };
 
@@ -34,9 +34,7 @@ pub enum ExecuteMsg {
     /// This the first of the two-step user onboarding process.
     ///
     /// This method can only be invoked by the IBC transfer contract.
-    Deposit {
-        recipient: Addr,
-    },
+    Deposit { recipient: Addr },
     /// Create a new user, following an initial deposit.
     ///
     /// This is the second of the two-step user onboarding process.
@@ -46,16 +44,13 @@ pub enum ExecuteMsg {
         key_hash: Hash160,
     },
     /// Register a new account for an existing user.
-    RegisterAccount {
-        params: AccountParams,
-    },
-    RegisterOtp {
-        key: OtpKey,
-    },
+    RegisterAccount { params: AccountParams },
+    /// Configure an OTP key for a username.
+    ConfigureOtp { key: Op<OtpKey> },
+    /// Configure a key for a username.
+    ConfigureKey { key_hash: Hash160, key: Op<Key> },
     /// Update a Safe account's parameters.
-    ConfigureSafe {
-        updates: ParamUpdates,
-    },
+    ConfigureSafe { updates: ParamUpdates },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -112,7 +107,6 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde)]
-
 pub struct QueryKeyResponseItem {
     pub username: Username,
     pub key_hash: Hash160,

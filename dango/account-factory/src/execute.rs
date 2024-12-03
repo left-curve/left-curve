@@ -12,7 +12,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -101,8 +101,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
-        ExecuteMsg::RegisterOtp { key } => register_otp_key(ctx, key),
-
+        ExecuteMsg::ConfigureOtp { key } => configure_otp(ctx, key),
+        ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
 }
@@ -275,16 +275,24 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn register_otp_key(ctx: MutableCtx, key: OtpKey) -> anyhow::Result<Response> {
-    let username = if let AccountParams::Margin(params) | AccountParams::Spot(params) =
-        ACCOUNTS.load(ctx.storage, ctx.sender)?.params
-    {
-        params.owner
-    } else {
-        bail!("account isn't a Spot or Margin account");
-    };
+fn configure_otp(ctx: MutableCtx, key: Op<OtpKey>) -> anyhow::Result<Response> {
+    let username = get_username_by_address(ctx.storage, ctx.sender)?;
 
-    OTPS.save(ctx.storage, &username, &key)?;
+    match key {
+        Op::Insert(key) => OTPS.save(ctx.storage, &username, &key)?,
+        Op::Delete => OTPS.remove(ctx.storage, &username),
+    }
+
+    Ok(Response::new())
+}
+
+fn configure_key(ctx: MutableCtx, key_hash: Hash160, key: Op<Key>) -> anyhow::Result<Response> {
+    let username = get_username_by_address(ctx.storage, ctx.sender)?;
+
+    match key {
+        Op::Insert(key) => KEYS.save(ctx.storage, (&username, key_hash), &key)?,
+        Op::Delete => KEYS.remove(ctx.storage, (&username, key_hash)),
+    }
 
     Ok(Response::new())
 }
@@ -315,4 +323,14 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
     })?;
 
     Ok(Response::new())
+}
+
+fn get_username_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Username> {
+    if let AccountParams::Margin(params) | AccountParams::Spot(params) =
+        ACCOUNTS.load(storage, address)?.params
+    {
+        Ok(params.owner)
+    } else {
+        bail!("account isn't a Spot or Margin account");
+    }
 }

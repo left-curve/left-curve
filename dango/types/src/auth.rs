@@ -16,7 +16,7 @@ pub enum Key {
 #[grug::derive(Serde, Borsh)]
 pub struct OtpKey {
     pub key: ByteArray<33>,
-    pub data: Json,
+    pub policy: Json,
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
