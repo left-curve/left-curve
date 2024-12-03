@@ -141,7 +141,7 @@ module grug_ics23 {
     //   suffix = child_size + min_prefix_length, child_size + max_prefix_length, 0
 
     pure val idx = spec.child_order.length() - 1
-    match get_padding(spec, 0) {
+    match get_padding(spec, idx) {
       | Some(pad) => {
         path.indices().forall(i =>
           val step = path[i]
@@ -177,7 +177,7 @@ module grug_ics23 {
     // branch = 1: minp, maxp, suffix =
     //             child_size + min_prefix_length, child_size + max_prefix_length, 0
     pure val len = spec.child_order.length()
-    range(0, len).findFirst(branch => {
+    range(0, len).findFirst2(branch => {
       match get_padding(spec, branch) {
         | Some(padding) => has_padding(op, padding)
         | None => false // This should actually early return but this is impossible for our InnerSpec
@@ -199,8 +199,9 @@ module grug_ics23 {
         | Some(actual_prefix) => {
             0.to(left_branches).forall(i => {
               pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
-              val from_index = actual_prefix + idx * child_size
-              spec.empty_child != termSlice(op.prefix, from_index, from_index + child_size)
+              // val from_index = actual_prefix + idx * child_size
+              val from_index = actual_prefix //+ idx * child_size
+              spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
             })
           }
         | None => false
@@ -212,7 +213,9 @@ module grug_ics23 {
     pure val idx = order_from_padding(spec, op)
     and {
       idx != None,
-      pure val right_branches = spec.child_order.length() - idx.unwrap() - 1
+      // count branches to right of this one
+      pure val right_branches = spec.child_order.length() - 1 - idx.unwrap()
+      // compare suffix with the expected number of empty branches
       if (right_branches == 0) {
         false
       } else if (op.suffix.termLen() != spec.child_size) {
@@ -221,7 +224,8 @@ module grug_ics23 {
         0.to(right_branches).forall(i => {
           pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
           val from_index = idx * spec.child_size
-          spec.empty_child != termSlice(op.suffix, from_index, from_index + spec.child_size)
+          spec.empty_child == op.suffix
+          // spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)
         })
       }
     }

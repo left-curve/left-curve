@@ -654,7 +654,7 @@ def is_left_most(path: List[InnerOp]): bool = {
 ## Is Right Most
 
 `is_right_most` function performs in the same way as `is_left_most`, with only difference being the parameters passed into `has_padding` function. In `is_right_most` function, when `has_padding` is called, `minPrefixLen` parameter is `Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length`, `maxPrefixLen` has is `Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length` and `suffixLen` is `0`.
-This function emulates the [`ensure_right_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L234-L245) Rust function Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
+This function emulates the [`ensure_right_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L234-L245) Rust function. Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
 
 ```rust
 fn ensure_right_most(spec: &ics23::InnerSpec, path: &[ics23::InnerOp]) -> Result<()> {
