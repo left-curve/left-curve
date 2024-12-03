@@ -34,7 +34,7 @@ export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) =>
               </div>
               <div className="flex flex-1 justify-center items-center w-full">{children}</div>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-8">
               <p
                 className={twMerge(
                   "text-[10px] font-semibold tracking-[0.125rem]",
