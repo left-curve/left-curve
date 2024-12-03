@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash160, Message},
+    grug::{Addr, Binary, ByteArray, Hash160, Json, Message},
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -11,6 +11,12 @@ pub enum Key {
     Secp256r1(ByteArray<33>),
     /// An Secp256k1 public key in compressed form.
     Secp256k1(ByteArray<33>),
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct OtpKey {
+    pub key: ByteArray<33>,
+    pub data: Json,
 }
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)

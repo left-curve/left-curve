@@ -2,7 +2,7 @@ use {
     crate::{
         account::multi::ParamUpdates,
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
-        auth::Key,
+        auth::{Key, OtpKey},
     },
     grug::{Addr, Coins, Hash160, Hash256},
     std::collections::BTreeMap,
@@ -34,7 +34,9 @@ pub enum ExecuteMsg {
     /// This the first of the two-step user onboarding process.
     ///
     /// This method can only be invoked by the IBC transfer contract.
-    Deposit { recipient: Addr },
+    Deposit {
+        recipient: Addr,
+    },
     /// Create a new user, following an initial deposit.
     ///
     /// This is the second of the two-step user onboarding process.
@@ -44,9 +46,16 @@ pub enum ExecuteMsg {
         key_hash: Hash160,
     },
     /// Register a new account for an existing user.
-    RegisterAccount { params: AccountParams },
+    RegisterAccount {
+        params: AccountParams,
+    },
+    RegisterOtp {
+        key: OtpKey,
+    },
     /// Update a Safe account's parameters.
-    ConfigureSafe { updates: ParamUpdates },
+    ConfigureSafe {
+        updates: ParamUpdates,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]

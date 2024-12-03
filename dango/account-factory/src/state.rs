@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::{Account, AccountIndex, AccountType, Username},
-        auth::Key,
+        auth::{Key, OtpKey},
     },
     grug::{Addr, Coins, Counter, Hash160, Hash256, Map, Set},
 };
@@ -17,3 +17,5 @@ pub const KEYS: Map<(&Username, Hash160), Key> = Map::new("key");
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
 pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
+
+pub const OTPS: Map<&Username, OtpKey> = Map::new("otps");

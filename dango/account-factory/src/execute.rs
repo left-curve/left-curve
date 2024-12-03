@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX, OTPS},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -7,7 +7,7 @@ use {
             Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
             Username,
         },
-        auth::Key,
+        auth::{Key, OtpKey},
         config::AppConfig,
     },
     grug::{
@@ -101,6 +101,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
+        ExecuteMsg::RegisterOtp { key } => register_otp_key(ctx, key),
+
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
 }
@@ -279,6 +281,20 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         Some(ctx.contract),
         ctx.funds,
     )?))
+}
+
+fn register_otp_key(ctx: MutableCtx, key: OtpKey) -> anyhow::Result<Response> {
+    let username = if let AccountParams::Margin(params) | AccountParams::Spot(params) =
+        ACCOUNTS.load(ctx.storage, ctx.sender)?.params
+    {
+        params.owner
+    } else {
+        bail!("account isn't a Spot or Margin account");
+    };
+
+    OTPS.save(ctx.storage, &username, &key)?;
+
+    Ok(Response::new())
 }
 
 fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
