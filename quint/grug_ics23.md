@@ -154,7 +154,7 @@ val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 >  ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
 > ```
 
-We defined other records, such as `LEAF_T` and `INNER_T` a bit differently than Rust implementation. Rust of `LEAF_T` is `LeafOp`, implementation additionally stores hashing and length functions: `hash`, `prehashKey`, `prehashValue`, `len`. Since we fix the specification to JMT, we do not have to carry them around.
+We defined other records, such as `LEAF_T` and `INNER_T` a bit differently than Rust implementation. Rust of `LEAF_T` is `LeafOp`, and the implementation additionally stores hashing and length functions: `hash`, `prehashKey`, `prehashValue`, `len`. Since we fixed the specification to Grug JMT, we do not have to carry them around.
 
 ```rust
 pub struct LeafOp {
