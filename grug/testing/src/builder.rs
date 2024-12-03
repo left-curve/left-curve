@@ -635,7 +635,6 @@ where
             self.vm,
             self.indexer,
             self.pp,
-            // indexer,
             chain_id,
             block_time,
             default_gas_limit,
