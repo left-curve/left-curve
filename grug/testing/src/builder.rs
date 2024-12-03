@@ -517,8 +517,8 @@ where
     M3: Serialize,
     VM: TestVm + Clone,
     PP: ProposalPreparer,
-    AppError: From<VM::Error> + From<PP::Error> + From<ID::Error>,
     ID: Indexer,
+    AppError: From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn build(self) -> (TestSuite<MemDb, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {

@@ -64,8 +64,8 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: Indexer,
     PP: ProposalPreparer,
+    ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain(
@@ -526,8 +526,8 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: Indexer,
     PP: ProposalPreparer,
+    ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     pub fn do_init_chain_raw(
