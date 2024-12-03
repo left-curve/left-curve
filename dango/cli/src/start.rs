@@ -37,7 +37,7 @@ pub struct StartCmd {
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
         if self.indexer_enabled {
-            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+            let indexer = non_blocking_indexer::IndexerBuilder::default()
                 .with_database_url(&self.indexer_database_url)
                 .build()
                 .expect("Can't create indexer");

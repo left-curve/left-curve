@@ -50,6 +50,7 @@ impl Indexer for NullIndexer {
 
 /// An error type that is never encountered.
 /// Used in conjunction with [`NullIndexer`](crate::NullIndexer).
+#[derive(Debug)]
 pub struct NullIndexerError(Infallible);
 
 impl Display for NullIndexerError {
