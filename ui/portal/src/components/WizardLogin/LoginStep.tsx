@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 
 export const LoginStep: React.FC = () => {
   const { nextStep, setData, data } = useWizard();
-  const { setError, register, watch, setValue, formState } = useForm<{
+  const { setError, register, watch, setValue, handleSubmit, formState } = useForm<{
     username: string;
     retry: boolean;
   }>({
@@ -17,7 +17,7 @@ export const LoginStep: React.FC = () => {
   const { retry } = data;
   const { errors, isSubmitting } = formState;
 
-  const onSubmit = async () => {
+  const onSubmit = handleSubmit(async ({ username }) => {
     if (!username) return;
     const { accounts } = await client.getUser({ username });
     const numberOfAccounts = Object.keys(accounts).length;
@@ -27,10 +27,10 @@ export const LoginStep: React.FC = () => {
       setData({ username, retry: false });
       nextStep();
     }
-  };
+  });
 
   return (
-    <div className="flex flex-col w-full">
+    <form className="flex flex-col w-full gap-4" onSubmit={onSubmit}>
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
@@ -42,11 +42,11 @@ export const LoginStep: React.FC = () => {
         })}
         placeholder="Enter your username"
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
-        error={errors.username?.message}
+        errorMessage={errors.username?.message}
       />
       <Button fullWidth onClick={onSubmit} isLoading={isSubmitting}>
         {retry ? "Confirm" : "Login"}
       </Button>
-    </div>
+    </form>
   );
 };
