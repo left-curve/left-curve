@@ -1,7 +1,7 @@
-pub use sea_orm_migration::prelude::*;
 mod idens;
-
 mod m20220101_000001_create_table;
+
+pub use sea_orm_migration::prelude::*;
 
 pub struct Migrator;
 
