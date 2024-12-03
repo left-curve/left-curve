@@ -29,6 +29,7 @@ impl Context {
         //.idle_timeout(Duration::from_secs(8))
         //.max_lifetime(Duration::from_secs(20))
         //.sqlx_logging(settings.logging);
+
         Database::connect(opt).await
     }
 }

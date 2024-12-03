@@ -130,6 +130,7 @@ impl BlockToIndex {
         entity::events::Entity::insert_many(models.events)
             .exec(db)
             .await?;
+
         Ok(())
     }
 }
@@ -144,6 +145,7 @@ impl NonBlockingIndexer {
             block_info: *block,
             txs: vec![],
         });
+
         action(block_to_index)
     }
 
@@ -156,6 +158,7 @@ impl NonBlockingIndexer {
                 bail!("Block {} not found", block_height);
             },
         };
+
         Ok(block_to_index.clone())
     }
 
@@ -170,12 +173,14 @@ impl NonBlockingIndexer {
                 bail!("Block {} not found", block_height);
             },
         };
+
         #[cfg(feature = "tracing")]
         tracing::debug!(
             block_height = block_height,
             blocks_len = blocks.len(),
             "remove_or_fail called"
         );
+
         Ok(block_to_index.1)
     }
 }
@@ -189,6 +194,7 @@ impl Indexer for NonBlockingIndexer {
         })?;
 
         self.indexing = true;
+
         Ok(())
     }
 
@@ -197,6 +203,7 @@ impl Indexer for NonBlockingIndexer {
         if !self.indexing {
             return Ok(());
         }
+
         self.indexing = false;
 
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
@@ -235,6 +242,7 @@ impl Indexer for NonBlockingIndexer {
 
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = block.height, "index_block called");
+
         self.find_or_create(block, |_block_to_index| {
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block.height, "index_block started/finished");
@@ -263,6 +271,7 @@ impl Indexer for NonBlockingIndexer {
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block.height, "index_transaction finished");
+
             Ok(())
         })
     }
@@ -293,6 +302,7 @@ impl Indexer for NonBlockingIndexer {
             db.commit().await?;
 
             let _ = Self::remove_or_fail(blocks, &block_height)?;
+
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");
 
@@ -338,8 +348,10 @@ mod tests {
     async fn should_start() -> anyhow::Result<()> {
         let mut indexer = IndexerBuilder::default().with_memory_database().build()?;
         assert!(!indexer.indexing);
+
         indexer.start().expect("Can't start Indexer");
         assert!(indexer.indexing);
+
         indexer.shutdown().expect("Can't shutdown Indexer");
         assert!(!indexer.indexing);
 

@@ -30,6 +30,7 @@ impl Models {
             sender: Set(sender.clone()),
             credential: Set(tx.credential.clone().into_inner()),
         };
+
         self.transactions.push(new_transaction);
 
         for message in tx.msgs.iter() {

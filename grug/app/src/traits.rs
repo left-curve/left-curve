@@ -216,6 +216,7 @@ pub trait Indexer {
     fn start(&mut self) -> Result<(), Self::Error> {
         Ok(())
     }
+
     /// Called when terminating the indexer, allowing for DB transactions to be committed
     fn shutdown(&mut self) -> Result<(), Self::Error>;
 
