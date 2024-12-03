@@ -20,11 +20,3 @@ body {
     width: 100%;
   }
 }
-
-.header-login {
-  background: linear-gradient(90deg, #C2D0C9 0%, #93A4C8 100%);
-}
-
-.header-signup {
-  background: linear-gradient(90deg, #D88E96 0%, #C4B7BA 100%);
-}
