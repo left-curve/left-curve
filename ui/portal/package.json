@@ -22,6 +22,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
+    "react-hot-toast": "catalog:",
     "react-router-dom": "catalog:"
   },
   "devDependencies": {
