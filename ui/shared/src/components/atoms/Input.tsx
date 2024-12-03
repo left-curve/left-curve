@@ -127,7 +127,7 @@ const inputVariants = tv(
       },
       isValid: {
         true: {
-          inputWrapper: "border-2 border-borders-rose-600",
+          inputWrapper: "border-2 border-typography-green-400",
         },
       },
       isInvalid: {

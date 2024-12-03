@@ -16,8 +16,10 @@ export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) =
   return (
     <div className="flex flex-col items-center justify-center w-full gap-8">
       <motion.div
-        transition={{ duration: 0.3 }}
-        animate={{ height }}
+        key={activeStep}
+        transition={{ duration: 0.5 }}
+        initial={{ height }}
+        animate={{ height: "auto" }}
         className="overflow-hidden w-full bg-surface-rose-100 rounded-3xl max-w-2xl shadow-md"
       >
         <div ref={containerRef}>
