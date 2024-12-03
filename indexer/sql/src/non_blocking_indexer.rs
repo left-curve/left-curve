@@ -29,6 +29,7 @@ impl Default for IndexerBuilder {
                 (Some(runtime), handle)
             },
         };
+
         IndexerBuilder {
             runtime,
             handle,
@@ -67,6 +68,7 @@ where
                 Context::connect_db().await
             }),
         }?;
+
         Ok(NonBlockingIndexer {
             context: Context { db },
             handle: self.handle,
@@ -121,6 +123,7 @@ impl BlockToIndex {
         // reinsert existing data. We should use `on_conflict()` to avoid this, return the
         // existing block and change `block_id` when/if we added foreign keys
         models.block.insert(db).await?;
+
         entity::transactions::Entity::insert_many(models.transactions)
             .exec(db)
             .await?;
