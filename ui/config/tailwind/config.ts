@@ -237,7 +237,7 @@ export const tailwindConfig: Partial<Config> = {
         ".typography-button-l": {
           fontWeight: "700",
           fontSize: "1.25rem",
-          fontFamily: theme("fontFamily.diatype-rounded"),
+          fontFamily: theme("fontFamily.exposure"),
         },
         ".typography-button-s": {
           fontWeight: "700",
