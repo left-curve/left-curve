@@ -419,7 +419,6 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-
                 KEYS.save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap()
             });

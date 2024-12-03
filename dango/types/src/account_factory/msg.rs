@@ -79,7 +79,7 @@ pub enum QueryMsg {
     /// Enumerate all keys.
     #[returns(Vec<QueryKeyResponseItem>)]
     Keys {
-        start_after: Option<(Username, Hash160)>,
+        start_after: Option<QueryKeyPaginateParam>,
         limit: Option<u32>,
     },
     /// Find all keys associated with a user.
@@ -103,7 +103,12 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde)]
+pub struct QueryKeyPaginateParam {
+    pub username: Username,
+    pub key_hash: Hash160,
+}
 
+#[grug::derive(Serde)]
 pub struct QueryKeyResponseItem {
     pub username: Username,
     pub key_hash: Hash160,
