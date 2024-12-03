@@ -212,7 +212,7 @@ type INNER_T = {
 /// a proof of existence of (key, value)
 ```
 -->
-We defined a Existence and Non Existence proofs:
+We defined Existence and Non Existence proofs:
 
 ```bluespec "definitions" +=
 type ExistsProof_t = {
