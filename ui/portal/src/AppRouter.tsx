@@ -22,13 +22,16 @@ export const AppRouter: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="h-screen w-full flex justify-center items-center">
+        <div className="h-screen w-full flex justify-center items-center bg-surface-off-white-200">
           <Spinner size="lg" color="pink" />
         </div>
       }
     >
       <Routes>
-        <Route path="/auth/*" element={<AuthView />} />
+        <Route path="/auth">
+          <Route path="login" element={<AuthView />} />
+          <Route path="signup" element={<AuthView />} />
+        </Route>
         <Route path="/" element={<AppLayout />}>
           <Route path="accounts" element={<AccountView />} />
           <Route path="/account-creation" element={<AccountCreationView />} />
