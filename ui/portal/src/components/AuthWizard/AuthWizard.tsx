@@ -1,19 +1,24 @@
 import { motion } from "framer-motion";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button, useMeasure, useWizard } from "@dango/shared";
-import { WizardLoginWrapper } from "./WizardLogin/Wrapper";
-import { WizardSignupWrapper } from "./WizardSignup/Wrapper";
+import { WizardLoginWrapper } from "./LoginWrapper";
+import { WizardSignupWrapper } from "./SignupWrapper";
 
 export const AuthWizard: React.FC<PropsWithChildren> = ({ children }) => {
   const [containerRef, { height }] = useMeasure<HTMLDivElement>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { activeStep, previousStep } = useWizard();
+  const { activeStep, previousStep, setData, goToStep } = useWizard();
 
   const isSignup = location.pathname === "/auth/signup";
   const Wrapper = isSignup ? WizardSignupWrapper : WizardLoginWrapper;
+
+  useEffect(() => {
+    setData({});
+    goToStep(0);
+  }, [isSignup]);
 
   return (
     <div className="flex flex-1 h-full w-full flex-col justify-center items-center gap-4 md:gap-8">

@@ -69,7 +69,7 @@ export const CredentialStep: React.FC = () => {
           },
         })}
         placeholder="Choose an username"
-        validMessage={isUsernameAvailable ? "Username is available" : undefined}
+        isValid={!!isUsernameAvailable}
         endContent={
           isFetching ? (
             <Spinner size="sm" color="white" />

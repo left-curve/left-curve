@@ -29,6 +29,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       size,
       color,
       isInvalid: invalid,
+      isValid: valid,
       isDisabled,
       fullWidth,
       startText,
@@ -39,7 +40,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ref,
   ) => {
     const isInvalid = errorMessage ? true : invalid;
-    const isValid = !isInvalid && (!!validMessage || !!props.value);
+    const isValid = valid || !!validMessage;
     const { base, input, inputWrapper } = inputVariants({
       color,
       size,

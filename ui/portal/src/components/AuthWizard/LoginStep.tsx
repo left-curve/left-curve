@@ -5,17 +5,24 @@ import { useForm } from "react-hook-form";
 
 export const LoginStep: React.FC = () => {
   const { nextStep, setData, data } = useWizard();
-  const { setError, register, watch, setValue, handleSubmit, formState } = useForm<{
+  const { setError, register, setValue, handleSubmit, formState } = useForm<{
     username: string;
     retry: boolean;
   }>({
-    mode: "onChange",
+    defaultValues: {
+      username: data.username,
+    },
   });
   const client = usePublicClient();
-  const username = watch("username");
 
   const { retry } = data;
   const { errors, isSubmitting } = formState;
+
+  const errorMessage =
+    errors.username?.message ||
+    (retry
+      ? "The credential connected does not match the on-chain record. Please try again."
+      : undefined);
 
   const onSubmit = handleSubmit(async ({ username }) => {
     if (!username) return;
@@ -35,14 +42,15 @@ export const LoginStep: React.FC = () => {
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
-            if (!value) return "Username is required";
-            if (value.length > 15) return "Username must be at most 15 characters long";
+            if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
+              return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
+            }
             return true;
           },
         })}
         placeholder="Enter your username"
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
-        errorMessage={errors.username?.message}
+        errorMessage={errorMessage}
       />
       <Button fullWidth onClick={onSubmit} isLoading={isSubmitting}>
         {retry ? "Confirm" : "Login"}
