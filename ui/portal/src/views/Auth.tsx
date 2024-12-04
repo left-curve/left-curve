@@ -3,25 +3,27 @@ import type React from "react";
 import { useLocation } from "react-router-dom";
 
 import { WizardProvider } from "@dango/shared";
-import { AuthWizard } from "~/components/AuthWizard";
-import { ConnectorStep } from "~/components/WizardLogin/ConnectorStep";
-import { LoginStep } from "~/components/WizardLogin/LoginStep";
-import { ConnectStep } from "~/components/WizardSignup/ConnectStep";
-import { CredentialStep } from "~/components/WizardSignup/CredentialStep";
-import { TransferStep } from "~/components/WizardSignup/TransferStep";
-
-const loginSteps = [<LoginStep key="login-step" />, <ConnectorStep key="connector-step" />];
-
-const signupSteps = [
-  <CredentialStep key="credential-step" />,
-  <ConnectStep key="connect-step" />,
-  <TransferStep key="transfer-step" />,
-];
+import {
+  AuthWizard,
+  ConnectStep,
+  ConnectorStep,
+  CredentialStep,
+  LoginStep,
+  TransferStep,
+} from "~/components/AuthWizard";
 
 const AuthView: React.FC = () => {
   const location = useLocation();
 
   const isSignup = location.pathname === "/auth/signup";
+
+  const steps = isSignup
+    ? [
+        <CredentialStep key="credential-step" />,
+        <ConnectStep key="connect-step" />,
+        <TransferStep key="transfer-step" />,
+      ]
+    : [<LoginStep key="login-step" />, <ConnectorStep key="connector-step" />];
 
   return (
     <main className="flex flex-col min-h-screen w-full h-full bg-surface-off-white-200 overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center">
@@ -42,9 +44,7 @@ const AuthView: React.FC = () => {
           />
         </div>
         <div className="flex flex-1 w-full items-center justify-center p-4">
-          <WizardProvider wrapper={<AuthWizard />}>
-            {isSignup ? signupSteps : loginSteps}
-          </WizardProvider>
+          <WizardProvider wrapper={<AuthWizard />}>{steps}</WizardProvider>
         </div>
       </div>
     </main>

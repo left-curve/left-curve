@@ -3,8 +3,8 @@ import { type PropsWithChildren, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button, useMeasure, useWizard } from "@dango/shared";
-import { WizardLoginWrapper } from "./WizardLogin/Wrapper";
-import { WizardSignupWrapper } from "./WizardSignup/Wrapper";
+import { WizardLoginWrapper } from "./LoginWrapper";
+import { WizardSignupWrapper } from "./SignupWrapper";
 
 export const AuthWizard: React.FC<PropsWithChildren> = ({ children }) => {
   const [containerRef, { height }] = useMeasure<HTMLDivElement>();
