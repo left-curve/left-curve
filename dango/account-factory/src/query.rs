@@ -2,10 +2,8 @@ use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{
-
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryKeyResponseItem, QueryMsg, User, Username,
-        ,
+            QueryMsg, User, Username,
         },
         auth::Key,
     },
