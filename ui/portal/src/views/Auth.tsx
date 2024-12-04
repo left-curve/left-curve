@@ -10,25 +10,18 @@ import { ConnectStep } from "~/components/WizardSignup/ConnectStep";
 import { CredentialStep } from "~/components/WizardSignup/CredentialStep";
 import { TransferStep } from "~/components/WizardSignup/TransferStep";
 
+const loginSteps = [<LoginStep key="login-step" />, <ConnectorStep key="connector-step" />];
+
+const signupSteps = [
+  <CredentialStep key="credential-step" />,
+  <ConnectStep key="connect-step" />,
+  <TransferStep key="transfer-step" />,
+];
+
 const AuthView: React.FC = () => {
   const location = useLocation();
 
   const isSignup = location.pathname === "/auth/signup";
-
-  const login = (
-    <>
-      <LoginStep />
-      <ConnectorStep />
-    </>
-  );
-
-  const singup = (
-    <>
-      <CredentialStep />
-      <ConnectStep />
-      <TransferStep />
-    </>
-  );
 
   return (
     <main className="flex flex-col min-h-screen w-full h-full bg-surface-off-white-200 overflow-y-auto overflow-x-hidden scrollbar-none items-center justify-center">
@@ -50,7 +43,7 @@ const AuthView: React.FC = () => {
         </div>
         <div className="flex flex-1 w-full items-center justify-center p-4">
           <WizardProvider wrapper={<AuthWizard />}>
-            {isSignup ? singup.props.children : login.props.children}
+            {isSignup ? signupSteps : loginSteps}
           </WizardProvider>
         </div>
       </div>
