@@ -808,14 +808,14 @@ If `left_branches != 0`, then we can continue:
   Ok(true)
 ```
 
-Because Quint does not support early return, we had to `match` the outcome of `checked_sub` function.
+Because Quint does not support early return, we had to `match` the outcome of `checked_sub` function. Because `to` operator is inclusive, comparing to `..` operator in Rust, we had to decrease `left_branches` by `1`.
 
 ```bluespec "definitions" +=
   else {
     pure val child_size = spec.child_size
     match op.prefix.termLen().checked_sub(left_branches * child_size) {
       | Some(actual_prefix) => {
-          0.to(left_branches).forall(i => {
+          0.to(left_branches - 1).forall(i => {
             pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
             val from_index = actual_prefix + idx * child_size
             spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
@@ -897,7 +897,7 @@ Firstly, we get order from padding, and then we check if there is and index foun
   pure val idx = order_from_padding(spec, op)
 ```
 
-Since in the event of an error in `order_from_padding()` `right_branches_are_empty()` will terminate, we wrapped outcome in one big `and` that will assure `idx != None`, before unwrapping it.
+Since in the event of an error in `order_from_padding()` `right_branches_are_empty()` will terminate, we wrapped outcome in one big `and` that will assure `idx != None`, before unwrapping it. Because `to` operator is inclusive, comparing to `..` operator in Rust, we had to decrease `right_branches` by `1`.
 
 ```rust
 for i in 0..right_branches {
@@ -921,7 +921,7 @@ for i in 0..right_branches {
     } else if (op.suffix.termLen() != spec.child_size) {
       false
     } else {
-      0.to(right_branches).forall(i => {
+      0.to(right_branches - 1).forall(i => {
         pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
         val from_index = idx * spec.child_size
         spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)

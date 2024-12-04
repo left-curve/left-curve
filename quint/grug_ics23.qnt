@@ -76,8 +76,8 @@ module grug_ics23 {
 
   /// VerifyNonMembership returns true iff
   /// proof is (contains) a NonExistenceProof,
-  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
-  /// left and right proofs are neighbors (or left/right most if one is nil),
+  /// both left and right sub-proofs are valid existence proofs (see above) or None,
+  /// left and right proofs are neighbors (or left/right most if one is None),
   /// provided key is between the keys of the two proofs
   def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = and {
     np.left != None or np.right != None,
@@ -189,7 +189,7 @@ module grug_ics23 {
       pure val child_size = spec.child_size
       match op.prefix.termLen().checked_sub(left_branches * child_size) {
         | Some(actual_prefix) => {
-            0.to(left_branches).forall(i => {
+            0.to(left_branches - 1).forall(i => {
               pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
               val from_index = actual_prefix + idx * child_size
               spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
@@ -215,7 +215,7 @@ module grug_ics23 {
       } else if (op.suffix.termLen() != spec.child_size) {
         false
       } else {
-        0.to(right_branches).forall(i => {
+        0.to(right_branches - 1).forall(i => {
           pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
           val from_index = idx * spec.child_size
           spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)
