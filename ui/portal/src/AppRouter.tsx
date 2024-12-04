@@ -7,8 +7,8 @@ import { AuthLayout } from "./components/AuthLayout";
 import { NotFoundView } from "./views/NotFound";
 
 // Auth routes
-const LoginView = lazy(() => import(/* webpackPrefetch: true */ "./views/Login"));
-const SignupView = lazy(() => import(/* webpackPrefetch: true */ "./views/Signup"));
+import Login from "./views/Login";
+import Signup from "./views/Signup";
 
 // Portal routes
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
@@ -31,8 +31,8 @@ export const AppRouter: React.FC = () => {
     >
       <Routes>
         <Route path="/auth" element={<AuthLayout />}>
-          <Route path="login" element={<LoginView />} />
-          <Route path="signup" element={<SignupView />} />
+          <Route path="login" element={<Login />} />
+          <Route path="signup" element={<Signup />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
           <Route path="accounts" element={<AccountView />} />
