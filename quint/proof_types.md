@@ -1,4 +1,28 @@
-We defined other records, such as `LeafOp` and `InnerOp` a bit differently than Rust implementation. Rust of `LeafOp` is `LeafOp`, and the implementation additionally stores hashing and length functions: `hash`, `prehashBytes`, `prehashBytes`, `len`. Since we fixed the specification to Grug JMT, we do not have to carry them around.
+# Proof types
+
+This document describes how we defined proof types, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. We defined types:
+
+- [`LeafOp`](#leafop)
+- [`InnerOp`](#innerop)
+- [`ExistenceProof`](#existenceproof)
+- [`NonExistenceProof`](#nonexistenceproof)
+- [`CommitmentProof`](#commitmentproof)
+Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
+<!-- Boilerplate: tangled from comment to avoid markdown rendering
+```bluespec proof_types.qnt
+// -*- mode: Bluespec; -*-
+
+module proof_types {
+  import basicSpells.* from "./spells/basicSpells"
+  import hashes.* from "./hashes"
+
+  <<<definitions>>>
+}
+```
+-->
+## LeafOp
+
+We defined record `LeafOp` a bit differently than Rust implementation. Rust implementation of `LeafOp` additionally stores hashing and length functions: `hash`, `prehashBytes`, `prehashBytes`, `len`. Since we fixed the specification to Grug JMT, we do not have to carry them around.
 
 ```rust
 pub struct LeafOp {
@@ -16,11 +40,7 @@ pub struct LeafOp {
   pub prefix: ::prost::alloc::vec::Vec<u8>,
 }
 ```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
 
-```
--->
 ```bluespec "definitions" +=
 type LeafOp = {
   prefix: Term
@@ -31,7 +51,9 @@ type LeafOp = {
 
 ```
 -->
-The same applies to `InnerOp`. We don't need to carry `hash` around.
+## InnerOp
+
+We also defined record `InnerOp` a bit differently than Rust implementation. Rust implementation of `InnerOp` additionally stores hashing function. Since we fixed the specification to Grug JMT, we do not have to carry them around.
 
 ```rust
 pub struct InnerOp {
@@ -50,13 +72,16 @@ type InnerOp = {
   suffix: Term
 }
 ```
+
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
 /// a proof of existence of (key, value)
 ```
 -->
-We defined Existence and Non Existence proofs. They correspond to the [following Rust structures](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L48C2).
+## ExistenceProof
+
+We defined ExistenceProof so it corresponds to the [Rust ExistenceProof](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L33C2).
 
 ```rust
 pub struct ExistenceProof {
@@ -69,7 +94,30 @@ pub struct ExistenceProof {
     #[prost(message, repeated, tag = "4")]
     pub path: ::prost::alloc::vec::Vec<InnerOp>,
 }
+```
 
+```bluespec "definitions" +=
+type ExistenceProof = {
+  key: Bytes,
+  value: Bytes,
+  leaf: LeafOp,
+  path: List[InnerOp]
+}
+```
+
+> [!TIP]
+> `ExistenceProof.leaf` is never used in our specification, but since it is defined in [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs), we decided to keep it and mimic Rust code faithfully.
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
+
+/// a proof of non-existence of a key
+```
+-->
+## NonExistenceProof
+
+We defined NonExistenceProof so it corresponds to the [Rust NonExistenceProof](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L40C1-L48C2).
+
+```rust
 pub struct NonExistenceProof {
     /// TODO: remove this as unnecessary??? we prove a range
     #[prost(bytes = "vec", tag = "1")]
@@ -82,26 +130,30 @@ pub struct NonExistenceProof {
 ```
 
 ```bluespec "definitions" +=
-type ExistenceProof = {
-  key: Bytes, 
-  value: Bytes, 
-  leaf: LeafOp, 
-  path: List[InnerOp]
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-/// a proof of non-existence of a key
-```
--->
-```bluespec "definitions" +=
 type NonExistenceProof = {
-  key: Bytes, 
-  left: Option[ExistenceProof], 
+  key: Bytes,
+  left: Option[ExistenceProof],
   right: Option[ExistenceProof]
 }
 ```
 
 > [!TIP]
 > In Rust implementation of ICS23, there is a comment that suggests removing `NonExistenceProof.key` because it is unnecessary. Rust function [`verify_non_existence()`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34) never uses `proof.key`.
+
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
+
+```
+-->
+## CommitmentProof
+
+We defined `CommitmentProof` so it corresponds to the [Rust CommitmentProof](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L58-L71).
+
+```bluespec "definitions" +=
+type CommitmentProof =
+  | Exist(ExistenceProof)
+  | NonExist(NonExistenceProof)
+```
+
+> [!TIP]
+> We did not model `Compressed` and `Batch` types of `CommitmentProof`.

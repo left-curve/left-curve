@@ -24,7 +24,7 @@ module proofs {
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
-  export tree.*
+  import proof_types.* from "./proof_types"
   import node.* from "./node"
   import utils.* from "./utils"
 
@@ -32,74 +32,9 @@ module proofs {
 }
 ```
 -->
-## Types
 
-Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
-
-- We defined `LeafOp` differently than Rust implementation. The implementation additionally stores hashing and length functions: hash, prehashKey, prehashValue, len. Since we fix the spec to Grug JellyFish Merkle Tree, we do not have to carry them around.
-
-```bluespec "definitions" +=
-type LeafOp = {
-  prefix: Term
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `InnerOp` differently than Rust implementation as well. The implementation additionally stores the hashing function, and since we fix the spec to Grug JellyFish Merkle Tree, we do not have to carry it around.
-
-```bluespec "definitions" +=
-type InnerOp = {
-  prefix: Term,
-  suffix: Term
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `ExistenceProof` as follows. `ExistenceProof.leaf` is never used, but since it is defined in [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs), we decided to keep it and mimic the proto message fully.
-
-```bluespec "definitions" +=
-type ExistenceProof = {
-  key: BitArray,
-  value: BitArray,
-  leaf: LeafOp,
-  path: List[InnerOp],
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `NonExistenceProof` as follows.
-
-```bluespec "definitions" +=
-type NonExistenceProof = {
-  key: BitArray,
-  left: Option[ExistenceProof],
-  right: Option[ExistenceProof],
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `CommitmentProof` as follows.
-
-```bluespec "definitions" +=
-type CommitmentProof =
-  | Exist(ExistenceProof) 
-  | NonExist(NonExistenceProof)
-```
 <!--
 ```bluespec "definitions" +=
-
 /// Returns optional list of InnerOps as a path to the leaf with particular key_hash
 ```
 -->
