@@ -1,5 +1,6 @@
 import * as React from "react";
 import { type VariantProps, tv } from "tailwind-variants";
+import { twMerge } from "../../utils";
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "color" | "className">,
@@ -7,8 +8,8 @@ export interface InputProps
   startContent?: React.ReactNode;
   endContent?: React.ReactNode;
   bottomComponent?: React.ReactNode;
-  error?: string;
-  description?: string;
+  errorMessage?: string;
+  validMessage?: string;
   classNames?: {
     base?: string;
     inputWrapper?: string;
@@ -27,20 +28,25 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       type,
       size,
       color,
+      isInvalid: invalid,
       isDisabled,
       fullWidth,
       startText,
-      error,
-      description: descriptionText,
+      validMessage,
+      errorMessage,
       ...props
     },
     ref,
   ) => {
-    const { base, input, inputWrapper, description } = inputVariants({
+    const isInvalid = errorMessage ? true : invalid;
+    const isValid = !isInvalid && (!!validMessage || !!props.value);
+    const { base, input, inputWrapper } = inputVariants({
       color,
       size,
       fullWidth,
       isDisabled,
+      isInvalid,
+      isValid,
     });
     return (
       <div className={base({ className: classNames?.base })}>
@@ -55,13 +61,24 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
           {endContent ? endContent : null}
         </div>
-        {!bottomComponent || error ? (
-          <div className={description({ className: classNames?.description })}>
-            {error ? <span className="text-typography-pink-300">{error}</span> : null}
-            {descriptionText && !error ? <span>{descriptionText}</span> : null}
-          </div>
-        ) : null}
-        {bottomComponent && !error ? bottomComponent : null}
+
+        <div
+          className={twMerge("hidden px-6", {
+            block: !bottomComponent && errorMessage,
+          })}
+        >
+          <span className="text-typography-pink-400 typography-caption-m">{errorMessage}</span>
+        </div>
+
+        <div
+          className={twMerge("hidden px-6", {
+            block: !bottomComponent && validMessage,
+          })}
+        >
+          <span className="text-typography-green-400 typography-caption-m">{validMessage}</span>
+        </div>
+
+        {bottomComponent ? bottomComponent : null}
       </div>
     );
   },
@@ -76,7 +93,7 @@ const inputVariants = tv(
     slots: {
       base: "group flex flex-col data-[hidden=true]:hidden gap-1",
       inputWrapper:
-        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-sm px-6 py-3 gap-3",
+        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-sm px-6 py-3 gap-3 z-10",
       input: [
         "flex-1 font-normal bg-transparent !outline-none placeholder:text-foreground-500 focus:outline-none min-w-0",
         "data-[has-start-content=true]:ps-1.5",
@@ -84,7 +101,6 @@ const inputVariants = tv(
         "file:cursor-pointer file:bg-transparent file:border-0",
         "autofill:bg-transparent bg-clip-text",
       ],
-      description: "h-5 px-6 text-[12px] font-semibold",
     },
     variants: {
       color: {
@@ -107,6 +123,16 @@ const inputVariants = tv(
           base: "opacity-disabled pointer-events-none",
           inputWrapper: "pointer-events-none",
           label: "pointer-events-none",
+        },
+      },
+      isValid: {
+        true: {
+          inputWrapper: "border-2 border-typography-green-400",
+        },
+      },
+      isInvalid: {
+        true: {
+          inputWrapper: "border-2 border-borders-pink-300",
         },
       },
       startText: {
@@ -136,7 +162,6 @@ const inputVariants = tv(
           inputWrapper:
             "bg-surface-rose-300 text-typography-rose-600 group-hover:bg-surface-rose-400",
           input: "placeholder:text-typography-rose-600 focus:text-typography-black-100",
-          description: "text-typography-600",
         },
       },
       {
@@ -146,7 +171,6 @@ const inputVariants = tv(
           inputWrapper:
             "bg-surface-rose-300 text-typography-rose-600 group-hover:bg-surface-rose-400",
           input: "placeholder:text-typography-rose-600 focus:text-typography-black-100",
-          description: "text-typography-600",
         },
       },
       {
@@ -156,7 +180,6 @@ const inputVariants = tv(
           inputWrapper:
             "bg-surface-purple-100 text-typography-black-300 group-hover:bg-surface-purple-200 border border-purple-600/40",
           input: "placeholder:text-typography-black-100/40 focus:text-typography-black-100",
-          description: "text-typography-black-300",
         },
       },
       {
@@ -166,7 +189,6 @@ const inputVariants = tv(
           inputWrapper:
             "bg-surface-purple-100 text-typography-black-300 group-hover:bg-surface-purple-200 border border-purple-600/40",
           input: "placeholder:text-typography-black-100/40 focus:text-typography-black-100",
-          description: "text-typography-black-300",
         },
       },
     ],

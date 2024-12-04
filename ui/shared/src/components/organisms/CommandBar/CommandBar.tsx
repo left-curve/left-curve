@@ -95,7 +95,7 @@ export const CommandBar: React.FC<Props> = ({ applets, action, isVisible, change
             className={twMerge(
               "absolute w-full h-full bottom-0 left-0 transition-all rounded-2xl flex flex-col justify-end gap-8 lg:p-1 lg:gap-2 overflow-y-hidden",
               isVisible
-                ? "z-50 bg-surface-green-200 w-screen h-screen rounded-none bottom-0 left-0 p-4 lg:w-full lg:h-fit lg:top-0 lg:left-0 lg:rounded-2xl overflow-scroll scrollbar-none"
+                ? "z-50 bg-surface-green-300 w-screen h-screen rounded-none bottom-0 left-0 p-4 lg:w-full lg:h-fit lg:top-0 lg:left-0 lg:rounded-2xl overflow-scroll scrollbar-none"
                 : "z-0",
             )}
           >
@@ -103,10 +103,10 @@ export const CommandBar: React.FC<Props> = ({ applets, action, isVisible, change
               <div
                 className={twMerge(
                   "flex items-center gap-2 px-3 lg:px-2 w-full bg-transparent rounded-xl h-10 text-typography-green-300",
-                  isVisible ? "bg-surface-green-300 h-10" : "",
+                  isVisible ? "bg-surface-green-400 h-10" : "",
                 )}
               >
-                <SearchIcon className="h-6 w-6" />
+                <SearchIcon className="h-6 w-6 text-typography-green-500 stroke-[1.5px]" />
                 <Command.Input
                   ref={inputRef}
                   onValueChange={setSearchText}
