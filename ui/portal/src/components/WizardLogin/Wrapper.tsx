@@ -17,7 +17,7 @@ export const WizardLoginWrapper: React.FC<PropsWithChildren> = ({ children }) =>
       <motion.div
         key={activeStep}
         transition={{ duration: 0.5 }}
-        initial={{ height }}
+        initial={{ height: height ? height : "auto" }}
         animate={{ height: "auto" }}
         className="overflow-hidden w-full bg-surface-rose-100 rounded-3xl max-w-2xl shadow-md"
       >
