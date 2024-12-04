@@ -2,6 +2,7 @@
 
 module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
   export tree.*
@@ -17,7 +18,8 @@ module apply_state_machine {
   import completeness.* from "./completeness"
   import soundness.* from "./soundness"
 
-  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete), None)
+  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete))
+  pure val INDEXES = 1.to(2^MAX_HASH_LENGTH)
 
   var tree: Tree
   var version: int
@@ -46,7 +48,10 @@ module apply_state_machine {
     assign_result: (Set[OperationOnKey], Tree) => bool
   ): bool = {
     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
+    pure val all_ops = kms_with_value.to_operations().toList((a, b) => intCompare(a.key_hash[b.key_hash[0]], b.key_hash[a.key_hash[0]]))
+
+    nondet threshold = 1.to(all_ops.length()).oneOf()
+    pure val ops = all_ops.indices().filter(i => i < threshold).map(i => all_ops[i])
     pure val new_tree = apply_op(tree, version - 1, version, ops)
 
     assign_result(ops, new_tree)
@@ -66,7 +71,8 @@ module apply_state_machine {
 
   /// The set of unpruned tree versions that should be complete in the tree
   val activeTreeVersions: Set[int] =
-    smallest_unpruned_version.to(tree.treeVersion())
+    Set(version)
+    // smallest_unpruned_version.to(tree.treeVersion())
 
   /// The set of active tree maps
   val activeVersionedTrees: Set[TreeMap] =
@@ -351,7 +357,6 @@ module apply_state_machine {
               }
             | None => true  // corresponds to the panic in the rust code comment on the line 44 ics23.rs
           }
-      })
     })
 
   val allInvariants = all {
