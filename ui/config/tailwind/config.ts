@@ -165,12 +165,12 @@ export const tailwindConfig: Partial<Config> = {
     plugin(({ addUtilities, addComponents, theme }) => {
       addUtilities({
         ".typography-display-xl": {
-          fontWeight: "800",
+          fontWeight: "900",
           fontSize: "6rem",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".typography-display-xs": {
-          fontWeight: "800",
+          fontWeight: "900",
           fontSize: "2rem",
           fontFamily: theme("fontFamily.exposure"),
         },
