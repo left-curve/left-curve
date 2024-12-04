@@ -1,8 +1,7 @@
 use {
     assertor::*,
-    grug_app::Indexer,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, MockStorage, ResultExt},
+    grug_types::{Coins, Denom, Message, ResultExt},
     indexer_sql::entity,
     sea_orm::EntityTrait,
     std::str::FromStr,
@@ -12,23 +11,21 @@ use {
 fn index_block_with_nonblocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let mut indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
-        .with_dir("".into())
         .build()
         .expect("Can't create indexer");
 
-    let storage = MockStorage::new();
-
-    indexer.start(&storage).expect("Can't start indexer");
-
-    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer.clone())
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
+        // Add a method to passe MockStorage to the test suite?
         .build();
 
     let to = accounts["owner"].address;
+
+    assert_that!(suite.app.indexer().indexing).is_true();
 
     suite
         .send_message_with_gas(
@@ -38,39 +35,40 @@ fn index_block_with_nonblocking_indexer() {
         )
         .should_succeed();
 
-    tracing::warn!("FOO");
-    indexer.start(&storage).expect("Can't start indexer");
-
     // Force the runtime to wait for the async indexer to finish
-    indexer.shutdown().expect("Can't shutdown indexer");
+    suite.app.indexer().wait_for_finish();
+
+    tracing::warn!("Checking the database");
 
     // ensure block was saved
-    indexer
+    suite
+        .app
+        .indexer()
         .runtime
         .clone()
         .expect("Can't get runtime")
         .block_on(async {
             let block = entity::blocks::Entity::find()
-                .one(&indexer.context.db)
+                .one(&suite.app.indexer().context.db)
                 .await
                 .expect("Can't fetch blocks");
             assert_that!(block).is_some();
             assert_that!(block.unwrap().block_height).is_equal_to(1);
 
             let transactions = entity::transactions::Entity::find()
-                .all(&indexer.context.db)
+                .all(&suite.app.indexer().context.db)
                 .await
                 .expect("Can't fetch transactions");
             assert_that!(transactions).is_not_empty();
 
             let messages = entity::messages::Entity::find()
-                .all(&indexer.context.db)
+                .all(&suite.app.indexer().context.db)
                 .await
                 .expect("Can't fetch messages");
             assert_that!(messages).is_not_empty();
 
             let events = entity::events::Entity::find()
-                .all(&indexer.context.db)
+                .all(&suite.app.indexer().context.db)
                 .await
                 .expect("Can't fetch events");
             assert_that!(events).is_not_empty();

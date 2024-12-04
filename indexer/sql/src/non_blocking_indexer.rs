@@ -48,8 +48,8 @@ impl Default for IndexerBuilder {
     }
 }
 
-impl IndexerBuilder {
-    pub fn with_database_url<URL>(self, db_url: URL) -> IndexerBuilder<Defined<String>>
+impl<P> IndexerBuilder<Undefined<String>, P> {
+    pub fn with_database_url<URL>(self, db_url: URL) -> IndexerBuilder<Defined<String>, P>
     where
         URL: ToString,
     {
@@ -61,25 +61,22 @@ impl IndexerBuilder {
         }
     }
 
-    pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>> {
+    pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>, P> {
         self.with_database_url("sqlite::memory:")
     }
 }
 
-// NOTE: is there a way to not have a dependency on `Defined<String>` and have it working for both
-// defined and undefined, such that we can call the builder methods in any order?
-impl IndexerBuilder<Defined<String>> {
-    pub fn with_tmpdir(self) -> IndexerBuilder<Defined<String>, Defined<IndexerPath>> {
-        let dir = tempfile::tempdir().expect("");
+impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
+    pub fn with_tmpdir(self) -> IndexerBuilder<DB, Defined<IndexerPath>> {
         IndexerBuilder {
             runtime: self.runtime,
             handle: self.handle,
-            indexer_path: Defined::new(IndexerPath::TempDir(Arc::new(dir))),
+            indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
         }
     }
 
-    pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<Defined<String>, Defined<IndexerPath>> {
+    pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<DB, Defined<IndexerPath>> {
         IndexerBuilder {
             runtime: self.runtime,
             handle: self.handle,
@@ -97,6 +94,12 @@ pub enum IndexerPath {
     Dir(PathBuf),
 }
 
+impl Default for IndexerPath {
+    fn default() -> Self {
+        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
+    }
+}
+
 impl IndexerPath {
     pub fn path(&self) -> &Path {
         match self {
@@ -106,9 +109,10 @@ impl IndexerPath {
     }
 }
 
-impl<DB> IndexerBuilder<DB, Defined<IndexerPath>>
+impl<DB, P> IndexerBuilder<DB, P>
 where
     DB: MaybeDefined<String>,
+    P: MaybeDefined<IndexerPath>,
 {
     pub fn build(self) -> error::Result<NonBlockingIndexer> {
         let db = match self.db_url.maybe_into_inner() {
@@ -120,8 +124,18 @@ where
             }),
         }?;
 
+        let indexer_path = match self.indexer_path.maybe_into_inner() {
+            Some(indexer_path) => indexer_path,
+            None => {
+                let dir = tempfile::tempdir().expect("");
+                IndexerPath::TempDir(Arc::new(dir))
+            },
+        };
+
+        // Make tmp_dir optional
+
         Ok(NonBlockingIndexer {
-            indexer_path: self.indexer_path.into_inner(),
+            indexer_path,
             context: Context { db },
             handle: self.handle,
             runtime: self.runtime,
@@ -141,7 +155,7 @@ where
 ///
 /// Decided to do different and prepare the data in memory to inject all data in a single Tokio
 /// spawned task
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct NonBlockingIndexer {
     indexer_path: IndexerPath,
     pub context: Context,
@@ -151,7 +165,7 @@ pub struct NonBlockingIndexer {
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
-    indexing: bool,
+    pub indexing: bool,
 }
 
 /// Saves the block and its transactions in memory
@@ -194,9 +208,12 @@ impl BlockToIndex {
     }
 
     fn delete_tmp_file(&self) -> error::Result<()> {
+        #[cfg(feature = "tracing")]
+        tracing::warn!(path = %self.filename.display(), "Removing block tmp_file");
+
         if let Err(error) = std::fs::remove_file(&self.filename) {
             #[cfg(feature = "tracing")]
-            tracing::warn!(path = %self.filename.display(), error = %error, "Can't remove block tmp_file");
+            tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, error = %error, "Can't remove block tmp_file");
         }
         Ok(())
     }
@@ -210,6 +227,9 @@ impl BlockToIndex {
         tmp_filename.write_all(&encoded_block)?;
         tmp_filename.flush()?;
         tmp_filename.persist(&self.filename)?;
+
+        #[cfg(feature = "tracing")]
+        tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, "Saved tmp_file");
         Ok(())
     }
 }
@@ -255,13 +275,23 @@ impl NonBlockingIndexer {
         };
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(
+        tracing::warn!(
             block_height = block_height,
             blocks_len = blocks.len(),
             "remove_or_fail called"
         );
 
         Ok(block_to_index.1)
+    }
+
+    pub fn wait_for_finish(&self) {
+        for _ in 0..10 {
+            if self.blocks.lock().expect("Can't lock blocks").is_empty() {
+                break;
+            }
+
+            sleep(Duration::from_millis(10));
+        }
     }
 }
 
@@ -272,7 +302,7 @@ impl NonBlockingIndexer {
     }
 
     ///// Save this block height on disk to ensure it'll be indexed when process is crashed
-    //fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
+    // fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
     //    let blocks = self.blocks.lock().expect("Can't lock blocks");
     //    if let Some(block) = blocks.get(&block_height).cloned() {
     //        drop(blocks);
@@ -286,8 +316,8 @@ impl NonBlockingIndexer {
     //    Ok(())
     //}
 
-    /// Save this block height on disk to ensure it'll be indexed when process is crashed
-    //fn persist_on_disk(&self, block: &BlockToIndex) -> error::Result<()> {
+    // /// Save this block height on disk to ensure it'll be indexed when process is crashed
+    // fn persist_on_disk(&self, block: &BlockToIndex) -> error::Result<()> {
     //    let mut tmp_filename = NamedTempFile::new_in(self.indexer_path.path())?;
     //    let encoded_block = block.to_borsh_vec()?;
     //    tmp_filename.write_all(&encoded_block)?;
@@ -297,14 +327,14 @@ impl NonBlockingIndexer {
     //}
 
     // TODO: run once when `start` is called
-    fn load_all_from_disk(&self, latest_block_height: u64) -> error::Result<()> {
+    fn load_all_from_disk(&self, _latest_block_height: u64) -> error::Result<()> {
         // TODO: look at the local cache and ensure all blocks were indexed, delete anything with
         // higher number than latest_block_height
         // fetch latest block_height from indexer DB
         todo!()
     }
 
-    //fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
+    // fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
     //    let filename = self.block_tmp_filename(block_height);
     //    if let Err(error) = std::fs::remove_file(&filename) {
     //        #[cfg(feature = "tracing")]
@@ -325,20 +355,20 @@ impl Indexer for NonBlockingIndexer {
             self.context.migrate_db().await
         })?;
 
-        let _block = match LAST_FINALIZED_BLOCK.load(storage) {
-            Err(_) => {
+        match LAST_FINALIZED_BLOCK.load(storage) {
+            Err(error) => {
                 #[cfg(feature = "tracing")]
-                tracing::warn!("No block found in storage");
-                None
+                tracing::warn!(error = %error, "No LAST_FINALIZED_BLOCK found");
             },
             Ok(block) => {
                 #[cfg(feature = "tracing")]
                 tracing::warn!("block found in storage");
                 // TODO: ensure we indexed all previous blocks
                 self.load_all_from_disk(block.height)?;
-                Some(block)
             },
-        };
+        }
+
+        // Save on indexer DB all blocks that were indexed on disk but not saved
 
         self.indexing = true;
 
@@ -368,6 +398,8 @@ impl Indexer for NonBlockingIndexer {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if !blocks.is_empty() {
                 tracing::warn!("Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?");
+            } else {
+                tracing::warn!("All blocks were indexed");
             }
         }
 
@@ -455,9 +487,9 @@ impl Indexer for NonBlockingIndexer {
             db.commit().await?;
 
             block_to_index.delete_tmp_file()?;
-            //self.delete_from_disk(block_height)?;
+            // self.delete_from_disk(block_height)?;
 
-            let _ = Self::remove_or_fail(blocks, &block_height)?;
+            Self::remove_or_fail(blocks, &block_height)?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");

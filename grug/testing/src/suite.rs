@@ -13,7 +13,10 @@ use {
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{collections::BTreeMap, fmt::Debug},
+    std::{
+        collections::BTreeMap,
+        fmt::{Debug, Display},
+    },
 };
 
 // ------------------------------- UploadOutcome -------------------------------
@@ -216,19 +219,33 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    DB::Error: Display,
+    ID::Error: Display,
 {
     /// Create a new test suite with the given DB and VM.
     pub fn new_with_db_vm_indexer_and_pp(
         db: DB,
         vm: VM,
         pp: PP,
-        id: ID,
+        mut id: ID,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
+        // This is doing the same order as in Dango.
+        // 1. Calling `start` on the indexer
+        // 2. Creating the app instance
+        // TODO: should we call start after `do_init_chain`? I want the same as the way it happens
+        // on Dango
+        id.start(&db.state_storage(None).unwrap_or_else(|err| {
+            panic!("fatal error while getting the state storage: {err}");
+        }))
+        .unwrap_or_else(|err| {
+            panic!("fatal error while running indexer start: {err}");
+        });
+
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX);
 

@@ -12,7 +12,7 @@ use {
     serde::Serialize,
     std::{
         collections::BTreeMap,
-        fmt::Debug,
+        fmt::{Debug, Display},
         ops::Deref,
         str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
@@ -519,6 +519,7 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    ID::Error: Display,
 {
     pub fn build(self) -> (TestSuite<MemDb, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {

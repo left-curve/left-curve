@@ -58,6 +58,10 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             query_gas_limit,
         }
     }
+
+    pub fn indexer(&self) -> &ID {
+        &self.indexer
+    }
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
@@ -272,7 +276,7 @@ where
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
 
-            // NOTE: should we index cron calls?
+            // NOTE: should we index cron calls? => YES
 
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
@@ -318,6 +322,9 @@ where
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
+
+        // What happens here if the process crashes? Is the block being reprocessed?
+        // TODO: When the node starts, checks if something in `db` is supposed to be committed, if so commit it first not to replay the same block
 
         // NOTE: Could call `index_block` or `persist_block` here, including app_hash. What happens
         // if the process crashes here and index block isn't stored on disk?
