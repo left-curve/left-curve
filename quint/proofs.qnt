@@ -53,7 +53,7 @@ module proofs {
   /// Return leaf with the largest key_hash smaller than k
   pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
     val smallerKeyNodes = t.values().filter(n => match n {
-      | Leaf(l) => lessThan(l.key_hash, k)
+      | Leaf(l) => less_than(l.key_hash, k)
       | Internal(_) => false
     }) 
     if(smallerKeyNodes.empty()) None else 
@@ -66,7 +66,7 @@ module proofs {
       Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
         match x {
           | Leaf(l) =>  
-              if (lessThan(s.key_hash, l.key_hash))
+              if (less_than(s.key_hash, l.key_hash))
                 l
               else 
                 s
@@ -77,7 +77,7 @@ module proofs {
   /// Return leaf with the smallest key_hash larger than k
   pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
     val largerKeyNodes = t.values().filter(n => match n {
-      | Leaf(l) => lessThan(k, l.key_hash)
+      | Leaf(l) => less_than(k, l.key_hash)
       | Internal(_) => false
     }) 
     if(largerKeyNodes.empty()) None else 
@@ -90,7 +90,7 @@ module proofs {
       Some(largerKeyNodes.fold(someLeaf, (s, x) =>
         match x {
           | Leaf(l) =>  
-              if (lessThan(l.key_hash, s.key_hash) )
+              if (less_than(l.key_hash, s.key_hash) )
                 l
               else 
                 s

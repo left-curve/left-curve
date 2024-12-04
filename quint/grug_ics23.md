@@ -11,8 +11,9 @@ This document covers main verification functions:
 
 And other helper functions that are used:
 
-- [`verify`](#verifying-existence)
+- [`verify_existence`](#verifying-existence)
 - [`exists_calculate`](#calculating-root-hash-from-existence-proof)
+- [`verify_non_existence`](#verifying-nonexistence)
 - [`get_padding`](#get-padding)
 - [`is_left_most`](#is-left-most)
 - [`is_right_most`](#is-right-most)
@@ -47,7 +48,7 @@ And other helper functions that are used:
 // Aleksandar Ignjatijevic, Informal Systems, 2024
 // Gabriela Moreira, Informal Systems, 2024
 
-module grug_ics23 {
+module grug_ics24 {
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
@@ -228,18 +229,18 @@ pub fn verify_membership<H: HostFunctionsProvider>(
 We did not specify decompressing and `CommitmentProof_Batches` and we are just focusing on verifying existence.
 
 ```bluespec "definitions" +=
-def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
+pure def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
   // TODO: specify Decompress
   // TODO: specify the case of CommitmentProof_Batch
   // TODO: CheckAgainstSpec ensures that the proof can be verified
   //       by the spec checker
-  verify(proof, root, key, value)
+  verify_existence(proof, root, key, value)
 }
 ```
 
 ## Verifying existence
 
-Verifying membership emulates the [`verify_existence`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L18C1-L32C2) Rust function.
+Verifying existence emulates the [`verify_existence`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L18C1-L32C2) Rust function.
 
 ```rust
 pub fn verify_existence<H: HostFunctionsProvider>(
@@ -259,15 +260,15 @@ pub fn verify_existence<H: HostFunctionsProvider>(
 }
 ```
 
-Our implementations assumes that proof and spec are alligned and therefore we did not implement `check_existence_spec` function.
+Our implementations assumes that `proof` and `spec` are alligned and therefore we did not implement `check_existence_spec` function.
 <!--
 ```bluespec "definitions" +=
 
-/// verify that a proof matches a root
+/// verify_existence that a proof matches a root
 ```
 -->
 ```bluespec "definitions" +=
-def verify(proof, root, key, value) = and {
+pure def verify_existence(proof, root, key, value) = and {
   key == proof.key,
   value == proof.value,
   root == exists_calculate(proof)
@@ -284,7 +285,7 @@ This function uses existence proof to calculate root hash out of it.
 ```
 -->
 ```bluespec "definitions" +=
-def exists_calculate(p: ExistenceProof): Term =
+pure def exists_calculate(p: ExistenceProof): Term =
 ```
 
 The function `exists_calculate` emulates
@@ -364,6 +365,15 @@ pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> R
       termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
 ```
 
+Since we are using our version of _hashing_ we did not place checks on the size as they are present in Rust code.
+
+```rust
+if let Some(inner_spec) = spec.and_then(|spec| spec.inner_spec.as_ref()) {
+    if hash.len() > inner_spec.child_size as usize && inner_spec.child_size >= 32 {
+        bail!("Invalid inner operation (child_size)")
+    }
+}
+```
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
@@ -376,8 +386,55 @@ pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> R
 -->
 ## Verifying NonMembership proof
 
-`verifyNonMembership` returns true iff proof is a `NonExistenceProof`, both left and right sub-proofs are valid existence proofs or None, left and right proofs are neighbors (or left/right most if one is None), provided key is between the keys of the two proofs. We did not specify decompressing and `CommitmentProof_Batches` and we are just focusing on verifying existence.
-The function `verifyNonMembership` emulates [`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34-L79) Rust function.
+`verifyNonMembership` returns true iff proof is a `NonExistenceProof`, both `left` and `right` sub-proofs are valid existence proofs or `None`, `left` and `right` proofs are neighbors (or left/right most if one is `None`), provided `key` is between the keys of the two proofs. We did not specify decompressing and `CommitmentProof_Batches` and we are just focusing on verifying existence.
+The function `verifyNonMembership` emulates [`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L46-L70) Rust function.
+
+```rust
+pub fn verify_non_membership<H: HostFunctionsProvider>(
+    proof: &ics23::CommitmentProof,
+    spec: &ics23::ProofSpec,
+    root: &CommitmentRoot,
+    key: &[u8],
+) -> bool {
+  // ugly attempt to conditionally decompress...
+  let mut proof = proof;
+  let my_proof;
+  if is_compressed(proof) {
+      if let Ok(p) = decompress(proof) {
+          my_proof = p;
+          proof = &my_proof;
+      } else {
+          return false;
+      }
+  }
+
+  if let Some(non) = get_nonexist_proof::<H>(proof, key, spec) {
+      let valid = verify_non_existence::<H>(non, spec, root, key);
+      valid.is_ok()
+  } else {
+      false
+  }
+}
+```
+
+```bluespec "definitions" +=
+pure def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = {
+  // TODO: specify Decompress
+  // TODO: specify the case of CommitmentProof_Batch
+  // TODO: CheckAgainstSpec ensures that the proof can be verified
+  //       by the spec checker
+  verify_non_existence(np, ics23::InnerSpec, root, key)
+}
+```
+<!--
+```bluespec "definitions" +=
+
+/// verify_non_existence verifies NonExistenceProof
+```
+-->
+## Verifying NonExistence
+
+`NonExistence` is verified in `verify_non_existence` function. This function emulates [`verify_non_existence`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34-L79) Rust function.
 
 ```rust
 pub fn verify_non_existence<H: HostFunctionsProvider>(
@@ -389,10 +446,10 @@ pub fn verify_non_existence<H: HostFunctionsProvider>(
 ```
 
 ```bluespec "definitions" +=
-def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = and {
+pure def verify_non_existence(proof: NonExistenceProof, spec: InnerSpec, root: Term, key: Bytes): bool = and{
 ```
 
-First, we check if both `np.left == np.right == None`. This is our way of emulating the following part of the Rust code. This way we are assured that either `np.left` or `np.right` will have some value, and later when we check if `np.left == None`, we are certain that `np.right != None`, and vice versa.
+First, we check if both `proof.left == proof.right == None`. This is our way of emulating the following part of the Rust code. This way we are assured that either `proof.left` or `proof.right` will have some value, and later when we check if `proof.left == None`, we are certain that `proof.right != None`, and vice versa.
 
 ```rust
   if let Some(inner) = &spec.inner_spec {
@@ -404,10 +461,10 @@ First, we check if both `np.left == np.right == None`. This is our way of emulat
 ```
 
 ```bluespec "definitions" +=
-  np.left != None or np.right != None,
+  proof.left != None or proof.right != None,
 ```
 
-After that, we check if `np.left == None` or we can unwrap it and verify it. In Quint specification we are using already hashed keys, and to compare keys we are using Quint function `lessThan()` in which we can safely pass `np.left.unwrap().key` and `key`. This means that we did not have to emulate Rust's `key_for_comparison` that either hashes key if it is not hashed, or returns the already hashed key.
+After that, because we are using `implies` that means that we will `unwrap` `proof.left`, `verify_existence` and compare keys. In Quint specification we are using already hashed keys, and to compare keys we are using Quint function `greater_than()` in which we can safely pass `left.key` and `key`. This means that we did not have to emulate Rust's `key_for_comparison` that either hashes key if it is not hashed, or returns the already hashed key.
 
 Here is the snippet from the Rust implementation.
 
@@ -422,13 +479,16 @@ Here is the snippet from the Rust implementation.
 ```
 
 ```bluespec "definitions" +=
-  np.left == None or and {
-    verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
-    lessThan(np.left.unwrap().key, key),
+  proof.left != None implies {
+    pure val left = proof.left.unwrap()
+    and {
+      verify_existence(left, root, left.key, left.value), 
+      key.greater_than(left.key),
+    }
   },
 ```
 
-The same is done for `np.right`. Here is the snippet from the Rust implementation we emulated.
+The same is done for `proof.right`, just instead of using `greated_than()`, we are using `less_than()`. Here is the snippet from the Rust implementation we emulated.
 
 ```rust
   if let Some(right) = &proof.right {
@@ -441,9 +501,12 @@ The same is done for `np.right`. Here is the snippet from the Rust implementatio
 ```
 
 ```bluespec "definitions" +=
-  np.right == None or and {
-    verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
-    lessThan(key, np.right.unwrap().key),
+  proof.right != None implies {
+    pure val right = proof.right.unwrap()
+    and {
+      verify_existence(right, root, right.key, right.value),
+      key.less_than(right.key),
+    }
   },
 ```
 
@@ -461,17 +524,19 @@ Since Quint's matching is not as powerful as Rust's, we had to find a work-aroun
 ```
 
 ```bluespec "definitions" +=
-  pure val spec = ics23::InnerSpec
-  if (np.left == None) {
-    is_left_most(spec, np.right.unwrap().path)
-  } else if (np.right == None) {
-    is_right_most(spec, np.left.unwrap().path)
+  if (proof.left == None) {
+    is_left_most(spec, proof.right.unwrap().path)
+  } else if (proof.right == None) {
+    is_right_most(spec, proof.left.unwrap().path)
   } else {
-    is_left_neighbor(spec, np.left.unwrap().path, np.right.unwrap().path)
+    is_left_neighbor(spec, proof.left.unwrap().path, proof.right.unwrap().path)
   }
+```
+<!---
+```bluespec "definitions" +=
 }
 ```
-
+--->
 Here is the full `verify_non_existence()` Rust implementation.
 
 ```rust
@@ -614,7 +679,7 @@ fn ensure_left_most(spec: &ics23::InnerSpec, path: &[ics23::InnerOp]) -> Result<
 ```
 
 ```bluespec "definitions" +=
-def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+pure def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
   match get_padding(spec, 0) {
     | Some(pad) => {
       path.indices().forall(i =>
@@ -658,7 +723,7 @@ fn ensure_right_most(spec: &ics23::InnerSpec, path: &[ics23::InnerOp]) -> Result
 ```
 
 ```bluespec "definitions" +=
-def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+pure def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
   pure val idx = spec.child_order.length() - 1
   match get_padding(spec, idx) {
     | Some(pad) => {
@@ -699,7 +764,7 @@ fn has_padding(op: &ics23::InnerOp, pad: &Padding) -> bool {
 For getting the length of `prefix` and `suffix` we are using `termLen()` function, which is defined in [hashes.qnt](./hashes.qnt)
 
 ```bluespec "definitions" +=
-def has_padding(op: InnerOp, pad: Padding): bool = and {
+pure def has_padding(op: InnerOp, pad: Padding): bool = and {
   op.prefix.termLen() >= pad.min_prefix,
   op.prefix.termLen() <= pad.max_prefix,
   // When inner turns left, suffixLen == child_size,
@@ -737,7 +802,7 @@ We are using `find_first()` to simulate early return `return Ok(branch)` in Rust
 Since we know that `spec.child_order.length() == 2`, algorithm will never _**not**_ return padding when called `get_padding()`.
 
 ```bluespec "definitions" +=
-def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
+pure def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
   pure val len = spec.child_order.length()
   range(0, len).find_first(branch => {
     match get_padding(spec, branch) {
@@ -766,7 +831,7 @@ fn left_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Resu
 ```
 
 ```bluespec "definitions" +=
-def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
+pure def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
 ```
 
 Firstly, we get order from padding, and then we check if there is and index found and if it is not `0`. This corresponds to the following Rust code:
@@ -830,7 +895,7 @@ Because Quint does not support early return, we had to `match` the outcome of `c
 We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
 
 ```bluespec
-pure def checked_sub(a: int, b: int): Option[int] = {
+pure pure def checked_sub(a: int, b: int): Option[int] = {
   if (b > a) {
     None
   } else {
@@ -884,7 +949,7 @@ fn right_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Res
 ```
 
 ```bluespec "definitions" +=
-def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
+pure def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
 ```
 
 Firstly, we get order from padding, and then we check if there is and index found and if it is not `0`. This corresponds to the following Rust code:
@@ -982,7 +1047,7 @@ fn is_left_step(
 Again, because Quint does not support early returns, we used `and` to assure `left_idx` and `right_idx` will not be `None`.
 
 ```bluespec "definitions" +=
-def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
+pure def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
   // 'left' turns left, and 'right' turns right
   val left_idx = order_from_padding(spec, left)
   val right_idx = order_from_padding(spec, right)
@@ -1011,7 +1076,7 @@ def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
 `is_left_neighbor` function returns true if `right` is the next possible path right of `left`. This function emulates [`ensure_left_neighbor`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L247) Rust function.
 
 ```bluespec "definitions" +=
-def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
+pure def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
   // count common tail (from end, near root)
   // cut the left and right paths
   lpath.indices().exists(li =>
