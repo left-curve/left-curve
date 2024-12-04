@@ -63,16 +63,16 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         <div
-          className={twMerge("h-0 translate-y-[-2rem] transition-all duration-500", {
-            "px-6 h-6 translate-y-0": !bottomComponent && errorMessage,
+          className={twMerge("hidden px-6", {
+            block: !bottomComponent && errorMessage,
           })}
         >
           <span className="text-typography-pink-400 typography-caption-m">{errorMessage}</span>
         </div>
 
         <div
-          className={twMerge("h-0 translate-y-[-2rem] transition-all duration-500", {
-            "px-6 h-6 translate-y-0": !bottomComponent && validMessage,
+          className={twMerge("hidden px-6", {
+            block: !bottomComponent && validMessage,
           })}
         >
           <span className="text-typography-green-400 typography-caption-m">{validMessage}</span>
