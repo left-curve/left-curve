@@ -36,12 +36,7 @@ const AuthView: React.FC = () => {
         <div className="relative h-[70px] md:h-[112px] px-12 py-7">
           <div className="w-full h-full flex items-center justify-center md:justify-start md:items-start">
             <a href="/">
-              <img
-                fetchPriority="high"
-                src="/images/dango.svg"
-                alt="logo"
-                className="h-6 md:h-[31px] object-contain"
-              />
+              <img src="/images/dango.svg" alt="logo" className="h-6 md:h-[31px] object-contain" />
             </a>
           </div>
           <motion.div

@@ -9,7 +9,9 @@ export const LoginStep: React.FC = () => {
     username: string;
     retry: boolean;
   }>({
-    mode: "onChange",
+    defaultValues: {
+      username: data.username,
+    },
   });
   const client = usePublicClient();
 
@@ -17,9 +19,10 @@ export const LoginStep: React.FC = () => {
   const { errors, isSubmitting } = formState;
 
   const errorMessage =
-    errors.username?.message || retry
+    errors.username?.message ||
+    (retry
       ? "The credential connected does not match the on-chain record. Please try again."
-      : undefined;
+      : undefined);
 
   const onSubmit = handleSubmit(async ({ username }) => {
     if (!username) return;
@@ -39,8 +42,9 @@ export const LoginStep: React.FC = () => {
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
           validate: (value) => {
-            if (!value) return "Username is required";
-            if (value.length > 15) return "Username must be at most 15 characters long";
+            if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
+              return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";
+            }
             return true;
           },
         })}
