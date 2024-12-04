@@ -14,9 +14,12 @@ pub enum Key {
     Secp256k1(ByteArray<33>),
 }
 
+/// An OTP key info that can be associated with a [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
 pub struct OtpKey {
+    /// An Secp256k1 public key in compressed form.
     pub key: ByteArray<33>,
+    /// OTP  policy.
     pub policy: Json,
 }
 
@@ -40,8 +43,10 @@ pub enum Credential {
 
 #[grug::derive(Serde)]
 pub struct StandardCredential {
+    /// Signature of a user key.
     pub signature: Signature,
-    pub otp: Option<ByteArray<64>>,
+    /// Signature of the OTP key.
+    pub otp_signature: Option<ByteArray<64>>,
 }
 
 #[grug::derive(Serde)]
@@ -50,14 +55,17 @@ pub struct SessionCredential {
     pub session_info: SessionInfo,
     /// Signature of the `SignDoc` by the session key.
     pub session_signature: ByteArray<64>,
-    /// Signatures of the `SessionInfo` bytes and hased.
+    /// Signatures of the `SessionInfo` by the user key and OTP.
     pub session_info_signature: StandardCredential,
 }
 
 #[grug::derive(Serde)]
 pub struct SessionInfo {
+    /// Public key of the session key.
     pub session_key: ByteArray<33>,
+    /// Expiry time of the session key.
     pub expire_at: Timestamp,
+    /// Addresses that can use the session key.
     pub whitelisted_accounts: BTreeSet<Addr>,
 }
 

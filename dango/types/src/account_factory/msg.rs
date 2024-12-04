@@ -48,7 +48,7 @@ pub enum ExecuteMsg {
     /// Configure an OTP key for a username.
     ConfigureUserOtp { key: Op<OtpKey> },
     /// Enable/Disable a OTP for an account.
-    ConfigureAccountOtp { enabled: bool },
+    EnableAccountOtp { enabled: bool },
     /// Configure a key for a username.
     ConfigureKey { key_hash: Hash160, key: Op<Key> },
     /// Update a Safe account's parameters.

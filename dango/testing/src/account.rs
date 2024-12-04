@@ -161,7 +161,7 @@ where
 
         Ok(StandardCredential {
             signature: Signature::Secp256k1(signature),
-            otp: otp_signature,
+            otp_signature,
         })
     }
 }

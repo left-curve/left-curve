@@ -52,7 +52,7 @@ fn otp() {
             .execute(
                 &mut sender,
                 contracts.account_factory,
-                &ExecuteMsg::ConfigureAccountOtp { enabled: true },
+                &ExecuteMsg::EnableAccountOtp { enabled: true },
                 Coins::default(),
             )
             .should_succeed();
@@ -91,7 +91,7 @@ fn otp() {
             .execute(
                 &mut sender,
                 contracts.account_factory,
-                &ExecuteMsg::ConfigureAccountOtp { enabled: false },
+                &ExecuteMsg::EnableAccountOtp { enabled: false },
                 Coins::default(),
             )
             .should_succeed();
@@ -119,7 +119,7 @@ fn otp() {
             .execute(
                 &mut sender,
                 contracts.account_factory,
-                &ExecuteMsg::ConfigureAccountOtp { enabled: false },
+                &ExecuteMsg::EnableAccountOtp { enabled: false },
                 Coins::default(),
             )
             .should_succeed();
@@ -131,7 +131,7 @@ fn otp() {
             .execute(
                 &mut sender,
                 contracts.account_factory,
-                &ExecuteMsg::ConfigureAccountOtp { enabled: true },
+                &ExecuteMsg::EnableAccountOtp { enabled: true },
                 Coins::default(),
             )
             .should_succeed();

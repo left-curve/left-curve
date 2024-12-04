@@ -101,8 +101,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
-        ExecuteMsg::ConfigureAccountOtp { enabled } => configure_account_otp(ctx, enabled),
-
+        ExecuteMsg::EnableAccountOtp { enabled } => enable_account_otp(ctx, enabled),
         ExecuteMsg::ConfigureUserOtp { key } => configure_user_otp(ctx, key),
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
@@ -275,7 +274,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_account_otp(ctx: MutableCtx, enabled: bool) -> anyhow::Result<Response> {
+fn enable_account_otp(ctx: MutableCtx, enabled: bool) -> anyhow::Result<Response> {
     if enabled {
         // Check if a OTP exists for the username
         let username = get_username_by_address(ctx.storage, ctx.sender)?;
@@ -308,6 +307,9 @@ fn configure_user_otp(ctx: MutableCtx, key: Op<OtpKey>) -> anyhow::Result<Respon
         Op::Insert(key) => OTPS.save(ctx.storage, &username, &key)?,
         Op::Delete => {
             OTPS.remove(ctx.storage, &username);
+            // Disable OTP for all accounts owned by the user.
+            // Need to collect first, since `ctx.storage` can't be borrowed as mut
+            //  while borrowed in fn `keys`.
             let addresses = ACCOUNTS_BY_USER
                 .prefix(&username)
                 .keys(ctx.storage, None, None, Order::Ascending)

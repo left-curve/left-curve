@@ -98,7 +98,7 @@ pub fn authenticate_tx(
         let otp_key = ctx
             .querier
             .query_wasm_raw(factory, OTPS.path(&metadata.username))?
-            .ok_or_else(|| anyhow!("account {} not found", tx.sender))?
+            .ok_or_else(|| anyhow!("OTP key not registered for username {}.", metadata.username))?
             .deserialize_borsh::<OtpKey>()?;
 
         Some(otp_key)
@@ -143,11 +143,11 @@ pub fn authenticate_tx(
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => match tx.credential.deserialize_json()? {
             Credential::Standard(standard_credential) => {
-                // Verify the signature of the tx
+                // Verify the `SignDoc` signatures.
                 verify_standard_credential(
                     ctx.api,
-                    key,
                     standard_credential,
+                    key,
                     maybe_otp_key,
                     VerifyData::SignDoc(&sign_doc),
                 )?;
@@ -155,7 +155,7 @@ pub fn authenticate_tx(
             Credential::Session(session) => {
                 ensure!(
                     session.session_info.expire_at > ctx.block.timestamp,
-                    "session expired at {:?}",
+                    "session expired at {:?}.",
                     session.session_info.expire_at
                 );
 
@@ -164,20 +164,20 @@ pub fn authenticate_tx(
                         .session_info
                         .whitelisted_accounts
                         .contains(&tx.sender),
-                    "account {} not whitelisted",
+                    "account {} not whitelisted.",
                     tx.sender
                 );
 
-                // Verify the session info signs are valids
+                // Verify the `SessionInfo` signatures.
                 verify_standard_credential(
                     ctx.api,
-                    key,
                     session.session_info_signature,
+                    key,
                     maybe_otp_key,
                     VerifyData::SessionInfo(&session.session_info),
                 )?;
 
-                // Verify the signature of the tx
+                // Verify the `SignDoc` signature.
                 verify_signature(
                     ctx.api,
                     Key::Secp256k1(session.session_info.session_key),
@@ -194,14 +194,14 @@ pub fn authenticate_tx(
 
 fn verify_standard_credential(
     api: &dyn Api,
-    key: Key,
     credential: StandardCredential,
+    key: Key,
     maybe_otp_key: Option<OtpKey>,
     data: VerifyData,
 ) -> anyhow::Result<()> {
     verify_signature(api, key, credential.signature, &data)?;
 
-    match (maybe_otp_key, credential.otp) {
+    match (maybe_otp_key, credential.otp_signature) {
         (Some(otp_key), Some(otp_signature)) => verify_signature(
             api,
             Key::Secp256k1(otp_key.key),
@@ -228,7 +228,6 @@ fn verify_signature(
             // Recreate the EIP-712 data originally used for signing.
             // Verify that the critical values in the transaction such as
             // the message and the verifying contract (sender).
-
             let (verifying_contract, message) = match data {
                 VerifyData::SignDoc(sign_doc) => (
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
