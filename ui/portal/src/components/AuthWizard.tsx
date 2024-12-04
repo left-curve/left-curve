@@ -16,7 +16,7 @@ export const AuthWizard: React.FC<PropsWithChildren> = ({ children }) => {
   const Wrapper = isSignup ? WizardSignupWrapper : WizardLoginWrapper;
 
   return (
-    <div className="flex flex-1 h-full w-full flex-col justify-center items-center gap-8">
+    <div className="flex flex-1 h-full w-full flex-col justify-center items-center gap-4 md:gap-8">
       <motion.div
         key={`${location.pathname}_${activeStep}`}
         transition={{ duration: 0.5 }}

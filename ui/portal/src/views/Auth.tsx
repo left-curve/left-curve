@@ -54,11 +54,9 @@ const AuthView: React.FC = () => {
           />
         </div>
         <div className="flex flex-1 w-full items-center justify-center p-4">
-          <div className="flex flex-1 w-full items-center justify-center p-4 flex-col gap-8">
-            <WizardProvider wrapper={<AuthWizard />}>
-              {isSignup ? singup.props.children : login.props.children}
-            </WizardProvider>
-          </div>
+          <WizardProvider wrapper={<AuthWizard />}>
+            {isSignup ? singup.props.children : login.props.children}
+          </WizardProvider>
         </div>
       </div>
     </main>

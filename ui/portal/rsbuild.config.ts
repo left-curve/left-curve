@@ -15,6 +15,12 @@ export default defineConfig({
     define: publicVars,
   },
   server: { port: 5080 },
+  performance: {
+    prefetch: {
+      type: "all-assets",
+      include: [/.*\.woff2$/],
+    },
+  },
   output: { distPath: { root: "build" } },
   html: { template: "public/index.html" },
   plugins: [pluginReact()],
