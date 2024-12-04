@@ -316,17 +316,19 @@ module apply_state_machine {
   val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
   val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
 
-  val verifyMembershipInv =
+  val verifyMembershipInv = {
     activeTreeVersions.forall(version => {
+      val leafs = tree.treeAtVersion(version).allLeafs()
+      val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
+
       tree.nodes.has({ key_hash: ROOT_BITS, version: version }) implies
         all_key_hashes.forall(key_hash => {
           val proof = ics23_prove(tree, key_hash, version)
-          val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
           match proof {
             | Some(p) =>
               match p {
                 | Exist(ep) => and {
-                  tree.treeAtVersion(version).allLeafs().exists(l => and {
+                  leafs.exists(l => and {
                     // There should be a leaf with this key_hash
                     l.key_hash == key_hash,
 
@@ -350,14 +352,16 @@ module apply_state_machine {
                   // Verifying the proof against this key_hash should work
                   verifyNonMembership(root, nep, key_hash),
                   // Verifying the proof against all other key_hashes should fail
-                  tree.treeAtVersion(version).allLeafs().forall(l => {
+                  leafs.forall(l => {
                     not(verifyNonMembership(root, nep, l.key_hash))
                   }),
                 }
               }
             | None => true  // corresponds to the panic in the rust code comment on the line 44 ics23.rs
           }
+      })
     })
+  }
 
   val allInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),

@@ -35,11 +35,12 @@ module completeness {
     // Tree needs to have a root at this version
     tree.nodes.has({ key_hash: ROOT_BITS, version: v }) implies
       pure val key_hashes_from_tree = treeAtVersion(tree, v).allLeafs().map(l => l.key_hash)
+      pure val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: v }))
+
       all_key_hashes.exclude(key_hashes_from_tree).forall(k =>
         match ics23_prove(tree, k, v) {
           | Some(cp) => match cp {
               | NonExist(nep) =>
-                pure val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: v }))
                 verifyNonMembership(root, nep, k)
               | Exist(_) => false
             }
