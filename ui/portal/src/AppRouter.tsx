@@ -2,13 +2,11 @@ import { Spinner } from "@dango/shared";
 import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
-import { AuthLayout } from "./components/AuthLayout";
 
 import { NotFoundView } from "./views/NotFound";
 
 // Auth routes
-import Login from "./views/Login";
-import Signup from "./views/Signup";
+const AuthView = lazy(() => import(/* webpackPrefetch: true */ "./views/Auth"));
 
 // Portal routes
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
@@ -30,10 +28,7 @@ export const AppRouter: React.FC = () => {
       }
     >
       <Routes>
-        <Route path="/auth" element={<AuthLayout />}>
-          <Route path="login" element={<Login />} />
-          <Route path="signup" element={<Signup />} />
-        </Route>
+        <Route path="/auth/*" element={<AuthView />} />
         <Route path="/" element={<AppLayout />}>
           <Route path="accounts" element={<AccountView />} />
           <Route path="/account-creation" element={<AccountCreationView />} />
