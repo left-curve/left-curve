@@ -1,7 +1,7 @@
 use {
     alloy_dyn_abi::{Eip712Domain, TypedData},
     alloy_primitives::U160,
-    anyhow::{anyhow, bail, ensure},
+    anyhow::{bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
@@ -9,7 +9,8 @@ use {
         config::AppConfig,
     },
     grug::{
-        json, Addr, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt, Query, Tx,
+        json, Addr, AuthCtx, AuthMode, Counter, Inner, JsonDeExt, JsonSerExt, Query,
+        QueryResponseExt, Tx,
     },
 };
 
@@ -74,9 +75,11 @@ pub fn authenticate_tx(
         );
 
         // Deserialize the key from Borsh bytes.
-        res2.as_wasm_raw()
-            .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
-            .deserialize_borsh()?
+        res2.as_wasm_path(KEYS).ok_or(anyhow::anyhow!(
+            "key hash {} not found for user `{}`",
+            metadata.key_hash,
+            metadata.username,
+        ))??
     };
 
     // Verify sequence.

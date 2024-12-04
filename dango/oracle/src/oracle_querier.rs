@@ -1,8 +1,7 @@
 use {
     crate::PRICE_SOURCES,
-    anyhow::anyhow,
-    dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource, PRICES},
-    grug::{Addr, BorshDeExt, Denom, QuerierWrapper},
+    dango_types::oracle::{PrecisionedPrice, PriceSource, PRICES},
+    grug::{Addr, BorshDeExt, Denom, PathQuerier, QuerierWrapper},
 };
 
 /// A trait for querying prices from the oracle.
@@ -23,9 +22,7 @@ impl OracleQuerier for QuerierWrapper<'_> {
         match price_source {
             PriceSource::Pyth { id, precision } => {
                 let price = self
-                    .query_wasm_raw(oracle, PRICES.path(id))?
-                    .ok_or(anyhow!("price not found for pyth id: {id}"))?
-                    .deserialize_borsh::<PrecisionlessPrice>()?
+                    .query_wasm_path(oracle, PRICES.path(id))?
                     .with_precision(precision);
                 Ok(price)
             },

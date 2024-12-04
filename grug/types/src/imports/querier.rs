@@ -159,3 +159,9 @@ impl<'a> QuerierWrapper<'a> {
             })
     }
 }
+
+impl Querier for QuerierWrapper<'_> {
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        self.inner.query_chain(req)
+    }
+}

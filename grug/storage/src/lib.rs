@@ -9,8 +9,9 @@ mod prefix;
 mod prefixer;
 mod primary_key;
 mod set;
+mod traits;
 
 pub use {
     bound::*, codec::*, counter::*, index::*, item::*, map::*, path::*, prefix::*, prefixer::*,
-    primary_key::*, set::*,
+    primary_key::*, set::*, traits::*,
 };
