@@ -14,6 +14,7 @@ fn index_block_with_nonblocking_indexer() {
 
     let mut indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_dir("".into())
         .build()
         .expect("Can't create indexer");
 

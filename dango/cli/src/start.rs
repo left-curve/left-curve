@@ -2,11 +2,11 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, AppError, Db, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, HomeDirectory, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,
-    std::{path::PathBuf, time},
+    std::time,
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -35,25 +35,30 @@ pub struct StartCmd {
 }
 
 impl StartCmd {
-    pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         if self.indexer_enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
                 .with_database_url(&self.indexer_database_url)
+                .with_dir(app_dir.indexer_dir())
                 .build()
                 .expect("Can't create indexer");
-            self.run_with_indexer(data_dir, indexer).await
+            self.run_with_indexer(app_dir, indexer).await
         } else {
-            self.run_with_indexer(data_dir, NullIndexer).await
+            self.run_with_indexer(app_dir, NullIndexer).await
         }
     }
 
-    async fn run_with_indexer<ID>(self, data_dir: PathBuf, mut indexer: ID) -> anyhow::Result<()>
+    async fn run_with_indexer<ID>(
+        self,
+        app_dir: HomeDirectory,
+        mut indexer: ID,
+    ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + Clone + 'static,
         AppError: From<ID::Error>,
         ID::Error: std::fmt::Debug,
     {
-        let db = DiskDb::open(data_dir)?;
+        let db = DiskDb::open(app_dir.data_dir())?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
         indexer
             .start(&db.state_storage(None)?)

@@ -6,6 +6,7 @@ use {
     crate::{db::DbCmd, query::QueryCmd, start::StartCmd},
     anyhow::anyhow,
     clap::Parser,
+    grug_app::HomeDirectory,
     home::home_dir,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
@@ -59,11 +60,11 @@ async fn main() -> anyhow::Result<()> {
             .join(DEFAULT_APP_DIR)
     };
 
-    let data_dir = app_dir.join("data");
+    let app_dir = HomeDirectory::new(app_dir);
 
     match cli.command {
-        Command::Db(cmd) => cmd.run(data_dir),
+        Command::Db(cmd) => cmd.run(app_dir),
         Command::Query(cmd) => cmd.run().await,
-        Command::Start(cmd) => cmd.run(data_dir).await,
+        Command::Start(cmd) => cmd.run(app_dir).await,
     }
 }

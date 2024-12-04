@@ -1,24 +1,31 @@
 use {
     crate::{active_model::Models, bail, entity, error, Context},
+    borsh::{BorshDeserialize, BorshSerialize},
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{
-        BlockInfo, BlockOutcome, Defined, MaybeDefined, Storage, Tx, TxOutcome, Undefined,
+        BlockInfo, BlockOutcome, BorshSerExt, Defined, MaybeDefined, Storage, Tx, TxOutcome,
+        Undefined,
     },
     sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
+    serde::{Deserialize, Serialize},
     std::{
         collections::HashMap,
         future::Future,
+        io::Write,
+        path::{Path, PathBuf},
         sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
     },
+    tempfile::NamedTempFile,
     tokio::runtime::{Builder, Handle, Runtime},
 };
 
-pub struct IndexerBuilder<DB = Undefined<String>> {
+pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
     runtime: Option<Arc<Runtime>>,
     handle: tokio::runtime::Handle,
     db_url: DB,
+    indexer_path: P,
 }
 
 impl Default for IndexerBuilder {
@@ -36,6 +43,7 @@ impl Default for IndexerBuilder {
             runtime,
             handle,
             db_url: Undefined::default(),
+            indexer_path: Undefined::default(),
         }
     }
 }
@@ -48,6 +56,7 @@ impl IndexerBuilder {
         IndexerBuilder {
             runtime: self.runtime,
             handle: self.handle,
+            indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
         }
     }
@@ -57,7 +66,47 @@ impl IndexerBuilder {
     }
 }
 
-impl<DB> IndexerBuilder<DB>
+// NOTE: is there a way to not have a dependency on `Defined<String>` and have it working for both
+// defined and undefined, such that we can call the builder methods in any order?
+impl IndexerBuilder<Defined<String>> {
+    pub fn with_tmpdir(self) -> IndexerBuilder<Defined<String>, Defined<IndexerPath>> {
+        let dir = tempfile::tempdir().expect("");
+        IndexerBuilder {
+            runtime: self.runtime,
+            handle: self.handle,
+            indexer_path: Defined::new(IndexerPath::TempDir(Arc::new(dir))),
+            db_url: self.db_url,
+        }
+    }
+
+    pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<Defined<String>, Defined<IndexerPath>> {
+        IndexerBuilder {
+            runtime: self.runtime,
+            handle: self.handle,
+            indexer_path: Defined::new(IndexerPath::Dir(dir)),
+            db_url: self.db_url,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum IndexerPath {
+    /// Tempdir is used for test, and will be automatically deleted once out of scope
+    TempDir(Arc<tempfile::TempDir>),
+    /// Directory to store the next block to be indexed
+    Dir(PathBuf),
+}
+
+impl IndexerPath {
+    pub fn path(&self) -> &Path {
+        match self {
+            IndexerPath::TempDir(tmpdir) => tmpdir.path(),
+            IndexerPath::Dir(dir) => dir.as_path(),
+        }
+    }
+}
+
+impl<DB> IndexerBuilder<DB, Defined<IndexerPath>>
 where
     DB: MaybeDefined<String>,
 {
@@ -72,6 +121,7 @@ where
         }?;
 
         Ok(NonBlockingIndexer {
+            indexer_path: self.indexer_path.into_inner(),
             context: Context { db },
             handle: self.handle,
             runtime: self.runtime,
@@ -93,6 +143,7 @@ where
 /// spawned task
 #[derive(Debug, Clone)]
 pub struct NonBlockingIndexer {
+    indexer_path: IndexerPath,
     pub context: Context,
     pub runtime: Option<Arc<Runtime>>,
     pub handle: tokio::runtime::Handle,
@@ -104,20 +155,23 @@ pub struct NonBlockingIndexer {
 }
 
 /// Saves the block and its transactions in memory
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
 struct BlockToIndex {
     pub block_info: BlockInfo,
     pub txs: Vec<(Tx, TxOutcome)>,
+    /// Where the block is temporarily saved on disk.
+    #[borsh(skip)]
+    filename: PathBuf,
 }
 
 impl BlockToIndex {
-    /// Takes care of inserting the data in the database
-    pub async fn save(self, db: &DatabaseTransaction) -> error::Result<()> {
+    /// Takes care of inserting the data in the database in a single DB transaction
+    pub async fn save(&self, db: &DatabaseTransaction) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block_info.height, "Indexing block");
 
         let mut models = Models::build(&self.block_info)?;
-        for (tx, tx_outcome) in self.txs.into_iter() {
+        for (tx, tx_outcome) in self.txs.iter() {
             models.push(tx, tx_outcome)?;
         }
 
@@ -138,6 +192,26 @@ impl BlockToIndex {
 
         Ok(())
     }
+
+    fn delete_tmp_file(&self) -> error::Result<()> {
+        if let Err(error) = std::fs::remove_file(&self.filename) {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(path = %self.filename.display(), error = %error, "Can't remove block tmp_file");
+        }
+        Ok(())
+    }
+
+    fn save_tmp_file(&self) -> error::Result<()> {
+        let Some(directory) = self.filename.parent() else {
+            bail!("Can't detect parent directory");
+        };
+        let mut tmp_filename = NamedTempFile::new_in(directory)?;
+        let encoded_block = self.to_borsh_vec()?;
+        tmp_filename.write_all(&encoded_block)?;
+        tmp_filename.flush()?;
+        tmp_filename.persist(&self.filename)?;
+        Ok(())
+    }
 }
 
 impl NonBlockingIndexer {
@@ -149,6 +223,7 @@ impl NonBlockingIndexer {
         let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex {
             block_info: *block,
             txs: vec![],
+            filename: self.block_tmp_filename(block.height),
         });
 
         action(block_to_index)
@@ -191,17 +266,35 @@ impl NonBlockingIndexer {
 }
 
 impl NonBlockingIndexer {
-    /// Save this block on disk to ensure it'll be indexed when process is crashed
-    fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
-        let blocks = self.blocks.lock().expect("Can't lock blocks");
-        if let Some(block) = blocks.get(&block_height).cloned() {
-            drop(blocks);
-
-            // TODO: 1. serialize block 2. write to disk
-            // use tempfile and `mv` for atomic and ensure file isn't half written
-        }
-        Ok(())
+    /// Where will this block be temporarily saved on disk
+    fn block_tmp_filename(&self, block_height: u64) -> PathBuf {
+        self.indexer_path.path().join(block_height.to_string())
     }
+
+    ///// Save this block height on disk to ensure it'll be indexed when process is crashed
+    //fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
+    //    let blocks = self.blocks.lock().expect("Can't lock blocks");
+    //    if let Some(block) = blocks.get(&block_height).cloned() {
+    //        drop(blocks);
+    //
+    //        let mut tmp_filename = NamedTempFile::new_in(self.indexer_path.path())?;
+    //        let encoded_block = block.to_borsh_vec()?;
+    //        tmp_filename.write_all(&encoded_block)?;
+    //        tmp_filename.flush()?;
+    //        tmp_filename.persist(self.block_tmp_filename(block_height))?;
+    //    }
+    //    Ok(())
+    //}
+
+    /// Save this block height on disk to ensure it'll be indexed when process is crashed
+    //fn persist_on_disk(&self, block: &BlockToIndex) -> error::Result<()> {
+    //    let mut tmp_filename = NamedTempFile::new_in(self.indexer_path.path())?;
+    //    let encoded_block = block.to_borsh_vec()?;
+    //    tmp_filename.write_all(&encoded_block)?;
+    //    tmp_filename.flush()?;
+    //    tmp_filename.persist(self.block_tmp_filename(block.block_info.height))?;
+    //    Ok(())
+    //}
 
     // TODO: run once when `start` is called
     fn load_all_from_disk(&self, latest_block_height: u64) -> error::Result<()> {
@@ -211,10 +304,14 @@ impl NonBlockingIndexer {
         todo!()
     }
 
-    // TODO: remove the on-disk cache, block was indexed
-    fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
-        todo!();
-    }
+    //fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
+    //    let filename = self.block_tmp_filename(block_height);
+    //    if let Err(error) = std::fs::remove_file(&filename) {
+    //        #[cfg(feature = "tracing")]
+    //        tracing::warn!(path = %filename.display(), error = %error, "Can't remove file");
+    //    }
+    //    Ok(())
+    //}
 }
 
 impl Indexer for NonBlockingIndexer {
@@ -285,6 +382,7 @@ impl Indexer for NonBlockingIndexer {
         Ok(())
     }
 
+    /// NOTE: `index_block` is called *after* `index_transaction`
     fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
             bail!("Can't index after shutdown");
@@ -293,9 +391,14 @@ impl Indexer for NonBlockingIndexer {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = block.height, "index_block called");
 
-        self.find_or_create(block, |_block_to_index| {
+        self.find_or_create(block, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.height, "index_block started/finished");
+            tracing::info!(block_height = block.height, "index_block started");
+
+            block_to_index.save_tmp_file()?;
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(block_height = block.height, "index_block finished");
             Ok(())
         })
     }
@@ -351,6 +454,9 @@ impl Indexer for NonBlockingIndexer {
             block_to_index.save(&db).await?;
             db.commit().await?;
 
+            block_to_index.delete_tmp_file()?;
+            //self.delete_from_disk(block_height)?;
+
             let _ = Self::remove_or_fail(blocks, &block_height)?;
 
             #[cfg(feature = "tracing")]
@@ -398,7 +504,10 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer = IndexerBuilder::default().with_memory_database().build()?;
+        let mut indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .with_tmpdir()
+            .build()?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);

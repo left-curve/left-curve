@@ -14,7 +14,7 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn push(&mut self, tx: Tx, tx_outcome: TxOutcome) -> crate::error::Result<()> {
+    pub fn push(&mut self, tx: &Tx, tx_outcome: &TxOutcome) -> crate::error::Result<()> {
         let transaction_id = Uuid::new_v4();
         let sender = tx.sender.to_string();
         let new_transaction = entity::transactions::ActiveModel {

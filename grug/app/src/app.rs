@@ -272,6 +272,8 @@ where
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
 
+            // NOTE: should we index cron calls?
+
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
                 &mut buffer,
@@ -316,6 +318,10 @@ where
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
+
+        // NOTE: Could call `index_block` or `persist_block` here, including app_hash. What happens
+        // if the process crashes here and index block isn't stored on disk?
+        // My understand is this block will be reprocessed as `self.db.commit()` wasn't called
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version

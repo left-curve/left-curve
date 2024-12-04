@@ -25,6 +25,12 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Persist(#[from] tempfile::PersistError),
 }
 
 impl From<IndexerError> for AppError {
