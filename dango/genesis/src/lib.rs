@@ -172,6 +172,7 @@ where
     let token_creation_fee = token_creation_fee
         .map(|amount| Coin::new(fee_denom.clone(), amount).and_then(NonZero::new))
         .transpose()?;
+
     let token_factory = instantiate(
         &mut msgs,
         token_factory_code_hash,

@@ -2,7 +2,10 @@ use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{
-            Account, AccountIndex, AccountType, QueryKeyResponseItem, QueryMsg, User, Username,
+
+            Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
+            QueryKeyResponseItem, QueryMsg, User, Username,
+        ,
         },
         auth::Key,
     },
@@ -116,16 +119,19 @@ fn query_key(storage: &dyn Storage, hash: Hash160, username: Username) -> StdRes
 
 fn query_keys(
     storage: &dyn Storage,
-    start_after: Option<(Username, Hash160)>,
+    start_after: Option<QueryKeyPaginateParam>,
     limit: Option<u32>,
 ) -> StdResult<Vec<QueryKeyResponseItem>> {
-    let start = start_after.as_ref().map(|(u, k)| Bound::Exclusive((u, *k)));
+    let start = start_after
+        .as_ref()
+        .map(|param| Bound::Exclusive((&param.username, param.key_hash)));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     KEYS.range(storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {
-            res.map(|((username, key_hash), key)| QueryKeyResponseItem {
+            let ((username, key_hash), key) = res?;
+            Ok(QueryKeyResponseItem {
                 username,
                 key_hash,
                 key,
