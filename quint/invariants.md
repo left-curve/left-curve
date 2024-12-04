@@ -23,12 +23,7 @@ module apply_state_machine {
   import completeness.* from "./completeness"
   import soundness.* from "./soundness"
 
-  pure val MAX_OPS = 5
-  // Try to pick values with a balanced chance of collision
-  // Operation will be Delete if value between 16 and 20
-  // Each value has an id so Deletes don't become a single Delete when we construct the set.
-  // We want multiple deletes to preserve probability (for the simulator)
-  pure val VALUES = 2.to(20).map(v => { id: v, op: if (v > 15) Delete else Insert([v]) })
+  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete), None)
 
   var tree: Tree
   var version: int
@@ -43,23 +38,21 @@ module apply_state_machine {
     ops_history' = [],
   }
 
-  pure val all_key_hashes_as_maps = (0.to(MAX_HASH_LENGTH - 1).setOfMaps(Set(0, 1))).powerset()
-  pure def key_hash_map_to_op(km: (int -> int, { id: int, op: Operation })): OperationOnKey = {
-    pure val key_hash: Bytes_t = range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km._1.get(i)))
-    { key_hash: key_hash, op: km._2.op }
-  }
-
-  pure def to_operations(nondet_value: (int -> int) -> { id: int, op: Operation }): Set[OperationOnKey] = {
-    nondet_value.mapToTuples().take(MAX_OPS).map(key_hash_map_to_op)
+  pure def to_operations(nondet_value: BitArray -> Option[Operation]): Set[OperationOnKey] = {
+    nondet_value.mapToTuples().filterMap(((key_hash, maybe_op)) => {
+      match maybe_op {
+        | Some(op) => Some({ key_hash: key_hash, op: op })
+        | None => None
+      }
+    })
   }
 
   action step_parametrized(
     apply_op: (Tree, int, int, Set[OperationOnKey]) => Tree,
     assign_result: (Set[OperationOnKey], Tree) => bool
   ): bool = {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
-    pure val ops = if (key_hashes_as_maps.empty()) Set() else kms_with_value.to_operations()
+    nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+    pure val ops = kms_with_value.to_operations()
     pure val new_tree = apply_op(tree, version - 1, version, ops)
 
     assign_result(ops, new_tree)
@@ -590,7 +583,7 @@ This inserts a line break that is not rendered in the markdown
 
 #### Completeness and Soundness
 
-These are invariants fro completeness and soundness of both membership and non-membership proofs.
+These are invariants for completeness and soundness of both membership and non-membership proofs.
 
 Completeness:
     - Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
@@ -608,6 +601,72 @@ See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for 
   val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
   val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
   val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
+```
+<!--
+This inserts a line break that is not rendered in the markdown
+```bluespec apply_state_machine.qnt +=
+
+```
+-->
+
+### Proofs are only verified for their `key_hash`
+
+This invariant creates proofs for all possible combinations of `key_hashes`. Some of them will be existence proofs and some will be non-existence.
+- For existence proofs:
+  - There should be a leaf in the tree with that `key_hash` and it the proof should be verified with this leaf's `key_hash` and `value_hash`
+    - It should not be verified with any other `value_hash`
+  - It should not be verified for all other `key_hashe`es (with any `value_hash`)
+we consider all possible values for `value_hash`. If there is a leaf in the tree with that `key_hash` + `value_hash` combination, the proof should be verified against the tree, but not otherwise.
+- For non-existence proofs:
+  - It should be verified for the `key_hash` it was proved with
+  - It should not be verified with any of the `key_hash`es in the tree.
+
+*Status:* TRUE
+
+```bluespec apply_state_machine.qnt +=
+  val verifyMembershipInv =
+    activeTreeVersions.forall(version => {
+      tree.nodes.has({ key_hash: ROOT_BITS, version: version }) implies
+        all_key_hashes.forall(key_hash => {
+          val proof = ics23_prove(tree, key_hash, version)
+          val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
+          match proof {
+            | Some(p) =>
+              match p {
+                | Exist(ep) => and {
+                  tree.treeAtVersion(version).allLeafs().exists(l => and {
+                    // There should be a leaf with this key_hash
+                    l.key_hash == key_hash,
+
+                    // and verifying the proof with its value_hash should work,
+                    verifyMembership(root, ep, l.key_hash, l.value_hash),
+
+                    // while verifying with any other value_hash should fail
+                    all_value_hashes.exclude(Set(l.value_hash)).forall(value_hash => {
+                      not(verifyMembership(root, ep, key_hash, value_hash))
+                    })
+                  }),
+
+                  // Verifying the proof against all other key_hashes and value_hashes should fail
+                  all_key_hashes.exclude(Set(key_hash)).forall(key_hash => {
+                    all_value_hashes.forall(value_hash => {
+                      not(verifyMembership(root, ep, key_hash, value_hash))
+                    })
+                  }),
+                }
+                | NonExist(nep) => and {
+                  // Verifying the proof against this key_hash should work
+                  verifyNonMembership(root, nep, key_hash),
+                  // Verifying the proof against all other key_hashes should fail
+                  tree.treeAtVersion(version).allLeafs().forall(l => {
+                    not(verifyNonMembership(root, nep, l.key_hash))
+                  }),
+                }
+              }
+            | None => true  // corresponds to the panic in the rust code comment on the line 44 ics23.rs
+          }
+      })
+    })
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
@@ -635,6 +694,7 @@ This inserts a line break that is not rendered in the markdown
     if (nonMembershipCompletenessInv) true else q::debug("nonMembershipCompletenessInv", false),
     if (membershipSoundnessInv) true else q::debug("membershipSoundnessInv", false),
     if (nonMembershipSoundnessInv) true else q::debug("nonMembershipSoundnessInv", false),
+    if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
 }
 ```
