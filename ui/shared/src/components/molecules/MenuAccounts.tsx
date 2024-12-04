@@ -55,9 +55,9 @@ export const MenuAccounts = forwardRef<VisibleRef, Props>(({ images, manageActio
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
-        className="font-bold px-4 py-2 min-w-32 truncate hidden lg:flex rounded-[20px]"
+        className="font-bold px-4 py-2 min-w-32 hidden lg:flex rounded-[20px] overflow-hidden"
       >
-        {capitalize(accountName)}
+        <span className="font-diatype-rounded truncate">{capitalize(accountName)}</span>
       </Button>
 
       <div
