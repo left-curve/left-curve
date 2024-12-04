@@ -5,17 +5,21 @@ import { useForm } from "react-hook-form";
 
 export const LoginStep: React.FC = () => {
   const { nextStep, setData, data } = useWizard();
-  const { setError, register, watch, setValue, handleSubmit, formState } = useForm<{
+  const { setError, register, setValue, handleSubmit, formState } = useForm<{
     username: string;
     retry: boolean;
   }>({
     mode: "onChange",
   });
   const client = usePublicClient();
-  const username = watch("username");
 
   const { retry } = data;
   const { errors, isSubmitting } = formState;
+
+  const errorMessage =
+    errors.username?.message || retry
+      ? "The credential connected does not match the on-chain record. Please try again."
+      : undefined;
 
   const onSubmit = handleSubmit(async ({ username }) => {
     if (!username) return;
@@ -42,7 +46,7 @@ export const LoginStep: React.FC = () => {
         })}
         placeholder="Enter your username"
         onKeyDown={({ key }) => key === "Enter" && onSubmit()}
-        errorMessage={errors.username?.message}
+        errorMessage={errorMessage}
       />
       <Button fullWidth onClick={onSubmit} isLoading={isSubmitting}>
         {retry ? "Confirm" : "Login"}
