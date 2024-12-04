@@ -40,7 +40,7 @@ Types used are similar to the original Rust implementation. There are some minor
 
 ```bluespec "definitions" +=
 type LeafOp = {
-  prefix: Term_t
+  prefix: Term
 }
 ```
 <!-- Empty line, to be tangled but not rendered
@@ -52,8 +52,8 @@ type LeafOp = {
 
 ```bluespec "definitions" +=
 type InnerOp = {
-  prefix: Term_t,
-  suffix: Term_t
+  prefix: Term,
+  suffix: Term
 }
 ```
 <!-- Empty line, to be tangled but not rendered

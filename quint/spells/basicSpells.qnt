@@ -328,7 +328,7 @@ module basicSpells {
   /// - @param f: a function that takes an element of the list and returns a boolean
   /// - @returns the first element of `l` that satisfies `f`, or None
   pure def findFirst(l, f) = l.foldl(None, (a, i) => if (a == None and f(i)) Some(i) else a)
-  pure def findFirst2(l, f) = l.foldl(None, (a, i) => if (a == None and f(i)) Some(i) else a)
+  pure def find_first(l, f) = l.foldl(None, (a, i) => if (a == None and f(i)) Some(i) else a)
 
   run findFirstTest = all {
     assert(findFirst([1, 2, 3], x => x > 1) == Some(2)),

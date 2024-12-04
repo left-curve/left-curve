@@ -13,13 +13,14 @@ And other helper functions that are used:
 
 - [`verify`](#verifying-existence)
 - [`exists_calculate`](#calculating-root-hash-from-existence-proof)
+- [`get_padding`](#get-padding)
+- [`is_left_most`](#is-left-most)
+- [`is_right_most`](#is-right-most)
 - [`has_padding`](#has-padding)
 - [`order_from_padding`](#order-from-padding)
 - [`left_branches_are_empty`](#left-branches-empty)
-- [`is_left_most`](#is-left-most)
 - [`right_branches_are_empty`](#right-branches-empty)
-- [`is_right_most`](#is-right-most)
-- [`isLeftStep`](#is-left-step)
+- [`is_left_step`](#is-left-step)
 - [`is_left_neighbor`](#is-left-neighbor)
 
 > [!TIP]
@@ -44,17 +45,15 @@ And other helper functions that are used:
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
 // Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
 
 module grug_ics23 {
+  import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import node.* from "./node"
-  import basicSpells.* from "./spells/basicSpells"
+  import proof_types.* from "./proof_types"
   import utils.* from "./utils"
-  // type aliases for readability
-  type Bytes = Bytes
-  type Bytes = Bytes
-  type Term = Term
-  type Term = Term
 
   <<<definitions>>>
 }
@@ -91,11 +90,12 @@ pub struct InnerSpec {
 ```
 
 ```bluespec "definitions" +=
-type Ics23InnerSpec = {
+type InnerSpec = {
   min_prefix_length: int, 
   max_prefix_length: int,
   child_size: int,
-  empty_child: Term
+  empty_child: Term,
+  child_order: List[int],
 }
 ```
 <!-- Empty line, to be tangled but not rendered
@@ -131,22 +131,24 @@ pub static ICS23_PROOF_SPEC: LazyLock<ProofSpec> = LazyLock::new(|| ProofSpec {
 As it can be seen, `Ics23ProofSpec.min_prefix_length` and `Ics23ProofSpec.max_prefix_length` have the value `INTERNAL_NODE_HASH_PREFIX.len()` which is `1`. `Ics23ProofSpec.child_size` is `32` because `Hash256::LENGTH` returns `32`, and `Ics23ProofSpec.empty_child` is `Hash256_ZERO` to correspond to `Hash256::ZERO.to_vec()`.
 
 ```bluespec "definitions" +=
-pure val Ics23ProofSpec: Ics23InnerSpec= {
+pure val ics23::InnerSpec: InnerSpec = {
   min_prefix_length: 1,
   max_prefix_length: 1,
   child_size: 32,
-  empty_child: Hash256_ZERO
+  empty_child: Hash256_ZERO,
+  child_order: [0, 1]
 }
 ```
 
-`Hash256_ZERO` is defined in [hashes.qnt](./hashes.qnt) as:
+`InnerSpec.child_order` for Grug JMT is defined [here](https://github.com/left-curve/left-curve/blob/4890cb58a4b60acfacbc19d6c041f72db2b5b8ee/grug/jellyfish-merkle/src/ics23.rs#L27).
+`Hash256_ZERO` is placed in [hashes.qnt](./hashes.qnt).
 
 ```bluespec
 val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 ```
 
 > [!TIP]
-> Bytess defined in [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt) are fixed to the IAVL tree. In that specification the following parameters were used:
+> Parameters defined in [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt) are fixed to the IAVL tree. In that specification the following parameters were used:
 >
 > ```bluespec
 >  MinPrefixLength = 4
@@ -155,114 +157,29 @@ val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 > ```
 >
 > They can be found [here](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L197-L221).
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
 
-We defined other records, such as `LeafOp` and `InnerOp` a bit differently than Rust implementation. Rust of `LeafOp` is `LeafOp`, and the implementation additionally stores hashing and length functions: `hash`, `prehashBytes`, `prehashBytes`, `len`. Since we fixed the specification to Grug JMT, we do not have to carry them around.
+```
+-->
+We defined `Padding` as it was defined in Rust:
 
 ```rust
-pub struct LeafOp {
-  #[prost(enumeration = "HashOp", tag = "1")]
-  pub hash: i32,
-  #[prost(enumeration = "HashOp", tag = "2")]
-  pub prehash_key: i32,
-  #[prost(enumeration = "HashOp", tag = "3")]
-  pub prehash_value: i32,
-  #[prost(enumeration = "LengthOp", tag = "4")]
-  pub length: i32,
-  /// prefix is a fixed bytes that may optionally be included at the beginning to differentiate
-  /// a leaf node from an inner node.
-  #[prost(bytes = "vec", tag = "5")]
-  pub prefix: ::prost::alloc::vec::Vec<u8>,
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-```bluespec "definitions" +=
-type LeafOp = {
-  prefix: Term
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-The same applies to `InnerOp`. We don't need to carry `hash` around.
-
-```rust
-pub struct InnerOp {
-  #[prost(enumeration = "HashOp", tag = "1")]
-  pub hash: i32,
-  #[prost(bytes = "vec", tag = "2")]
-  pub prefix: ::prost::alloc::vec::Vec<u8>,
-  #[prost(bytes = "vec", tag = "3")]
-  pub suffix: ::prost::alloc::vec::Vec<u8>,
+struct Padding {
+    min_prefix: usize,
+    max_prefix: usize,
+    suffix: usize,
 }
 ```
 
 ```bluespec "definitions" +=
-type InnerOp = {
-  prefix: Term,
-  suffix: Term
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-/// a proof of existence of (key, value)
-```
--->
-We defined Existence and Non Existence proofs. They correspond to the [following Rust structures](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/cosmos.ics23.v1.rs#L24C1-L48C2).
-
-```rust
-pub struct ExistenceProof {
-    #[prost(bytes = "vec", tag = "1")]
-    pub key: ::prost::alloc::vec::Vec<u8>,
-    #[prost(bytes = "vec", tag = "2")]
-    pub value: ::prost::alloc::vec::Vec<u8>,
-    #[prost(message, optional, tag = "3")]
-    pub leaf: ::core::option::Option<LeafOp>,
-    #[prost(message, repeated, tag = "4")]
-    pub path: ::prost::alloc::vec::Vec<InnerOp>,
-}
-
-pub struct NonExistenceProof {
-    /// TODO: remove this as unnecessary??? we prove a range
-    #[prost(bytes = "vec", tag = "1")]
-    pub key: ::prost::alloc::vec::Vec<u8>,
-    #[prost(message, optional, tag = "2")]
-    pub left: ::core::option::Option<ExistenceProof>,
-    #[prost(message, optional, tag = "3")]
-    pub right: ::core::option::Option<ExistenceProof>,
+type Padding = {
+  min_prefix: int,
+  max_prefix: int,
+  suffix: int,
 }
 ```
 
-```bluespec "definitions" +=
-type ExistenceProof = {
-  key: Bytes, 
-  value: Bytes, 
-  leaf: LeafOp, 
-  path: List[InnerOp]
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-/// a proof of non-existence of a key
-```
--->
-```bluespec "definitions" +=
-type NonExistenceProof = {
-  key: Bytes, 
-  left: Option[ExistenceProof], 
-  right: Option[ExistenceProof]
-}
-```
-
-> [!TIP]
-> In Rust implementation of ICS23, there is a comment that suggests removing `NonExistenceProof.key` because it is unnecessary. Rust function [`verify_non_existence()`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34) never uses `proof.key`.
 <!--
 ```bluespec "definitions" +=
 
@@ -311,8 +228,7 @@ pub fn verify_membership<H: HostFunctionsProvider>(
 We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
 
 ```bluespec "definitions" +=
-def verifyMembership(root: Term,
-    proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
+def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
   // TODO: specify Decompress
   // TODO: specify the case of CommitmentProof_Batch
   // TODO: CheckAgainstSpec ensures that the proof can be verified
@@ -462,6 +378,7 @@ pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> R
 
 `verifyNonMembership` returns true iff proof is a NonExistenceProof, both left and right sub-proofs are valid existence proofs or nil, left and right proofs are neighbors (or left/right most if one is nil), provided key is between the keys of the two proofs. We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
 The function `verifyNonMembership` emulates [`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34-L79) Rust function.
+
 ```rust
 pub fn verify_non_existence<H: HostFunctionsProvider>(
     proof: &ics23::NonExistenceProof,
@@ -544,12 +461,13 @@ Since Quint's matching is not as powerful as Rust's, we had to find a work-aroun
 ```
 
 ```bluespec "definitions" +=
+  pure val spec = ics23::InnerSpec
   if (np.left == None) {
-    is_left_most(np.right.unwrap().path)
+    is_left_most(spec, np.right.unwrap().path)
   } else if (np.right == None) {
-    is_right_most(np.left.unwrap().path)
+    is_right_most(spec, np.left.unwrap().path)
   } else {
-    is_left_neighbor(np.left.unwrap().path, np.right.unwrap().path)
+    is_left_neighbor(spec, np.left.unwrap().path, np.right.unwrap().path)
   }
 }
 ```
@@ -607,13 +525,79 @@ pub fn verify_non_existence<H: HostFunctionsProvider>(
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
-/// IsLeftMost returns true if this is the left-most path in the tree,
+```
+-->
+
+## Get Padding
+
+We defined `get_padding` in the similar way as it was defined in the [Rust implementation](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L305-L317)
+
+```rust
+fn get_padding(spec: &ics23::InnerSpec, branch: i32) -> Result<Padding> {
+  if let Some(&idx) = spec.child_order.iter().find(|&&x| x == branch) {
+      let prefix = idx * spec.child_size;
+      let suffix = spec.child_size as usize * (spec.child_order.len() - 1 - idx as usize);
+      Ok(Padding {
+          min_prefix: (prefix + spec.min_prefix_length) as usize,
+          max_prefix: (prefix + spec.max_prefix_length) as usize,
+          suffix,
+      })
+  } else {
+      bail!("Branch {} not found", branch);
+  }
+}
+```
+
+We used `None` to emulate `bail!()` in Rust implementation.
+
+```bluespec "definitions" +=
+pure def get_padding(spec: InnerSpec, branch: int): Option[Padding] = {
+  match spec.child_order.findFirst(x => x == branch) {
+    | Some(idx) => {
+      pure val prefix = idx * spec.child_size
+      pure val suffix = spec.child_size * (spec.child_order.length() - 1 - idx)
+      Some({
+        min_prefix: prefix + spec.min_prefix_length,
+        max_prefix: prefix + spec.max_prefix_length,
+        suffix: suffix,
+      })
+    }
+    | None => None
+  }
+}
+```
+
+Based on the `branch` value, which will be either `0` or `1`.
+
+- In the case when `branch = 0`, padding will look like this:
+  
+  ```bluespec
+  {
+    min_prefix: spec.min_prefix_length,
+    max_prefix: spec.max_prefix_length,
+    suffix: spec.child_size,
+  }
+  ```
+
+- In the case when `branch = 1`, padding will look like this:
+  
+  ```bluepsec
+  {
+    min_prefix: spec.min_prefix_length + spec.child_size,
+    max_prefix: spec.max_prefix_length + spec.child_size,
+    suffix: 0,
+  }
+  ```
+<!-- Empty line, to be tangled but not rendered
+```bluespec "definitions" +=
+
+/// is_left_most returns true if this is the left-most path in the tree,
 /// excluding placeholder (empty child) nodes
 ```
 -->
 ## Is Left Most
 
-This function returns true if this is the left-most path in the tree, excluding placeholder (empty child) nodes. This function emulates the [`ensure_left_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L222C1-L232C2) Rust function. Quint implementation uses fixed constants for Grug JMT implementation: `min_prefix_length`, `max_prefix_length` and `child_size`. Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
+This function returns true if this is the left-most path in the tree, excluding placeholder (empty child) nodes. This function emulates the [`ensure_left_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L222C1-L232C2) Rust function.
 
 ```rust
 // ensure_left_most fails unless this is the left-most path in the tree, excluding placeholder (empty child) nodes
@@ -630,30 +614,33 @@ fn ensure_left_most(spec: &ics23::InnerSpec, path: &[ics23::InnerOp]) -> Result<
 ```
 
 ```bluespec "definitions" +=
-def is_left_most(path: List[InnerOp]): bool = {
-  // Specialize to Grug JMT
-  // Calls getPadding(0) => idx = 0, prefix = 0.
-  path.indices().forall(i =>
-    val pathStep = path[i]
-    or {
-      // the path goes left
-      has_padding(pathStep, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size),
-      // the path goes right, but the left child is empty (a gap)
-      left_branches_are_empty(pathStep)
+def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+  match get_padding(spec, 0) {
+    | Some(pad) => {
+      path.indices().forall(i =>
+        val step = path[i]
+        or {
+          // the path goes left
+          has_padding(step, pad),
+          // the path goes right, but the left child is empty (a gap)
+          left_branches_are_empty(spec, step)
+        }
+      )
     }
-  )
+    | None => false
+  }
 }
 ```
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
-/// IsRightMost returns true if this is the left-most path in the tree,
+/// is_right_most returns true if this is the left-most path in the tree,
 /// excluding placeholder (empty child) nodes
 ```
 -->
 ## Is Right Most
 
-`is_right_most` function performs in the same way as `is_left_most`, with only difference being the parameters passed into `has_padding` function. In `is_right_most` function, when `has_padding` is called, `minPrefixLen` parameter is `Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length`, `maxPrefixLen` has is `Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length` and `suffixLen` is `0`.
+`is_right_most` function performs in the same way as `is_left_most`, with only difference being the `get_padding()` is called with `branch = 1`.
 This function emulates the [`ensure_right_most`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L234-L245) Rust function. Essentially, these two functions perform the same way, only differences revolving around Quint's inability to early return in the event of error.
 
 ```rust
@@ -671,19 +658,22 @@ fn ensure_right_most(spec: &ics23::InnerSpec, path: &[ics23::InnerOp]) -> Result
 ```
 
 ```bluespec "definitions" +=
-def is_right_most(path: List[InnerOp]): bool = {
-  // Specialize to Grug JMT
-  // Calls getPadding(1) => minPrefix, maxPrefix,
-  //   suffix = child_size + min_prefix_length, child_size + max_prefix_length, 0
-  path.indices().forall(i =>
-    val pathStep = path[i]
-    or {
-      // the path goes right
-      has_padding(pathStep, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0),
-      // the path goes left, but the right child is empty (a gap)
-      right_branches_are_empty(pathStep)
+def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+  pure val idx = spec.child_order.length() - 1
+  match get_padding(spec, idx) {
+    | Some(pad) => {
+      path.indices().forall(i =>
+        val step = path[i]
+        or {
+          // the path goes right
+          has_padding(step, pad),
+          // the path goes left, but the right child is empty (a gap)
+          right_branches_are_empty(spec, step)
+        }
+      )
     }
-  )
+    | None => false
+  }
 }
 ```
 
@@ -709,15 +699,14 @@ fn has_padding(op: &ics23::InnerOp, pad: &Padding) -> bool {
 For getting the length of prefix and suffix we are using `termLen` function, which is defined in [hashes.qnt](./hashes.qnt)
 
 ```bluespec "definitions" +=
-def has_padding(inner: InnerOp,
-    minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
-  termLen(inner.prefix) >= minPrefixLen,
-  termLen(inner.prefix) <= maxPrefixLen,
+def has_padding(op: InnerOp, pad: Padding): bool = and {
+  op.prefix.termLen() >= pad.min_prefix,
+  op.prefix.termLen() <= pad.max_prefix,
   // When inner turns left, suffixLen == child_size,
   // that is, we store the hash of the right child in the suffix.
   // When inner turns right, suffixLen == 0,
   // that is, we store the hash of the left child in the prefix.
-  termLen(inner.suffix) == suffixLen
+  op.suffix.termLen() == pad.suffix,
 }
 ```
 <!-- Empty line, to be tangled but not rendered
@@ -744,93 +733,21 @@ fn order_from_padding(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<i3
 }
 ```
 
-Here is the signature of Quint function:
+We are using `find_first()` to simulate early return `return Ok(branch)` in Rust implementation. It will return `branch` for which `has_padding()`, called with parameter `padding` gotten for said `branch`, returns `true`.
+Since we know that `spec.child_order.length() == 2`, algorithm will never _not_ return padding when called `get_padding()`.
 
 ```bluespec "definitions" +=
-def order_from_padding(inner: InnerOp): (int, bool) = {
-```
-<!---
-```bluespec "definitions" +=
-  // Specialize order_from_padding to Grug JMT:
-  // ChildOrder = [ 0, 1 ]
-  // branch = 0: minp, maxp, suffix = min_prefix_length, max_prefix_length, child_size
-  // branch = 1: minp, maxp, suffix =
-  //             child_size + min_prefix_length, child_size + max_prefix_length, 0
-```
---->
-
-This Rust function calls `get_padding`:
-
-```rust
-fn get_padding(spec: &ics23::InnerSpec, branch: i32) -> Result<Padding> {
-  if let Some(&idx) = spec.child_order.iter().find(|&&x| x == branch) {
-    let prefix = idx * spec.child_size;
-    let suffix = spec.child_size as usize * (spec.child_order.len() - 1 - idx as usize);
-    Ok(Padding {
-        min_prefix: (prefix + spec.min_prefix_length) as usize,
-        max_prefix: (prefix + spec.max_prefix_length) as usize,
-        suffix,
-    })
-  } else {
-      bail!("Branch {} not found", branch);
-  }
+def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
+  pure val len = spec.child_order.length()
+  range(0, len).find_first(branch => {
+    match get_padding(spec, branch) {
+      | Some(padding) => has_padding(op, padding)
+      | None => false // This should actually early return but this is impossible for our InnerSpec
+    }
+  })
 }
 ```
 
-Since `spec.child_order.len() = 2`, there will be two iterations of `for` loop.
-
-- In the first iteration, `get_padding()` will be called with `branch = 0`, which will result in `prefix = 0` and `suffix = 32`. Since `spec.min_prefix_length == spec.max_prefix_length == 1`, output of `get_padding()` will be:
-  
-  ```rust
-  Padding{
-    min_prefix: 1,
-    max_prefix: 1,
-    suffix: 32
-  }
-  ```
-
-  After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`0`) means that algorithm ended up in `branch = 0`.
-  
-  ```bluespec "definitions" +=
-    if (has_padding(inner, Ics23ProofSpec.min_prefix_length, Ics23ProofSpec.max_prefix_length, Ics23ProofSpec.child_size)) {
-      // the node turns left
-      (0, true)
-    }
-  ```
-
-- In the second iteration, `get_padding()` will be called with `branch = 1`, which will result in `prefix = 32` and `suffix = 0`. Since `spec.min_prefix_length == spec.max_prefix_length = 1`, output of `get_padding()` will be:
-
-  ```rust
-  Padding{
-    min_prefix: 32 + 1,
-    max_prefix: 32 + 1,
-    suffix: 0
-  }
-  ```
-
-  After getting `padding`, algorithm calls `has_padding` with mentioned value of padding. This part is emulated in Quint in the following way. First part of the tuple (`1`) means that algorithm ended up in `branch = 1`.
-  
-  ```bluespec "definitions" +=
-    else if (has_padding(inner, Ics23ProofSpec.child_size + Ics23ProofSpec.min_prefix_length,
-                          Ics23ProofSpec.child_size + Ics23ProofSpec.max_prefix_length, 0)) {
-      // the node turns right
-      (1, true)
-    }
-  ```
-
-- If neither `if`s did not return true, algoritghm ends up in _catch-all_ `else` statement and returns `(0, false)`.
-
-  ```bluespec "definitions" +=
-    else {
-      // error
-      (0, false)
-    }
-  ```
-<!---
-```bluespec "definitions" +=
-}
-```
---->
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
@@ -850,7 +767,7 @@ fn left_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Resu
 ```
 
 ```bluespec "definitions" +=
-def left_branches_are_empty(inner: InnerOp): bool = and {
+def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
 ```
 
 Firstly, we get order from padding, and then we check if there is and index found and if it is not `0`. This corresponds to the following Rust code:
@@ -865,42 +782,64 @@ if left_branches == 0 {
 ```
 
 ```bluespec "definitions" +=
-  // the case of leftBranches == 0 returns false
-  val order = order_from_padding(inner)
-  order._2 and order._1 != 0,
+  pure val idx = order_from_padding(spec, op)
+  pure val left_branches = idx.unwrap()
+  if (left_branches == 0) {
+    false
+  }
 ```
 
-The case of `leftBranches == 0` returns false, and the remaining case is `leftBranches == 1`. Then we check if length of prefix is larger or equal to `Ics23ProofSpec.child_size`. This corresponds to the following Rust code. `checked_sub` function will return Some(n) if `op.prefix.len() >= left_branches * child_size`. Since we assume that `leftBranches == 1`, we reduced `left_branches * child_size` to `child_size` in our specification.
+If `left_branches != 0`, then we can continue:
 
 ```rust
-let child_size = spec.child_size as usize;
-// compare prefix with the expected number of empty branches
-let actual_prefix = match op.prefix.len().checked_sub(left_branches * child_size) {
-    Some(n) => n,
-    _ => return Ok(false),
-};
-```
-<!---
-```bluespec "definitions" +=
-  // the remaining case is leftBranches == 1, see order_from_padding
-  // actualPrefix = len(inner.prefix) - 32
-```
---->
-```bluespec "definitions" +=
-  termLen(inner.prefix) >= Ics23ProofSpec.child_size,
+  let child_size = spec.child_size as usize;
+  // compare prefix with the expected number of empty branches
+  let actual_prefix = match op.prefix.len().checked_sub(left_branches * child_size) {
+      Some(n) => n,
+      _ => return Ok(false),
+  };
+  for i in 0..left_branches {
+      let idx = spec.child_order.iter().find(|&&x| x == i as i32).unwrap();
+      let idx = *idx as usize;
+      let from = actual_prefix + idx * child_size;
+      if spec.empty_child != op.prefix[from..from + child_size] {
+          return Ok(false);
+      }
+  }
+  Ok(true)
 ```
 
-After comparing length of `inner.prefix` and `Ics23ProofSpec.child_size`, we create variable `fromIndex` which corresponds to `actual_prefix` in Rust implementation. Then we slice the `inner.prefix` from `fromIndex` to `fromIndex + Ics23ProofSpec.child_size`, and compare it to `Ics23ProofSpec.empty_child`.
+We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
 
-```bluespec "definitions" +=
-  val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.child_size
-  termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.child_size) == Ics23ProofSpec.empty_child
-```
-<!---
-```bluespec "definitions" +=
+```bluespec
+pure def checked_sub(a: int, b: int): Option[int] = {
+  if (b > a) {
+    None
+  } else {
+    Some(a - b)
+  }
 }
 ```
---->
+
+Because Quint does not support early return, we had to `match` the outcome of `checked_sub` function.
+
+```bluespec "definitions" +=
+  else {
+    pure val child_size = spec.child_size
+    match op.prefix.termLen().checked_sub(left_branches * child_size) {
+      | Some(actual_prefix) => {
+          0.to(left_branches).forall(i => {
+            pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
+            val from_index = actual_prefix + idx * child_size
+            spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
+          })
+        }
+      | None => false
+    }
+  }
+}
+```
+
 Here is the full Rust code of `left_branches_are_empty` function.
 
 ```rust
@@ -947,28 +886,20 @@ fn right_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Res
 ```
 
 ```bluespec "definitions" +=
-def right_branches_are_empty(inner: InnerOp): bool = and {
+def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
 ```
 
 Firstly, we get order from padding, and then we check if there is and index found and if it is not `0`. This corresponds to the following Rust code:
 
 ```rust
 let idx = order_from_padding(spec, op)?;
-// count branches to right of this one
-let right_branches = spec.child_order.len() - 1 - idx as usize;
-// compare suffix with the expected number of empty branches
-if right_branches == 0 {
-    return Ok(false);
-}
 ```
 
 ```bluespec "definitions" +=
-  // the case of rightBranches == 1 returns false
-  val order = order_from_padding(inner)
-  order._2 and order._1 != 1,
+  pure val idx = order_from_padding(spec, op)
 ```
 
-The case of `rightBranches == 0` returns false, and the remaining case is `rightBranches == 1`. Then we check if length of prefix is equal to `Ics23ProofSpec.child_size`. After doing so, we check if `inner.suffix == Ics23ProofSpec.empty_child`. This corresponds to the following piece in Rust:
+Since in the event of an error in `order_from_padding()` `right_branches_are_empty()` will terminate, we wrapped outcome in one big `and` that will assure `idx != None`, before unwrapping it.
 
 ```rust
 for i in 0..right_branches {
@@ -982,16 +913,26 @@ for i in 0..right_branches {
 ```
 
 ```bluespec "definitions" +=
-  // the remaining case is rightBranches == 0, see order_from_padding
-  termLen(inner.suffix) == Ics23ProofSpec.child_size,
-  // getPosition(0) returns 0, hence, from == 0
-  inner.suffix == Ics23ProofSpec.empty_child
-```
-<!---
-```bluespec "definitions" +=
+  and {
+    idx != None,
+    // count branches to right of this one
+    pure val right_branches = spec.child_order.length() - 1 - idx.unwrap()
+    // compare suffix with the expected number of empty branches
+    if (right_branches == 0) {
+      false
+    } else if (op.suffix.termLen() != spec.child_size) {
+      false
+    } else {
+      0.to(right_branches).forall(i => {
+        pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
+        val from_index = idx * spec.child_size
+        spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)
+      })
+    }
+  }
 }
 ```
---->
+
 Here is the full `right_branches_are_empty` Rust function:
 
 ```rust
@@ -1020,7 +961,7 @@ fn right_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Res
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
-/// isLeftStep assumes left and right have common parents
+/// is_left_step assumes left and right have common parents
 /// checks if left is exactly one slot to the left of right
 ```
 -->
@@ -1040,22 +981,24 @@ fn is_left_step(
 }
 ```
 
+Again, because of Quint not supporting early returns, we used `and` to assure `left_idx` and `right_idx` will not be `None`.
+
 ```bluespec "definitions" +=
-def isLeftStep(left: InnerOp, right: InnerOp): bool = {
+def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
   // 'left' turns left, and 'right' turns right
-  val lorder = order_from_padding(left)
-  val rorder = order_from_padding(right)
+  val left_idx = order_from_padding(spec, left)
+  val right_idx = order_from_padding(spec, right)
   and {
-    lorder._2,
-    rorder._2,
-    rorder._1 == lorder._1 + 1
+    left_idx != None,
+    right_idx != None,
+    left_idx.unwrap() + 1 == right_idx.unwrap()
   }
 }
 ```
 <!-- Empty line, to be tangled but not rendered
 ```bluespec "definitions" +=
 
-/// IsLeftNeighbor returns true if `right` is the next possible path
+/// is_left_neighbor returns true if `right` is the next possible path
 /// right of `left`
 ///
 /// Find the common suffix from the Left.Path and Right.Path and remove it.
@@ -1070,7 +1013,7 @@ def isLeftStep(left: InnerOp, right: InnerOp): bool = {
 `is_left_neighbor` function returns true if `right` is the next possible path right of `left`. This function emulates [`ensure_left_neighbor`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L247) Rust function.
 
 ```bluespec "definitions" +=
-def is_left_neighbor(lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
+def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
   // count common tail (from end, near root)
   // cut the left and right paths
   lpath.indices().exists(li =>
@@ -1130,7 +1073,7 @@ Since we have wrapped all checks in one _big_ `and`, we can just call `isLeftSte
 ```
 
 ```bluespec "extensionLeftNeighbor" +=
-isLeftStep(lpath[li], rpath[ri]),
+is_left_step(spec, lpath[li], rpath[ri]),
 ```
 
 <!--- 
@@ -1147,8 +1090,8 @@ ensure_left_most(spec, &mut_right)?;
 ```
 
 ```bluespec "extensionLeftNeighbor" +=
-is_right_most(lpath.slice(0, li)),
-is_left_most(rpath.slice(0, ri)),
+is_right_most(spec, lpath.slice(0, li)),
+is_left_most(spec, rpath.slice(0, ri)),
 ```
 <!--- 
 ```bluespec "definitions" +=

@@ -98,6 +98,7 @@ module grug_ics23 {
       is_left_neighbor(spec, np.left.unwrap().path, np.right.unwrap().path)
     }
   }
+
   pure def get_padding(spec: InnerSpec, branch: int): Option[Padding] = {
     match spec.child_order.findFirst(x => x == branch) {
       | Some(idx) => {
@@ -116,8 +117,6 @@ module grug_ics23 {
   /// is_left_most returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
   def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
-    // Specialize to Grug JMT
-    // Calls getPadding(0) => idx = 0, prefix = 0.
     match get_padding(spec, 0) {
       | Some(pad) => {
         path.indices().forall(i =>
@@ -137,10 +136,6 @@ module grug_ics23 {
   /// is_right_most returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
   def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
-    // Specialize to Grug JMT
-    // Calls getPadding(1) => minPrefix, maxPrefix,
-    //   suffix = child_size + min_prefix_length, child_size + max_prefix_length, 0
-
     pure val idx = spec.child_order.length() - 1
     match get_padding(spec, idx) {
       | Some(pad) => {
@@ -172,13 +167,8 @@ module grug_ics23 {
   /// This will look at the proof and determine which order it is.
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
   def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
-    // Specialize orderFromPadding to Grug JMT:
-    // ChildOrder = [ 0, 1 ]
-    // branch = 0: minp, maxp, suffix = min_prefix_length, max_prefix_length, child_size
-    // branch = 1: minp, maxp, suffix =
-    //             child_size + min_prefix_length, child_size + max_prefix_length, 0
     pure val len = spec.child_order.length()
-    range(0, len).findFirst2(branch => {
+    range(0, len).find_first(branch => {
       match get_padding(spec, branch) {
         | Some(padding) => has_padding(op, padding)
         | None => false // This should actually early return but this is impossible for our InnerSpec
@@ -194,14 +184,14 @@ module grug_ics23 {
     pure val left_branches = idx.unwrap()
     if (left_branches == 0) {
       false
-    } else {
+    }
+    else {
       pure val child_size = spec.child_size
       match op.prefix.termLen().checked_sub(left_branches * child_size) {
         | Some(actual_prefix) => {
-            range(0,left_branches).toSet().forall(i => {
+            0.to(left_branches).forall(i => {
               pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
               val from_index = actual_prefix + idx * child_size
-              // val from_index = actual_prefix //+ idx * child_size
               spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
             })
           }
@@ -210,7 +200,10 @@ module grug_ics23 {
     }
   }
 
-  pure def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
+  /// right_branches_are_empty returns true if the padding bytes correspond
+  /// to all empty siblings on the right side of a branch,
+  /// i.e. it's a valid placeholder on a rightmost path
+  def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
     pure val idx = order_from_padding(spec, op)
     and {
       idx != None,
@@ -222,17 +215,16 @@ module grug_ics23 {
       } else if (op.suffix.termLen() != spec.child_size) {
         false
       } else {
-        range(0, right_branches).toSet().forall(i => {
+        0.to(right_branches).forall(i => {
           pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
           val from_index = idx * spec.child_size
-          // spec.empty_child == op.suffix
           spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)
         })
       }
     }
   }
 
-  /// isLeftStep assumes left and right have common parents
+  /// is_left_step assumes left and right have common parents
   /// checks if left is exactly one slot to the left of right
   def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
     // 'left' turns left, and 'right' turns right
@@ -245,7 +237,7 @@ module grug_ics23 {
     }
   }
 
-  /// IsLeftNeighbor returns true if `right` is the next possible path
+  /// is_left_neighbor returns true if `right` is the next possible path
   /// right of `left`
   ///
   /// Find the common suffix from the Left.Path and Right.Path and remove it.
