@@ -64,7 +64,7 @@ module grug_ics23 {
 Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
 
 This specification was inspired by [an existing ICS23 Quint specification](https://github.com/informalsystems/quint/blob/c9f8ca04afc3f9a69d46f8423b5b99e6cff25a3c/examples/cosmos/ics23/ics23.qnt). The original specification was tuned to IAVL, which meant that certain parameters had different values, comparing to Grug JMT.
-Firstly, we opted to create a record Ics23ProofSpecification that will emulate and simplify the following Rust structure:
+Firstly, we opted to create a record `InnerSpec` that will emulate and simplify the following Rust structure:
 
 ```rust
 pub struct InnerSpec {
@@ -128,7 +128,7 @@ pub static ICS23_PROOF_SPEC: LazyLock<ProofSpec> = LazyLock::new(|| ProofSpec {
 });
 ```
 
-As it can be seen, `Ics23ProofSpec.min_prefix_length` and `Ics23ProofSpec.max_prefix_length` have the value `INTERNAL_NODE_HASH_PREFIX.len()` which is `1`. `Ics23ProofSpec.child_size` is `32` because `Hash256::LENGTH` returns `32`, and `Ics23ProofSpec.empty_child` is `Hash256_ZERO` to correspond to `Hash256::ZERO.to_vec()`.
+As it can be seen, `InnerSpec.min_prefix_length` and `InnerSpec.max_prefix_length` have the value `INTERNAL_NODE_HASH_PREFIX.len()` which is `1`. `InnerSpec.child_order` is `[0,1]`,`InnerSpec.child_size` is `32` because `Hash256::LENGTH` returns `32`, and `InnerSpec.empty_child` is `Hash256_ZERO` to correspond to `Hash256::ZERO.to_vec()`.
 
 ```bluespec "definitions" +=
 pure val ics23::InnerSpec: InnerSpec = {
@@ -166,9 +166,9 @@ We defined `Padding` as it was defined in Rust:
 
 ```rust
 struct Padding {
-    min_prefix: usize,
-    max_prefix: usize,
-    suffix: usize,
+  min_prefix: usize,
+  max_prefix: usize,
+  suffix: usize,
 }
 ```
 
@@ -192,7 +192,7 @@ type Padding = {
 
 ## Verifying Membership Proof
 
-`verifyMembership` returns true iff proof is an ExistenceProof for the given key and value AND calculating the root for the ExistenceProof matches the provided CommitmentRoot.
+`verifyMembership` returns true iff proof is an `ExistenceProof` for the given `key` and `value` AND calculating the root for the `ExistenceProof` matches the provided `CommitmentRoot`.
 Our `verifyMembership` function emulates [`verify_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/api.rs#L16-L42) Rust function.
 
 ```rust
@@ -225,7 +225,7 @@ pub fn verify_membership<H: HostFunctionsProvider>(
 }
 ```
 
-We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
+We did not specify decompressing and `CommitmentProof_Batches` and we are just focusing on verifying existence.
 
 ```bluespec "definitions" +=
 def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
@@ -369,14 +369,14 @@ pub fn apply_inner<H: HostFunctionsProvider>(inner: &InnerOp, child: &[u8]) -> R
 
 /// VerifyNonMembership returns true iff
 /// proof is (contains) a NonExistenceProof,
-/// both left and right sub-proofs are valid existence proofs (see above) or nil,
-/// left and right proofs are neighbors (or left/right most if one is nil),
+/// both left and right sub-proofs are valid existence proofs (see above) or None,
+/// left and right proofs are neighbors (or left/right most if one is None),
 /// provided key is between the keys of the two proofs
 ```
 -->
 ## Verifying NonMembership proof
 
-`verifyNonMembership` returns true iff proof is a NonExistenceProof, both left and right sub-proofs are valid existence proofs or nil, left and right proofs are neighbors (or left/right most if one is nil), provided key is between the keys of the two proofs. We did not specify decompressing and CommitmentProof_Batches and we are just focusing on verifying existence.
+`verifyNonMembership` returns true iff proof is a `NonExistenceProof`, both left and right sub-proofs are valid existence proofs or None, left and right proofs are neighbors (or left/right most if one is None), provided key is between the keys of the two proofs. We did not specify decompressing and `CommitmentProof_Batches` and we are just focusing on verifying existence.
 The function `verifyNonMembership` emulates [`verify_non_membership`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L34-L79) Rust function.
 
 ```rust
@@ -392,7 +392,7 @@ pub fn verify_non_existence<H: HostFunctionsProvider>(
 def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = and {
 ```
 
-First we check if both `np.left == np.right == None`. This is our way of emulating the following part of the Rust code. This way we are assured that either `np.left` or `np.right` will have some value, and later when we check if `np.left == None`, we are certain that `np.right != None`, and vice versa.
+First, we check if both `np.left == np.right == None`. This is our way of emulating the following part of the Rust code. This way we are assured that either `np.left` or `np.right` will have some value, and later when we check if `np.left == None`, we are certain that `np.right != None`, and vice versa.
 
 ```rust
   if let Some(inner) = &spec.inner_spec {
@@ -472,7 +472,7 @@ Since Quint's matching is not as powerful as Rust's, we had to find a work-aroun
 }
 ```
 
-Here is the full `verify_non_existence` Rust implementation.
+Here is the full `verify_non_existence()` Rust implementation.
 
 ```rust
 pub fn verify_non_existence<H: HostFunctionsProvider>(
@@ -573,9 +573,9 @@ Based on the `branch` value, which will be either `0` or `1`.
   
   ```bluespec
   {
-    min_prefix: spec.min_prefix_length,
-    max_prefix: spec.max_prefix_length,
-    suffix: spec.child_size,
+    min_prefix: spec.min_prefix_length,   // 1
+    max_prefix: spec.max_prefix_length,   // 1
+    suffix: spec.child_size,              // 32
   }
   ```
 
@@ -583,8 +583,8 @@ Based on the `branch` value, which will be either `0` or `1`.
   
   ```bluepsec
   {
-    min_prefix: spec.min_prefix_length + spec.child_size,
-    max_prefix: spec.max_prefix_length + spec.child_size,
+    min_prefix: spec.min_prefix_length + spec.child_size,   // 1 + 32 = 33
+    max_prefix: spec.max_prefix_length + spec.child_size,   // 1 + 32 = 33
     suffix: 0,
   }
   ```
@@ -696,7 +696,7 @@ fn has_padding(op: &ics23::InnerOp, pad: &Padding) -> bool {
 }
 ```
 
-For getting the length of prefix and suffix we are using `termLen` function, which is defined in [hashes.qnt](./hashes.qnt)
+For getting the length of `prefix` and `suffix` we are using `termLen()` function, which is defined in [hashes.qnt](./hashes.qnt)
 
 ```bluespec "definitions" +=
 def has_padding(op: InnerOp, pad: Padding): bool = and {
@@ -718,7 +718,7 @@ def has_padding(op: InnerOp, pad: Padding): bool = and {
 -->
 ## Order from padding
 
-`order_from_padding` Quint function emulates [`order_from_padding`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L282-L291) Rust function. This function will take the proof and determine which order it is, so we can see if it is branch 0, 1 to determine neighbors.
+`order_from_padding` Quint function emulates [`order_from_padding`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L282-L291) Rust function. This function will take the proof and determine which order it is, so we can see if it is `branch` `0`, `1` to determine neighbors.
 
 ```rust
 fn order_from_padding(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<i32> {
@@ -734,7 +734,7 @@ fn order_from_padding(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<i3
 ```
 
 We are using `find_first()` to simulate early return `return Ok(branch)` in Rust implementation. It will return `branch` for which `has_padding()`, called with parameter `padding` gotten for said `branch`, returns `true`.
-Since we know that `spec.child_order.length() == 2`, algorithm will never _not_ return padding when called `get_padding()`.
+Since we know that `spec.child_order.length() == 2`, algorithm will never _**not**_ return padding when called `get_padding()`.
 
 ```bluespec "definitions" +=
 def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
@@ -758,8 +758,7 @@ def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
 -->
 ## Left Branches Empty
 
-`left_branches_are_empty` Quint function returns true if the padding bytes correspond to all empty siblings on the left side of a branch, ie. it's a valid placeholder on a leftmost path.
-It emulates [`left_branches_are_empty`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L321-L343) Rust function.
+`left_branches_are_empty` Quint function returns true if the padding bytes correspond to all empty siblings on the left side of a branch, ie. it's a valid placeholder on a leftmost path. It emulates [`left_branches_are_empty`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L321-L343) Rust function.
 The signature of Rust and Quint functions:
 
 ```rust
@@ -809,18 +808,6 @@ If `left_branches != 0`, then we can continue:
   Ok(true)
 ```
 
-We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
-
-```bluespec
-pure def checked_sub(a: int, b: int): Option[int] = {
-  if (b > a) {
-    None
-  } else {
-    Some(a - b)
-  }
-}
-```
-
 Because Quint does not support early return, we had to `match` the outcome of `checked_sub` function.
 
 ```bluespec "definitions" +=
@@ -840,7 +827,19 @@ Because Quint does not support early return, we had to `match` the outcome of `c
 }
 ```
 
-Here is the full Rust code of `left_branches_are_empty` function.
+We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
+
+```bluespec
+pure def checked_sub(a: int, b: int): Option[int] = {
+  if (b > a) {
+    None
+  } else {
+    Some(a - b)
+  }
+}
+```
+
+Here is the full Rust code of `left_branches_are_empty()` function.
 
 ```rust
 fn left_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<bool> {
@@ -877,8 +876,7 @@ fn left_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Resu
 -->
 ## Right Branches Empty
 
-`right_branches_are_empty` Quint function returns true if the padding bytes correspond to all empty siblings on the right side of a branch, i.e. it's a valid placeholder on a rightmost path.
-It emulates [`right_branches_are_empty`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L345-L367) Rust function.
+`right_branches_are_empty` Quint function returns true if the padding bytes correspond to all empty siblings on the right side of a branch, i.e. it's a valid placeholder on a rightmost path. It emulates [`right_branches_are_empty`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L345-L367) Rust function.
 The signature of Rust and Quint functions:
 
 ```rust
@@ -892,7 +890,7 @@ def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
 Firstly, we get order from padding, and then we check if there is and index found and if it is not `0`. This corresponds to the following Rust code:
 
 ```rust
-let idx = order_from_padding(spec, op)?;
+  let idx = order_from_padding(spec, op)?;
 ```
 
 ```bluespec "definitions" +=
@@ -933,7 +931,7 @@ for i in 0..right_branches {
 }
 ```
 
-Here is the full `right_branches_are_empty` Rust function:
+Here is the full `right_branches_are_empty()` Rust function:
 
 ```rust
 fn right_branches_are_empty(spec: &ics23::InnerSpec, op: &ics23::InnerOp) -> Result<bool> {
@@ -981,7 +979,7 @@ fn is_left_step(
 }
 ```
 
-Again, because of Quint not supporting early returns, we used `and` to assure `left_idx` and `right_idx` will not be `None`.
+Again, because Quint does not support early returns, we used `and` to assure `left_idx` and `right_idx` will not be `None`.
 
 ```bluespec "definitions" +=
 def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
@@ -1064,7 +1062,7 @@ Now topleft and topright are the first divergent nodes, and algorithm makes sure
 - the left one stores the hash of the right one, whereas
 - the right one stores the hash of the left one.
 
-Since we have wrapped all checks in one _big_ `and`, we can just call `isLeftStep` which will emualte the following Rust code:
+Since we have wrapped all checks in one _big_ `and`, we can just call `is_left_step` which will emualte the following Rust code:
 
 ```rust
   if !is_left_step(spec, &top_left, &top_right)? {
@@ -1100,7 +1098,7 @@ is_left_most(spec, rpath.slice(0, ri)),
 }
 ```
 --->
-Here is the full Rust implementation of `ensure_left_neighbor` Rust function.
+Here is the full Rust implementation of `ensure_left_neighbor()` Rust function.
 
 ```rust
 fn ensure_left_neighbor(
