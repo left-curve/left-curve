@@ -1,6 +1,6 @@
 # Invariants
 
-This document describes invariants of grug's jellyfish merkle tree manipulation. The snippets in here get tangled into a Quint file for verification.
+This part of the document describes invariants of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
 <!--
 ```bluespec apply_state_machine.qnt +=
@@ -708,3 +708,111 @@ This inserts a line break that is not rendered in the markdown
 }
 ```
 -->
+
+# Tests
+
+This part of the document describes relevant tests for tree manipulation and ICS23 proofs of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint files for verification.
+
+We defined two runs that are supposed to verify the functional equivalence of [`apply_fancy`](./apply_fancy.qnt) and [`apply_simple`](./apply_simple.qnt) algorithms:
+
+- [`simpleVsFancyTest`](#simple-vs-fancy-test)
+- [`simpleVsFancyMultipleRepsTest`](#simple-vs-fancy-multiple-reps-test)
+
+<!--- 
+```bluespec test/tree_test.qnt +=
+// -*- mode: Bluespec; -*-
+
+module tree_test {
+  import tree.* from "../tree"
+  import node.* from "../node"
+  import utils.* from "../utils"
+  import basicSpells.* from "../spells/basicSpells"
+  import apply_state_machine.* from "../apply_state_machine"
+  import apply_fancy as fancy from "../apply_fancy"
+  import apply_simple as simple from "../apply_simple"
+
+  <<<tests>>>
+}
+```
+--->
+
+## Simple Vs Fancy Test
+
+Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after one batch.
+
+First, we create an empty tree.
+
+```bluespec "tests" +=
+run simpleVsFancyTest =
+  pure val empty_tree = { nodes: Map(), orphans: Set() }
+```
+
+Then we create a batch of randomly picked operations to apply on both trees.
+
+```bluespec "tests" +=
+  nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+  pure val ops = kms_with_value.to_operations()
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+We create `reference` tree using `apply_simple` algorithm, and `result` tree using `apply_fancy`.
+
+```bluespec "tests" +=
+  pure val reference = simple::apply(empty_tree, 0, 1, ops)
+  pure val result = fancy::apply(empty_tree, 0, 1, ops)
+```
+
+Then, we assert their equivalence.
+
+```bluespec "tests" +=
+  assert(reference == result)
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+
+## Simple Vs Fancy Multiple Reps Test
+
+Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after 3 batches. This test utilizes algready existing state machine.
+First we call `action init`.
+
+```bluespec "tests" +=
+run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
+```
+
+After that, we repeat the following set of operations three times First we pick randomly a set of operations that will be in a batch.
+
+```bluespec "tests" +=
+  nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+  pure val ops = kms_with_value.to_operations()
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+We create `reference` tree using `apply_simple` algorithm, and `result` tree using `apply_fancy`. We are using state variable `version` to indicate which `version` are we on currently. We created `failure = reference != result` variable to know if `reference` and `result` are not the same.
+
+```bluespec "tests" +=
+  val reference = simple::apply(tree, version - 1, version, ops)
+  val result = fancy::apply(tree, version - 1, version, ops)
+  val failure = reference != result
+```
+
+Then we update the state using operator `all`, which means that everyhing wrapped by it has to be `true` in order to execute it. If there has been a failure, `assert(q::debug("simple", reference) == q::debug("fancy", result))` will return false, and the whole run would fail.
+
+```bluespec "tests" +=
+  all {
+    tree' = result,
+    version' = version + 1,
+    ops_history' = if (failure) q::debug("ops_history", ops_history.append(ops)) else ops_history.append(ops),
+    smallest_unpruned_version' = smallest_unpruned_version,
+    if (failure) assert(q::debug("simple", reference) == q::debug("fancy", result)) else true,
+  }
+}))
+```
