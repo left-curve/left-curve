@@ -1,6 +1,6 @@
 # Simulations and Model Checking
 
-In order to obtain confidence that the model is correct, in respec to the invariants and tests described in [invariants.md](./invariants.md), we run random simulations (on bigger scopes) and model checking (on smaller scopes). We used the Quint simulator for simulations, which runs a kind of Depth First Search (DFS) on the state space with a max-depth (`--max-steps`) defined by us; and the TLC model checker for model checking, which runs a kind of Breadth First Search (BFS) on the complete state space, which requires that we refine our model to a state-space small enough for this to run in the time we had available.
+In order to obtain confidence that the model is correct, in respect to the invariants and tests described in [invariants.md](./invariants.md), we run random simulations (on bigger scopes) and model checking (on smaller scopes). We used the **Quint simulator** for simulations, which runs a kind of Depth First Search (DFS) on the state space with a max-depth (`--max-steps`) defined by us; and the **TLC model checker** for model checking, which runs a kind of Breadth First Search (BFS) on the complete state space, which requires that we refine our model to a state-space small enough for this to run in the time we had available.
 
 ## Simulations
 
@@ -8,28 +8,28 @@ Simulations were the main tool we used while iterating over the model. It helped
 
 Once the model and invariants are stable and we don't get violations from the simulator on a few minutes, we can setup longer runs, which serve to increase our confidence on the model. The first one was run once our model and invariants for tree manipulation were stable, and the other ones were done after the model and invariants for proofs and proof verification were stable.
 
-### Simulating tree manipulation
+### **Simulating tree manipulation**
 
-At the point in time where we finished tree manipulation, we ran a 16-hour simulation with 12 parallel instances of the simulator, each with `max-steps=3`, and 100k samples per command. This gave us a total of 1.2M samples. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 6.
+At the point in time where we finished tree manipulation, we ran a **16-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **100k samples per command**. This gave us a total of **1.2M samples**. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 6.
 
-### Simulating proofs and proof verification
+### **Simulating proofs and proof verification**
 
-The invariants for producing and verifying proofs are quite heavy performace-wise, as they check lots of combinations of keys to generate proofs for and trees and values to check the proof against. This means that the total number of samples we can check is much lower in relation to what we check for tree manipulation, but the number of checks per sample is very high.
+The invariants for producing and verifying proofs are quite heavy performance-wise, as they check lots of combinations of keys to generate proofs for and trees and values to check the proof against. This means that the total number of samples we can check is much lower in relation to what we check for tree manipulation, but the number of checks per sample is very high.
 
-#### First simulation
+#### **First simulation**
 
-We ran a 17-hour simulation with 12 parallel instances of the simulator, each with `max-steps=3`, and 15k samples per command. This gave us a total of 180k samples. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 4, and used the prunning state machine. In this experiment, we only checked the proof-related invariants (completeness, soundness and the `verifyMembershipInv`). This was run at [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4).
+We ran a **17-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **15k samples per command**. This gave us a total of **180k samples**. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 4, and used the prunning state machine. In this experiment, we only checked the proof-related invariants (completeness, soundness and the `verifyMembershipInv`). This was run at [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4).
 
-#### Second simulation
+#### **Second simulation**
 
 Before running the next experiment, we want to try to improve two things:
-1. Performance of the invariants
-2. Distribution of batches
+1. **Performance of the invariants**
+2. **Distribution of batches**
 
-##### Performance of the invariants
+##### **Performance of the invariants**
 
 There were some straightforward improvements that were made, but made a small compromise in favor of enabling more verification. For many invariants, we had a quantifier over all active (unprunned) tree versions. However, invariants are checked of every single state, which means that, for three steps, we had something like this:
-1. Check invariant for state 0, which has an empty tree 
+1. Check invariant for state 0, which has an empty tree
 2. Take a step and check invariant for state 1, which has one tree version
 3. Take a step and check invariant for state 2, which has two different tree versions
 4. Take a step and check invariant for state 3, which has three different tree versions
@@ -40,40 +40,40 @@ This means that the tree at version 1 was checked three times at (2), (3) and (4
 
 We went with this assumption and remove the quantification over active versions from invariants that had it.
 
-##### Distribution of batches
+##### **Distribution of batches**
 
 The strategy used to generate non-deterministic batches was much more likely to generate medium-sized batches that batches with no operation, a single operation or all possible operations. At this point, we had use two different batch generation strategies:
 1. Produce a powerset over the set of operations and pick one.
   - In this powerset, there are much more big sets then small sets, which means that we are more likely to pick a big set.
 2. For each `key_hash`, non-deterministically pick if we want to include it in the batch or not.
-  - This has a central tendency issue, where we are more likely to pick a batch with half of the operations than with no operations or all operations. 
+  - This has a central tendency issue, where we are more likely to pick a batch with half of the operations than with no operations or all operations.
 
 What we believed would be ideal is that chances of batches of different sizes are all the same. So we changed this to first non-deterministically pick the size of the batch, and then non-deterministically pick the operations to include in the batch. This way, we have a uniform distribution of batch sizes.
 
 We also removed the limit of 5 operations per batch, and reduced the set from which value hashes are picked from to have only two potential values, increasing the chances of collision (having an insert operation for a key that was inserted with the same value before).
 
-##### Simulation itself
+##### **Simulation itself**
 
-We ran an 8-hour simulation with 12 parallel instances of the simulator, each with `max-steps=3`, and 20k samples per command. This gave us a total of 240k samples. We used `key_hash`es of length 4. In this experiment, we checked all invariants, including the proof-related ones, except for prunning, as we used the regular state machine for performace reasons. This was run at [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac).
+We ran an **8-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **20k samples per command**. This gave us a total of **240k samples**. We used `key_hash`es of length 4. In this experiment, we checked all invariants, including the proof-related ones, except for prunning, as we used the regular state machine for performance reasons. This was run at [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac).
 
-### Testing
+### **Testing**
 
 Another way to use the Quint random simulator is to run tests, which work like property-based testing. The tests can have non-deterministic values, so we can run many samples to get more confidence that the property stated by the tests holds. We focus the long-running testing on the more interesting ones:
 
-#### Simple apply vs Fancy apply 
+#### **Simple apply vs Fancy apply**
 
 - TODO
 <!-- seq 10 | parallel quint test test/tree_test.qnt --match=simpleVsFancyTest --seed=111{} --max-samples=1000000 -->
 
-#### Proof verification across different trees
+#### **Proof verification across different trees**
 
 - TODO
 
-## Model Checking
+## **Model Checking**
 
 We were able to run the TLC model checker for two different setups. We were not able to run Apalache, as it quickly ran out of memory before the model checking started (to be investigated). In order to run TLC, we transpile Quint to TLA+ and then run the model checker on the TLA+ model.
 
-### Generating the TLA+ model
+### **Generating the TLA+ model**
 
 There are still some integration issues between Quint and Apalache, which is used to generate TLA+ out of Quint. We had to circunvent this, introducing non-dirsruptive changes:
 - Some new Quint builtins (`getOnlyElement` and `allListsUpTo`) are not supported for translation yet, so we replaced those with a non-builtin version. Same for `foldr` which we adapted to use `foldl` which is supported.
@@ -82,15 +82,15 @@ There are still some integration issues between Quint and Apalache, which is use
 
 The generated TLA+ model is available on the model-checking branch at [apply_state_machine.tla](https://github.com/informalsystems/left-curve-jmt/blob/gabriela/model-checking/quint/apply_state_machine.tla)
 
-### Initial states for model checking
+### **Initial states for model checking**
 
 With the goal of optimizing the state space as much as possible for model checking, we define a special case for the initial state. Instead of always starting with an empty tree and applying any operation, we consider a symmetry property of trees and operations, where any scenario arising from applying two sets of operations of value hashes `[1]` or `[2]` on top of an empty tree should be reproducible by applying first a set of operations with only value hash `[1]` and then the second set with `[1]` or `[2]`. This reduces the number of operation combinations to consider, while maintaining the same coverage.
 
-Therefore, we change the `init` definition to start with the result of applying a non-deterministic set of operations with value hash `[1]` on top of an empty tree. 
+Therefore, we change the `init` definition to start with the result of applying a non-deterministic set of operations with value hash `[1]` on top of an empty tree.
 
 This also means that performing a single step in this state machine is similar to performing two steps in the original state machine that always started with an empty tree, as we are now also applying one batch of operations on the initial state.
 
-### Setup A
+### **Setup A**
 
 - The key hash length is 3
 - The state machine performs a single step
@@ -106,22 +106,22 @@ The average outdegree of the complete state graph is 0 (minimum is 0, the maximu
 Finished in 01h 11min at (2024-11-28 18:30:44)
 ```
 
-- Running this with 2 steps instead of 1 would increase the state space to 1 099 528 405 248 states 
-- Running this with key hash length of 4 instead of 3 would increase the state space to 281 474 976 710 656 states
+- Running this with 2 steps instead of 1 would increase the state space to **1 099 528 405 248 states**
+- Running this with key hash length of 4 instead of 3 would increase the state space to **281 474 976 710 656 states**
 
 An inductive interpretation of this result is:
-- Base case: All possible trees with `value_hash` being `[1]` and version being `1`.
-- Induction step: All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `1` to version `2`.
+- **Base case:** All possible trees with `value_hash` being `[1]` and version being `1`.
+- **Induction step:** All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `1` to version `2`.
 
 This check is a valid inductive proof for the real tree manipulation algorithm if and only if the following assumptions hold:
 - Any violation for key hashes of length 256 can be reproduced with key hashes of length 3
-- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`]) 
+- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`])
 - Any violation that happens in multiple steps/versions can be reproduced in a single step/version change (specifically from version `1` to version `2`). See Setup B for more coverage on this.
 - Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
 
 TODO: Update output with the most recent version and for all invariants. This output was for `densityInv only`
 
-### Setup B
+### **Setup B**
 
 - The key hash length is 2
 - The state machine performs 2 steps
@@ -133,16 +133,16 @@ TODO: output
 
 TODO: update numbers
 
-- Running this with 3 steps instead of 2 would increase the state space to 268 435 456 states
+- Running this with 3 steps instead of 2 would increase the state space to **268 435 456 states**
   - We estimate that this will take about a week to run and use ~200GB of disk space
-- Running this with 4 steps instead of 3 would increase the state space to 68 719 476 736 states
+- Running this with 4 steps instead of 3 would increase the state space to **68 719 476 736 states**
 
 An inductive interpretation of this result is:
-- Base case: All possible trees that can be generated using all possible combinations of operations with `value_hash` being `[1]` or `[2]`, and versions being 1 and 2.
-- Induction step: All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `2` to version `3`.
+- **Base case:** All possible trees that can be generated using all possible combinations of operations with `value_hash` being `[1]` or `[2]`, and versions being 1 and 2.
+- **Induction step:** All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `2` to version `3`.
 
 This check is a valid inductive proof for the real tree manipulation algorithm if and only if the following assumptions hold:
 - Any violation for key hashes of length 256 can be reproduced with key hashes of length 2
-- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`]) 
+- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`])
 - Any violation that happens in multiple steps/versions can be reproduced with 2 steps/versions
 - Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
