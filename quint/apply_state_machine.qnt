@@ -363,7 +363,7 @@ module apply_state_machine {
     })
   }
 
-  val allInvariants = all {
+  val treeInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
     if (noLeafInPrefixesInv) true else q::debug("noLeafInPrefixesInv", false),
@@ -376,10 +376,17 @@ module apply_state_machine {
     if (goodTreeMapInv) true else q::debug("goodTreeMapInv", false),
     if (bijectiveTreeMapInv) true else q::debug("bijectiveTreeMapInv", false),
     if (operationSuccessInv) true else q::debug("operationSuccessInv", false),
+  }
+
+  val proofInvariants = all {
     if (membershipCompletenessInv) true else q::debug("membershipCompletenessInv", false),
     if (nonMembershipCompletenessInv) true else q::debug("nonMembershipCompletenessInv", false),
     if (membershipSoundnessInv) true else q::debug("membershipSoundnessInv", false),
     if (nonMembershipSoundnessInv) true else q::debug("nonMembershipSoundnessInv", false),
     if (verifyMembershipInv) true else q::debug("verifyMembershipInv", false),
   }
-}
+
+  val allInvariants = all {
+    treeInvariants,
+    proofInvariants,
+  }
