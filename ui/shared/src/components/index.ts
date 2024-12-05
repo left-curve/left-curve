@@ -84,3 +84,4 @@ export { Pig1 } from "./icons/emoji/Pig1";
 export { Pig2 } from "./icons/emoji/Pig2";
 export { Temple } from "./icons/emoji/Temple";
 export { Wizard } from "./icons/emoji/Wizard";
+export { type EmojiName, Emoji } from "./atoms/Emoji";

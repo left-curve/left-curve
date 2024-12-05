@@ -1,4 +1,5 @@
 import type React from "react";
+import { MapExplorer } from "../icons/emoji/Map";
 import {
   Ants,
   Factory1,
@@ -26,7 +27,8 @@ export type EmojiName =
   | "pig-1"
   | "pig-2"
   | "temple"
-  | "wizard";
+  | "wizard"
+  | "map";
 
 interface Props {
   name: EmojiName;
@@ -47,10 +49,14 @@ const emojis = {
   "pig-2": Pig2,
   temple: Temple,
   wizard: Wizard,
+  map: MapExplorer,
 };
 
 export const Emoji: React.FC<Props> = ({ name, ...props }) => {
   const Image = emojis[name as keyof typeof emojis];
+  if (!Image) {
+    return null;
+  }
 
   return <Image {...props} />;
 };

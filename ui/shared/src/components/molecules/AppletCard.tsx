@@ -4,7 +4,7 @@ import type React from "react";
 
 import type { AppletMetadata } from "../../types";
 import { Emoji, type EmojiName } from "../atoms/Emoji";
-import { Ants } from "../icons/emoji/Ants";
+
 interface Props {
   metadata: AppletMetadata;
 }
