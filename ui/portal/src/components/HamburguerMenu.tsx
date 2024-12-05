@@ -34,9 +34,10 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
       <div
         ref={menuRef}
         className={twMerge(
-          "flex flex-col lg:hidden h-10 w-10 z-[60] transition-all fixed right-5 bottom-[1.25rem] duration-300",
+          "flex flex-col lg:hidden h-10 w-10 z-[60] bottom-[1.25rem] transition-all fixed right-5 duration-300",
+          { "bottom-4": isOpen },
           {
-            "bottom-4": isOpen,
+            "bottom-[2.75rem]": window.matchMedia("(display-mode: standalone)").matches && !isOpen,
           },
         )}
       >

@@ -12,11 +12,7 @@ pub const NEXT_ACCOUNT_INDEX: Counter<AccountIndex> = Counter::new("index", 0, 1
 
 pub const DEPOSITS: Map<&Addr, Coins> = Map::new("deposit");
 
-pub const KEYS: Map<Hash160, Key> = Map::new("key");
-
-pub const KEYS_BY_USER: Set<(&Username, Hash160)> = Set::new("key__user");
-
-pub const USERS_BY_KEY: Set<(Hash160, &Username)> = Set::new("user__key");
+pub const KEYS: Map<(&Username, Hash160), Key> = Map::new("key");
 
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 

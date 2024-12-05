@@ -5,7 +5,7 @@ use {
         auth::Key,
     },
     grug::{Addr, Coins, Hash160, Hash256},
-    std::collections::{BTreeMap, BTreeSet},
+    std::collections::BTreeMap,
 };
 
 /// Information about a user. Used in query response.
@@ -21,12 +21,10 @@ pub struct User {
 pub struct InstantiateMsg {
     /// Code hash to be associated with each account type.
     pub code_hashes: BTreeMap<AccountType, Hash256>,
-    /// Keys to set up during genesis.
-    pub keys: BTreeMap<Hash160, Key>,
-    /// Users to set up during genesis.
+    /// Users with associated key to set up during genesis.
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
-    pub users: BTreeMap<Username, Hash160>,
+    pub users: BTreeMap<Username, (Hash160, Key)>,
 }
 
 #[grug::derive(Serde)]
@@ -75,13 +73,13 @@ pub enum QueryMsg {
         start_after: Option<Addr>,
         limit: Option<u32>,
     },
-    /// Query a key by its hash.
+    /// Query a key by its hash associated to a username.
     #[returns(Key)]
-    Key { hash: Hash160 },
-    /// Enumerate all keys and hashes.
-    #[returns(BTreeMap<Hash160, Key>)]
+    Key { hash: Hash160, username: Username },
+    /// Enumerate all keys.
+    #[returns(Vec<QueryKeyResponseItem>)]
     Keys {
-        start_after: Option<Hash160>,
+        start_after: Option<QueryKeyPaginateParam>,
         limit: Option<u32>,
     },
     /// Find all keys associated with a user.
@@ -102,7 +100,17 @@ pub enum QueryMsg {
     /// Query a single user by username.
     #[returns(User)]
     User { username: Username },
-    /// Given a key hash, look up the usernames associated with it.
-    #[returns(BTreeSet<Username>)]
-    UsersByKey { hash: Hash160 },
+}
+
+#[grug::derive(Serde)]
+pub struct QueryKeyPaginateParam {
+    pub username: Username,
+    pub key_hash: Hash160,
+}
+
+#[grug::derive(Serde)]
+pub struct QueryKeyResponseItem {
+    pub username: Username,
+    pub key_hash: Hash160,
+    pub key: Key,
 }

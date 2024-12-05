@@ -41,8 +41,12 @@ export const Header: React.FC = () => {
         </Link>
         <div
           className={twMerge(
-            "xl:col-span-2 z-50 min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-end justify-center gap-2 fixed lg:relative lg:bottom-auto bottom-0 left-0 transition-all p-4 lg:p-0",
+            "xl:col-span-2 z-50 min-w-full lg:min-w-0 flex-1 order-3 lg:order-2 flex items-end justify-center gap-2 fixed lg:relative bottom-0 lg:bottom-auto left-0 transition-all p-4 lg:p-0",
             { "p-0 ": showCommandBar },
+            {
+              "bottom-6":
+                window.matchMedia("(display-mode: standalone)").matches && !showCommandBar,
+            },
           )}
         >
           <CommandBar

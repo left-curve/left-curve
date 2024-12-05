@@ -70,3 +70,4 @@ export { CheckCircleIcon } from "./icons/CheckCircle";
 export { XCircleIcon } from "./icons/XCircle";
 export { CopyCheckIcon } from "./icons/CopyCheck";
 export { ConnectorIcon } from "./icons/Connector";
+export { CrossIcon } from "./icons/Cross";

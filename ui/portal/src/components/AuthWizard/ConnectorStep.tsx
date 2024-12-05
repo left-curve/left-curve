@@ -23,7 +23,7 @@ export const ConnectorStep: React.FC = () => {
         navigate("/");
       } catch (err) {
         console.error(err);
-        setData({ retry: true });
+        setData({ retry: true, username });
         previousStep();
       }
     },

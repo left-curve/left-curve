@@ -12,7 +12,7 @@ use {
 };
 
 // relative to user home directory (~)
-const DEFAULT_APP_DIR: &str = ".grug";
+const DEFAULT_APP_DIR: &str = ".dango";
 
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]

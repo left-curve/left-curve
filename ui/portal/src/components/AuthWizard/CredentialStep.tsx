@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 
 export const CredentialStep: React.FC = () => {
   const { nextStep, setData } = useWizard();
-  const { setError, register, watch, handleSubmit, setValue, formState } = useForm<{
+  const { register, watch, handleSubmit, setValue, formState } = useForm<{
     username: string;
   }>({
     mode: "onChange",
@@ -27,7 +27,7 @@ export const CredentialStep: React.FC = () => {
     refetch,
     data: isUsernameAvailable = null,
     isFetching,
-    isError,
+    error,
   } = useQuery({
     enabled: false,
     queryKey: ["username", username],
@@ -35,10 +35,7 @@ export const CredentialStep: React.FC = () => {
       if (!username) return null;
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
-      if (!isUsernameAvailable) {
-        setError("username", { message: "Username is not available" });
-        throw new Error("Username is not available");
-      }
+      if (!isUsernameAvailable) throw new Error("Username is not available");
       return isUsernameAvailable;
     },
   });
@@ -57,8 +54,10 @@ export const CredentialStep: React.FC = () => {
     nextStep();
   });
 
+  const errorMessage = errors.username?.message || error?.message;
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-col w-full">
+    <form onSubmit={onSubmit} className="flex flex-col w-full gap-4">
       <Input
         {...register("username", {
           onChange: ({ target }) => setValue("username", target.value.toLowerCase()),
@@ -69,21 +68,20 @@ export const CredentialStep: React.FC = () => {
             return true;
           },
         })}
-        classNames={{ description: "text-typography-green-400" }}
         placeholder="Choose an username"
-        description={isUsernameAvailable ? "Username is available" : undefined}
+        isValid={!!isUsernameAvailable}
         endContent={
           isFetching ? (
             <Spinner size="sm" color="white" />
-          ) : isUsernameAvailable === null ? null : isUsernameAvailable ? (
-            <CheckCircleIcon className="stroke-typography-green-400 stroke-2" />
-          ) : (
+          ) : errorMessage ? (
             <XCircleIcon className="stroke-typography-pink-200 stroke-2" />
-          )
+          ) : isUsernameAvailable ? (
+            <CheckCircleIcon className="stroke-typography-green-400 stroke-2" />
+          ) : null
         }
-        error={errors.username?.message}
+        errorMessage={errorMessage}
       />
-      <Button type="submit" fullWidth isLoading={isSubmitting} isDisabled={isError}>
+      <Button type="submit" fullWidth isLoading={isSubmitting} isDisabled={!!errorMessage}>
         Choose username
       </Button>
     </form>

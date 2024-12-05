@@ -1,4 +1,5 @@
 import ReactDOM from "react-dom/client";
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter } from "react-router-dom";
 
 import { AppProvider } from "./AppProvider";
@@ -13,6 +14,7 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <AppProvider>
         <AppRouter />
+        <Toaster position="bottom-center" />
       </AppProvider>
     </BrowserRouter>
   );

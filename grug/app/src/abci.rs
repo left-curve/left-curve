@@ -1,5 +1,5 @@
 use {
-    crate::{App, AppError, AppResult, Db, ProposalPreparer, Vm},
+    crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
         Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, TxOutcome,
@@ -27,12 +27,13 @@ use {
     tower_abci::BoxError,
 };
 
-impl<DB, VM, PP> Service<Request> for App<DB, VM, PP>
+impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
+    ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     type Error = BoxError;
     type Future =
@@ -49,12 +50,13 @@ where
     }
 }
 
-impl<DB, VM, PP> App<DB, VM, PP>
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
+    ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     fn tower_call(&self, req: Request) -> AppResult<Response> {
         match req {
