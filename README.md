@@ -10,7 +10,7 @@ Currently, there is no formal link between the specifications and the Rust imple
       We named that algorithm [`apply_fancy`](./quint/apply_fancy.qnt). We documented its correlation to Rust in [tree_manipulation.md](./quint/tree_manipulation.md) document.
     - Simple implementation
       We implemented another algorithm for tree manipulation. This one is much simpler, therefore named [`apply_simple`](./quint/apply_simple.qnt). This one is useful for efficient test data generation.
-      We tested equivalence of [`apply_fancy`](./quint/apply_fancy.qnt) and [`apply_simple`](./quint/apply_simple.qnt) in [`tree_test.qnt`](./quint/test/tree_test.qnt). Equivalence tests are specified in [`run simpleVsFancyTest`](./quint/test/tree_test.qnt#L13-L22) and [`run simpleVsFancyMultipleRepsTest`](./quint/test/tree_test.qnt#L24-L39).
+      We tested functional equivalence of [`apply_fancy`](./quint/apply_fancy.qnt) and [`apply_simple`](./quint/apply_simple.qnt) in [`tree_test.qnt`](./quint/test/tree_test.qnt). Equivalence tests are specified in [`run simpleVsFancyTest`](./quint/test/tree_test.qnt#L13-L22) and [`run simpleVsFancyMultipleRepsTest`](./quint/test/tree_test.qnt#L24-L39).
   - Data types related to proofs in [`proof_types.md`](./quint/proof_types.md)
   - Generating ICS23 proof in [`proofs.md`](./quint/proofs.md)
   - ICS23 proof verification in [`grug_ics23.md`](./quint/grug_ics23.md)
