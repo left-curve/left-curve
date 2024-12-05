@@ -41,36 +41,30 @@ fn index_block_with_nonblocking_indexer() {
     tracing::warn!("Checking the database");
 
     // ensure block was saved
-    suite
-        .app
-        .indexer()
-        .runtime
-        .clone()
-        .expect("Can't get runtime")
-        .block_on(async {
-            let block = entity::blocks::Entity::find()
-                .one(&suite.app.indexer().context.db)
-                .await
-                .expect("Can't fetch blocks");
-            assert_that!(block).is_some();
-            assert_that!(block.unwrap().block_height).is_equal_to(1);
+    suite.app.indexer().handle.block_on(async {
+        let block = entity::blocks::Entity::find()
+            .one(&suite.app.indexer().context.db)
+            .await
+            .expect("Can't fetch blocks");
+        assert_that!(block).is_some();
+        assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-            let transactions = entity::transactions::Entity::find()
-                .all(&suite.app.indexer().context.db)
-                .await
-                .expect("Can't fetch transactions");
-            assert_that!(transactions).is_not_empty();
+        let transactions = entity::transactions::Entity::find()
+            .all(&suite.app.indexer().context.db)
+            .await
+            .expect("Can't fetch transactions");
+        assert_that!(transactions).is_not_empty();
 
-            let messages = entity::messages::Entity::find()
-                .all(&suite.app.indexer().context.db)
-                .await
-                .expect("Can't fetch messages");
-            assert_that!(messages).is_not_empty();
+        let messages = entity::messages::Entity::find()
+            .all(&suite.app.indexer().context.db)
+            .await
+            .expect("Can't fetch messages");
+        assert_that!(messages).is_not_empty();
 
-            let events = entity::events::Entity::find()
-                .all(&suite.app.indexer().context.db)
-                .await
-                .expect("Can't fetch events");
-            assert_that!(events).is_not_empty();
-        });
+        let events = entity::events::Entity::find()
+            .all(&suite.app.indexer().context.db)
+            .await
+            .expect("Can't fetch events");
+        assert_that!(events).is_not_empty();
+    });
 }

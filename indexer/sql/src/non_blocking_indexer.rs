@@ -12,6 +12,7 @@ use {
         collections::HashMap,
         future::Future,
         io::Write,
+        ops::Deref,
         path::{Path, PathBuf},
         sync::{Arc, Mutex},
         thread::sleep,
@@ -21,27 +22,18 @@ use {
     tokio::runtime::{Builder, Handle, Runtime},
 };
 
+// ------------------------------- IndexerBuilder ------------------------------
+
 pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
-    runtime: Option<Arc<Runtime>>,
-    handle: tokio::runtime::Handle,
+    handle: RuntimeHandler,
     db_url: DB,
     indexer_path: P,
 }
 
 impl Default for IndexerBuilder {
-    fn default() -> IndexerBuilder {
-        let (runtime, handle) = match Handle::try_current() {
-            Ok(handle) => (None, handle),
-            Err(_) => {
-                let runtime = Arc::new(Builder::new_multi_thread().enable_all().build().unwrap());
-                let handle = runtime.handle().clone();
-                (Some(runtime), handle)
-            },
-        };
-
-        IndexerBuilder {
-            runtime,
-            handle,
+    fn default() -> Self {
+        Self {
+            handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
             indexer_path: Undefined::default(),
         }
@@ -54,7 +46,6 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
         URL: ToString,
     {
         IndexerBuilder {
-            runtime: self.runtime,
             handle: self.handle,
             indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
@@ -69,7 +60,6 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
 impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
     pub fn with_tmpdir(self) -> IndexerBuilder<DB, Defined<IndexerPath>> {
         IndexerBuilder {
-            runtime: self.runtime,
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
@@ -78,7 +68,6 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
 
     pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<DB, Defined<IndexerPath>> {
         IndexerBuilder {
-            runtime: self.runtime,
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::Dir(dir)),
             db_url: self.db_url,
@@ -86,64 +75,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum IndexerPath {
-    /// Tempdir is used for test, and will be automatically deleted once out of scope
-    TempDir(Arc<tempfile::TempDir>),
-    /// Directory to store the next block to be indexed
-    Dir(PathBuf),
-}
-
-impl Default for IndexerPath {
-    fn default() -> Self {
-        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
-    }
-}
-
-impl IndexerPath {
-    pub fn path(&self) -> &Path {
-        match self {
-            IndexerPath::TempDir(tmpdir) => tmpdir.path(),
-            IndexerPath::Dir(dir) => dir.as_path(),
-        }
-    }
-}
-
-impl<DB, P> IndexerBuilder<DB, P>
-where
-    DB: MaybeDefined<String>,
-    P: MaybeDefined<IndexerPath>,
-{
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
-        let db = match self.db_url.maybe_into_inner() {
-            Some(url) => block_call(self.runtime.as_ref(), &self.handle, async {
-                Context::connect_db_with_url(&url).await
-            }),
-            None => block_call(self.runtime.as_ref(), &self.handle, async {
-                Context::connect_db().await
-            }),
-        }?;
-
-        let indexer_path = match self.indexer_path.maybe_into_inner() {
-            Some(indexer_path) => indexer_path,
-            None => {
-                let dir = tempfile::tempdir().expect("");
-                IndexerPath::TempDir(Arc::new(dir))
-            },
-        };
-
-        // Make tmp_dir optional
-
-        Ok(NonBlockingIndexer {
-            indexer_path,
-            context: Context { db },
-            handle: self.handle,
-            runtime: self.runtime,
-            blocks: Arc::new(Mutex::new(HashMap::new())),
-            indexing: false,
-        })
-    }
-}
+// ----------------------------- NonBlockingIndexer ----------------------------
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
 /// data to live as long as the spawned task.
@@ -159,79 +91,12 @@ where
 pub struct NonBlockingIndexer {
     indexer_path: IndexerPath,
     pub context: Context,
-    pub runtime: Option<Arc<Runtime>>,
-    pub handle: tokio::runtime::Handle,
+    pub handle: RuntimeHandler,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
-}
-
-/// Saves the block and its transactions in memory
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
-struct BlockToIndex {
-    pub block_info: BlockInfo,
-    pub txs: Vec<(Tx, TxOutcome)>,
-    /// Where the block is temporarily saved on disk.
-    #[borsh(skip)]
-    filename: PathBuf,
-}
-
-impl BlockToIndex {
-    /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save(&self, db: &DatabaseTransaction) -> error::Result<()> {
-        #[cfg(feature = "tracing")]
-        tracing::info!(block_height = self.block_info.height, "Indexing block");
-
-        let mut models = Models::build(&self.block_info)?;
-        for (tx, tx_outcome) in self.txs.iter() {
-            models.push(tx, tx_outcome)?;
-        }
-
-        // TODO: if the process was to crash in the middle and restarted, we could try to
-        // reinsert existing data. We should use `on_conflict()` to avoid this, return the
-        // existing block and change `block_id` when/if we added foreign keys
-        models.block.insert(db).await?;
-
-        entity::transactions::Entity::insert_many(models.transactions)
-            .exec(db)
-            .await?;
-        entity::messages::Entity::insert_many(models.messages)
-            .exec(db)
-            .await?;
-        entity::events::Entity::insert_many(models.events)
-            .exec(db)
-            .await?;
-
-        Ok(())
-    }
-
-    fn delete_tmp_file(&self) -> error::Result<()> {
-        #[cfg(feature = "tracing")]
-        tracing::warn!(path = %self.filename.display(), "Removing block tmp_file");
-
-        if let Err(error) = std::fs::remove_file(&self.filename) {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, error = %error, "Can't remove block tmp_file");
-        }
-        Ok(())
-    }
-
-    fn save_tmp_file(&self) -> error::Result<()> {
-        let Some(directory) = self.filename.parent() else {
-            bail!("Can't detect parent directory");
-        };
-        let mut tmp_filename = NamedTempFile::new_in(directory)?;
-        let encoded_block = self.to_borsh_vec()?;
-        tmp_filename.write_all(&encoded_block)?;
-        tmp_filename.flush()?;
-        tmp_filename.persist(&self.filename)?;
-
-        #[cfg(feature = "tracing")]
-        tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, "Saved tmp_file");
-        Ok(())
-    }
 }
 
 impl NonBlockingIndexer {
@@ -351,9 +216,8 @@ impl Indexer for NonBlockingIndexer {
     where
         S: Storage,
     {
-        block_call(self.runtime.as_ref(), &self.handle, async {
-            self.context.migrate_db().await
-        })?;
+        self.handle
+            .block_on(async { self.context.migrate_db().await })?;
 
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(error) => {
@@ -510,18 +374,185 @@ impl Drop for NonBlockingIndexer {
     }
 }
 
-/// Code in the indexer is running without async context (within Grug) and with an async
-/// context (Dango). This is to ensure it works in both cases.
-/// NOTE: The Tokio runtime *must* be multi-threaded with either:
-/// - #[tokio::main]
-/// - #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-fn block_call<F, R>(runtime: Option<&Arc<Runtime>>, handle: &Handle, closure: F) -> R
+// ------------------------------- RuntimeHandler ------------------------------
+
+/// Wrapper around Tokio runtime to allow running in sync context
+#[derive(Debug)]
+pub struct RuntimeHandler {
+    runtime: Option<Runtime>,
+    handle: Handle,
+}
+
+/// Derive macro is not working because generics.
+impl Default for RuntimeHandler {
+    fn default() -> Self {
+        let (runtime, handle) = match Handle::try_current() {
+            Ok(handle) => (None, handle),
+            Err(_) => {
+                let runtime = Builder::new_multi_thread().enable_all().build().unwrap();
+                let handle = runtime.handle().clone();
+                (Some(runtime), handle)
+            },
+        };
+        Self { runtime, handle }
+    }
+}
+
+impl Deref for RuntimeHandler {
+    type Target = Handle;
+
+    fn deref(&self) -> &Self::Target {
+        &self.handle
+    }
+}
+
+impl RuntimeHandler {
+    /// Runs a future in the Tokio runtime, blocking the current thread until the future is resolved.
+    ///
+    /// This function override [`Handle::block_on`] to allow running in a sync context,
+    /// because [`RuntimeHandler`] implements [`Deref`] to [`Handle`].
+    ///
+    /// Code in the indexer is running without async context (within Grug) and with an async
+    /// context (Dango). This is to ensure it works in both cases.
+    ///
+    /// NOTE: The Tokio runtime *must* be multi-threaded with either:
+    /// - `#[tokio::main]`
+    /// - `#[tokio::test(flavor = "multi_thread", worker_threads = 2)]`
+    pub fn block_on<F, R>(&self, closure: F) -> R
+    where
+        F: Future<Output = R>,
+    {
+        if self.runtime.is_some() {
+            self.handle.block_on(closure)
+        } else {
+            tokio::task::block_in_place(|| self.handle.block_on(closure))
+        }
+    }
+}
+
+// --------------------------------- IndexerPath -------------------------------
+
+#[derive(Debug, Clone)]
+pub enum IndexerPath {
+    /// Tempdir is used for test, and will be automatically deleted once out of scope
+    TempDir(Arc<tempfile::TempDir>),
+    /// Directory to store the next block to be indexed
+    Dir(PathBuf),
+}
+
+impl Default for IndexerPath {
+    fn default() -> Self {
+        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
+    }
+}
+
+impl IndexerPath {
+    pub fn path(&self) -> &Path {
+        match self {
+            IndexerPath::TempDir(tmpdir) => tmpdir.path(),
+            IndexerPath::Dir(dir) => dir.as_path(),
+        }
+    }
+}
+
+impl<DB, P> IndexerBuilder<DB, P>
 where
-    F: Future<Output = R>,
+    DB: MaybeDefined<String>,
+    P: MaybeDefined<IndexerPath>,
 {
-    match runtime.as_ref() {
-        Some(runtime) => runtime.block_on(closure),
-        None => tokio::task::block_in_place(|| handle.block_on(closure)),
+    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+        let db = match self.db_url.maybe_into_inner() {
+            Some(url) => self
+                .handle
+                .block_on(async { Context::connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { Context::connect_db().await }),
+        }?;
+
+        let indexer_path = match self.indexer_path.maybe_into_inner() {
+            Some(indexer_path) => indexer_path,
+            None => {
+                let dir = tempfile::tempdir().expect("");
+                IndexerPath::TempDir(Arc::new(dir))
+            },
+        };
+
+        // Make tmp_dir optional
+
+        Ok(NonBlockingIndexer {
+            indexer_path,
+            context: Context { db },
+            handle: self.handle,
+            blocks: Arc::new(Mutex::new(HashMap::new())),
+            indexing: false,
+        })
+    }
+}
+
+// -------------------------------- BlockToIndex -------------------------------
+
+/// Saves the block and its transactions in memory
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
+struct BlockToIndex {
+    pub block_info: BlockInfo,
+    pub txs: Vec<(Tx, TxOutcome)>,
+    /// Where the block is temporarily saved on disk.
+    #[borsh(skip)]
+    filename: PathBuf,
+}
+
+impl BlockToIndex {
+    /// Takes care of inserting the data in the database in a single DB transaction
+    pub async fn save(&self, db: &DatabaseTransaction) -> error::Result<()> {
+        #[cfg(feature = "tracing")]
+        tracing::info!(block_height = self.block_info.height, "Indexing block");
+
+        let mut models = Models::build(&self.block_info)?;
+        for (tx, tx_outcome) in self.txs.iter() {
+            models.push(tx, tx_outcome)?;
+        }
+
+        // TODO: if the process was to crash in the middle and restarted, we could try to
+        // reinsert existing data. We should use `on_conflict()` to avoid this, return the
+        // existing block and change `block_id` when/if we added foreign keys
+        models.block.insert(db).await?;
+
+        entity::transactions::Entity::insert_many(models.transactions)
+            .exec(db)
+            .await?;
+        entity::messages::Entity::insert_many(models.messages)
+            .exec(db)
+            .await?;
+        entity::events::Entity::insert_many(models.events)
+            .exec(db)
+            .await?;
+
+        Ok(())
+    }
+
+    fn delete_tmp_file(&self) -> error::Result<()> {
+        #[cfg(feature = "tracing")]
+        tracing::warn!(path = %self.filename.display(), "Removing block tmp_file");
+
+        if let Err(error) = std::fs::remove_file(&self.filename) {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, error = %error, "Can't remove block tmp_file");
+        }
+        Ok(())
+    }
+
+    fn save_tmp_file(&self) -> error::Result<()> {
+        let Some(directory) = self.filename.parent() else {
+            bail!("Can't detect parent directory");
+        };
+        let mut tmp_filename = NamedTempFile::new_in(directory)?;
+        let encoded_block = self.to_borsh_vec()?;
+        tmp_filename.write_all(&encoded_block)?;
+        tmp_filename.flush()?;
+        tmp_filename.persist(&self.filename)?;
+
+        #[cfg(feature = "tracing")]
+        tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, "Saved tmp_file");
+        Ok(())
     }
 }
 
@@ -534,7 +565,7 @@ mod tests {
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn should_start() -> anyhow::Result<()> {
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
