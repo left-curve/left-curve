@@ -35,115 +35,14 @@ pub enum Event {
     Finalize(EvtFinalize),
     /// A cronjob was executed.
     Cron(EvtCron),
-    /// A contract emitted a custom event.
-    Guest(EvtGuest),
     // TODO: IBC events
 }
 
 impl Event {
-    pub fn configure(sender: Addr) -> Self {
-        Self::Configure(EvtConfigure { sender })
-    }
-
-    // pub fn transfer(sender: Addr, recipient: Addr, coins: Coins) -> Self {
-    //     Self::Transfer(EvtTransfer {
-    //         sender,
-    //         recipient,
-    //         coins,
-    //     })
-    // }
-
-    pub fn upload(sender: Addr, code_hash: Hash256) -> Self {
-        Self::Upload(EvtUpload { sender, code_hash })
-    }
-
-    pub fn instantiate(
-        sender: Addr,
-        contract: Addr,
-        code_hash: Hash256,
-        label: Option<Label>,
-        admin: Option<Addr>,
-        transfer_event: Option<EvtTransfer>,
-        guest_event: EvtGuest,
-    ) -> Self {
-        Self::Instantiate(EvtInstantiate {
-            sender,
-            contract,
-            code_hash,
-            label,
-            admin,
-            transfer_event,
-            guest_event,
-        })
-    }
-
-    pub fn execute(
-        sender: Addr,
-        contract: Addr,
-        funds: Coins,
-        transfer_event: Option<EvtTransfer>,
-        guest_event: EvtGuest,
-    ) -> Self {
-        Self::Execute(EvtExecute {
-            sender,
-            contract,
-            transfer_event,
-            guest_event,
-            funds,
-        })
-    }
-
-    pub fn migrate(
-        sender: Addr,
-        contract: Addr,
-        old_code_hash: Hash256,
-        new_code_hash: Hash256,
-        guest_event: EvtGuest,
-    ) -> Self {
-        Self::Migrate(EvtMigrate {
-            sender,
-            contract,
-            old_code_hash,
-            new_code_hash,
-            guest_event,
-        })
-    }
-
     pub fn reply(contract: Addr, reply_on: ReplyOn, guest_event: EvtGuest) -> Self {
         Self::Reply(EvtReply {
             contract,
             reply_on: ReplyOnDiscriminants::from(reply_on),
-            guest_event,
-        })
-    }
-
-    pub fn authenticate(sender: Addr, backrun_requested: bool, guest_event: EvtGuest) -> Self {
-        Self::Authenticate(EvtAuthenticate {
-            sender,
-            backrun: backrun_requested,
-            guest_event,
-        })
-    }
-
-    pub fn backrun(sender: Addr, guest_event: EvtGuest) -> Self {
-        Self::Backrun(EvtBackrun {
-            sender,
-            guest_event,
-        })
-    }
-
-    pub fn withhold(sender: Addr, taxman: Addr, guest_event: EvtGuest) -> Self {
-        Self::Withhold(EvtWithhold {
-            sender,
-            taxman,
-            guest_event,
-        })
-    }
-
-    pub fn finalize(sender: Addr, taxman: Addr, guest_event: EvtGuest) -> Self {
-        Self::Finalize(EvtFinalize {
-            sender,
-            taxman,
             guest_event,
         })
     }
@@ -156,14 +55,6 @@ impl Event {
             guest_event,
         })
     }
-
-    // pub fn guest(contract: Addr, name: String, sub_events: Vec<ContractEvent>) -> Self {
-    //     Self::Guest(EvtGuest {
-    //         contract,
-    //         method: name,
-    //         contract_events: sub_events,
-    //     })
-    // }
 
     /// Shortcut to get the name of the variant.
     pub fn variant_name(&self) -> &str {
@@ -291,38 +182,3 @@ pub struct EvtGuest {
     pub contract_events: Vec<ContractEvent>,
     pub sub_events: Vec<Event>,
 }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-
-//     const HASH: Hash256 = Hash256::from_inner([0; 32]);
-//     const ADDR: Addr = Addr::mock(1);
-
-//     #[test]
-//     fn variant_name() {
-//         for (event, name) in [
-//             (Event::configure(ADDR), "configure"),
-//             (Event::transfer(ADDR, ADDR, Coins::default()), "transfer"),
-//             (Event::upload(ADDR, HASH), "upload"),
-//             (
-//                 Event::instantiate(ADDR, Addr::mock(1), HASH, None, None),
-//                 "instantiate",
-//             ),
-//             (Event::execute(ADDR, Addr::mock(1)), "execute"),
-//             (Event::migrate(ADDR, Addr::mock(1), HASH, HASH), "migrate"),
-//             (Event::reply(ADDR, ReplyOn::Never), "reply"),
-//             (Event::authenticate(ADDR, false), "authenticate"),
-//             (Event::backrun(ADDR), "backrun"),
-//             (Event::withhold(ADDR, ADDR), "withhold"),
-//             (Event::finalize(ADDR, ADDR), "finalize"),
-//             (
-//                 Event::cron(ADDR, Timestamp::default(), Timestamp::default()),
-//                 "cron",
-//             ),
-//             (Event::guest(ADDR, "method".to_string(), vec![]), "guest"),
-//         ] {
-//             assert_eq!(event.variant_name(), name);
-//         }
-//     }
-// }
