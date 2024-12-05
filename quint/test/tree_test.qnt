@@ -12,8 +12,7 @@ module tree_test {
 
   run simpleVsFancyTest = {
     pure val empty_tree = { nodes: Map(), orphans: Set() }
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
 
     pure val reference = simple::apply(empty_tree, 0, 1, ops)
@@ -22,8 +21,7 @@ module tree_test {
   }
 
   run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
-    nondet key_hashes_as_maps = all_key_hashes_as_maps.oneOf()
-    nondet kms_with_value = key_hashes_as_maps.setOfMaps(VALUES).oneOf()
+    nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
 
     val reference = simple::apply(tree, version - 1, version, ops)
