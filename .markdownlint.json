@@ -3,5 +3,8 @@
   "heading-increment": false,
   "line-length": false,
   "no-alt-text": false,
-  "no-inline-html": false
+  "no-inline-html": false,
+  "ul-style": {
+    "style": "dash"
+  }
 }

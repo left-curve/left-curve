@@ -10,6 +10,7 @@
 - [Gas](notes/gas.md)
 - [Generating dependency graph](notes/generate-dependency-graph.md)
 - [Indexed map](notes/indexed-map.md)
+- [Liquidation](notes/liquidation.md)
 - [Liquidity provision](notes/liquidity-provision.md)
 - [Margin account: health](notes/margin-account-health.md)
 - [Math](notes/math.md)
