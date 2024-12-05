@@ -44,7 +44,7 @@ module hashes {
   type Bytes = List[int]
   val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   /// compare two lists of integers (e.g., bytes) lexicographically
-  pure def lessThan(w1: Bytes, w2: Bytes): bool = {
+  pure def less_than(w1: Bytes, w2: Bytes): bool = {
     pure val len1 = length(w1)
     pure val len2 = length(w2)
     or {
@@ -58,7 +58,20 @@ module hashes {
       }
     }
   }
-
+  pure def greater_than(w1: Bytes, w2: Bytes): bool = {
+    pure val len1 = length(w1)
+    pure val len2 = length(w2)
+    or {
+      len1 > len2 and indices(w1).forall(i => w1[i] <= w2[i]),
+      and {
+        len1 == len2,
+        indices(w1).exists(i => and {
+          w1[i] > w2[i],
+          indices(w1).forall(j => j < i implies w1[j] == w2[j])
+        })
+      }
+    }
+  }
   /// Returns true iff `w` is the nil value.
   /// In our spec, nil is equivalent to the empty list.
   pure def isNil(w: Bytes): bool = {

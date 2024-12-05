@@ -35,6 +35,7 @@ jobs:
         lmt proofs.md
         lmt invariants.md
         lmt tree_manipulation.md
+        lmt proof_types.md
         # Check that it is up to date
         git diff --exit-code \
           || ( echo ">>> ERROR: Tangled files are out of sync." &&  exit 1)

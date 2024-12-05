@@ -51,23 +51,23 @@ module grug_ics23 {
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
   /// the provided CommitmentRoot
-  def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
+  pure def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
     // TODO: specify Decompress
     // TODO: specify the case of CommitmentProof_Batch
     // TODO: CheckAgainstSpec ensures that the proof can be verified
     //       by the spec checker
-    verify(proof, root, key, value)
+    verify_existence(proof, root, key, value)
   }
 
-  /// verify that a proof matches a root
-  def verify(proof, root, key, value) = and {
+  /// verify_existence that a proof matches a root
+  pure def verify_existence(proof, root, key, value) = and {
     key == proof.key,
     value == proof.value,
     root == exists_calculate(proof)
   }
 
   /// calculate a hash from an exists proof
-  def exists_calculate(p: ExistenceProof): Term =
+  pure def exists_calculate(p: ExistenceProof): Term =
     val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
@@ -79,23 +79,37 @@ module grug_ics23 {
   /// both left and right sub-proofs are valid existence proofs (see above) or None,
   /// left and right proofs are neighbors (or left/right most if one is None),
   /// provided key is between the keys of the two proofs
-  def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = and {
-    np.left != None or np.right != None,
-    np.left == None or and {
-      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
-      lessThan(np.left.unwrap().key, key),
+  pure def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = {
+    // TODO: specify Decompress
+    // TODO: specify the case of CommitmentProof_Batch
+    // TODO: CheckAgainstSpec ensures that the proof can be verified
+    //       by the spec checker
+    verify_non_existence(np, ics23::InnerSpec, root, key)
+  }
+
+  /// verify_non_existence verifies NonExistenceProof
+  pure def verify_non_existence(proof: NonExistenceProof, spec: InnerSpec, root: Term, key: Bytes): bool = and{
+    proof.left != None or proof.right != None,
+    proof.left != None implies {
+      pure val left = proof.left.unwrap()
+      and {
+        verify_existence(left, root, left.key, left.value), 
+        key.greater_than(left.key),
+      }
     },
-    np.right == None or and {
-      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
-      lessThan(key, np.right.unwrap().key),
+    proof.right != None implies {
+      pure val right = proof.right.unwrap()
+      and {
+        verify_existence(right, root, right.key, right.value),
+        key.less_than(right.key),
+      }
     },
-    pure val spec = ics23::InnerSpec
-    if (np.left == None) {
-      is_left_most(spec, np.right.unwrap().path)
-    } else if (np.right == None) {
-      is_right_most(spec, np.left.unwrap().path)
+    if (proof.left == None) {
+      is_left_most(spec, proof.right.unwrap().path)
+    } else if (proof.right == None) {
+      is_right_most(spec, proof.left.unwrap().path)
     } else {
-      is_left_neighbor(spec, np.left.unwrap().path, np.right.unwrap().path)
+      is_left_neighbor(spec, proof.left.unwrap().path, proof.right.unwrap().path)
     }
   }
 
@@ -116,7 +130,7 @@ module grug_ics23 {
 
   /// is_left_most returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
-  def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+  pure def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
     match get_padding(spec, 0) {
       | Some(pad) => {
         path.indices().forall(i =>
@@ -135,7 +149,7 @@ module grug_ics23 {
 
   /// is_right_most returns true if this is the left-most path in the tree,
   /// excluding placeholder (empty child) nodes
-  def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+  pure def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
     pure val idx = spec.child_order.length() - 1
     match get_padding(spec, idx) {
       | Some(pad) => {
@@ -154,7 +168,7 @@ module grug_ics23 {
   }
 
   /// checks if an op has the expected padding
-  def has_padding(op: InnerOp, pad: Padding): bool = and {
+  pure def has_padding(op: InnerOp, pad: Padding): bool = and {
     op.prefix.termLen() >= pad.min_prefix,
     op.prefix.termLen() <= pad.max_prefix,
     // When inner turns left, suffixLen == child_size,
@@ -166,7 +180,7 @@ module grug_ics23 {
 
   /// This will look at the proof and determine which order it is.
   /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
-  def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
+  pure def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
     pure val len = spec.child_order.length()
     range(0, len).find_first(branch => {
       match get_padding(spec, branch) {
@@ -179,7 +193,7 @@ module grug_ics23 {
   /// left_branches_are_empty returns true if the padding bytes correspond to all
   /// empty siblings on the left side of a branch, ie. it's a valid placeholder
   /// on a leftmost path
-  def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
+  pure def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
     pure val idx = order_from_padding(spec, op)
     pure val left_branches = idx.unwrap()
     if (left_branches == 0) {
@@ -203,7 +217,7 @@ module grug_ics23 {
   /// right_branches_are_empty returns true if the padding bytes correspond
   /// to all empty siblings on the right side of a branch,
   /// i.e. it's a valid placeholder on a rightmost path
-  def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
+  pure def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
     pure val idx = order_from_padding(spec, op)
     and {
       idx != None,
@@ -226,7 +240,7 @@ module grug_ics23 {
 
   /// is_left_step assumes left and right have common parents
   /// checks if left is exactly one slot to the left of right
-  def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
+  pure def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
     // 'left' turns left, and 'right' turns right
     val left_idx = order_from_padding(spec, left)
     val right_idx = order_from_padding(spec, right)
@@ -245,7 +259,7 @@ module grug_ics23 {
   /// Validate that LPath[len-1] is the left neighbor of RPath[len-1].
   /// For step in LPath[0..len-1], validate step is right-most node.
   /// For step in RPath[0..len-1], validate step is left-most node.
-  def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
+  pure def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
     // count common tail (from end, near root)
     // cut the left and right paths
     lpath.indices().exists(li =>

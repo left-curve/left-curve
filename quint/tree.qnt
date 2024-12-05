@@ -173,6 +173,8 @@ module tree {
     pure val kms = (0.to(MAX_HASH_LENGTH - 1).setOfMaps(Set(0, 1)))
     kms.map(km => range(0, MAX_HASH_LENGTH).foldl([], (acc, i) => acc.append(km.get(i))))
   }
+
+  pure val all_value_hashes = Set([0], [1])
   
   pure def add_nodes(nodes: NodeId -> Node, new_nodes: Set[(NodeId, Node)]): NodeId -> Node = {
     new_nodes.fold(nodes, (nodes, new_node) => nodes.put(new_node._1, new_node._2))
