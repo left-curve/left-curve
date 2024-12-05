@@ -18,8 +18,7 @@ module apply_state_machine {
   import completeness.* from "./completeness"
   import soundness.* from "./soundness"
 
-  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete))
-  pure val INDEXES = 1.to(2^MAX_HASH_LENGTH)
+  pure val VALUES = Set(Insert([1]), Insert([2]), Delete)
 
   var tree: Tree
   var version: int
@@ -34,12 +33,9 @@ module apply_state_machine {
     ops_history' = [],
   }
 
-  pure def to_operations(nondet_value: BitArray -> Option[Operation]): Set[OperationOnKey] = {
-    nondet_value.mapToTuples().filterMap(((key_hash, maybe_op)) => {
-      match maybe_op {
-        | Some(op) => Some({ key_hash: key_hash, op: op })
-        | None => None
-      }
+  pure def to_operations(nondet_value: BitArray -> Operation): Set[OperationOnKey] = {
+    nondet_value.mapToTuples().map(((key_hash, op)) => {
+      { key_hash: key_hash, op: op }
     })
   }
 
@@ -48,9 +44,9 @@ module apply_state_machine {
     assign_result: (Set[OperationOnKey], Tree) => bool
   ): bool = {
     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
-    pure val all_ops = kms_with_value.to_operations().toList((a, b) => intCompare(a.key_hash[b.key_hash[0]], b.key_hash[a.key_hash[0]]))
+    pure val all_ops = kms_with_value.to_operations().toList(fuzzy_compare)
 
-    nondet threshold = 1.to(all_ops.length()).oneOf()
+    nondet threshold = 0.to(all_ops.length()).oneOf()
     pure val ops = all_ops.indices().filter(i => i < threshold).map(i => all_ops[i])
     pure val new_tree = apply_op(tree, version - 1, version, ops)
 
@@ -69,14 +65,18 @@ module apply_state_machine {
 
   /********* INVARIANTS ***********/
 
+  /// Which versions to check on the invariants
+  /// This was checked both with Set(version) (better performance) and activeTreeVersions
+  val versionsToCheck: Set[int] =
+    Set(version)
+
   /// The set of unpruned tree versions that should be complete in the tree
   val activeTreeVersions: Set[int] =
-    Set(version)
-    // smallest_unpruned_version.to(tree.treeVersion())
+    smallest_unpruned_version.to(tree.treeVersion())
 
-  /// The set of active tree maps
-  val activeVersionedTrees: Set[TreeMap] =
-    activeTreeVersions.map(v => treeAtVersion(tree, v))
+  /// The set of tree maps to check
+  val treesToCheck: Set[TreeMap] =
+    versionsToCheck.map(v => treeAtVersion(tree, v))
 
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
   /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
@@ -89,7 +89,7 @@ module apply_state_machine {
       })
     }
 
-    activeVersionedTrees.forall(everyNodesParentIsInTheTree)
+    treesToCheck.forall(everyNodesParentIsInTheTree)
   }
 
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
@@ -107,7 +107,7 @@ module apply_state_machine {
           (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a, b))
       ))
 
-    activeVersionedTrees.forall(nodeAtCommonPrefix)
+    treesToCheck.forall(nodeAtCommonPrefix)
   }
 
   /// Make sure that the map encodes a tree. In particular, there is no internal node
@@ -123,7 +123,7 @@ module apply_state_machine {
       })
     }
 
-    activeVersionedTrees.forall(noLeafInPrefixes)
+    treesToCheck.forall(noLeafInPrefixes)
   }
 
   /// All nodes of type Internal have a child which is not None
@@ -141,7 +141,7 @@ module apply_state_machine {
       })
     }
 
-    activeVersionedTrees.forall(allInternalNodesHaveAChild)
+    treesToCheck.forall(allInternalNodesHaveAChild)
   }
 
   /// If a node has exactly one child, the child is an internal node
@@ -165,7 +165,7 @@ module apply_state_machine {
         }
       })
 
-    activeVersionedTrees.forall(isDense)
+    treesToCheck.forall(isDense)
   }
 
   /// Invariant: For every node has predecessors with higer (or equal) version
@@ -205,7 +205,7 @@ module apply_state_machine {
       })
     }
 
-    activeVersionedTrees.forall(denseVersions)
+    treesToCheck.forall(denseVersions)
   }
 
   /// Orphan should not be at one of the version trees after it gets orphaned
@@ -238,7 +238,7 @@ module apply_state_machine {
       })
     }
 
-    activeVersionedTrees.forall(properlyHashed)
+    treesToCheck.forall(properlyHashed)
   }
 
   /// All children in the tree should have different hashes
@@ -266,7 +266,7 @@ module apply_state_machine {
       hashes.length() == uniqueHashes.size()
     }
 
-    activeVersionedTrees.forall(uniqueHashes)
+    treesToCheck.forall(uniqueHashes)
   }
 
   /// The treemaps we use in the invariants should have unique key_hashes
@@ -276,7 +276,7 @@ module apply_state_machine {
       t.keys().forall(a =>
         t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
 
-    activeVersionedTrees.forall(goodTreeMap)
+    treesToCheck.forall(goodTreeMap)
   }
 
   /// TreeMap is a bijection: we can map keys to values but also values to keys
@@ -286,7 +286,7 @@ module apply_state_machine {
     pure def bijectiveTreeMap(t: TreeMap): bool =
       t.keys().size() == t.values().size()
 
-    activeVersionedTrees.forall(bijectiveTreeMap)
+    treesToCheck.forall(bijectiveTreeMap)
   }
 
   val operationSuccessInv: bool =
@@ -311,13 +311,13 @@ module apply_state_machine {
         }
       })
 
-  val membershipCompletenessInv = activeTreeVersions.forall(v => membershipCompleteness(tree, v))
-  val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
-  val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
-  val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
+  val membershipCompletenessInv = versionsToCheck.forall(v => membershipCompleteness(tree, v))
+  val nonMembershipCompletenessInv = versionsToCheck.forall(v => nonMembershipCompleteness(tree, v))
+  val membershipSoundnessInv = versionsToCheck.forall(v => membershipSoundness(tree, v))
+  val nonMembershipSoundnessInv = versionsToCheck.forall(v => nonMembershipSoundness(tree, v))
 
   val verifyMembershipInv = {
-    activeTreeVersions.forall(version => {
+    versionsToCheck.forall(version => {
       val leafs = tree.treeAtVersion(version).allLeafs()
       val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
 

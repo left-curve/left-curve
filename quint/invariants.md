@@ -8,6 +8,7 @@ This document describes invariants of grug's jellyfish merkle tree manipulation.
 
 module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
   export tree.*
@@ -23,7 +24,7 @@ module apply_state_machine {
   import completeness.* from "./completeness"
   import soundness.* from "./soundness"
 
-  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete), None)
+  pure val VALUES = Set(Insert([1]), Insert([2]), Delete)
 
   var tree: Tree
   var version: int
@@ -38,12 +39,9 @@ module apply_state_machine {
     ops_history' = [],
   }
 
-  pure def to_operations(nondet_value: BitArray -> Option[Operation]): Set[OperationOnKey] = {
-    nondet_value.mapToTuples().filterMap(((key_hash, maybe_op)) => {
-      match maybe_op {
-        | Some(op) => Some({ key_hash: key_hash, op: op })
-        | None => None
-      }
+  pure def to_operations(nondet_value: BitArray -> Operation): Set[OperationOnKey] = {
+    nondet_value.mapToTuples().map(((key_hash, op)) => {
+      { key_hash: key_hash, op: op }
     })
   }
 
@@ -52,7 +50,10 @@ module apply_state_machine {
     assign_result: (Set[OperationOnKey], Tree) => bool
   ): bool = {
     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
-    pure val ops = kms_with_value.to_operations()
+    pure val all_ops = kms_with_value.to_operations().toList(fuzzy_compare)
+
+    nondet threshold = 0.to(all_ops.length()).oneOf()
+    pure val ops = all_ops.indices().filter(i => i < threshold).map(i => all_ops[i])
     pure val new_tree = apply_op(tree, version - 1, version, ops)
 
     assign_result(ops, new_tree)
@@ -139,16 +140,21 @@ Some invariants can consider the entire tree with all the different versions liv
   }
 ```
 
-We also keep track of the smallest unpruned version, so we check the invariant for the trees at all versions from that until the current one.
+We also keep track of the smallest unpruned version, so we can check the invariant for the trees at all versions from that until the current one. We can switch between checking all of them or just the latest version at each state.
 
 ```bluespec apply_state_machine.qnt +=
+  /// Which versions to check on the invariants
+  /// This was checked both with Set(version) (better performance) and activeTreeVersions
+  val versionsToCheck: Set[int] =
+    Set(version)
+
   /// The set of unpruned tree versions that should be complete in the tree
   val activeTreeVersions: Set[int] =
     smallest_unpruned_version.to(tree.treeVersion())
 
-  /// The set of active tree maps
-  val activeVersionedTrees: Set[TreeMap] =
-    activeTreeVersions.map(v => treeAtVersion(tree, v))
+  /// The set of tree maps to check
+  val treesToCheck: Set[TreeMap] =
+    versionsToCheck.map(v => treeAtVersion(tree, v))
 ```
 
 <!--
@@ -178,7 +184,7 @@ In a tree, all nodes except from the root should have a parent. There should be 
       })
     }
 
-    activeVersionedTrees.forall(everyNodesParentIsInTheTree)
+    treesToCheck.forall(everyNodesParentIsInTheTree)
   }
 ```
 <!--
@@ -210,7 +216,7 @@ For any pair of leafs on the tree, there should be another node such that its ke
           (a.key_hash != b.key_hash) implies existsNode(t, commonPrefix(a, b))
       ))
 
-    activeVersionedTrees.forall(nodeAtCommonPrefix)
+    treesToCheck.forall(nodeAtCommonPrefix)
   }
 ```
 <!--
@@ -240,7 +246,7 @@ Leafs should never be in the middle of a tree. If a there is a node with a key h
       })
     }
 
-    activeVersionedTrees.forall(noLeafInPrefixes)
+    treesToCheck.forall(noLeafInPrefixes)
   }
 ```
 <!--
@@ -272,7 +278,7 @@ Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a
       })
     }
 
-    activeVersionedTrees.forall(allInternalNodesHaveAChild)
+    treesToCheck.forall(allInternalNodesHaveAChild)
   }
 ```
 <!--
@@ -312,7 +318,7 @@ This also means that the three is dense, not sparse.
         }
       })
 
-    activeVersionedTrees.forall(isDense)
+    treesToCheck.forall(isDense)
   }
 ```
 <!--
@@ -383,7 +389,7 @@ However, for reference, we keep the formula here as it might be useful for under
       })
     }
 
-    activeVersionedTrees.forall(denseVersions)
+    treesToCheck.forall(denseVersions)
   }
 ```
 <!--
@@ -444,7 +450,7 @@ For all internal nodes, for each existing child, the hash should match the resul
       })
     }
 
-    activeVersionedTrees.forall(properlyHashed)
+    treesToCheck.forall(properlyHashed)
   }
 ```
 <!--
@@ -486,7 +492,7 @@ We use an implementation of hashes that ensure no collision, since no collision 
       hashes.length() == uniqueHashes.size()
     }
 
-    activeVersionedTrees.forall(uniqueHashes)
+    treesToCheck.forall(uniqueHashes)
   }
 ```
 <!--
@@ -510,7 +516,7 @@ While the overall tree receives an entry for the same `key_hash` whenever the co
       t.keys().forall(a =>
         t.keys().forall(b => a.key_hash == b.key_hash implies a.version == b.version))
 
-    activeVersionedTrees.forall(goodTreeMap)
+    treesToCheck.forall(goodTreeMap)
   }
 ```
 <!--
@@ -535,7 +541,7 @@ We can simply check that the sizes of keys and values is the same, since keys ar
     pure def bijectiveTreeMap(t: TreeMap): bool =
       t.keys().size() == t.values().size()
 
-    activeVersionedTrees.forall(bijectiveTreeMap)
+    treesToCheck.forall(bijectiveTreeMap)
   }
 ```
 <!--
@@ -597,10 +603,10 @@ See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for 
 
 *Status:* TRUE
 ```bluespec apply_state_machine.qnt +=
-  val membershipCompletenessInv = activeTreeVersions.forall(v => membershipCompleteness(tree, v))
-  val nonMembershipCompletenessInv = activeTreeVersions.forall(v => nonMembershipCompleteness(tree, v))
-  val membershipSoundnessInv = activeTreeVersions.forall(v => membershipSoundness(tree, v))
-  val nonMembershipSoundnessInv = activeTreeVersions.forall(v => nonMembershipSoundness(tree, v))
+  val membershipCompletenessInv = versionsToCheck.forall(v => membershipCompleteness(tree, v))
+  val nonMembershipCompletenessInv = versionsToCheck.forall(v => nonMembershipCompleteness(tree, v))
+  val membershipSoundnessInv = versionsToCheck.forall(v => membershipSoundness(tree, v))
+  val nonMembershipSoundnessInv = versionsToCheck.forall(v => nonMembershipSoundness(tree, v))
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
@@ -624,17 +630,19 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
 *Status:* TRUE
 
 ```bluespec apply_state_machine.qnt +=
-  val verifyMembershipInv =
-    activeTreeVersions.forall(version => {
+  val verifyMembershipInv = {
+    versionsToCheck.forall(version => {
+      val leafs = tree.treeAtVersion(version).allLeafs()
+      val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
+
       tree.nodes.has({ key_hash: ROOT_BITS, version: version }) implies
         all_key_hashes.forall(key_hash => {
           val proof = ics23_prove(tree, key_hash, version)
-          val root = hash(tree.nodes.get({ key_hash: ROOT_BITS, version: version }))
           match proof {
             | Some(p) =>
               match p {
                 | Exist(ep) => and {
-                  tree.treeAtVersion(version).allLeafs().exists(l => and {
+                  leafs.exists(l => and {
                     // There should be a leaf with this key_hash
                     l.key_hash == key_hash,
 
@@ -658,7 +666,7 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
                   // Verifying the proof against this key_hash should work
                   verifyNonMembership(root, nep, key_hash),
                   // Verifying the proof against all other key_hashes should fail
-                  tree.treeAtVersion(version).allLeafs().forall(l => {
+                  leafs.forall(l => {
                     not(verifyNonMembership(root, nep, l.key_hash))
                   }),
                 }
@@ -667,6 +675,7 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
           }
       })
     })
+  }
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
