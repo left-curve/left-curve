@@ -82,5 +82,67 @@ There are still some integration issues between Quint and Apalache, which is use
 
 The generated TLA+ model is available on the model-checking branch at [apply_state_machine.tla](https://github.com/informalsystems/left-curve-jmt/blob/gabriela/model-checking/quint/apply_state_machine.tla)
 
-### Scenario A
-### Scenario B
+### Initial states for model checking
+
+With the goal of optimizing the state space as much as possible for model checking, we define a special case for the initial state. Instead of always starting with an empty tree and applying any operation, we consider a symmetry property of trees and operations, where any scenario arising from applying two sets of operations of value hashes `[1]` or `[2]` on top of an empty tree should be reproducible by applying first a set of operations with only value hash `[1]` and then the second set with `[1]` or `[2]`. This reduces the number of operation combinations to consider, while maintaining the same coverage.
+
+Therefore, we change the `init` definition to start with the result of applying a non-deterministic set of operations with value hash `[1]` on top of an empty tree. 
+
+This also means that performing a single step in this state machine is similar to performing two steps in the original state machine that always started with an empty tree, as we are now also applying one batch of operations on the initial state.
+
+### Setup A
+
+- The key hash length is 3
+- The state machine performs a single step
+
+```
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 0.0
+16777472 states generated, 16777472 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 2.
+The average outdegree of the complete state graph is 0 (minimum is 0, the maximum 31 and the 95th percentile is 0).
+Finished in 01h 11min at (2024-11-28 18:30:44)
+```
+
+- Running this with 2 steps instead of 1 would increase the state space to 1 099 528 405 248 states 
+- Running this with key hash length of 4 instead of 3 would increase the state space to 281 474 976 710 656 states
+
+An inductive interpretation of this result is:
+- Base case: All possible trees with `value_hash` being `[1]` and version being `1`.
+- Induction step: All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `1` to version `2`.
+
+This check is a valid inductive proof for the real tree manipulation algorithm if and only if the following assumptions hold:
+- Any violation for key hashes of length 256 can be reproduced with key hashes of length 3
+- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`]) 
+- Any violation that happens in multiple steps/versions can be reproduced in a single step/version change (specifically from version `1` to version `2`). See Setup B for more coverage on this.
+- Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
+
+TODO: Update output with the most recent version and for all invariants. This output was for `densityInv only`
+
+### Setup B
+
+- The key hash length is 2
+- The state machine performs 2 steps
+
+TODO: output
+
+```
+```
+
+TODO: update numbers
+
+- Running this with 3 steps instead of 2 would increase the state space to 268 435 456 states
+  - We estimate that this will take about a week to run and use ~200GB of disk space
+- Running this with 4 steps instead of 3 would increase the state space to 68 719 476 736 states
+
+An inductive interpretation of this result is:
+- Base case: All possible trees that can be generated using all possible combinations of operations with `value_hash` being `[1]` or `[2]`, and versions being 1 and 2.
+- Induction step: All possible operations with `value_hash` being `[1]` (same as a potentially existing leaf) or `[2]` (different from a potentially existing leaf), from version `2` to version `3`.
+
+This check is a valid inductive proof for the real tree manipulation algorithm if and only if the following assumptions hold:
+- Any violation for key hashes of length 256 can be reproduced with key hashes of length 2
+- Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`]) 
+- Any violation that happens in multiple steps/versions can be reproduced with 2 steps/versions
+- Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
