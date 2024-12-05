@@ -17,29 +17,22 @@ t = \frac{c_1}{d_1}
 $$
 
 Let $x$ be the amount of debt to liquidate in order to reach the target $t$. After liquidation, the updated values are:
-$$d_1 = d - x$$
 $$c_1 = c - x * p * (1+b)$$
+$$d_1 = d - x$$
 
 Substituting these into the definition of $t$, we obtain:
 
 $$
-t = \frac{d - x}{ c - x * p * (1+b)}
+t = \frac{c - x * p * (1 + b)}{d - x}
 $$
 
 Solving for $x$:
 
 $$
-x = \frac{t*d - c}{t - p * (1+b)}
+x = \frac{t * d - c}{t - p * (1+b)}
 $$
 
 The solution is valid under the following conditions:
 
 - $t>1$ (because liquidation can happens only if $d>c$)
-- $t>p*(1+b)$: This must to be ensure when a new collateral is registered or when `max_liqudation_bonus` / `t` is updated
-
-Anyway there are other conditions:
-
-- Liquidation bonus ($b$) must be lesser then
-  $\frac{c}{d * p}$
-  otherwise the bonus is to high and not increase the ratio after liquidation.
-- $p*(1+b)<1$. This must to be ensure when a new collateral is registered or when `max_liqudation_bonus` is updated.
+- $\frac{c_!}{d_1} > \frac{c}{d}$: Otherwise the ratio after the liquidation is lower compared ratio before liquidation. $c, d, p$ are fixed, so this create the following condition: $ b < \frac{c}{d*p} - 1 $
