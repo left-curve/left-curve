@@ -1,7 +1,7 @@
 import { useAccount, useBalances, usePrices } from "@left-curve/react";
 import { useQueryState } from "nuqs";
 import type React from "react";
-import { Button, Input } from "../";
+import { Button, Emoji, Input } from "../";
 import { twMerge } from "../../utils";
 
 interface Props {
@@ -22,11 +22,7 @@ export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
     <div className="flex flex-col gap-12 w-full items-center">
       <div className="dango-grid-3x8-S flex flex-col w-full items-center justify-center text-typography-black-200">
         <div className="h-[104px] w-[104px] flex items-center justify-center bg-surface-rose-200 rounded-full">
-          <img
-            src="/images/applets/deposit-and-withdraw.svg"
-            alt="deposit-and-withdraw"
-            className="h-[74px] w-[74px] object-contain"
-          />
+          <Emoji name="hamster" className="h-[74px] w-[74px] object-contain" detailed />
         </div>
         <div className="flex sm:gap-4 sm:flex-row sm:items-start justify-center flex-col items-center">
           <div
@@ -37,13 +33,13 @@ export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
           >
             <Button
               variant="bordered"
-              className="bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic px-4 min-w-40"
+              className="bg-surface-green-300 hover:bg-surface-green-400 !not-italic border-green-600/20 text-typography-green-500 rounded-2xl !typography-headline-s px-4 min-w-40"
               onClick={onRequestPoolSelection}
             >
               stETH - USDC
             </Button>
             {action === "withdraw" ? (
-              <p className="text-xs font-extrabold px-4">{totalBalance} Available</p>
+              <p className="typography-caption-s px-4">{totalBalance} Available</p>
             ) : null}
           </div>
           <p className="py-4 uppercase text-sm font-extrabold text-sand-900 font-diatype-rounded mx-2 tracking-widest text-start order-2">
@@ -58,13 +54,13 @@ export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
             <Button
               variant="bordered"
               className={twMerge(
-                "bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl font-diatype-rounded not-italic capitalize px-4 min-w-40",
+                "bg-surface-green-300 hover:bg-surface-green-400 border-green-600/20 text-typography-green-500 rounded-2xl !typography-headline-s capitalize !not-italic px-4 min-w-40",
               )}
             >
               {account?.type} #{account?.index}
             </Button>
             {action === "deposit" ? (
-              <p className="text-xs font-extrabold px-4">{totalBalance} Available</p>
+              <p className="typography-caption-s px-4">{totalBalance} Available</p>
             ) : null}
           </div>
         </div>
