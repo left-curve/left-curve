@@ -646,7 +646,7 @@ Based on the `branch` value, which will be either `0` or `1`.
 
 - In the case when `branch = 1`, padding will look like this:
   
-  ```bluepsec
+  ```bluespec
   {
     min_prefix: spec.min_prefix_length + spec.child_size,   // 1 + 32 = 33
     max_prefix: spec.max_prefix_length + spec.child_size,   // 1 + 32 = 33
