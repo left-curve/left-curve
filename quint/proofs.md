@@ -1,6 +1,6 @@
 # Proofs
 
-This document describes how ics23 proof generation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, since Quint does not support hashing, there were some challenges.
+This document describes how ICS23 proof generation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, since Quint does not support hashing, there were some challenges.
 
 Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on early returns and panics, which do not exist in Quint. We are explaining this in detail in [`ics23_prove_existence`](#ics23-proving-existence) and [`ics23_prove`](#generating-commitment-proof).
 
@@ -24,7 +24,7 @@ module proofs {
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import tree.* from "./tree"
-  export tree.*
+  import proof_types.* from "./proof_types"
   import node.* from "./node"
   import utils.* from "./utils"
 
@@ -32,74 +32,9 @@ module proofs {
 }
 ```
 -->
-## Types
 
-Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
-
-- We defined `LeafOp` differently than Rust implementation. The implementation additionally stores hashing and length functions: hash, prehashKey, prehashValue, len. Since we fix the spec to Grug JellyFish Merkle Tree, we do not have to carry them around.
-
-```bluespec "definitions" +=
-type LeafOp = {
-  prefix: Term_t
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `InnerOp` differently than Rust implementation as well. The implementation additionally stores the hashing function, and since we fix the spec to Grug JellyFish Merkle Tree, we do not have to carry it around.
-
-```bluespec "definitions" +=
-type InnerOp = {
-  prefix: Term_t,
-  suffix: Term_t
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `ExistenceProof` as follows. `ExistenceProof.leaf` is never used, but since it is defined in [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs), we decided to keep it and mimic the proto message fully.
-
-```bluespec "definitions" +=
-type ExistenceProof = {
-  key: BitArray,
-  value: BitArray,
-  leaf: LeafOp,
-  path: List[InnerOp],
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `NonExistenceProof` as follows.
-
-```bluespec "definitions" +=
-type NonExistenceProof = {
-  key: BitArray,
-  left: Option[ExistenceProof],
-  right: Option[ExistenceProof],
-}
-```
-<!-- Empty line, to be tangled but not rendered
-```bluespec "definitions" +=
-
-```
--->
-- We defined `CommitmentProof` as follows.
-
-```bluespec "definitions" +=
-type CommitmentProof =
-  | Exist(ExistenceProof) 
-  | NonExist(NonExistenceProof)
-```
 <!--
 ```bluespec "definitions" +=
-
 /// Returns optional list of InnerOps as a path to the leaf with particular key_hash
 ```
 -->
@@ -121,9 +56,12 @@ pub fn ics23_prove_existence(
 ```bluespec "definitions" +=
 pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
 : Option[List[InnerOp]] =
+```
+<!---
+```bluespec "definitions" +=
   <<<ics23_prove_existence>>>
 ```
-
+--->
 As clearly visible, the function signature is different. In our specification, we are returning `Option[List[InnerOp]]`. Returning `None` is reserved for any error that has occured when traversing the tree. In Rust implementation, looping is done until leaf is reached. However, since Quint does not support early returns, we had to have a finite set of key prefixes that we can fold over.
 
 ```bluespec "ics23_prove_existence" +=
@@ -354,11 +292,11 @@ pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
   <<<leftNeighbor>>>
 ```
 --->
-First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `lessThan` function defined in the [hashes.qnt](./hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
+First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `less_than()` function defined in the [hashes.qnt](./hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
 
 ```bluespec "leftNeighbor" +=
 val smallerKeyNodes = t.values().filter(n => match n {
-  | Leaf(l) => lessThan(l.key_hash, k)
+  | Leaf(l) => less_than(l.key_hash, k)
   | Internal(_) => false
 }) 
 ```
@@ -385,7 +323,7 @@ val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) =>
 Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
   match x {
     | Leaf(l) =>  
-        if (lessThan(s.key_hash, l.key_hash))
+        if (less_than(s.key_hash, l.key_hash))
           l
         else 
           s
@@ -422,7 +360,7 @@ let right = self
 ```bluespec "definitions" +=
 pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
   val largerKeyNodes = t.values().filter(n => match n {
-    | Leaf(l) => lessThan(k, l.key_hash)
+    | Leaf(l) => less_than(k, l.key_hash)
     | Internal(_) => false
   }) 
   if(largerKeyNodes.empty()) None else 
@@ -435,7 +373,7 @@ pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
     Some(largerKeyNodes.fold(someLeaf, (s, x) =>
       match x {
         | Leaf(l) =>  
-            if (lessThan(l.key_hash, s.key_hash) )
+            if (less_than(l.key_hash, s.key_hash) )
               l
             else 
               s

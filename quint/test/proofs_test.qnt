@@ -6,6 +6,8 @@ module proofs_test {
   import apply_simple.* from "../apply_simple"
   import rareSpells.* from "../spells/rareSpells"
   import node.* from "../node"
+  import tree.* from "../tree"
+  import proof_types.* from "../proof_types"
   import grug_ics23.* from "../grug_ics23"
   import utils.* from "../utils"
 

@@ -90,7 +90,7 @@ module apply_state_machine {
   /// tree that is the common prefix
   val nodeAtCommonPrefixInv: bool = {
     // Check whether there is a node with the given prefix
-    pure def existsNode(t: TreeMap, b: Bytes_t): bool =
+    pure def existsNode(t: TreeMap, b: Bytes): bool =
       t.keys().filter(nId => nId.key_hash == b).size() > 0
 
     // For any two leaf nodes, is there a nodeId in the tree that is the common prefix

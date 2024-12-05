@@ -10,253 +10,248 @@
 // https://github.com/cosmos/ics23
 //
 // We still have to parameterize the spec with the data structure parameters
-// such as MinPrefixLen, MaxPrefixLen, ChildSize, and hash.
+// such as min_prefix_length, max_prefix_length, child_size, and hash.
 //
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
 // Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
 
 module grug_ics23 {
+  import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
   import node.* from "./node"
-  import basicSpells.* from "./spells/basicSpells"
+  import proof_types.* from "./proof_types"
   import utils.* from "./utils"
-  // type aliases for readability
-  type Key_t = Bytes_t
-  type Value_t = Bytes_t
-  type CommitmentRoot_t = Term_t
-  type CommitmentProof_t = Term_t
 
-  // ICS23 IavlSpec has:
-  // MinPrefixLength = 4
-  // MaxPrefixLength = 12
-  // ChildSize = 33 // 32 bytes in SHA256 + 1 byte for the length marker
-
-  type Ics23ProofSpecification = {
-    MinPrefixLen: int, 
-    MaxPrefixLen: int,
-    ChildSize: int,
-    EmptyChild: Term_t
+  type InnerSpec = {
+    min_prefix_length: int, 
+    max_prefix_length: int,
+    child_size: int,
+    empty_child: Term,
+    child_order: List[int],
   }
 
-  pure val Ics23ProofSpec: Ics23ProofSpecification= {
-    // ICS23 specs are placed in grug/jellyfish-merkle/src/ics23.rs
-    // https://github.com/left-curve/left-curve/blob/7a0451dfad14d607722c33bec20ae56dd5c3bffa/grug/jellyfish-merkle/src/ics23.rs#L18-L37
-    // In Left Curve Grug JellyFish Merkle Tree the following parameters are set to 1
-    MinPrefixLen: 1,
-    MaxPrefixLen: 1,
-    //  this parameter is set to 32 because that is the size of SHA256 
-    //  and that value is used in configuring ics23 verification spec
-    //  in LeftCurve Grug JellyFish Merkle Tree implementation
-    ChildSize: 32,
-    // Empty child is a predefined sequence that fills an absent child.
-    // It's defined in InnerSpec and it has the value of Hash256::ZERO
-    // which is: Hash(0000000000000000000000000000000000000000000000000000000000000000)
-    EmptyChild: Hash256_ZERO
+  pure val ics23::InnerSpec: InnerSpec = {
+    min_prefix_length: 1,
+    max_prefix_length: 1,
+    child_size: 32,
+    empty_child: Hash256_ZERO,
+    child_order: [0, 1]
   }
 
-  type LEAF_T = {
-    // The implementation additionally stores hashing and length functions:
-    // hash, prehashKey, prehashValue, len. Since we fix the spec to IAVL,
-    // we do not have to carry them around.
-    // !!! UPDATE !!! 
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
-    prefix: Term_t
-  }
-
-  type INNER_T = {
-    // The implementation additionally stores the hashing function.
-    // Since we fix the spec to IAVL, we do not have to carry it around.
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
-    prefix: Term_t,
-    suffix: Term_t
-  }
-
-  /// a proof of existence of (key, value)
-  type ExistsProof_t = {
-    key: Key_t, value: Value_t, leaf: LEAF_T, path: List[INNER_T]
-  }
-
-  /// a proof of non-existence of a key
-  type NonExistsProof_t = {
-    key: Key_t, left: Option[ExistsProof_t], right: Option[ExistsProof_t]
-  }
-
-  /// calculate a hash from an exists proof
-  def existsCalculate(p: ExistsProof_t): CommitmentProof_t = 
-    // using specific hashLeafNode for Grug JMT
-    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
-    // the inner node nodeHashes are concatenated and hashed upwards
-    p.path.foldl(leafHash,
-      (child, inner) =>
-        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
-
-  /// verify that a proof matches a root
-  def verify(proof, root, key, value) = and {
-    key == proof.key,
-    value == proof.value,
-    root == existsCalculate(proof)
+  type Padding = {
+    min_prefix: int,
+    max_prefix: int,
+    suffix: int,
   }
 
   /// VerifyMembership returns true iff
   /// proof is an ExistenceProof for the given key and value AND
   /// calculating the root for the ExistenceProof matches
   /// the provided CommitmentRoot
-  def verifyMembership(root: CommitmentRoot_t,
-      proof: ExistsProof_t, key: Key_t, value: Value_t): bool = {
+  pure def verifyMembership(root: Term, proof: ExistenceProof, key: Bytes, value: Bytes): bool = {
     // TODO: specify Decompress
     // TODO: specify the case of CommitmentProof_Batch
     // TODO: CheckAgainstSpec ensures that the proof can be verified
     //       by the spec checker
-    verify(proof, root, key, value)
+    verify_existence(proof, root, key, value)
   }
+
+  /// verify_existence that a proof matches a root
+  pure def verify_existence(proof, root, key, value) = and {
+    key == proof.key,
+    value == proof.value,
+    root == exists_calculate(proof)
+  }
+
+  /// calculate a hash from an exists proof
+  pure def exists_calculate(p: ExistenceProof): Term =
+    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
+    // the inner node nodeHashes are concatenated and hashed upwards
+    p.path.foldl(leafHash,
+      (child, inner) =>
+        termHash(inner.prefix.termConcat(child).termConcat(inner.suffix)))
+
+  /// VerifyNonMembership returns true iff
+  /// proof is (contains) a NonExistenceProof,
+  /// both left and right sub-proofs are valid existence proofs (see above) or None,
+  /// left and right proofs are neighbors (or left/right most if one is None),
+  /// provided key is between the keys of the two proofs
+  pure def verifyNonMembership(root: Term, np: NonExistenceProof, key: Bytes): bool = {
+    // TODO: specify Decompress
+    // TODO: specify the case of CommitmentProof_Batch
+    // TODO: CheckAgainstSpec ensures that the proof can be verified
+    //       by the spec checker
+    verify_non_existence(np, ics23::InnerSpec, root, key)
+  }
+
+  /// verify_non_existence verifies NonExistenceProof
+  pure def verify_non_existence(proof: NonExistenceProof, spec: InnerSpec, root: Term, key: Bytes): bool = and{
+    proof.left != None or proof.right != None,
+    proof.left != None implies {
+      pure val left = proof.left.unwrap()
+      and {
+        verify_existence(left, root, left.key, left.value), 
+        key.greater_than(left.key),
+      }
+    },
+    proof.right != None implies {
+      pure val right = proof.right.unwrap()
+      and {
+        verify_existence(right, root, right.key, right.value),
+        key.less_than(right.key),
+      }
+    },
+    if (proof.left == None) {
+      is_left_most(spec, proof.right.unwrap().path)
+    } else if (proof.right == None) {
+      is_right_most(spec, proof.left.unwrap().path)
+    } else {
+      is_left_neighbor(spec, proof.left.unwrap().path, proof.right.unwrap().path)
+    }
+  }
+
+  pure def get_padding(spec: InnerSpec, branch: int): Option[Padding] = {
+    match spec.child_order.findFirst(x => x == branch) {
+      | Some(idx) => {
+        pure val prefix = idx * spec.child_size
+        pure val suffix = spec.child_size * (spec.child_order.length() - 1 - idx)
+        Some({
+          min_prefix: prefix + spec.min_prefix_length,
+          max_prefix: prefix + spec.max_prefix_length,
+          suffix: suffix,
+        })
+      }
+      | None => None
+    }
+  }
+
+  /// is_left_most returns true if this is the left-most path in the tree,
+  /// excluding placeholder (empty child) nodes
+  pure def is_left_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+    match get_padding(spec, 0) {
+      | Some(pad) => {
+        path.indices().forall(i =>
+          val step = path[i]
+          or {
+            // the path goes left
+            has_padding(step, pad),
+            // the path goes right, but the left child is empty (a gap)
+            left_branches_are_empty(spec, step)
+          }
+        )
+      }
+      | None => false
+    }
+  }
+
+  /// is_right_most returns true if this is the left-most path in the tree,
+  /// excluding placeholder (empty child) nodes
+  pure def is_right_most(spec: InnerSpec, path: List[InnerOp]): bool = {
+    pure val idx = spec.child_order.length() - 1
+    match get_padding(spec, idx) {
+      | Some(pad) => {
+        path.indices().forall(i =>
+          val step = path[i]
+          or {
+            // the path goes right
+            has_padding(step, pad),
+            // the path goes left, but the right child is empty (a gap)
+            right_branches_are_empty(spec, step)
+          }
+        )
+      }
+      | None => false
+    }
+  }
+
   /// checks if an op has the expected padding
-  def hasPadding(inner: INNER_T,
-      minPrefixLen: int, maxPrefixLen: int, suffixLen: int): bool = and {
-    termLen(inner.prefix) >= minPrefixLen,
-    termLen(inner.prefix) <= maxPrefixLen,
-    // When inner turns left, suffixLen == ChildSize,
+  pure def has_padding(op: InnerOp, pad: Padding): bool = and {
+    op.prefix.termLen() >= pad.min_prefix,
+    op.prefix.termLen() <= pad.max_prefix,
+    // When inner turns left, suffixLen == child_size,
     // that is, we store the hash of the right child in the suffix.
     // When inner turns right, suffixLen == 0,
     // that is, we store the hash of the left child in the prefix.
-   termLen( inner.suffix) == suffixLen
-  }
-  /// This will look at the proof and determine which order it is...
-  /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
-  /// https://github.com/confio/ics23/blob/a4daeb4c24ce1be827829c0841446abc690c4f11/go/proof.go#L400-L411
-  def orderFromPadding(inner: INNER_T): (int, bool) = {
-    // Specialize orderFromPadding to IavlSpec:
-    // ChildOrder = { 0, 1 }
-    // branch = 0: minp, maxp, suffix = MinPrefixLen, MaxPrefixLen, ChildSize
-    // branch = 1: minp, maxp, suffix =
-    //             ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
-    if (hasPadding(inner, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize)) {
-      // the node turns left
-      (0, true)
-    } else if (hasPadding(inner, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen,
-                          Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0)) {
-      // the node turns right
-      (1, true)
-    } else {
-      // error
-      (0, false)
-    }
+    op.suffix.termLen() == pad.suffix,
   }
 
-  /// leftBranchesAreEmpty returns true if the padding bytes correspond to all
+  /// This will look at the proof and determine which order it is.
+  /// So we can see if it is branch 0, 1, 2 etc... to determine neighbors
+  pure def order_from_padding(spec: InnerSpec, op: InnerOp): Option[int] = {
+    pure val len = spec.child_order.length()
+    range(0, len).find_first(branch => {
+      match get_padding(spec, branch) {
+        | Some(padding) => has_padding(op, padding)
+        | None => false // This should actually early return but this is impossible for our InnerSpec
+      }
+    })
+  }
+
+  /// left_branches_are_empty returns true if the padding bytes correspond to all
   /// empty siblings on the left side of a branch, ie. it's a valid placeholder
   /// on a leftmost path
-  def leftBranchesAreEmpty(inner: INNER_T): bool = and {
-    // the case of leftBranches == 0 returns false
-    val order = orderFromPadding(inner)
-    order._2 and order._1 != 0,
-    // the remaining case is leftBranches == 1, see orderFromPadding
-    // actualPrefix = len(inner.prefix) - 33
-    // !!! UPDATE !!!
-    // For Left Curve Grug we have changed ChildSize to accustom their JellyFish Merkle Tree, 
-    // therefore previous comment is outdated
-    // actualPrefix = len(inner.prefix) - 32
-    termLen(inner.prefix) >= Ics23ProofSpec.ChildSize,
-    // !!!!!!! IMPLEMENTATION SPECIFIC NOTE
-    // We have adopted the following approach in order to fix problem with Quint hashing:
-    //  In the event when left branches are empty, 
-    //  inner.prefix will be: InternalNodeHashPrefix.termConcat(Hash256_ZERO)
-    //  Hash256_ZERO being termHash(raw([0]))
-    //  which will result in: Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash).
-    //  In Rust implementation this equals to:
-    //  prefix: [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat()
-    //        Note: here we are concatenating [0] and 
-    //              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    //  
-    //  After concatanation, prefix will have lenght 33 and look like this:
-    //  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    //  It is obvious that this is simply an array of zeros with length 33.
-    //  In Rust implementation of ics23, in leftBranchesAreEmpty branch of execution, this array is sliced like:
-    //  op.prefix[from..from + child_size], `from` being `1` and `child_size` being 33. 
-    //  Result of this slice should be equal to `spec.empty_child` which is Hash256::ZERO, 
-    //  or simply put, the first zero which represents `INTERNAL_NODE_HASH_PREFIX`.
-    //  However, this is not tha t simple to do in Quint.
-
-    //  In order to do so, we have changed `termSlice(...)` function. When prefix has value
-    //  Map([0] -> Raw([0]), [1, 0] -> Raw([0]), [1] -> Hash), 
-    //  which is Quint equivalent of [ INTERNAL_NODE_HASH_PREFIX, sibling.map(|c| c.hash).unwrap_or(Hash256::ZERO).as_ref() ].concat(),
-    //  we will mimic the behaviour of Rust code, 
-    //  and simply just return `EmptyChild`, or: Map([0, 0] -> Raw([0]), [0] -> Hash), 
-    //  which is the same as trimming of the first zero, which represents `INTERNAL_NODE_HASH_PREFIX`.
-    
-    val fromIndex = termLen(inner.prefix) - Ics23ProofSpec.ChildSize
-    termSlice(inner.prefix, fromIndex, fromIndex + Ics23ProofSpec.ChildSize) == Ics23ProofSpec.EmptyChild
-  }
-
-  /// IsLeftMost returns true if this is the left-most path in the tree,
-  /// excluding placeholder (empty child) nodes
-  def isLeftMost(path: List[INNER_T]): bool = {
-    // Calls getPadding(0) => idx = 0, prefix = 0.
-    // We specialize the constants to IavlSpec.
-    // !!! UPDATE !!!
-    // For Left Curve Grug we have changed: MinPrefixLen, MaxPrefixLen and ChildSize in order to
-    // accustom their JellyFish Merkle Tree, 
-    // therefore previous comment about specializing constants for IavlSpec is outdated
-    path.indices().forall(i =>
-      val pathStep = path[i]
-      or {
-        // the path goes left
-        hasPadding(pathStep, Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.MaxPrefixLen, Ics23ProofSpec.ChildSize),
-        // the path goes right, but the left child is empty (a gap)
-        leftBranchesAreEmpty(pathStep)
+  pure def left_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = and {
+    pure val idx = order_from_padding(spec, op)
+    pure val left_branches = idx.unwrap()
+    if (left_branches == 0) {
+      false
+    }
+    else {
+      pure val child_size = spec.child_size
+      match op.prefix.termLen().checked_sub(left_branches * child_size) {
+        | Some(actual_prefix) => {
+            0.to(left_branches - 1).forall(i => {
+              pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
+              val from_index = actual_prefix + idx * child_size
+              spec.empty_child == op.prefix.termSlice(from_index, from_index + child_size)
+            })
+          }
+        | None => false
       }
-    )
-  }
-
-  /// rightBranchesAreEmpty returns true if the padding bytes correspond
-  /// to all empty siblings on the right side of a branch,
-  /// i.e. it's a valid placeholder on a rightmost path
-  def rightBranchesAreEmpty(inner: INNER_T): bool = and {
-    // the case of rightBranches == 0 returns false
-    val order = orderFromPadding(inner)
-    order._2 and order._1 != 1,
-    // the remaining case is rightBranches == 1, see orderFromPadding
-    termLen(inner.suffix) == Ics23ProofSpec.ChildSize,
-    // getPosition(0) returns 0, hence, from == 0
-    inner.suffix == Ics23ProofSpec.EmptyChild
-  }
-
-  /// IsRightMost returns true if this is the left-most path in the tree,
-  /// excluding placeholder (empty child) nodes
-  def isRightMost(path: List[INNER_T]): bool = {
-    // Specialize to IavlSpec
-    // Calls getPadding(1) => minPrefix, maxPrefix,
-    //   suffix = ChildSize + MinPrefixLen, ChildSize + MaxPrefixLen, 0
-    // !!! UPDATE !!!
-    // The same applies for Left Curve Grug JellyFish Merkle Tree
-    path.indices().forall(i =>
-      val pathStep = path[i]
-      or {
-        // the path goes right
-        hasPadding(pathStep, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MinPrefixLen, Ics23ProofSpec.ChildSize + Ics23ProofSpec.MaxPrefixLen, 0),
-        // the path goes left, but the right child is empty (a gap)
-        rightBranchesAreEmpty(pathStep)
-      }
-    )
-  }
-
-  /// isLeftStep assumes left and right have common parents
-  /// checks if left is exactly one slot to the left of right
-  def isLeftStep(left: INNER_T, right: INNER_T): bool = {
-    // 'left' turns left, and 'right' turns right
-    val lorder = orderFromPadding(left)
-    val rorder = orderFromPadding(right)
-    and {
-      lorder._2,
-      rorder._2,
-      rorder._1 == lorder._1 + 1
     }
   }
 
-  /// IsLeftNeighbor returns true if `right` is the next possible path
+  /// right_branches_are_empty returns true if the padding bytes correspond
+  /// to all empty siblings on the right side of a branch,
+  /// i.e. it's a valid placeholder on a rightmost path
+  pure def right_branches_are_empty(spec: InnerSpec, op: InnerOp): bool = {
+    pure val idx = order_from_padding(spec, op)
+    and {
+      idx != None,
+      // count branches to right of this one
+      pure val right_branches = spec.child_order.length() - 1 - idx.unwrap()
+      // compare suffix with the expected number of empty branches
+      if (right_branches == 0) {
+        false
+      } else if (op.suffix.termLen() != spec.child_size) {
+        false
+      } else {
+        0.to(right_branches - 1).forall(i => {
+          pure val idx = spec.child_order.findFirst(x => x == i).unwrap()
+          val from_index = idx * spec.child_size
+          spec.empty_child == op.suffix.termSlice(from_index, from_index + spec.child_size)
+        })
+      }
+    }
+  }
+
+  /// is_left_step assumes left and right have common parents
+  /// checks if left is exactly one slot to the left of right
+  pure def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
+    // 'left' turns left, and 'right' turns right
+    val left_idx = order_from_padding(spec, left)
+    val right_idx = order_from_padding(spec, right)
+    and {
+      left_idx != None,
+      right_idx != None,
+      left_idx.unwrap() + 1 == right_idx.unwrap()
+    }
+  }
+
+  /// is_left_neighbor returns true if `right` is the next possible path
   /// right of `left`
   ///
   /// Find the common suffix from the Left.Path and Right.Path and remove it.
@@ -264,7 +259,7 @@ module grug_ics23 {
   /// Validate that LPath[len-1] is the left neighbor of RPath[len-1].
   /// For step in LPath[0..len-1], validate step is right-most node.
   /// For step in RPath[0..len-1], validate step is left-most node.
-  def isLeftNeighbor(lpath: List[INNER_T], rpath: List[INNER_T]): bool = {
+  pure def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
     // count common tail (from end, near root)
     // cut the left and right paths
     lpath.indices().exists(li =>
@@ -289,44 +284,12 @@ module grug_ics23 {
         // of the same tree node:
         //  the left one stores the hash of the right one, whereas
         //  the right one stores the hash of the left one.
-        isLeftStep(lpath[li], rpath[ri]),
+        is_left_step(spec, lpath[li], rpath[ri]),
         // left and right are remaining children below the split,
         // ensure left child is the rightmost path, and visa versa
-        isRightMost(lpath.slice(0, li)),
-        isLeftMost(rpath.slice(0, ri)),
+        is_right_most(spec, lpath.slice(0, li)),
+        is_left_most(spec, rpath.slice(0, ri)),
       })
     )
-  }
-
-  /// VerifyNonMembership returns true iff
-  /// proof is (contains) a NonExistenceProof,
-  /// both left and right sub-proofs are valid existence proofs (see above) or nil,
-  /// left and right proofs are neighbors (or left/right most if one is nil),
-  /// provided key is between the keys of the two proofs
-  def verifyNonMembership(root: CommitmentRoot_t,
-      np: NonExistsProof_t, key: Key_t): bool = and {
-    // getNonExistProofForKey
-    np.left == None or lessThan(np.left.unwrap().key, key),
-    np.right == None or lessThan(key, np.right.unwrap().key),
-    // implicit assumption, missing in the code:
-    // https://github.com/informalsystems/ics23-audit/issues/14
-    np.key == key,
-    // Verify
-    np.left != None or np.right != None,
-    np.left == None or and {
-      verify(np.left.unwrap(), root, np.left.unwrap().key, np.left.unwrap().value), 
-      lessThan(np.left.unwrap().key, key),
-    },
-    np.right == None or and {
-      verify(np.right.unwrap(), root, np.right.unwrap().key, np.right.unwrap().value),
-      lessThan(key, np.right.unwrap().key),
-    },
-    if (np.left == None) {
-      isLeftMost(np.right.unwrap().path)
-    } else if (np.right == None) {
-      isRightMost(np.left.unwrap().path)
-    } else {
-      isLeftNeighbor(np.left.unwrap().path, np.right.unwrap().path)
-    }
   }
 }

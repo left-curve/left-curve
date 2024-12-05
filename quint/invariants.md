@@ -81,7 +81,7 @@ The main data structures are trees and nodes, defined below.
 ```bluespec
 type Child = {
     version: int,
-    hash: Term_t,
+    hash: Term,
 }
 
 type InternalNode = {
@@ -93,8 +93,8 @@ type LeafNode = {
     // In the implementation it is a hash of a key but in the Radix tree it is
     // just used as a key, so we use a list of bits and we treat it here just as
     // bytes
-    key_hash: Bytes_t,
-    value_hash: Bytes_t,
+    key_hash: Bytes,
+    value_hash: Bytes,
 }
 
 type Node =
@@ -199,7 +199,7 @@ For any pair of leafs on the tree, there should be another node such that its ke
   /// tree that is the common prefix
   val nodeAtCommonPrefixInv: bool = {
     // Check whether there is a node with the given prefix
-    pure def existsNode(t: TreeMap, b: Bytes_t): bool =
+    pure def existsNode(t: TreeMap, b: Bytes): bool =
       t.keys().filter(nId => nId.key_hash == b).size() > 0
 
     // For any two leaf nodes, is there a nodeId in the tree that is the common prefix
