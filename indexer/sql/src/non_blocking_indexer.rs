@@ -1,24 +1,20 @@
 use {
-    crate::{active_model::Models, bail, entity, error, Context},
-    borsh::{BorshDeserialize, BorshSerialize},
+    crate::{bail, block::BlockToIndex, error, Context},
+    glob::glob,
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{
-        BlockInfo, BlockOutcome, BorshSerExt, Defined, MaybeDefined, Storage, Tx, TxOutcome,
-        Undefined,
+        BlockInfo, BlockOutcome, Defined, MaybeDefined, Storage, Tx, TxOutcome, Undefined,
     },
-    sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait, TransactionTrait},
-    serde::{Deserialize, Serialize},
+    sea_orm::TransactionTrait,
     std::{
         collections::HashMap,
         future::Future,
-        io::Write,
         ops::Deref,
         path::{Path, PathBuf},
         sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
     },
-    tempfile::NamedTempFile,
     tokio::runtime::{Builder, Handle, Runtime},
 };
 
@@ -105,11 +101,12 @@ impl NonBlockingIndexer {
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
-        let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex {
-            block_info: *block,
-            txs: vec![],
-            filename: self.block_tmp_filename(block.height),
-        });
+        let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex::new(
+            *block,
+            self.block_tmp_filename(block.height)
+                .to_string_lossy()
+                .to_string(),
+        ));
 
         action(block_to_index)
     }
@@ -162,51 +159,70 @@ impl NonBlockingIndexer {
 
 impl NonBlockingIndexer {
     /// Where will this block be temporarily saved on disk
-    fn block_tmp_filename(&self, block_height: u64) -> PathBuf {
-        self.indexer_path.path().join(block_height.to_string())
+    pub fn block_tmp_filename(&self, block_height: u64) -> PathBuf {
+        // Using a specific namespace `block-` to avoid conflicts with other files (tmpfile)
+        let filename = format!("block-{block_height}");
+        self.indexer_path.path().join(filename)
     }
 
-    ///// Save this block height on disk to ensure it'll be indexed when process is crashed
-    // fn save_on_disk(&self, block_height: u64) -> error::Result<()> {
-    //    let blocks = self.blocks.lock().expect("Can't lock blocks");
-    //    if let Some(block) = blocks.get(&block_height).cloned() {
-    //        drop(blocks);
-    //
-    //        let mut tmp_filename = NamedTempFile::new_in(self.indexer_path.path())?;
-    //        let encoded_block = block.to_borsh_vec()?;
-    //        tmp_filename.write_all(&encoded_block)?;
-    //        tmp_filename.flush()?;
-    //        tmp_filename.persist(self.block_tmp_filename(block_height))?;
-    //    }
-    //    Ok(())
-    //}
+    /// Load all existing tmp files and ensure they've been indexed
+    fn load_all_from_disk(&self, latest_block_height: u64) -> error::Result<()> {
+        // You're not supposed to have many remaining files, probably at most 1 file in rare case
+        // of process crash. I'll load each file one after the other, I dont need to use
+        // multi-thread to go faster.
 
-    // /// Save this block height on disk to ensure it'll be indexed when process is crashed
-    // fn persist_on_disk(&self, block: &BlockToIndex) -> error::Result<()> {
-    //    let mut tmp_filename = NamedTempFile::new_in(self.indexer_path.path())?;
-    //    let encoded_block = block.to_borsh_vec()?;
-    //    tmp_filename.write_all(&encoded_block)?;
-    //    tmp_filename.flush()?;
-    //    tmp_filename.persist(self.block_tmp_filename(block.block_info.height))?;
-    //    Ok(())
-    //}
-
-    // TODO: run once when `start` is called
-    fn load_all_from_disk(&self, _latest_block_height: u64) -> error::Result<()> {
         // TODO: look at the local cache and ensure all blocks were indexed, delete anything with
         // higher number than latest_block_height
         // fetch latest block_height from indexer DB
-        todo!()
-    }
 
-    // fn delete_from_disk(&self, block_height: u64) -> error::Result<()> {
-    //    let filename = self.block_tmp_filename(block_height);
-    //    if let Err(error) = std::fs::remove_file(&filename) {
-    //        #[cfg(feature = "tracing")]
-    //        tracing::warn!(path = %filename.display(), error = %error, "Can't remove file");
-    //    }
-    //    Ok(())
-    //}
+        let pattern = format!("{}/block-*", self.indexer_path.path().to_string_lossy());
+        for file in glob(&pattern)? {
+            match file {
+                Ok(path) => match BlockToIndex::load_tmp_file(&path) {
+                    Ok(block_to_index) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            block_height = block_to_index.block_info.height,
+                            "load_all_from_disk filename started"
+                        );
+
+                        // This loaded block from cache is in the future, we skip it. This can
+                        // happen when a crash occured after `do_finalize_block` has been called,
+                        // but before `do_commit` was called.
+                        if block_to_index.block_info.height > latest_block_height {
+                            block_to_index.delete_tmp_file()?;
+                            continue;
+                        }
+
+                        self.handle.block_on(async {
+                            let db = self.context.db.begin().await?;
+                            block_to_index.save(&db).await?;
+                            db.commit().await?;
+                            Ok::<(), error::IndexerError>(())
+                        })?;
+
+                        block_to_index.delete_tmp_file()?;
+
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            block_height = block_to_index.block_info.height,
+                            "load_all_from_disk filename finished"
+                        );
+                    },
+                    Err(error) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error = %error, path = %path.to_string_lossy(), "can't load block from tmp_file");
+                    },
+                },
+                Err(error) => {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %error, "can't look at filename");
+                },
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Indexer for NonBlockingIndexer {
@@ -485,74 +501,6 @@ where
             blocks: Arc::new(Mutex::new(HashMap::new())),
             indexing: false,
         })
-    }
-}
-
-// -------------------------------- BlockToIndex -------------------------------
-
-/// Saves the block and its transactions in memory
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone)]
-struct BlockToIndex {
-    pub block_info: BlockInfo,
-    pub txs: Vec<(Tx, TxOutcome)>,
-    /// Where the block is temporarily saved on disk.
-    #[borsh(skip)]
-    filename: PathBuf,
-}
-
-impl BlockToIndex {
-    /// Takes care of inserting the data in the database in a single DB transaction
-    pub async fn save(&self, db: &DatabaseTransaction) -> error::Result<()> {
-        #[cfg(feature = "tracing")]
-        tracing::info!(block_height = self.block_info.height, "Indexing block");
-
-        let mut models = Models::build(&self.block_info)?;
-        for (tx, tx_outcome) in self.txs.iter() {
-            models.push(tx, tx_outcome)?;
-        }
-
-        // TODO: if the process was to crash in the middle and restarted, we could try to
-        // reinsert existing data. We should use `on_conflict()` to avoid this, return the
-        // existing block and change `block_id` when/if we added foreign keys
-        models.block.insert(db).await?;
-
-        entity::transactions::Entity::insert_many(models.transactions)
-            .exec(db)
-            .await?;
-        entity::messages::Entity::insert_many(models.messages)
-            .exec(db)
-            .await?;
-        entity::events::Entity::insert_many(models.events)
-            .exec(db)
-            .await?;
-
-        Ok(())
-    }
-
-    fn delete_tmp_file(&self) -> error::Result<()> {
-        #[cfg(feature = "tracing")]
-        tracing::warn!(path = %self.filename.display(), "Removing block tmp_file");
-
-        if let Err(error) = std::fs::remove_file(&self.filename) {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, error = %error, "Can't remove block tmp_file");
-        }
-        Ok(())
-    }
-
-    fn save_tmp_file(&self) -> error::Result<()> {
-        let Some(directory) = self.filename.parent() else {
-            bail!("Can't detect parent directory");
-        };
-        let mut tmp_filename = NamedTempFile::new_in(directory)?;
-        let encoded_block = self.to_borsh_vec()?;
-        tmp_filename.write_all(&encoded_block)?;
-        tmp_filename.flush()?;
-        tmp_filename.persist(&self.filename)?;
-
-        #[cfg(feature = "tracing")]
-        tracing::warn!(path = %self.filename.display(), block_height = self.block_info.height, "Saved tmp_file");
-        Ok(())
     }
 }
 

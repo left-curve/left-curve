@@ -31,6 +31,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Persist(#[from] tempfile::PersistError),
+
+    #[error(transparent)]
+    Pattern(#[from] glob::PatternError),
 }
 
 impl From<IndexerError> for AppError {
