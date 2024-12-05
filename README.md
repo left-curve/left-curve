@@ -1,6 +1,6 @@
 # Grug JellyFish Merkle Tree Quint specification
 
-This is a Quint model of a Grug Jellyfish Merkle Tree implemented in Rust. The primary objective of this specification is to formalize the design of the Grug Jellyfish Merkle Tree. The design is described using Quint along with the correctness conditions in the form of invariants.
+This is a Quint model of a Grug Jellyfish Merkle Tree implemented in Rust. The primary objective of this specification is to formalize the design of the Grug Jellyfish Merkle Tree. The design is described using Quint along with the correctness conditions in the form of invariants and tests.
 
 Currently, there is no formal link between the specifications and the Rust implementation. However, the Quint specs are sufficiently developed to enable the generation of traces and the creation of interesting test data in future stages of the project. This specification contains:
 
