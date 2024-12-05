@@ -164,19 +164,20 @@ module proofs_test {
   /// tree, the proof should not be verified anymore.
   run leafNotExistsThenExistsTest = generate_one_tree.expect({
     val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
-    nondet non_existent_key_hash = all_key_hashes.exclude(leafs1.map(leaf => leaf.key_hash)).oneOf()
+    leafs1.size() < all_key_hashes.size() implies
+      nondet non_existent_key_hash = all_key_hashes.exclude(leafs1.map(leaf => leaf.key_hash)).oneOf()
 
-    val proof = ics23_prove(tree1, non_existent_key_hash, max_version).unwrap()
+      val proof = ics23_prove(tree1, non_existent_key_hash, max_version).unwrap()
 
-    match proof {
-      | NonExist(nep) => {
-         val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
-         val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-         // We added the leaf, so the non-existence proof should not be verified anymore
-         assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
+      match proof {
+        | NonExist(nep) => {
+           val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
+           val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+           // We added the leaf, so the non-existence proof should not be verified anymore
+           assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
+        }
+        | _ => assert(false)
       }
-      | _ => assert(false)
-    }
   })
 
   /// If we have an existence proof for a leaf and then we delete it from the
