@@ -1,4 +1,4 @@
-import { Button, Input } from "@dango/shared";
+import { Button, Emoji, Input } from "@dango/shared";
 
 const BlockExplorerView: React.FC = () => {
   return (
@@ -11,11 +11,7 @@ const BlockExplorerView: React.FC = () => {
                 Block Explorer
               </p>
               <div className="rounded-full bg-surface-rose-200 flex items-center justify-center min-h-[10.5rem] min-w-[10.5rem]">
-                <img
-                  src="/images/applets/block-explorer.svg"
-                  className="h-[7.5rem] w-[7.5rem]"
-                  alt="applets-block-explorer"
-                />
+                <Emoji detailed name="map" className="h-[7.5rem] w-[7.5rem]" />
               </div>
             </div>
             <div className="flex flex-col gap-4 w-full">
