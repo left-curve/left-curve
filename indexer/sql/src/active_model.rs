@@ -60,20 +60,20 @@ impl Models {
             self.messages.push(new_message);
         }
 
-        for event in tx_outcome.events.iter() {
-            let serialized_attributes = event.attributes.to_json_value()?;
+        // for event in tx_outcome.events.iter() {
+        //     let serialized_attributes = event.attributes.to_json_value()?;
 
-            let new_event = entity::events::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                transaction_id: Set(transaction_id),
-                block_height: self.block.block_height.clone(),
-                created_at: self.block.created_at.clone(),
-                r#type: Set(event.r#type.clone()),
-                attributes: Set(serialized_attributes.into_inner()),
-            };
+        //     let new_event = entity::events::ActiveModel {
+        //         id: Set(Uuid::new_v4()),
+        //         transaction_id: Set(transaction_id),
+        //         block_height: self.block.block_height.clone(),
+        //         created_at: self.block.created_at.clone(),
+        //         r#type: Set(event.r#type.clone()),
+        //         attributes: Set(serialized_attributes.into_inner()),
+        //     };
 
-            self.events.push(new_event);
-        }
+        //     self.events.push(new_event);
+        // }
 
         Ok(())
     }

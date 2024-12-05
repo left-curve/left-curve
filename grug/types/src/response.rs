@@ -2,6 +2,7 @@ use {
     crate::{Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
+    strum_macros::EnumDiscriminants,
 };
 
 #[derive(
@@ -9,7 +10,7 @@ use {
 )]
 pub struct Response {
     pub submsgs: Vec<SubMessage>,
-    pub subevents: Vec<SubEvent>,
+    pub subevents: Vec<ContractEvent>,
 }
 
 impl Response {
@@ -70,16 +71,16 @@ impl Response {
         T: Into<String>,
         U: Serialize,
     {
-        self.subevents.push(SubEvent::new(ty, data)?);
+        self.subevents.push(ContractEvent::new(ty, data)?);
         Ok(self)
     }
 
-    pub fn add_subevent(mut self, event: SubEvent) -> Self {
+    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
         self.subevents.push(event);
         self
     }
 
-    pub fn may_add_subevent(mut self, maybe_event: Option<SubEvent>) -> Self {
+    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
         if let Some(event) = maybe_event {
             self.subevents.push(event);
         }
@@ -88,7 +89,7 @@ impl Response {
 
     pub fn add_subevents<I>(mut self, events: I) -> Self
     where
-        I: IntoIterator<Item = SubEvent>,
+        I: IntoIterator<Item = ContractEvent>,
     {
         self.subevents.extend(events);
         self
@@ -162,19 +163,19 @@ impl AuthResponse {
         Ok(self)
     }
 
-    pub fn add_subevent(mut self, event: SubEvent) -> Self {
+    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
         self.response = self.response.add_subevent(event);
         self
     }
 
-    pub fn may_add_subevent(mut self, maybe_event: Option<SubEvent>) -> Self {
+    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
         self.response = self.response.may_add_subevent(maybe_event);
         self
     }
 
     pub fn add_subevents<I>(mut self, events: I) -> Self
     where
-        I: IntoIterator<Item = SubEvent>,
+        I: IntoIterator<Item = ContractEvent>,
     {
         self.response = self.response.add_subevents(events);
         self
@@ -193,7 +194,18 @@ impl AuthResponse {
 ///
 /// In case a callback is to be performed, the host passes a piece of binary
 /// payload data to the contract.
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumDiscriminants,
+)]
+#[strum_discriminants(derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize))]
 pub enum ReplyOn {
     Success(Json),
     Error(Json),
@@ -280,13 +292,13 @@ impl SubMessage {
 ///
 /// In grug-app, this is converted to an [`Event::Guest`](crate::Event).
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct SubEvent {
+pub struct ContractEvent {
     #[serde(rename = "type")]
     pub ty: String,
     pub data: Json,
 }
 
-impl SubEvent {
+impl ContractEvent {
     pub fn new<T, U>(ty: T, data: U) -> StdResult<Self>
     where
         T: Into<String>,

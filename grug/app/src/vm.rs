@@ -1,10 +1,12 @@
 use {
     crate::{
         handle_submessages, AppCtx, AppError, AppResult, Instance, QuerierProvider,
-        StorageProvider, Vm, CODES, CONTRACT_ADDRESS_KEY, CONTRACT_NAMESPACE,
+        StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Addr, BorshDeExt, BorshSerExt, Context, Event, GenericResult, Hash256, Response},
+    grug_types::{
+        Addr, BorshDeExt, BorshSerExt, Context, EvtGuest, GenericResult, Hash256, Response,
+    },
 };
 
 /// Create a VM instance, and call a function that takes no input parameter and
@@ -109,7 +111,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-) -> AppResult<Vec<Event>>
+) -> AppResult<EvtGuest>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
@@ -143,7 +145,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     code_hash: Hash256,
     ctx: &Context,
     param: &P,
-) -> AppResult<Vec<Event>>
+) -> AppResult<EvtGuest>
 where
     P: BorshSerialize,
     VM: Vm + Clone,
@@ -180,7 +182,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     ctx: &Context,
     param1: &P1,
     param2: &P2,
-) -> AppResult<Vec<Event>>
+) -> AppResult<EvtGuest>
 where
     P1: BorshSerialize,
     P2: BorshSerialize,
@@ -241,24 +243,18 @@ pub(crate) fn handle_response<VM>(
     name: &'static str,
     ctx: &Context,
     response: Response,
-) -> AppResult<Vec<Event>>
+) -> AppResult<EvtGuest>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    // Create an event for this call
-    let event = Event::new(name)
-        .add_attribute(CONTRACT_ADDRESS_KEY, ctx.contract)
-        .add_attributes(response.attributes);
-
     // Handle submessages; append events emitted during submessage handling
-    let mut events = vec![event];
-    events.extend(handle_submessages(
-        app_ctx,
-        msg_depth,
-        ctx.contract,
-        response.submsgs,
-    )?);
+    let sub_events = handle_submessages(app_ctx, msg_depth, ctx.contract, response.submsgs)?;
 
-    Ok(events)
+    Ok(EvtGuest {
+        sub_events,
+        contract: ctx.contract,
+        method: name.to_string(),
+        contract_events: response.subevents,
+    })
 }

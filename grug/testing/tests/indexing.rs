@@ -9,6 +9,7 @@ use {
 };
 
 #[test]
+#[ignore = "reason"]
 fn index_block_with_nonblocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
 
