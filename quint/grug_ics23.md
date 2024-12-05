@@ -895,7 +895,7 @@ Because Quint does not support early return, we had to `match` the outcome of `c
 We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
 
 ```bluespec
-pure pure def checked_sub(a: int, b: int): Option[int] = {
+pure def checked_sub(a: int, b: int): Option[int] = {
   if (b > a) {
     None
   } else {
