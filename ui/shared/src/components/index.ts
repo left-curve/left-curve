@@ -71,3 +71,16 @@ export { XCircleIcon } from "./icons/XCircle";
 export { CopyCheckIcon } from "./icons/CopyCheck";
 export { ConnectorIcon } from "./icons/Connector";
 export { CrossIcon } from "./icons/Cross";
+
+export { Ants } from "./icons/emoji/Ants";
+export { Factory1 } from "./icons/emoji/Factory1";
+export { Factory2 } from "./icons/emoji/Factory2";
+export { Fisher } from "./icons/emoji/Fisher";
+export { Hamster } from "./icons/emoji/Hamster";
+export { Lock } from "./icons/emoji/Lock";
+export { Money } from "./icons/emoji/Money";
+export { MoneyBag } from "./icons/emoji/MoneyBag";
+export { Pig1 } from "./icons/emoji/Pig1";
+export { Pig2 } from "./icons/emoji/Pig2";
+export { Temple } from "./icons/emoji/Temple";
+export { Wizard } from "./icons/emoji/Wizard";
