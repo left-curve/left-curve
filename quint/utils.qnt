@@ -2,6 +2,7 @@
 
 module utils {
   import basicSpells.* from "./spells/basicSpells"
+  import rareSpells.* from "./spells/rareSpells"
   import node.* from "./node"
   import hashes.* from "./hashes"
   val keylength = 4
@@ -101,5 +102,9 @@ module utils {
     } else {
       Some(a - b)
     }
+  }
+
+  pure def fuzzy_compare(a, b) = {
+    intCompare(a.key_hash[b.key_hash[0]], b.key_hash[a.key_hash[0]])
   }
 }
