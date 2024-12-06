@@ -88,7 +88,14 @@ tendermint     = "0.40"
 tendermint-rpc = "0.40"
 
 # IBC packages
-ics23 = "0.12"
+ibc-proto                 = { version = "0.51", default-features = false }
+ibc-primitives            = { version = "0.56", default-features = false }
+ibc-core-client           = { version = "0.56", default-features = false }
+ibc-core-host-types       = { version = "0.56", default-features = false }
+ibc-client-tendermint     = { version = "0.56", default-features = false }
+ibc-core-client-types     = { version = "0.56", default-features = false }
+ibc-core-commitment-types = { version = "0.56", default-features = false }
+ics23                     = "0.12"
 
 # Pyth packages
 #
@@ -98,15 +105,6 @@ ics23 = "0.12"
 pyth-sdk                   = "0.8.0"
 pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "cd67cd8" }
 pythnet-sdk                = "2"
-
-# IBC packages
-ibc-proto                 = { version = "0.51", default-features = false }
-ibc-primitives            = { version = "0.56", default-features = false }
-ibc-core-client           = { version = "0.56", default-features = false }
-ibc-core-host-types       = { version = "0.56", default-features = false }
-ibc-client-tendermint     = { version = "0.56", default-features = false }
-ibc-core-client-types     = { version = "0.56", default-features = false }
-ibc-core-commitment-types = { version = "0.56", default-features = false }
 
 # Grug packages
 grug              = { path = "grug/std" }
