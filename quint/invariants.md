@@ -793,7 +793,7 @@ First we call `action init`.
 run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
 ```
 
-After that, we repeat the following set of operations three times First we pick randomly a set of operations that will be in a batch.
+After that, we repeat the following set of operations three times. First we pick randomly a set of operations that will be in a batch.
 
 ```bluespec "tests" +=
   nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
