@@ -2,7 +2,7 @@ use {
     dango_lending::DEBTS,
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
-    grug::{Addr, BorshDeExt, Coins, Inner, IsZero, Number, NumberConst, QuerierWrapper, Udec128},
+    grug::{Addr, Inner, IsZero, Number, NumberConst, PathQuerier, QuerierWrapper, Udec128},
 };
 
 /// Margin account query methods.
@@ -16,9 +16,7 @@ impl MarginQuerier for QuerierWrapper<'_> {
 
         // Query all debts for the account.
         let debts = self
-            .query_wasm_raw(app_cfg.addresses.lending, DEBTS.path(account))?
-            .map(|coins| coins.deserialize_borsh::<Coins>())
-            .transpose()?
+            .query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))
             .unwrap_or_default();
 
         // Calculate the total value of the debts.
