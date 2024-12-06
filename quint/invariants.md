@@ -812,7 +812,7 @@ We create `reference` tree using `apply_simple` algorithm, and `result` tree usi
   val failure = reference != result
 ```
 
-Then we update the state using operator `all`, which means that everyhing wrapped by it has to be `true` in order to execute it. If there has been a failure, `assert(q::debug("simple", reference) == q::debug("fancy", result))` will return false, and the whole run would fail.
+Then we update the state using operator `all`, which means that everyhing wrapped by it has to be `true` in order to execute it. If there has been a failure, `assert(q::debug("simple", reference) == q::debug("fancy", result))` will return false, and the whole run would fail. `q::debug` statements are added so we can see relevant information if the test fails.
 
 ```bluespec "tests" +=
   all {
