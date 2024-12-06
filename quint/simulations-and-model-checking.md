@@ -56,6 +56,12 @@ We also removed the limit of 5 operations per batch, and reduced the set from wh
 
 We ran an **8-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **20k samples per command**. This gave us a total of **240k samples**. We used `key_hash`es of length 4. In this experiment, we checked all invariants, including the proof-related ones, except for prunning, as we used the regular state machine for performance reasons. This was run at [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac).
 
+### **Final simulation results**
+
+After all this iteration, we ran two final simulations with the latest version ([28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)), only differing by the invariants we check in each of them. We checked consecutive "fancy" apply operations on top of an empty tree for 3 steps. This was run for **9 hours**, with **6 parallel instances** per command.
+- Invariant: `treeInvariants` (all tree manipulation invariants): Total samples = 240k
+- Invariant: `proofInvariants` (all proof-related invariants): Total samples = 300k
+
 ### **Testing**
 
 Another way to use the Quint random simulator is to run tests, which work like property-based testing. The tests can have non-deterministic values, so we can run many samples to get more confidence that the property stated by the tests holds. We focus the long-running testing on the more interesting ones:
@@ -67,6 +73,8 @@ We ran an **6-hour** test with **8 parallel instances** of the test simulator, a
 ok simpleVsFancyTest passed 10000 test(s)
 ok simpleVsFancyMultipleRepsTest passed 10000 test(s)
 ```
+
+Commit for this experiment: [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27).
 
 #### **Proof verification across different trees**
 
@@ -81,6 +89,8 @@ ok verificationOnPrunnedTreeTest passed 500 test(s)
 ok leafNotExistsThenExistsTest passed 500 test(s)
 1) leafExistsThenNotExistsTest failed after 392 test(s)
 ```
+
+Commit for this experiment: [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27).
 
 - TODO: fix failing test and update
 
