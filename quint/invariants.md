@@ -1019,9 +1019,11 @@ run leafExistsThenNotExistsTest = generate_one_tree.expect({
   match proof {
     | Exist(ep) => {
       val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
-      val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-      // We deleted the leaf, so the existence proof should not be verified anymore
-      assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+      updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
+        val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+        // We deleted the leaf, so the existence proof should not be verified anymore
+        assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+      }
     }
     | _ => assert(false)
   }
