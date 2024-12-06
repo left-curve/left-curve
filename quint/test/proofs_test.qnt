@@ -110,24 +110,6 @@ module proofs_test {
       assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
   })
 
-  /// If t1 and t2 have the same keys but a single leaf with a different value,
-  /// verifying proofs from t1 against t2 root should fail.
-  run twoDifferentTreesByOnlyOneValueTest = generate_one_tree.expect({
-    nondet version = 1.to(max_version).oneOf()
-    val leafs1 = tree1.treeAtVersion(version).allLeafs()
-
-    not(leafs1.empty()) implies
-      nondet leaf_to_change = leafs1.oneOf()
-      val ops_with_different_values = leafs1.map(kv => {
-        key_hash: kv.key_hash,
-        op: if (kv == leaf_to_change) Insert([kv.value_hash[0] + 1]) else Insert(kv.value_hash)
-      })
-      val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
-
-      nondet leaf = leafs1.oneOf()
-      assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
-  })
-
   /// If t1 and t2 are different but have one leaf in common, verifying a proof
   /// from t1 for that leaf against t2 root should fail.
   run twoDifferentTreesSameByOnlyOneKVTest = generate_two_trees.expect({
@@ -146,6 +128,24 @@ module proofs_test {
       val t2 = tree2.apply(max_version, max_version + 1, Set(op))
 
       assert_proof_on_different_trees(t1, t2, leaf, max_version + 1)
+  })
+
+  /// If t1 and t2 have the same keys but a single leaf with a different value,
+  /// verifying proofs from t1 against t2 root should fail.
+  run twoDifferentTreesByOnlyOneValueTest = generate_one_tree.expect({
+    nondet version = 1.to(max_version).oneOf()
+    val leafs1 = tree1.treeAtVersion(version).allLeafs()
+
+    not(leafs1.empty()) implies
+      nondet leaf_to_change = leafs1.oneOf()
+      val ops_with_different_values = leafs1.map(kv => {
+        key_hash: kv.key_hash,
+        op: if (kv == leaf_to_change) Insert([kv.value_hash[0] + 1]) else Insert(kv.value_hash)
+      })
+      val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
+
+      nondet leaf = leafs1.oneOf()
+      assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
   })
 
   /// An existence proof for a tree should work on that tree after prunning, as
