@@ -3,10 +3,9 @@
 In order to obtain confidence that the model is correct, in respect to the invariants and tests described in [invariants.md](./invariants.md), we run random simulations (on bigger scopes) and model checking (on smaller scopes). We used the **Quint simulator** for simulations, which runs a kind of Depth First Search (DFS) on the state space with a max-depth (`--max-steps`) defined by us; and the **TLC model checker** for model checking, which runs a kind of Breadth First Search (BFS) on the complete state space, which requires that we refine our model to a state-space small enough for this to run in the time we had available.
 
 ## Summary of results
-| ## Summary of results |
-| Simulation Type                          | Time Taken | Parallel Instances | Max Steps | Samples per Command | Total Samples | Key Hash Length | Commit                                                                                       |
-|------------------------------------------|------------|--------------------|-----------|---------------------|---------------|-----------------|----------------------------------------------------------------------------------------------|
-| Simulating tree manipulation             | 16 hours   | 12                 | 3         | 100k                | 1.2M          | 6               |                                                                                              |
+| Simulation Type                          | Time Taken | Parallel Instances | Max Steps | Samples per Command | Total Samples | Key Hash Length | Commit                                                                                                                |
+|------------------------------------------|------------|--------------------|-----------|---------------------|---------------|-----------------|-----------------------------------------------------------------------------------------------------------------------|
+| Simulating tree manipulation             | 16 hours   | 12                 | 3         | 100k                | 1.2M          | 6               |                                                                                                                       |
 | Simulating proofs and proof verification | 17 hours   | 12                 | 3         | 15k                 | 180k          | 4               | [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4) |
 | Second simulation                        | 8 hours    | 12                 | 3         | 20k                 | 240k          | 4               | [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac)          |
 | Final simulation (treeInvariants)        | 9 hours    | 6                  | 3         | 40k                 | 240k          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
@@ -21,10 +20,10 @@ In order to obtain confidence that the model is correct, in respect to the invar
 
 ## Summary of Model Checking
 
-| Setup   | Key Hash Length | Steps | Distinct States Found | Depth of State Graph | Time Taken | Commit                                                                                       |
-|---------|-----------------|-------|-----------------------|----------------------|------------|----------------------------------------------------------------------------------------------|
-| Setup A | 3               | 1     | 16,777,472            | 2                    | 1h 55min   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f)                                                                                             |
-| Setup B | 2               | 2     | 1,052,688             | 3                    | 2min 46s   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f)                                                                                             |
+| Setup   | Key Hash Length | Steps | Distinct States Found | Depth of State Graph | Time Taken | Commit                                                                                                       |
+|---------|-----------------|-------|-----------------------|----------------------|------------|--------------------------------------------------------------------------------------------------------------|
+| Setup A | 3               | 1     | 16,777,472            | 2                    | 1h 55min   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f) |
+| Setup B | 2               | 2     | 1,052,688             | 3                    | 2min 46s   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f) |
 
 ## Simulations
 
