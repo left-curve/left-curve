@@ -278,10 +278,6 @@ fn cronjob_fails() {
         .should_succeed()
         .code_hash;
 
-    // Block time: 2
-    //
-    // Deploy three tester contracts with different jobs.
-    // Each contract is given an initial coin balance.
     let cron = suite
         .instantiate(
             &mut accounts["larry"],
