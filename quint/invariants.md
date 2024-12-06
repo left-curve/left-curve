@@ -713,5 +713,6 @@ This inserts a line break that is not rendered in the markdown
     treeInvariants,
     proofInvariants,
   }
+}
 ```
 -->
