@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coins, Empty, ReplyOn, ResultExt},
+    grug_types::{Addr, Coin, Coins, Empty, JsonSerExt, Message, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
@@ -153,7 +153,7 @@ mod replier {
 
 fn setup() -> (TestSuite, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coins::new())
+        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
         .add_account("sender", Coins::new())
         .set_owner("owner")
         .build();
@@ -444,4 +444,35 @@ fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: b
     suite
         .query_wasm_smart(replier_addr, QueryDataRequest {})
         .should_succeed_and_equal(data);
+}
+
+#[test]
+fn events() {
+    let (mut suite, mut accounts, replier_addr) = setup();
+
+    let msg_transfer = Message::transfer(
+        accounts["sender"].address,
+        Coins::one("usdc", 1_000).unwrap(),
+    )
+    .unwrap();
+
+    let msg_execute = ExecuteMsg::perform(
+        "1",
+        ExecuteMsg::ok("2"),
+        ReplyOn::success(&ReplyMsg::Ok(ExecuteMsg::perform(
+            "3",
+            ExecuteMsg::ok("a"),
+            ReplyOn::success(&ReplyMsg::Ok(ExecuteMsg::ok("1.1"))).unwrap(),
+        )))
+        .unwrap(),
+    );
+
+    let result = suite
+        .send_messages(&mut accounts["owner"], vec![
+            msg_transfer,
+            Message::execute(replier_addr, &msg_execute, Coins::one("usdc", 123).unwrap()).unwrap(),
+        ])
+        .should_succeed();
+
+    println!("{}", result.events.to_json_string_pretty().unwrap());
 }

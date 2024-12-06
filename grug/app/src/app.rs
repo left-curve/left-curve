@@ -248,18 +248,18 @@ where
         );
 
         // Perform the cronjobs.
-        for (_idx, (_time, contract)) in jobs.into_iter().enumerate() {
+        for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 idx = _idx,
-                time = into_utc_string(_time),
+                time = into_utc_string(time),
                 contract = contract.to_string(),
                 "Attempting to perform cronjob"
             );
 
             let gas_tracker = GasTracker::new_limitless();
 
-            let result = do_cron_execute(
+            let guest_event = do_cron_execute(
                 AppCtx::new(
                     self.vm.clone(),
                     Box::new(buffer.clone()) as _,
@@ -270,15 +270,19 @@ where
                 contract,
             );
 
-            cron_outcomes.push(new_outcome(gas_tracker, result));
-
-            // Schedule the next time this cronjob is to be performed.
-            schedule_cronjob(
+            let next = schedule_cronjob(
                 &mut buffer,
                 contract,
                 block.timestamp,
                 cfg.cronjobs[&contract],
             )?;
+
+            let cron_event =
+                guest_event.map(|guest_event| vec![Event::cron(contract, time, next, guest_event)]);
+
+            cron_outcomes.push(new_outcome(gas_tracker, cron_event));
+
+            // Schedule the next time this cronjob is to be performed.
         }
 
         // Process transactions one-by-one.
@@ -372,8 +376,8 @@ where
         let mut events = vec![];
 
         match do_withhold_fee(ctx.clone(), &tx, AuthMode::Check) {
-            Ok(new_events) => {
-                events.extend(new_events);
+            Ok(withhold_event) => {
+                events.push(Event::Withhold(withhold_event));
             },
             Err(err) => {
                 return Ok(new_outcome(ctx.gas_tracker, Err(err)));
@@ -381,8 +385,8 @@ where
         }
 
         match do_authenticate(ctx.clone(), &tx, AuthMode::Check) {
-            Ok((new_events, _)) => {
-                events.extend(new_events);
+            Ok((authenticate_event, _)) => {
+                events.push(Event::Authenticate(authenticate_event));
             },
             Err(err) => {
                 return Ok(new_outcome(ctx.gas_tracker, Err(err)));
@@ -652,8 +656,8 @@ where
     //
     // If this fails, we abort the tx and return, discard all state changes.
     match do_withhold_fee(fee_ctx.clone_boxing_storage(), &tx, mode) {
-        Ok(new_events) => {
-            events.extend(new_events);
+        Ok(withhold_event) => {
+            events.push(Event::Withhold(withhold_event));
         },
         Err(err) => {
             return new_tx_outcome(gas_tracker, events.clone(), Err(err));
@@ -674,9 +678,9 @@ where
     // If fails, discard state changes in `msg_buffer` (but keeping those in
     // `fee_buffer`), discard the events, and jump to `finalize_fee`.
     let request_backrun = match do_authenticate(msg_ctx.clone_boxing_storage(), &tx, mode) {
-        Ok((new_events, request_backrun)) => {
+        Ok((authenticate_event, request_backrun)) => {
             msg_ctx.storage.write_access().commit();
-            events.extend(new_events);
+            events.push(Event::Authenticate(authenticate_event));
             request_backrun
         },
         Err(err) => {
@@ -735,11 +739,11 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        msg_events.extend(process_msg(ctx.clone(), 0, tx.sender, msg.clone())?);
+        msg_events.push(process_msg(ctx.clone(), 0, tx.sender, msg.clone())?);
     }
 
     if request_backrun {
-        msg_events.extend(do_backrun(ctx, tx, mode)?);
+        msg_events.push(do_backrun(ctx, tx, mode).map(Event::Backrun)?);
     }
 
     Ok(msg_events)
@@ -761,8 +765,8 @@ where
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
 
     match do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode) {
-        Ok(new_events) => {
-            events.extend(new_events);
+        Ok(finalize_event) => {
+            events.push(Event::Finalize(finalize_event));
             ctx.storage.disassemble().consume();
             new_tx_outcome(gas_tracker, events, result)
         },
@@ -779,18 +783,22 @@ pub fn process_msg<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: Message,
-) -> AppResult<Vec<Event>>
+) -> AppResult<Event>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     match msg {
-        Message::Configure(msg) => do_configure(ctx.downcast(), sender, msg),
-        Message::Transfer(msg) => do_transfer(ctx, msg_depth, sender, msg, true),
-        Message::Upload(msg) => do_upload(ctx.downcast(), sender, msg),
-        Message::Instantiate(msg) => do_instantiate(ctx, msg_depth, sender, msg),
-        Message::Execute(msg) => do_execute(ctx, msg_depth, sender, msg),
-        Message::Migrate(msg) => do_migrate(ctx, msg_depth, sender, msg),
+        Message::Configure(msg) => do_configure(ctx.downcast(), sender, msg).map(Event::Configure),
+        Message::Transfer(msg) => {
+            do_transfer(ctx, msg_depth, sender, msg, true).map(Event::Transfer)
+        },
+        Message::Upload(msg) => do_upload(ctx.downcast(), sender, msg).map(Event::Upload),
+        Message::Instantiate(msg) => {
+            do_instantiate(ctx, msg_depth, sender, msg).map(Event::Instantiate)
+        },
+        Message::Execute(msg) => do_execute(ctx, msg_depth, sender, msg).map(Event::Execute),
+        Message::Migrate(msg) => do_migrate(ctx, msg_depth, sender, msg).map(Event::Migrate),
     }
 }
 
@@ -889,7 +897,7 @@ pub(crate) fn schedule_cronjob(
     contract: Addr,
     current_time: Timestamp,
     interval: Duration,
-) -> StdResult<()> {
+) -> StdResult<Timestamp> {
     let next_time = current_time + interval;
 
     #[cfg(feature = "tracing")]
@@ -899,7 +907,9 @@ pub(crate) fn schedule_cronjob(
         "Scheduled cronjob"
     );
 
-    NEXT_CRONJOBS.insert(storage, (next_time, contract))
+    NEXT_CRONJOBS.insert(storage, (next_time, contract))?;
+
+    Ok(next_time)
 }
 
 fn new_outcome(gas_tracker: GasTracker, result: AppResult<Vec<Event>>) -> Outcome {

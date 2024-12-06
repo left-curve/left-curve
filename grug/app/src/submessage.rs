@@ -46,36 +46,44 @@ where
             submsg.msg,
         );
 
-        match (submsg.reply_on, result) {
+        match (&submsg.reply_on, result) {
             // Success - callback requested
             // Flush state changes, log events, give callback.
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
-                events.extend(submsg_events.clone());
-                events.extend(do_reply(
-                    ctx.clone(),
-                    msg_depth + 1, // important: increase message depth
+                events.push(submsg_events.clone());
+                events.push(Event::reply(
                     sender,
-                    &payload,
-                    &GenericResult::Ok(submsg_events),
-                )?);
+                    submsg.reply_on.clone(),
+                    do_reply(
+                        ctx.clone(),
+                        msg_depth + 1, // important: increase message depth
+                        sender,
+                        payload,
+                        &GenericResult::Ok(submsg_events),
+                    )?,
+                ));
             },
             // Error - callback requested
             // Discard uncommitted state changes, give callback.
             (ReplyOn::Error(payload) | ReplyOn::Always(payload), Result::Err(err)) => {
-                events.extend(do_reply(
-                    ctx.clone(),
-                    msg_depth + 1, // important: increase message depth
+                events.push(Event::reply(
                     sender,
-                    &payload,
-                    &GenericResult::Err(err.to_string()),
-                )?);
+                    submsg.reply_on.clone(),
+                    do_reply(
+                        ctx.clone(),
+                        msg_depth + 1, // important: increase message depth
+                        sender,
+                        payload,
+                        &GenericResult::Err(err.to_string()),
+                    )?,
+                ));
             },
             // Success - callback not requested
             // Flush state changes, log events, move on to the next submsg.
             (ReplyOn::Error(_) | ReplyOn::Never, Result::Ok(submsg_events)) => {
                 buffer.disassemble().consume();
-                events.extend(submsg_events);
+                events.push(submsg_events);
             },
             // Error - callback not requested
             // Abort by throwing error.
