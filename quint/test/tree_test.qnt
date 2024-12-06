@@ -9,8 +9,7 @@ module tree_test {
   import apply_fancy as fancy from "../apply_fancy"
   import apply_simple as simple from "../apply_simple"
 
-
-  run simpleVsFancyTest = {
+  run simpleVsFancyTest =
     pure val empty_tree = { nodes: Map(), orphans: Set() }
     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
     pure val ops = kms_with_value.to_operations()
@@ -18,7 +17,6 @@ module tree_test {
     pure val reference = simple::apply(empty_tree, 0, 1, ops)
     pure val result = fancy::apply(empty_tree, 0, 1, ops)
     assert(reference == result)
-  }
 
   run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
