@@ -64,6 +64,7 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    ensure!(ctx.funds.is_empty(), "unexpected funds: {}", ctx.funds);
     match msg {
         ExecuteMsg::Propose {
             title,

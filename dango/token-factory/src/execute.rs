@@ -21,6 +21,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    reject_unintended_deposits(ctx.funds.clone(), msg.clone())?;
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
         ExecuteMsg::Create {
@@ -36,6 +37,16 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
         } => burn(ctx, denom, from, amount),
     }
+}
+
+// reject_unintended_deposits returns error when funds are provided for messages
+// not explicitly whitelisted.
+fn reject_unintended_deposits(funds: Coins, msg: ExecuteMsg) -> anyhow::Result<()> {
+    match msg {
+        ExecuteMsg::Create { .. } => (),
+        _ => ensure!(funds.is_empty(), "unexpected funds: {}", funds),
+    }
+    Ok(())
 }
 
 fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
