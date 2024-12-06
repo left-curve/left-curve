@@ -1,6 +1,6 @@
 # Invariants
 
-This document describes invariants of grug's jellyfish merkle tree manipulation. The snippets in here get tangled into a Quint file for verification.
+This part of the document describes invariants of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
 <!--
 ```bluespec apply_state_machine.qnt +=
@@ -79,6 +79,7 @@ module apply_state_machine {
 The main data structures are trees and nodes, defined below.
 
 ### Nodes
+
 ```bluespec
 type Child = {
     version: int,
@@ -105,6 +106,7 @@ type Node =
 ```
 
 ### Trees
+
 ```bluespec
 type BitArray = List[int]
 type Version = int
@@ -164,7 +166,7 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
-## Invariants
+## Defined Invariants
 
 ### Parents of nodes exist in the tree
 
@@ -357,7 +359,8 @@ This inserts a line break that is not rendered in the markdown
 
 ### Internal nodes share the version with at least one child
 
-Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading
+Given the explanation around `versionInv` from above, we had the (wrong) intuition, that since updates always push their version up the tree, every internal node should have the version of at least one of it children. However, the intuition is misleading:
+
 - in the case of a delete, where a parent gets a new version, but there may not be a node at the spot where the deleted nodes had been.
 - in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
 However, for reference, we keep the formula here as it might be useful for understanding in the future.
@@ -596,12 +599,14 @@ Completeness:
     - Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
 
 Soundness:
+
   - Membership: If we can get an existence proof for a key_hash, there should be a leaf in the tree with that key hash.
   - Non-Membership: If we can get a non-existence proof for a key_hash, there should not be a leaf in the tree with that key hash.
 
 See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for the formal definitions.
 
 *Status:* TRUE
+
 ```bluespec apply_state_machine.qnt +=
   val membershipCompletenessInv = versionsToCheck.forall(v => membershipCompleteness(tree, v))
   val nonMembershipCompletenessInv = versionsToCheck.forall(v => nonMembershipCompleteness(tree, v))
@@ -618,6 +623,7 @@ This inserts a line break that is not rendered in the markdown
 ### Proofs are only verified for their `key_hash`
 
 This invariant creates proofs for all possible combinations of `key_hashes`. Some of them will be existence proofs and some will be non-existence.
+
 - For existence proofs:
   - There should be a leaf in the tree with that `key_hash` and it the proof should be verified with this leaf's `key_hash` and `value_hash`
     - It should not be verified with any other `value_hash`
@@ -716,3 +722,426 @@ This inserts a line break that is not rendered in the markdown
 }
 ```
 -->
+
+# Tests
+
+This part of the document describes relevant tests for tree manipulation and ICS23 proofs of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint files for verification.
+
+## Testing functional equivalence
+
+We defined two runs that are verifying the functional equivalence of [`apply_fancy`](./apply_fancy.qnt) and [`apply_simple`](./apply_simple.qnt) algorithms:
+
+- [`simpleVsFancyTest`](#simple-vs-fancy-test)
+- [`simpleVsFancyMultipleRepsTest`](#simple-vs-fancy-multiple-reps-test)
+
+<!--- 
+```bluespec test/tree_test.qnt +=
+// -*- mode: Bluespec; -*-
+
+module tree_test {
+  import tree.* from "../tree"
+  import node.* from "../node"
+  import utils.* from "../utils"
+  import basicSpells.* from "../spells/basicSpells"
+  import apply_state_machine.* from "../apply_state_machine"
+  import apply_fancy as fancy from "../apply_fancy"
+  import apply_simple as simple from "../apply_simple"
+
+  <<<tests>>>
+}
+```
+--->
+
+### Simple Vs Fancy Test
+
+Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after one batch.
+
+First, we create an empty tree.
+
+```bluespec "tests" +=
+run simpleVsFancyTest =
+  pure val empty_tree = { nodes: Map(), orphans: Set() }
+```
+
+Then we create a batch of randomly picked operations to apply on both trees.
+
+```bluespec "tests" +=
+  nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+  pure val ops = kms_with_value.to_operations()
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+We create `reference` tree using `apply_simple` algorithm, and `result` tree using `apply_fancy`.
+
+```bluespec "tests" +=
+  pure val reference = simple::apply(empty_tree, 0, 1, ops)
+  pure val result = fancy::apply(empty_tree, 0, 1, ops)
+```
+
+Then, we assert their equivalence.
+
+```bluespec "tests" +=
+  assert(reference == result)
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+
+### Simple Vs Fancy Multiple Reps Test
+
+Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after 3 batches. This test utilizes already existing state machine.
+First we call `action init`.
+
+```bluespec "tests" +=
+run simpleVsFancyMultipleRepsTest = init.then(3.reps(_ => {
+```
+
+After that, we repeat the following set of operations three times. First we pick randomly a set of operations that will be in a batch.
+
+```bluespec "tests" +=
+  nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+  pure val ops = kms_with_value.to_operations()
+```
+<!--- 
+```bluespec "tests" +=
+
+```
+--->
+We create `reference` tree using `apply_simple` algorithm, and `result` tree using `apply_fancy`. We are using state variable `version` to indicate which `version` are we on currently. We created `failure = reference != result` variable to know if `reference` and `result` are not the same.
+
+```bluespec "tests" +=
+  val reference = simple::apply(tree, version - 1, version, ops)
+  val result = fancy::apply(tree, version - 1, version, ops)
+  val failure = reference != result
+```
+
+Then we update the state using operator `all`, which means that everyhing wrapped by it has to be `true` in order to execute it. If there has been a failure, `assert(q::debug("simple", reference) == q::debug("fancy", result))` will return false, and the whole run would fail. `q::debug` statements are added so we can see relevant information if the test fails.
+
+```bluespec "tests" +=
+  all {
+    tree' = result,
+    version' = version + 1,
+    ops_history' = if (failure) q::debug("ops_history", ops_history.append(ops)) else ops_history.append(ops),
+    smallest_unpruned_version' = smallest_unpruned_version,
+    if (failure) assert(q::debug("simple", reference) == q::debug("fancy", result)) else true,
+  }
+}))
+```
+
+## Testing proofs
+
+We defined several interesting scenarios in order to test proofs.
+<!--- 
+```bluespec test/proofs_test.qnt +=
+// -*- mode: Bluespec; -*-
+
+module proofs_test {
+  import proofs.* from "../proofs"
+  import basicSpells.* from "../spells/basicSpells"
+  import apply_simple.* from "../apply_simple"
+  import rareSpells.* from "../spells/rareSpells"
+  import node.* from "../node"
+  import tree.* from "../tree"
+  import proof_types.* from "../proof_types"
+  import grug_ics23.* from "../grug_ics23"
+  import utils.* from "../utils"
+
+  import instantiatable_tree(fancy=false) as T1 from "instantiatable_tree"
+  import instantiatable_tree(fancy=false) as T2 from "instantiatable_tree"
+
+  val empty_tree: Tree = { nodes: Map(), orphans: Set() }
+
+  <<<proofs_helpers>>>
+  <<<proofs>>>
+}
+```
+--->
+- Let `t1` and `t2` be different trees, and let `p` be a (non)membership proof from `t1`. Proof `p` should not be verifiable against the root of tree `t2`.
+<!---
+```bluespec "proofs" +=
+/// If t1 and t2 are different, verifying proofs from t1 against t2 root should fail.
+```
+--->
+```bluespec "proofs" +=
+run twoDifferentTreesTest = generate_two_trees.expect({
+  nondet version = 1.to(max_version).oneOf()
+
+  val leafs1 = tree1.treeAtVersion(version).allLeafs()
+  val leafs2 = tree2.treeAtVersion(version).allLeafs()
+
+  and {
+    not(leafs1.empty()),
+    not(leafs2.empty()),
+    leafs1 != leafs2
+  } implies
+    // TODO: This should hold for non-existence proofs as well, but we only check existence
+    nondet leaf = leafs1.oneOf()
+
+    assert_proof_on_different_trees(tree1, tree2, leaf, version)
+})
+```
+
+- Let `t1` and `t2` be trees that have the same keys, but different values, and let `p` be a (non)membership proof from `t1`. Proof `p` should not be verifiable against the root of tree `t2`.
+<!---
+```bluespec "proofs" +=
+
+/// If t1 and t2 have the same keys but different values, verifying proofs
+/// from t1 against t2 root should fail.
+```
+--->
+```bluespec "proofs" +=
+run twoDifferentTreesByOnlyValuesTest = generate_one_tree.expect({
+  nondet version = 1.to(max_version).oneOf()
+  val leafs1 = tree1.treeAtVersion(version).allLeafs()
+
+  not(leafs1.empty()) implies
+    val ops_with_different_values = leafs1.map(kv => { key_hash: kv.key_hash, op: Insert([kv.value_hash[0] + 1]) })
+    val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
+
+    nondet leaf = leafs1.oneOf()
+    assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
+})
+```
+
+- Let `t1` and `t2` be different trees with only one key-value pair being the same, and let `p` be a (non)membership proof from `t1`. Proof `p` should not be verifiable against the root of tree `t2`.
+<!---
+```bluespec "proofs" +=
+
+/// If t1 and t2 are different but have one leaf in common, verifying a proof
+/// from t1 for that leaf against t2 root should fail.
+```
+--->
+```bluespec "proofs" +=
+run twoDifferentTreesSameByOnlyOneKVTest = generate_two_trees.expect({
+  val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
+  val leafs2 = tree2.treeAtVersion(max_version).allLeafs()
+
+  and {
+    not(leafs1.empty()),
+    not(leafs2.empty()),
+    leafs1 != leafs2
+  } implies
+    nondet leaf = leafs1.oneOf()
+    val op = { key_hash: leaf.key_hash, op: Insert(leaf.value_hash) }
+
+    val t1 = tree1.apply(max_version, max_version + 1, Set())
+    val t2 = tree2.apply(max_version, max_version + 1, Set(op))
+
+    assert_proof_on_different_trees(t1, t2, leaf, max_version + 1)
+})
+```
+
+- Let `t1` and `t2` be different trees by only one, and let `p` be a (non)membership proof from `t1`. Proof `p` should not be verifiable against the root of tree `t2`.
+<!---
+```bluespec "proofs" +=
+
+/// If t1 and t2 have the same keys but a single leaf with a different value,
+/// verifying proofs from t1 against t2 root should fail.
+```
+--->
+```bluespec "proofs" +=
+run twoDifferentTreesByOnlyOneValueTest = generate_one_tree.expect({
+  nondet version = 1.to(max_version).oneOf()
+  val leafs1 = tree1.treeAtVersion(version).allLeafs()
+
+  not(leafs1.empty()) implies
+    nondet leaf_to_change = leafs1.oneOf()
+    val ops_with_different_values = leafs1.map(kv => {
+      key_hash: kv.key_hash,
+      op: if (kv == leaf_to_change) Insert([kv.value_hash[0] + 1]) else Insert(kv.value_hash)
+    })
+    val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
+
+    nondet leaf = leafs1.oneOf()
+    assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
+})
+```
+
+- Let `t2` be a prunned version of `t1`, and let `p` be a membership proof from `t1` for an arbitrary leaf `l`. Proof `p` should be verifiable against the root of tree `t2` as long as leaf `l` is not prunned in `t2`.
+<!---
+```bluespec "proofs" +=
+
+/// An existence proof for a tree should work on that tree after prunning, as
+/// long as the leaf is not prunned.
+```
+--->
+```bluespec "proofs" +=
+run verificationOnPrunnedTreeTest = generate_one_tree.expect({
+  nondet version = 1.to(max_version - 1).oneOf()
+  val prunned_tree = tree1.prune(version)
+  val active_leafs = prunned_tree.treeAtVersion(version).allLeafs()
+
+  not(active_leafs.empty()) implies
+    nondet leaf = active_leafs.oneOf()
+    assert_proof_on_equivalent_trees(tree1, prunned_tree, leaf, version)
+})
+```
+
+- Let `t` be an arbitrary tree with version `v`. Let `np` be a NonExistence proof for an arbitrary non-existant leaf `l`. Let `t'` be a tree `t` after inserting leaf `l`. Proof `np` should no be verifiable on tree `t'` and version `v+1`.
+<!---
+```bluespec "proofs" +=
+
+/// If we have a non-existence proof for a leaf and then we add it to the
+/// tree, the proof should not be verified anymore.
+```
+--->
+```bluespec "proofs" +=
+run leafNotExistsThenExistsTest = generate_one_tree.expect({
+  val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
+  leafs1.size() < all_key_hashes.size() implies
+    nondet non_existent_key_hash = all_key_hashes.exclude(leafs1.map(leaf => leaf.key_hash)).oneOf()
+
+    val proof = ics23_prove(tree1, non_existent_key_hash, max_version).unwrap()
+
+    match proof {
+      | NonExist(nep) => {
+        val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
+        val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+        // We added the leaf, so the non-existence proof should not be verified anymore
+        assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
+      }
+      | _ => assert(false)
+    }
+})
+```
+
+- Let `t` be an arbitrary tree with version `v`. Let `p` be an Existence proof for an arbitrary existant leaf `l`. Let `t'` be a tree `t` after deleting leaf `l`. Proof `p` should no be verifiable on tree `t'` and version `v+1`.
+<!---
+```bluespec "proofs" +=
+
+/// If we have an existence proof for a leaf and then we delete it from the
+/// tree, the proof should not be verified anymore.
+```
+--->
+```bluespec "proofs" +=
+run leafExistsThenNotExistsTest = generate_one_tree.expect({
+  val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
+  not(leafs1.empty()) implies {
+    nondet leaf = leafs1.oneOf()
+    val proof = ics23_prove(tree1, leaf.key_hash, max_version).unwrap()
+    match proof {
+      | Exist(ep) => {
+        val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
+        updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
+          val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+          // We deleted the leaf, so the existence proof should not be verified anymore
+          assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+        }
+      }
+      | _ => assert(false)
+    }
+  }
+})
+```
+
+In order to do so, we have implemented two helper assert functions:
+
+- `assert_proof_on_different_trees`
+
+```bluespec "proofs_helpers" +=
+pure def assert_proof_on_different_trees(t1: Tree, t2: Tree, leaf: LeafNode, version: Version): bool = {
+  val proof = ics23_prove(t1, leaf.key_hash, version).unwrap()
+
+  val root1_hash = hash(t1.nodes.get({ key_hash: ROOT_BITS, version: version }))
+  val root2_hash = hash(t2.nodes.get({ key_hash: ROOT_BITS, version: version }))
+
+  match proof {
+    | Exist(ep) => all {
+      // It should be verified on tree1 but not on tree2
+      assert(verifyMembership(root1_hash, ep, leaf.key_hash, leaf.value_hash)),
+      assert(not(verifyMembership(root2_hash, ep, leaf.key_hash, leaf.value_hash))),
+    }
+    | NonExist(nep) => true
+  }
+}
+```
+<!--- 
+```bluespec "proofs_helpers" +=
+
+```
+--->
+- `assert_proof_on_equivalent_trees`
+
+```bluespec "proofs_helpers" +=
+pure def assert_proof_on_equivalent_trees(t1: Tree, t2: Tree, leaf: LeafNode, version: Version): bool = {
+  val proof1 = ics23_prove(t1, leaf.key_hash, version).unwrap()
+  val proof2 = ics23_prove(t2, leaf.key_hash, version).unwrap()
+
+  val root1_hash = hash(t1.nodes.get({ key_hash: ROOT_BITS, version: version }))
+  val root2_hash = hash(t2.nodes.get({ key_hash: ROOT_BITS, version: version }))
+
+  and {
+    match proof1 {
+      | Exist(ep) => all {
+        // It should be verified on both trees
+        assert(verifyMembership(root1_hash, ep, leaf.key_hash, leaf.value_hash)),
+        assert(verifyMembership(root2_hash, ep, leaf.key_hash, leaf.value_hash)),
+      }
+      | NonExist(nep) => assert(false)
+    },
+    match proof2 {
+      | Exist(ep) => all {
+        // It should be verified on both trees
+        assert(verifyMembership(root1_hash, ep, leaf.key_hash, leaf.value_hash)),
+        assert(verifyMembership(root2_hash, ep, leaf.key_hash, leaf.value_hash)),
+      }
+      | NonExist(nep) => assert(false)
+    }
+  }
+}
+```
+<!--- 
+```bluespec "proofs_helpers" +=
+
+```
+--->
+We also implemented two runs that utilize already existing state machine:
+
+- `generate_one_tree`
+
+```bluespec "proofs_helpers" +=
+run generate_one_tree = ({
+  T1::init
+}).then(3.reps(_ => {
+  T1::step
+}))
+```
+<!--- 
+```bluespec "proofs_helpers" +=
+
+```
+--->
+- `generate_two_trees`
+
+```bluespec "proofs_helpers" +=
+run generate_two_trees = (all {
+  T1::init,
+  T2::init,
+}).then(3.reps(_ => all {
+  T1::step,
+  T2::step,
+}))
+```
+<!--- 
+```bluespec "proofs_helpers" +=
+
+// Some values to make tests easier to read
+```
+--->
+We defined some values to make tests easier to read:
+
+```bluespec "proofs_helpers" +=
+val tree1 = T1::tree
+val tree2 = T2::tree
+val max_version = T1::version - 1
+```
+<!--- 
+```bluespec "proofs_helpers" +=
+
+```
+--->

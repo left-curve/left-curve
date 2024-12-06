@@ -15,7 +15,7 @@ module proofs_test {
   import instantiatable_tree(fancy=false) as T2 from "instantiatable_tree"
 
   val empty_tree: Tree = { nodes: Map(), orphans: Set() }
-  
+
   pure def assert_proof_on_different_trees(t1: Tree, t2: Tree, leaf: LeafNode, version: Version): bool = {
     val proof = ics23_prove(t1, leaf.key_hash, version).unwrap()
 
@@ -110,24 +110,6 @@ module proofs_test {
       assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
   })
 
-  /// If t1 and t2 have the same keys but a single leaf with a different value,
-  /// verifying proofs from t1 against t2 root should fail.
-  run twoDifferentTreesByOnlyOneValueTest = generate_one_tree.expect({
-    nondet version = 1.to(max_version).oneOf()
-    val leafs1 = tree1.treeAtVersion(version).allLeafs()
-
-    not(leafs1.empty()) implies
-      nondet leaf_to_change = leafs1.oneOf()
-      val ops_with_different_values = leafs1.map(kv => {
-        key_hash: kv.key_hash,
-        op: if (kv == leaf_to_change) Insert([kv.value_hash[0] + 1]) else Insert(kv.value_hash)
-      })
-      val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
-
-      nondet leaf = leafs1.oneOf()
-      assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
-  })
-
   /// If t1 and t2 are different but have one leaf in common, verifying a proof
   /// from t1 for that leaf against t2 root should fail.
   run twoDifferentTreesSameByOnlyOneKVTest = generate_two_trees.expect({
@@ -146,6 +128,24 @@ module proofs_test {
       val t2 = tree2.apply(max_version, max_version + 1, Set(op))
 
       assert_proof_on_different_trees(t1, t2, leaf, max_version + 1)
+  })
+
+  /// If t1 and t2 have the same keys but a single leaf with a different value,
+  /// verifying proofs from t1 against t2 root should fail.
+  run twoDifferentTreesByOnlyOneValueTest = generate_one_tree.expect({
+    nondet version = 1.to(max_version).oneOf()
+    val leafs1 = tree1.treeAtVersion(version).allLeafs()
+
+    not(leafs1.empty()) implies
+      nondet leaf_to_change = leafs1.oneOf()
+      val ops_with_different_values = leafs1.map(kv => {
+        key_hash: kv.key_hash,
+        op: if (kv == leaf_to_change) Insert([kv.value_hash[0] + 1]) else Insert(kv.value_hash)
+      })
+      val tree_with_different_values = empty_tree.apply(0, version, ops_with_different_values)
+
+      nondet leaf = leafs1.oneOf()
+      assert_proof_on_different_trees(tree1, tree_with_different_values, leaf, version)
   })
 
   /// An existence proof for a tree should work on that tree after prunning, as
@@ -171,10 +171,10 @@ module proofs_test {
 
       match proof {
         | NonExist(nep) => {
-           val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
-           val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-           // We added the leaf, so the non-existence proof should not be verified anymore
-           assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
+          val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
+          val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+          // We added the leaf, so the non-existence proof should not be verified anymore
+          assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
         }
         | _ => assert(false)
       }
@@ -184,19 +184,20 @@ module proofs_test {
   /// tree, the proof should not be verified anymore.
   run leafExistsThenNotExistsTest = generate_one_tree.expect({
     val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
-    nondet leaf = leafs1.oneOf()
-
-    val proof = ics23_prove(tree1, leaf.key_hash, max_version).unwrap()
-    match proof {
-      | Exist(ep) => {
-        val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
-        updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
-          val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-          // We deleted the leaf, so the existence proof should not be verified anymore
-          assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+    not(leafs1.empty()) implies {
+      nondet leaf = leafs1.oneOf()
+      val proof = ics23_prove(tree1, leaf.key_hash, max_version).unwrap()
+      match proof {
+        | Exist(ep) => {
+          val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
+          updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
+            val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+            // We deleted the leaf, so the existence proof should not be verified anymore
+            assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+          }
         }
+        | _ => assert(false)
       }
-      | _ => assert(false)
     }
   })
 }
