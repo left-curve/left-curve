@@ -48,7 +48,7 @@ And other helper functions that are used:
 // Aleksandar Ignjatijevic, Informal Systems, 2024
 // Gabriela Moreira, Informal Systems, 2024
 
-module grug_ics24 {
+module grug_ics23 {
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"
@@ -1075,96 +1075,6 @@ pure def is_left_step(spec: InnerSpec, left: InnerOp, right: InnerOp): bool = {
 
 `is_left_neighbor` function returns true if `right` is the next possible path right of `left`. This function emulates [`ensure_left_neighbor`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/verify.rs#L247) Rust function.
 
-```bluespec "definitions" +=
-pure def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
-  // count common tail (from end, near root)
-  // cut the left and right paths
-  lpath.indices().exists(li =>
-    rpath.indices().exists(ri => and {
-      // they are equidistant from the root
-      length(lpath) - li == length(rpath) - ri,
-      // The distance to the root (the indices are 0-based).
-      // dist == 0 holds for the root.
-      val dist = length(lpath) - 1 - li
-      // the prefixes and suffixes match just above the cut points
-      1.to(dist).forall(k =>
-        val lnode = lpath[li + k]
-        val rnode = rpath[ri + k]
-        and {
-          lnode.prefix == rnode.prefix,
-          lnode.suffix == rnode.suffix
-        }
-      ),
-```
-
-This part emulates the first part of `ensure_left_neighbor` Rust function:
-
-```rust
-  let mut mut_left = left.to_vec();
-  let mut mut_right = right.to_vec();
-
-  let mut top_left = mut_left.pop().unwrap();
-  let mut top_right = mut_right.pop().unwrap();
-
-  while top_left.prefix == top_right.prefix && top_left.suffix == top_right.suffix {
-      top_left = mut_left.pop().unwrap();
-      top_right = mut_right.pop().unwrap();
-  }
-```
-<!--- 
-```bluespec "definitions" +=
-      // Now topleft and topright are the first divergent nodes
-      // make sure they are left and right of each other.
-      // Actually, lpath[li] and rpath[ri] are an abstraction
-      // of the same tree node:
-      //  the left one stores the hash of the right one, whereas
-      //  the right one stores the hash of the left one.
-      <<<extensionLeftNeighbor>>>
-```
---->
-Now topleft and topright are the first divergent nodes, and algorithm makes sure they are left and right of each other. Actually, `lpath[li]` and `rpath[ri]` are an abstraction of the same tree node:
-
-- the left one stores the hash of the right one, whereas
-- the right one stores the hash of the left one.
-
-Since we have wrapped all checks in one _big_ `and`, we can just call `is_left_step` which will emualte the following Rust code:
-
-```rust
-  if !is_left_step(spec, &top_left, &top_right)? {
-      bail!("Not left neighbor at first divergent step");
-  }
-```
-
-```bluespec "extensionLeftNeighbor" +=
-is_left_step(spec, lpath[li], rpath[ri]),
-```
-
-<!--- 
-```bluespec "extensionLeftNeighbor" +=
-// left and right are remaining children below the split,
-// ensure left child is the rightmost path, and visa versa
-```
---->
-Left and right are remaining children below the split, and algorithm ensures left child is the rightmost path, and visa versa. This emulates the following Rust code:
-
-```rust
-ensure_right_most(spec, &mut_left)?;
-ensure_left_most(spec, &mut_right)?;
-```
-
-```bluespec "extensionLeftNeighbor" +=
-is_right_most(spec, lpath.slice(0, li)),
-is_left_most(spec, rpath.slice(0, ri)),
-```
-<!--- 
-```bluespec "definitions" +=
-    })
-  )
-}
-```
---->
-Here is the full Rust implementation of `ensure_left_neighbor()` Rust function.
-
 ```rust
 fn ensure_left_neighbor(
     spec: &ics23::InnerSpec,
@@ -1191,3 +1101,94 @@ fn ensure_left_neighbor(
   Ok(())
 }
 ```
+
+This uses mutable values and a `while` statement to search for the part of the left and right paths that don't share a prefix and a suffix, while their successors still do. In other words, we need to find the smallest indexes `li` and `ri` where the paths at the respective indexes don't match while they do match for `li + k` and `ri + k` for all positive `k`s in range. The Quint definition uses `exists` to search for this indexes in a less performant but more declarative way: 
+
+```bluespec "definitions" +=
+pure def is_left_neighbor(spec: InnerSpec, left: List[InnerOp], right: List[InnerOp]): bool = {
+  // count common tail (from end, near root)
+  // cut the left and right paths
+  left.indices().exists(li =>
+    right.indices().exists(ri => and {
+      // they are equidistant from the root
+      length(left) - li == length(right) - ri,
+      // The distance to the root (the indices are 0-based).
+      // dist == 0 holds for the root.
+      val dist = length(left) - 1 - li
+      // the prefixes and suffixes match just above the cut points
+      1.to(dist).forall(k =>
+        val lnode = left[li + k]
+        val rnode = right[ri + k]
+        and {
+          lnode.prefix == rnode.prefix,
+          lnode.suffix == rnode.suffix
+        }
+      ),
+```
+
+This part emulates the first part of `ensure_left_neighbor` Rust function:
+
+```rust
+  let mut mut_left = left.to_vec();
+  let mut mut_right = right.to_vec();
+
+  let mut top_left = mut_left.pop().unwrap();
+  let mut top_right = mut_right.pop().unwrap();
+
+  while top_left.prefix == top_right.prefix && top_left.suffix == top_right.suffix {
+      top_left = mut_left.pop().unwrap();
+      top_right = mut_right.pop().unwrap();
+  }
+```
+<!--- 
+```bluespec "definitions" +=
+      // Now topleft and topright are the first divergent nodes
+      // make sure they are left and right of each other.
+      // Actually, left[li] and right[ri] are an abstraction
+      // of the same tree node:
+      //  the left one stores the hash of the right one, whereas
+      //  the right one stores the hash of the left one.
+      <<<extensionLeftNeighbor>>>
+```
+--->
+Now topleft and topright are the first divergent nodes, and algorithm makes sure they are left and right of each other. Actually, `left[li]` and `right[ri]` are an abstraction of the same tree node:
+
+- the left one stores the hash of the right one, whereas
+- the right one stores the hash of the left one.
+
+Since we have wrapped all checks in one _big_ `and`, we can just call `is_left_step` which will emualte the following Rust code:
+
+```rust
+  if !is_left_step(spec, &top_left, &top_right)? {
+      bail!("Not left neighbor at first divergent step");
+  }
+```
+
+```bluespec "extensionLeftNeighbor" +=
+is_left_step(spec, left[li], right[ri]),
+```
+
+<!--- 
+```bluespec "extensionLeftNeighbor" +=
+// left and right are remaining children below the split,
+// ensure left child is the rightmost path, and visa versa
+```
+--->
+Left and right are remaining children below the split, and algorithm ensures left child is the rightmost path, and visa versa. This emulates the following Rust code:
+
+```rust
+ensure_right_most(spec, &mut_left)?;
+ensure_left_most(spec, &mut_right)?;
+```
+
+```bluespec "extensionLeftNeighbor" +=
+is_right_most(spec, left.slice(0, li)),
+is_left_most(spec, right.slice(0, ri)),
+```
+<!--- 
+```bluespec "definitions" +=
+    })
+  )
+}
+```
+--->
