@@ -2,6 +2,30 @@
 
 In order to obtain confidence that the model is correct, in respect to the invariants and tests described in [invariants.md](./invariants.md), we run random simulations (on bigger scopes) and model checking (on smaller scopes). We used the **Quint simulator** for simulations, which runs a kind of Depth First Search (DFS) on the state space with a max-depth (`--max-steps`) defined by us; and the **TLC model checker** for model checking, which runs a kind of Breadth First Search (BFS) on the complete state space, which requires that we refine our model to a state-space small enough for this to run in the time we had available.
 
+## Summary of results
+| ## Summary of results |
+| Simulation Type                          | Time Taken | Parallel Instances | Max Steps | Samples per Command | Total Samples | Key Hash Length | Commit                                                                                       |
+|------------------------------------------|------------|--------------------|-----------|---------------------|---------------|-----------------|----------------------------------------------------------------------------------------------|
+| Simulating tree manipulation             | 16 hours   | 12                 | 3         | 100k                | 1.2M          | 6               |                                                                                              |
+| Simulating proofs and proof verification | 17 hours   | 12                 | 3         | 15k                 | 180k          | 4               | [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4) |
+| Second simulation                        | 8 hours    | 12                 | 3         | 20k                 | 240k          | 4               | [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac)          |
+| Final simulation (treeInvariants)        | 9 hours    | 6                  | 3         | 40k                 | 240k          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
+| Final simulation (proofInvariants)       | 9 hours    | 6                  | 3         | 50k                 | 300k          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
+
+## Summary of Testing
+
+| Test Type                                 | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                 | Commit                                                                                                       |
+|-------------------------------------------|------------|--------------------|---------------------|---------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| Simple apply vs Fancy apply               | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](./test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| Proof verification across different trees | 1 hour     | 8                  | 500                 | 4k            | [proofs_test.qnt](./test/proofs_test.qnt) | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+
+## Summary of Model Checking
+
+| Setup   | Key Hash Length | Steps | Distinct States Found | Depth of State Graph | Time Taken | Commit                                                                                       |
+|---------|-----------------|-------|-----------------------|----------------------|------------|----------------------------------------------------------------------------------------------|
+| Setup A | 3               | 1     | 16,777,472            | 2                    | 1h 55min   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f)                                                                                             |
+| Setup B | 2               | 2     | 1,052,688             | 3                    | 2min 46s   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f)                                                                                             |
+
 ## Simulations
 
 Simulations were the main tool we used while iterating over the model. It helped us spot several small issues as soon as they appeared, which often happen due to mistakes on writing the model and the invariants. On one of these routine runs, we found one actual issue (that was reproducible on the Rust implementation but low severity), which was [reported and fixed](https://github.com/left-curve/left-curve/pull/291).
