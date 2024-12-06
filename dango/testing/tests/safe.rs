@@ -432,10 +432,7 @@ fn safe() {
             member2.username.clone(),
             member2.username.clone(),
             attacker.key_hash,
-            format!(
-                "key hash {} isn't associated with user `{}`",
-                attacker.key_hash, member2.username
-            ),
+            format!("key hash {} not found", attacker.key_hash),
         ),
         (
             member2.username.clone(),

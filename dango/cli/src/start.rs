@@ -2,9 +2,10 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::App,
+    grug_app::{App, AppError, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
+    indexer_sql::non_blocking_indexer,
     std::{path::PathBuf, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
@@ -20,21 +21,46 @@ pub struct StartCmd {
     #[arg(long, default_value = "1000")]
     wasm_cache_capacity: usize,
 
-    /// Gas limit when serving query requests [default: u64::MAX]
-    #[arg(long)]
-    query_gas_limit: Option<u64>,
+    /// Gas limit when serving query requests
+    #[arg(long, default_value_t = u64::MAX)]
+    query_gas_limit: u64,
+
+    /// Enable the internal indexer
+    #[arg(long, default_value = "false")]
+    indexer_enabled: bool,
+
+    /// The indexer database url
+    #[arg(long, default_value = "postgres://localhost")]
+    indexer_database_url: String,
 }
 
 impl StartCmd {
     pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
+        if self.indexer_enabled {
+            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_database_url(&self.indexer_database_url)
+                .build()
+                .expect("Can't create indexer");
+            indexer.start().expect("Can't start indexer");
+            self.run_with_indexer(data_dir, indexer).await
+        } else {
+            self.run_with_indexer(data_dir, NullIndexer).await
+        }
+    }
+
+    async fn run_with_indexer<ID>(self, data_dir: PathBuf, indexer: ID) -> anyhow::Result<()>
+    where
+        ID: Indexer + Send + Clone + 'static,
+        AppError: From<ID::Error>,
+    {
         let db = DiskDb::open(data_dir)?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
-
         let app = App::new(
             db,
             vm,
             ProposalPreparer::new(),
-            self.query_gas_limit.unwrap_or(u64::MAX),
+            indexer,
+            self.query_gas_limit,
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

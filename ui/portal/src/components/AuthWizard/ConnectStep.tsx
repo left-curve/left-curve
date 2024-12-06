@@ -14,6 +14,7 @@ import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
 import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/sdk";
 import { AccountType, ConnectionStatus, KeyAlgo } from "@left-curve/types";
 import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
+import { useToast } from "../Toast";
 
 import { Button } from "@dango/shared";
 
@@ -28,15 +29,12 @@ export const ConnectStep: React.FC = () => {
 
   const { status } = useAccount();
   const connectors = useConnectors();
+  const { toast } = useToast();
 
   const { data } = useWizard<{ username: string }>();
   const { username } = data;
 
-  const {
-    mutateAsync: createAccount,
-    isError,
-    isPending,
-  } = useMutation({
+  const { mutateAsync: createAccount, isPending } = useMutation({
     mutationFn: async (connectorId: string) => {
       try {
         const connector = connectors.find((c) => c.id === connectorId);
@@ -47,7 +45,7 @@ export const ConnectStep: React.FC = () => {
             const { id, getPublicKey } = await createWebAuthnCredential({
               challenge: encodeUtf8(challenge),
               user: {
-                name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+                name: `${username} - ${getNavigatorOS()} ${new Date().toLocaleString()}`,
               },
               rp: {
                 name: window.document.title,
@@ -108,8 +106,8 @@ export const ConnectStep: React.FC = () => {
         await wait(1000);
         await connector.connect({ username, chainId: config.chains[0].id });
       } catch (err) {
+        toast.error({ title: "Couldn't complete the request" });
         console.log(err);
-        throw err;
       }
     },
   });
@@ -122,13 +120,8 @@ export const ConnectStep: React.FC = () => {
   return (
     <div className="flex flex-col w-full gap-6">
       <Button fullWidth onClick={() => createAccount("passkey")} isLoading={isPending}>
-        Signup with Passkey
+        Connect with Passkey
       </Button>
-      {isError ? (
-        <p className="text-typography-rose-600 text-center text-xl">
-          We couldn't complete the request
-        </p>
-      ) : null}
       <Select
         label="login-methods"
         placeholder="Alternative sign up methods"

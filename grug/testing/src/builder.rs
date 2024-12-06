@@ -1,6 +1,6 @@
 use {
     crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
-    grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
+    grug_app::{AppError, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
@@ -41,6 +41,7 @@ struct CodeOption<B> {
 pub struct TestBuilder<
     VM = RustVm,
     PP = NaiveProposalPreparer,
+    ID = NullIndexer,
     M1 = grug_mock_account::InstantiateMsg,
     M2 = grug_mock_bank::InstantiateMsg,
     M3 = grug_mock_taxman::InstantiateMsg,
@@ -49,6 +50,7 @@ pub struct TestBuilder<
 > {
     vm: VM,
     pp: PP,
+    indexer: ID,
     // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
@@ -74,9 +76,9 @@ pub struct TestBuilder<
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
 #[allow(clippy::new_without_default)]
-impl TestBuilder<RustVm> {
+impl TestBuilder<RustVm, NaiveProposalPreparer, NullIndexer> {
     pub fn new() -> Self {
-        Self::new_with_vm_and_pp(RustVm::new(), NaiveProposalPreparer)
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, NullIndexer)
     }
 }
 
@@ -85,21 +87,31 @@ where
     VM: TestVm,
 {
     pub fn new_with_vm(vm: VM) -> Self {
-        Self::new_with_vm_and_pp(vm, NaiveProposalPreparer)
+        Self::new_with_vm_and_pp_and_indexer(vm, NaiveProposalPreparer, NullIndexer)
+    }
+}
+
+impl<ID> TestBuilder<RustVm, NaiveProposalPreparer, ID> {
+    pub fn new_with_indexer(indexer: ID) -> Self
+    where
+        ID: Indexer,
+    {
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), NaiveProposalPreparer, indexer)
     }
 }
 
 impl<PP> TestBuilder<RustVm, PP> {
     pub fn new_with_pp(pp: PP) -> Self {
-        Self::new_with_vm_and_pp(RustVm::new(), pp)
+        Self::new_with_vm_and_pp_and_indexer(RustVm::new(), pp, NullIndexer)
     }
 }
 
-impl<VM, PP> TestBuilder<VM, PP>
+impl<VM, PP, ID> TestBuilder<VM, PP, ID>
 where
     VM: TestVm,
+    ID: Indexer,
 {
-    pub fn new_with_vm_and_pp(vm: VM, pp: PP) -> Self {
+    pub fn new_with_vm_and_pp_and_indexer(vm: VM, pp: PP, indexer: ID) -> Self {
         Self {
             account_opt: CodeOption {
                 code: VM::default_account_code(),
@@ -124,6 +136,7 @@ where
             },
             vm,
             pp,
+            indexer,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
@@ -140,8 +153,9 @@ where
     }
 }
 
-impl<VM, PP, M1, M2, M3, OW, TA> TestBuilder<VM, PP, M1, M2, M3, OW, TA>
+impl<VM, PP, ID, M1, M2, M3, OW, TA> TestBuilder<VM, PP, ID, M1, M2, M3, OW, TA>
 where
+    ID: Indexer,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -239,7 +253,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1, M2A, M3, OW, TA>
+    ) -> TestBuilder<VM, PP, ID, M1, M2A, M3, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(BTreeMap<Addr, Coins>) -> M2A + 'static,
@@ -247,6 +261,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -303,7 +318,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1, M2, M3A, OW, TA>
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3A, OW, TA>
     where
         T: Into<Binary>,
         F: FnOnce(Denom, Udec128) -> M3A + 'static,
@@ -311,6 +326,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -336,7 +352,7 @@ where
         mut self,
         name: &'static str,
         balances: C,
-    ) -> TestBuilder<VM, PP, M1, M2, M3, OW, Defined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3, OW, Defined<TestAccounts>>
     where
         C: TryInto<Coins>,
         C::Error: Debug,
@@ -360,6 +376,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -379,8 +396,9 @@ where
     }
 }
 
-impl<VM, PP, M1, M2, M3, OW> TestBuilder<VM, PP, M1, M2, M3, OW, Undefined<TestAccounts>>
+impl<VM, PP, ID, M1, M2, M3, OW> TestBuilder<VM, PP, ID, M1, M2, M3, OW, Undefined<TestAccounts>>
 where
+    ID: Indexer,
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
@@ -423,7 +441,7 @@ where
         self,
         code: T,
         msg_builder: F,
-    ) -> TestBuilder<VM, PP, M1A, M2, M3, OW, Undefined<TestAccounts>>
+    ) -> TestBuilder<VM, PP, ID, M1A, M2, M3, OW, Undefined<TestAccounts>>
     where
         T: Into<Binary>,
         F: Fn(grug_mock_account::PublicKey) -> M1A + 'static,
@@ -431,6 +449,7 @@ where
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -455,11 +474,13 @@ where
 
 // `set_owner` can only be called if `add_accounts` has been called at least
 // once, and `set_owner` hasn't already been called.
-impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>> {
+impl<VM, PP, ID, M1, M2, M3>
+    TestBuilder<VM, PP, ID, M1, M2, M3, Undefined<Addr>, Defined<TestAccounts>>
+{
     pub fn set_owner(
         self,
         name: &'static str,
-    ) -> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
+    ) -> TestBuilder<VM, PP, ID, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>> {
         let owner = self.accounts.inner().get(name).unwrap_or_else(|| {
             panic!("failed to set owner: can't find account with name `{name}`")
         });
@@ -467,6 +488,7 @@ impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Define
         TestBuilder {
             vm: self.vm,
             pp: self.pp,
+            indexer: self.indexer,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -487,16 +509,18 @@ impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Undefined<Addr>, Define
 }
 
 // `build` can only be called if both `owner` and `accounts` have been set.
-impl<VM, PP, M1, M2, M3> TestBuilder<VM, PP, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
+impl<VM, PP, ID, M1, M2, M3>
+    TestBuilder<VM, PP, ID, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
     VM: TestVm + Clone,
     PP: ProposalPreparer,
-    AppError: From<VM::Error> + From<PP::Error>,
+    ID: Indexer,
+    AppError: From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    pub fn build(self) -> (TestSuite<MemDb, VM, PP>, TestAccounts) {
+    pub fn build(self) -> (TestSuite<MemDb, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
             setup_tracing_subscriber(tracing_level);
         }
@@ -606,10 +630,11 @@ where
             app_config: self.app_config,
         };
 
-        let suite = TestSuite::new_with_db_vm_and_pp(
+        let suite = TestSuite::new_with_db_vm_indexer_and_pp(
             MemDb::new(),
             self.vm,
             self.pp,
+            self.indexer,
             chain_id,
             block_time,
             default_gas_limit,

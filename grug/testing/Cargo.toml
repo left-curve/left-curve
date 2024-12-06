@@ -10,6 +10,7 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
+assertor           = { workspace = true }
 grug-app           = { workspace = true, features = ["tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
@@ -19,8 +20,10 @@ grug-mock-bank     = { workspace = true, features = ["library"] }
 grug-mock-taxman   = { workspace = true, features = ["library"] }
 grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
+indexer-sql        = { workspace = true, features = ["tracing"] }
 k256               = { workspace = true }
 rand               = { workspace = true }
+sea-orm            = { workspace = true }
 serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }

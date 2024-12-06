@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("proposal preparer error: {0}")]
     PrepareProposal(String),
 
+    #[error("indexer error: {0}")]
+    Indexer(String),
+
     #[error("contract returned error! address: {address}, method: {name}, msg: {msg}")]
     Guest {
         address: Addr,
@@ -24,7 +27,7 @@ pub enum AppError {
         msg: String,
     },
 
-    #[error("Merkle proof is not supported for `/app` query; use `/store` instead")]
+    #[error("merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
 
     #[error("simulating a transaction at past block height is not supported")]
