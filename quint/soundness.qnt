@@ -9,11 +9,12 @@ module soundness {
   /// For each keyhash (among all possible ones) where, ics23_prove returns
   /// an existence proof, the key is actually in the tree
   pure def membershipSoundness(tree: Tree, v: Version): bool =
+    pure val nodes = treeAtVersion(tree, v).values()
     all_key_hashes.forall(k =>
       match ics23_prove(tree, k, v) {
         | Some(cp) => match cp {
             | Exist(ep) =>
-                treeAtVersion(tree, v).values().filter(n => match n {
+                nodes.filter(n => match n {
                   | Leaf(n) => n.key_hash == k
                   | Internal(_) => false
                 }).size() > 0
@@ -26,11 +27,12 @@ module soundness {
   /// For each keyhash (among all possible ones) where, ics23_prove returns
   /// an non-existence proof, the key is not in the tree
   pure def nonMembershipSoundness(tree: Tree, v: Version): bool =
+    pure val nodes = treeAtVersion(tree, v).values()
     all_key_hashes.forall(k =>
       match ics23_prove(tree, k, v) {
         | Some(cp) => match cp {
             | NonExist(nep) =>
-                treeAtVersion(tree, v).values().filter(n => match n {
+                nodes.filter(n => match n {
                   | Leaf(n) => n.key_hash == k
                   | Internal(_) => false
                 }).size() == 0
