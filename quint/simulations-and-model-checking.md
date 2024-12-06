@@ -119,23 +119,27 @@ This check is a valid inductive proof for the real tree manipulation algorithm i
 - Any violation that happens in multiple steps/versions can be reproduced in a single step/version change (specifically from version `1` to version `2`). See Setup B for more coverage on this.
 - Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
 
-TODO: Update output with the most recent version and for all invariants. This output was for `densityInv only`
+TODO: Update output with the most recent version and for all invariants. This output was for `densityInv` only
 
 ### **Setup B**
 
 - The key hash length is 2
 - The state machine performs 2 steps
 
-TODO: output
-
 ```
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 0.0
+1052688 states generated, 1052688 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 3.
+The average outdegree of the complete state graph is 0 (minimum is 0, the maximum 31 and the 95th percentile is 0).
+Finished in 02min 46s at (2024-12-05 20:53:41)
 ```
 
-TODO: update numbers
-
-- Running this with 3 steps instead of 2 would increase the state space to **268 435 456 states**
+- Running this with 3 steps instead of 2 would increase the state space to **269 488 144 states**
   - We estimate that this will take about a week to run and use ~200GB of disk space
-- Running this with 4 steps instead of 3 would increase the state space to **68 719 476 736 states**
+- Running this with 4 steps instead of 3 would increase the state space to **68 988 964 880 states**
 
 An inductive interpretation of this result is:
 - **Base case:** All possible trees that can be generated using all possible combinations of operations with `value_hash` being `[1]` or `[2]`, and versions being 1 and 2.
