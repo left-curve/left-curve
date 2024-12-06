@@ -14,7 +14,7 @@ pub struct NullIndexer;
 impl Indexer for NullIndexer {
     type Error = NullIndexerError;
 
-    fn start(&mut self) -> Result<(), Self::Error> {
+    fn start<S>(&mut self, _storage: &S) -> Result<(), Self::Error> {
         Ok(())
     }
 
@@ -50,6 +50,7 @@ impl Indexer for NullIndexer {
 
 /// An error type that is never encountered.
 /// Used in conjunction with [`NullIndexer`](crate::NullIndexer).
+#[derive(Debug)]
 pub struct NullIndexerError(Infallible);
 
 impl Display for NullIndexerError {

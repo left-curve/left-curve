@@ -213,9 +213,9 @@ pub trait Indexer {
     type Error: ToString;
 
     /// Called when initializing the indexer, allowing for DB migration if needed
-    fn start(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
+    fn start<S>(&mut self, storage: &S) -> Result<(), Self::Error>
+    where
+        S: Storage;
 
     /// Called when terminating the indexer, allowing for DB transactions to be committed
     fn shutdown(&mut self) -> Result<(), Self::Error>;

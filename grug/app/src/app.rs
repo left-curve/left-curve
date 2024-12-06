@@ -58,6 +58,10 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             query_gas_limit,
         }
     }
+
+    pub fn indexer(&self) -> &ID {
+        &self.indexer
+    }
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
@@ -150,10 +154,10 @@ where
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|err| {
+            .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
-                    err = err.to_string(),
+                    err = _err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
 
@@ -272,6 +276,8 @@ where
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
 
+            // NOTE: should we index cron calls? => YES
+
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
                 &mut buffer,
@@ -301,6 +307,8 @@ where
             tx_outcomes.push(tx_outcome);
         }
 
+        // TODO: save the indexed data on disk here?
+
         // Save the last committed block.
         //
         // Note that we do this _after_ the transactions have been executed.
@@ -308,10 +316,19 @@ where
         // it gets the previous block, not the current one.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
+        // NOTE: What happens if the process crashes here?
+
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
+
+        // What happens here if the process crashes? Is the block being reprocessed?
+        // TODO: When the node starts, checks if something in `db` is supposed to be committed, if so commit it first not to replay the same block
+
+        // NOTE: Could call `index_block` or `persist_block` here, including app_hash. What happens
+        // if the process crashes here and index block isn't stored on disk?
+        // My understand is this block will be reprocessed as `self.db.commit()` wasn't called
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
