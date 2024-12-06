@@ -6,7 +6,7 @@ In order to obtain confidence that the model is correct, in respect to the invar
 
 Simulations were the main tool we used while iterating over the model. It helped us spot several small issues as soon as they appeared, which often happen due to mistakes on writing the model and the invariants. On one of these routine runs, we found one actual issue (that was reproducible on the Rust implementation but low severity), which was [reported and fixed](https://github.com/left-curve/left-curve/pull/291).
 
-Once the model and invariants are stable and we don't get violations from the simulator on a few minutes, we can setup longer runs, which serve to increase our confidence on the model. The first one was run once our model and invariants for tree manipulation were stable, and the other ones were done after the model and invariants for proofs and proof verification were stable.
+Once the model and invariants are stable, and we don't get violations from the simulator on a few minutes, we can set up longer runs, which serve to increase our confidence on the model. The first one was run once our model and invariants for tree manipulation were stable, and the other ones were done after the model and invariants for proofs and proof verification were stable.
 
 ### **Simulating tree manipulation**
 
@@ -18,7 +18,7 @@ The invariants for producing and verifying proofs are quite heavy performance-wi
 
 #### **First simulation**
 
-We ran a **17-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **15k samples per command**. This gave us a total of **180k samples**. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 4, and used the prunning state machine. In this experiment, we only checked the proof-related invariants (completeness, soundness and the `verifyMembershipInv`). This was run at [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4).
+We ran a **17-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **15k samples per command**. This gave us a total of **180k samples**. For this simulation, we limited batches to have at most 5 operations, and used `key_hash`es of length 4, and used the pruning state machine. In this experiment, we only checked the proof-related invariants (completeness, soundness and the `verifyMembershipInv`). This was run at [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4).
 
 #### **Second simulation**
 
@@ -28,7 +28,7 @@ Before running the next experiment, we want to try to improve two things:
 
 ##### **Performance of the invariants**
 
-There were some straightforward improvements that were made, but made a small compromise in favor of enabling more verification. For many invariants, we had a quantifier over all active (unprunned) tree versions. However, invariants are checked of every single state, which means that, for three steps, we had something like this:
+There were some straightforward improvements that were made, but made a small compromise in favor of enabling more verification. For many invariants, we had a quantifier over all active (not pruned) tree versions. However, invariants are checked of every single state, which means that, for three steps, we had something like this:
 1. Check invariant for state 0, which has an empty tree
 2. Take a step and check invariant for state 1, which has one tree version
 3. Take a step and check invariant for state 2, which has two different tree versions
@@ -42,9 +42,9 @@ We went with this assumption and remove the quantification over active versions 
 
 ##### **Distribution of batches**
 
-The strategy used to generate non-deterministic batches was much more likely to generate medium-sized batches that batches with no operation, a single operation or all possible operations. At this point, we had use two different batch generation strategies:
-1. Produce a powerset over the set of operations and pick one.
-  - In this powerset, there are much more big sets then small sets, which means that we are more likely to pick a big set.
+The strategy used to generate non-deterministic batches was much more likely to generate medium-sized batches than batches with no operation, a single operation or all possible operations. At this point, we had use two different batch generation strategies:
+1. Produce a power set over the set of operations and pick one.
+  - In this power set, there are much more big sets than small sets, which means that we are more likely to pick a big set.
 2. For each `key_hash`, non-deterministically pick if we want to include it in the batch or not.
   - This has a central tendency issue, where we are more likely to pick a batch with half of the operations than with no operations or all operations.
 
@@ -54,7 +54,7 @@ We also removed the limit of 5 operations per batch, and reduced the set from wh
 
 ##### **Simulation itself**
 
-We ran an **8-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **20k samples per command**. This gave us a total of **240k samples**. We used `key_hash`es of length 4. In this experiment, we checked all invariants, including the proof-related ones, except for prunning, as we used the regular state machine for performance reasons. This was run at [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac).
+We ran an **8-hour simulation** with **12 parallel instances** of the simulator, each with `max-steps=3`, and **20k samples per command**. This gave us a total of **240k samples**. We used `key_hash`es of length 4. In this experiment, we checked all invariants, including the proof-related ones, except for pruning, as we used the regular state machine for performance reasons. This was run at [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac).
 
 ### **Final simulation results**
 
@@ -100,10 +100,10 @@ We were able to run the TLC model checker for two different setups. We were not 
 
 ### **Generating the TLA+ model**
 
-There are still some integration issues between Quint and Apalache, which is used to generate TLA+ out of Quint. We had to circunvent this, introducing non-dirsruptive changes:
-- Some new Quint builtins (`getOnlyElement` and `allListsUpTo`) are not supported for translation yet, so we replaced those with a non-builtin version. Same for `foldr` which we adapted to use `foldl` which is supported.
-- There were many issues translating polymorphic Quint operators into Apalache's representation, so we did some adaptations to avoid some intances of polymorphism, mostly regarding polymorphic usage of the `None` constructor inside the same operator.
-- Many issues could only be fixed on Apalache's side, which we did. See the [PR](https://github.com/apalache-mc/apalache/pull/3041). We used a version of Apalache with this fixes in order to generate the TLA+ model.
+There are still some integration issues between Quint and Apalache, which is used to generate TLA+ out of Quint. We had to circumvent this, introducing non-disruptive changes:
+- Some new Quint built-ins (`getOnlyElement` and `allListsUpTo`) are not supported for translation yet, so we replaced those with a non-built-in version. Same for `foldr` which we adapted to use `foldl` which is supported.
+- There were many issues translating polymorphic Quint operators into Apalache's representation, so we did some adaptations to avoid some instances of polymorphism, mostly regarding polymorphic usage of the `None` constructor inside the same operator.
+- Many issues could only be fixed on Apalache's side, which we did. See the [PR](https://github.com/apalache-mc/apalache/pull/3041). We used a version of Apalache with these fixes in order to generate the TLA+ model.
 
 The generated TLA+ model is available on the model-checking branch at [apply_state_machine.tla](https://github.com/informalsystems/left-curve-jmt/blob/gabriela/model-checking/quint/apply_state_machine.tla)
 
@@ -142,7 +142,7 @@ This check is a valid inductive proof for the real tree manipulation algorithm i
 - Any violation for key hashes of length 256 can be reproduced with key hashes of length 3
 - Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`])
 - Any violation that happens in multiple steps/versions can be reproduced in a single step/version change (specifically from version `1` to version `2`). See Setup B for more coverage on this.
-- Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
+- Our model is equivalent to the algorithm. Model-based testing can help obtain confidence on this.
 
 ### **Setup B**
 
@@ -172,4 +172,4 @@ This check is a valid inductive proof for the real tree manipulation algorithm i
 - Any violation for key hashes of length 256 can be reproduced with key hashes of length 2
 - Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`])
 - Any violation that happens in multiple steps/versions can be reproduced with 2 steps/versions
-- Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
+- Our model is equivalent to the algorithm. Model-based testing can help obtain confidence on this.
