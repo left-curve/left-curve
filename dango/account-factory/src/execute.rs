@@ -93,6 +93,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    reject_unintended_deposits(ctx.funds.clone(), msg.clone())?;
     match msg {
         ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::RegisterUser {
@@ -103,6 +104,17 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
+}
+
+// reject_unintended_deposits returns error when funds are provided for messages
+// not explicitly whitelisted.
+fn reject_unintended_deposits(funds: Coins, msg: ExecuteMsg) -> anyhow::Result<()> {
+    match msg {
+        ExecuteMsg::Deposit { .. } => (),
+        ExecuteMsg::RegisterAccount { .. } => (),
+        _ => ensure!(funds.is_empty(), "unexpected funds: {}", funds),
+    }
+    Ok(())
 }
 
 fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
