@@ -119,6 +119,7 @@ where
                     "uusdc" => 100_000_000_000_000,
                     "uatom" => 100_000_000_000_000,
                     "uosmo" => 100_000_000_000_000,
+                    "bridge/btc" => 100_000_000_000_000,
                 }
                 .try_into()
                 .unwrap(),
@@ -164,6 +165,7 @@ fn build_codes() -> Codes<ContractWrapper> {
         .build();
 
     let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_execute(Box::new(dango_account_margin::execute))
         .with_authenticate(Box::new(dango_account_margin::authenticate))
         .with_backrun(Box::new(dango_account_margin::backrun))
         .with_receive(Box::new(dango_account_margin::receive))

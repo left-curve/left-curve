@@ -343,7 +343,7 @@ where
             lending,
             oracle,
         },
-        collateral_powers: btree_map! {},
+        ..Default::default()
     };
 
     let genesis_state = GenesisState {
