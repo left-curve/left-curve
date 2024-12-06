@@ -43,9 +43,9 @@ fn sends(c: &mut Criterion) {
                         Message::execute(
                             contracts.account_factory,
                             &account_factory::ExecuteMsg::RegisterAccount {
-                                params: AccountParams::Spot(single::Params {
-                                    owner: accounts.relayer.username.clone(),
-                                }),
+                                params: AccountParams::Spot(single::Params::new(
+                                    accounts.relayer.username.clone(),
+                                )),
                             },
                             if i < 100 {
                                 Coins::one("uusdc", 100_000_000).unwrap()
