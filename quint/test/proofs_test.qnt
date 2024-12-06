@@ -15,7 +15,7 @@ module proofs_test {
   import instantiatable_tree(fancy=false) as T2 from "instantiatable_tree"
 
   val empty_tree: Tree = { nodes: Map(), orphans: Set() }
-  
+
   pure def assert_proof_on_different_trees(t1: Tree, t2: Tree, leaf: LeafNode, version: Version): bool = {
     val proof = ics23_prove(t1, leaf.key_hash, version).unwrap()
 
@@ -171,10 +171,10 @@ module proofs_test {
 
       match proof {
         | NonExist(nep) => {
-           val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
-           val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-           // We added the leaf, so the non-existence proof should not be verified anymore
-           assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
+          val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: non_existent_key_hash, op: Insert([1]) }))
+          val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+          // We added the leaf, so the non-existence proof should not be verified anymore
+          assert(not(verifyNonMembership(updated_tree_hash, nep, non_existent_key_hash)))
         }
         | _ => assert(false)
       }
