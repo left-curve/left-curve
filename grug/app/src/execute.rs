@@ -2,8 +2,8 @@ use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
         call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIG, CODES, CONFIG, CONTRACTS,
-        NEXT_CRONJOBS,
+        AppError, AppResult, Buffer, MeteredItem, MeteredMap, Shared, Vm, APP_CONFIG, CODES,
+        CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
@@ -777,15 +777,21 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+pub fn do_cron_execute<VM>(mut ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    let buffer = Shared::new(Buffer::new(ctx.storage, None));
+
+    ctx.storage = Box::new(buffer.clone());
+
     match _do_cron_execute(ctx, contract) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
+
+            buffer.write_access().commit();
 
             Ok(events)
         },

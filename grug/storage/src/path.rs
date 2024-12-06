@@ -184,3 +184,12 @@ where
         path.storage_key.into_owned().into()
     }
 }
+
+impl<'a, T, C> From<&Path<'a, T, C>> for Binary
+where
+    C: Codec<T>,
+{
+    fn from(path: &Path<'a, T, C>) -> Self {
+        path.storage_key.clone().into_owned().into()
+    }
+}
