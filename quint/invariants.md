@@ -1013,19 +1013,20 @@ run leafNotExistsThenExistsTest = generate_one_tree.expect({
 ```bluespec "proofs" +=
 run leafExistsThenNotExistsTest = generate_one_tree.expect({
   val leafs1 = tree1.treeAtVersion(max_version).allLeafs()
-  nondet leaf = leafs1.oneOf()
-
-  val proof = ics23_prove(tree1, leaf.key_hash, max_version).unwrap()
-  match proof {
-    | Exist(ep) => {
-      val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
-      updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
-        val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
-        // We deleted the leaf, so the existence proof should not be verified anymore
-        assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+  not(leafs1.empty()) implies {
+    nondet leaf = leafs1.oneOf()
+    val proof = ics23_prove(tree1, leaf.key_hash, max_version).unwrap()
+    match proof {
+      | Exist(ep) => {
+        val updated_tree = tree1.apply(max_version, max_version + 1, Set({ key_hash: leaf.key_hash, op: Delete }))
+        updated_tree.nodes.has({ key_hash: ROOT_BITS, version: max_version + 1 }) implies {
+          val updated_tree_hash = hash(updated_tree.nodes.get({ key_hash: ROOT_BITS, version: max_version + 1 }))
+          // We deleted the leaf, so the existence proof should not be verified anymore
+          assert(not(verifyMembership(updated_tree_hash, ep, leaf.key_hash, leaf.value_hash)))
+        }
       }
+      | _ => assert(false)
     }
-    | _ => assert(false)
   }
 })
 ```
