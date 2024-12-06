@@ -62,12 +62,27 @@ Another way to use the Quint random simulator is to run tests, which work like p
 
 #### **Simple apply vs Fancy apply**
 
-- TODO
-<!-- seq 10 | parallel quint test test/tree_test.qnt --match=simpleVsFancyTest --seed=111{} --max-samples=1000000 -->
+We ran an **6-hour** test with **8 parallel instances** of the test simulator, and **10k samples per command**. This gave us a total of **80k samples** for each test. It was run for the [tree_test.qnt](./test/tree_test.qnt) file which includes two tests:
+```
+ok simpleVsFancyTest passed 10000 test(s)
+ok simpleVsFancyMultipleRepsTest passed 10000 test(s)
+```
 
 #### **Proof verification across different trees**
 
-- TODO
+We ran a **1-hour** test with **8 parallel instances** of the test simulator, and **500 samples per command**. This gave us a total of **4k samples** for each test. It was run for the [proofs_test.qnt](./test/proofs_test.qnt) file which includes the following:
+
+```
+ok twoDifferentTreesTest passed 500 test(s)
+ok twoDifferentTreesByOnlyValuesTest passed 500 test(s)
+ok twoDifferentTreesByOnlyOneValueTest passed 500 test(s)
+ok twoDifferentTreesSameByOnlyOneKVTest passed 500 test(s)
+ok verificationOnPrunnedTreeTest passed 500 test(s)
+ok leafNotExistsThenExistsTest passed 500 test(s)
+1) leafExistsThenNotExistsTest failed after 392 test(s)
+```
+
+- TODO: fix failing test and update
 
 ## **Model Checking**
 
