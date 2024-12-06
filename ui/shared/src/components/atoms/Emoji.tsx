@@ -1,19 +1,17 @@
 import type React from "react";
+import { Ants } from "../icons/emoji/Ants";
+import { Factory1 } from "../icons/emoji/Factory1";
+import { Factory2 } from "../icons/emoji/Factory2";
+import { Fisher } from "../icons/emoji/Fisher";
+import { Hamster } from "../icons/emoji/Hamster";
+import { Lock } from "../icons/emoji/Lock";
 import { MapExplorer } from "../icons/emoji/Map";
-import {
-  Ants,
-  Factory1,
-  Factory2,
-  Fisher,
-  Hamster,
-  Lock,
-  Money,
-  MoneyBag,
-  Pig1,
-  Pig2,
-  Temple,
-  Wizard,
-} from "../index";
+import { Money } from "../icons/emoji/Money";
+import { MoneyBag } from "../icons/emoji/MoneyBag";
+import { Pig1 } from "../icons/emoji/Pig1";
+import { Pig2 } from "../icons/emoji/Pig2";
+import { Temple } from "../icons/emoji/Temple";
+import { Wizard } from "../icons/emoji/Wizard";
 
 export type EmojiName =
   | "ants"
@@ -54,9 +52,6 @@ const emojis = {
 
 export const Emoji: React.FC<Props> = ({ name, ...props }) => {
   const Image = emojis[name as keyof typeof emojis];
-  if (!Image) {
-    return null;
-  }
 
   return <Image {...props} />;
 };
