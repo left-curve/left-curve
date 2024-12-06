@@ -786,7 +786,7 @@ Then, we assert their equivalence.
 
 ### Simple Vs Fancy Multiple Reps Test
 
-Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after 3 batches. This test utilizes algready existing state machine.
+Goal of this test is to compare the outcome of `apply_simple` and `apply_fancy` algorithms on an empty tree after 3 batches. This test utilizes already existing state machine.
 First we call `action init`.
 
 ```bluespec "tests" +=
