@@ -103,7 +103,7 @@ Model checking completed. No error has been found.
 16777472 states generated, 16777472 distinct states found, 0 states left on queue.
 The depth of the complete state graph search is 2.
 The average outdegree of the complete state graph is 0 (minimum is 0, the maximum 31 and the 95th percentile is 0).
-Finished in 01h 11min at (2024-11-28 18:30:44)
+Finished in 01h 55min at (2024-12-05 22:58:14)
 ```
 
 - Running this with 2 steps instead of 1 would increase the state space to **1 099 528 405 248 states**
@@ -118,8 +118,6 @@ This check is a valid inductive proof for the real tree manipulation algorithm i
 - Any violation for value hashes of length 256 can be reproduced using only two value hashes (specifically `[1]` and [`2`])
 - Any violation that happens in multiple steps/versions can be reproduced in a single step/version change (specifically from version `1` to version `2`). See Setup B for more coverage on this.
 - Our model is equivalent to the algorithm. Model-based testing can help obtaining confidence on this.
-
-TODO: Update output with the most recent version and for all invariants. This output was for `densityInv` only
 
 ### **Setup B**
 
