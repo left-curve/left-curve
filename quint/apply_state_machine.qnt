@@ -390,3 +390,4 @@ module apply_state_machine {
     treeInvariants,
     proofInvariants,
   }
+}
