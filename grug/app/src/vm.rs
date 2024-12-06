@@ -1,7 +1,7 @@
 use {
     crate::{
-        handle_submessages, AppCtx, AppError, AppResult, Instance, QuerierProvider,
-        StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
+        catch_event, handle_submessages, AppCtx, AppError, AppResult, EventResult, Instance,
+        QuerierProvider, StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
@@ -111,26 +111,33 @@ pub fn call_in_0_out_1_handle_response<VM>(
     name: &'static str,
     code_hash: Hash256,
     ctx: &Context,
-) -> AppResult<EvtGuest>
+) -> EventResult<EvtGuest>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_0_out_1::<_, GenericResult<Response>>(
-        app_ctx.clone(),
-        query_depth,
-        state_mutable,
-        name,
-        code_hash,
-        ctx,
-    )?
-    .map_err(|msg| AppError::Guest {
-        address: ctx.contract,
-        name,
-        msg,
-    })?;
+    let evt = EvtGuest::base(ctx.contract, name);
 
-    handle_response(app_ctx, msg_depth, name, ctx, response)
+    let response = catch_event! {
+        evt,
+        {
+            call_in_0_out_1::<_, GenericResult<Response>>(
+                app_ctx.clone(),
+                query_depth,
+                state_mutable,
+                name,
+                code_hash,
+                ctx,
+            )?
+            .map_err(|msg| AppError::Guest {
+                address: ctx.contract,
+                name,
+                msg,
+            })
+        }
+    };
+
+    handle_response(app_ctx, msg_depth, ctx, response, evt)
 }
 
 /// Create a VM instance, call a function that takes exactly one parameter and
@@ -145,28 +152,35 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
     code_hash: Hash256,
     ctx: &Context,
     param: &P,
-) -> AppResult<EvtGuest>
+) -> EventResult<EvtGuest>
 where
     P: BorshSerialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_1_out_1::<_, _, GenericResult<Response>>(
-        app_ctx.clone(),
-        query_depth,
-        state_mutable,
-        name,
-        code_hash,
-        ctx,
-        param,
-    )?
-    .map_err(|msg| AppError::Guest {
-        address: ctx.contract,
-        name,
-        msg,
-    })?;
+    let evt = EvtGuest::base(ctx.contract, name);
 
-    handle_response(app_ctx, msg_depth, name, ctx, response)
+    let response = catch_event! {
+        evt,
+        {
+            call_in_1_out_1::<_, _, GenericResult<Response>>(
+                app_ctx.clone(),
+                query_depth,
+                state_mutable,
+                name,
+                code_hash,
+                ctx,
+                param,
+            )?
+            .map_err(|msg| AppError::Guest {
+                address: ctx.contract,
+                name,
+                msg,
+            })
+        }
+    };
+
+    handle_response(app_ctx, msg_depth, ctx, response, evt)
 }
 
 /// Create a VM instance, call a function that takes exactly two parameter and
@@ -182,30 +196,37 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     ctx: &Context,
     param1: &P1,
     param2: &P2,
-) -> AppResult<EvtGuest>
+) -> EventResult<EvtGuest>
 where
     P1: BorshSerialize,
     P2: BorshSerialize,
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let response = call_in_2_out_1::<_, _, _, GenericResult<Response>>(
-        app_ctx.clone(),
-        query_depth,
-        state_mutable,
-        name,
-        code_hash,
-        ctx,
-        param1,
-        param2,
-    )?
-    .map_err(|msg| AppError::Guest {
-        address: ctx.contract,
-        name,
-        msg,
-    })?;
+    let evt = EvtGuest::base(ctx.contract, name);
 
-    handle_response(app_ctx, msg_depth, name, ctx, response)
+    let response = catch_event! {
+        evt,
+        {
+            call_in_2_out_1::<_, _, _, GenericResult<Response>>(
+                app_ctx.clone(),
+                query_depth,
+                state_mutable,
+                name,
+                code_hash,
+                ctx,
+                param1,
+                param2
+            )?
+            .map_err(|msg| AppError::Guest {
+                address: ctx.contract,
+                name,
+                msg,
+            })
+        }
+    };
+
+    handle_response(app_ctx, msg_depth, ctx, response, evt)
 }
 
 fn create_vm_instance<VM>(
@@ -240,21 +261,22 @@ where
 pub(crate) fn handle_response<VM>(
     app_ctx: AppCtx<VM>,
     msg_depth: usize,
-    name: &'static str,
     ctx: &Context,
     response: Response,
-) -> AppResult<EvtGuest>
+    mut evt: EvtGuest,
+) -> EventResult<EvtGuest>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    // Handle submessages; append events emitted during submessage handling
-    let sub_events = handle_submessages(app_ctx, msg_depth, ctx.contract, response.submsgs)?;
+    evt.contract_events = response.subevents;
 
-    Ok(EvtGuest {
-        sub_events,
-        contract: ctx.contract,
-        method: name.to_string(),
-        contract_events: response.subevents,
-    })
+    // Handle submessages; append events emitted during submessage handling
+    handle_submessages(app_ctx, msg_depth, ctx.contract, response.submsgs).upcast(
+        evt,
+        |subevents, mut evt| {
+            evt.sub_events = subevents;
+            evt
+        },
+    )
 }

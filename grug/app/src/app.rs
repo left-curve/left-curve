@@ -4,9 +4,10 @@ use {
         do_instantiate, do_migrate, do_transfer, do_upload, do_withhold_fee, query_app_config,
         query_balance, query_balances, query_code, query_codes, query_config, query_contract,
         query_contracts, query_supplies, query_supply, query_wasm_raw, query_wasm_scan,
-        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, GasTracker, Indexer,
-        NaiveProposalPreparer, NaiveQuerier, NullIndexer, ProposalPreparer, QuerierProvider,
-        Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_smart, AppCtx, AppError, AppResult, Buffer, Db, EventResult, GasTracker,
+        Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer, ProposalPreparer,
+        QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, LAST_FINALIZED_BLOCK,
+        NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -783,7 +784,7 @@ pub fn process_msg<VM>(
     msg_depth: usize,
     sender: Addr,
     msg: Message,
-) -> AppResult<Event>
+) -> EventResult<Event>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
