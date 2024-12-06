@@ -259,20 +259,20 @@ module grug_ics23 {
   /// Validate that LPath[len-1] is the left neighbor of RPath[len-1].
   /// For step in LPath[0..len-1], validate step is right-most node.
   /// For step in RPath[0..len-1], validate step is left-most node.
-  pure def is_left_neighbor(spec: InnerSpec, lpath: List[InnerOp], rpath: List[InnerOp]): bool = {
+  pure def is_left_neighbor(spec: InnerSpec, left: List[InnerOp], right: List[InnerOp]): bool = {
     // count common tail (from end, near root)
     // cut the left and right paths
-    lpath.indices().exists(li =>
-      rpath.indices().exists(ri => and {
+    left.indices().exists(li =>
+      right.indices().exists(ri => and {
         // they are equidistant from the root
-        length(lpath) - li == length(rpath) - ri,
+        length(left) - li == length(right) - ri,
         // The distance to the root (the indices are 0-based).
         // dist == 0 holds for the root.
-        val dist = length(lpath) - 1 - li
+        val dist = length(left) - 1 - li
         // the prefixes and suffixes match just above the cut points
         1.to(dist).forall(k =>
-          val lnode = lpath[li + k]
-          val rnode = rpath[ri + k]
+          val lnode = left[li + k]
+          val rnode = right[ri + k]
           and {
             lnode.prefix == rnode.prefix,
             lnode.suffix == rnode.suffix
@@ -280,15 +280,15 @@ module grug_ics23 {
         ),
         // Now topleft and topright are the first divergent nodes
         // make sure they are left and right of each other.
-        // Actually, lpath[li] and rpath[ri] are an abstraction
+        // Actually, left[li] and right[ri] are an abstraction
         // of the same tree node:
         //  the left one stores the hash of the right one, whereas
         //  the right one stores the hash of the left one.
-        is_left_step(spec, lpath[li], rpath[ri]),
+        is_left_step(spec, left[li], right[ri]),
         // left and right are remaining children below the split,
         // ensure left child is the rightmost path, and visa versa
-        is_right_most(spec, lpath.slice(0, li)),
-        is_left_most(spec, rpath.slice(0, ri)),
+        is_right_most(spec, left.slice(0, li)),
+        is_left_most(spec, right.slice(0, ri)),
       })
     )
   }
