@@ -17,4 +17,4 @@ Currently, there is no formal link between the specifications and the Rust imple
   - ICS23 proof verification in [`grug_ics23.md`](./quint/grug_ics23.md). We have described interesting test scenarios in [invariants.md](./quint/invariants.md#testing-proofs).
 
 - Invariants are described in [invariants.md](./quint/invariants.md) document
-- Results from experiments, including simulation, testing and model checking, are in [simulation_and_model_checking.md](./simulation_and_model_checking.md)
+- Results from experiments, including simulation, testing and model checking, are in [simulation_and_model_checking.md](./quint/simulation_and_model_checking.md)
