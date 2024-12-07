@@ -3,9 +3,8 @@ use {
     dango_app::ProposalPreparer,
     dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
     grug::{
-        btree_map, setup_tracing_subscriber, Binary, BlockInfo, Coin, ContractBuilder,
-        ContractWrapper, Duration, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        btree_map, Binary, BlockInfo, Coin, ContractBuilder, ContractWrapper, Duration,
+        NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -13,7 +12,6 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     std::{env, path::PathBuf, sync::LazyLock},
-    tracing::Level,
 };
 
 pub const CHAIN_ID: &str = "dev-1";
