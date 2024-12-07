@@ -13,17 +13,14 @@ use {
     grug_types::{
         Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CronOutcome, Duration, Event, EventStatus, GenericResult, GenericResultExt, GenesisState,
-        Hash256, Json, Message, MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query,
-        QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
-        GENESIS_SENDER,
+        Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
+        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
+        TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
 #[cfg(feature = "abci")]
-use {
-    data_encoding::BASE64,
-    grug_types::{JsonDeExt, JsonSerExt},
-};
+use {data_encoding::BASE64, grug_types::JsonDeExt};
 
 /// The ABCI application.
 ///
@@ -123,7 +120,13 @@ where
 
             let output = process_msg(ctx.clone_boxing_storage(), 0, GENESIS_SENDER, msg);
 
-            if let Err((_, err)) = output.as_result() {
+            if let Err((event, err)) = output.as_result() {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    result = event.to_json_string_pretty().unwrap(),
+                    "Error during genesis message processing"
+                );
+
                 return Err(err);
             }
         }

@@ -32,6 +32,7 @@ grug-db-memory        = { workspace = true }
 grug-vm-rust          = { workspace = true }
 grug-vm-wasm          = { workspace = true }
 k256                  = { workspace = true }
+tracing     = { workspace = true }
 
 [dev-dependencies]
 anyhow      = { workspace = true }
@@ -41,7 +42,6 @@ pyth-sdk    = { workspace = true }
 rand        = { workspace = true }
 reqwest     = { workspace = true, features = ["json"] }
 test-case   = { workspace = true }
-tracing     = { workspace = true }
 
 [[bench]]
 name = "benchmarks"

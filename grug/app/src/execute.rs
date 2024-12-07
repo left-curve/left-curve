@@ -316,7 +316,7 @@ where
         Ok(())
     });
 
-    if msg.funds.is_empty() {
+    if !msg.funds.is_empty() {
         let transfer_event = _do_transfer(
             app_ctx.clone(),
             msg_depth,
