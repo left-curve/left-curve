@@ -8,10 +8,10 @@ use {
     grug_math::Inner,
     grug_types::{
         Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo,
-        EventStatus, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtExecute, EvtFinalize, EvtGuest,
+        EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest,
         EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, GenericResult,
         Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate, MsgMigrate, MsgTransfer,
-        MsgUpload, ReplyOn, StdResult, SubMsgResult, Tx, TxOutcome,
+        MsgUpload, ReplyOn, StdResult, SubMsgResult, Timestamp, Tx, TxOutcome,
     },
 };
 
@@ -54,7 +54,7 @@ fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<
             NEXT_CRONJOBS.clear(&mut ctx.storage, None, None);
 
             for (contract, interval) in &new_cfg.cronjobs {
-                schedule_cronjob(&mut ctx.storage, *contract, ctx.block.timestamp, *interval)?;
+                schedule_cronjob(&mut ctx.storage, *contract, ctx.block.timestamp + *interval)?;
             }
         }
 
@@ -668,6 +668,8 @@ where
         mode: Some(mode),
     };
 
+    let mut request_backrun = false;
+
     let result = || -> EventResult<EvtGuest> {
         let evt = EvtGuest::base(ctx.contract, "authenticate");
 
@@ -688,10 +690,14 @@ where
             })
         });
 
+        request_backrun = auth_response.request_backrun;
+
         handle_response(app_ctx, 0, &ctx, auth_response.response, evt)
     }();
 
     update_event_field!(result, evt => guest_event);
+
+    evt.backrun = request_backrun;
 
     EventResult::Ok(evt)
 }
@@ -883,12 +889,17 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM>, contract: Addr) -> EventResult<EvtGuest>
+pub fn do_cron_execute<VM>(
+    ctx: AppCtx<VM>,
+    contract: Addr,
+    time: Timestamp,
+    next: Timestamp,
+) -> EventResult<EvtCron>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let evt = _do_cron_execute(ctx, contract);
+    let evt = _do_cron_execute(ctx, contract, time, next);
 
     evt.debug(
         |_| {
@@ -901,12 +912,19 @@ where
     evt
 }
 
-fn _do_cron_execute<VM>(app_ctx: AppCtx<VM>, contract: Addr) -> EventResult<EvtGuest>
+fn _do_cron_execute<VM>(
+    app_ctx: AppCtx<VM>,
+    contract: Addr,
+    time: Timestamp,
+    next: Timestamp,
+) -> EventResult<EvtCron>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = catch_event!(EvtGuest::base(contract, "cron_execute"), {
+    let mut evt = EvtCron::base(contract, time, next);
+
+    let code_hash = catch_event!(evt, {
         Ok(CONTRACTS.load(&app_ctx.storage, contract)?.code_hash)
     });
 
@@ -919,5 +937,10 @@ where
         mode: None,
     };
 
-    call_in_0_out_1_handle_response(app_ctx, 0, 0, true, "cron_execute", code_hash, &ctx)
+    let guest =
+        call_in_0_out_1_handle_response(app_ctx, 0, 0, true, "cron_execute", code_hash, &ctx);
+
+    update_event_field!(guest, evt => guest_event);
+
+    EventResult::Ok(evt)
 }

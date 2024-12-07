@@ -1,5 +1,8 @@
 use {
-    crate::{Addr, Duration, Event, GenericResult, Hash256, Json, Message, Timestamp},
+    crate::{
+        Addr, Duration, EventStatus, EvtCron, GenericResult, Hash256, Json, Message, Timestamp,
+        TxEvents,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -119,13 +122,32 @@ pub struct ContractInfo {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 #[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
-pub struct Outcome {
+pub struct CheckTxOutcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
     pub gas_limit: Option<u64>,
     pub gas_used: u64,
-    pub result: GenericResult<Vec<Event>>,
+    pub result: GenericResult<()>,
 }
 
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+#[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
+pub struct CronOutcome {
+    // `None` means the call was done with unlimited gas, such as cronjobs.
+    pub gas_limit: Option<u64>,
+    pub gas_used: u64,
+    pub cron_event: EventStatus<EvtCron>,
+}
+
+impl CronOutcome {
+    pub fn new(gas_limit: Option<u64>, gas_used: u64, cron_event: EventStatus<EvtCron>) -> Self {
+        Self {
+            gas_limit,
+            gas_used,
+            cron_event,
+        }
+    }
+}
 /// Outcome of processing a transaction.
 ///
 /// Different from `Outcome`, which can either succeed or fail, a transaction
@@ -146,7 +168,7 @@ pub struct Outcome {
 pub struct TxOutcome {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub events: Vec<Event>,
+    pub events: TxEvents,
     pub result: GenericResult<()>,
 }
 
@@ -154,7 +176,7 @@ pub struct TxOutcome {
 pub struct TxSuccess {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub events: Vec<Event>,
+    pub events: TxEvents,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -162,7 +184,7 @@ pub struct TxError {
     pub gas_limit: u64,
     pub gas_used: u64,
     pub error: String,
-    pub events: Vec<Event>,
+    pub events: TxEvents,
 }
 
 // `TxError` must implement `ToString`, such that it satisfies that trait bound
@@ -179,7 +201,7 @@ pub struct BlockOutcome {
     /// The Merkle root hash after executing this block.
     pub app_hash: Hash256,
     /// Results of executing the cronjobs.
-    pub cron_outcomes: Vec<Outcome>,
+    pub cron_outcomes: Vec<CronOutcome>,
     /// Results of executing the transactions.
     pub tx_outcomes: Vec<TxOutcome>,
 }

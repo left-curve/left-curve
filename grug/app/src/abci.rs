@@ -2,7 +2,7 @@ use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
-        BlockInfo, Duration, GenericResult, Hash256, JsonSerExt, Outcome, TxOutcome,
+        BlockInfo, CheckTxOutcome, Duration, GenericResult, Hash256, JsonSerExt, TxOutcome,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
@@ -128,7 +128,7 @@ where
     fn tower_check_tx(&self, req: request::CheckTx) -> AppResult<response::CheckTx> {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         let res = match self.do_check_tx_raw(&req.tx) {
-            Ok(Outcome {
+            Ok(CheckTxOutcome {
                 result: GenericResult::Ok(events),
                 gas_limit,
                 ..
@@ -144,7 +144,7 @@ where
                 gas_used: gas_limit.unwrap() as i64,
                 ..Default::default()
             },
-            Ok(Outcome {
+            Ok(CheckTxOutcome {
                 result: GenericResult::Err(err),
                 gas_limit,
                 ..

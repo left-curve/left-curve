@@ -1,5 +1,5 @@
 use {
-    crate::{Event, Outcome, TxError, TxOutcome, TxSuccess},
+    crate::{TxError, TxOutcome, TxSuccess},
     std::fmt::{Debug, Display},
 };
 
@@ -134,25 +134,6 @@ where
         match self {
             Self::Err(err) => err,
             Self::Ok(value) => panic!("expecting error, got ok: {value:?}"),
-        }
-    }
-}
-
-impl ResultExt for Outcome {
-    type Error = String;
-    type Success = Vec<Event>;
-
-    fn should_succeed(self) -> Self::Success {
-        match self.result {
-            Ok(events) => events,
-            Err(error) => panic!("expected success, got error: {error}"),
-        }
-    }
-
-    fn should_fail(self) -> Self::Error {
-        match self.result {
-            Err(error) => error,
-            Ok(_) => panic!("expected error, got success"),
         }
     }
 }

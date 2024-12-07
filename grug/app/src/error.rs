@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, Hash256, StdError},
+    grug_types::{Addr, EventStatus, Hash256, StdError},
     thiserror::Error,
 };
 
@@ -110,8 +110,37 @@ impl<T> EventResult<T> {
         }
     }
 
+    pub fn as_status(self) -> EventStatus<T> {
+        match self {
+            EventResult::Ok(val) => EventStatus::Ok(val),
+            EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
+                EventStatus::Failed {
+                    event,
+                    error: error.to_string(),
+                }
+            },
+        }
+    }
+
     pub fn is_ok(&self) -> bool {
         matches!(self, EventResult::Ok(_))
+    }
+
+    pub fn map<C, R>(self, callback: C) -> EventResult<R>
+    where
+        C: Fn(T) -> R,
+    {
+        match self {
+            EventResult::Ok(event) => EventResult::Ok(callback(event)),
+            EventResult::Err { event, error } => EventResult::Err {
+                event: callback(event),
+                error,
+            },
+            EventResult::SubErr { event, error } => EventResult::SubErr {
+                event: callback(event),
+                error,
+            },
+        }
     }
 }
 
@@ -132,16 +161,16 @@ macro_rules! catch_event {
 macro_rules! update_event_field {
     ($result: expr, $evt: expr => $field: ident) => {
         match $result {
-            EventResult::Ok(i) => $evt.$field = EventStatus::Ok(i),
+            EventResult::Ok(i) => $evt.$field = grug_types::EventStatus::Ok(i),
             EventResult::Err { event, error } => {
-                $evt.$field = EventStatus::Failed {
+                $evt.$field = grug_types::EventStatus::Failed {
                     event,
                     error: error.to_string(),
                 };
                 return EventResult::SubErr { event: $evt, error };
             },
             EventResult::SubErr { event, error } => {
-                $evt.$field = EventStatus::Ok(event);
+                $evt.$field = grug_types::EventStatus::Ok(event);
                 return EventResult::SubErr { event: $evt, error };
             },
         };
