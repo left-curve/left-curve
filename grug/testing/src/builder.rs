@@ -74,9 +74,6 @@ pub struct TestBuilder<
     fee_denom: Option<Denom>,
     fee_rate: Option<Udec128>,
     max_orphan_age: Option<Duration>,
-    init_chain: bool,
-    block: Option<BlockInfo>,
-    config: Option<Config>,
 }
 
 // Clippy incorrectly thinks we can derive `Default` here, which we can't.
@@ -166,9 +163,6 @@ where
             fee_denom: None,
             fee_rate: None,
             max_orphan_age: None,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 }
@@ -185,22 +179,6 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    pub fn set_db(mut self, db: DB) -> Self {
-        self.db = db;
-        self.init_chain = false;
-        self
-    }
-
-    pub fn set_block(mut self, block: BlockInfo) -> Self {
-        self.block = Some(block);
-        self
-    }
-
-    pub fn set_config(mut self, config: Config) -> Self {
-        self.config = Some(config);
-        self
-    }
-
     // Setting this to `None` means no tracing.
     pub fn set_tracing_level(mut self, level: Option<Level>) -> Self {
         self.tracing_level = level;
@@ -318,9 +296,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 
@@ -387,9 +362,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 
@@ -438,9 +410,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 }
@@ -520,9 +489,6 @@ where
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 }
@@ -560,9 +526,6 @@ impl<DB, VM, PP, ID, M1, M2, M3>
             fee_denom: self.fee_denom,
             fee_rate: self.fee_rate,
             max_orphan_age: self.max_orphan_age,
-            init_chain: true,
-            block: None,
-            config: None,
         }
     }
 }
@@ -616,13 +579,11 @@ where
 
         // Add `.with_block()`
 
-        let genesis_block = self.block.unwrap_or({
-            BlockInfo {
-                hash: GENESIS_BLOCK_HASH,
-                height: GENESIS_BLOCK_HEIGHT, // Hard coded to be 0
-                timestamp: genesis_time,
-            }
-        });
+        let genesis_block = BlockInfo {
+            hash: GENESIS_BLOCK_HASH,
+            height: GENESIS_BLOCK_HEIGHT, // Hard coded to be 0
+            timestamp: genesis_time,
+        };
 
         // Upload account, bank, and taxman codes,
         // instantiate bank and taxman contracts.
@@ -682,7 +643,7 @@ where
         );
 
         // Create the app config
-        let config = self.config.unwrap_or_else(|| Config {
+        let config = Config {
             owner: self
                 .owner
                 .maybe_into_inner()
@@ -695,7 +656,7 @@ where
                 instantiate: Permission::Everybody,
             },
             max_orphan_age: self.max_orphan_age.unwrap_or(DEFAULT_MAX_ORPHAN_AGE),
-        });
+        };
 
         let genesis_state = GenesisState {
             config,
@@ -713,7 +674,6 @@ where
             default_gas_limit,
             genesis_block,
             genesis_state,
-            self.init_chain,
         );
 
         (suite, self.accounts.maybe_into_inner().unwrap_or_default())

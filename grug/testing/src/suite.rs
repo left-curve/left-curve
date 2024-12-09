@@ -176,7 +176,6 @@ where
             default_gas_limit,
             genesis_block,
             genesis_state,
-            true,
         )
     }
 }
@@ -206,7 +205,6 @@ where
             default_gas_limit,
             genesis_block,
             genesis_state,
-            true,
         )
     }
 }
@@ -218,8 +216,6 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
-    // DB::Error: Display,
-    // ID::Error: Display,
 {
     /// Create a new test suite with the given DB and VM.
     pub fn new_with_db_vm_indexer_and_pp(
@@ -232,7 +228,6 @@ where
         default_gas_limit: u64,
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
-        init_chain: bool,
     ) -> Self {
         // This is doing the same order as in Dango.
         // 1. Calling `start` on the indexer
@@ -262,12 +257,10 @@ where
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX);
 
-        if init_chain {
-            app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
-                .unwrap_or_else(|err| {
-                    panic!("fatal error while initializing chain: {err}");
-                });
-        }
+        app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
+            .unwrap_or_else(|err| {
+                panic!("fatal error while initializing chain: {err}");
+            });
 
         Self {
             app,
