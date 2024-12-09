@@ -173,7 +173,7 @@ impl Display for TxError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
 /// Outcome of executing a block.
 pub struct BlockOutcome {
     /// The Merkle root hash after executing this block.

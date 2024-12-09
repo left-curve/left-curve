@@ -3495,15 +3495,20 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "borsh 1.5.3",
+ "glob",
  "grug-app",
  "grug-math",
  "grug-types",
  "indexer-sql-migration",
  "sea-orm",
+ "serde",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 

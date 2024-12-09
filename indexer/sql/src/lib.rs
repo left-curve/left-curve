@@ -1,4 +1,5 @@
 pub mod active_model;
+pub mod block;
 pub mod context;
 pub mod entity;
 pub mod error;

@@ -222,13 +222,38 @@ where
         db: DB,
         vm: VM,
         pp: PP,
-        id: ID,
+        mut id: ID,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
+        // This is doing the same order as in Dango.
+        // 1. Calling `start` on the indexer
+
+        let previous_block_height = match genesis_block.height {
+            0..=1 => None,
+            2.. => Some(genesis_block.height - 1),
+        };
+
+        let state_storage = db
+            .state_storage(previous_block_height)
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Fatal error while getting the state storage: {}",
+                    err.to_string()
+                );
+            });
+
+        id.start(&state_storage).unwrap_or_else(|err| {
+            panic!(
+                "fatal error while running indexer start: {}",
+                err.to_string()
+            );
+        });
+
+        // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX);
 
