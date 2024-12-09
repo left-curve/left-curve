@@ -81,9 +81,9 @@ We ran an **8-hour simulation** with **12 parallel instances** of the simulator,
 
 ### **Final simulation results**
 
-After all this iteration, we ran two final simulations with the latest version ([28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)), only differing by the invariants we check in each of them. We checked consecutive "fancy" apply operations on top of an empty tree for 3 steps. This was run for **9 hours**, with **6 parallel instances** per command.
-- Invariant: `treeInvariants` (all tree manipulation invariants): Total samples = 240k
-- Invariant: `proofInvariants` (all proof-related invariants): Total samples = 300k
+After all this iteration, we ran two final simulations with the latest version ([28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)), only differing by the invariants we check in each of them. We checked consecutive "fancy" apply operations on top of an empty tree for 3 steps. This was run for **66 hours**, with **6 parallel instances** per command.
+- Invariant: `treeInvariants` (all tree manipulation invariants): Total samples = 1.8M
+- Invariant: `proofInvariants` (all proof-related invariants): Total samples = 2.3M
 
 ### **Testing**
 
