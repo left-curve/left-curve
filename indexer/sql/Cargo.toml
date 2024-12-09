@@ -34,3 +34,5 @@ uuid                  = { workspace = true }
 
 [dev-dependencies]
 assertor = { workspace = true }
+tracing-subscriber     = { workspace = true }
+tracing                = { workspace = true }

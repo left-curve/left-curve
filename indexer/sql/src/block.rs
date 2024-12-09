@@ -18,8 +18,7 @@ pub struct BlockToIndex {
     pub txs: Vec<(Tx, TxOutcome)>,
     /// Where the block is temporarily saved on disk. I use `String` instead of `PathBuf` because
     /// `PathBuf` can not be serialized by Borsh and using `PathBuf` with #[borsh(skip)] means
-    /// using an `Option` since it wouldn't be able to create the struct or would use a wrong
-    /// default PathBuf.
+    /// a default value will be set.
     filename: String,
 }
 
@@ -62,11 +61,11 @@ impl BlockToIndex {
 
     pub fn delete_tmp_file(&self) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::warn!(path = self.filename, "Removing block tmp_file");
+        tracing::debug!(path = self.filename, "Removing block tmp_file");
 
-        if let Err(error) = std::fs::remove_file(&self.filename) {
+        if let Err(_err) = std::fs::remove_file(&self.filename) {
             #[cfg(feature = "tracing")]
-            tracing::warn!(path = self.filename, block_height = self.block_info.height, error = %error, "Can't remove block tmp_file");
+            tracing::warn!(path = self.filename, block_height = self.block_info.height, error = %_err, "Can't remove block tmp_file");
         }
         Ok(())
     }
@@ -85,7 +84,7 @@ impl BlockToIndex {
         tmp_filename.persist(&self.filename)?;
 
         #[cfg(feature = "tracing")]
-        tracing::warn!(path = %self.filename, block_height = self.block_info.height, "Saved tmp_file");
+        tracing::debug!(path = %self.filename, block_height = self.block_info.height, "Saved tmp_file");
         Ok(())
     }
 

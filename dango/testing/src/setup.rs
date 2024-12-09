@@ -148,6 +148,7 @@ where
             timestamp: GENESIS_TIMESTAMP,
         },
         genesis_state,
+        true,
     );
 
     let accounts = Accounts {

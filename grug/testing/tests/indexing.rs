@@ -1,5 +1,6 @@
 use {
     assertor::*,
+    grug_app::{Db, Indexer},
     grug_testing::TestBuilder,
     grug_types::{Coins, Denom, Message, ResultExt},
     indexer_sql::entity,
@@ -20,7 +21,6 @@ fn index_block_with_nonblocking_indexer() {
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
         .set_owner("owner")
-        // Add a method to passe MockStorage to the test suite?
         .build();
 
     let to = accounts["owner"].address;
@@ -35,10 +35,8 @@ fn index_block_with_nonblocking_indexer() {
         )
         .should_succeed();
 
-    // Force the runtime to wait for the async indexer to finish
+    // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer().wait_for_finish();
-
-    tracing::warn!("Checking the database");
 
     // ensure block was saved
     suite.app.indexer().handle.block_on(async {
@@ -67,4 +65,63 @@ fn index_block_with_nonblocking_indexer() {
             .expect("Can't fetch events");
         assert_that!(events).is_not_empty();
     });
+}
+
+#[test]
+fn restart_chain() {
+    let denom = Denom::from_str("ugrug").unwrap();
+
+    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_memory_database()
+        .build()
+        .expect("Can't create indexer");
+
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
+        .add_account("owner", Coins::new())
+        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
+        .set_owner("owner")
+        .build();
+
+    let to = accounts["owner"].address;
+
+    suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            2000,
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+        )
+        .should_succeed();
+
+    // Force the runtime to shutdown or when reusing this `start` would fail
+    suite
+        .app
+        .indexer
+        .shutdown()
+        .expect("Can't shutdown indexer");
+
+    // Force the runtime to start to check for previous block
+    //suite
+    //    .app
+    //    .indexer
+    //    .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
+    //    .expect("Can't start indexer");
+
+    // I'm trying to follow the code path when an indexer is initialized. Creating an app with the
+    // indexer.
+    let (mut suite, mut accounts) = TestBuilder::new_with_indexer(suite.app.indexer)
+        //.add_account("owner", Coins::new())
+        //.add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
+        //.set_owner("owner")
+        .set_db(suite.app.db)
+        .set_block(suite.block)
+        //.set_config(suite.config)
+        .build();
+
+    suite
+        .send_message_with_gas(
+            &mut accounts["sender"],
+            2000,
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+        )
+        .should_succeed();
 }

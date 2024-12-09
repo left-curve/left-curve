@@ -10,7 +10,7 @@ use {
         collections::HashMap,
         future::Future,
         ops::Deref,
-        path::{Path, PathBuf},
+        path::PathBuf,
         sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
@@ -71,6 +71,32 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
     }
 }
 
+impl<DB, P> IndexerBuilder<DB, P>
+where
+    DB: MaybeDefined<String>,
+    P: MaybeDefined<IndexerPath>,
+{
+    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+        let db = match self.db_url.maybe_into_inner() {
+            Some(url) => self
+                .handle
+                .block_on(async { Context::connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { Context::connect_db().await }),
+        }?;
+
+        let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
+        indexer_path.create_dirs_if_needed()?;
+
+        Ok(NonBlockingIndexer {
+            indexer_path,
+            context: Context { db },
+            handle: self.handle,
+            blocks: Default::default(), // Arc::new(Mutex::new(HashMap::new())),
+            indexing: false,
+        })
+    }
+}
+
 // ----------------------------- NonBlockingIndexer ----------------------------
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
@@ -89,9 +115,6 @@ pub struct NonBlockingIndexer {
     pub context: Context,
     pub handle: RuntimeHandler,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
-    // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
-    // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
-    // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
 }
 
@@ -137,7 +160,7 @@ impl NonBlockingIndexer {
         };
 
         #[cfg(feature = "tracing")]
-        tracing::warn!(
+        tracing::debug!(
             block_height = block_height,
             blocks_len = blocks.len(),
             "remove_or_fail called"
@@ -162,7 +185,7 @@ impl NonBlockingIndexer {
     pub fn block_tmp_filename(&self, block_height: u64) -> PathBuf {
         // Using a specific namespace `block-` to avoid conflicts with other files (tmpfile)
         let filename = format!("block-{block_height}");
-        self.indexer_path.path().join(filename)
+        self.indexer_path.tmp_path().join(filename)
     }
 
     /// Load all existing tmp files and ensure they've been indexed
@@ -175,7 +198,7 @@ impl NonBlockingIndexer {
         // higher number than latest_block_height
         // fetch latest block_height from indexer DB
 
-        let pattern = format!("{}/block-*", self.indexer_path.path().to_string_lossy());
+        let pattern = format!("{}/block-*", self.indexer_path.tmp_path().to_string_lossy());
         for file in glob(&pattern)? {
             match file {
                 Ok(path) => match BlockToIndex::load_tmp_file(&path) {
@@ -186,9 +209,9 @@ impl NonBlockingIndexer {
                             "load_all_from_disk filename started"
                         );
 
-                        // This loaded block from cache is in the future, we skip it. This can
-                        // happen when a crash occured after `do_finalize_block` has been called,
-                        // but before `do_commit` was called.
+                        // This block is higher than the current latest block. This can happen when
+                        // a crash occured after `do_finalize_block` has been called, but before
+                        // `do_commit` was called.
                         if block_to_index.block_info.height > latest_block_height {
                             block_to_index.delete_tmp_file()?;
                             continue;
@@ -209,14 +232,14 @@ impl NonBlockingIndexer {
                             "load_all_from_disk filename finished"
                         );
                     },
-                    Err(error) => {
+                    Err(_err) => {
                         #[cfg(feature = "tracing")]
-                        tracing::error!(error = %error, path = %path.to_string_lossy(), "can't load block from tmp_file");
+                        tracing::error!(error = %_err, path = %path.to_string_lossy(), "can't load block from tmp_file");
                     },
                 },
-                Err(error) => {
+                Err(_err) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %error, "can't look at filename");
+                    tracing::error!(error = %_err, "can't look at filename");
                 },
             }
         }
@@ -236,14 +259,14 @@ impl Indexer for NonBlockingIndexer {
             .block_on(async { self.context.migrate_db().await })?;
 
         match LAST_FINALIZED_BLOCK.load(storage) {
-            Err(error) => {
+            Err(_err) => {
+                // This happens when the chain starts at genesis
                 #[cfg(feature = "tracing")]
-                tracing::warn!(error = %error, "No LAST_FINALIZED_BLOCK found");
+                tracing::warn!(error = %_err, "No LAST_FINALIZED_BLOCK found");
             },
             Ok(block) => {
                 #[cfg(feature = "tracing")]
-                tracing::warn!("block found in storage");
-                // TODO: ensure we indexed all previous blocks
+                tracing::warn!(block_height = block.height, "start called");
                 self.load_all_from_disk(block.height)?;
             },
         }
@@ -278,8 +301,6 @@ impl Indexer for NonBlockingIndexer {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if !blocks.is_empty() {
                 tracing::warn!("Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?");
-            } else {
-                tracing::warn!("All blocks were indexed");
             }
         }
 
@@ -301,11 +322,11 @@ impl Indexer for NonBlockingIndexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = block.height, "index_block called");
+        tracing::debug!(block_height = block.height, "index_block called");
 
         self.find_or_create(block, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.height, "index_block started");
+            tracing::debug!(block_height = block.height, "index_block started");
 
             block_to_index.save_tmp_file()?;
 
@@ -326,16 +347,16 @@ impl Indexer for NonBlockingIndexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = block.height, "index_transaction called");
+        tracing::debug!(block_height = block.height, "index_transaction called");
 
         self.find_or_create(block, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.height, "index_transaction started");
+            tracing::debug!(block_height = block.height, "index_transaction started");
 
             block_to_index.txs.push((tx, tx_outcome));
 
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.height, "index_transaction finished");
+            tracing::debug!(block_height = block.height, "index_transaction finished");
 
             Ok(())
         })
@@ -347,7 +368,7 @@ impl Indexer for NonBlockingIndexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = block_height, "post_indexing called");
+        tracing::debug!(block_height = block_height, "post_indexing called");
 
         let context = self.context.clone();
         let block_to_index = self.find_or_fail(block_height)?;
@@ -359,7 +380,7 @@ impl Indexer for NonBlockingIndexer {
 
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block_height, "post_indexing started");
+            tracing::debug!(block_height = block_height, "post_indexing started");
 
             let db = context.db.begin().await?;
             let block_height = block_to_index.block_info.height;
@@ -367,7 +388,6 @@ impl Indexer for NonBlockingIndexer {
             db.commit().await?;
 
             block_to_index.delete_tmp_file()?;
-            // self.delete_from_disk(block_height)?;
 
             Self::remove_or_fail(blocks, &block_height)?;
 
@@ -463,44 +483,33 @@ impl Default for IndexerPath {
 }
 
 impl IndexerPath {
-    pub fn path(&self) -> &Path {
+    /// Used when storing temporarily what to persist in the DB
+    pub fn tmp_path(&self) -> PathBuf {
         match self {
-            IndexerPath::TempDir(tmpdir) => tmpdir.path(),
-            IndexerPath::Dir(dir) => dir.as_path(),
+            IndexerPath::TempDir(tmpdir) => tmpdir.path().join("tmp"),
+            IndexerPath::Dir(dir) => dir.join("tmp"),
         }
     }
-}
 
-impl<DB, P> IndexerBuilder<DB, P>
-where
-    DB: MaybeDefined<String>,
-    P: MaybeDefined<IndexerPath>,
-{
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
-        let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
-        }?;
+    /// Will be used when storing blocks long term to allow reindexing
+    pub fn block_path(&self) -> PathBuf {
+        match self {
+            IndexerPath::TempDir(tmpdir) => tmpdir.path().join("tmp"),
+            IndexerPath::Dir(dir) => dir.join("tmp"),
+        }
+    }
 
-        let indexer_path = match self.indexer_path.maybe_into_inner() {
-            Some(indexer_path) => indexer_path,
-            None => {
-                let dir = tempfile::tempdir().expect("");
-                IndexerPath::TempDir(Arc::new(dir))
-            },
-        };
-
-        // Make tmp_dir optional
-
-        Ok(NonBlockingIndexer {
-            indexer_path,
-            context: Context { db },
-            handle: self.handle,
-            blocks: Arc::new(Mutex::new(HashMap::new())),
-            indexing: false,
-        })
+    /// Create all the needed subdirectories to avoid error when saving files into those
+    pub fn create_dirs_if_needed(&self) -> error::Result<()> {
+        let tmp_path = self.tmp_path();
+        if !tmp_path.exists() {
+            std::fs::create_dir_all(&tmp_path)?;
+        }
+        let block_path = self.block_path();
+        if !block_path.exists() {
+            std::fs::create_dir_all(&block_path)?;
+        }
+        Ok(())
     }
 }
 
@@ -515,6 +524,13 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
+        let subscriber = tracing_subscriber::FmtSubscriber::builder()
+            .with_max_level(tracing::Level::INFO)
+            .finish();
+
+        tracing::subscriber::set_global_default(subscriber)
+            .expect("failed to set global tracing subscriber");
+
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()

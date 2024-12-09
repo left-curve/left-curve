@@ -31,7 +31,7 @@ impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: Indexer + Send + 'static,
+    ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
@@ -54,7 +54,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
     VM: Vm + Clone,
-    ID: Indexer + Send + 'static,
+    ID: Indexer,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {

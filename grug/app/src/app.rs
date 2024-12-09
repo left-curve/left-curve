@@ -29,10 +29,11 @@ use {
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
 pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
-    db: DB,
+    // NOTE: how do we feel about having this `pub`?
+    pub db: DB,
     vm: VM,
     pp: PP,
-    indexer: ID,
+    pub indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
