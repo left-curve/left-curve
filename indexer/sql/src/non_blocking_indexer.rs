@@ -120,17 +120,28 @@ pub struct NonBlockingIndexer {
 
 impl NonBlockingIndexer {
     /// Look in memory for a block to be indexed, or create a new one
-    fn find_or_create<F, R>(&self, block: &BlockInfo, action: F) -> error::Result<R>
+    fn find_or_create<F, R>(
+        &self,
+        block: &BlockInfo,
+        block_outcome: Option<&BlockOutcome>,
+        action: F,
+    ) -> error::Result<R>
     where
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
         let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex::new(
             *block,
+            None,
             self.block_tmp_filename(block.height)
                 .to_string_lossy()
                 .to_string(),
         ));
+
+        if block_outcome.is_some() {
+            tracing::warn!("Block outcome is missing, SETTING");
+            block_to_index.block_outcome = block_outcome.cloned();
+        }
 
         action(block_to_index)
     }
@@ -355,7 +366,7 @@ impl Indexer for NonBlockingIndexer {
     }
 
     /// NOTE: `index_block` is called *after* `index_transaction`
-    fn index_block(&self, block: &BlockInfo, _block_outcome: &BlockOutcome) -> error::Result<()> {
+    fn index_block(&self, block: &BlockInfo, block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
             bail!("Can't index after shutdown");
         }
@@ -363,7 +374,7 @@ impl Indexer for NonBlockingIndexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height = block.height, "index_block called");
 
-        self.find_or_create(block, |block_to_index| {
+        self.find_or_create(block, Some(block_outcome), |block_to_index| {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block.height, "index_block started");
 
@@ -388,7 +399,7 @@ impl Indexer for NonBlockingIndexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height = block.height, "index_transaction called");
 
-        self.find_or_create(block, |block_to_index| {
+        self.find_or_create(block, None, |block_to_index| {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block.height, "index_transaction started");
 

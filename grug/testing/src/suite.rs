@@ -13,10 +13,7 @@ use {
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::{
-        collections::BTreeMap,
-        fmt::{Debug, Display},
-    },
+    std::{collections::BTreeMap, fmt::Debug},
 };
 
 // ------------------------------- UploadOutcome -------------------------------
@@ -221,8 +218,8 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
-    DB::Error: Display,
-    ID::Error: Display,
+    // DB::Error: Display,
+    // ID::Error: Display,
 {
     /// Create a new test suite with the given DB and VM.
     pub fn new_with_db_vm_indexer_and_pp(
@@ -239,16 +236,29 @@ where
     ) -> Self {
         // This is doing the same order as in Dango.
         // 1. Calling `start` on the indexer
-        // 2. Creating the app instance
-        // TODO: should we call start after `do_init_chain`? I want the same as the way it happens
-        // on Dango
-        id.start(&db.state_storage(None).unwrap_or_else(|err| {
-            panic!("fatal error while getting the state storage: {err}");
-        }))
-        .unwrap_or_else(|err| {
-            panic!("fatal error while running indexer start: {err}");
+
+        let previous_block_height = match genesis_block.height {
+            0..=1 => None,
+            2.. => Some(genesis_block.height - 1),
+        };
+
+        let state_storage = db
+            .state_storage(previous_block_height)
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Fatal error while getting the state storage: {}",
+                    err.to_string()
+                );
+            });
+
+        id.start(&state_storage).unwrap_or_else(|err| {
+            panic!(
+                "fatal error while running indexer start: {}",
+                err.to_string()
+            );
         });
 
+        // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX);
 

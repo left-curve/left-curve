@@ -56,12 +56,10 @@ impl StartCmd {
     where
         ID: Indexer + Send + 'static,
         AppError: From<ID::Error>,
-        ID::Error: std::fmt::Debug,
     {
         let db = DiskDb::open(app_dir.data_dir())?;
         let vm = WasmVm::new(self.wasm_cache_capacity);
 
-        // NOTE: should this be called later if `App` is doing initialization?
         indexer
             .start(&db.state_storage(None)?)
             .expect("Can't start indexer");

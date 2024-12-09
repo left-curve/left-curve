@@ -1,7 +1,7 @@
 use {
     crate::{entity, error::IndexerError},
     grug_math::Inner,
-    grug_types::{BlockInfo, JsonSerExt, Tx, TxOutcome},
+    grug_types::{BlockInfo, BlockOutcome, JsonSerExt, Tx, TxOutcome},
     sea_orm::{prelude::*, sqlx::types::chrono::TimeZone, Set},
 };
 
@@ -78,7 +78,7 @@ impl Models {
         Ok(())
     }
 
-    pub fn build(block: &BlockInfo) -> Result<Self, IndexerError> {
+    pub fn build(block: &BlockInfo, block_outcome: &BlockOutcome) -> Result<Self, IndexerError> {
         let epoch_millis = block.timestamp.into_millis();
         let seconds = (epoch_millis / 1_000) as i64;
         let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
@@ -94,6 +94,7 @@ impl Models {
             block_height: Set(block.height.try_into()?),
             created_at: Set(naive_datetime),
             hash: Set(block.hash.to_string()),
+            app_hash: Set(block_outcome.app_hash.to_string()),
         };
 
         Ok(Self {

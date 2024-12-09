@@ -11,7 +11,7 @@ use {
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
-    std::{env, fmt::Display, path::PathBuf, sync::LazyLock},
+    std::{env, path::PathBuf, sync::LazyLock},
 };
 
 pub const CHAIN_ID: &str = "dev-1";
@@ -92,8 +92,8 @@ where
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
-    ID::Error: Display,
-    DB::Error: Display,
+    // ID::Error: Display,
+    // DB::Error: Display,
 {
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");

@@ -1,7 +1,7 @@
 use {
     crate::{active_model::Models, bail, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{BlockInfo, BorshDeExt, BorshSerExt, Tx, TxOutcome},
+    grug_types::{BlockInfo, BlockOutcome, BorshDeExt, BorshSerExt, Tx, TxOutcome},
     sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter},
     serde::{Deserialize, Serialize},
     std::{
@@ -15,6 +15,7 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
 pub struct BlockToIndex {
     pub block_info: BlockInfo,
+    pub block_outcome: Option<BlockOutcome>,
     pub txs: Vec<(Tx, TxOutcome)>,
     /// Where the block is temporarily saved on disk. I use `String` instead of `PathBuf` because
     /// `PathBuf` can not be serialized by Borsh and using `PathBuf` with #[borsh(skip)] means
@@ -23,9 +24,14 @@ pub struct BlockToIndex {
 }
 
 impl BlockToIndex {
-    pub fn new(block_info: BlockInfo, filename: String) -> Self {
+    pub fn new(
+        block_info: BlockInfo,
+        block_outcome: Option<BlockOutcome>,
+        filename: String,
+    ) -> Self {
         Self {
             block_info,
+            block_outcome,
             txs: Vec::new(),
             filename,
         }
@@ -36,7 +42,11 @@ impl BlockToIndex {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block_info.height, "Indexing block");
 
-        let mut models = Models::build(&self.block_info)?;
+        let Some(block_outcome) = self.block_outcome.as_ref() else {
+            bail!("Block outcome is missing");
+        };
+
+        let mut models = Models::build(&self.block_info, block_outcome)?;
         for (tx, tx_outcome) in self.txs.iter() {
             models.push(tx, tx_outcome)?;
         }
@@ -128,7 +138,7 @@ mod tests {
         let temp_file = NamedTempFile::new().expect("Failed to create a temp file");
         let filename = temp_file.path().to_string_lossy().to_string();
 
-        let block_to_index = BlockToIndex::new(block_info, filename);
+        let block_to_index = BlockToIndex::new(block_info, None, filename);
 
         assert_that!(block_to_index.save_tmp_file()).is_ok();
 

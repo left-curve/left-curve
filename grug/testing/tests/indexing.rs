@@ -2,7 +2,7 @@ use {
     assertor::*,
     grug_app::{Db, Indexer},
     grug_testing::TestBuilder,
-    grug_types::{BlockInfo, Coins, Denom, Hash, Message, ResultExt},
+    grug_types::{BlockInfo, BlockOutcome, Coins, Denom, Hash, Message, ResultExt},
     indexer_sql::{block::BlockToIndex, entity},
     sea_orm::{EntityTrait, QueryOrder},
     std::str::FromStr,
@@ -25,7 +25,7 @@ fn index_block_with_nonblocking_indexer() {
 
     let to = accounts["owner"].address;
 
-    assert_that!(suite.app.indexer().indexing).is_true();
+    assert_that!(suite.app.indexer.indexing).is_true();
 
     suite
         .send_message_with_gas(
@@ -36,31 +36,31 @@ fn index_block_with_nonblocking_indexer() {
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer().wait_for_finish();
+    suite.app.indexer.wait_for_finish();
 
     // ensure block was saved
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
         assert_that!(block.unwrap().block_height).is_equal_to(1);
 
         let transactions = entity::transactions::Entity::find()
-            .all(&suite.app.indexer().context.db)
+            .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch transactions");
         assert_that!(transactions).is_not_empty();
 
         let messages = entity::messages::Entity::find()
-            .all(&suite.app.indexer().context.db)
+            .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch messages");
         assert_that!(messages).is_not_empty();
 
         let events = entity::events::Entity::find()
-            .all(&suite.app.indexer().context.db)
+            .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch events");
         assert_that!(events).is_not_empty();
@@ -110,9 +110,9 @@ fn parse_previous_block_after_restart() {
         .expect("Can't delete block");
 
     // 1 bis. Verify the block height 1 is deleted
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_none();
@@ -124,8 +124,14 @@ fn parse_previous_block_after_restart() {
         timestamp: Default::default(),
         hash: Hash::ZERO,
     };
+    let block_outcome = BlockOutcome {
+        app_hash: Hash::ZERO,
+        cron_outcomes: vec![],
+        tx_outcomes: vec![],
+    };
     let block_to_index = BlockToIndex::new(
         block_info,
+        Some(block_outcome),
         suite
             .app
             .indexer
@@ -145,9 +151,9 @@ fn parse_previous_block_after_restart() {
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is indexed
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
@@ -164,13 +170,13 @@ fn parse_previous_block_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer().wait_for_finish();
+    suite.app.indexer.wait_for_finish();
 
     // 6. Verify the block height 2 is indexed
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
@@ -214,9 +220,9 @@ fn no_sql_index_error_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Verify the block height 1 is indexed
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
@@ -228,8 +234,14 @@ fn no_sql_index_error_after_restart() {
         timestamp: Default::default(),
         hash: Hash::ZERO,
     };
+    let block_outcome = BlockOutcome {
+        app_hash: Hash::ZERO,
+        cron_outcomes: vec![],
+        tx_outcomes: vec![],
+    };
     let block_to_index = BlockToIndex::new(
         block_info,
+        Some(block_outcome),
         suite
             .app
             .indexer
@@ -249,9 +261,9 @@ fn no_sql_index_error_after_restart() {
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
@@ -268,16 +280,20 @@ fn no_sql_index_error_after_restart() {
         .should_succeed();
 
     // 5 bis. Force the runtime to wait for the async indexer task to finish
-    suite.app.indexer().wait_for_finish();
+    suite.app.indexer.wait_for_finish();
 
     // 6. Verify the block height 2 is indexed
-    suite.app.indexer().handle.block_on(async {
+    suite.app.indexer.handle.block_on(async {
         let block = entity::blocks::Entity::find()
             .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&suite.app.indexer().context.db)
+            .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
         assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(2);
+
+        let block = block.unwrap();
+        assert_that!(block.block_height).is_equal_to(2);
+
+        assert!(!block.app_hash.is_empty());
     });
 }

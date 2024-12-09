@@ -29,7 +29,6 @@ use {
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
 pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
-    // NOTE: how do we feel about having this `pub`?
     pub db: DB,
     vm: VM,
     pp: PP,
@@ -58,10 +57,6 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             indexer,
             query_gas_limit,
         }
-    }
-
-    pub fn indexer(&self) -> &ID {
-        &self.indexer
     }
 }
 
@@ -277,8 +272,6 @@ where
 
             cron_outcomes.push(new_outcome(gas_tracker, result));
 
-            // NOTE: should we index cron calls? => YES
-
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(
                 &mut buffer,
@@ -307,8 +300,6 @@ where
 
             tx_outcomes.push(tx_outcome);
         }
-
-        // TODO: save the indexed data on disk here?
 
         // Save the last committed block.
         //
