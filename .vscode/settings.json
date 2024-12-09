@@ -1,5 +1,5 @@
 {
-  // "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.command": "clippy",
   "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
   "[json]": {
     "editor.defaultFormatter": "biomejs.biome"
