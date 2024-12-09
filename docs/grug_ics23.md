@@ -25,10 +25,10 @@ And other helper functions that are used:
 - [`is_left_neighbor`](#is-left-neighbor)
 
 > [!TIP]
-> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [grug_ics23.qnt](./grug_ics23.qnt).
+> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [grug_ics23.qnt](../quint/grug_ics23.qnt).
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec grug_ics23.qnt
+```bluespec quint/grug_ics23.qnt
 // -*- mode: Bluespec; -*-
 
 // This is a protocol specification of ICS23, tuned towards the Grug JMT

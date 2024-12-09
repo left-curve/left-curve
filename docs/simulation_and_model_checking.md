@@ -13,10 +13,10 @@ In order to obtain confidence that the model is correct, in respect to the invar
 
 ## Summary of Testing
 
-| Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                 | Commit                                                                                                       |
-|-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](./test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
-| [Proof verification across different trees](#proof-verification-across-different-trees) | 1 hour     | 8                  | 500                 | 4k            | [proofs_test.qnt](./test/proofs_test.qnt) | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                        | Commit                                                                                                       |
+|-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](../quint/test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| [Proof verification across different trees](#proof-verification-across-different-trees) | 1 hour     | 8                  | 500                 | 4k            | [proofs_test.qnt](../quint/test/proofs_test.qnt) | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
 
 ## Summary of Model Checking
 
@@ -91,7 +91,7 @@ Another way to use the Quint random simulator is to run tests, which work like p
 
 #### **Simple apply vs Fancy apply**
 
-We ran an **6-hour** test with **8 parallel instances** of the test simulator, and **10k samples per command**. This gave us a total of **80k samples** for each test. It was run for the [tree_test.qnt](./test/tree_test.qnt) file which includes two tests:
+We ran an **6-hour** test with **8 parallel instances** of the test simulator, and **10k samples per command**. This gave us a total of **80k samples** for each test. It was run for the [tree_test.qnt](../quint/test/tree_test.qnt) file which includes two tests:
 ```
 ok simpleVsFancyTest passed 10000 test(s)
 ok simpleVsFancyMultipleRepsTest passed 10000 test(s)
@@ -101,7 +101,7 @@ Commit for this experiment: [7081237](https://github.com/informalsystems/left-cu
 
 #### **Proof verification across different trees**
 
-We ran a **1-hour** test with **8 parallel instances** of the test simulator, and **500 samples per command**. This gave us a total of **4k samples** for each test. It was run for the [proofs_test.qnt](./test/proofs_test.qnt) file which includes the following:
+We ran a **1-hour** test with **8 parallel instances** of the test simulator, and **500 samples per command**. This gave us a total of **4k samples** for each test. It was run for the [proofs_test.qnt](../quint/test/proofs_test.qnt) file which includes the following:
 
 ```
 ok twoDifferentTreesTest passed 500 test(s)

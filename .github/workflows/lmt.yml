@@ -32,11 +32,11 @@ jobs:
     # Step 4: Run `lmt` and fail if differences are detected
     - name: Run LMT
       run: |
-        lmt proofs.md
-        lmt invariants.md
-        lmt tree_manipulation.md
-        lmt grug_ics23.md
-        lmt proof_types.md
+        lmt docs/proofs.md
+        lmt docs/invariants.md
+        lmt docs/tree_manipulation.md
+        lmt docs/grug_ics23.md
+        lmt docs/proof_types.md
         # Check that it is up to date
         git diff --exit-code \
           || ( echo ">>> ERROR: Tangled files are out of sync." &&  exit 1)

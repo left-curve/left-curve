@@ -12,10 +12,10 @@ This document covers:
 - [`ics23_prove`](#generating-commitment-proof)
 
 > [!TIP]
-> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](./proofs.qnt).
+> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](../quint/proofs.qnt).
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec proofs.qnt
+```bluespec quint/proofs.qnt
 // -*- mode: Bluespec; -*-
 
 module proofs {
