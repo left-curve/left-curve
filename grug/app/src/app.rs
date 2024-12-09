@@ -12,10 +12,10 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CronOutcome, Duration, Event, EventStatus, GenericResult, GenericResultExt, GenesisState,
-        Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
-        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
-        TxOutcome, UnsignedTx, GENESIS_SENDER,
+        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
+        GenericResultExt, GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents,
+        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
@@ -289,7 +289,7 @@ where
             cron_outcomes.push(CronOutcome::new(
                 gas_tracker.limit(),
                 gas_tracker.used(),
-                cron_event.as_status(),
+                cron_event.as_committment(),
             ));
         }
 
@@ -652,9 +652,9 @@ where
     // If this fails, we abort the tx and return, discard all state changes.
 
     let mut events =
-        TxEvents::new(do_withhold_fee(fee_ctx.clone_boxing_storage(), &tx, mode).as_status());
+        TxEvents::new(do_withhold_fee(fee_ctx.clone_boxing_storage(), &tx, mode).as_committment());
 
-    if let Some(err) = events.withhold.as_option_err() {
+    if let Some(err) = events.withhold.maybe_error() {
         let err = err.to_string();
         return new_tx_outcome(gas_tracker, events, Err(err));
     }
@@ -673,18 +673,20 @@ where
     // If fails, discard state changes in `msg_buffer` (but keeping those in
     // `fee_buffer`), discard the events, and jump to `finalize_fee`.
 
-    events.authenticate = do_authenticate(msg_ctx.clone_boxing_storage(), &tx, mode).as_status();
+    events.authenticate =
+        do_authenticate(msg_ctx.clone_boxing_storage(), &tx, mode).as_committment();
 
-    match events.authenticate.as_option_err() {
-        Some(err) => {
+    let request_backrun = match events.authenticate.as_result() {
+        Err((_, err)) => {
             drop(msg_ctx.storage);
             let err = err.to_string();
             return process_finalize_fee(fee_ctx, tx, mode, events, Err(err));
         },
-        None => {
+        Ok(event) => {
             msg_ctx.storage.write_access().commit();
+            event.backrun
         },
-    }
+    };
 
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
@@ -695,15 +697,11 @@ where
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
 
-    events.msgs_and_backrun = process_msgs_then_backrun(
-        msg_ctx.clone_boxing_storage(),
-        &tx,
-        mode,
-        events.authenticate.ok().backrun,
-    )
-    .as_status();
+    events.msgs_and_backrun =
+        process_msgs_then_backrun(msg_ctx.clone_boxing_storage(), &tx, mode, request_backrun)
+            .as_committment();
 
-    match events.msgs_and_backrun.as_option_err() {
+    match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
             drop(msg_ctx.storage);
             let err = err.to_string();
@@ -755,7 +753,7 @@ where
                 return EventResult::SubErr { event: evt, error };
             },
             EventResult::SubErr { event, error } => {
-                evt.msgs.push(EventStatus::Ok(event));
+                evt.msgs.push(EventStatus::NestedFailed(event));
                 return EventResult::SubErr { event: evt, error };
             },
         }
@@ -786,21 +784,23 @@ where
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
 
     let evt_finalize =
-        do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode).as_status();
+        do_finalize_fee(ctx.clone_boxing_storage(), &tx, &outcome_so_far, mode).as_committment();
 
     match &evt_finalize {
-        EventStatus::Ok(_) => {
+        CommitmentStatus::Committed(_) => {
             events.finalize = evt_finalize;
             ctx.storage.disassemble().consume();
             new_tx_outcome(gas_tracker, events, result)
         },
-        EventStatus::Failed { error, .. } => {
+        CommitmentStatus::Failed { error, .. } => {
             let err = error.to_string();
             let events = events.finalize_fails(evt_finalize, "idk");
             drop(ctx.storage);
             new_tx_outcome(gas_tracker, events, Err(err))
         },
-        EventStatus::NotReached => unreachable!("`do_finalize_fee` should always succeed"),
+        CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
+            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`")
+        },
     }
 }
 

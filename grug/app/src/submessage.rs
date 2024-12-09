@@ -1,8 +1,7 @@
 use {
     crate::{do_reply, process_msg, AppCtx, AppError, Buffer, EventResult, Shared, Vm},
     grug_types::{
-        Addr, EventStatus, GenericResult, HandleEventStatus, ReplyOn, SubEvent, SubEventStatus,
-        SubMessage,
+        Addr, EventStatus, GenericResult, HandleEventStatus, ReplyOn, SubEvent, SubMessage,
     },
 };
 
@@ -17,30 +16,29 @@ const MAX_MESSAGE_DEPTH: usize = 30;
 macro_rules! try_add_subevent {
     ($events: expr, $submsg_event: expr, $reply: expr) => {
         match $reply {
-            EventResult::Ok(evt_reply) => $events.push(SubEventStatus::Ok(SubEvent {
+            EventResult::Ok(evt_reply) => $events.push(EventStatus::Ok(SubEvent {
                 event: $submsg_event,
                 reply: Some(EventStatus::Ok(evt_reply)),
             })),
             EventResult::Err { event, error } => {
-                $events.push(SubEventStatus::Failed(
-                    SubEvent {
+                $events.push(EventStatus::NestedFailed(SubEvent {
                         event: $submsg_event,
                         reply: Some(EventStatus::Failed {
                             event,
                             error: error.to_string(),
                         }),
-                    },
-                ));
+                    })
+                );
                 return EventResult::SubErr {
                     event: $events,
                     error,
                 };
             },
             EventResult::SubErr { event, error } => {
-                $events.push(SubEventStatus::Failed(
+                $events.push(EventStatus::NestedFailed(
                     SubEvent {
                         event: $submsg_event,
-                        reply: Some(EventStatus::Ok(event)),
+                        reply: Some(EventStatus::NestedFailed(event)),
                     },
                 ));
                 return EventResult::SubErr {
@@ -67,12 +65,12 @@ pub fn handle_submessages<VM>(
     msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
-) -> EventResult<Vec<SubEventStatus>>
+) -> EventResult<Vec<EventStatus<SubEvent>>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut events: Vec<SubEventStatus> = vec![];
+    let mut events = vec![];
 
     if msg_depth > MAX_MESSAGE_DEPTH {
         return EventResult::Err {
@@ -90,7 +88,7 @@ where
             submsg.msg,
         );
 
-        match (&submsg.reply_on, result.as_result()) {
+        match (&submsg.reply_on, result.clone().as_result()) {
             // Success - callback requested
             // Flush state changes, log events, give callback.
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_event)) => {
@@ -125,9 +123,11 @@ where
                 );
 
                 let submsg_event = if reply.is_ok() {
-                    HandleEventStatus::failed_but_handled(submsg_event, err)
-                } else {
+                    HandleEventStatus::handled(submsg_event, err)
+                } else if let EventResult::Err { .. } = result {
                     HandleEventStatus::failed(submsg_event, err)
+                } else {
+                    HandleEventStatus::NestedFailed(submsg_event)
                 };
 
                 try_add_subevent!(events, submsg_event, reply);
@@ -136,7 +136,7 @@ where
             // Flush state changes, log events, move on to the next submsg.
             (ReplyOn::Error(_), Result::Ok(submsg_event)) => {
                 buffer.disassemble().consume();
-                events.push(SubEventStatus::Ok(SubEvent {
+                events.push(EventStatus::Ok(SubEvent {
                     event: HandleEventStatus::Ok(submsg_event),
                     reply: Some(EventStatus::NotReached),
                 }));
@@ -145,7 +145,7 @@ where
             (ReplyOn::Never, Result::Ok(submsg_event)) => {
                 buffer.disassemble().consume();
 
-                events.push(SubEventStatus::Ok(SubEvent {
+                events.push(EventStatus::Ok(SubEvent {
                     event: HandleEventStatus::Ok(submsg_event),
                     // Not requested
                     reply: None,
@@ -153,9 +153,9 @@ where
             },
             // Error - callback not requested
             // Abort by throwing error.
-            (ReplyOn::Success(_), Result::Err((submsg_event, err))) => {
-                events.push(SubEventStatus::Failed(SubEvent {
-                    event: HandleEventStatus::failed(submsg_event, &err),
+            (ReplyOn::Success(_), Result::Err((_, err))) => {
+                events.push(EventStatus::NestedFailed(SubEvent {
+                    event: result.into(),
                     reply: None,
                 }));
 
@@ -165,9 +165,9 @@ where
                 };
             },
 
-            (ReplyOn::Never, Result::Err((submsg_event, err))) => {
-                events.push(SubEventStatus::Failed(SubEvent {
-                    event: HandleEventStatus::failed(submsg_event, &err),
+            (ReplyOn::Never, Result::Err((_, err))) => {
+                events.push(EventStatus::NestedFailed(SubEvent {
+                    event: result.into(),
                     reply: None,
                 }));
 

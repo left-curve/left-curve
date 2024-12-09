@@ -272,7 +272,7 @@ where
     evt.contract_events = response.subevents;
 
     // Handle submessages; append events emitted during submessage handling
-    handle_submessages(app_ctx, msg_depth, ctx.contract, response.submsgs).upcast(
+    handle_submessages(app_ctx, msg_depth, ctx.contract, response.submsgs).map_merge(
         evt,
         |subevents, mut evt| {
             evt.sub_events = subevents;

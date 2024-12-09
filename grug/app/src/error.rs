@@ -1,5 +1,5 @@
 use {
-    grug_types::{Addr, EventStatus, Hash256, StdError},
+    grug_types::{Addr, CommitmentStatus, Event, HandleEventStatus, Hash256, StdError},
     thiserror::Error,
 };
 
@@ -60,6 +60,7 @@ pub enum AppError {
 
 pub type AppResult<T> = core::result::Result<T, AppError>;
 
+#[derive(Debug, Clone)]
 pub enum EventResult<T> {
     Ok(T),
     Err { event: T, error: AppError },
@@ -67,7 +68,8 @@ pub enum EventResult<T> {
 }
 
 impl<T> EventResult<T> {
-    pub fn upcast<R, C>(self, merge: R, callback: C) -> EventResult<R>
+    /// Create a new `EventResult<R>`.
+    pub fn map_merge<R, C>(self, merge: R, callback: C) -> EventResult<R>
     where
         C: Fn(T, R) -> R,
     {
@@ -110,20 +112,20 @@ impl<T> EventResult<T> {
         }
     }
 
-    pub fn as_status(self) -> EventStatus<T> {
+    pub fn is_ok(&self) -> bool {
+        matches!(self, EventResult::Ok(_))
+    }
+
+    pub fn as_committment(self) -> CommitmentStatus<T> {
         match self {
-            EventResult::Ok(val) => EventStatus::Ok(val),
+            EventResult::Ok(event) => CommitmentStatus::Committed(event),
             EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
-                EventStatus::Failed {
+                CommitmentStatus::Failed {
                     event,
                     error: error.to_string(),
                 }
             },
         }
-    }
-
-    pub fn is_ok(&self) -> bool {
-        matches!(self, EventResult::Ok(_))
     }
 
     pub fn map<C, R>(self, callback: C) -> EventResult<R>
@@ -140,6 +142,16 @@ impl<T> EventResult<T> {
                 event: callback(event),
                 error,
             },
+        }
+    }
+}
+
+impl From<EventResult<Event>> for HandleEventStatus {
+    fn from(value: EventResult<Event>) -> Self {
+        match value {
+            EventResult::Ok(event) => HandleEventStatus::Ok(event),
+            EventResult::Err { event, error } => HandleEventStatus::failed(event, error),
+            EventResult::SubErr { event, .. } => HandleEventStatus::NestedFailed(event),
         }
     }
 }
@@ -170,7 +182,7 @@ macro_rules! update_event_field {
                 return EventResult::SubErr { event: $evt, error };
             },
             EventResult::SubErr { event, error } => {
-                $evt.$field = grug_types::EventStatus::Ok(event);
+                $evt.$field = grug_types::EventStatus::NestedFailed(event);
                 return EventResult::SubErr { event: $evt, error };
             },
         };

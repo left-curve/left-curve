@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Duration, EventStatus, EvtCron, GenericResult, Hash256, Json, Message, Timestamp,
-        TxEvents,
+        Addr, CommitmentStatus, Duration, EvtCron, GenericResult, Hash256, Json, Message,
+        Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
@@ -136,11 +136,15 @@ pub struct CronOutcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
     pub gas_limit: Option<u64>,
     pub gas_used: u64,
-    pub cron_event: EventStatus<EvtCron>,
+    pub cron_event: CommitmentStatus<EvtCron>,
 }
 
 impl CronOutcome {
-    pub fn new(gas_limit: Option<u64>, gas_used: u64, cron_event: EventStatus<EvtCron>) -> Self {
+    pub fn new(
+        gas_limit: Option<u64>,
+        gas_used: u64,
+        cron_event: CommitmentStatus<EvtCron>,
+    ) -> Self {
         Self {
             gas_limit,
             gas_used,
