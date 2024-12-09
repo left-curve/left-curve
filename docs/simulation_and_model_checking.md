@@ -16,7 +16,7 @@ In order to obtain confidence that the model is correct, in respect to the invar
 | Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                        | Commit                                                                                                       |
 |-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
 | [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](../quint/test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
-| [Proof verification across different trees](#proof-verification-across-different-trees) | 1 hour     | 8                  | 500                 | 4k            | [proofs_test.qnt](../quint/test/proofs_test.qnt) | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| [Proof verification across different trees](#proof-verification-across-different-trees) | 3 hours    | 10                 | 4k                  | 40k           | [proofs_test.qnt](../quint/test/proofs_test.qnt) | [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) |
 
 ## Summary of Model Checking
 
