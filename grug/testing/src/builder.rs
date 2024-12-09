@@ -12,7 +12,7 @@ use {
     serde::Serialize,
     std::{
         collections::BTreeMap,
-        fmt::{Debug, Display},
+        fmt::Debug,
         ops::Deref,
         str::FromStr,
         time::{SystemTime, UNIX_EPOCH},
@@ -531,8 +531,8 @@ impl<DB, VM, PP, ID, M1, M2, M3>
 }
 
 // `build` can only be called if both `owner` and `accounts` have been set.
-impl<DB, VM, PP, ID, M1, M2, M3, OW, TA> TestBuilder<DB, VM, PP, ID, M1, M2, M3, OW, TA>
-// Defined<Addr>, Defined<TestAccounts>>
+impl<DB, VM, PP, ID, M1, M2, M3>
+    TestBuilder<DB, VM, PP, ID, M1, M2, M3, Defined<Addr>, Defined<TestAccounts>>
 where
     DB: Db,
     M1: Serialize,
@@ -542,10 +542,6 @@ where
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<VM::Error> + From<PP::Error> + From<ID::Error> + From<DB::Error>,
-    ID::Error: Display,
-    DB::Error: Display,
-    OW: MaybeDefined<Addr>,
-    TA: MaybeDefined<TestAccounts>,
 {
     pub fn build(self) -> (TestSuite<DB, VM, PP, ID>, TestAccounts) {
         if let Some(tracing_level) = self.tracing_level {
@@ -577,11 +573,9 @@ where
             Timestamp::from_nanos(nanos)
         });
 
-        // Add `.with_block()`
-
         let genesis_block = BlockInfo {
             hash: GENESIS_BLOCK_HASH,
-            height: GENESIS_BLOCK_HEIGHT, // Hard coded to be 0
+            height: GENESIS_BLOCK_HEIGHT,
             timestamp: genesis_time,
         };
 
@@ -612,20 +606,18 @@ where
         ];
 
         // Instantiate accounts
-        if let Some(accounts) = self.accounts.maybe_inner() {
-            for (name, account) in accounts.deref() {
-                msgs.push(
-                    Message::instantiate(
-                        self.account_opt.code.hash256(),
-                        &(self.account_opt.msg_builder)(account.pk),
-                        *name,
-                        Some(format!("account/{name}")),
-                        Some(account.address),
-                        Coins::new(),
-                    )
-                    .unwrap(),
-                );
-            }
+        for (name, account) in self.accounts.inner().deref() {
+            msgs.push(
+                Message::instantiate(
+                    self.account_opt.code.hash256(),
+                    &(self.account_opt.msg_builder)(account.pk),
+                    *name,
+                    Some(format!("account/{name}")),
+                    Some(account.address),
+                    Coins::new(),
+                )
+                .unwrap(),
+            );
         }
 
         // Predict bank contract address
@@ -644,10 +636,7 @@ where
 
         // Create the app config
         let config = Config {
-            owner: self
-                .owner
-                .maybe_into_inner()
-                .expect("Owner should be set if config isn't set"),
+            owner: self.owner.into_inner(),
             bank,
             taxman,
             cronjobs: BTreeMap::new(),
@@ -676,6 +665,6 @@ where
             genesis_state,
         );
 
-        (suite, self.accounts.maybe_into_inner().unwrap_or_default())
+        (suite, self.accounts.into_inner())
     }
 }
