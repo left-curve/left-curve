@@ -569,7 +569,7 @@ impl<DB, VM, PP, ID, M1, M2, M3>
 
 // `build` can only be called if both `owner` and `accounts` have been set.
 impl<DB, VM, PP, ID, M1, M2, M3, OW, TA> TestBuilder<DB, VM, PP, ID, M1, M2, M3, OW, TA>
-//Defined<Addr>, Defined<TestAccounts>>
+// Defined<Addr>, Defined<TestAccounts>>
 where
     DB: Db,
     M1: Serialize,
@@ -616,7 +616,7 @@ where
 
         // Add `.with_block()`
 
-        let genesis_block = self.block.unwrap_or_else(|| {
+        let genesis_block = self.block.unwrap_or({
             BlockInfo {
                 hash: GENESIS_BLOCK_HASH,
                 height: GENESIS_BLOCK_HEIGHT, // Hard coded to be 0

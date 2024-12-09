@@ -2,7 +2,7 @@ use {
     crate::{active_model::Models, bail, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{BlockInfo, BorshDeExt, BorshSerExt, Tx, TxOutcome},
-    sea_orm::{ActiveModelTrait, DatabaseTransaction, EntityTrait},
+    sea_orm::{ColumnTrait, DatabaseTransaction, EntityTrait, QueryFilter},
     serde::{Deserialize, Serialize},
     std::{
         io::Write,
@@ -41,20 +41,39 @@ impl BlockToIndex {
             models.push(tx, tx_outcome)?;
         }
 
-        // TODO: if the process was to crash in the middle and restarted, we could try to
-        // reinsert existing data. We should use `on_conflict()` to avoid this, return the
-        // existing block and change `block_id` when/if we added foreign keys
-        models.block.insert(db).await?;
+        // I check if the block already exists, if so it means we can skip the
+        // whole block, transactions, messages and events since those are created
+        // within a single DB transaction.
+        // This scenario could happen if the process has crashed after block was
+        // indexed but before the tmp_file was removed.
+        let existing_block = entity::blocks::Entity::find()
+            .filter(entity::blocks::Column::BlockHeight.eq(self.block_info.height))
+            .one(db)
+            .await?;
 
-        entity::transactions::Entity::insert_many(models.transactions)
-            .exec(db)
+        if existing_block.is_some() {
+            return Ok(());
+        }
+
+        entity::blocks::Entity::insert(models.block)
+            .exec_without_returning(db)
             .await?;
-        entity::messages::Entity::insert_many(models.messages)
-            .exec(db)
-            .await?;
-        entity::events::Entity::insert_many(models.events)
-            .exec(db)
-            .await?;
+
+        if !models.transactions.is_empty() {
+            entity::transactions::Entity::insert_many(models.transactions)
+                .exec_without_returning(db)
+                .await?;
+        }
+        if !models.messages.is_empty() {
+            entity::messages::Entity::insert_many(models.messages)
+                .exec_without_returning(db)
+                .await?;
+        }
+        if !models.events.is_empty() {
+            entity::events::Entity::insert_many(models.events)
+                .exec_without_returning(db)
+                .await?;
+        }
 
         Ok(())
     }

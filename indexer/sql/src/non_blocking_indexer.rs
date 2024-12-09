@@ -1,11 +1,11 @@
 use {
-    crate::{bail, block::BlockToIndex, error, Context},
+    crate::{bail, block::BlockToIndex, entity, error, Context},
     glob::glob,
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{
         BlockInfo, BlockOutcome, Defined, MaybeDefined, Storage, Tx, TxOutcome, Undefined,
     },
-    sea_orm::TransactionTrait,
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait},
     std::{
         collections::HashMap,
         future::Future,
@@ -107,7 +107,7 @@ where
 /// task spawned in `index_block` and `index_transaction` meaning I'd have to check in these
 /// functions if the transaction exists or not.
 ///
-/// Decided to do different and prepare the data in memory to inject all data in a single Tokio
+/// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
 #[derive(Debug)]
 pub struct NonBlockingIndexer {
@@ -119,6 +119,7 @@ pub struct NonBlockingIndexer {
 }
 
 impl NonBlockingIndexer {
+    /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(&self, block: &BlockInfo, action: F) -> error::Result<R>
     where
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
@@ -134,6 +135,7 @@ impl NonBlockingIndexer {
         action(block_to_index)
     }
 
+    /// Look in memory for a block to be indexed, or fail if not found
     fn find_or_fail(&self, block_height: u64) -> error::Result<BlockToIndex> {
         let blocks = self.blocks.lock().expect("Can't lock blocks");
 
@@ -147,7 +149,8 @@ impl NonBlockingIndexer {
         Ok(block_to_index.clone())
     }
 
-    fn remove_or_fail(
+    /// Look in memory for a block to be removed, or fail if not found
+    pub fn remove_or_fail(
         blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
         block_height: &u64,
     ) -> error::Result<BlockToIndex> {
@@ -169,6 +172,7 @@ impl NonBlockingIndexer {
         Ok(block_to_index.1)
     }
 
+    /// Wait for all blocks to be indexed
     pub fn wait_for_finish(&self) {
         for _ in 0..10 {
             if self.blocks.lock().expect("Can't lock blocks").is_empty() {
@@ -177,6 +181,42 @@ impl NonBlockingIndexer {
 
             sleep(Duration::from_millis(10));
         }
+    }
+}
+
+// ------------------------------- DB Related ----------------------------------
+
+impl NonBlockingIndexer {
+    /// Delete a block and its related content from the database
+    pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
+        self.handle.block_on(async move {
+            let db = self.context.db.begin().await?;
+
+            entity::blocks::Entity::delete_many()
+                .filter(entity::blocks::Column::BlockHeight.eq(block_height))
+                .exec(&db)
+                .await?;
+
+            entity::transactions::Entity::delete_many()
+                .filter(entity::transactions::Column::BlockHeight.eq(block_height))
+                .exec(&db)
+                .await?;
+
+            entity::messages::Entity::delete_many()
+                .filter(entity::messages::Column::BlockHeight.eq(block_height))
+                .exec(&db)
+                .await?;
+
+            entity::events::Entity::delete_many()
+                .filter(entity::events::Column::BlockHeight.eq(block_height))
+                .exec(&db)
+                .await?;
+
+            db.commit().await?;
+
+            Ok::<(), sea_orm::error::DbErr>(())
+        })?;
+        Ok(())
     }
 }
 
@@ -193,10 +233,6 @@ impl NonBlockingIndexer {
         // You're not supposed to have many remaining files, probably at most 1 file in rare case
         // of process crash. I'll load each file one after the other, I dont need to use
         // multi-thread to go faster.
-
-        // TODO: look at the local cache and ensure all blocks were indexed, delete anything with
-        // higher number than latest_block_height
-        // fetch latest block_height from indexer DB
 
         let pattern = format!("{}/block-*", self.indexer_path.tmp_path().to_string_lossy());
         for file in glob(&pattern)? {
@@ -266,7 +302,10 @@ impl Indexer for NonBlockingIndexer {
             },
             Ok(block) => {
                 #[cfg(feature = "tracing")]
-                tracing::warn!(block_height = block.height, "start called");
+                tracing::warn!(
+                    block_height = block.height,
+                    "start called, found a previous block"
+                );
                 self.load_all_from_disk(block.height)?;
             },
         }
