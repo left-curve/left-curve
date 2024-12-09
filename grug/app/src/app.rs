@@ -308,19 +308,10 @@ where
         // it gets the previous block, not the current one.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
 
-        // NOTE: What happens if the process crashes here?
-
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
         let (_, batch) = buffer.disassemble().disassemble();
         let (version, app_hash) = self.db.flush_but_not_commit(batch)?;
-
-        // What happens here if the process crashes? Is the block being reprocessed?
-        // TODO: When the node starts, checks if something in `db` is supposed to be committed, if so commit it first not to replay the same block
-
-        // NOTE: Could call `index_block` or `persist_block` here, including app_hash. What happens
-        // if the process crashes here and index block isn't stored on disk?
-        // My understand is this block will be reprocessed as `self.db.commit()` wasn't called
 
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
