@@ -3,6 +3,7 @@ mod abci;
 mod app;
 mod buffer;
 mod error;
+mod event;
 mod execute;
 mod gas;
 mod indexer;
@@ -16,6 +17,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, error::*, execute::*, gas::*, indexer::*, proposal::*, providers::*,
-    query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal::*,
+    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
 };
