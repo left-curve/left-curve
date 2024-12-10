@@ -1,0 +1,104 @@
+diff --git a/quint/apply_state_machine.qnt b/quint/apply_state_machine.qnt
+index e2adafa..af8582e 100644
+--- a/quint/apply_state_machine.qnt
++++ b/quint/apply_state_machine.qnt
+@@ -12,42 +12,48 @@ module apply_state_machine {
+   import grug_ics23.* from "./grug_ics23"
+   import proofs.* from "./proofs"
+ 
+-  import apply_simple as simple from "./apply_simple"
++  // import apply_simple as simple from "./apply_simple"
+   import apply_fancy as fancy from "./apply_fancy"
+ 
+   import completeness.* from "./completeness"
+   import soundness.* from "./soundness"
+ 
+-  pure val VALUES = Set(Insert([1]), Insert([2]), Delete)
++  // Try to pick values with a balanced chance of collision
++  pure val INIT_VALUES = Set(Some(Insert([1])), None)
++  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete), None)
+ 
+   var tree: Tree
+   var version: int
+   var smallest_unpruned_version: int
+   var ops_history: List[Set[OperationOnKey]]
+ 
+-  action init = all {
+-    // For now, we always start with an empty tree
+-    tree' = { nodes: Map(), orphans: Set() },
+-    version' = 1,
+-    smallest_unpruned_version' = 1,
+-    ops_history' = [],
++  action init = {
++    nondet kms_with_value = all_key_hashes.setOfMaps(INIT_VALUES).oneOf()
++    pure val ops = kms_with_value.to_operations()
++    all {
++      tree' = { nodes: Map(), orphans: Set() }.fancy::apply(0, 1, ops),
++      version' = 2,
++      smallest_unpruned_version' = 1,
++      ops_history' = [ops],
++    }
+   }
+ 
+-  pure def to_operations(nondet_value: BitArray -> Operation): Set[OperationOnKey] = {
+-    nondet_value.mapToTuples().map(((key_hash, op)) => {
+-      { key_hash: key_hash, op: op }
++  pure def to_operations(nondet_value: BitArray -> Option[Operation]): Set[OperationOnKey] = {
++    nondet_value.mapToTuples().filterMap(((key_hash, maybe_op)) => {
++      match maybe_op {
++        | Some(op) => Some({ key_hash: key_hash, op: op })
++        | None => None
++      }
+     })
+   }
+ 
+   action step_parametrized(
+     apply_op: (Tree, int, int, Set[OperationOnKey]) => Tree,
+     assign_result: (Set[OperationOnKey], Tree) => bool
+-  ): bool = {
++  ): bool = all {
++    version <= 2,
+     nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
+-    pure val all_ops = kms_with_value.to_operations().toList(fuzzy_compare)
+-
+-    nondet threshold = 0.to(all_ops.length()).oneOf()
+-    pure val ops = all_ops.indices().filter(i => i < threshold).map(i => all_ops[i])
++    pure val ops = kms_with_value.to_operations()
+     pure val new_tree = apply_op(tree, version - 1, version, ops)
+ 
+     assign_result(ops, new_tree)
+@@ -61,7 +67,7 @@ module apply_state_machine {
+   }
+ 
+   action step_fancy = step_parametrized(fancy::apply, assign_result)
+-  action step_simple = step_parametrized(simple::apply, assign_result)
++  // action step_simple = step_parametrized(simple::apply, assign_result)
+ 
+   /********* INVARIANTS ***********/
+ 
+diff --git a/quint/tree.qnt b/quint/tree.qnt
+index 9973972..ecbeecd 100644
+--- a/quint/tree.qnt
++++ b/quint/tree.qnt
+@@ -9,7 +9,7 @@ module tree {
+   export hashes.*
+   import utils.* from "./utils"
+ 
+-  pure val MAX_HASH_LENGTH = 4
++  pure val MAX_HASH_LENGTH = 3
+ 
+   // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
+   type OperationOnKey = { key_hash: BitArray, op: Operation }
+diff --git a/quint/utils.qnt b/quint/utils.qnt
+index 79efce6..e9474a6 100644
+--- a/quint/utils.qnt
++++ b/quint/utils.qnt
+@@ -5,7 +5,7 @@ module utils {
+   import rareSpells.* from "./spells/rareSpells"
+   import node.* from "./node"
+   import hashes.* from "./hashes"
+-  val keylength = 4
++  val keylength = 3
+ 
+   pure val DEBUG_ENABLED = false
+ 

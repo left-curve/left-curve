@@ -1,0 +1,100 @@
+name: Quint simulations and tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  quint-typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: bash scripts/quint-forall.sh typecheck quint/**/*.qnt
+
+  quint-test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      MAX_SAMPLES: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
+  
+  quint-simulations-fancy:
+    name: Simulate fancy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
+    
+  quint-simulations-simple:
+    name: Simulate simple
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple apply_state_machine.qnt
+
+  quint-simulations-prune-simple:
+    name: Simulate simple pruning
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
+  
+  quint-simulations-prune-fancy:
+    name: Simulate fancy pruning
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy pruning_state_machine.qnt
