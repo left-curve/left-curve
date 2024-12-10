@@ -1,7 +1,8 @@
 use {
-    crate::{do_reply, process_msg, AppCtx, AppError, Buffer, EventResult, Shared, Vm},
+    crate::{do_reply, process_msg, AppError, Buffer, EventResult, GasTracker, Shared, Vm},
     grug_types::{
-        Addr, EventStatus, GenericResult, HandleEventStatus, ReplyOn, SubEvent, SubMessage,
+        Addr, BlockInfo, EventStatus, GenericResult, HandleEventStatus, ReplyOn, Storage, SubEvent,
+        SubMessage,
     },
 };
 
@@ -61,7 +62,10 @@ macro_rules! try_add_subevent {
 ///   instead of using a generic (`AppCtx<VM, S> where S: Storage`).
 ///   This is necessary because the function is
 pub fn handle_submessages<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
@@ -80,9 +84,12 @@ where
     }
 
     for submsg in submsgs {
-        let buffer = Shared::new(Buffer::new(ctx.storage.clone(), None));
+        let buffer = Shared::new(Buffer::new(storage.clone(), None));
         let result = process_msg(
-            ctx.clone_with_storage(Box::new(buffer.clone())),
+            vm.clone(),
+            Box::new(buffer.clone()),
+            gas_tracker.clone(),
+            block,
             msg_depth + 1, // important: increase message depth
             sender,
             submsg.msg,
@@ -95,7 +102,10 @@ where
                 buffer.disassemble().consume();
 
                 let reply = do_reply(
-                    ctx.clone(),
+                    vm.clone(),
+                    storage.clone(),
+                    gas_tracker.clone(),
+                    block,
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
@@ -114,7 +124,10 @@ where
                 Result::Err((submsg_event, err)),
             ) => {
                 let reply = do_reply(
-                    ctx.clone(),
+                    vm.clone(),
+                    storage.clone(),
+                    gas_tracker.clone(),
+                    block,
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
