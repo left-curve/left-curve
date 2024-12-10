@@ -101,21 +101,19 @@ Commit for this experiment: [7081237](https://github.com/informalsystems/left-cu
 
 #### **Proof verification across different trees**
 
-We ran a **1-hour** test with **8 parallel instances** of the test simulator, and **500 samples per command**. This gave us a total of **4k samples** for each test. It was run for the [proofs_test.qnt](../quint/test/proofs_test.qnt) file which includes the following:
+We ran a **3-hour** test with **10 parallel instances** of the test simulator, and **4k samples per command**. This gave us a total of **40k samples** for each test. It was run for the [proofs_test.qnt](../quint/test/proofs_test.qnt) file which includes the following:
 
 ```
-ok twoDifferentTreesTest passed 500 test(s)
-ok twoDifferentTreesByOnlyValuesTest passed 500 test(s)
-ok twoDifferentTreesByOnlyOneValueTest passed 500 test(s)
-ok twoDifferentTreesSameByOnlyOneKVTest passed 500 test(s)
-ok verificationOnPrunnedTreeTest passed 500 test(s)
-ok leafNotExistsThenExistsTest passed 500 test(s)
-1) leafExistsThenNotExistsTest failed after 392 test(s)
+ok twoDifferentTreesTest passed 4000 test(s)
+ok twoDifferentTreesByOnlyValuesTest passed 4000 test(s)
+ok twoDifferentTreesByOnlyOneValueTest passed 4000 test(s)
+ok twoDifferentTreesSameByOnlyOneKVTest passed 4000 test(s)
+ok verificationOnPrunnedTreeTest passed 4000 test(s)
+ok leafNotExistsThenExistsTest passed 4000 test(s)
+ok leafExistsThenNotExistsTest passed 4000 test(s)
 ```
 
-Commit for this experiment: [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27).
-
-- TODO: fix failing test and update
+Commit for this experiment: [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) 
 
 ## **Model Checking**
 
