@@ -44,7 +44,7 @@ module apply_fancy {
 
 ## Types
 
-Types have a 1:1 mapping between Rust and Quint that is pretty trivial, so won't be covered here. See [tree.qnt](./tree.qnt) and [node.qnt](./node.qnt) for types. The only difference is that we chose to use records instead of tuples for most things, as accessing records is more readable than accessing tuples, specially since Quint doesn't support destructuring tuples at this time.
+Types have a 1:1 mapping between Rust and Quint that is pretty trivial, so won't be covered here. See [tree.qnt](../quint/tree.qnt) and [node.qnt](../quint/node.qnt) for types. The only difference is that we chose to use records instead of tuples for most things, as accessing records is more readable than accessing tuples, specially since Quint doesn't support destructuring tuples at this time.
 
 In order to replicate Rust's mutations over the tree in Quint, we need to also return the modified values. So, we define a type for the return of apply operations:
 

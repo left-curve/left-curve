@@ -292,7 +292,7 @@ pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
   <<<leftNeighbor>>>
 ```
 --->
-First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `less_than()` function defined in the [hashes.qnt](./hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
+First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `less_than()` function defined in the [hashes.qnt](../quint/hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
 
 ```bluespec "leftNeighbor" +=
 val smallerKeyNodes = t.values().filter(n => match n {

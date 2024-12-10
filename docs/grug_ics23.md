@@ -142,7 +142,7 @@ pure val ics23::InnerSpec: InnerSpec = {
 ```
 
 `InnerSpec.child_order` for Grug JMT is defined [here](https://github.com/left-curve/left-curve/blob/4890cb58a4b60acfacbc19d6c041f72db2b5b8ee/grug/jellyfish-merkle/src/ics23.rs#L27).
-`Hash256_ZERO` is placed in [hashes.qnt](./hashes.qnt).
+`Hash256_ZERO` is placed in [hashes.qnt](../quint/hashes.qnt).
 
 ```bluespec
 val Hash256_ZERO = raw([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
@@ -761,7 +761,7 @@ fn has_padding(op: &ics23::InnerOp, pad: &Padding) -> bool {
 }
 ```
 
-For getting the length of `prefix` and `suffix` we are using `termLen()` function, which is defined in [hashes.qnt](./hashes.qnt)
+For getting the length of `prefix` and `suffix` we are using `termLen()` function, which is defined in [hashes.qnt](../quint/hashes.qnt)
 
 ```bluespec "definitions" +=
 pure def has_padding(op: InnerOp, pad: Padding): bool = and {
@@ -892,7 +892,7 @@ Because Quint does not support early return, we had to `match` the outcome of `c
 }
 ```
 
-We have implemented a custom `checked_sub` in [utils.qnt](./utils.qnt) which emulates Rust `checked_sub` function.
+We have implemented a custom `checked_sub` in [utils.qnt](../quint/utils.qnt) which emulates Rust `checked_sub` function.
 
 ```bluespec
 pure def checked_sub(a: int, b: int): Option[int] = {
