@@ -1,22 +1,28 @@
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob, AppCtx,
-        AppError, AppResult, MeteredItem, MeteredMap, Vm, APP_CONFIG, CODES, CONFIG, CONTRACTS,
-        NEXT_CRONJOBS,
+        call_in_2_out_1_handle_response, handle_response, has_permission, schedule_cronjob,
+        AppError, AppResult, GasTracker, MeteredItem, MeteredMap, Vm, APP_CONFIG, CHAIN_ID, CODES,
+        CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, Code, CodeStatus, Context, ContractInfo, Event,
-        GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
-        MsgMigrate, MsgTransfer, MsgUpload, StdResult, SubMsgResult, Tx, TxOutcome,
+        Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Code, CodeStatus, Context, ContractInfo,
+        Event, GenericResult, Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate,
+        MsgMigrate, MsgTransfer, MsgUpload, StdError, StdResult, Storage, SubMsgResult, Tx,
+        TxOutcome,
     },
 };
 
 // ---------------------------------- config -----------------------------------
 
-pub fn do_configure(ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<Vec<Event>> {
-    match _do_configure(ctx, sender, msg) {
+pub fn do_configure(
+    storage: &mut dyn Storage,
+    block: BlockInfo,
+    sender: Addr,
+    msg: MsgConfigure,
+) -> AppResult<Vec<Event>> {
+    match _do_configure(storage, block, sender, msg) {
         Ok(event) => {
             #[cfg(feature = "tracing")]
             tracing::info!("Config updated");
@@ -32,8 +38,13 @@ pub fn do_configure(ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<V
     }
 }
 
-fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<Event> {
-    let cfg = CONFIG.load(&ctx.storage)?;
+fn _do_configure(
+    storage: &mut dyn Storage,
+    block: BlockInfo,
+    sender: Addr,
+    msg: MsgConfigure,
+) -> AppResult<Event> {
+    let cfg = CONFIG.load(storage)?;
 
     // Make sure the sender is authorized to set the config.
     if sender != cfg.owner {
@@ -47,18 +58,18 @@ fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<
         // If the list of cronjobs has been changed, we have to delete the
         // existing scheduled ones and reschedule.
         if new_cfg.cronjobs != cfg.cronjobs {
-            NEXT_CRONJOBS.clear(&mut ctx.storage, None, None);
+            NEXT_CRONJOBS.clear(storage, None, None);
 
             for (contract, interval) in &new_cfg.cronjobs {
-                schedule_cronjob(&mut ctx.storage, *contract, ctx.block.timestamp, *interval)?;
+                schedule_cronjob(storage, *contract, block.timestamp, *interval)?;
             }
         }
 
-        CONFIG.save(&mut ctx.storage, &new_cfg)?;
+        CONFIG.save(storage, &new_cfg)?;
     }
 
     if let Some(new_app_cfg) = msg.new_app_cfg {
-        APP_CONFIG.save(&mut ctx.storage, &new_app_cfg)?;
+        APP_CONFIG.save(storage, &new_app_cfg)?;
     }
 
     Ok(Event::new("configure").add_attribute("sender", sender))
@@ -66,8 +77,14 @@ fn _do_configure(mut ctx: AppCtx, sender: Addr, msg: MsgConfigure) -> AppResult<
 
 // ---------------------------------- upload -----------------------------------
 
-pub fn do_upload(ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<Vec<Event>> {
-    match _do_upload(ctx, uploader, msg) {
+pub fn do_upload(
+    storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    uploader: Addr,
+    msg: MsgUpload,
+) -> AppResult<Vec<Event>> {
+    match _do_upload(storage, gas_tracker, block, uploader, msg) {
         Ok((event, _code_hash)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(code_hash = _code_hash.to_string(), "Uploaded code");
@@ -84,9 +101,15 @@ pub fn do_upload(ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<Vec<E
 }
 
 // Return the hash of the code that is stored, for logging purpose.
-fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Event, Hash256)> {
+fn _do_upload(
+    storage: &mut dyn Storage,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    uploader: Addr,
+    msg: MsgUpload,
+) -> AppResult<(Event, Hash256)> {
     // Make sure the user has the permission to upload contracts
-    let cfg = CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker.clone())?;
+    let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
 
     if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
         return Err(AppError::Unauthorized);
@@ -95,14 +118,14 @@ fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Eve
     // Make sure that the same code isn't already uploaded
     let code_hash = msg.code.hash256();
 
-    if CODES.has_with_gas(&ctx.storage, ctx.gas_tracker.clone(), code_hash)? {
+    if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
         return Err(AppError::CodeExists { code_hash });
     }
 
-    CODES.save_with_gas(&mut ctx.storage, ctx.gas_tracker, code_hash, &Code {
+    CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {
         code: msg.code,
         status: CodeStatus::Orphaned {
-            since: ctx.block.timestamp,
+            since: block.timestamp,
         },
     })?;
 
@@ -115,7 +138,10 @@ fn _do_upload(mut ctx: AppCtx, uploader: Addr, msg: MsgUpload) -> AppResult<(Eve
 // --------------------------------- transfer ----------------------------------
 
 pub fn do_transfer<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgTransfer,
@@ -125,7 +151,16 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_transfer(ctx, msg_depth, sender, msg.clone(), do_receive) {
+    match _do_transfer(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        msg_depth,
+        sender,
+        msg.clone(),
+        do_receive,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -147,7 +182,10 @@ where
 }
 
 fn _do_transfer<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgTransfer,
@@ -161,12 +199,13 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&app_ctx.storage)?;
-    let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
+    let cfg = CONFIG.load(&storage)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: cfg.bank,
         sender: None,
         funds: None,
@@ -180,7 +219,9 @@ where
     };
 
     let mut events = call_in_1_out_1_handle_response(
-        app_ctx.clone(),
+        vm.clone(),
+        storage.clone(),
+        gas_tracker.clone(),
         msg_depth,
         0,
         true,
@@ -191,35 +232,63 @@ where
     )?;
 
     if do_receive {
-        events.extend(_do_receive(app_ctx, msg_depth, msg)?);
+        events.extend(_do_receive(
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            msg_depth,
+            msg,
+        )?);
     }
 
     Ok(events)
 }
 
-fn _do_receive<VM>(app_ctx: AppCtx<VM>, msg_depth: usize, msg: BankMsg) -> AppResult<Vec<Event>>
+fn _do_receive<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    msg_depth: usize,
+    msg: BankMsg,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, msg.to)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: msg.to,
         sender: Some(msg.from),
         funds: Some(msg.coins),
         mode: None,
     };
 
-    call_in_0_out_1_handle_response(app_ctx, msg_depth, 0, true, "receive", code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        msg_depth,
+        0,
+        true,
+        "receive",
+        code_hash,
+        &ctx,
+    )
 }
 
 // -------------------------------- instantiate --------------------------------
 
 pub fn do_instantiate<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
@@ -228,7 +297,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_instantiate(ctx, msg_depth, sender, msg) {
+    match _do_instantiate(vm, storage, gas_tracker, block, msg_depth, sender, msg) {
         Ok((events, _address)) => {
             #[cfg(feature = "tracing")]
             tracing::info!(address = _address.to_string(), "Instantiated contract");
@@ -245,7 +314,10 @@ where
 }
 
 pub fn _do_instantiate<VM>(
-    mut app_ctx: AppCtx<VM>,
+    vm: VM,
+    mut storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
@@ -254,9 +326,10 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    // Make sure the user has the permission to instantiate contracts
-    let cfg = CONFIG.load(&app_ctx.storage)?;
+    let cfg = CONFIG.load(&storage)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
 
+    // Make sure the user has the permission to instantiate contracts
     if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
         return Err(AppError::Unauthorized);
     }
@@ -266,7 +339,7 @@ where
     let address = Addr::derive(sender, msg.code_hash, &msg.salt);
 
     // Save the contract info
-    let contract = CONTRACTS.may_update(&mut app_ctx.storage, address, |maybe_contract| {
+    let contract = CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
         if maybe_contract.is_some() {
             return Err(AppError::AccountExists { address });
         }
@@ -279,29 +352,28 @@ where
     })?;
 
     // Increment the code's usage.
-    CODES.update(
-        &mut app_ctx.storage,
-        msg.code_hash,
-        |mut code| -> StdResult<_> {
-            match &mut code.status {
-                CodeStatus::Orphaned { .. } => {
-                    code.status = CodeStatus::InUse { usage: 1 };
-                },
-                CodeStatus::InUse { usage } => {
-                    *usage += 1;
-                },
-            }
+    CODES.update(&mut storage, msg.code_hash, |mut code| -> StdResult<_> {
+        match &mut code.status {
+            CodeStatus::Orphaned { .. } => {
+                code.status = CodeStatus::InUse { usage: 1 };
+            },
+            CodeStatus::InUse { usage } => {
+                *usage += 1;
+            },
+        }
 
-            Ok(code)
-        },
-    )?;
+        Ok(code)
+    })?;
 
     // Make the fund transfer
     let mut events = vec![];
 
     if !msg.funds.is_empty() {
         events.extend(_do_transfer(
-            app_ctx.clone(),
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
+            block,
             msg_depth,
             sender,
             MsgTransfer {
@@ -314,8 +386,8 @@ where
 
     // Call the contract's `instantiate` entry point
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: address,
         sender: Some(sender),
         funds: Some(msg.funds),
@@ -323,7 +395,9 @@ where
     };
 
     events.extend(call_in_1_out_1_handle_response(
-        app_ctx,
+        vm,
+        storage,
+        gas_tracker,
         msg_depth,
         0,
         true,
@@ -339,7 +413,10 @@ where
 // ---------------------------------- execute ----------------------------------
 
 pub fn do_execute<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
@@ -348,7 +425,15 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_execute(app_ctx, msg_depth, sender, msg.clone()) {
+    match _do_execute(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        msg_depth,
+        sender,
+        msg.clone(),
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = msg.contract.to_string(), "Executed contract");
@@ -365,7 +450,10 @@ where
 }
 
 fn _do_execute<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
@@ -374,14 +462,18 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, msg.contract)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, msg.contract)?.code_hash;
 
     // Make the fund transfer
     let mut events = vec![];
 
     if !msg.funds.is_empty() {
         events.extend(_do_transfer(
-            app_ctx.clone(),
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
+            block,
             msg_depth,
             sender,
             MsgTransfer {
@@ -394,8 +486,8 @@ where
 
     // Call the contract's `execute` entry point
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: msg.contract,
         sender: Some(sender),
         funds: Some(msg.funds),
@@ -403,7 +495,16 @@ where
     };
 
     events.extend(call_in_1_out_1_handle_response(
-        app_ctx, msg_depth, 0, true, "execute", code_hash, &ctx, &msg.msg,
+        vm,
+        storage,
+        gas_tracker,
+        msg_depth,
+        0,
+        true,
+        "execute",
+        code_hash,
+        &ctx,
+        &msg.msg,
     )?);
 
     Ok(events)
@@ -412,7 +513,10 @@ where
 // ---------------------------------- migrate ----------------------------------
 
 pub fn do_migrate<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgMigrate,
@@ -421,7 +525,15 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_migrate(ctx, msg_depth, sender, msg.clone()) {
+    match _do_migrate(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        msg_depth,
+        sender,
+        msg.clone(),
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = msg.contract.to_string(), "Migrated contract");
@@ -438,7 +550,10 @@ where
 }
 
 fn _do_migrate<VM>(
-    mut app_ctx: AppCtx<VM>,
+    vm: VM,
+    mut storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     sender: Addr,
     msg: MsgMigrate,
@@ -447,10 +562,11 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
+    let chain_id = CHAIN_ID.load(&storage)?;
     let mut old_code_hash = None;
 
     // Update the contract info.
-    let contract_info = CONTRACTS.update(&mut app_ctx.storage, msg.contract, |mut info| {
+    let contract_info = CONTRACTS.update(&mut storage, msg.contract, |mut info| {
         old_code_hash = Some(info.code_hash);
 
         // Ensure the sender is the admin of the contract.
@@ -464,48 +580,40 @@ where
     })?;
 
     // Reduce usage count of the old code.
-    CODES.update(
-        &mut app_ctx.storage,
-        old_code_hash.unwrap(),
-        |mut code| -> StdResult<_> {
-            match &mut code.status {
-                CodeStatus::InUse { usage } => {
-                    if *usage == 1 {
-                        code.status = CodeStatus::Orphaned {
-                            since: app_ctx.block.timestamp,
-                        };
-                    } else {
-                        *usage -= 1;
-                    }
-                },
-                _ => unreachable!(),
-            }
+    CODES.update(&mut storage, old_code_hash.unwrap(), |mut code| {
+        match &mut code.status {
+            CodeStatus::InUse { usage } => {
+                if *usage == 1 {
+                    code.status = CodeStatus::Orphaned {
+                        since: block.timestamp,
+                    };
+                } else {
+                    *usage -= 1;
+                }
+            },
+            _ => unreachable!(),
+        }
 
-            Ok(code)
-        },
-    )?;
+        Ok::<_, StdError>(code)
+    })?;
 
     // Increase usage count of the new code.
-    CODES.update(
-        &mut app_ctx.storage,
-        msg.new_code_hash,
-        |mut code| -> StdResult<_> {
-            match &mut code.status {
-                CodeStatus::Orphaned { .. } => {
-                    code.status = CodeStatus::InUse { usage: 1 };
-                },
-                CodeStatus::InUse { usage } => {
-                    *usage += 1;
-                },
-            }
+    CODES.update(&mut storage, msg.new_code_hash, |mut code| {
+        match &mut code.status {
+            CodeStatus::Orphaned { .. } => {
+                code.status = CodeStatus::InUse { usage: 1 };
+            },
+            CodeStatus::InUse { usage } => {
+                *usage += 1;
+            },
+        }
 
-            Ok(code)
-        },
-    )?;
+        Ok::<_, StdError>(code)
+    })?;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: msg.contract,
         sender: None,
         funds: None,
@@ -513,7 +621,9 @@ where
     };
 
     call_in_1_out_1_handle_response(
-        app_ctx,
+        vm,
+        storage,
+        gas_tracker,
         msg_depth,
         0,
         true,
@@ -527,7 +637,10 @@ where
 // ----------------------------------- reply -----------------------------------
 
 pub fn do_reply<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
@@ -537,7 +650,16 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_reply(ctx, msg_depth, contract, msg, result) {
+    match _do_reply(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        msg_depth,
+        contract,
+        msg,
+        result,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed reply");
@@ -554,7 +676,10 @@ where
 }
 
 fn _do_reply<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
@@ -564,11 +689,12 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, contract)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract,
         sender: None,
         funds: None,
@@ -576,14 +702,27 @@ where
     };
 
     call_in_2_out_1_handle_response(
-        app_ctx, msg_depth, 0, true, "reply", code_hash, &ctx, msg, result,
+        vm,
+        storage,
+        gas_tracker,
+        msg_depth,
+        0,
+        true,
+        "reply",
+        code_hash,
+        &ctx,
+        msg,
+        result,
     )
 }
 
 // ------------------------------- authenticate --------------------------------
 
 pub fn do_authenticate<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     tx: &Tx,
     mode: AuthMode,
 ) -> AppResult<(Vec<Event>, bool)>
@@ -591,11 +730,12 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, tx.sender)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: tx.sender,
         sender: None,
         funds: None,
@@ -604,7 +744,9 @@ where
 
     let result = || -> AppResult<_> {
         let auth_response = call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
-            app_ctx.clone(),
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
             0,
             true,
             "authenticate",
@@ -618,7 +760,15 @@ where
             msg,
         })?;
 
-        let events = handle_response(app_ctx, 0, "authenticate", &ctx, auth_response.response)?;
+        let events = handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            0,
+            "authenticate",
+            &ctx,
+            auth_response.response,
+        )?;
 
         Ok((events, auth_response.request_backrun))
     }();
@@ -641,23 +791,42 @@ where
 
 // ---------------------------------- backrun ----------------------------------
 
-pub fn do_backrun<VM>(app_ctx: AppCtx<VM>, tx: &Tx, mode: AuthMode) -> AppResult<Vec<Event>>
+pub fn do_backrun<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    mode: AuthMode,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, tx.sender)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: tx.sender,
         sender: None,
         funds: None,
         mode: Some(mode),
     };
 
-    match call_in_1_out_1_handle_response(app_ctx, 0, 0, true, "backrun", code_hash, &ctx, tx) {
+    match call_in_1_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        0,
+        0,
+        true,
+        "backrun",
+        code_hash,
+        &ctx,
+        tx,
+    ) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::debug!(sender = tx.sender.to_string(), "Backran transaction");
@@ -675,18 +844,26 @@ where
 
 // ---------------------------------- taxman -----------------------------------
 
-pub fn do_withhold_fee<VM>(app_ctx: AppCtx<VM>, tx: &Tx, mode: AuthMode) -> AppResult<Vec<Event>>
+pub fn do_withhold_fee<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    tx: &Tx,
+    mode: AuthMode,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let cfg = CONFIG.load(&app_ctx.storage)?;
-        let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
+        let cfg = CONFIG.load(&storage)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
-            chain_id: app_ctx.chain_id.clone(),
-            block: app_ctx.block,
+            chain_id,
+            block,
             contract: cfg.taxman,
             sender: None,
             funds: None,
@@ -694,7 +871,9 @@ where
         };
 
         call_in_1_out_1_handle_response(
-            app_ctx,
+            vm,
+            storage,
+            gas_tracker,
             0,
             0,
             true,
@@ -722,7 +901,10 @@ where
 }
 
 pub fn do_finalize_fee<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -732,12 +914,13 @@ where
     AppError: From<VM::Error>,
 {
     let result = (|| {
-        let cfg = CONFIG.load(&app_ctx.storage)?;
-        let taxman = CONTRACTS.load(&app_ctx.storage, cfg.taxman)?;
+        let cfg = CONFIG.load(&storage)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
         let ctx = Context {
-            chain_id: app_ctx.chain_id.clone(),
-            block: app_ctx.block,
+            chain_id,
+            block,
             contract: cfg.taxman,
             sender: None,
             funds: None,
@@ -745,7 +928,9 @@ where
         };
 
         call_in_2_out_1_handle_response(
-            app_ctx,
+            vm,
+            storage,
+            gas_tracker,
             0,
             0,
             true,
@@ -777,12 +962,18 @@ where
 
 // ----------------------------------- cron ------------------------------------
 
-pub fn do_cron_execute<VM>(ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+pub fn do_cron_execute<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    match _do_cron_execute(ctx, contract) {
+    match _do_cron_execute(vm, storage, gas_tracker, block, contract) {
         Ok(events) => {
             #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
@@ -802,20 +993,38 @@ where
     }
 }
 
-fn _do_cron_execute<VM>(app_ctx: AppCtx<VM>, contract: Addr) -> AppResult<Vec<Event>>
+fn _do_cron_execute<VM>(
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
+    contract: Addr,
+) -> AppResult<Vec<Event>>
 where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, contract)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
+
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract,
         sender: None,
         funds: None,
         mode: None,
     };
 
-    call_in_0_out_1_handle_response(app_ctx, 0, 0, true, "cron_execute", code_hash, &ctx)
+    call_in_0_out_1_handle_response(
+        vm,
+        storage,
+        gas_tracker,
+        0,
+        0,
+        true,
+        "cron_execute",
+        code_hash,
+        &ctx,
+    )
 }
