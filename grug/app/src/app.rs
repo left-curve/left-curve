@@ -859,31 +859,37 @@ where
 {
     match msg {
         Message::Configure(msg) => {
-            do_configure(&mut storage, block, sender, msg).map(Event::Configure)
+            let res = do_configure(&mut storage, block, sender, msg);
+            res.map(Event::Configure)
         },
-        Message::Transfer(msg) => do_transfer(
-            vm,
-            storage,
-            gas_tracker,
-            block,
-            msg_depth,
-            sender,
-            msg,
-            true,
-        )
-        .map(Event::Transfer),
+        Message::Transfer(msg) => {
+            let res = do_transfer(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                sender,
+                msg,
+                true,
+            );
+            res.map(Event::Transfer)
+        },
         Message::Upload(msg) => {
-            do_upload(&mut storage, gas_tracker, block, sender, msg).map(Event::Upload)
+            let res = do_upload(&mut storage, gas_tracker, block, sender, msg);
+            res.map(Event::Upload)
         },
         Message::Instantiate(msg) => {
-            do_instantiate(vm, storage, gas_tracker, block, msg_depth, sender, msg)
-                .map(Event::Instantiate)
+            let res = do_instantiate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            res.map(Event::Instantiate)
         },
         Message::Execute(msg) => {
-            do_execute(vm, storage, gas_tracker, block, msg_depth, sender, msg).map(Event::Execute)
+            let res = do_execute(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            res.map(Event::Execute)
         },
         Message::Migrate(msg) => {
-            do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg).map(Event::Migrate)
+            let res = do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
+            res.map(Event::Migrate)
         },
     }
 }
