@@ -96,8 +96,6 @@ where
     let owner = TestAccount::new_random("owner");
     let relayer = TestAccount::new_random("relayer");
 
-    // setup_tracing_subscriber(Level::DEBUG);
-
     let (genesis_state, contracts, addresses) = build_genesis(
         codes.clone(),
         btree_map! {
