@@ -1,8 +1,8 @@
 use {
     crate::{
         call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, catch_event, handle_response, has_permission,
-        schedule_cronjob, update_event_field, AppError, AppResult, EventResult, GasTracker,
+        call_in_2_out_1_handle_response, catch_and_update_event, catch_event, handle_response,
+        has_permission, schedule_cronjob, AppError, AppResult, EventResult, GasTracker,
         MeteredItem, MeteredMap, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
     },
     grug_math::Inner,
@@ -238,11 +238,11 @@ where
         &msg,
     );
 
-    update_event_field!(bank_guest, evt => bank_guest);
+    catch_and_update_event!(bank_guest, evt => bank_guest);
 
     if do_receive {
         let receive_guest = _do_receive(vm, storage, gas_tracker, block, msg_depth, msg);
-        update_event_field!(receive_guest, evt => receive_guest);
+        catch_and_update_event!(receive_guest, evt => receive_guest);
     };
 
     EventResult::Ok(evt)
@@ -395,7 +395,7 @@ where
             false,
         );
 
-        update_event_field!(transfer_event, evt => transfer_event);
+        catch_and_update_event!(transfer_event, evt => transfer_event);
     }
 
     // Call the contract's `instantiate` entry point
@@ -421,7 +421,7 @@ where
         &msg.msg,
     );
 
-    update_event_field!(guest_event, evt => guest_event);
+    catch_and_update_event!(guest_event, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -498,7 +498,7 @@ where
             false,
         );
 
-        update_event_field!(transfer_event, evt => transfer_event);
+        catch_and_update_event!(transfer_event, evt => transfer_event);
     }
 
     // Call the contract's `execute` entry point
@@ -524,7 +524,7 @@ where
         &msg.msg,
     );
 
-    update_event_field!(guest_event, evt => guest_event);
+    catch_and_update_event!(guest_event, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -655,7 +655,7 @@ where
         &msg.msg,
     );
 
-    update_event_field!(guest_event, evt => guest_event);
+    catch_and_update_event!(guest_event, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -746,7 +746,7 @@ where
         result,
     );
 
-    update_event_field!(guest_event, evt => guest_event);
+    catch_and_update_event!(guest_event, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -843,7 +843,7 @@ where
         )
     }();
 
-    update_event_field!(result, evt => guest_event);
+    catch_and_update_event!(result, evt => guest_event);
 
     evt.backrun = request_backrun;
 
@@ -919,7 +919,7 @@ where
         tx,
     );
 
-    update_event_field!(guest_evt, evt => guest_event);
+    catch_and_update_event!(guest_evt, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -997,7 +997,7 @@ where
         tx,
     );
 
-    update_event_field!(guest_event, evt => guest_event);
+    catch_and_update_event!(guest_event, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -1080,7 +1080,7 @@ where
         outcome,
     );
 
-    update_event_field!(evt_guest, evt => guest_event);
+    catch_and_update_event!(evt_guest, evt => guest_event);
 
     EventResult::Ok(evt)
 }
@@ -1156,7 +1156,7 @@ where
         &ctx,
     );
 
-    update_event_field!(guest, evt => guest_event);
+    catch_and_update_event!(guest, evt => guest_event);
 
     EventResult::Ok(evt)
 }

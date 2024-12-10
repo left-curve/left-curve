@@ -115,7 +115,7 @@ macro_rules! catch_event {
 }
 
 #[macro_export]
-macro_rules! update_event_field {
+macro_rules! catch_and_update_event {
     ($result: expr, $evt: expr => $field: ident) => {
         match $result {
             EventResult::Ok(i) => {
