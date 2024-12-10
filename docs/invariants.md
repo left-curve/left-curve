@@ -3,7 +3,7 @@
 This part of the document describes invariants of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
 <!--
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 // -*- mode: Bluespec; -*-
 
 module apply_state_machine {
@@ -144,7 +144,7 @@ Some invariants can consider the entire tree with all the different versions liv
 
 We also keep track of the smallest unpruned version, so we can check the invariant for the trees at all versions from that until the current one. We can switch between checking all of them or just the latest version at each state.
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Which versions to check on the invariants
   /// This was checked both with Set(version) (better performance) and activeTreeVersions
   val versionsToCheck: Set[int] =
@@ -161,7 +161,7 @@ We also keep track of the smallest unpruned version, so we can check the invaria
 
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -174,7 +174,7 @@ In a tree, all nodes except from the root should have a parent. There should be 
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
   /// E.g., if a node has keyhash_prefix [1,0,0,1] then there must be a node with keyhash_prefix [1,0,0]
   val everyNodesParentIsInTheTreeInv: bool = {
@@ -191,7 +191,7 @@ In a tree, all nodes except from the root should have a parent. There should be 
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -202,7 +202,7 @@ For any pair of leafs on the tree, there should be another node such that its ke
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
   /// tree that is the common prefix
   val nodeAtCommonPrefixInv: bool = {
@@ -223,7 +223,7 @@ For any pair of leafs on the tree, there should be another node such that its ke
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -234,7 +234,7 @@ Leafs should never be in the middle of a tree. If a there is a node with a key h
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Make sure that the map encodes a tree. In particular, there is no internal node
   /// that has a leaf node as its prefix
   /// E.g., the map is not allowed to have: [0,0,1] -> internal node; [0,0] -> leaf node
@@ -253,7 +253,7 @@ Leafs should never be in the middle of a tree. If a there is a node with a key h
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -264,7 +264,7 @@ Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// All nodes of type Internal have a child which is not None
   val allInternalNodesHaveAChildInv: bool = {
     pure def internalNodeHasAChild(n: InternalNode): bool = {
@@ -285,7 +285,7 @@ Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -298,7 +298,7 @@ This also means that the three is dense, not sparse.
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// If a node has exactly one child, the child is an internal node
   /// (if it was a leaf, then the node itself would be the leaf)
   val densityInv: bool = {
@@ -325,7 +325,7 @@ This also means that the three is dense, not sparse.
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -336,7 +336,7 @@ When nodes are updated (inserted, deleted) they are given a new version, and so 
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Invariant: For every node has predecessors with higer (or equal) version
   /// (This could be rewritten to talk about direct predecessors only)
   val versionInv: bool = {
@@ -352,7 +352,7 @@ When nodes are updated (inserted, deleted) they are given a new version, and so 
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -367,7 +367,7 @@ However, for reference, we keep the formula here as it might be useful for under
 
 *Status:* FALSE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Every internal node must have at least one child with the same version
   val denseVersionsInv: bool = {
     def denseVersions(t: TreeMap): bool = {
@@ -395,7 +395,7 @@ However, for reference, we keep the formula here as it might be useful for under
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -406,7 +406,7 @@ Orphans are used for state pruning. The implicit intuition is that orphaned node
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Orphan should not be at one of the version trees after it gets orphaned
   val orphansInNoTreeInv: bool = {
     tree.orphans.forall(o =>
@@ -417,7 +417,7 @@ Orphans are used for state pruning. The implicit intuition is that orphaned node
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -428,7 +428,7 @@ For all internal nodes, for each existing child, the hash should match the resul
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// Check that for all internal nodes, if they have a hash stored for a child,
   /// then the hash is the hash of the actualy the subtree for the child
   val hashInv: bool = {
@@ -456,7 +456,7 @@ For all internal nodes, for each existing child, the hash should match the resul
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -467,7 +467,7 @@ We use an implementation of hashes that ensure no collision, since no collision 
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// All children in the tree should have different hashes
   val uniqueHashesInv: bool = {
     pure def uniqueHashes(t: TreeMap): bool = {
@@ -498,7 +498,7 @@ We use an implementation of hashes that ensure no collision, since no collision 
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -509,7 +509,7 @@ While the overall tree receives an entry for the same `key_hash` whenever the co
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// The treemaps we use in the invariants should have unique key_hashes
   /// This is a sanity check for the treeAtVersion computation
   val goodTreeMapInv: bool = {
@@ -522,7 +522,7 @@ While the overall tree receives an entry for the same `key_hash` whenever the co
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -534,7 +534,7 @@ We can simply check that the sizes of keys and values is the same, since keys ar
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
   /// In other words, values are also unique
   /// Only works on tree map, as trees can have same nodes in different keys/versions
@@ -547,7 +547,7 @@ We can simply check that the sizes of keys and values is the same, since keys ar
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -558,7 +558,7 @@ TODO: describe
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   val operationSuccessInv: bool =
     pure def treeContainsKV(t: TreeMap, n: LeafNode): bool =
       t.values().contains(Leaf(n))
@@ -583,7 +583,7 @@ TODO: describe
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -602,11 +602,11 @@ Soundness:
   - Membership: If we can get an existence proof for a key_hash, there should be a leaf in the tree with that key hash.
   - Non-Membership: If we can get a non-existence proof for a key_hash, there should not be a leaf in the tree with that key hash.
 
-See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for the formal definitions.
+See [completeness.qnt](../quint/completeness.qnt) and [soundness.qnt](../quint/soundness.qnt) for the formal definitions.
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   val membershipCompletenessInv = versionsToCheck.forall(v => membershipCompleteness(tree, v))
   val nonMembershipCompletenessInv = versionsToCheck.forall(v => nonMembershipCompleteness(tree, v))
   val membershipSoundnessInv = versionsToCheck.forall(v => membershipSoundness(tree, v))
@@ -614,7 +614,7 @@ See [completeness.qnt](completeness.qnt) and [soundness.qnt](soundness.qnt) for 
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
@@ -634,7 +634,7 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
 
 *Status:* TRUE
 
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   val verifyMembershipInv = {
     versionsToCheck.forall(version => {
       val leafs = tree.treeAtVersion(version).allLeafs()
@@ -684,13 +684,13 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
 ```
 <!--
 This inserts a line break that is not rendered in the markdown
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
 
 ```
 -->
 
 <!--
-```bluespec apply_state_machine.qnt +=
+```bluespec quint/apply_state_machine.qnt +=
   val treeInvariants = all {
     if (everyNodesParentIsInTheTreeInv) true else q::debug("everyNodesParentIsInTheTreeInv", false),
     if (nodeAtCommonPrefixInv) true else q::debug("nodeAtCommonPrefixInv", false),
@@ -728,7 +728,7 @@ This part of the document describes relevant tests for tree manipulation and ICS
 
 ## Testing functional equivalence
 
-We defined two runs that are verifying the functional equivalence of [`apply_fancy`](./apply_fancy.qnt) and [`apply_simple`](./apply_simple.qnt) algorithms:
+We defined two runs that are verifying the functional equivalence of [`apply_fancy`](../quint/apply_fancy.qnt) and [`apply_simple`](../quint/apply_simple.qnt) algorithms:
 
 - [`simpleVsFancyTest`](#simple-vs-fancy-test)
 - [`simpleVsFancyMultipleRepsTest`](#simple-vs-fancy-multiple-reps-test)
