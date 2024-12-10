@@ -1,10 +1,18 @@
 # Invariants
 
+*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+
 This part of the document describes invariants of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
 <!--
 ```bluespec quint/apply_state_machine.qnt +=
 // -*- mode: Bluespec; -*-
+
+// A state machine to simulate tree changes and invariants to be checked
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
 
 module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
@@ -734,7 +742,7 @@ We defined two runs that are verifying the functional equivalence of [`apply_fan
 - [`simpleVsFancyMultipleRepsTest`](#simple-vs-fancy-multiple-reps-test)
 
 <!--- 
-```bluespec test/tree_test.qnt +=
+```bluespec quint/test/tree_test.qnt +=
 // -*- mode: Bluespec; -*-
 
 module tree_test {
@@ -836,7 +844,7 @@ Then we update the state using operator `all`, which means that everyhing wrappe
 
 We defined several interesting scenarios in order to test proofs.
 <!--- 
-```bluespec test/proofs_test.qnt +=
+```bluespec quint/test/proofs_test.qnt +=
 // -*- mode: Bluespec; -*-
 
 module proofs_test {

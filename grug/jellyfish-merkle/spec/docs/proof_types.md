@@ -1,5 +1,7 @@
 # Proof types
 
+*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+
 This document describes how we defined proof types, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. We defined types:
 
 - [`LeafOp`](#leafop)
@@ -12,6 +14,12 @@ Types used are similar to the original Rust implementation. There are some minor
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
 ```bluespec quint/proof_types.qnt
 // -*- mode: Bluespec; -*-
+
+// Proof-related types to be used in proof construction and proof verification
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
 
 module proof_types {
   import basicSpells.* from "./spells/basicSpells"

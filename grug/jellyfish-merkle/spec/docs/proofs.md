@@ -1,5 +1,7 @@
 # Proofs
 
+*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+
 This document describes how ICS23 proof generation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, since Quint does not support hashing, there were some challenges.
 
 Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on early returns and panics, which do not exist in Quint. We are explaining this in detail in [`ics23_prove_existence`](#ics23-proving-existence) and [`ics23_prove`](#generating-commitment-proof).
@@ -18,8 +20,13 @@ This document covers:
 ```bluespec quint/proofs.qnt
 // -*- mode: Bluespec; -*-
 
+// Construction of proofs for Jellyfish Merke Trees
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
+
 module proofs {
-  
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"

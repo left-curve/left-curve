@@ -1,5 +1,7 @@
 # Simulations and Model Checking
 
+*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+
 In order to obtain confidence that the model is correct, in respect to the invariants and tests described in [invariants.md](./invariants.md), we run random simulations (on bigger scopes) and model checking (on smaller scopes). We used the **Quint simulator** for simulations, which runs a kind of Depth First Search (DFS) on the state space with a max-depth (`--max-steps`) defined by us; and the **TLC model checker** for model checking, which runs a kind of Breadth First Search (BFS) on the complete state space, which requires that we refine our model to a state-space small enough for this to run in the time we had available.
 
 ## Summary of Simualation

@@ -1,5 +1,11 @@
 // -*- mode: Bluespec; -*-
 
+// Proof-related types to be used in proof construction and proof verification
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
+
 module proof_types {
   import basicSpells.* from "./spells/basicSpells"
   import hashes.* from "./hashes"

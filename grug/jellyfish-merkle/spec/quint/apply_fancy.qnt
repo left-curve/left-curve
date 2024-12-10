@@ -1,5 +1,11 @@
 // -*- mode: Bluespec; -*-
 
+// Grug's algorithm to apply batches of operations to Jellyfish Merkle Trees
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
+
 module apply_fancy {
   import hashes.* from "./hashes"
   import tree.* from "./tree"

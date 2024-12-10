@@ -1,7 +1,12 @@
 // -*- mode: Bluespec; -*-
 
+// Construction of proofs for Jellyfish Merke Trees
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
+
 module proofs {
-  
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"
   import hashes.* from "./hashes"

@@ -9,9 +9,6 @@
 // For the implementation of ICS23, see:
 // https://github.com/cosmos/ics23
 //
-// We still have to parameterize the spec with the data structure parameters
-// such as min_prefix_length, max_prefix_length, child_size, and hash.
-//
 // Igor Konnov, Informal Systems, 2022-2023
 // Josef Widder, Informal Systems, 2024
 // Aleksandar Ignjatijevic, Informal Systems, 2024

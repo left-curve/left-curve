@@ -1,5 +1,11 @@
 // -*- mode: Bluespec; -*-
 
+// A state machine to simulate tree changes and invariants to be checked
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
+
 module apply_state_machine {
   import basicSpells.* from "./spells/basicSpells"
   import rareSpells.* from "./spells/rareSpells"

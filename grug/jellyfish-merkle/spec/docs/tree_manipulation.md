@@ -1,5 +1,7 @@
 # Tree manipulation
 
+*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+
 This document describes how tree manipulation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, Rust and Quint are very different, so there are some challenges:
 - The Rust implementation uses recursion, which Quint doesn't support (due to Apalache)
 - Rust has mutable variables, while Quint is functional and does not
@@ -26,6 +28,12 @@ This document covers the correspondance of all the `apply_*` functions and their
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
 ```bluespec quint/apply_fancy.qnt
 // -*- mode: Bluespec; -*-
+
+// Grug's algorithm to apply batches of operations to Jellyfish Merkle Trees
+//
+// Josef Widder, Informal Systems, 2024
+// Aleksandar Ignjatijevic, Informal Systems, 2024
+// Gabriela Moreira, Informal Systems, 2024
 
 module apply_fancy {
   import hashes.* from "./hashes"
