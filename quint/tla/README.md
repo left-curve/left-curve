@@ -15,8 +15,8 @@ After generating the TLA+ file, we also manually fixed the `init` definitions, a
 ## Using TLC to model check
 
 Dependencies:
-- Install [TLC]() (requires Java)
-- Install [Quint]()
+- Install [TLC](https://github.com/tlaplus/tlaplus) (requires Java)
+- Install [Quint](https://quint-lang.org/docs/getting-started)
 
 You'll need to run some instance of `quint verify` as that command installs apalache for you, which you'll need for the command below. Go to the folder above this one with all the quint files and run (PS: this command will fail, it is fine):
 
