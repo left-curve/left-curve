@@ -280,7 +280,7 @@ impl Environment {
 mod test {
     use {
         crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
-        grug_app::{AppCtx, GasTracker, QuerierProvider, Shared, StorageProvider},
+        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
         grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
         std::sync::Arc,
         test_case::test_case,
@@ -333,13 +333,12 @@ mod test {
             let storage = Shared::new(MockStorage::new());
             let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
 
-            let querier_provider = QuerierProvider::new(AppCtx::new(
+            let querier_provider = QuerierProvider::new(
                 WasmVm::new(0),
                 Box::new(storage),
                 gas_tracker.clone(),
-                "dev-1",
                 MOCK_BLOCK,
-            ));
+            );
 
             let mut env = Environment::new(
                 storage_provider,

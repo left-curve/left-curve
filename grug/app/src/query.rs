@@ -1,30 +1,33 @@
 use {
     crate::{
-        call_in_1_out_1, AppCtx, AppError, AppResult, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIG, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
+        StorageProvider, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
     },
     grug_types::{
-        Addr, BankQuery, BankQueryResponse, Binary, Bound, Code, Coin, Coins, Config, Context,
-        ContractInfo, GenericResult, Hash256, Json, Order, QueryBalanceRequest,
+        Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
+        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryBalanceRequest,
         QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest, QueryContractRequest,
         QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest,
-        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult,
+        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
-pub fn query_config(ctx: AppCtx) -> StdResult<Config> {
-    CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker)
+pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Config> {
+    CONFIG.load_with_gas(storage, gas_tracker)
 }
 
-pub fn query_app_config(ctx: AppCtx) -> StdResult<Json> {
-    APP_CONFIG.load_with_gas(&ctx.storage, ctx.gas_tracker)
+pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Json> {
+    APP_CONFIG.load_with_gas(storage, gas_tracker)
 }
 
 pub fn query_balance<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     req: QueryBalanceRequest,
 ) -> AppResult<Coin>
@@ -32,11 +35,22 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(ctx, query_depth, &BankQuery::Balance(req)).map(|res| res.as_balance())
+    _query_bank(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        query_depth,
+        &BankQuery::Balance(req),
+    )
+    .map(|res| res.as_balance())
 }
 
 pub fn query_balances<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     req: QueryBalancesRequest,
 ) -> AppResult<Coins>
@@ -44,11 +58,22 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(ctx, query_depth, &BankQuery::Balances(req)).map(|res| res.as_balances())
+    _query_bank(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        query_depth,
+        &BankQuery::Balances(req),
+    )
+    .map(|res| res.as_balances())
 }
 
 pub fn query_supply<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     req: QuerySupplyRequest,
 ) -> AppResult<Coin>
@@ -56,11 +81,22 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(ctx, query_depth, &BankQuery::Supply(req)).map(|res| res.as_supply())
+    _query_bank(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        query_depth,
+        &BankQuery::Supply(req),
+    )
+    .map(|res| res.as_supply())
 }
 
 pub fn query_supplies<VM>(
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     req: QuerySuppliesRequest,
 ) -> AppResult<Coins>
@@ -68,11 +104,22 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    _query_bank(ctx, query_depth, &BankQuery::Supplies(req)).map(|res| res.as_supplies())
+    _query_bank(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        query_depth,
+        &BankQuery::Supplies(req),
+    )
+    .map(|res| res.as_supplies())
 }
 
 fn _query_bank<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
@@ -80,12 +127,13 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&app_ctx.storage)?;
-    let code_hash = CONTRACTS.load(&app_ctx.storage, cfg.bank)?.code_hash;
+    let cfg = CONFIG.load(&storage)?;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: cfg.bank,
         sender: None,
         funds: None,
@@ -93,7 +141,9 @@ where
     };
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
-        app_ctx,
+        vm,
+        storage,
+        gas_tracker,
         query_depth,
         false,
         "bank_query",
@@ -108,52 +158,70 @@ where
     })
 }
 
-pub fn query_code(ctx: AppCtx, req: QueryCodeRequest) -> StdResult<Code> {
-    CODES.load_with_gas(&ctx.storage, ctx.gas_tracker, req.hash)
+pub fn query_code(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    req: QueryCodeRequest,
+) -> StdResult<Code> {
+    CODES.load_with_gas(storage, gas_tracker, req.hash)
 }
 
-pub fn query_codes(ctx: AppCtx, req: QueryCodesRequest) -> StdResult<BTreeMap<Hash256, Code>> {
+pub fn query_codes(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    req: QueryCodesRequest,
+) -> StdResult<BTreeMap<Hash256, Code>> {
     let start = req.start_after.map(Bound::Exclusive);
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CODES
-        .range_with_gas(&ctx.storage, ctx.gas_tracker, start, None, Order::Ascending)?
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
 }
 
-pub fn query_contract(ctx: AppCtx, req: QueryContractRequest) -> StdResult<ContractInfo> {
-    CONTRACTS.load_with_gas(&ctx.storage, ctx.gas_tracker, req.address)
+pub fn query_contract(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    req: QueryContractRequest,
+) -> StdResult<ContractInfo> {
+    CONTRACTS.load_with_gas(storage, gas_tracker, req.address)
 }
 
 pub fn query_contracts(
-    ctx: AppCtx,
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
     req: QueryContractsRequest,
 ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
     let start = req.start_after.map(Bound::Exclusive);
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CONTRACTS
-        .range_with_gas(&ctx.storage, ctx.gas_tracker, start, None, Order::Ascending)?
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
 }
 
-pub fn query_wasm_raw(ctx: AppCtx, req: QueryWasmRawRequest) -> StdResult<Option<Binary>> {
-    StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &req.contract])
-        .read_with_gas(ctx.gas_tracker, &req.key)
+pub fn query_wasm_raw(
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    req: QueryWasmRawRequest,
+) -> StdResult<Option<Binary>> {
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
+        .read_with_gas(gas_tracker, &req.key)
         .map(|maybe_value| maybe_value.map(Binary::from))
 }
 
 pub fn query_wasm_scan(
-    ctx: AppCtx,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
     req: QueryWasmScanRequest,
 ) -> StdResult<BTreeMap<Binary, Binary>> {
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    StorageProvider::new(ctx.storage, &[CONTRACT_NAMESPACE, &req.contract])
+    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
         .scan_with_gas(
-            ctx.gas_tracker,
+            gas_tracker,
             req.min.as_deref(),
             req.max.as_deref(),
             // Order doesn't matter, as we're collecting results into a BTreeMap.
@@ -165,7 +233,10 @@ pub fn query_wasm_scan(
 }
 
 pub fn query_wasm_smart<VM>(
-    app_ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
     query_depth: usize,
     req: QueryWasmSmartRequest,
 ) -> AppResult<Json>
@@ -173,11 +244,12 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let code_hash = CONTRACTS.load(&app_ctx.storage, req.contract)?.code_hash;
+    let chain_id = CHAIN_ID.load(&storage)?;
+    let code_hash = CONTRACTS.load(&storage, req.contract)?.code_hash;
 
     let ctx = Context {
-        chain_id: app_ctx.chain_id.clone(),
-        block: app_ctx.block,
+        chain_id,
+        block,
         contract: req.contract,
         sender: None,
         funds: None,
@@ -185,7 +257,9 @@ where
     };
 
     call_in_1_out_1::<_, _, GenericResult<Json>>(
-        app_ctx,
+        vm,
+        storage,
+        gas_tracker,
         query_depth,
         false,
         "query",

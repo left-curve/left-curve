@@ -1,6 +1,6 @@
 use {
     criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion},
-    grug_app::{AppCtx, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
@@ -47,13 +47,12 @@ fn looping(c: &mut Criterion) {
                         let storage = Box::new(MockStorage::new());
                         let gas_tracker = GasTracker::new_limitless();
 
-                        let querier = QuerierProvider::new(AppCtx::new(
+                        let querier = QuerierProvider::new(
                             vm.clone(),
                             storage.clone(),
                             gas_tracker.clone(),
-                            "dev-1",
                             MOCK_BLOCK,
-                        ));
+                        );
                         let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
 
                         let instance = vm
