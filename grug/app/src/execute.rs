@@ -1,16 +1,17 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1, call_in_1_out_1_handle_response,
-        call_in_2_out_1_handle_response, catch_and_update_event, catch_event, handle_response,
-        has_permission, schedule_cronjob, AppError, AppResult, EventResult, GasTracker,
-        MeteredItem, MeteredMap, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, CONTRACTS, NEXT_CRONJOBS,
+        call_in_0_out_1_handle_response, call_in_1_out_1_handle_auth_response,
+        call_in_1_out_1_handle_response, call_in_2_out_1_handle_response, catch_and_update_event,
+        catch_event, has_permission, schedule_cronjob, AppError, AppResult, EventResult,
+        GasTracker, MeteredItem, MeteredMap, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, CONTRACTS,
+        NEXT_CRONJOBS,
     },
     grug_math::Inner,
     grug_types::{
-        Addr, AuthMode, AuthResponse, BankMsg, BlockInfo, Code, CodeStatus, Context, ContractInfo,
+        Addr, AuthMode, BankMsg, BlockInfo, Code, CodeStatus, Context, ContractInfo,
         EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest,
-        EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, GenericResult,
-        Hash256, HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate, MsgMigrate, MsgTransfer,
+        EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, Hash256,
+        HashExt, Json, MsgConfigure, MsgExecute, MsgInstantiate, MsgMigrate, MsgTransfer,
         MsgUpload, ReplyOn, StdResult, Storage, SubMsgResult, Timestamp, Tx, TxOutcome,
     },
 };
@@ -229,24 +230,34 @@ where
         coins: msg.coins.clone(),
     };
 
-    let bank_guest = call_in_1_out_1_handle_response(
-        vm.clone(),
-        storage.clone(),
-        gas_tracker.clone(),
-        msg_depth,
-        0,
-        true,
-        "bank_execute",
-        code_hash,
-        &ctx,
-        &msg,
-    );
-
-    catch_and_update_event!(bank_guest, evt => bank_guest);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
+            msg_depth,
+            0,
+            true,
+            "bank_execute",
+            code_hash,
+            &ctx,
+            &msg,
+        ),
+        evt => bank_guest
+    }
 
     if do_receive {
-        let receive_guest = _do_receive(vm, storage, gas_tracker, block, msg_depth, msg);
-        catch_and_update_event!(receive_guest, evt => receive_guest);
+        catch_and_update_event! {
+            _do_receive(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                msg_depth,
+                msg,
+            ),
+            evt => receive_guest
+        }
     };
 
     EventResult::Ok(evt)
@@ -393,21 +404,22 @@ where
     };
 
     if !msg.funds.is_empty() {
-        let transfer_event = _do_transfer(
-            vm.clone(),
-            storage.clone(),
-            gas_tracker.clone(),
-            block,
-            msg_depth,
-            sender,
-            MsgTransfer {
-                to: address,
-                coins: msg.funds.clone(),
-            },
-            false,
-        );
-
-        catch_and_update_event!(transfer_event, evt => transfer_event);
+        catch_and_update_event! {
+            _do_transfer(
+                vm.clone(),
+                storage.clone(),
+                gas_tracker.clone(),
+                block,
+                msg_depth,
+                sender,
+                MsgTransfer {
+                    to: address,
+                    coins: msg.funds.clone(),
+                },
+                false,
+            ),
+            evt => transfer_event
+        }
     }
 
     // Call the contract's `instantiate` entry point
@@ -420,20 +432,21 @@ where
         mode: None,
     };
 
-    let guest_event = call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        0,
-        true,
-        "instantiate",
-        msg.code_hash,
-        &ctx,
-        &msg.msg,
-    );
-
-    catch_and_update_event!(guest_event, evt => guest_event);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            msg_depth,
+            0,
+            true,
+            "instantiate",
+            msg.code_hash,
+            &ctx,
+            &msg.msg,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -500,21 +513,22 @@ where
     };
 
     if !msg.funds.is_empty() {
-        let transfer_event = _do_transfer(
-            vm.clone(),
-            storage.clone(),
-            gas_tracker.clone(),
-            block,
-            msg_depth,
-            sender,
-            MsgTransfer {
-                to: msg.contract,
-                coins: msg.funds.clone(),
-            },
-            false,
-        );
-
-        catch_and_update_event!(transfer_event, evt => transfer_event);
+        catch_and_update_event! {
+            _do_transfer(
+                vm.clone(),
+                storage.clone(),
+                gas_tracker.clone(),
+                block,
+                msg_depth,
+                sender,
+                MsgTransfer {
+                    to: msg.contract,
+                    coins: msg.funds.clone(),
+                },
+                false,
+            ),
+            evt => transfer_event
+        }
     }
 
     // Call the contract's `execute` entry point
@@ -527,20 +541,21 @@ where
         mode: None,
     };
 
-    let guest_event = call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        0,
-        true,
-        "execute",
-        code_hash,
-        &ctx,
-        &msg.msg,
-    );
-
-    catch_and_update_event!(guest_event, evt => guest_event);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            msg_depth,
+            0,
+            true,
+            "execute",
+            code_hash,
+            &ctx,
+            &msg.msg,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -658,20 +673,21 @@ where
 
     evt.old_code_hash = Some(old_code_hash);
 
-    let guest_event = call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        0,
-        true,
-        "migrate",
-        msg.new_code_hash,
-        &ctx,
-        &msg.msg,
-    );
-
-    catch_and_update_event!(guest_event, evt => guest_event);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            msg_depth,
+            0,
+            true,
+            "migrate",
+            msg.new_code_hash,
+            &ctx,
+            &msg.msg,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -752,21 +768,22 @@ where
         mode: None,
     };
 
-    let guest_event = call_in_2_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        msg_depth,
-        0,
-        true,
-        "reply",
-        code_hash,
-        &ctx,
-        msg,
-        result,
-    );
-
-    catch_and_update_event!(guest_event, evt => guest_event);
+    catch_and_update_event! {
+        call_in_2_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            msg_depth,
+            0,
+            true,
+            "reply",
+            code_hash,
+            &ctx,
+            msg,
+            result,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -831,49 +848,22 @@ where
         mode: Some(mode),
     };
 
-    let mut request_backrun = false;
-
-    let result = || -> EventResult<EvtGuest> {
-        let evt = EvtGuest::base(ctx.contract, "authenticate");
-
-        let auth_response = catch_event! {
-            {
-                call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
-                    vm.clone(),
-                    storage.clone(),
-                    gas_tracker.clone(),
-                    0,
-                    true,
-                    "authenticate",
-                    code_hash,
-                    &ctx,
-                    tx,
-                )?
-                .map_err(|msg| AppError::Guest {
-                    address: ctx.contract,
-                    name: "authenticate",
-                    msg,
-                })
-            },
-            evt
-        };
-
-        request_backrun = auth_response.request_backrun;
-
-        handle_response(
+    catch_and_update_event! {
+        call_in_1_out_1_handle_auth_response(
             vm,
             storage,
             gas_tracker,
             0,
+            0,
+            true,
+            "authenticate",
+            code_hash,
             &ctx,
-            auth_response.response,
-            evt,
-        )
-    }();
-
-    catch_and_update_event!(result, evt => guest_event);
-
-    evt.backrun = request_backrun;
+            tx,
+            &mut evt.backrun,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -938,20 +928,21 @@ where
         mode: Some(mode),
     };
 
-    let guest_evt = call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        0,
-        0,
-        true,
-        "backrun",
-        code_hash,
-        &ctx,
-        tx,
-    );
-
-    catch_and_update_event!(guest_evt, evt => guest_event);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            0,
+            0,
+            true,
+            "backrun",
+            code_hash,
+            &ctx,
+            tx,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -1019,20 +1010,21 @@ where
         mode: Some(mode),
     };
 
-    let guest_event = call_in_1_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        0,
-        0,
-        true,
-        "withhold_fee",
-        taxman.code_hash,
-        &ctx,
-        tx,
-    );
-
-    catch_and_update_event!(guest_event, evt => guest_event);
+    catch_and_update_event! {
+        call_in_1_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            0,
+            0,
+            true,
+            "withhold_fee",
+            taxman.code_hash,
+            &ctx,
+            tx,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -1104,21 +1096,22 @@ where
         mode: Some(mode),
     };
 
-    let evt_guest = call_in_2_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        0,
-        0,
-        true,
-        "finalize_fee",
-        taxman.code_hash,
-        &ctx,
-        tx,
-        outcome,
-    );
-
-    catch_and_update_event!(evt_guest, evt => guest_event);
+    catch_and_update_event! {
+        call_in_2_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            0,
+            0,
+            true,
+            "finalize_fee",
+            taxman.code_hash,
+            &ctx,
+            tx,
+            outcome,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }
@@ -1186,19 +1179,20 @@ where
         mode: None,
     };
 
-    let guest = call_in_0_out_1_handle_response(
-        vm,
-        storage,
-        gas_tracker,
-        0,
-        0,
-        true,
-        "cron_execute",
-        code_hash,
-        &ctx,
-    );
-
-    catch_and_update_event!(guest, evt => guest_event);
+    catch_and_update_event! {
+        call_in_0_out_1_handle_response(
+            vm,
+            storage,
+            gas_tracker,
+            0,
+            0,
+            true,
+            "cron_execute",
+            code_hash,
+            &ctx,
+        ),
+        evt => guest_event
+    }
 
     EventResult::Ok(evt)
 }

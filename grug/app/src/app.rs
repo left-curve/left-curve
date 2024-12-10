@@ -782,9 +782,17 @@ where
     }
 
     if request_backrun {
-        let backrun_evt = do_backrun(vm, Box::new(buffer), gas_tracker, block, tx, mode);
-
-        catch_and_update_event!(backrun_evt, evt => backrun);
+        catch_and_update_event! {
+            do_backrun(
+                vm,
+                Box::new(buffer),
+                gas_tracker,
+                block,
+                tx,
+                mode,
+            ),
+            evt => backrun
+        };
     }
 
     EventResult::Ok(evt)
