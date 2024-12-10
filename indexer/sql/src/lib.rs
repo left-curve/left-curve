@@ -1,7 +1,9 @@
-pub mod active_model;
-pub mod context;
+mod active_model;
+pub mod block;
+mod context;
 pub mod entity;
-pub mod error;
+mod error;
+mod indexer_path;
 pub mod non_blocking_indexer;
 
-pub use context::Context;
+use context::Context;

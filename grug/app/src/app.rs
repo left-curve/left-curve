@@ -29,10 +29,10 @@ use {
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
 pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
-    db: DB,
+    pub db: DB,
     vm: VM,
     pp: PP,
-    indexer: ID,
+    pub indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -150,10 +150,10 @@ where
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|err| {
+            .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
-                    err = err.to_string(),
+                    err = _err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
 
