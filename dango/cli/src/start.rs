@@ -29,6 +29,10 @@ pub struct StartCmd {
     #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
+    /// Enable the internal indexer
+    #[arg(long, default_value = "false")]
+    indexer_keep_blocks: bool,
+
     /// The indexer database url
     #[arg(long, default_value = "postgres://localhost")]
     indexer_database_url: String,
@@ -38,6 +42,7 @@ impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         if self.indexer_enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_keep_blocks(self.indexer_keep_blocks)
                 .with_database_url(&self.indexer_database_url)
                 .with_dir(app_dir.indexer_dir())
                 .build()
