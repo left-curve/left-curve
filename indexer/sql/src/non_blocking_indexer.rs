@@ -24,6 +24,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
     handle: RuntimeHandler,
     db_url: DB,
     indexer_path: P,
+    keep_blocks: bool,
 }
 
 impl Default for IndexerBuilder {
@@ -32,6 +33,7 @@ impl Default for IndexerBuilder {
             handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
             indexer_path: Undefined::default(),
+            keep_blocks: false,
         }
     }
 }
@@ -45,6 +47,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             handle: self.handle,
             indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
+            keep_blocks: self.keep_blocks,
         }
     }
 
@@ -59,6 +62,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
+            keep_blocks: self.keep_blocks,
         }
     }
 
@@ -67,6 +71,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             handle: self.handle,
             indexer_path: Defined::new(IndexerPath::Dir(dir)),
             db_url: self.db_url,
+            keep_blocks: self.keep_blocks,
         }
     }
 }
@@ -76,6 +81,15 @@ where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
 {
+    pub fn with_keep_blocks(self, keep_blocks: bool) -> Self {
+        Self {
+            handle: self.handle,
+            db_url: self.db_url,
+            indexer_path: self.indexer_path,
+            keep_blocks,
+        }
+    }
+
     pub fn build(self) -> error::Result<NonBlockingIndexer> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
@@ -93,6 +107,7 @@ where
             handle: self.handle,
             blocks: Default::default(), // Arc::new(Mutex::new(HashMap::new())),
             indexing: false,
+            keep_blocks: self.keep_blocks,
         })
     }
 }
@@ -116,6 +131,7 @@ pub struct NonBlockingIndexer {
     pub handle: RuntimeHandler,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
     pub indexing: bool,
+    keep_blocks: bool,
 }
 
 impl NonBlockingIndexer {
