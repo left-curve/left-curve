@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, CommitmentStatus, Duration, EvtCron, GenericResult, Hash256, Json, Message,
-        Timestamp, TxEvents,
+        Addr, CommitmentStatus, Duration, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron,
+        EvtFinalize, EvtWithhold, GenericResult, Hash256, Json, Message, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
@@ -172,8 +172,8 @@ impl CronOutcome {
 pub struct TxOutcome {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub events: TxEvents,
     pub result: GenericResult<()>,
+    pub events: TxEvents,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -196,6 +196,71 @@ pub struct TxError {
 impl Display for TxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{self:?}",)
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct TxEvents {
+    pub withhold: CommitmentStatus<EvtWithhold>,
+    pub authenticate: CommitmentStatus<EvtAuthenticate>,
+    pub msgs_and_backrun: CommitmentStatus<MsgsAndBackrunEvents>,
+    pub finalize: CommitmentStatus<EvtFinalize>,
+}
+
+impl TxEvents {
+    pub fn new(withhold: CommitmentStatus<EvtWithhold>) -> Self {
+        Self {
+            withhold,
+            authenticate: CommitmentStatus::NotReached,
+            msgs_and_backrun: CommitmentStatus::NotReached,
+            finalize: CommitmentStatus::NotReached,
+        }
+    }
+
+    pub fn finalize_fails(self, finalize: CommitmentStatus<EvtFinalize>, cause: &str) -> Self {
+        fn update<T>(evt: CommitmentStatus<T>, cause: &str) -> CommitmentStatus<T> {
+            if let CommitmentStatus::Committed(event) = evt {
+                CommitmentStatus::Reverted {
+                    event,
+                    revert_by: cause.to_string(),
+                }
+            } else {
+                evt
+            }
+        }
+
+        TxEvents {
+            withhold: update(self.withhold, cause),
+            authenticate: update(self.authenticate, cause),
+            msgs_and_backrun: update(self.msgs_and_backrun, cause),
+            finalize,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct MsgsAndBackrunEvents {
+    pub msgs: Vec<EventStatus<Event>>,
+    pub backrun: EventStatus<EvtBackrun>,
+}
+
+impl MsgsAndBackrunEvents {
+    pub fn base() -> Self {
+        Self {
+            msgs: vec![],
+            backrun: EventStatus::NotReached,
+        }
+    }
+}
+
+impl Default for TxEvents {
+    fn default() -> Self {
+        Self {
+            withhold: CommitmentStatus::NotReached,
+            authenticate: CommitmentStatus::NotReached,
+            msgs_and_backrun: CommitmentStatus::NotReached,
+            finalize: CommitmentStatus::NotReached,
+        }
     }
 }
 
