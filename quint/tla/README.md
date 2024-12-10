@@ -12,4 +12,30 @@ but not before making some adjustments to the Quint spec to handle some integrat
 
 After generating the TLA+ file, we also manually fixed the `init` definitions, as in TLA+ they can't have the prime operator. This means replacing `tree' :=` with `tree =` for all variables and only inside the `init` defintion.
 
+## Using TLC to model check
 
+Dependencies:
+- Install [TLC]() (requires Java)
+- Install [Quint]()
+
+You'll need to run some instance of `quint verify` as that command installs apalache for you, which you'll need for the command below. Go to the folder above this one with all the quint files and run (PS: this command will fail, it is fine):
+
+``` sh
+$ quint verify apply_state_machine.qnt --step=step_fancy --max-steps=0
+```
+
+Now, Quint should have downloaded Apalache into `~/.quint/`. Check if it's there:
+
+``` sh
+ls ~/.quint
+```
+
+We can now run TLC. `cd` into either [setupA](./setupA) or [setupB](./setupB) and execute:
+
+``` sh
+java -Xmx8G -Xss515m -cp ~/.quint/apalache-dist-0.46.1/apalache/lib/apalache.jar tlc2.TLC -deadlock -workers auto apply_state_machine.tla
+```
+
+PS: If you are reading this in the future, you might need to replace `apalache-dist-0.46.1` with a newer version. Use the latest one you have (from the `ls` result above).
+
+This will use up to 8Gb memory for the JVM and automatically select the number of cores (workers) based on the machine it's running on.
