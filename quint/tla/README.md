@@ -1,6 +1,6 @@
 # TLA+ generated files
 
-This folder contains TLA+ generated files used to run TLC over the model.
+This folder contains TLA+ generated files used to run TLC over the model. See the [Model Checking section here](../../docs/simulation_and_model_checking.md#model-checking) for context.
 
 The files were generated with the command:
 

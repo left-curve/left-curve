@@ -128,7 +128,7 @@ There are still some integration issues between Quint and Apalache, which is use
 - There were many issues translating polymorphic Quint operators into Apalache's representation, so we did some adaptations to avoid some instances of polymorphism, mostly regarding polymorphic usage of the `None` constructor inside the same operator.
 - Many issues could only be fixed on Apalache's side, which we did. See the [PR](https://github.com/apalache-mc/apalache/pull/3041). We used a version of Apalache with these fixes in order to generate the TLA+ model.
 
-The generated TLA+ model is available on the model-checking branch at [apply_state_machine.tla](https://github.com/informalsystems/left-curve-jmt/blob/gabriela/model-checking/quint/apply_state_machine.tla)
+The generated TLA+ models are available in the [quint/tla folder](../quint/tla) together with instructions on how to run them.
 
 ### **Initial states for model checking**
 
