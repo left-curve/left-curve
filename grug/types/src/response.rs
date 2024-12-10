@@ -2,7 +2,6 @@ use {
     crate::{Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    strum_macros::EnumDiscriminants,
 };
 
 #[derive(
@@ -194,18 +193,7 @@ impl AuthResponse {
 ///
 /// In case a callback is to be performed, the host passes a piece of binary
 /// payload data to the contract.
-#[derive(
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    EnumDiscriminants,
-)]
-#[strum_discriminants(derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize))]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ReplyOn {
     Success(Json),
     Error(Json),

@@ -715,7 +715,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtReply::base(contract, reply_on);
+    let mut evt = EvtReply::base(contract, reply_on.clone());
 
     let (code_hash, chain_id) = catch_event!(evt, {
         let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;

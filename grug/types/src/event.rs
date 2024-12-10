@@ -1,17 +1,12 @@
 use {
-    crate::{
-        Addr, Coins, ContractEvent, Hash256, Json, Label, ReplyOn, ReplyOnDiscriminants, Timestamp,
-    },
+    crate::{Addr, Coins, ContractEvent, Hash256, Json, Label, ReplyOn, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
-    strum_macros::AsRefStr,
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
-#[derive(AsRefStr)]
-#[strum(serialize_all = "lowercase")]
 pub enum Event {
     /// The chain- or app-level configurations were updated.
     Configure(EvtConfigure),
@@ -44,7 +39,7 @@ impl Event {
     pub fn reply(contract: Addr, reply_on: ReplyOn, guest_event: EventStatus<EvtGuest>) -> Self {
         Self::Reply(EvtReply {
             contract,
-            reply_on: ReplyOnDiscriminants::from(reply_on),
+            reply_on,
             guest_event,
         })
     }
@@ -61,11 +56,6 @@ impl Event {
             next,
             guest_event,
         })
-    }
-
-    /// Shortcut to get the name of the variant.
-    pub fn variant_name(&self) -> &str {
-        self.as_ref()
     }
 }
 
@@ -186,15 +176,15 @@ impl EvtMigrate {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtReply {
     pub contract: Addr,
-    pub reply_on: ReplyOnDiscriminants,
+    pub reply_on: ReplyOn,
     pub guest_event: EventStatus<EvtGuest>,
 }
 
 impl EvtReply {
-    pub fn base(contract: Addr, reply_on: &ReplyOn) -> Self {
+    pub fn base(contract: Addr, reply_on: ReplyOn) -> Self {
         Self {
             contract,
-            reply_on: ReplyOnDiscriminants::from(reply_on),
+            reply_on,
             guest_event: EventStatus::NotReached,
         }
     }
