@@ -117,8 +117,6 @@ export type {
 export type {
   Credential,
   Metadata,
-  Eip712Credential,
-  PasskeyCredential,
 } from "./credential.js";
 
 export type {
@@ -166,6 +164,10 @@ export {
 } from "./mipd.js";
 
 export type {
+  RawSignature,
+  OtpSignature,
+  PasskeySignature,
+  Eip712Signature,
   Signature,
   SignDoc,
   SignedDoc,

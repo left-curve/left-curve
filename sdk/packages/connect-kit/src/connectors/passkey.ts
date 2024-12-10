@@ -116,7 +116,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const credential = { passkey };
+        const credential = { standard: { signature: { passkey } } };
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
 
         return { credential, keyHash, signDoc };

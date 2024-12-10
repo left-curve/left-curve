@@ -1,6 +1,8 @@
 import type { Username } from "./account.js";
+import type { Address } from "./address.js";
 import type { Base64 } from "./encoding.js";
 import type { KeyHash } from "./key.js";
+import type { OtpSignature, Signature } from "./signature.js";
 
 export type Metadata = {
   /** Identifies which key was used to signed this transaction. */
@@ -12,23 +14,32 @@ export type Metadata = {
 };
 
 export type Credential =
-  /** An Secp256k1 signature. */
-  | { secp256k1: Base64 }
-  /** An Ed25519 signature. */
-  | { ed25519: Base64 }
-  /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
-  | { passkey: PasskeyCredential }
-  /** An EVM signature signed by a wallet, along with its typedata. */
-  | { eip712: Eip712Credential };
+  /**Signatures of the authorized key and optional OTP key. */
+  | { standard: StandardCredential }
+  /** Session credential information with the authorization signatures */
+  | { session: SessionCredential };
 
-export type PasskeyCredential = {
-  sig: Base64;
-  client_data: Base64;
-  authenticator_data: Base64;
+export type StandardCredential = {
+  /** Signature of a user */
+  signature: Signature;
+  /** Signature of the OTP key */
+  otpSignature?: OtpSignature;
 };
 
-export type Eip712Credential = {
-  sig: Base64;
-  /** The EIP712 typed data object containing types, domain and the message. */
-  typed_data: Base64;
+export type SessionCredential = {
+  /** The `SessionInfo` that contains data to be signed with user key and otp key. */
+  sessionInfo: SessionInfo;
+  /** Signature of the `SignDoc` by the session key. */
+  sessionSignature: Base64;
+  /** Signatures of the `SessionInfo` by the user key and OTP. */
+  sessionInfoSignature: StandardCredential;
+};
+
+export type SessionInfo = {
+  /** Public key of the session key. */
+  sessionKey: Base64;
+  /** Expiry time of the session key. */
+  expireAt: number;
+  /** Addresses that can use the session key. */
+  whitelistedAccounts: Address[];
 };

@@ -11,7 +11,7 @@ import type {
   Address,
   ConnectorId,
   EIP1193Provider,
-  Eip712Credential,
+  Eip712Signature,
   Transport,
 } from "@left-curve/types";
 
@@ -145,12 +145,12 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             params: [controllerAddress, signData],
           });
 
-          const eip712: Eip712Credential = {
+          const eip712: Eip712Signature = {
             sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
             typed_data: encodeBase64(encodeUtf8(signData)),
           };
 
-          const credential = { eip712 };
+          const credential = { standard: { signature: { eip712 } } };
 
           const keyHash = createKeyHash({
             pubKey: await secp256k1RecoverPubKey(hashData, signature, true),
