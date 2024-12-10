@@ -1,5 +1,7 @@
 use {
-    crate::{Addr, Coins, ContractEvent, Hash256, Label, ReplyOn, ReplyOnDiscriminants, Timestamp},
+    crate::{
+        Addr, Coins, ContractEvent, Hash256, Json, Label, ReplyOn, ReplyOnDiscriminants, Timestamp,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -112,17 +114,18 @@ pub struct EvtInstantiate {
     pub code_hash: Hash256,
     pub label: Option<Label>,
     pub admin: Option<Addr>,
+    pub instantiate_msg: Json,
     pub transfer_event: EventStatus<EvtTransfer>,
     pub guest_event: EventStatus<EvtGuest>,
-    // TODO: is it necessary to include the InstantiateMsg?
 }
 
 impl EvtInstantiate {
-    pub fn base(sender: Addr, code_hash: Hash256, contract: Addr) -> Self {
+    pub fn base(sender: Addr, code_hash: Hash256, contract: Addr, instantiate_msg: Json) -> Self {
         Self {
             sender,
             contract,
             code_hash,
+            instantiate_msg,
             label: None,
             admin: None,
             transfer_event: EventStatus::NotReached,
@@ -137,17 +140,18 @@ pub struct EvtExecute {
     pub sender: Addr,
     pub contract: Addr,
     pub funds: Coins,
+    pub execute_msg: Json,
     pub transfer_event: EventStatus<EvtTransfer>,
     pub guest_event: EventStatus<EvtGuest>,
-    // TODO: is it necessary to include the ExecuteMsg?
 }
 
 impl EvtExecute {
-    pub fn base(sender: Addr, contract: Addr, funds: Coins) -> Self {
+    pub fn base(sender: Addr, contract: Addr, funds: Coins, execute_msg: Json) -> Self {
         Self {
             sender,
             contract,
             funds,
+            execute_msg,
             transfer_event: EventStatus::NotReached,
             guest_event: EventStatus::NotReached,
         }
@@ -159,17 +163,18 @@ impl EvtExecute {
 pub struct EvtMigrate {
     pub sender: Addr,
     pub contract: Addr,
+    pub migrate_msg: Json,
     pub old_code_hash: Option<Hash256>,
     pub new_code_hash: Hash256,
     pub guest_event: EventStatus<EvtGuest>,
-    // TODO: is it necessary to include the MigrateMsg?
 }
 
 impl EvtMigrate {
-    pub fn base(sender: Addr, contract: Addr, new_code_hash: Hash256) -> Self {
+    pub fn base(sender: Addr, contract: Addr, migrate_msg: Json, new_code_hash: Hash256) -> Self {
         Self {
             sender,
             contract,
+            migrate_msg,
             old_code_hash: None,
             new_code_hash,
             guest_event: EventStatus::NotReached,
@@ -233,14 +238,16 @@ impl EvtBackrun {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtWithhold {
     pub sender: Addr,
+    pub gas_limit: u64,
     pub taxman: Option<Addr>,
     pub guest_event: EventStatus<EvtGuest>,
 }
 
 impl EvtWithhold {
-    pub fn base(sender: Addr) -> Self {
+    pub fn base(sender: Addr, gas_limit: u64) -> Self {
         Self {
             sender,
+            gas_limit,
             taxman: None,
             guest_event: EventStatus::NotReached,
         }
@@ -251,14 +258,18 @@ impl EvtWithhold {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtFinalize {
     pub sender: Addr,
+    pub gas_limit: u64,
+    pub gas_used: u64,
     pub taxman: Option<Addr>,
     pub guest_event: EventStatus<EvtGuest>,
 }
 
 impl EvtFinalize {
-    pub fn base(sender: Addr) -> Self {
+    pub fn base(sender: Addr, gas_limit: u64, gas_used: u64) -> Self {
         Self {
             sender,
+            gas_limit,
+            gas_used,
             taxman: None,
             guest_event: EventStatus::NotReached,
         }

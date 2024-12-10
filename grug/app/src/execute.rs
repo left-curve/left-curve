@@ -272,7 +272,7 @@ where
     // contract of the same address.
     let address = Addr::derive(sender, msg.code_hash, &msg.salt);
 
-    let mut evt = EvtInstantiate::base(sender, msg.code_hash, address);
+    let mut evt = EvtInstantiate::base(sender, msg.code_hash, address, msg.msg.clone());
 
     catch_event!(evt, {
         // Make sure the user has the permission to instantiate contracts
@@ -392,7 +392,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone());
+    let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone(), msg.msg.clone());
 
     let code_hash = catch_event!(evt, {
         Ok(CONTRACTS.load(&app_ctx.storage, msg.contract)?.code_hash)
@@ -467,7 +467,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtMigrate::base(sender, msg.contract, msg.new_code_hash);
+    let mut evt = EvtMigrate::base(sender, msg.contract, msg.msg.clone(), msg.new_code_hash);
 
     let old_code_hash = catch_event!(evt, {
         // Update the contract info.
@@ -779,7 +779,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtWithhold::base(tx.sender);
+    let mut evt = EvtWithhold::base(tx.sender, tx.gas_limit);
 
     let (cfg, taxman) = catch_event!(evt, {
         let cfg = CONFIG.load(&app_ctx.storage)?;
@@ -852,7 +852,7 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtFinalize::base(tx.sender);
+    let mut evt = EvtFinalize::base(tx.sender, tx.gas_limit, outcome.gas_used);
 
     let (cfg, taxman) = catch_event!(evt, {
         let cfg = CONFIG.load(&app_ctx.storage)?;
@@ -860,6 +860,8 @@ where
 
         Ok((cfg, taxman))
     });
+
+    evt.taxman = Some(cfg.taxman);
 
     let ctx = Context {
         chain_id: app_ctx.chain_id.clone(),

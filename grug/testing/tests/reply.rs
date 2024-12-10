@@ -533,3 +533,29 @@ fn events3() {
 
     println!("{}", result.events.to_json_string_pretty().unwrap());
 }
+
+#[test]
+fn events4() {
+    let (mut suite, mut accounts, replier_addr) = setup();
+
+    let msg_transfer = Message::transfer(
+        accounts["sender"].address,
+        Coins::one("usdc", 1_000).unwrap(),
+    )
+    .unwrap();
+
+    let msg_execute = ExecuteMsg::perform(
+        "1",
+        ExecuteMsg::ok("execute deep 2 fail"),
+        ReplyOn::always(&ReplyMsg::Ok(ExecuteMsg::fail("reply deep 1 fail"))).unwrap(),
+    );
+
+    let result = suite
+        .send_messages(&mut accounts["owner"], vec![
+            msg_transfer,
+            Message::execute(replier_addr, &msg_execute, Coins::one("usdc", 123).unwrap()).unwrap(),
+        ])
+        .should_fail();
+
+    println!("{}", result.events.to_json_string_pretty().unwrap());
+}

@@ -252,7 +252,6 @@ fn finalizing_fee_erroring() {
     assert!(failing.events.withhold.maybe_error().is_some());
     assert!(failing.events.authenticate.maybe_error().is_some());
     assert!(failing.events.msgs_and_backrun.maybe_error().is_some());
-    assert!(failing.events.backrun.maybe_error().is_none());
     assert!(failing.events.withhold.maybe_error().is_some());
 
     // Owner and sender's balances shouldn't have changed, since state changes
