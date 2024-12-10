@@ -194,6 +194,7 @@ impl AuthResponse {
 /// In case a callback is to be performed, the host passes a piece of binary
 /// payload data to the contract.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum ReplyOn {
     Success(Json),
     Error(Json),
