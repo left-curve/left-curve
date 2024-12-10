@@ -72,17 +72,20 @@ impl<T> EventResult<T> {
         }
     }
 
+    #[cfg(feature = "tracing")]
     pub fn debug<O>(&self, ok_closure: O, error_msg: &str)
     where
         O: Fn(&T),
     {
         match self {
-            EventResult::Ok(val) => ok_closure(val),
+            EventResult::Ok(val) => {
+                ok_closure(val);
+            },
             EventResult::Err { error, .. } => {
                 tracing::warn!(err = error.to_string(), error_msg);
             },
-            EventResult::SubErr { .. } => {
-                tracing::warn!("Sub Error encountered");
+            EventResult::SubErr { error, .. } => {
+                tracing::warn!(err = error.to_string(), "Sub error encountered");
             },
         }
     }
