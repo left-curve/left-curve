@@ -588,13 +588,14 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
-#### Completeness and Soundness
+### Completeness and Soundness
 
 These are invariants for completeness and soundness of both membership and non-membership proofs.
 
 Completeness:
-    - Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
-    - Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
+
+  - Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
+  - Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
 
 Soundness:
 
