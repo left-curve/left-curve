@@ -203,12 +203,16 @@ where
 {
     let mut evt = EvtTransfer::base(sender, msg.to, msg.coins.clone());
 
-    let (cfg, code_hash, chain_id) = catch_event!(evt, {
-        let cfg = CONFIG.load(&storage)?;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
-        Ok((cfg, code_hash, chain_id))
-    });
+    let (cfg, code_hash, chain_id) = catch_event! {
+        {
+            let cfg = CONFIG.load(&storage)?;
+            let chain_id = CHAIN_ID.load(&storage)?;
+            let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
+
+            Ok((cfg, code_hash, chain_id))
+        },
+        evt
+    };
 
     let ctx = Context {
         chain_id,
@@ -260,11 +264,15 @@ where
     VM: Vm + Clone,
     AppError: From<VM::Error>,
 {
-    let (code_hash, chain_id) = catch_event!(EvtGuest::base(msg.to, "receive"), {
-        let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        EvtGuest::base(msg.to, "receive")
+    };
 
     let ctx = Context {
         chain_id,
@@ -343,42 +351,46 @@ where
 
     let mut evt = EvtInstantiate::base(sender, msg.code_hash, address, msg.msg.clone());
 
-    let chain_id = catch_event!(evt, {
-        let cfg = CONFIG.load(&storage)?;
+    let chain_id = catch_event! {
+        {
+            let cfg = CONFIG.load(&storage)?;
 
-        // Make sure the user has the permission to instantiate contracts
-        if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
-            return Err(AppError::Unauthorized);
-        }
-
-        // Save the contract info
-        CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
-            if maybe_contract.is_some() {
-                return Err(AppError::AccountExists { address });
+            // Make sure the user has the permission to instantiate contracts
+            if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
+                return Err(AppError::Unauthorized);
             }
 
-            Ok(ContractInfo {
-                code_hash: msg.code_hash,
-                label: msg.label.clone().map(Inner::into_inner),
-                admin: msg.admin,
-            })
-        })?;
+            // Save the contract info
+            CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
+                if maybe_contract.is_some() {
+                    return Err(AppError::AccountExists { address });
+                }
 
-        // Increment the code's usage.
-        CODES.update(&mut storage, msg.code_hash, |mut code| -> StdResult<_> {
-            match &mut code.status {
-                CodeStatus::Orphaned { .. } => {
-                    code.status = CodeStatus::InUse { usage: 1 };
-                },
-                CodeStatus::InUse { usage } => {
-                    *usage += 1;
-                },
-            }
+                Ok(ContractInfo {
+                    code_hash: msg.code_hash,
+                    label: msg.label.clone().map(Inner::into_inner),
+                    admin: msg.admin,
+                })
+            })?;
 
-            Ok(code)
-        })?;
-        Ok(CHAIN_ID.load(&storage)?)
-    });
+            // Increment the code's usage.
+            CODES.update(&mut storage, msg.code_hash, |mut code| -> StdResult<_> {
+                match &mut code.status {
+                    CodeStatus::Orphaned { .. } => {
+                        code.status = CodeStatus::InUse { usage: 1 };
+                    },
+                    CodeStatus::InUse { usage } => {
+                        *usage += 1;
+                    },
+                }
+
+                Ok(code)
+            })?;
+
+            Ok(CHAIN_ID.load(&storage)?)
+        },
+        evt
+    };
 
     if !msg.funds.is_empty() {
         let transfer_event = _do_transfer(
@@ -477,11 +489,15 @@ where
 {
     let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone(), msg.msg.clone());
 
-    let (code_hash, chain_id) = catch_event!(evt, {
-        let code_hash = CONTRACTS.load(&storage, msg.contract)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, msg.contract)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        evt
+    };
 
     if !msg.funds.is_empty() {
         let transfer_event = _do_transfer(
@@ -572,47 +588,46 @@ where
 {
     let mut evt = EvtMigrate::base(sender, msg.contract, msg.msg.clone(), msg.new_code_hash);
 
-    let (old_code_hash, chain_id) = catch_event!(evt, {
-        // Update the contract info.
-        let mut old_code_hash = None;
-        CONTRACTS.update(&mut storage, msg.contract, |mut info| {
-            old_code_hash = Some(info.code_hash);
+    let (old_code_hash, chain_id) = catch_event! {
+        {
+            // Update the contract info.
+            let mut old_code_hash = None;
 
-            // Ensure the sender is the admin of the contract.
-            if Some(sender) != info.admin {
-                return Err(AppError::Unauthorized);
-            }
+            CONTRACTS.update(&mut storage, msg.contract, |mut info| {
+                old_code_hash = Some(info.code_hash);
 
-            info.code_hash = msg.new_code_hash;
+                // Ensure the sender is the admin of the contract.
+                if Some(sender) != info.admin {
+                    return Err(AppError::Unauthorized);
+                }
 
-            Ok(info)
-        })?;
+                info.code_hash = msg.new_code_hash;
 
-        let old_code_hash = old_code_hash.unwrap();
+                Ok(info)
+            })?;
 
-        // Reduce usage count of the old code.
-        CODES.update(&mut storage, old_code_hash, |mut code| -> StdResult<_> {
-            match &mut code.status {
-                CodeStatus::InUse { usage } => {
-                    if *usage == 1 {
-                        code.status = CodeStatus::Orphaned {
-                            since: block.timestamp,
-                        };
-                    } else {
-                        *usage -= 1;
-                    }
-                },
-                _ => unreachable!(),
-            }
+            let old_code_hash = old_code_hash.unwrap();
 
-            Ok(code)
-        })?;
+            // Reduce usage count of the old code.
+            CODES.update(&mut storage, old_code_hash, |mut code| -> StdResult<_> {
+                match &mut code.status {
+                    CodeStatus::InUse { usage } => {
+                        if *usage == 1 {
+                            code.status = CodeStatus::Orphaned {
+                                since: block.timestamp,
+                            };
+                        } else {
+                            *usage -= 1;
+                        }
+                    },
+                    _ => unreachable!(),
+                }
 
-        // Increase usage count of the new code.
-        CODES.update(
-            &mut storage,
-            msg.new_code_hash,
-            |mut code| -> StdResult<_> {
+                Ok(code)
+            })?;
+
+            // Increase usage count of the new code.
+            CODES.update(&mut storage, msg.new_code_hash, |mut code| -> StdResult<_> {
                 match &mut code.status {
                     CodeStatus::Orphaned { .. } => {
                         code.status = CodeStatus::InUse { usage: 1 };
@@ -623,13 +638,14 @@ where
                 }
 
                 Ok(code)
-            },
-        )?;
+            })?;
 
-        let chain_id = CHAIN_ID.load(&storage)?;
+            let chain_id = CHAIN_ID.load(&storage)?;
 
-        Ok((old_code_hash, chain_id))
-    });
+            Ok((old_code_hash, chain_id))
+        },
+        evt
+    };
 
     let ctx = Context {
         chain_id,
@@ -717,11 +733,15 @@ where
 {
     let mut evt = EvtReply::base(contract, reply_on.clone());
 
-    let (code_hash, chain_id) = catch_event!(evt, {
-        let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        evt
+    };
 
     let ctx = Context {
         chain_id,
@@ -792,11 +812,16 @@ where
 {
     let mut evt = EvtAuthenticate::base(tx.sender);
 
-    let (code_hash, chain_id) = catch_event!(evt, {
-        let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        evt
+    };
+
     let ctx = Context {
         chain_id,
         block,
@@ -811,24 +836,27 @@ where
     let result = || -> EventResult<EvtGuest> {
         let evt = EvtGuest::base(ctx.contract, "authenticate");
 
-        let auth_response = catch_event!(evt, {
-            call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
-                vm.clone(),
-                storage.clone(),
-                gas_tracker.clone(),
-                0,
-                true,
-                "authenticate",
-                code_hash,
-                &ctx,
-                tx,
-            )?
-            .map_err(|msg| AppError::Guest {
-                address: ctx.contract,
-                name: "authenticate",
-                msg,
-            })
-        });
+        let auth_response = catch_event! {
+            {
+                call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
+                    vm.clone(),
+                    storage.clone(),
+                    gas_tracker.clone(),
+                    0,
+                    true,
+                    "authenticate",
+                    code_hash,
+                    &ctx,
+                    tx,
+                )?
+                .map_err(|msg| AppError::Guest {
+                    address: ctx.contract,
+                    name: "authenticate",
+                    msg,
+                })
+            },
+            evt
+        };
 
         request_backrun = auth_response.request_backrun;
 
@@ -891,11 +919,15 @@ where
 {
     let mut evt = EvtBackrun::base(tx.sender);
 
-    let (code_hash, chain_id) = catch_event!(evt, {
-        let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        evt
+    };
 
     let ctx = Context {
         chain_id,
@@ -965,13 +997,16 @@ where
 {
     let mut evt = EvtWithhold::base(tx.sender, tx.gas_limit);
 
-    let (cfg, taxman, chain_id) = catch_event!(evt, {
-        let cfg = CONFIG.load(&storage)?;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
+    let (cfg, taxman, chain_id) = catch_event! {
+        {
+            let cfg = CONFIG.load(&storage)?;
+            let chain_id = CHAIN_ID.load(&storage)?;
+            let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
-        Ok((cfg, taxman, chain_id))
-    });
+            Ok((cfg, taxman, chain_id))
+        },
+        evt
+    };
 
     evt.taxman = Some(cfg.taxman);
 
@@ -1047,13 +1082,16 @@ where
 {
     let mut evt = EvtFinalize::base(tx.sender, tx.gas_limit, outcome.gas_used);
 
-    let (cfg, taxman, chain_id) = catch_event!(evt, {
-        let cfg = CONFIG.load(&storage)?;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
+    let (cfg, taxman, chain_id) = catch_event! {
+        {
+            let cfg = CONFIG.load(&storage)?;
+            let chain_id = CHAIN_ID.load(&storage)?;
+            let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
 
-        Ok((cfg, taxman, chain_id))
-    });
+            Ok((cfg, taxman, chain_id))
+        },
+        evt
+    };
 
     evt.taxman = Some(cfg.taxman);
 
@@ -1129,11 +1167,15 @@ where
 {
     let mut evt = EvtCron::base(contract, time, next);
 
-    let (code_hash, chain_id) = catch_event!(evt, {
-        let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
-        let chain_id = CHAIN_ID.load(&storage)?;
-        Ok((code_hash, chain_id))
-    });
+    let (code_hash, chain_id) = catch_event! {
+        {
+            let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
+            let chain_id = CHAIN_ID.load(&storage)?;
+
+            Ok((code_hash, chain_id))
+        },
+        evt
+    };
 
     let ctx = Context {
         chain_id,

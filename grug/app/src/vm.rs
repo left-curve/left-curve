@@ -152,12 +152,11 @@ where
     let evt = EvtGuest::base(ctx.contract, name);
 
     let response = catch_event! {
-        evt,
         {
             call_in_0_out_1::<_, GenericResult<Response>>(
                 vm.clone(),
-        storage.clone(),
-        gas_tracker.clone(),
+            storage.clone(),
+            gas_tracker.clone(),
                 query_depth,
                 state_mutable,
                 name,
@@ -169,7 +168,8 @@ where
                 name,
                 msg,
             })
-        }
+        },
+        evt
     };
 
     handle_response(vm, storage, gas_tracker, msg_depth, ctx, response, evt)
@@ -198,12 +198,11 @@ where
     let evt = EvtGuest::base(ctx.contract, name);
 
     let response = catch_event! {
-        evt,
         {
             call_in_1_out_1::<_, _, GenericResult<Response>>(
                 vm.clone(),
-        storage.clone(),
-        gas_tracker.clone(),
+                storage.clone(),
+                gas_tracker.clone(),
                 query_depth,
                 state_mutable,
                 name,
@@ -216,7 +215,8 @@ where
                 name,
                 msg,
             })
-        }
+        },
+        evt
     };
 
     handle_response(vm, storage, gas_tracker, msg_depth, ctx, response, evt)
@@ -247,12 +247,11 @@ where
     let evt = EvtGuest::base(ctx.contract, name);
 
     let response = catch_event! {
-        evt,
         {
             call_in_2_out_1::<_, _, _, GenericResult<Response>>(
                 vm.clone(),
-        storage.clone(),
-        gas_tracker.clone(),
+                storage.clone(),
+                gas_tracker.clone(),
                 query_depth,
                 state_mutable,
                 name,
@@ -266,7 +265,8 @@ where
                 name,
                 msg,
             })
-        }
+        },
+        evt
     };
 
     handle_response(vm, storage, gas_tracker, msg_depth, ctx, response, evt)

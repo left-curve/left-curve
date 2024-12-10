@@ -701,7 +701,6 @@ where
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.
-
     events.msgs_and_backrun = process_msgs_then_backrun(
         vm.clone(),
         msg_buffer.clone(),

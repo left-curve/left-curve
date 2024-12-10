@@ -101,7 +101,7 @@ impl From<EventResult<Event>> for HandleEventStatus {
 
 #[macro_export]
 macro_rules! catch_event {
-    ($evt:expr, $block:block) => {
+    ($block:block, $evt:expr) => {
         match (|| $block)() {
             Ok(val) => val,
             Err(err) => {
