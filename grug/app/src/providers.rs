@@ -1,8 +1,8 @@
 use {
-    crate::{process_query, AppCtx, AppError, Vm},
+    crate::{process_query, AppError, GasTracker, Vm},
     grug_types::{
-        concat, increment_last_byte, trim, GenericResult, GenericResultExt, Order, Querier, Query,
-        QueryResponse, Record, StdError, StdResult, Storage,
+        concat, increment_last_byte, trim, BlockInfo, GenericResult, GenericResultExt, Order,
+        Querier, Query, QueryResponse, Record, StdError, StdResult, Storage,
     },
 };
 
@@ -121,12 +121,25 @@ fn prefixed_range_bounds(
 
 /// Provides querier functionalities to the VM.
 pub struct QuerierProvider<VM> {
-    ctx: AppCtx<VM>,
+    vm: VM,
+    storage: Box<dyn Storage>,
+    gas_tracker: GasTracker,
+    block: BlockInfo,
 }
 
 impl<VM> QuerierProvider<VM> {
-    pub fn new(ctx: AppCtx<VM>) -> Self {
-        Self { ctx }
+    pub fn new(
+        vm: VM,
+        storage: Box<dyn Storage>,
+        gas_tracker: GasTracker,
+        block: BlockInfo,
+    ) -> Self {
+        Self {
+            vm,
+            storage,
+            gas_tracker,
+            block,
+        }
     }
 }
 
@@ -137,7 +150,15 @@ where
     AppError: From<VM::Error>,
 {
     pub fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
-        process_query(self.ctx.clone(), query_depth, req).into_generic_result()
+        process_query(
+            self.vm.clone(),
+            self.storage.clone(),
+            self.gas_tracker.clone(),
+            self.block,
+            query_depth,
+            req,
+        )
+        .into_generic_result()
     }
 }
 
