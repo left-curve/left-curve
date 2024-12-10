@@ -7,6 +7,7 @@ mod event;
 mod execute;
 mod gas;
 mod indexer;
+mod macros;
 mod proposal;
 mod providers;
 mod query;
