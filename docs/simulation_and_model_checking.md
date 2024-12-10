@@ -8,15 +8,15 @@ In order to obtain confidence that the model is correct, in respect to the invar
 | [Tree manipulation](#simulating-tree-manipulation)                     | 16 hours   | 12                 | 3         | 100k                | 1.2M          | 6               | [25e3960](https://github.com/informalsystems/left-curve-jmt/commit/25e3960869e5a200253c6def80ce0c19cdd0dff7)          |
 | [Proofs (First simulation)](#simulating-proofs-and-proof-verification) | 17 hours   | 12                 | 3         | 15k                 | 180k          | 4               | [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4) |
 | [Proofs (Second simulation)](#second-simulation)                       | 8 hours    | 12                 | 3         | 20k                 | 240k          | 4               | [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac)          |
-| [Final simulation (treeInvariants)](#final-simulation-results)         | 9 hours    | 6                  | 3         | 40k                 | 240k          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
-| [Final simulation (proofInvariants)](#final-simulation-results)        | 9 hours    | 6                  | 3         | 50k                 | 300k          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
+| [Final simulation (treeInvariants)](#final-simulation-results)         | 66 hours   | 6                  | 3         | ~350k               | 1.8M          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
+| [Final simulation (proofInvariants)](#final-simulation-results)        | 66 hours   | 6                  | 3         | ~400k               | 2.3M          | 4               | [28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)          |
 
 ## Summary of Testing
 
-| Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                 | Commit                                                                                                       |
-|-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](./test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
-| [Proof verification across different trees](#proof-verification-across-different-trees) | 1 hour     | 8                  | 500                 | 4k            | [proofs_test.qnt](./test/proofs_test.qnt) | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                        | Commit                                                                                                       |
+|-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](../quint/test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
+| [Proof verification across different trees](#proof-verification-across-different-trees) | 3 hours    | 10                 | 4k                  | 40k           | [proofs_test.qnt](../quint/test/proofs_test.qnt) | [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) |
 
 ## Summary of Model Checking
 
@@ -81,9 +81,9 @@ We ran an **8-hour simulation** with **12 parallel instances** of the simulator,
 
 ### **Final simulation results**
 
-After all this iteration, we ran two final simulations with the latest version ([28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)), only differing by the invariants we check in each of them. We checked consecutive "fancy" apply operations on top of an empty tree for 3 steps. This was run for **9 hours**, with **6 parallel instances** per command.
-- Invariant: `treeInvariants` (all tree manipulation invariants): Total samples = 240k
-- Invariant: `proofInvariants` (all proof-related invariants): Total samples = 300k
+After all this iteration, we ran two final simulations with the latest version ([28ac5e5](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27)), only differing by the invariants we check in each of them. We checked consecutive "fancy" apply operations on top of an empty tree for 3 steps. This was run for **66 hours**, with **6 parallel instances** per command.
+- Invariant: `treeInvariants` (all tree manipulation invariants): Total samples = 1.8M
+- Invariant: `proofInvariants` (all proof-related invariants): Total samples = 2.3M
 
 ### **Testing**
 
@@ -91,7 +91,7 @@ Another way to use the Quint random simulator is to run tests, which work like p
 
 #### **Simple apply vs Fancy apply**
 
-We ran an **6-hour** test with **8 parallel instances** of the test simulator, and **10k samples per command**. This gave us a total of **80k samples** for each test. It was run for the [tree_test.qnt](./test/tree_test.qnt) file which includes two tests:
+We ran an **6-hour** test with **8 parallel instances** of the test simulator, and **10k samples per command**. This gave us a total of **80k samples** for each test. It was run for the [tree_test.qnt](../quint/test/tree_test.qnt) file which includes two tests:
 ```
 ok simpleVsFancyTest passed 10000 test(s)
 ok simpleVsFancyMultipleRepsTest passed 10000 test(s)
@@ -101,21 +101,19 @@ Commit for this experiment: [7081237](https://github.com/informalsystems/left-cu
 
 #### **Proof verification across different trees**
 
-We ran a **1-hour** test with **8 parallel instances** of the test simulator, and **500 samples per command**. This gave us a total of **4k samples** for each test. It was run for the [proofs_test.qnt](./test/proofs_test.qnt) file which includes the following:
+We ran a **3-hour** test with **10 parallel instances** of the test simulator, and **4k samples per command**. This gave us a total of **40k samples** for each test. It was run for the [proofs_test.qnt](../quint/test/proofs_test.qnt) file which includes the following:
 
 ```
-ok twoDifferentTreesTest passed 500 test(s)
-ok twoDifferentTreesByOnlyValuesTest passed 500 test(s)
-ok twoDifferentTreesByOnlyOneValueTest passed 500 test(s)
-ok twoDifferentTreesSameByOnlyOneKVTest passed 500 test(s)
-ok verificationOnPrunnedTreeTest passed 500 test(s)
-ok leafNotExistsThenExistsTest passed 500 test(s)
-1) leafExistsThenNotExistsTest failed after 392 test(s)
+ok twoDifferentTreesTest passed 4000 test(s)
+ok twoDifferentTreesByOnlyValuesTest passed 4000 test(s)
+ok twoDifferentTreesByOnlyOneValueTest passed 4000 test(s)
+ok twoDifferentTreesSameByOnlyOneKVTest passed 4000 test(s)
+ok verificationOnPrunnedTreeTest passed 4000 test(s)
+ok leafNotExistsThenExistsTest passed 4000 test(s)
+ok leafExistsThenNotExistsTest passed 4000 test(s)
 ```
 
-Commit for this experiment: [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27).
-
-- TODO: fix failing test and update
+Commit for this experiment: [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) 
 
 ## **Model Checking**
 
@@ -128,7 +126,7 @@ There are still some integration issues between Quint and Apalache, which is use
 - There were many issues translating polymorphic Quint operators into Apalache's representation, so we did some adaptations to avoid some instances of polymorphism, mostly regarding polymorphic usage of the `None` constructor inside the same operator.
 - Many issues could only be fixed on Apalache's side, which we did. See the [PR](https://github.com/apalache-mc/apalache/pull/3041). We used a version of Apalache with these fixes in order to generate the TLA+ model.
 
-The generated TLA+ model is available on the model-checking branch at [apply_state_machine.tla](https://github.com/informalsystems/left-curve-jmt/blob/gabriela/model-checking/quint/apply_state_machine.tla)
+The generated TLA+ models are available in the [quint/tla folder](../quint/tla) together with instructions on how to run them.
 
 ### **Initial states for model checking**
 

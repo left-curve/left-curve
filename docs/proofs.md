@@ -12,10 +12,10 @@ This document covers:
 - [`ics23_prove`](#generating-commitment-proof)
 
 > [!TIP]
-> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](./proofs.qnt).
+> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](../quint/proofs.qnt).
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec proofs.qnt
+```bluespec quint/proofs.qnt
 // -*- mode: Bluespec; -*-
 
 module proofs {
@@ -292,7 +292,7 @@ pure def leftNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
   <<<leftNeighbor>>>
 ```
 --->
-First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `less_than()` function defined in the [hashes.qnt](./hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
+First, we get all leaf nodes with `key_hash` smaller than the `key_hash` function parameter. For that we are calling `less_than()` function defined in the [hashes.qnt](../quint/hashes.qnt). This function will compare two lists of integers (e.g., bytes) lexicographically.
 
 ```bluespec "leftNeighbor" +=
 val smallerKeyNodes = t.values().filter(n => match n {

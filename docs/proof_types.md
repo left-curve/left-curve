@@ -10,7 +10,7 @@ This document describes how we defined proof types, and how everything correspon
 Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec proof_types.qnt
+```bluespec quint/proof_types.qnt
 // -*- mode: Bluespec; -*-
 
 module proof_types {

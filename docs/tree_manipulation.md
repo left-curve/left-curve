@@ -21,10 +21,10 @@ This document covers the correspondance of all the `apply_*` functions and their
 - [`create_subtree`](#create-subtree)
 
 > [!TIP]
-> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](./apply_fancy.qnt).
+> This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](../quint/apply_fancy.qnt).
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering
-```bluespec apply_fancy.qnt
+```bluespec quint/apply_fancy.qnt
 // -*- mode: Bluespec; -*-
 
 module apply_fancy {
@@ -44,7 +44,7 @@ module apply_fancy {
 
 ## Types
 
-Types have a 1:1 mapping between Rust and Quint that is pretty trivial, so won't be covered here. See [tree.qnt](./tree.qnt) and [node.qnt](./node.qnt) for types. The only difference is that we chose to use records instead of tuples for most things, as accessing records is more readable than accessing tuples, specially since Quint doesn't support destructuring tuples at this time.
+Types have a 1:1 mapping between Rust and Quint that is pretty trivial, so won't be covered here. See [tree.qnt](../quint/tree.qnt) and [node.qnt](../quint/node.qnt) for types. The only difference is that we chose to use records instead of tuples for most things, as accessing records is more readable than accessing tuples, specially since Quint doesn't support destructuring tuples at this time.
 
 In order to replicate Rust's mutations over the tree in Quint, we need to also return the modified values. So, we define a type for the return of apply operations:
 

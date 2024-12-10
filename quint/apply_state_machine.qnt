@@ -182,8 +182,6 @@ module apply_state_machine {
   }
 
   /// Every internal node must have at least one child with the same version
-  /// This doesn't hold - should it?
-  /// TODO: check why this doesn't hold even when there are no deletions (seed 0x61ec6acbe4eda)
   val denseVersionsInv: bool = {
     def denseVersions(t: TreeMap): bool = {
       t.keys().forall(nId => {
