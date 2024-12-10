@@ -1,9 +1,9 @@
 use {
     crate::{
-        catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
-        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upload,
-        do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
-        query_config, query_contract, query_contracts, query_supplies, query_supply,
+        catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
+        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
         query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db,
         EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
         ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
@@ -12,10 +12,10 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
-        GenericResultExt, GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents,
-        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        CommitmentStatus, CronOutcome, Duration, Event, GenericResult, GenericResultExt,
+        GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
+        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
+        TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
@@ -768,27 +768,17 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        match process_msg(
-            vm.clone(),
-            Box::new(buffer.clone()),
-            gas_tracker.clone(),
-            block,
-            0,
-            tx.sender,
-            msg.clone(),
-        ) {
-            EventResult::Ok(event) => evt.msgs.push(EventStatus::Ok(event)),
-            EventResult::Err { event, error } => {
-                evt.msgs.push(EventStatus::Failed {
-                    event,
-                    error: error.to_string(),
-                });
-                return EventResult::SubErr { event: evt, error };
-            },
-            EventResult::SubErr { event, error } => {
-                evt.msgs.push(EventStatus::NestedFailed(event));
-                return EventResult::SubErr { event: evt, error };
-            },
+        catch_and_append_event! {
+            process_msg(
+                vm.clone(),
+                Box::new(buffer.clone()),
+                gas_tracker.clone(),
+                block,
+                0,
+                tx.sender,
+                msg.clone(),
+            ),
+            evt
         }
     }
 
