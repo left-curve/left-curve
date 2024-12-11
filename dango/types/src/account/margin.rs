@@ -1,16 +1,7 @@
-use grug::{Bound, Bounded, Bounds, NumberConst, Udec128};
+use grug::{Bounded, Coins, Denom, Udec128, ZeroExclusiveOneInclusive};
 
-/// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
-#[grug::derive(Serde)]
-pub struct CollateralPowerBounds;
-
-impl Bounds<Udec128> for CollateralPowerBounds {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
-}
-
-/// A decimal bounded by the collateral power bounds.
-pub type CollateralPower = Bounded<Udec128, CollateralPowerBounds>;
+/// A decimal bounded by the bounds: 0 < CollateralPower <= 1.
+pub type CollateralPower = Bounded<Udec128, ZeroExclusiveOneInclusive>;
 
 /// The response type for a margin account's `Health` query.
 #[grug::derive(Serde)]
@@ -19,9 +10,24 @@ pub struct HealthResponse {
     pub utilization_rate: Udec128,
     /// The total value of the margin account's debt.
     pub total_debt_value: Udec128,
+    /// The total value of the margin account's collateral.
+    pub total_collateral_value: Udec128,
     /// The total value of the margin account's collateral, adjusted for
     /// the collateral power of each denom.
     pub total_adjusted_collateral_value: Udec128,
+    /// All of the accounts debts.
+    pub debts: Coins,
+    /// All of the account's collateral balances.
+    pub collaterals: Coins,
+}
+
+#[grug::derive(Serde)]
+pub enum ExecuteMsg {
+    /// Liquidate the margin account if it has become undercollateralized.
+    Liquidate {
+        /// The collateral denom to liquidate and be compensated with.
+        collateral: Denom,
+    },
 }
 
 /// Query messages for the margin account
