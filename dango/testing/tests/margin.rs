@@ -1,6 +1,6 @@
 use {
     dango_genesis::{Codes, Contracts},
-    dango_testing::{setup_test_naive, Accounts, TestAccount, TestSuite},
+    dango_testing::{setup_test_naive, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
             self,
@@ -14,7 +14,7 @@ use {
     },
     grug::{
         btree_map, Addressable, Binary, Coins, ContractWrapper, Denom, HashExt, JsonSerExt,
-        Message, MsgConfigure, NonEmpty, NumberConst, ResultExt, Udec128, Uint128,
+        Message, MsgConfigure, NonEmpty, NumberConst, QuerierExt, ResultExt, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     std::{str::FromStr, sync::LazyLock},
@@ -82,7 +82,7 @@ fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
 
 fn register_price_feed(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
     denom: Denom,
     precision: u8,
@@ -103,7 +103,7 @@ fn register_price_feed(
 
 fn feed_oracle_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
     vaa: &str,
 ) {
@@ -123,7 +123,7 @@ fn feed_oracle_price(
 /// Feeds the oracle contract a price for USDC
 fn register_and_feed_usdc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
     let id = PythId::from_str(USDC_USD_ID).unwrap();
@@ -134,7 +134,7 @@ fn register_and_feed_usdc_price(
 
 fn register_and_feed_btc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
     let btc_denom = Denom::from_str("bridge/btc").unwrap();
@@ -145,7 +145,7 @@ fn register_and_feed_btc_price(
 
 fn set_collateral_power(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     denom: Denom,
     power: CollateralPower,
 ) {
@@ -557,17 +557,22 @@ fn liquidation_works_with_multiple_debt_denoms() {
     );
 
     // Check that the debt after is correct (using manual calculation via equations)
+    assert_approx_eq(
+        health.total_debt_value,
+        Udec128::from_str("41609.67023").unwrap(),
+        "0.0001",
+    );
     let debts_after = suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
         .unwrap();
-    assert_eq!(debts_after.amount_of(&BTC), Uint128::new(42767776));
+    assert_eq!(debts_after.amount_of(&BTC), Uint128::new(42916818));
 
     // Check that the collateral value after is correct (using manual calculation via equations)
     assert_approx_eq(
         health.total_adjusted_collateral_value,
-        Udec128::from_str("46072.40865").unwrap(),
+        Udec128::from_str("46232.96693").unwrap(),
         "0.0001",
     );
 }

@@ -13,7 +13,7 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
-        NumberConst, QuerierExt, Response, StdResult, Tx, Udec128, Uint128,
+        Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128, Uint128,
     },
     std::cmp::{max, min},
 };
@@ -88,17 +88,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         "account is not undercollateralized"
     );
 
-    // Calculate liquidation bonus.
-    // Liquidation bonus is defined as one minus health factor, bounded by the minimum
-    // and maximum liquidation bonus variables.
     let health_factor = utilization_rate.checked_inv()?;
-    let liq_bonus = min(
-        max(*app_cfg.min_liquidation_bonus, Udec128::ONE - health_factor),
-        *app_cfg.max_liquidation_bonus,
-    );
-
-    // Calculate value of maximum repayable debt (MRD) to reach the target utilization rate.
-    // See derivation of the equation in [liquidation-math.md](book/notes/liquidation-math.md).
     let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?;
     let liquidation_collateral_power = *app_cfg
         .collateral_powers
@@ -106,21 +96,33 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         .ok_or_else(|| anyhow!("collateral power not found for chosen collateral"))?
         .inner();
 
-    // If either numerator or denominator is negative, then no amount of debt repayment will make
-    // the account reach the target health factor (bad debt accrues). In this case, we set the MRD
-    // to the account's total debt value.
-    let mrd_to_target_health = if total_adjusted_collateral_value
-        < (Udec128::ONE + liq_bonus) * total_debt_value * liquidation_collateral_power
-        || target_health_factor <= (Udec128::ONE + liq_bonus) * liquidation_collateral_power
+    // Calculate liquidation bonus.
+    let bonus_cap = (total_adjusted_collateral_value
+        / (total_debt_value * liquidation_collateral_power))
+        .saturating_sub(Udec128::ONE);
+    let liq_bonus = max(
+        *app_cfg.min_liquidation_bonus,
+        min(
+            bonus_cap,
+            min(*app_cfg.max_liquidation_bonus, Udec128::ONE - health_factor),
+        ),
+    );
+
+    // Calculate value of maximum repayable debt (MRD) to reach the target utilization rate.
+    // See derivation of the equation in [liquidation-math.md](book/notes/liquidation-math.md).
+    // It shouldn't be possible for the numerator to be negative, as the accunt should only be
+    // liquidatable if it is undercollateralized. If the denominator is negative (should only
+    // happen with an excessive minimum liquidation bonus), then the MRD is set to the account's
+    // total debt value.
+    let mrd_to_target_health = if target_health_factor
+        <= (Udec128::ONE + liq_bonus) * liquidation_collateral_power
     {
         total_debt_value
     } else {
-        let numerator = total_adjusted_collateral_value
-            - (Udec128::ONE + liq_bonus) * total_debt_value * liquidation_collateral_power;
+        let numerator = total_debt_value * target_health_factor - total_adjusted_collateral_value;
         let denominator =
             target_health_factor - (Udec128::ONE + liq_bonus) * liquidation_collateral_power;
-
-        total_debt_value - numerator / denominator
+        numerator / denominator
     };
 
     // Calculate the maximum debt that can be repaid based on the balance of the
