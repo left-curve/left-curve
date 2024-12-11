@@ -124,15 +124,21 @@ impl BlockToIndex {
         // existing block and change `block_id` when/if we added foreign keys
         models.block.insert(db).await?;
 
-        entity::transactions::Entity::insert_many(models.transactions)
-            .exec(db)
-            .await?;
-        entity::messages::Entity::insert_many(models.messages)
-            .exec(db)
-            .await?;
-        entity::events::Entity::insert_many(models.events)
-            .exec(db)
-            .await?;
+        if !models.transactions.is_empty() {
+            entity::transactions::Entity::insert_many(models.transactions)
+                .exec(db)
+                .await?;
+        }
+        if !models.messages.is_empty() {
+            entity::messages::Entity::insert_many(models.messages)
+                .exec(db)
+                .await?;
+        }
+        if !models.events.is_empty() {
+            entity::events::Entity::insert_many(models.events)
+                .exec(db)
+                .await?;
+        }
 
         Ok(())
     }
@@ -299,18 +305,37 @@ impl Indexer for NonBlockingIndexer {
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing started");
 
-            let db = context.db.begin().await?;
-            let block_height = block_to_index.block_info.height;
-            block_to_index.save(&db).await?;
-            db.commit().await?;
-
-            let _ = Self::remove_or_fail(blocks, &block_height)?;
+            if let Err(err) = Self::store_block(&context, block_to_index, blocks).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    block_height = block_height,
+                    "post_indexing error: {:?}",
+                    err
+                );
+            }
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");
 
             Ok::<_, error::IndexerError>(())
         });
+
+        Ok(())
+    }
+}
+
+impl NonBlockingIndexer {
+    async fn store_block(
+        context: &Context,
+        block_to_index: BlockToIndex,
+        blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
+    ) -> error::Result<()> {
+        let db = context.db.begin().await?;
+        let block_height = block_to_index.block_info.height;
+        block_to_index.save(&db).await?;
+        db.commit().await?;
+
+        Self::remove_or_fail(blocks, &block_height)?;
 
         Ok(())
     }
