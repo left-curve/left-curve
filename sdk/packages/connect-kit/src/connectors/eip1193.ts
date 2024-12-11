@@ -1,6 +1,6 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
-import { createKeyHash, createSignerClient } from "@left-curve/sdk";
+import { ConnectorSigner, createKeyHash, createSignerClient } from "@left-curve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
 import { KeyAlgo } from "@left-curve/types";
 import {
@@ -85,7 +85,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async getClient() {
         if (!_client) {
           _client = createSignerClient({
-            signer: this,
+            signer: new ConnectorSigner(this),
             type: "eip1193",
             username: _username,
             transport: _transport,
@@ -131,12 +131,8 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         return _isAuthorized;
       },
       async signArbitrary(payload) {
-        const {
-          typedData: types,
-          primaryType,
-          message,
-        } = payload as {
-          typedData: Record<string, TypedDataProperty[]>;
+        const { types, primaryType, message } = payload as {
+          types: Record<string, TypedDataProperty[]>;
           message: Json;
           primaryType: string;
         };
@@ -146,6 +142,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
         const typedData = composeArbitraryTypedData({ message, types, primaryType });
+        const hashData = await hashTypedData(typedData);
         const signData = JSON.stringify(typedData);
 
         const signature = await provider.request({
@@ -158,7 +155,14 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           typed_data: encodeBase64(encodeUtf8(signData)),
         };
 
-        return { signature: { eip712 } };
+        const keyHash = createKeyHash({
+          pubKey: await secp256k1RecoverPubKey(hashData, signature, true),
+          keyAlgo: KeyAlgo.Secp256k1,
+        });
+
+        const credential = { signature: { eip712 } };
+
+        return { credential, keyHash };
       },
       async signTx(signDoc) {
         try {

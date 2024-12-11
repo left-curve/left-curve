@@ -94,7 +94,11 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async signArbitrary(payload) {
         const bytes = sha256(serialize(payload));
 
-        const { webauthn, signature: asnSignature } = await requestWebAuthnSignature({
+        const {
+          webauthn,
+          credentialId,
+          signature: asnSignature,
+        } = await requestWebAuthnSignature({
           challenge: bytes,
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
@@ -109,7 +113,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        return { signature: { passkey } };
+        const credential = { signature: { passkey } };
+        const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+
+        return { credential, keyHash };
       },
       async signTx(signDoc) {
         const { sender, messages, chainId, sequence } = signDoc;

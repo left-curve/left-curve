@@ -30,7 +30,7 @@ export function useStorage<T = undefined>(
   })();
 
   const { data, refetch } = useQuery<T, Error, T, string[]>({
-    queryKey: [key],
+    queryKey: ["grustorage", key],
     queryFn: () => {
       const item = storage.getItem(key, {
         version: __version__,

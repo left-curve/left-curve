@@ -7,7 +7,7 @@ export function useSigningClient() {
   const { client } = useSessionKey();
 
   return useQuery({
-    queryKey: ["signing_client", connectorClient, client],
+    queryKey: ["signing_client", connectorClient?.uid, client?.type],
     queryFn: async () => {
       if (!client) return connectorClient;
       return client;

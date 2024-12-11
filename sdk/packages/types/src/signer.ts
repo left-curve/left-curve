@@ -5,6 +5,8 @@ import type { SignDoc } from "./signature.js";
 
 export type Signer = {
   getKeyHash: () => Promise<KeyHash>;
-  signArbitrary: (payload: JsonValue) => Promise<StandardCredential>;
+  signArbitrary: (
+    payload: JsonValue,
+  ) => Promise<{ credential: StandardCredential; keyHash: KeyHash }>;
   signTx: (signDoc: SignDoc) => Promise<{ credential: Credential; keyHash: KeyHash }>;
 };

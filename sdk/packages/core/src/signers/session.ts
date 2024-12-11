@@ -11,14 +11,11 @@ import type {
 } from "@left-curve/types";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
-  const { sessionInfo, sessionInfoSignature, privateKey, publicKey } = session;
+  const { sessionInfo, sessionInfoSignature, privateKey, keyHash } = session;
   const signer = new Secp256k1(privateKey);
 
   async function getKeyHash() {
-    return createKeyHash({
-      pubKey: publicKey,
-      keyAlgo: "secp256k1",
-    });
+    return keyHash;
   }
 
   async function signTx(signDoc: SignDoc) {
@@ -33,7 +30,6 @@ export const createSessionSigner = (session: SigningSession): Signer => {
     };
 
     const credential = { session };
-    const keyHash = await getKeyHash();
 
     return { credential, keyHash };
   }
@@ -41,8 +37,8 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   async function signArbitrary(payload: JsonValue) {
     const bytes = sha256(serialize(payload));
     const signature = signer.createSignature(bytes);
-
-    return { signature: { secp256k1: encodeBase64(signature) } };
+    const credential = { signature: { secp256k1: encodeBase64(signature) } };
+    return { credential, keyHash };
   }
 
   return {

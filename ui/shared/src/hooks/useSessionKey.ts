@@ -42,31 +42,32 @@ export function useSessionKey() {
     const publicKey = keyPair.getPublicKey();
 
     const sessionInfo: SigningSessionInfo = {
-      sessionKey: encodeBase64(publicKey),
       whitelistedAccounts,
-      expireAt,
+      sessionKey: encodeBase64(publicKey),
+      expireAt: expireAt.toString(),
     };
 
     const typedData = {
-      primaryType: "Dango:CreateSessionKey",
+      primaryType: "Message",
       message: sessionInfo,
       types: {
-        "Dango:CreateSessionKey": [
-          { name: "session_key", type: "string" },
-          { name: "expire_at", type: "uint256" },
+        Message: [
           { name: "whitelisted_accounts", type: "address[]" },
+          { name: "session_key", type: "string" },
+          { name: "expire_at", type: "string" },
         ],
       },
     };
 
     const payload = connectorClient.type === "eip1193" ? typedData : sessionInfo;
-    const signature = await connectorClient.signer.signArbitrary(payload);
+    const { credential, keyHash } = await connectorClient.signer.signArbitrary(payload);
 
     const session: SigningSession = {
+      keyHash,
+      sessionInfo,
       privateKey: keyPair.privateKey,
       publicKey: keyPair.getPublicKey(),
-      sessionInfo,
-      sessionInfoSignature: signature,
+      sessionInfoSignature: credential,
     };
 
     setSession(session);

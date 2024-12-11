@@ -79,10 +79,14 @@ export class PrivateKeySigner implements Signer {
     return { credential, keyHash };
   }
 
-  async signArbitrary(payload: JsonValue): Promise<StandardCredential> {
+  async signArbitrary(
+    payload: JsonValue,
+  ): Promise<{ credential: StandardCredential; keyHash: KeyHash }> {
     const bytes = sha256(serialize(payload));
     const signature = await this.signBytes(bytes);
-    return { signature: { secp256k1: encodeBase64(signature) } };
+    const credential = { signature: { secp256k1: encodeBase64(signature) } };
+    const keyHash = await this.getKeyHash();
+    return { credential, keyHash };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {

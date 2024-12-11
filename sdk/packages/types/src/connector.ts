@@ -93,7 +93,7 @@ export type CreateConnectorFn<
   getClient(): Promise<Client<transport, chain, signer, any>>;
   getKeyHash(): Promise<KeyHash>;
   isAuthorized(): Promise<boolean>;
-  signArbitrary(data: JsonValue): Promise<StandardCredential>;
+  signArbitrary(data: JsonValue): Promise<{ credential: StandardCredential; keyHash: KeyHash }>;
   signTx(signDoc: signDoc): Promise<SignedDoc>;
   switchChain?(parameters: { chainId: string }): Promise<Chain>;
   onAccountsChanged?(accounts: string[]): void;

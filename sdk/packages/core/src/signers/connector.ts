@@ -10,7 +10,7 @@ import type {
 type Connectorish = {
   getKeyHash(): Promise<KeyHash>;
   signTx(signDoc: SignDoc): Promise<SignedDoc>;
-  signArbitrary(data: JsonValue): Promise<StandardCredential>;
+  signArbitrary(data: JsonValue): Promise<{ credential: StandardCredential; keyHash: KeyHash }>;
 };
 
 export class ConnectorSigner implements Signer {
@@ -24,7 +24,9 @@ export class ConnectorSigner implements Signer {
     return await this.connector.signTx(signDoc);
   }
 
-  async signArbitrary(data: JsonValue): Promise<StandardCredential> {
+  async signArbitrary(
+    data: JsonValue,
+  ): Promise<{ credential: StandardCredential; keyHash: KeyHash }> {
     return await this.connector.signArbitrary(data);
   }
 }

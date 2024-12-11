@@ -15,7 +15,7 @@ export type SigningSessionInfo = {
   /** Public key of the session key. */
   sessionKey: Base64;
   /** Expiry time of the session key. */
-  expireAt: number;
+  expireAt: string;
   /** Addresses that can use the session key. */
   whitelistedAccounts: Address[];
 };
@@ -23,6 +23,7 @@ export type SigningSessionInfo = {
 export type SigningSession = {
   publicKey: Uint8Array;
   privateKey: Uint8Array;
+  keyHash: string;
   sessionInfo: SigningSessionInfo;
   sessionInfoSignature: StandardCredential;
 };
