@@ -372,6 +372,9 @@ export function createConfig<
       get store() {
         return store as StoreApi;
       },
+      get transports() {
+        return rest.transports;
+      },
       connectors: {
         setup,
         setState(value) {

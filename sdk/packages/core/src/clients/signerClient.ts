@@ -28,12 +28,12 @@ export function createSignerClient<
 >(
   parameters: SignerClientConfig<transport, chain, signer>,
 ): SignerClient<transport, chain, signer> {
-  const { name = "Wallet Client" } = parameters;
+  const { name = "Signer Client", type = "signer" } = parameters;
 
   const client = createBaseClient({
     ...parameters,
     name,
-    type: "user",
+    type,
   });
 
   return client.extend(publicActions).extend(signerActions);
