@@ -301,6 +301,12 @@ export {
   QueryAbciResponse,
 } from "./cometbft.js";
 
+export {
+  SigningSession,
+  SessionCredential,
+  SigningSessionInfo,
+} from "./session.js";
+
 export { AccountType } from "./account.js";
 export { KeyTag, KeyAlgo } from "./key.js";
 export { Vote } from "./safe.js";
