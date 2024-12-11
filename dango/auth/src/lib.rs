@@ -243,7 +243,7 @@ fn verify_signature(
                     json!({
                         "session_key": session_info.session_key,
                         "expire_at": session_info.expire_at,
-                        "account": session_info.whitelisted_accounts,
+                        "whitelisted_accounts": session_info.whitelisted_accounts,
                     }),
                 ),
             };
@@ -573,5 +573,106 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+    }
+
+    #[test]
+    fn session_key_authentication() {
+        let user_address = Addr::from_str("0x227e7e3d56ffd984ba6e3ead892f5676fa722a16").unwrap();
+        let user_username = Username::from_str("javier_1").unwrap();
+        let user_keyhash = Hash160::from_str("904EF73D090935DB7DB7AE7162DB546268225D66").unwrap();
+        let user_key = Key::Secp256k1(
+            [
+                3, 115, 37, 57, 128, 37, 222, 189, 9, 42, 142, 196, 85, 27, 226, 112, 136, 195,
+                174, 6, 40, 39, 221, 182, 179, 146, 169, 207, 108, 218, 67, 27, 71,
+            ]
+            .into(),
+        );
+
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                dango: DANGO_DENOM.clone(),
+                addresses: AppAddresses {
+                    account_factory: ACCOUNT_FACTORY,
+                    // Address below don't matter for this test.
+                    ibc_transfer: Addr::mock(0),
+                    oracle: Addr::mock(1),
+                    lending: Addr::mock(0), // doesn't matter for this test
+                },
+                collateral_powers: btree_map! {},
+            })
+            .unwrap()
+            .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
+                ACCOUNTS_BY_USER
+                    .insert(storage, (&user_username, user_address))
+                    .unwrap();
+                KEYS.save(storage, (&user_username, user_keyhash), &user_key)
+                    .unwrap();
+                ACCOUNTS
+                    .save(storage, user_address, &Account {
+                        index: 5,
+                        params: AccountParams::Spot(Params::new(user_username)),
+                    })
+                    .unwrap()
+            });
+
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("dev-3")
+            .with_mode(AuthMode::Finalize);
+        let tx = r#"{
+            "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+            "credential": {
+                "session": {
+                "session_info": {
+                    "whitelisted_accounts": [
+                    "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+                    "0x5b7ef5f28e30600293b894d5ee24626e67b870b4",
+                    "0x93aa109663cfa6010d44173ab77bd59426e1c1ec",
+                    "0xa7ef873bdc24175627dceba5a1daaa523f2c91e6",
+                    "0xb24519bc9aa34b8e9d823a0ceba16612a1e3c5e8",
+                    "0xc3b7e81ea542252ede1a985e7cdee2517191e348",
+                    "0xc4a8136dd85ebd8feef0aa59cf9b33b7744f97dc",
+                    "0xfd56825e8989ae8aa59c0ab2a7dc3a65ba8e000a"
+                    ],
+                    "session_key": "AvPdvBi8TryY14G6LJ4TqYExLeXYAb2ZDkV8wWw6+LCV",
+                    "expire_at": "1733951225877"
+                },
+                "session_info_signature": {
+                    "signature": {
+                    "eip712": {
+                        "sig": "QnSzyw1ZbXZWTaa4YbRB6SyE/Qmufy+a2W9QrMCL9YULWm0QRdDtvwclCB5NVln8hLS49miTF9J66NcJM+IN7w==",
+                        "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7IndoaXRlbGlzdGVkX2FjY291bnRzIjpbIjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiIsIjB4NWI3ZWY1ZjI4ZTMwNjAwMjkzYjg5NGQ1ZWUyNDYyNmU2N2I4NzBiNCIsIjB4OTNhYTEwOTY2M2NmYTYwMTBkNDQxNzNhYjc3YmQ1OTQyNmUxYzFlYyIsIjB4YTdlZjg3M2JkYzI0MTc1NjI3ZGNlYmE1YTFkYWFhNTIzZjJjOTFlNiIsIjB4YjI0NTE5YmM5YWEzNGI4ZTlkODIzYTBjZWJhMTY2MTJhMWUzYzVlOCIsIjB4YzNiN2U4MWVhNTQyMjUyZWRlMWE5ODVlN2NkZWUyNTE3MTkxZTM0OCIsIjB4YzRhODEzNmRkODVlYmQ4ZmVlZjBhYTU5Y2Y5YjMzYjc3NDRmOTdkYyIsIjB4ZmQ1NjgyNWU4OTg5YWU4YWE1OWMwYWIyYTdkYzNhNjViYThlMDAwYSJdLCJzZXNzaW9uX2tleSI6IkF2UGR2Qmk4VHJ5WTE0RzZMSjRUcVlFeExlWFlBYjJaRGtWOHdXdzYrTENWIiwiZXhwaXJlX2F0IjoiMTczMzk1MTIyNTg3NyJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6IndoaXRlbGlzdGVkX2FjY291bnRzIiwidHlwZSI6ImFkZHJlc3NbXSJ9LHsibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                    }
+                    }
+                },
+                "session_signature": "6l5I6BTGqEmjNiZNOIkFjmT6enAcgBR6gHkh1IOLMUJn+mal5sEzMnbvahHSn574SlO9goHnp6WV4XMGnHuLtw=="
+                }
+            },
+            "data": {
+                "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
+                "username": "javier_1",
+                "sequence": 0
+            },
+            "msgs": [
+                {
+                "transfer": {
+                    "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
+                    "coins": {
+                    "uusdc": "1000000"
+                    }
+                }
+                }
+            ],
+            "gas_limit": 2647711
+        }"#;
+
+        authenticate_tx(
+            ctx.as_auth(),
+            tx.deserialize_json::<Tx>().unwrap(),
+            None,
+            None,
+        )
+        .unwrap();
     }
 }
