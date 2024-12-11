@@ -81,11 +81,17 @@ impl MigrationTrait for Migration {
                     .table(Event::Table)
                     .if_not_exists()
                     .col(pk_uuid(Event::Id))
+                    .col(uuid(Event::ParentId))
+                    .col(integer(Event::EventId)) // Incremented ID, unique per transaction, starting from 0, used for ordering
                     // TODO: add foreign key to transactions
                     .col(uuid(Event::TransactionId))
                     .col(date_time(Event::CreatedAt))
-                    .col(string(Event::Type))
-                    .col(json_binary(Event::Attributes))
+                    .col(string(Event::Type)) // TODO: enum: withhold, authenticate, msgs_and_backrun, finalize
+                    .col(string(Event::CommitmentStatus)) // TODO: enum: committed, failed, reverted, notreached
+                    .col(string(Event::Status)) // TODO: enum: Ok, nested_failed, failed, not_reached
+                    .col(string_null(Event::Error))
+                    .col(string_null(Event::RevertBy))
+                    .col(json_binary(Event::Data))
                     // TODO: add foreign key to blocks
                     .col(ColumnDef::new(Event::BlockHeight).big_unsigned().not_null())
                     .to_owned(),
