@@ -33,6 +33,7 @@ mod response;
 mod result;
 mod serializers;
 mod signer;
+mod status;
 mod time;
 mod tx;
 mod unique_vec;
@@ -43,7 +44,7 @@ pub use {
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
     encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
     length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
-    serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
+    serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
