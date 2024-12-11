@@ -3,7 +3,12 @@ import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/enco
 import { createKeyHash, createSignerClient } from "@left-curve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
 import { KeyAlgo } from "@left-curve/types";
-import { composeTypedData, getRootDomain, hashTypedData } from "@left-curve/utils";
+import {
+  composeArbitraryTypedData,
+  composeTxTypedData,
+  getRootDomain,
+  hashTypedData,
+} from "@left-curve/utils";
 import { createConnector } from "./createConnector.js";
 
 import type {
@@ -12,7 +17,9 @@ import type {
   ConnectorId,
   EIP1193Provider,
   Eip712Signature,
+  Json,
   Transport,
+  TypedDataProperty,
 } from "@left-curve/types";
 
 import "@left-curve/types/window";
@@ -79,6 +86,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         if (!_client) {
           _client = createSignerClient({
             signer: this,
+            type: "eip1193",
             username: _username,
             transport: _transport,
           });
@@ -123,10 +131,22 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         return _isAuthorized;
       },
       async signArbitrary(payload) {
+        const {
+          typedData: types,
+          primaryType,
+          message,
+        } = payload as {
+          typedData: Record<string, TypedDataProperty[]>;
+          message: Json;
+          primaryType: string;
+        };
+        if (!types || !primaryType) throw new Error("Typed data required");
+
         const provider = await this.getProvider();
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        const signData = JSON.stringify(payload);
+        const typedData = composeArbitraryTypedData({ message, types, primaryType });
+        const signData = JSON.stringify(typedData);
 
         const signature = await provider.request({
           method: "eth_signTypedData_v4",
@@ -153,7 +173,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             verifyingContract: sender,
           };
 
-          const typedData = composeTypedData(txMessage, domain, types);
+          const typedData = composeTxTypedData(txMessage, domain, types);
           const hashData = await hashTypedData(typedData);
           const signData = JSON.stringify(typedData);
 
