@@ -1,5 +1,5 @@
 use {
-    crate::{Attribute, Json, JsonSerExt, Message, StdResult},
+    crate::{Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -9,7 +9,7 @@ use {
 )]
 pub struct Response {
     pub submsgs: Vec<SubMessage>,
-    pub attributes: Vec<Attribute>,
+    pub subevents: Vec<ContractEvent>,
 }
 
 impl Response {
@@ -65,20 +65,32 @@ impl Response {
         self
     }
 
-    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    pub fn add_event<T, U>(mut self, ty: T, data: U) -> StdResult<Self>
     where
-        K: ToString,
-        V: ToString,
+        T: Into<String>,
+        U: Serialize,
     {
-        self.attributes.push(Attribute::new(key, value));
+        self.subevents.push(ContractEvent::new(ty, data)?);
+        Ok(self)
+    }
+
+    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
+        self.subevents.push(event);
         self
     }
 
-    pub fn add_attributes<A>(mut self, attrs: A) -> Self
+    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
+        if let Some(event) = maybe_event {
+            self.subevents.push(event);
+        }
+        self
+    }
+
+    pub fn add_subevents<I>(mut self, events: I) -> Self
     where
-        A: IntoIterator<Item = Attribute>,
+        I: IntoIterator<Item = ContractEvent>,
     {
-        self.attributes.extend(attrs);
+        self.subevents.extend(events);
         self
     }
 }
@@ -141,12 +153,30 @@ impl AuthResponse {
         self
     }
 
-    pub fn add_attribute<K, V>(mut self, key: K, value: V) -> Self
+    pub fn add_event<T, U>(mut self, ty: T, data: U) -> StdResult<Self>
     where
-        K: ToString,
-        V: ToString,
+        T: Into<String>,
+        U: Serialize,
     {
-        self.response = self.response.add_attribute(key, value);
+        self.response = self.response.add_event(ty, data)?;
+        Ok(self)
+    }
+
+    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
+        self.response = self.response.add_subevent(event);
+        self
+    }
+
+    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
+        self.response = self.response.may_add_subevent(maybe_event);
+        self
+    }
+
+    pub fn add_subevents<I>(mut self, events: I) -> Self
+    where
+        I: IntoIterator<Item = ContractEvent>,
+    {
+        self.response = self.response.add_subevents(events);
         self
     }
 }
@@ -164,6 +194,7 @@ impl AuthResponse {
 /// In case a callback is to be performed, the host passes a piece of binary
 /// payload data to the contract.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum ReplyOn {
     Success(Json),
     Error(Json),
@@ -241,6 +272,30 @@ impl SubMessage {
         Ok(Self {
             msg: msg.into(),
             reply_on: ReplyOn::Error(payload.to_json_value()?),
+        })
+    }
+}
+
+/// An event emitted by a contract, containing an arbitrary string identifying
+/// its type and an arbitrary JSON data.
+///
+/// In grug-app, this is converted to an [`Event::Guest`](crate::Event).
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ContractEvent {
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub data: Json,
+}
+
+impl ContractEvent {
+    pub fn new<T, U>(ty: T, data: U) -> StdResult<Self>
+    where
+        T: Into<String>,
+        U: Serialize,
+    {
+        Ok(Self {
+            ty: ty.into(),
+            data: data.to_json_value()?,
         })
     }
 }

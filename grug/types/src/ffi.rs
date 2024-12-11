@@ -16,7 +16,7 @@ pub type GenericResult<T> = Result<T, String>;
 /// The result for executing a submessage.
 ///
 /// This is provided to the contract in the `reply` entry point.
-pub type SubMsgResult = GenericResult<Vec<Event>>;
+pub type SubMsgResult = GenericResult<Event>;
 
 /// Describes an error of which the error can be stringified, and thus, can be
 /// passed across the FFI boundary.

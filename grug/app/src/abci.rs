@@ -2,7 +2,7 @@ use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
-        Attribute, BlockInfo, Duration, Event, GenericResult, Hash256, Outcome, TxOutcome,
+        BlockInfo, CheckTxOutcome, Duration, GenericResult, Hash256, JsonSerExt, TxOutcome,
         GENESIS_BLOCK_HASH,
     },
     prost::bytes::Bytes,
@@ -14,10 +14,7 @@ use {
         task::{Context, Poll},
     },
     tendermint::{
-        abci::{
-            request, response, types::ExecTxResult, v0_34::EventAttribute, Code, Event as TmEvent,
-            EventAttribute as TmAttribute,
-        },
+        abci::{request, response, types::ExecTxResult, Code},
         block::Height,
         merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
@@ -131,14 +128,14 @@ where
     fn tower_check_tx(&self, req: request::CheckTx) -> AppResult<response::CheckTx> {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         let res = match self.do_check_tx_raw(&req.tx) {
-            Ok(Outcome {
+            Ok(CheckTxOutcome {
                 result: GenericResult::Ok(events),
                 gas_limit,
                 ..
             }) => response::CheckTx {
                 code: Code::Ok,
-                events: into_tm_events(events),
                 gas_wanted: gas_limit.unwrap() as i64,
+                info: events.to_json_string()?,
                 // Note: Return `Outcome::gas_limited` instead of `gas_used here.
                 // This is because in `CheckTx` we don't run the entire tx, just
                 // the authentication part. As such, the gas consumption is
@@ -147,7 +144,7 @@ where
                 gas_used: gas_limit.unwrap() as i64,
                 ..Default::default()
             },
-            Ok(Outcome {
+            Ok(CheckTxOutcome {
                 result: GenericResult::Err(err),
                 gas_limit,
                 ..
@@ -191,16 +188,6 @@ where
 
         match self.do_finalize_block_raw(block, &req.txs) {
             Ok(outcome) => {
-                // In Cosmos SDK, this refers to the Begin/EndBlocker events.
-                // For us, this is the cronjob events.
-                // Note that failed cronjobs are ignored (not included in `ResponseFinalizeBlock`).
-                let events = outcome
-                    .cron_outcomes
-                    .into_iter()
-                    .filter_map(|outcome| outcome.result.ok().map(into_tm_events))
-                    .flatten()
-                    .collect();
-
                 let tx_results = outcome
                     .tx_outcomes
                     .into_iter()
@@ -209,7 +196,13 @@ where
 
                 Ok(response::FinalizeBlock {
                     app_hash: into_tm_app_hash(outcome.app_hash),
-                    events,
+                    // We don't return events to Tendermint (perhaps with the
+                    // exception of IBC events which may be needed by relayers).
+                    // Instead we use `BlockOutcome` which is provided to the
+                    // indexer.
+                    // In the future, we may switch to another consensus engine
+                    // such as Malachite which doesn't deal with events at all.
+                    events: vec![],
                     tx_results,
                     // We haven't implemented any mechanism to alter the
                     // validator set or consensus params yet.
@@ -343,7 +336,6 @@ fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
             code: Code::Ok,
             gas_wanted: outcome.gas_limit as i64,
             gas_used: outcome.gas_used as i64,
-            events: into_tm_events(outcome.events),
             ..Default::default()
         },
         GenericResult::Err(err) => ExecTxResult {
@@ -352,41 +344,9 @@ fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
             log: err,
             gas_wanted: outcome.gas_limit as i64,
             gas_used: outcome.gas_used as i64,
-            events: into_tm_events(outcome.events),
             ..Default::default()
         },
     }
-}
-
-fn into_tm_events<I>(events: I) -> Vec<TmEvent>
-where
-    I: IntoIterator<Item = Event>,
-{
-    events.into_iter().map(into_tm_event).collect()
-}
-
-fn into_tm_event(event: Event) -> TmEvent {
-    TmEvent {
-        kind: event.r#type,
-        attributes: into_tm_attributes(event.attributes),
-    }
-}
-
-fn into_tm_attributes<I>(attrs: I) -> Vec<TmAttribute>
-where
-    I: IntoIterator<Item = Attribute>,
-{
-    attrs.into_iter().map(into_tm_attribute).collect()
-}
-
-fn into_tm_attribute(attr: Attribute) -> TmAttribute {
-    // TODO: V037 is not exported from the `tendermint` crate.
-    // IDK how to import it.
-    TmAttribute::V034(EventAttribute {
-        key: attr.key.as_bytes().to_vec(),
-        value: attr.value.as_bytes().to_vec(),
-        index: true,
-    })
 }
 
 fn into_tm_app_hash(hash: Hash256) -> AppHash {

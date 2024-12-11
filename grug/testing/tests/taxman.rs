@@ -249,7 +249,10 @@ fn finalizing_fee_erroring() {
     let failing = outcome.should_fail_with_error("division by zero: 1 / 0");
 
     // All events should have been discarded.
-    assert!(failing.events.is_empty());
+    assert!(failing.events.withhold.maybe_error().is_some());
+    assert!(failing.events.authenticate.maybe_error().is_some());
+    assert!(failing.events.msgs_and_backrun.maybe_error().is_some());
+    assert!(failing.events.withhold.maybe_error().is_some());
 
     // Owner and sender's balances shouldn't have changed, since state changes
     // are discarded.

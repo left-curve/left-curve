@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coins, Empty, ReplyOn, ResultExt},
+    grug_types::{Addr, Coin, Coins, Empty, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
@@ -153,7 +153,7 @@ mod replier {
 
 fn setup() -> (TestSuite, TestAccounts, Addr) {
     let (mut suite, mut accounts) = TestBuilder::new()
-        .add_account("owner", Coins::new())
+        .add_account("owner", Coin::new("usdc", 100_000).unwrap())
         .add_account("sender", Coins::new())
         .set_owner("owner")
         .build();

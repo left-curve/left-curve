@@ -1,7 +1,12 @@
+#![allow(unused)]
+
 use {
     crate::{entity, error::IndexerError},
     grug_math::Inner,
-    grug_types::{BlockInfo, JsonSerExt, Tx, TxOutcome},
+    grug_types::{
+        BlockInfo, CommitmentStatus, ContractEvent, EventStatus, EvtGuest, EvtWithhold, JsonSerExt,
+        SubEvent, Tx, TxOutcome,
+    },
     sea_orm::{prelude::*, sqlx::types::chrono::TimeZone, Set},
 };
 
@@ -60,22 +65,119 @@ impl Models {
             self.messages.push(new_message);
         }
 
-        for event in tx_outcome.events.iter() {
-            let serialized_attributes = event.attributes.to_json_value()?;
+        // TODO: handle structured events
 
-            let new_event = entity::events::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                transaction_id: Set(transaction_id),
-                block_height: self.block.block_height.clone(),
-                created_at: self.block.created_at.clone(),
-                r#type: Set(event.r#type.clone()),
-                attributes: Set(serialized_attributes.into_inner()),
-            };
+        let mut event_id = 0;
 
-            self.events.push(new_event);
+        let events: Vec<entity::events::ActiveModel> = match tx_outcome.events.withhold {
+            CommitmentStatus::Committed(event) => Self::create_withhold_event(event),
+            CommitmentStatus::Failed { event, error } => {
+                vec![]
+            },
+            CommitmentStatus::Reverted { event, revert_by } => {
+                vec![]
+            },
+            CommitmentStatus::NotReached => {
+                vec![]
+            },
+        };
+
+        match tx_outcome.events.authenticate {
+            CommitmentStatus::Committed(_) => todo!(),
+            CommitmentStatus::Failed { event, error } => todo!(),
+            CommitmentStatus::Reverted { event, revert_by } => todo!(),
+            CommitmentStatus::NotReached => {},
+        }
+
+        match tx_outcome.events.msgs_and_backrun {
+            CommitmentStatus::Committed(_) => todo!(),
+            CommitmentStatus::Failed { event, error } => todo!(),
+            CommitmentStatus::Reverted { event, revert_by } => todo!(),
+            CommitmentStatus::NotReached => {},
+        }
+
+        match tx_outcome.events.finalize {
+            CommitmentStatus::Committed(_) => todo!(),
+            CommitmentStatus::Failed { event, error } => todo!(),
+            CommitmentStatus::Reverted { event, revert_by } => todo!(),
+            CommitmentStatus::NotReached => {},
         }
 
         Ok(())
+    }
+
+    fn create_withhold_event(event: EvtWithhold) -> Vec<entity::events::ActiveModel> {
+        // 1. keep sender, gas_limit, taxman and remove guest_event
+        let mut json_event = serde_json::json! {
+            {
+                "sender": event.sender,
+                "gas_limit": event.gas_limit,
+                "taxman": event.taxman,
+            }
+        };
+
+        todo!()
+    }
+
+    fn create_evt_status_evt_guest_event(
+        event: EventStatus<EvtGuest>,
+        parent_event_id: uuid::Uuid,
+    ) -> Vec<entity::events::ActiveModel> {
+        let mut results = vec![];
+
+        match event {
+            EventStatus::Ok(event) => {
+                //
+                todo!()
+            },
+            EventStatus::NestedFailed(event) => todo!(),
+            EventStatus::Failed { event, error } => todo!(),
+            EventStatus::NotReached => {},
+        }
+
+        results
+    }
+
+    fn create_evt_status_sub_event(
+        event: EventStatus<SubEvent>,
+        parent_event_id: uuid::Uuid,
+    ) -> Vec<entity::events::ActiveModel> {
+        let mut results = vec![];
+
+        match event {
+            EventStatus::Ok(event) => {
+                //
+                todo!()
+            },
+            EventStatus::NestedFailed(event) => todo!(),
+            EventStatus::Failed { event, error } => todo!(),
+            EventStatus::NotReached => {},
+        }
+
+        results
+    }
+
+    fn create_evt_guest_event(
+        event: EvtGuest,
+        parent_event_id: uuid::Uuid,
+    ) -> Vec<entity::events::ActiveModel> {
+        let mut results = vec![];
+
+        let mut json_event = serde_json::json! {
+            {
+                "contract": event.contract,
+                "method": event.method,
+                "contract_events": event.contract_events,
+            }
+        };
+
+        let sub_events = event
+            .sub_events
+            .into_iter()
+            .map(|sub_event| Self::create_evt_status_sub_event(sub_event, Default::default()))
+            .collect::<Vec<_>>();
+
+        results
     }
 
     pub fn build(block: &BlockInfo) -> Result<Self, IndexerError> {
