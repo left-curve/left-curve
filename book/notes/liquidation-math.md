@@ -42,7 +42,7 @@ For a liquidation value $a$ (the value of the debt repaid by the liquidator), th
 Therefore, the gradient is given by,
 
 $$
-\frac{\Delta c}{\Delta d} = \frac{c(t_1) - c(t_0)}{d(t_1) - d(t_0)} = \frac{c(t_0) - (1 + b(t_0))va - c(t_0)}{d(t_0) − a − d(t_0)} = 1 + b(t_0)v
+\frac{\Delta c}{\Delta d} = \frac{c_1 - c}{d_1 - d} = \frac{c - (1 + b)va - c}{d − a − d} = 1 + bv
 $$
 
 where $v$ is the collateral power of the liquidator's requested collateral denom, $b(t_0)$ is the liquidation bonus before the liquidation, $c(t_0)$ and $c(t_1)$ is the value of the collateral (adjusted for the collateral power) before and after the liquidation, and $d(t_0)$ and $d(t_1)$ is the value of the debts before and after the liquidation, respectively.
@@ -106,3 +106,103 @@ This x defines the amount of debt after the liquidation if the new health factor
 $$
 \mathrm{max\ repayable\ debt} = d - x = d - \frac{c - (1 + b)vd}{t - (1 + b)v}
 $$
+
+We can simplify this equation by multiplying both sides by the denominator of the right hand side (and calling the max repayable debt $m$ for brevity):
+
+$$
+(t - (1 + b)v)m = d(t - (1 + b)v) - (c - (1 + b)vd)
+$$
+
+Distribute on the right hand side:
+
+$$
+(t - (1 + b)v)m = dt - (1 + b)vd - c + (1 + b)vd
+$$
+
+The $(1 + b)vd$ terms cancel out:
+
+$$
+(t - (1 + b)v)m = dt - c
+$$
+
+Giving the final equation for the maximum repayable debt:
+
+$$
+m = \frac{dt - c}{t - (1 + b)v}
+$$
+
+.
+
+## Calculating the Liquidation Bonus
+
+In Euler's system, the liquidation bonus is defined as a function of the health factor:
+
+$$
+\mathrm{liquidation\ bonus} = 1 - \mathrm{health\ factor}
+$$
+
+We use the same approach, but bound this value with a minimum and maximum liquidation bonus, configurable by governance.
+
+Furthermore, in order to reduce the occurence of bad debt, after passing the point at which a liquidation would normally incur bad debt (using the $1 - \mathrm{health\ factor}$ formula), we linearly decrease the liquidation bonus to the minimum liquidation bonus.
+
+To see the difference this makes, consider the below graphs showing the liquidation trajectory with and without the bonus cap:
+
+![without bonus cap](./withoutbonuscap.gif)
+
+![with bonus cap](./withbonuscap.gif)
+
+To get this desired behavior, we calculate what the liquidation bonus would need to be so that the health factor after the liquidation is greater than the health factor before the liquidation:
+
+$$
+\frac{c_1}{d_1} > \frac{c}{d}
+$$
+
+...
+
+$$
+\frac{c - (1+b)mv}{d-m} > \frac{c}{d}
+$$
+
+(where $m$ is the maximum repayable debt)
+
+Cross multiplying:
+
+$$
+dc - (1+b)mvd > c(d-m)
+$$
+
+Distribute on the right hand side:
+
+$$
+dc - (1+b)mvd > cd - cm
+$$
+
+The $dc$ terms cancel out:
+
+$$
+(1+b)mvd < cm
+$$
+
+Divide both sides by $mvd$:
+
+$$
+1+b < \frac{cm}{mvd}
+$$
+
+The $m$ terms cancel out and moving the 1 to the right hand side gives:
+
+$$
+b < \frac{c}{vd} - 1
+$$
+
+Which gives the additional maximum cap on the liquidation bonus.
+
+So the final formula for the liquidation bonus is:
+
+<!-- \max\left(\min\left(\min\left(1-h,b_{max}\right),b_{max2}\right),b_{min}\right) -->
+
+$$
+b = \max\left(\min\left(\min\left(1-h,b_{max}\right),b_{max2}\right),b_{min}\right)
+$$
+
+where $b_{\text{max}}$ is the maximum liquidation bonus (decided by governance) and $b_{\text{max2}}$ is the above calculated cap, and $b_{\text{min}}$ is the minimum liquidation bonus (decided by governance).
