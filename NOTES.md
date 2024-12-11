@@ -18,7 +18,6 @@ pub enum CommitmentStatus<T> {
     NotReached,
 }
 
-/// An event indicating that The taxman withheld the fee for a transaction.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtWithhold {
     pub sender: Addr,
@@ -40,7 +39,6 @@ pub enum EventStatus<T> {
     NotReached,
 }
 
-/// An event indicating that a contract emitted a custom event.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtGuest {
     pub contract: Addr,
@@ -113,7 +111,6 @@ pub enum Event {
     // TODO: IBC events
 }
 
-/// An event indicating that a contract was replied the outcome of its submessage.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtReply {
     pub contract: Addr,
@@ -152,7 +149,6 @@ pub struct EvtFinalize {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtConfigure {
     pub sender: Addr,
-    // TODO: not sure what else we need here. the old and new configs?
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
