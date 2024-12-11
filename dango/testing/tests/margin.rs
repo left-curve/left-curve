@@ -557,17 +557,22 @@ fn liquidation_works_with_multiple_debt_denoms() {
     );
 
     // Check that the debt after is correct (using manual calculation via equations)
+    assert_approx_eq(
+        health.total_debt_value,
+        Udec128::from_str("41609.67023").unwrap(),
+        "0.0001",
+    );
     let debts_after = suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
         .unwrap();
-    assert_eq!(debts_after.amount_of(&BTC), Uint128::new(42767776));
+    assert_eq!(debts_after.amount_of(&BTC), Uint128::new(42916818));
 
     // Check that the collateral value after is correct (using manual calculation via equations)
     assert_approx_eq(
         health.total_adjusted_collateral_value,
-        Udec128::from_str("46072.40865").unwrap(),
+        Udec128::from_str("46232.96693").unwrap(),
         "0.0001",
     );
 }
