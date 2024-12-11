@@ -51,7 +51,7 @@ export type Config<
   getClient<chainId extends chains[number]["id"]>(parameters?: {
     chainId?: chainId | chains[number]["id"] | undefined;
   }): Client<transports[chainId], chains[number]>;
-  _internal: Internal;
+  _internal: Internal<chains, transports>;
 };
 
 export type CreateConfigParameters<
@@ -87,10 +87,17 @@ export type StoreApi = {
   };
 };
 
-type Internal = {
+type Internal<
+  chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
+  transports extends Record<chains[number]["id"], Transport> = Record<
+    chains[number]["id"],
+    Transport
+  >,
+> = {
   readonly ssr: boolean;
   readonly mipd: MipdStore | undefined;
   readonly store: StoreApi;
+  readonly transports: transports;
   connectors: {
     setup: (connectorFn: CreateConnectorFn) => Connector;
     setState(value: Connector[] | ((state: Connector[]) => Connector[])): void;
