@@ -6,11 +6,13 @@ import { createKeyHash } from "../accounts/index.js";
 import type { KeyPair } from "@left-curve/crypto";
 import {
   type Credential,
+  type JsonValue,
   KeyAlgo,
   type KeyAlgoType,
   type KeyHash,
   type SignDoc,
   type Signer,
+  type StandardCredential,
 } from "@left-curve/types";
 
 export class PrivateKeySigner implements Signer {
@@ -75,6 +77,12 @@ export class PrivateKeySigner implements Signer {
     const keyHash = await this.getKeyHash();
 
     return { credential, keyHash };
+  }
+
+  async signArbitrary(payload: JsonValue): Promise<StandardCredential> {
+    const bytes = sha256(serialize(payload));
+    const signature = await this.signBytes(bytes);
+    return { signature: { secp256k1: encodeBase64(signature) } };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {

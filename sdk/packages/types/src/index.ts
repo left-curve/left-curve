@@ -115,8 +115,9 @@ export type {
 } from "./client.js";
 
 export type {
-  Credential,
   Metadata,
+  Credential,
+  StandardCredential,
 } from "./credential.js";
 
 export type {

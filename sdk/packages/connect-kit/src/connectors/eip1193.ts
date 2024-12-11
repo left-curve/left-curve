@@ -17,7 +17,6 @@ import type {
 
 import "@left-curve/types/window";
 import type { SignerClient } from "@left-curve/sdk/clients";
-import { ConnectorSigner } from "@left-curve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
   id: ConnectorId;
@@ -79,9 +78,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async getClient() {
         if (!_client) {
           _client = createSignerClient({
-            transport: _transport,
-            signer: new ConnectorSigner(this),
+            signer: this,
             username: _username,
+            transport: _transport,
           });
         }
         return _client;
@@ -123,7 +122,25 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature(signDoc) {
+      async signArbitrary(payload) {
+        const provider = await this.getProvider();
+        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+
+        const signData = JSON.stringify(payload);
+
+        const signature = await provider.request({
+          method: "eth_signTypedData_v4",
+          params: [controllerAddress, signData],
+        });
+
+        const eip712: Eip712Signature = {
+          sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
+          typed_data: encodeBase64(encodeUtf8(signData)),
+        };
+
+        return { signature: { eip712 } };
+      },
+      async signTx(signDoc) {
         try {
           const { typedData: types, sender, ...txMessage } = signDoc;
           const provider = await this.getProvider();

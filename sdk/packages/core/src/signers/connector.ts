@@ -1,8 +1,16 @@
-import type { KeyHash, SignDoc, SignedDoc, Signer } from "@left-curve/types";
+import type {
+  JsonValue,
+  KeyHash,
+  SignDoc,
+  SignedDoc,
+  Signer,
+  StandardCredential,
+} from "@left-curve/types";
 
 type Connectorish = {
   getKeyHash(): Promise<KeyHash>;
-  requestSignature(signDoc: SignDoc): Promise<SignedDoc>;
+  signTx(signDoc: SignDoc): Promise<SignedDoc>;
+  signArbitrary(data: JsonValue): Promise<StandardCredential>;
 };
 
 export class ConnectorSigner implements Signer {
@@ -13,6 +21,10 @@ export class ConnectorSigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc): Promise<SignedDoc> {
-    return await this.connector.requestSignature(signDoc);
+    return await this.connector.signTx(signDoc);
+  }
+
+  async signArbitrary(data: JsonValue): Promise<StandardCredential> {
+    return await this.connector.signArbitrary(data);
   }
 }

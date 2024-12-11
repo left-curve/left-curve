@@ -5,7 +5,6 @@ import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/action
 import { createConnector } from "./createConnector.js";
 
 import type { SignerClient } from "@left-curve/sdk/clients";
-import { ConnectorSigner } from "@left-curve/sdk/signers";
 import { KeyAlgo } from "@left-curve/types";
 import { getRootDomain } from "@left-curve/utils";
 
@@ -59,9 +58,9 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async getClient() {
         if (!_client) {
           _client = createSignerClient({
-            transport: _transport,
-            signer: new ConnectorSigner(this),
+            signer: this,
             username: _username,
+            transport: _transport,
           });
         }
         return _client;
@@ -92,7 +91,27 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature(signDoc) {
+      async signArbitrary(payload) {
+        const bytes = sha256(serialize(payload));
+
+        const { webauthn, signature: asnSignature } = await requestWebAuthnSignature({
+          challenge: bytes,
+          rpId: getRootDomain(window.location.hostname),
+          userVerification: "preferred",
+        });
+
+        const signature = parseAsn1Signature(asnSignature);
+
+        const { authenticatorData, clientDataJSON } = webauthn;
+        const passkey = {
+          sig: encodeBase64(signature),
+          client_data: encodeBase64(clientDataJSON),
+          authenticator_data: encodeBase64(authenticatorData),
+        };
+
+        return { signature: { passkey } };
+      },
+      async signTx(signDoc) {
         const { sender, messages, chainId, sequence } = signDoc;
         const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
 
