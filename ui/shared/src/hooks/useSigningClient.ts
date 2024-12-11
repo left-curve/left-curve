@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSessionKey } from "./useSessionKey";
 
 export function useSigningClient() {
-  const connectorClient = useConnectorClient();
+  const { data: connectorClient } = useConnectorClient();
   const { client } = useSessionKey();
 
   return useQuery({
