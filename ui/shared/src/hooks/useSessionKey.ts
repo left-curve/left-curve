@@ -9,7 +9,7 @@ import {
 } from "@left-curve/react";
 import { createSessionSigner, createSignerClient } from "@left-curve/sdk";
 import type { Address, SigningSession, SigningSessionInfo } from "@left-curve/types";
-import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 export function useSessionKey() {
   const config = useConfig();
@@ -20,14 +20,17 @@ export function useSessionKey() {
     version: 1,
   });
 
-  const client = useMemo(() => {
-    if (!session || !username) return undefined;
-    return createSignerClient({
-      username,
-      signer: createSessionSigner(session),
-      transport: config._internal.transports[config.state.chainId],
-    });
-  }, [session]);
+  const { data: client } = useQuery({
+    queryKey: ["session_key", session],
+    queryFn: async () => {
+      if (!session || !username) return undefined;
+      return createSignerClient({
+        username,
+        signer: createSessionSigner(session),
+        transport: config._internal.transports[config.state.chainId],
+      });
+    },
+  });
 
   async function createSessionKey(parameters: {
     expireAt: number;
