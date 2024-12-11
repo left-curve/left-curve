@@ -27,6 +27,7 @@ mod length_bounded;
 mod lengthy;
 mod macros;
 mod non_zero;
+mod outcome;
 mod query;
 mod response;
 mod result;
@@ -41,8 +42,8 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
     encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
-    length_bounded::*, lengthy::*, non_zero::*, query::*, response::*, result::*, serializers::*,
-    signer::*, time::*, tx::*, unique_vec::*, utils::*,
+    length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
+    serializers::*, signer::*, time::*, tx::*, unique_vec::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
