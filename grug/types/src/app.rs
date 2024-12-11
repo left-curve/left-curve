@@ -136,14 +136,14 @@ pub struct CronOutcome {
     // `None` means the call was done with unlimited gas, such as cronjobs.
     pub gas_limit: Option<u64>,
     pub gas_used: u64,
-    pub cron_event: CommitmentStatus<EvtCron>,
+    pub cron_event: CommitmentStatus<EventStatus<EvtCron>>,
 }
 
 impl CronOutcome {
     pub fn new(
         gas_limit: Option<u64>,
         gas_used: u64,
-        cron_event: CommitmentStatus<EvtCron>,
+        cron_event: CommitmentStatus<EventStatus<EvtCron>>,
     ) -> Self {
         Self {
             gas_limit,
@@ -201,14 +201,14 @@ impl Display for TxError {
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TxEvents {
-    pub withhold: CommitmentStatus<EvtWithhold>,
-    pub authenticate: CommitmentStatus<EvtAuthenticate>,
+    pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
+    pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
     pub msgs_and_backrun: CommitmentStatus<MsgsAndBackrunEvents>,
-    pub finalize: CommitmentStatus<EvtFinalize>,
+    pub finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
 }
 
 impl TxEvents {
-    pub fn new(withhold: CommitmentStatus<EvtWithhold>) -> Self {
+    pub fn new(withhold: CommitmentStatus<EventStatus<EvtWithhold>>) -> Self {
         Self {
             withhold,
             authenticate: CommitmentStatus::NotReached,
@@ -217,7 +217,11 @@ impl TxEvents {
         }
     }
 
-    pub fn finalize_fails(self, finalize: CommitmentStatus<EvtFinalize>, cause: &str) -> Self {
+    pub fn finalize_fails(
+        self,
+        finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
+        cause: &str,
+    ) -> Self {
         fn update<T>(evt: CommitmentStatus<T>, cause: &str) -> CommitmentStatus<T> {
             if let CommitmentStatus::Committed(event) = evt {
                 CommitmentStatus::Reverted {

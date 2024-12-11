@@ -17,11 +17,14 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
+borsh                 = { workspace = true }
+async-std             = { workspace = true }
 grug-app              = { workspace = true }
 grug-types            = { workspace = true }
 grug-math             = { workspace = true }
 indexer-sql-migration = { workspace = true }
 sea-orm               = { workspace = true }
+serde                 = { workspace = true }
 serde_json            = { workspace = true }
 thiserror             = { workspace = true }
 tokio                 = { workspace = true }

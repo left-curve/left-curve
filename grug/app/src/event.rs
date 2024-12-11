@@ -1,6 +1,6 @@
 use {
     crate::AppError,
-    grug_types::{CommitmentStatus, Event, HandleEventStatus},
+    grug_types::{CommitmentStatus, Event, EventStatus, HandleEventStatus},
 };
 
 #[derive(Debug, Clone)]
@@ -60,13 +60,25 @@ impl<T> EventResult<T> {
         }
     }
 
-    pub fn as_committment(self) -> CommitmentStatus<T> {
+    pub fn into_commitment_status(self) -> CommitmentStatus<EventStatus<T>> {
+        match &self {
+            EventResult::Ok(..) => CommitmentStatus::Committed(self.into()),
+            EventResult::Err { error, .. } | EventResult::SubErr { error, .. } => {
+                CommitmentStatus::Failed {
+                    error: error.to_string(),
+                    event: self.into(),
+                }
+            },
+        }
+    }
+
+    pub fn into_commitment(self) -> CommitmentStatus<T> {
         match self {
             EventResult::Ok(event) => CommitmentStatus::Committed(event),
             EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
                 CommitmentStatus::Failed {
-                    event,
                     error: error.to_string(),
+                    event,
                 }
             },
         }
@@ -97,6 +109,19 @@ impl From<EventResult<Event>> for HandleEventStatus {
             EventResult::Ok(event) => HandleEventStatus::Ok(event),
             EventResult::Err { event, error } => HandleEventStatus::failed(event, error),
             EventResult::SubErr { event, .. } => HandleEventStatus::NestedFailed(event),
+        }
+    }
+}
+
+impl<T> From<EventResult<T>> for EventStatus<T> {
+    fn from(value: EventResult<T>) -> Self {
+        match value {
+            EventResult::Ok(event) => EventStatus::Ok(event),
+            EventResult::Err { event, error } => EventStatus::Failed {
+                event,
+                error: error.to_string(),
+            },
+            EventResult::SubErr { event, .. } => EventStatus::NestedFailed(event),
         }
     }
 }

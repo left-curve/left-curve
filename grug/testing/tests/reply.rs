@@ -1,7 +1,8 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coin, Coins, Empty, ReplyOn, ResultExt},
+    grug_types::{Addr, Coin, Coins, Empty, JsonSerExt, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
+    indexer_sql::events::flat_tx_events,
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };
@@ -444,4 +445,27 @@ fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: b
     suite
         .query_wasm_smart(replier_addr, QueryDataRequest {})
         .should_succeed_and_equal(data);
+}
+
+#[test]
+fn asd() {
+    let (mut suite, mut accounts, replier_addr) = setup();
+
+    let result = suite.execute(
+        &mut accounts["owner"],
+        replier_addr,
+        &ExecuteMsg::perform(
+            "1",
+            ExecuteMsg::ok("2"),
+            ReplyOn::error(&ReplyMsg::Ok(ExecuteMsg::fail("reply deep 1 fail"))).unwrap(),
+        ),
+        Coins::default(),
+    );
+
+    println!(
+        "{}",
+        flat_tx_events(result.events, 123, 1)
+            .to_json_string_pretty()
+            .unwrap()
+    );
 }
