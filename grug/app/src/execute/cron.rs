@@ -21,9 +21,9 @@ where
 {
     let evt = _do_cron_execute(vm, storage, gas_tracker, block, contract, time, next);
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
         },
         "Failed to perform cronjob",

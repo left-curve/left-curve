@@ -31,9 +31,9 @@ where
         do_receive,
     );
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            #[cfg(feature = "tracing")]
             tracing::info!(
                 from = sender.to_string(),
                 to = msg.to.to_string(),

@@ -33,9 +33,9 @@ where
         msg.clone(),
     );
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            #[cfg(feature = "tracing")]
             tracing::info!(address = evt.contract.to_string(), "Instantiated contract");
         },
         "Failed to instantiate contract",

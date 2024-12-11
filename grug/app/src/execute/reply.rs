@@ -33,9 +33,9 @@ where
         reply_on,
     );
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            #[cfg(feature = "tracing")]
             tracing::info!(contract = contract.to_string(), "Performed reply");
         },
         "Failed to perform reply",

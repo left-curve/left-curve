@@ -29,9 +29,9 @@ where
         msg.clone(),
     );
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            #[cfg(feature = "tracing")]
             tracing::info!(contract = evt.contract.to_string(), "Executed contract");
         },
         "Failed to execute contract",

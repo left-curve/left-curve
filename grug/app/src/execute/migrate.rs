@@ -23,9 +23,9 @@ where
 {
     let evt = _do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |evt| {
-            #[cfg(feature = "tracing")]
             tracing::info!(contract = evt.contract.to_string(), "Migrated contract");
         },
         "Failed to migrate contract",

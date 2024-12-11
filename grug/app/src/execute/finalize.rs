@@ -21,9 +21,9 @@ where
 {
     let evt = _do_finalize_fee(vm, storage, gas_tracker, block, tx, outcome, mode);
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            #[cfg(feature = "tracing")]
             tracing::info!(sender = tx.sender.to_string(), "Finalized fee");
         },
         "Failed to finalize fee",

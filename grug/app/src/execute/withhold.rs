@@ -20,9 +20,9 @@ where
 {
     let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode);
 
+    #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            #[cfg(feature = "tracing")]
             tracing::info!(sender = tx.sender.to_string(), "Withheld fee");
         },
         "Failed to withhold fee",
