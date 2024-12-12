@@ -10,11 +10,10 @@ use {
 };
 
 mod session_account {
-
     use {
         dango_testing::{create_signature, generate_random_key, TestAccount},
         dango_types::auth::{
-            Credential, Metadata, SessionCredential, SessionInfo, SignDoc, StandardCredential,
+            Credential, Metadata, SessionCredential, SessionInfo, SignDoc, Signature,
         },
         grug::{
             Addr, Addressable, ByteArray, Defined, JsonSerExt, NonEmpty, Signer, StdResult,
@@ -31,7 +30,7 @@ mod session_account {
     #[derive(Clone)]
     pub struct SessionInfoBuffer {
         pub session_info: SessionInfo,
-        pub sign_info_signature: StandardCredential,
+        pub sign_info_signature: Signature,
     }
 
     pub struct SessionAccount<T> {

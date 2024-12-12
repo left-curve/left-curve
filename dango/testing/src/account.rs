@@ -6,7 +6,7 @@ use {
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
             QueryNextAccountIndexRequest, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, SignDoc, Signature},
     },
     grug::{
         btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash160, Hash256, HashExt, Json,
@@ -144,25 +144,10 @@ where
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<StandardCredential> {
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<Signature> {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
 
-        let signature = create_signature(sk, sign_bytes)?;
-
-        let otp_signature = if let Some((sk, _)) = &self.opt {
-            if self.use_otp {
-                Some(create_signature(sk, sign_bytes)?)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        Ok(StandardCredential {
-            signature: Signature::Secp256k1(signature),
-            otp_signature,
-        })
+        create_signature(sk, sign_bytes).map(Signature::Secp256k1)
     }
 }
 

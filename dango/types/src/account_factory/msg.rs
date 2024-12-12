@@ -2,7 +2,7 @@ use {
     crate::{
         account::multi::ParamUpdates,
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
-        auth::{Key, OtpKey},
+        auth::Key,
     },
     grug::{Addr, Coins, Hash160, Hash256, Op},
     std::collections::BTreeMap,
@@ -45,10 +45,6 @@ pub enum ExecuteMsg {
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
-    /// Configure an OTP key for a username.
-    ConfigureUserOtp { key: Op<OtpKey> },
-    /// Enable/Disable a OTP for an account.
-    EnableAccountOtp { enabled: bool },
     /// Configure a key for a username.
     ConfigureKey { key_hash: Hash160, key: Op<Key> },
     /// Update a Safe account's parameters.

@@ -14,9 +14,6 @@ pub enum Key {
     Secp256k1(ByteArray<33>),
 }
 
-/// An OTP key info that can be associated with a [`Username`](crate::auth::Username).
-pub type OtpKey = ByteArray<33>;
-
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
 /// field.
 #[grug::derive(Serde)]
@@ -31,16 +28,8 @@ pub enum Signature {
 
 #[grug::derive(Serde)]
 pub enum Credential {
-    Standard(StandardCredential),
+    Standard(Signature),
     Session(SessionCredential),
-}
-
-#[grug::derive(Serde)]
-pub struct StandardCredential {
-    /// Signature of a user key.
-    pub signature: Signature,
-    /// Signature of the OTP key.
-    pub otp_signature: Option<ByteArray<64>>,
 }
 
 #[grug::derive(Serde)]
@@ -50,7 +39,7 @@ pub struct SessionCredential {
     /// Signature of the `SignDoc` by the session key.
     pub session_signature: ByteArray<64>,
     /// Signatures of the `SessionInfo` by the user key and OTP.
-    pub session_info_signature: StandardCredential,
+    pub session_info_signature: Signature,
 }
 
 #[grug::derive(Serde)]

@@ -3,13 +3,9 @@ use {
     alloy_primitives::U160,
     anyhow::{anyhow, bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
-    dango_account_factory::{ACCOUNTS, ACCOUNTS_BY_USER, KEYS, OTPS},
+    dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
-        account_factory::Account,
-        auth::{
-            ClientData, Credential, Key, Metadata, OtpKey, SessionInfo, SignDoc, Signature,
-            StandardCredential,
-        },
+        auth::{ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature},
         config::AppConfig,
     },
     grug::{
@@ -60,14 +56,13 @@ pub fn authenticate_tx(
     //
     // We use Wasm raw queries instead of smart queries to optimize on gas.
     // We also user the multi query to reduce the number of FFI calls.
-    let (key, account) = {
-        let [res1, res2, res3] = ctx.querier.query_multi([
+    let key = {
+        let [res1, res2] = ctx.querier.query_multi([
             Query::wasm_raw(
                 factory,
                 ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             ),
             Query::wasm_raw(factory, KEYS.path((&metadata.username, metadata.key_hash))),
-            Query::wasm_raw(factory, ACCOUNTS.path(tx.sender)),
         ])?;
 
         // If the sender account is associated with the username, then an entry
@@ -80,30 +75,9 @@ pub fn authenticate_tx(
             metadata.username,
         );
 
-        let key = res2
-            .as_wasm_raw()
+        res2.as_wasm_raw()
             .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
-            .deserialize_borsh()?;
-
-        let account: Account = res3
-            .as_wasm_raw()
-            .ok_or_else(|| anyhow!("account {} not found", tx.sender))?
-            .deserialize_borsh()?;
-
-        // Deserialize the key from Borsh bytes.
-        (key, account)
-    };
-
-    let maybe_otp_key = if account.is_otp_enabled() {
-        let otp_key = ctx
-            .querier
-            .query_wasm_raw(factory, OTPS.path(&metadata.username))?
-            .ok_or_else(|| anyhow!("OTP key not registered for username {}.", metadata.username))?
-            .deserialize_borsh::<OtpKey>()?;
-
-        Some(otp_key)
-    } else {
-        None
+            .deserialize_borsh()?
     };
 
     // Verify sequence.
@@ -142,15 +116,9 @@ pub fn authenticate_tx(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => match tx.credential.deserialize_json()? {
-            Credential::Standard(standard_credential) => {
+            Credential::Standard(signature) => {
                 // Verify the `SignDoc` signatures.
-                verify_standard_credential(
-                    ctx.api,
-                    standard_credential,
-                    key,
-                    maybe_otp_key,
-                    VerifyData::SignDoc(&sign_doc),
-                )?;
+                verify_signature(ctx.api, key, signature, &VerifyData::SignDoc(&sign_doc))?;
             },
             Credential::Session(session) => {
                 ensure!(
@@ -169,12 +137,11 @@ pub fn authenticate_tx(
                 );
 
                 // Verify the `SessionInfo` signatures.
-                verify_standard_credential(
+                verify_signature(
                     ctx.api,
-                    session.session_info_signature,
                     key,
-                    maybe_otp_key,
-                    VerifyData::SessionInfo(&session.session_info),
+                    session.session_info_signature,
+                    &VerifyData::SessionInfo(&session.session_info),
                 )?;
 
                 // Verify the `SignDoc` signature.
@@ -190,27 +157,6 @@ pub fn authenticate_tx(
     };
 
     Ok(())
-}
-
-fn verify_standard_credential(
-    api: &dyn Api,
-    credential: StandardCredential,
-    key: Key,
-    maybe_otp_key: Option<OtpKey>,
-    data: VerifyData,
-) -> anyhow::Result<()> {
-    verify_signature(api, key, credential.signature, &data)?;
-
-    match (maybe_otp_key, credential.otp_signature) {
-        (Some(otp_key), Some(otp_signature)) => verify_signature(
-            api,
-            Key::Secp256k1(otp_key),
-            Signature::Secp256k1(otp_signature),
-            &data,
-        ),
-        (None, None) => Ok(()),
-        _ => bail!("otp key and signature must be both present or both absent"),
-    }
 }
 
 fn verify_signature(
@@ -326,8 +272,7 @@ mod tests {
     use {
         super::*,
         dango_types::{
-            account::single::Params,
-            account_factory::{AccountParams, Username},
+            account_factory::Username,
             config::{AppAddresses, DANGO_DENOM},
         },
         grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
@@ -351,32 +296,32 @@ mod tests {
         );
 
         let tx = r#"{
-            "sender": "0x4857ff85aa9d69c73bc86eb45949455b45cca580",
-            "credential": {
-              "standard": {
-                "signature": {
-                  "passkey": {
-                    "sig": "32jN7YGtag/NHt8FOXEEGNS7ExANwPwHi7FGel67+dBSWbLid0ZT5ew9LIuU9cFNXqJ/0xgaXuWbNhyVbCrL5g==",
-                    "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicUMxYXdaNFpzS1lGMnhyYURMYlUza01VYWRGTzVMNmJvaDc0ck5zVTd5OCIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-                    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
-                  }
+          "sender": "0x4857ff85aa9d69c73bc86eb45949455b45cca580",
+          "credential": {
+            "standard": {
+              "passkey": {
+                "sig": "32jN7YGtag/NHt8FOXEEGNS7ExANwPwHi7FGel67+dBSWbLid0ZT5ew9LIuU9cFNXqJ/0xgaXuWbNhyVbCrL5g==",
+                "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicUMxYXdaNFpzS1lGMnhyYURMYlUza01VYWRGTzVMNmJvaDc0ck5zVTd5OCIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+              }
+            }
+          },
+          "data": {
+            "key_hash": "52396FDE2F222D21B62DDE0CE93BC6E109823552",
+            "username": "passkey",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
+                "coins": {
+                  "uusdc": "1000000"
                 }
               }
-            },
-            "data": {
-                "key_hash": "52396FDE2F222D21B62DDE0CE93BC6E109823552",
-                "username": "passkey",
-                "sequence": 0
-            },
-            "msgs": [{
-                "transfer": {
-                  "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                  "coins": {
-                        "uusdc": "1000000"
-                  }
-                }
-            }],
-            "gas_limit": 2602525
+            }
+          ],
+          "gas_limit": 2602525
         }"#;
 
         let querier = MockQuerier::new()
@@ -398,12 +343,6 @@ mod tests {
                     .unwrap();
                 KEYS.save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
-                ACCOUNTS
-                    .save(storage, user_address, &Account {
-                        index: 5,
-                        params: AccountParams::Spot(Params::new(user_username)),
-                    })
-                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -447,12 +386,6 @@ mod tests {
                     .unwrap();
                 KEYS.save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
-                ACCOUNTS
-                    .save(storage, user_address, &Account {
-                        index: 5,
-                        params: AccountParams::Spot(Params::new(user_username)),
-                    })
-                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -462,31 +395,31 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-            "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
-            "credential": {
-              "standard": {
-                "signature": {
-                  "eip712": {
-                    "sig": "3QfufLebIDnA/FlT3yV65yCivI4s5tCF1Rluq5Q+cYQwTqH9HDyXU/XcwtX5/4H0GFZ26CkfvPFYlx6m3lRKcw==",
-                    "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMyIsInNlcXVlbmNlIjowLCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsidG8iOiIweDA2NGM1ZTIwYjQyMmI1ZDgxN2ZlODAwMTE5ZGFjMGFiNDNiMTdhODAiLCJjb2lucyI6eyJ1dXNkYyI6IjEwMDAwMDAifX19XX19"
-                  }
-                }
+          "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+          "credential": {
+            "standard": {
+              "eip712": {
+                "sig": "3QfufLebIDnA/FlT3yV65yCivI4s5tCF1Rluq5Q+cYQwTqH9HDyXU/XcwtX5/4H0GFZ26CkfvPFYlx6m3lRKcw==",
+                "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMyIsInNlcXVlbmNlIjowLCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsidG8iOiIweDA2NGM1ZTIwYjQyMmI1ZDgxN2ZlODAwMTE5ZGFjMGFiNDNiMTdhODAiLCJjb2lucyI6eyJ1dXNkYyI6IjEwMDAwMDAifX19XX19"
               }
-            },
-            "data": {
-                "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
-                "username": "javier_1",
-                "sequence": 0
-            },
-            "msgs": [{
+            }
+          },
+          "data": {
+            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
+            "username": "javier_1",
+            "sequence": 0
+          },
+          "msgs": [
+            {
               "transfer": {
                 "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
                 "coins": {
                   "uusdc": "1000000"
                 }
               }
-            }],
-            "gas_limit": 2647711
+            }
+          ],
+          "gas_limit": 2647711
         }"#;
 
         authenticate_tx(
@@ -512,28 +445,28 @@ mod tests {
         );
 
         let tx = r#"{
-        "sender": "0xb86b2d96971c32f68241df04691479edb6a9cd3b",
-        "credential": {
+          "sender": "0xb86b2d96971c32f68241df04691479edb6a9cd3b",
+          "credential": {
             "standard": {
-            "signature": {
-                "secp256k1": "6fViCRV4+NEs7AiiF2o7yWBar3IKu4S1tnxDCtB71J8XnaR69IRyvURLIH4HAc0APK3DA8Vy8vEtpaEzlllqKg=="
-                }
+              "secp256k1": "6fViCRV4+NEs7AiiF2o7yWBar3IKu4S1tnxDCtB71J8XnaR69IRyvURLIH4HAc0APK3DA8Vy8vEtpaEzlllqKg=="
             }
-        },
-        "data": {
+          },
+          "data": {
             "key_hash": "57D9205BFB0ED62C0667462E07EAF1AA31228DD4",
             "username": "owner",
             "sequence": 0
-        },
-        "msgs": [{
-            "transfer": {
+          },
+          "msgs": [
+            {
+              "transfer": {
                 "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
                 "coins": {
-                    "uusdc": "10000"
+                  "uusdc": "10000"
                 }
+              }
             }
-        }],
-        "gas_limit": 2647275
+          ],
+          "gas_limit": 2647275
         }"#;
 
         let querier = MockQuerier::new()
@@ -553,17 +486,8 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&user_username, user_address))
                     .unwrap();
-
                 KEYS.save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
-                ACCOUNTS
-                    .save(storage, user_address, &Account {
-                        index: 5,
-                        params: AccountParams::Spot(Params::new(
-                            Username::from_str("owner").unwrap(),
-                        )),
-                    })
-                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -607,12 +531,6 @@ mod tests {
                     .unwrap();
                 KEYS.save(storage, (&user_username, user_keyhash), &user_key)
                     .unwrap();
-                ACCOUNTS
-                    .save(storage, user_address, &Account {
-                        index: 5,
-                        params: AccountParams::Spot(Params::new(user_username)),
-                    })
-                    .unwrap()
             });
 
         let mut ctx = MockContext::new()
@@ -620,51 +538,52 @@ mod tests {
             .with_contract(user_address)
             .with_chain_id("dev-3")
             .with_mode(AuthMode::Finalize);
+
         let tx = r#"{
-            "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
-            "credential": {
-                "session": {
-                "session_info": {
-                    "whitelisted_accounts": [
-                    "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
-                    "0x5b7ef5f28e30600293b894d5ee24626e67b870b4",
-                    "0x93aa109663cfa6010d44173ab77bd59426e1c1ec",
-                    "0xa7ef873bdc24175627dceba5a1daaa523f2c91e6",
-                    "0xb24519bc9aa34b8e9d823a0ceba16612a1e3c5e8",
-                    "0xc3b7e81ea542252ede1a985e7cdee2517191e348",
-                    "0xc4a8136dd85ebd8feef0aa59cf9b33b7744f97dc",
-                    "0xfd56825e8989ae8aa59c0ab2a7dc3a65ba8e000a"
-                    ],
-                    "session_key": "AvPdvBi8TryY14G6LJ4TqYExLeXYAb2ZDkV8wWw6+LCV",
-                    "expire_at": "1733951225877"
-                },
-                "session_info_signature": {
-                    "signature": {
-                    "eip712": {
-                        "sig": "QnSzyw1ZbXZWTaa4YbRB6SyE/Qmufy+a2W9QrMCL9YULWm0QRdDtvwclCB5NVln8hLS49miTF9J66NcJM+IN7w==",
-                        "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7IndoaXRlbGlzdGVkX2FjY291bnRzIjpbIjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiIsIjB4NWI3ZWY1ZjI4ZTMwNjAwMjkzYjg5NGQ1ZWUyNDYyNmU2N2I4NzBiNCIsIjB4OTNhYTEwOTY2M2NmYTYwMTBkNDQxNzNhYjc3YmQ1OTQyNmUxYzFlYyIsIjB4YTdlZjg3M2JkYzI0MTc1NjI3ZGNlYmE1YTFkYWFhNTIzZjJjOTFlNiIsIjB4YjI0NTE5YmM5YWEzNGI4ZTlkODIzYTBjZWJhMTY2MTJhMWUzYzVlOCIsIjB4YzNiN2U4MWVhNTQyMjUyZWRlMWE5ODVlN2NkZWUyNTE3MTkxZTM0OCIsIjB4YzRhODEzNmRkODVlYmQ4ZmVlZjBhYTU5Y2Y5YjMzYjc3NDRmOTdkYyIsIjB4ZmQ1NjgyNWU4OTg5YWU4YWE1OWMwYWIyYTdkYzNhNjViYThlMDAwYSJdLCJzZXNzaW9uX2tleSI6IkF2UGR2Qmk4VHJ5WTE0RzZMSjRUcVlFeExlWFlBYjJaRGtWOHdXdzYrTENWIiwiZXhwaXJlX2F0IjoiMTczMzk1MTIyNTg3NyJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6IndoaXRlbGlzdGVkX2FjY291bnRzIiwidHlwZSI6ImFkZHJlc3NbXSJ9LHsibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
-                    }
-                    }
-                },
-                "session_signature": "6l5I6BTGqEmjNiZNOIkFjmT6enAcgBR6gHkh1IOLMUJn+mal5sEzMnbvahHSn574SlO9goHnp6WV4XMGnHuLtw=="
+          "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+          "credential": {
+            "session": {
+              "session_info": {
+                "whitelisted_accounts": [
+                  "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+                  "0x5b7ef5f28e30600293b894d5ee24626e67b870b4",
+                  "0x93aa109663cfa6010d44173ab77bd59426e1c1ec",
+                  "0xa7ef873bdc24175627dceba5a1daaa523f2c91e6",
+                  "0xb24519bc9aa34b8e9d823a0ceba16612a1e3c5e8",
+                  "0xc3b7e81ea542252ede1a985e7cdee2517191e348",
+                  "0xc4a8136dd85ebd8feef0aa59cf9b33b7744f97dc",
+                  "0xfd56825e8989ae8aa59c0ab2a7dc3a65ba8e000a"
+                ],
+                "session_key": "AvPdvBi8TryY14G6LJ4TqYExLeXYAb2ZDkV8wWw6+LCV",
+                "expire_at": "1733951225877"
+              },
+              "session_info_signature": {
+                "signature": {
+                  "eip712": {
+                    "sig": "QnSzyw1ZbXZWTaa4YbRB6SyE/Qmufy+a2W9QrMCL9YULWm0QRdDtvwclCB5NVln8hLS49miTF9J66NcJM+IN7w==",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7IndoaXRlbGlzdGVkX2FjY291bnRzIjpbIjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiIsIjB4NWI3ZWY1ZjI4ZTMwNjAwMjkzYjg5NGQ1ZWUyNDYyNmU2N2I4NzBiNCIsIjB4OTNhYTEwOTY2M2NmYTYwMTBkNDQxNzNhYjc3YmQ1OTQyNmUxYzFlYyIsIjB4YTdlZjg3M2JkYzI0MTc1NjI3ZGNlYmE1YTFkYWFhNTIzZjJjOTFlNiIsIjB4YjI0NTE5YmM5YWEzNGI4ZTlkODIzYTBjZWJhMTY2MTJhMWUzYzVlOCIsIjB4YzNiN2U4MWVhNTQyMjUyZWRlMWE5ODVlN2NkZWUyNTE3MTkxZTM0OCIsIjB4YzRhODEzNmRkODVlYmQ4ZmVlZjBhYTU5Y2Y5YjMzYjc3NDRmOTdkYyIsIjB4ZmQ1NjgyNWU4OTg5YWU4YWE1OWMwYWIyYTdkYzNhNjViYThlMDAwYSJdLCJzZXNzaW9uX2tleSI6IkF2UGR2Qmk4VHJ5WTE0RzZMSjRUcVlFeExlWFlBYjJaRGtWOHdXdzYrTENWIiwiZXhwaXJlX2F0IjoiMTczMzk1MTIyNTg3NyJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6IndoaXRlbGlzdGVkX2FjY291bnRzIiwidHlwZSI6ImFkZHJlc3NbXSJ9LHsibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                  }
                 }
-            },
-            "data": {
-                "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
-                "username": "javier_1",
-                "sequence": 0
-            },
-            "msgs": [
-                {
-                "transfer": {
-                    "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                    "coins": {
-                    "uusdc": "1000000"
-                    }
+              },
+              "session_signature": "6l5I6BTGqEmjNiZNOIkFjmT6enAcgBR6gHkh1IOLMUJn+mal5sEzMnbvahHSn574SlO9goHnp6WV4XMGnHuLtw=="
+            }
+          },
+          "data": {
+            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
+            "username": "javier_1",
+            "sequence": 0
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
+                "coins": {
+                  "uusdc": "1000000"
                 }
-                }
-            ],
-            "gas_limit": 2647711
+              }
+            }
+          ],
+          "gas_limit": 2647711
         }"#;
 
         authenticate_tx(
