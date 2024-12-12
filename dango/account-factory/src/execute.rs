@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX, OTPS},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -7,12 +7,12 @@ use {
             Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
             Username,
         },
-        auth::Key,
+        auth::{Key, OtpKey},
         config::AppConfig,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, Response, StdError, StdResult, Storage, Tx,
     },
 };
 
@@ -101,6 +101,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             key_hash,
         } => register_user(ctx, username, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
+        ExecuteMsg::EnableAccountOtp { enabled } => enable_account_otp(ctx, enabled),
+        ExecuteMsg::ConfigureUserOtp { key } => configure_user_otp(ctx, key),
+        ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
 }
@@ -196,9 +199,7 @@ fn onboard_new_user(
 
     let account = Account {
         index,
-        params: AccountParams::Spot(single::Params {
-            owner: username.clone(),
-        }),
+        params: AccountParams::Spot(single::Params::new(username.clone())),
     };
 
     ACCOUNTS.save(storage, address, &account)?;
@@ -273,6 +274,75 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
+fn enable_account_otp(ctx: MutableCtx, enabled: bool) -> anyhow::Result<Response> {
+    if enabled {
+        // Check if a OTP exists for the username
+        let username = get_username_by_address(ctx.storage, ctx.sender)?;
+        ensure!(
+            OTPS.has(ctx.storage, &username),
+            "no OTP key exists for the username"
+        );
+    }
+
+    ACCOUNTS.update(ctx.storage, ctx.sender, |mut account| -> StdResult<_> {
+        if let AccountParams::Margin(params) | AccountParams::Spot(params) = &mut account.params {
+            params.is_otp_active = enabled;
+        } else {
+            Err(StdError::host(format!(
+                "{} is not a Spot or Margin account",
+                ctx.sender
+            )))?;
+        }
+
+        Ok(account)
+    })?;
+
+    Ok(Response::new())
+}
+
+fn configure_user_otp(ctx: MutableCtx, key: Op<OtpKey>) -> anyhow::Result<Response> {
+    let username = get_username_by_address(ctx.storage, ctx.sender)?;
+
+    match key {
+        Op::Insert(key) => OTPS.save(ctx.storage, &username, &key)?,
+        Op::Delete => {
+            OTPS.remove(ctx.storage, &username);
+            // Disable OTP for all accounts owned by the user.
+            // Need to collect first, since `ctx.storage` can't be borrowed as mut
+            //  while borrowed in fn `keys`.
+            let addresses = ACCOUNTS_BY_USER
+                .prefix(&username)
+                .keys(ctx.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<_>>>()?;
+
+            for address in addresses {
+                ACCOUNTS.update(ctx.storage, address, |mut account| -> StdResult<_> {
+                    if let AccountParams::Margin(params) | AccountParams::Spot(params) =
+                        &mut account.params
+                    {
+                        params.is_otp_active = false;
+                    }
+
+                    Ok(account)
+                })?;
+            }
+        },
+    }
+
+    Ok(Response::new())
+}
+
+fn configure_key(ctx: MutableCtx, key_hash: Hash160, key: Op<Key>) -> anyhow::Result<Response> {
+    let username = get_username_by_address(ctx.storage, ctx.sender)?;
+
+    match key {
+        Op::Insert(key) => KEYS.save(ctx.storage, (&username, key_hash), &key)?,
+        Op::Delete => KEYS.remove(ctx.storage, (&username, key_hash)),
+    }
+
+    Ok(Response::new())
+}
+
 fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
     for member in updates.members.add().keys() {
         ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
@@ -299,4 +369,14 @@ fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Resu
     })?;
 
     Ok(Response::new())
+}
+
+fn get_username_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Username> {
+    if let AccountParams::Margin(params) | AccountParams::Spot(params) =
+        ACCOUNTS.load(storage, address)?.params
+    {
+        Ok(params.owner)
+    } else {
+        bail!("account isn't a Spot or Margin account");
+    }
 }

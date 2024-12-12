@@ -1,6 +1,7 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash160, Message},
+    grug::{Addr, Binary, ByteArray, Hash160, Json, Message, Timestamp},
+    std::collections::BTreeSet,
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -13,16 +14,59 @@ pub enum Key {
     Secp256k1(ByteArray<33>),
 }
 
+/// An OTP key info that can be associated with a [`Username`](crate::auth::Username).
+#[grug::derive(Serde, Borsh)]
+pub struct OtpKey {
+    /// An Secp256k1 public key in compressed form.
+    pub key: ByteArray<33>,
+    /// OTP  policy.
+    pub policy: Json,
+}
+
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
 /// field.
 #[grug::derive(Serde)]
-pub enum Credential {
+pub enum Signature {
     /// An Secp256r1 signature signed by a Passkey, along with necessary metadata.
     Passkey(PasskeySignature),
     /// An Secp256k1 signature.
     Secp256k1(ByteArray<64>),
     /// An EIP712 signature signed by a compatible eth wallet.
     Eip712(Eip712Signature),
+}
+
+#[grug::derive(Serde)]
+pub enum Credential {
+    Standard(StandardCredential),
+    Session(SessionCredential),
+}
+
+#[grug::derive(Serde)]
+pub struct StandardCredential {
+    /// Signature of a user key.
+    pub signature: Signature,
+    /// Signature of the OTP key.
+    pub otp_signature: Option<ByteArray<64>>,
+}
+
+#[grug::derive(Serde)]
+pub struct SessionCredential {
+    /// The `SessionInfo` that contains data to be signed with user key and otp key.
+    pub session_info: SessionInfo,
+    /// Signature of the `SignDoc` by the session key.
+    pub session_signature: ByteArray<64>,
+    /// Signatures of the `SessionInfo` by the user key and OTP.
+    pub session_info_signature: StandardCredential,
+}
+
+#[grug::derive(Serde)]
+pub struct SessionInfo {
+    /// Public key of the session key.
+    pub session_key: ByteArray<33>,
+    /// Expiry time of the session key.
+    pub expire_at: Timestamp,
+    /// Addresses that can use the session key.
+    pub whitelisted_accounts: BTreeSet<Addr>,
 }
 
 /// Data that a transaction's sender must sign with their private key.
