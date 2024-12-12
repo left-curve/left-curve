@@ -530,35 +530,35 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-            "sender": "0x1128323d3502087eab68007e0717ccf36d9e96fd",
-            "credential": {
-              "session": {
-                "session_info": {
-                  "session_key": "AlCL9wKMrkfM82iuuJecwLMVJV4HHwviUURGGIcuQOxY",
-                  "expire_at": "86701651407250"
-                },
-                "session_info_signature": {
-                  "eip712": {
-                    "sig": "GnzbpM+jPRhwdEJX+ESEmbHBemeaCAbtTVNAk13B2cFK7opE/r88XG8t9MTW19CnSWp859XkrzywXSB1usRh5g==",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQWxDTDl3S01ya2ZNODJpdXVKZWN3TE1WSlY0SEh3dmlVVVJHR0ljdVFPeFkiLCJleHBpcmVfYXQiOiI4NjcwMTY1MTQwNzI1MCJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
-                  }
-                },
-                "session_signature": "ykFMSUWlOLeq5dsjIJH/CWzycCThOactouPHn6ZLdchS1cnABiLJRiEs41EwysuVG6XhC8SKpk2Xd8t0SXcDIA=="
-              }
-            },
-            "data": {
-              "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
-              "username": "javier_1",
-              "sequence": 0
-            },
-            "msgs": [{
-              "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": { "uusdc": "1000000" }
-              }
-            }],
-            "gas_limit": 2729225
-          }"#;
+          "sender": "0x1128323d3502087eab68007e0717ccf36d9e96fd",
+          "credential": {
+            "session": {
+              "session_info": {
+                "session_key": "AlCL9wKMrkfM82iuuJecwLMVJV4HHwviUURGGIcuQOxY",
+                "expire_at": "86701651407250"
+              },
+              "session_info_signature": {
+                "eip712": {
+                  "sig": "GnzbpM+jPRhwdEJX+ESEmbHBemeaCAbtTVNAk13B2cFK7opE/r88XG8t9MTW19CnSWp859XkrzywXSB1usRh5g==",
+                  "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQWxDTDl3S01ya2ZNODJpdXVKZWN3TE1WSlY0SEh3dmlVVVJHR0ljdVFPeFkiLCJleHBpcmVfYXQiOiI4NjcwMTY1MTQwNzI1MCJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                }
+              },
+              "session_signature": "ykFMSUWlOLeq5dsjIJH/CWzycCThOactouPHn6ZLdchS1cnABiLJRiEs41EwysuVG6XhC8SKpk2Xd8t0SXcDIA=="
+            }
+          },
+          "data": {
+            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
+            "username": "javier_1",
+            "sequence": 0
+          },
+          "msgs": [{
+            "transfer": {
+              "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
+              "coins": { "uusdc": "1000000" }
+            }
+          }],
+          "gas_limit": 2729225
+        }"#;
 
         authenticate_tx(
             ctx.as_auth(),
