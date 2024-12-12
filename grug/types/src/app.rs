@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Message, Timestamp},
+    crate::{Addr, Duration, Hash256, IbcClientImpls, Json, Message, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -66,6 +66,8 @@ pub struct Config {
     /// A code is deleted if it remains orphaned (not used by any contract) for
     /// longer than this duration.
     pub max_orphan_age: Duration,
+    /// Mapping from IBC client types to addresses of implementation contracts.
+    pub client_impls: IbcClientImpls,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

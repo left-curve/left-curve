@@ -1,7 +1,8 @@
 use {
-    grug_storage::{Index, IndexList, IndexedMap, Item, Map, MultiIndex, Set},
+    grug_storage::{Counter, Index, IndexList, IndexedMap, Item, Map, MultiIndex, Raw, Set},
     grug_types::{
-        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, Timestamp,
+        Addr, Binary, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, IbcClientId,
+        Json, Timestamp,
     },
 };
 
@@ -34,6 +35,16 @@ pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 /// Each contract has its own storage space, which we term the "substore".
 /// A key in a contract's substore is prefixed by the word "wasm" + contract address.
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
+
+/// The next IBC client ID.
+/// Note that client IDs are shared across client types.
+pub const NEXT_CLIENT_ID: Counter<IbcClientId> = Counter::new("next_client_id", 0, 1);
+
+/// IBC client states: client_id => client_state
+pub const CLIENT_STATES: Map<IbcClientId, Binary, Raw> = Map::new("client_state");
+
+/// IBC client consensus states: (client_id, height) => consensus_state
+pub const CONSENSUS_STATES: Map<(IbcClientId, u64), Binary, Raw> = Map::new("consensus_state");
 
 pub struct CodeIndexes<'a> {
     pub status: MultiIndex<'a, Hash256, CodeStatus, Code>,

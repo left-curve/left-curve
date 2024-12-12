@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Coins, ContractEvent, EventStatus, HandleEventStatus, Hash256, Json, Label, ReplyOn,
-        Timestamp,
+        Addr, Coins, ContractEvent, EventStatus, HandleEventStatus, Hash256, IbcClientId,
+        IbcClientType, Json, Label, ReplyOn, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -35,7 +35,9 @@ pub enum Event {
     Finalize(EvtFinalize),
     /// A cronjob was executed.
     Cron(EvtCron),
-    // TODO: IBC events
+    /// An IBC client was created.
+    CreateClient(EvtCreateClient),
+    // TODO: other IBC events
 }
 
 impl Event {
@@ -310,6 +312,22 @@ impl EvtGuest {
             method: method.to_string(),
             contract_events: Vec::new(),
             sub_events: Vec::new(),
+        }
+    }
+}
+
+/// An event indicating that an IBC client was created.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct EvtCreateClient {
+    pub client_type: IbcClientType,
+    pub client_id: Option<IbcClientId>,
+}
+
+impl EvtCreateClient {
+    pub fn base(client_type: IbcClientType) -> Self {
+        Self {
+            client_type,
+            client_id: None,
         }
     }
 }

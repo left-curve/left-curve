@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, Config, Hash256, Json, JsonSerExt, LengthBounded, MaxLength, NonEmpty,
-        StdError, StdResult,
+        Addr, Binary, Coins, Config, Hash256, IbcClientType, Json, JsonSerExt, LengthBounded,
+        MaxLength, NonEmpty, StdError, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -57,6 +57,8 @@ pub enum Message {
     Execute(MsgExecute),
     /// Update the code hash associated with a contract.
     Migrate(MsgMigrate),
+    /// Create a new IBC client.
+    CreateClient(MsgCreateClient),
 }
 
 impl Message {
@@ -150,14 +152,12 @@ pub struct MsgConfigure {
     pub new_app_cfg: Option<Json>,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgTransfer {
     pub to: Addr,
     pub coins: Coins,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgUpload {
     pub code: Binary,
@@ -174,7 +174,6 @@ pub struct MsgInstantiate {
     pub funds: Coins,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgExecute {
     pub contract: Addr,
@@ -182,12 +181,18 @@ pub struct MsgExecute {
     pub funds: Coins,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgMigrate {
     pub contract: Addr,
     pub new_code_hash: Hash256,
     pub msg: Json,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct MsgCreateClient {
+    pub client_type: IbcClientType,
+    pub client_state: Json,
+    pub consensus_state: Json,
 }
 
 macro_rules! impl_into_message {
@@ -207,10 +212,11 @@ macro_rules! impl_into_message {
 }
 
 impl_into_message! {
-    Configure   => MsgConfigure,
-    Transfer    => MsgTransfer,
-    Upload      => MsgUpload,
-    Instantiate => MsgInstantiate,
-    Execute     => MsgExecute,
-    Migrate     => MsgMigrate,
+    Configure    => MsgConfigure,
+    Transfer     => MsgTransfer,
+    Upload       => MsgUpload,
+    Instantiate  => MsgInstantiate,
+    Execute      => MsgExecute,
+    Migrate      => MsgMigrate,
+    CreateClient => MsgCreateClient,
 }

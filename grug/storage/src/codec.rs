@@ -1,7 +1,8 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     grug_types::{
-        BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ProtoDeExt, ProtoSerExt, StdResult,
+        Binary, BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ProtoDeExt, ProtoSerExt, StdResult,
     },
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -84,5 +85,15 @@ impl Codec<Vec<u8>> for Raw {
 
     fn decode(data: &[u8]) -> StdResult<Vec<u8>> {
         Ok(data.to_vec())
+    }
+}
+
+impl Codec<Binary> for Raw {
+    fn encode(data: &Binary) -> StdResult<Vec<u8>> {
+        Ok(data.clone().into_inner())
+    }
+
+    fn decode(data: &[u8]) -> StdResult<Binary> {
+        Ok(Binary::from_inner(data.to_vec()))
     }
 }

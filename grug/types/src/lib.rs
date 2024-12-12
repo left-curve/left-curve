@@ -21,6 +21,7 @@ mod event;
 mod ffi;
 mod hash;
 mod hashers;
+mod ibc;
 mod imports;
 mod json;
 mod length_bounded;
@@ -42,7 +43,7 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
-    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
+    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, ibc::*, imports::*, json::*,
     length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
     serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };

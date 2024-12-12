@@ -1,13 +1,13 @@
 use {
     crate::{
         catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
-        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
-        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
-        query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db,
-        EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
-        ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
-        LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        do_create_client, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
+        do_transfer, do_upload, do_withhold_fee, query_app_config, query_balance, query_balances,
+        query_code, query_codes, query_config, query_contract, query_contracts, query_supplies,
+        query_supply, query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult,
+        Buffer, Db, EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier,
+        NullIndexer, ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES,
+        CONFIG, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -890,6 +890,10 @@ where
         Message::Migrate(msg) => {
             let res = do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
             res.map(Event::Migrate)
+        },
+        Message::CreateClient(msg) => {
+            let res = do_create_client(vm, storage, gas_tracker, block, msg);
+            res.map(Event::CreateClient)
         },
     }
 }
