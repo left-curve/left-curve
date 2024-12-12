@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import type React from "react";
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
-import { WizardProvider } from "@dango/shared";
+import { Spinner, WizardProvider } from "@dango/shared";
+import { useAccount, useConfig } from "@left-curve/react";
+import { ConnectionStatus } from "@left-curve/types";
+import { useState } from "react";
 import {
   AuthWizard,
   ConnectStep,
@@ -13,9 +16,28 @@ import {
 } from "~/components/AuthWizard";
 
 const AuthView: React.FC = () => {
+  const { subscribe, state } = useConfig();
+  const { status } = useAccount();
   const location = useLocation();
 
+  const [isLoading, setIsLoading] = useState(!state.isMipdLoaded);
   const isSignup = location.pathname === "/auth/signup";
+
+  subscribe(
+    (x) => x.isMipdLoaded,
+    (isMipdLoaded) => setIsLoading(!isMipdLoaded),
+  );
+
+  if (isLoading)
+    return (
+      <div className="h-screen w-full flex justify-center items-center">
+        <Spinner size="lg" color="pink" />
+      </div>
+    );
+
+  if (status === ConnectionStatus.Connected) {
+    return <Navigate to="/" />;
+  }
 
   const steps = isSignup
     ? [
