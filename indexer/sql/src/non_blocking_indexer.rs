@@ -500,20 +500,13 @@ impl RuntimeHandler {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage, tracing_subscriber};
+    use {super::*, grug_types::MockStorage};
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let subscriber = tracing_subscriber::FmtSubscriber::builder()
-            .with_max_level(tracing::Level::INFO)
-            .finish();
-
-        tracing::subscriber::set_global_default(subscriber)
-            .expect("failed to set global tracing subscriber");
-
         let mut indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
