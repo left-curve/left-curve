@@ -25,6 +25,15 @@ pub struct Account {
     pub params: AccountParams,
 }
 
+impl Account {
+    pub fn is_otp_enabled(&self) -> bool {
+        match &self.params {
+            AccountParams::Spot(params) | AccountParams::Margin(params) => params.is_otp_active,
+            AccountParams::Safe(_) => false,
+        }
+    }
+}
+
 // ---------------------------------- params -----------------------------------
 
 /// Parameters of an account.

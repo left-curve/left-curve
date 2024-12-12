@@ -4,7 +4,7 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
-    grug::{Addr, Coins, Hash160, Hash256},
+    grug::{Addr, Coins, Hash160, Hash256, Op},
     std::collections::BTreeMap,
 };
 
@@ -45,6 +45,8 @@ pub enum ExecuteMsg {
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
+    /// Configure a key for a username.
+    ConfigureKey { key_hash: Hash160, key: Op<Key> },
     /// Update a Safe account's parameters.
     ConfigureSafe { updates: ParamUpdates },
 }
