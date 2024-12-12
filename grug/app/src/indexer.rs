@@ -1,6 +1,6 @@
 use {
     crate::{AppError, Indexer},
-    grug_types::{BlockInfo, BlockOutcome, Tx, TxOutcome},
+    grug_types::{Block, BlockOutcome},
     std::{
         convert::Infallible,
         fmt::{self, Display},
@@ -28,17 +28,8 @@ impl Indexer for NullIndexer {
 
     fn index_block(
         &self,
-        _block: &BlockInfo,
+        _block: &Block,
         _block_outcome: &BlockOutcome,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn index_transaction(
-        &self,
-        _block: &BlockInfo,
-        _tx: Tx,
-        _tx_outcome: TxOutcome,
     ) -> Result<(), Self::Error> {
         Ok(())
     }

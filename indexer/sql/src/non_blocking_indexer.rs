@@ -1,11 +1,10 @@
 use {
-    crate::{bail, block::BlockToIndex, entity, error, indexer_path::IndexerPath, Context},
-    glob::glob,
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
-    grug_types::{
-        BlockInfo, BlockOutcome, Defined, MaybeDefined, Storage, Tx, TxOutcome, Undefined,
+    crate::{
+        bail, block_to_index::BlockToIndex, entity, error, indexer_path::IndexerPath, Context,
     },
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, TransactionTrait},
+    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
+    sea_orm::TransactionTrait,
     std::{
         collections::HashMap,
         future::Future,
@@ -138,26 +137,19 @@ impl NonBlockingIndexer {
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
-        block: &BlockInfo,
-        block_outcome: Option<&BlockOutcome>,
+        block: &Block,
+        block_outcome: &BlockOutcome,
         action: F,
     ) -> error::Result<R>
     where
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
-        let block_to_index = blocks.entry(block.height).or_insert(BlockToIndex::new(
-            *block,
-            None,
-            self.block_tmp_filename(block.height)
-                .to_string_lossy()
-                .to_string(),
-        ));
+        let block_to_index = blocks
+            .entry(block.block_info.height)
+            .or_insert(BlockToIndex::new(block.clone(), block_outcome.clone()));
 
-        if block_outcome.is_some() {
-            tracing::warn!("Block outcome is missing, SETTING");
-            block_to_index.block_outcome = block_outcome.cloned();
-        }
+        block_to_index.block_outcome = block_outcome.clone();
 
         action(block_to_index)
     }
@@ -218,27 +210,7 @@ impl NonBlockingIndexer {
     pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
         self.handle.block_on(async move {
             let db = self.context.db.begin().await?;
-
-            entity::blocks::Entity::delete_many()
-                .filter(entity::blocks::Column::BlockHeight.eq(block_height))
-                .exec(&db)
-                .await?;
-
-            entity::transactions::Entity::delete_many()
-                .filter(entity::transactions::Column::BlockHeight.eq(block_height))
-                .exec(&db)
-                .await?;
-
-            entity::messages::Entity::delete_many()
-                .filter(entity::messages::Column::BlockHeight.eq(block_height))
-                .exec(&db)
-                .await?;
-
-            entity::events::Entity::delete_many()
-                .filter(entity::events::Column::BlockHeight.eq(block_height))
-                .exec(&db)
-                .await?;
-
+            entity::blocks::Entity::delete_block_and_data(&db, block_height).await?;
             db.commit().await?;
 
             Ok::<(), sea_orm::error::DbErr>(())
@@ -249,62 +221,57 @@ impl NonBlockingIndexer {
 
 impl NonBlockingIndexer {
     /// Where will this block be temporarily saved on disk
-    pub fn block_tmp_filename(&self, block_height: u64) -> PathBuf {
-        // Using a specific namespace `block-` to avoid conflicts with other files (tmpfile)
-        let filename = format!("block-{block_height}");
-        self.indexer_path.tmp_path().join(filename)
+    pub fn block_filename(&self, block_height: u64) -> PathBuf {
+        let directory = self.indexer_path.block_path();
+        let filename = format!("{block_height}");
+        directory.join(filename)
     }
 
     /// Load all existing tmp files and ensure they've been indexed
-    fn load_all_from_disk(&self, latest_block_height: u64) -> error::Result<()> {
-        // You're not supposed to have many remaining files, probably at most 1 file in rare case
-        // of process crash. I'll load each file one after the other, I dont need to use
-        // multi-thread to go faster.
+    fn ensure_previous_indexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
+        let last_indexed_block_height = self.handle.block_on(async {
+            entity::blocks::Entity::find_last_block_height(&self.context.db).await
+        })?;
 
-        let pattern = format!("{}/block-*", self.indexer_path.tmp_path().to_string_lossy());
-        for file in glob(&pattern)? {
-            match file {
-                Ok(path) => match BlockToIndex::load_tmp_file(&path) {
-                    Ok(block_to_index) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::info!(
-                            block_height = block_to_index.block_info.height,
-                            "load_all_from_disk filename started"
-                        );
+        let last_indexed_block_height = match last_indexed_block_height {
+            Some(height) => height as u64,
+            None => 1, // happens when you index since genesis
+        };
 
-                        // This block is higher than the current latest block. This can happen when
-                        // a crash occured after `do_finalize_block` has been called, but before
-                        // `do_commit` was called.
-                        if block_to_index.block_info.height > latest_block_height {
-                            block_to_index.delete_tmp_file()?;
-                            continue;
-                        }
+        for block_height in last_indexed_block_height..=latest_block_height {
+            let block_filename = self.block_filename(block_height);
 
-                        self.handle.block_on(async {
-                            let db = self.context.db.begin().await?;
-                            block_to_index.save(&db).await?;
-                            db.commit().await?;
-                            Ok::<(), error::IndexerError>(())
-                        })?;
-
-                        block_to_index.delete_tmp_file()?;
-
-                        #[cfg(feature = "tracing")]
-                        tracing::info!(
-                            block_height = block_to_index.block_info.height,
-                            "load_all_from_disk filename finished"
-                        );
-                    },
-                    Err(_err) => {
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(error = %_err, path = %path.to_string_lossy(), "can't load block from tmp_file");
-                    },
-                },
-                Err(_err) => {
+            let block_to_index = match BlockToIndex::load_from_disk(block_filename.clone()) {
+                Ok(block_to_index) => block_to_index,
+                Err(err) => {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "can't look at filename");
+                    tracing::error!(error = %err, block_height, "can't load block from disk");
+                    panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
                 },
+            };
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = block_height,
+                "ensure_previous_indexed_blocks started"
+            );
+
+            self.handle.block_on(async {
+                let db = self.context.db.begin().await?;
+                block_to_index.save(&db).await?;
+                db.commit().await?;
+                Ok::<(), error::IndexerError>(())
+            })?;
+
+            if !self.keep_blocks {
+                BlockToIndex::delete_from_disk(block_filename)?
             }
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = block_height,
+                "ensure_previous_indexed_blocks ended"
+            );
         }
 
         Ok(())
@@ -333,11 +300,9 @@ impl Indexer for NonBlockingIndexer {
                     block_height = block.height,
                     "start called, found a previous block"
                 );
-                self.load_all_from_disk(block.height)?;
+                self.ensure_previous_indexed_blocks(block.height)?;
             },
         }
-
-        // Save on indexer DB all blocks that were indexed on disk but not saved
 
         self.indexing = true;
 
@@ -382,48 +347,28 @@ impl Indexer for NonBlockingIndexer {
     }
 
     /// NOTE: `index_block` is called *after* `index_transaction`
-    fn index_block(&self, block: &BlockInfo, block_outcome: &BlockOutcome) -> error::Result<()> {
+    fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
             bail!("Can't index after shutdown");
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.height, "index_block called");
+        tracing::debug!(block_height = block.block_info.height, "index_block called");
 
-        self.find_or_create(block, Some(block_outcome), |block_to_index| {
+        self.find_or_create(block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.height, "index_block started");
+            tracing::debug!(
+                block_height = block.block_info.height,
+                "index_block started"
+            );
 
-            block_to_index.save_tmp_file()?;
-
-            #[cfg(feature = "tracing")]
-            tracing::info!(block_height = block.height, "index_block finished");
-            Ok(())
-        })
-    }
-
-    fn index_transaction(
-        &self,
-        block: &BlockInfo,
-        tx: Tx,
-        tx_outcome: TxOutcome,
-    ) -> error::Result<()> {
-        if !self.indexing {
-            bail!("Can't index after shutdown");
-        }
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.height, "index_transaction called");
-
-        self.find_or_create(block, None, |block_to_index| {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.height, "index_transaction started");
-
-            block_to_index.txs.push((tx, tx_outcome));
+            block_to_index.save_on_disk(self.block_filename(block.block_info.height))?;
 
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height = block.height, "index_transaction finished");
-
+            tracing::info!(
+                block_height = block.block_info.height,
+                "index_block finished"
+            );
             Ok(())
         })
     }
@@ -439,6 +384,8 @@ impl Indexer for NonBlockingIndexer {
         let context = self.context.clone();
         let block_to_index = self.find_or_fail(block_height)?;
         let blocks = self.blocks.clone();
+        let keep_blocks = self.keep_blocks;
+        let block_filename = self.block_filename(block_to_index.block.block_info.height);
 
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
         // the shutdown method could be called and see no current block being indexed, and quit.
@@ -449,11 +396,16 @@ impl Indexer for NonBlockingIndexer {
             tracing::debug!(block_height = block_height, "post_indexing started");
 
             let db = context.db.begin().await?;
-            let block_height = block_to_index.block_info.height;
+            let block_height = block_to_index.block.block_info.height;
             block_to_index.save(&db).await?;
             db.commit().await?;
 
-            block_to_index.delete_tmp_file()?;
+            if !keep_blocks {
+                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename) {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %_err, "Can't delete block from disk");
+                }
+            }
 
             Self::remove_or_fail(blocks, &block_height)?;
 

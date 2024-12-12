@@ -33,7 +33,7 @@ pub enum IndexerError {
     Persist(#[from] tempfile::PersistError),
 
     #[error(transparent)]
-    Pattern(#[from] glob::PatternError),
+    Persistence(#[from] indexer_disk_saver::error::Error),
 }
 
 impl From<IndexerError> for AppError {
