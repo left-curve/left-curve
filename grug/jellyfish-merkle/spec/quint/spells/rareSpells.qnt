@@ -28,8 +28,8 @@ module rareSpells {
     else
       { EQ }
   }
-  type NodeIdToCompare = { 
-    version: int, 
+  type NodeIdToCompare = {
+    version: int,
     key_hash: List[int]
   }
 
@@ -129,7 +129,7 @@ module rareSpells {
   run toListAndSetTest =
   all {
       assert(Set(4, 2, 1, 55, 23, 3).toList(intCompare).toSet() == Set(1, 2, 3, 4, 23, 55)),
-      assert(Set({version:0, key_hash: []}, {version:0, key_hash: [1,0,1]}, {version:0, key_hash: [1,0,1,1]},{version:0, key_hash: [1,0]},{version:0, key_hash: [1]}).toList(nodeCompare) 
+      assert(Set({version:0, key_hash: []}, {version:0, key_hash: [1,0,1]}, {version:0, key_hash: [1,0,1,1]},{version:0, key_hash: [1,0]},{version:0, key_hash: [1]}).toList(nodeCompare)
             == List({version:0, key_hash: [1,0,1,1]},{version:0, key_hash: [1,0,1]}, {version:0, key_hash: [1,0]}, {version:0, key_hash: [1]}, {version:0, key_hash: []})),
       assert(List(2,3,1).toSet() == Set(1, 2, 3)),
       assert(List(2,3,1).toSet() == List(3,2,1).toSet()),

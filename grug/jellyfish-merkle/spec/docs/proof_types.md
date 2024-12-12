@@ -1,6 +1,6 @@
 # Proof types
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This document describes how we defined proof types, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. We defined types:
 
@@ -9,6 +9,7 @@ This document describes how we defined proof types, and how everything correspon
 - [`ExistenceProof`](#existenceproof)
 - [`NonExistenceProof`](#nonexistenceproof)
 - [`CommitmentProof`](#commitmentproof)
+
 Types used are similar to the original Rust implementation. There are some minor differences, but those will be addressed in detail here. We based our types on [`cosmos.ics23.v1.rs`](https://github.com/cosmos/ics23/blob/master/rust/src/cosmos.ics23.v1.rs) file.
 
 <!-- Boilerplate: tangled from comment to avoid markdown rendering

@@ -29,7 +29,7 @@ module completeness {
       )
 
   /// For each key_hash that is not in the version of the tree,
-  /// ics23_prove returns a non-existence proof, and the proof 
+  /// ics23_prove returns a non-existence proof, and the proof
   /// can be verified against the root hash
   pure def nonMembershipCompleteness(tree: Tree, v: Version): bool =
     // Tree needs to have a root at this version

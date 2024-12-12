@@ -5,24 +5,24 @@ index e2adafa..5d44f07 100644
 @@ -12,42 +12,48 @@ module apply_state_machine {
    import grug_ics23.* from "./grug_ics23"
    import proofs.* from "./proofs"
- 
+
 -  import apply_simple as simple from "./apply_simple"
 +  // import apply_simple as simple from "./apply_simple"
    import apply_fancy as fancy from "./apply_fancy"
- 
+
    import completeness.* from "./completeness"
    import soundness.* from "./soundness"
- 
+
 -  pure val VALUES = Set(Insert([1]), Insert([2]), Delete)
 +  // Try to pick values with a balanced chance of collision
 +  pure val INIT_VALUES = Set(Some(Insert([1])), None)
 +  pure val VALUES = Set(Some(Insert([1])), Some(Insert([2])), Some(Delete), None)
- 
+
    var tree: Tree
    var version: int
    var smallest_unpruned_version: int
    var ops_history: List[Set[OperationOnKey]]
- 
+
 -  action init = all {
 -    // For now, we always start with an empty tree
 -    tree' = { nodes: Map(), orphans: Set() },
@@ -39,7 +39,7 @@ index e2adafa..5d44f07 100644
 +      ops_history' = [ops],
 +    }
    }
- 
+
 -  pure def to_operations(nondet_value: BitArray -> Operation): Set[OperationOnKey] = {
 -    nondet_value.mapToTuples().map(((key_hash, op)) => {
 -      { key_hash: key_hash, op: op }
@@ -51,7 +51,7 @@ index e2adafa..5d44f07 100644
 +      }
      })
    }
- 
+
    action step_parametrized(
      apply_op: (Tree, int, int, Set[OperationOnKey]) => Tree,
      assign_result: (Set[OperationOnKey], Tree) => bool
@@ -65,17 +65,17 @@ index e2adafa..5d44f07 100644
 -    pure val ops = all_ops.indices().filter(i => i < threshold).map(i => all_ops[i])
 +    pure val ops = kms_with_value.to_operations()
      pure val new_tree = apply_op(tree, version - 1, version, ops)
- 
+
      assign_result(ops, new_tree)
 @@ -61,7 +67,7 @@ module apply_state_machine {
    }
- 
+
    action step_fancy = step_parametrized(fancy::apply, assign_result)
 -  action step_simple = step_parametrized(simple::apply, assign_result)
 +  // action step_simple = step_parametrized(simple::apply, assign_result)
- 
+
    /********* INVARIANTS ***********/
- 
+
 diff --git a/quint/tree.qnt b/quint/tree.qnt
 index 9973972..e71ab49 100644
 --- a/quint/tree.qnt
@@ -83,10 +83,10 @@ index 9973972..e71ab49 100644
 @@ -9,7 +9,7 @@ module tree {
    export hashes.*
    import utils.* from "./utils"
- 
+
 -  pure val MAX_HASH_LENGTH = 4
 +  pure val MAX_HASH_LENGTH = 2
- 
+
    // For types like -> batch: Vec<(Hash256, Op<Hash256>)>,
    type OperationOnKey = { key_hash: BitArray, op: Operation }
 diff --git a/quint/utils.qnt b/quint/utils.qnt
@@ -99,6 +99,6 @@ index 79efce6..420fb42 100644
    import hashes.* from "./hashes"
 -  val keylength = 4
 +  val keylength = 2
- 
+
    pure val DEBUG_ENABLED = false
- 
+

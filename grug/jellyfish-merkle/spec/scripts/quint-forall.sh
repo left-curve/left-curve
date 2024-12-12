@@ -9,7 +9,7 @@ UNDERLINE=$(tput smul)
 info()
 {
   echo "${BLUE}[INFO] $*${RESET}"
-} 
+}
 
 # [ERROR] message in red
 error()

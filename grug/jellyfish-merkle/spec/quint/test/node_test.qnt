@@ -24,21 +24,21 @@ module node_test {
     val left_leaf_hash = hashLeafNode(left_leaf)
     val right_leaf_hash = hashLeafNode(right_leaf)
 
-    val expected_left_hash =  Map([0] -> Hash, 
+    val expected_left_hash =  Map([0] -> Hash,
                                   [0,0] -> Raw(LeafNodeIdentifier.concat(left_child_key).append(left_child_value)))
     val expected_right_hash = Map([0] -> Hash,
                                   [0,0] -> Raw(LeafNodeIdentifier.concat(right_child_key).append(right_child_value)))
-                            
+
     val internal_node = {
         left_child: Some({version: 1, hash: left_leaf_hash}),
         right_child: Some({version: 1, hash: right_leaf_hash})
     }
     val hashed_internal_node = hash(Internal(internal_node))
     val expected_internal_node_hash =  Map( [0] -> Hash,
-                                            [0, 0] -> Raw(InternalNodeIdentifier), 
-                                            [0, 1, 0] -> Raw(LeafNodeIdentifier.concat(left_child_key).append(left_child_value)), 
-                                            [0, 1] -> Hash, 
-                                            [0, 2, 0] -> Raw(LeafNodeIdentifier.concat(right_child_key).append(right_child_value)), 
+                                            [0, 0] -> Raw(InternalNodeIdentifier),
+                                            [0, 1, 0] -> Raw(LeafNodeIdentifier.concat(left_child_key).append(left_child_value)),
+                                            [0, 1] -> Hash,
+                                            [0, 2, 0] -> Raw(LeafNodeIdentifier.concat(right_child_key).append(right_child_value)),
                                             [0, 2] -> Hash
                                           )
    assert(all{

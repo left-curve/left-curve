@@ -38,11 +38,11 @@ module commonSpells {
   /// - @param __list a list
   /// - @param __elem an element
   /// - @returns true if the element is in the list, false otherwise
-  pure def listContains(__list: List[a], __elem: a): bool = 
+  pure def listContains(__list: List[a], __elem: a): bool =
     __list.foldl(
-      false, 
+      false,
       (__acc, __i) => __acc or __i == __elem)
-    
+
   run listContainsTest = all {
     assert(listContains([], 1) == false),
     assert(listContains([1, 2, 3], 1) == true),

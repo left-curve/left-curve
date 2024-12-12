@@ -32,7 +32,7 @@ module apply_simple_test {
     pure val internal_height_3 = Internal({
       left_child: Some({ version: 2, hash: expected_leaf_1.hash() }),
       right_child: Some({ version: 2, hash: expected_leaf_2.hash() })})
-    
+
     pure val internal_height_2 = Internal({
       left_child: None,
       right_child: Some({ version: 2, hash: internal_height_3.hash() })
@@ -605,11 +605,11 @@ module apply_simple_test {
     val t1 = empty_tree.apply(0,1,op1)
     val t2 = t1.apply(1,2, op2)
 
-    val super_simple =  { nodes: 
+    val super_simple =  { nodes:
                             Map({ key_hash: [], version: 1 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] })),
                           orphans: Set({ key_hash: [], orphaned_since_version: 2, version: 1 })
                         }
-    val fancy = { nodes: 
+    val fancy = { nodes:
                     Map(
                         { key_hash: [], version: 1 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] }),
                         { key_hash: [], version: 2 } -> Leaf({ key_hash: [1, 0, 0, 0], value_hash: [13] })),
