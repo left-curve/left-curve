@@ -491,7 +491,7 @@ mod tests {
 
     #[test]
     fn session_key_authentication() {
-        let user_address = Addr::from_str("0x227e7e3d56ffd984ba6e3ead892f5676fa722a16").unwrap();
+        let user_address = Addr::from_str("0x1128323d3502087eab68007e0717ccf36d9e96fd").unwrap();
         let user_username = Username::from_str("javier_1").unwrap();
         let user_keyhash = Hash160::from_str("904EF73D090935DB7DB7AE7162DB546268225D66").unwrap();
         let user_key = Key::Secp256k1(
@@ -530,41 +530,35 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
-          "credential": {
-            "session": {
-              "session_info": {
-                "session_key": "AvPdvBi8TryY14G6LJ4TqYExLeXYAb2ZDkV8wWw6+LCV",
-                "expire_at": "1733951225877"
-              },
-              "session_info_signature": {
-                "signature": {
+            "sender": "0x1128323d3502087eab68007e0717ccf36d9e96fd",
+            "credential": {
+              "session": {
+                "session_info": {
+                  "session_key": "AlCL9wKMrkfM82iuuJecwLMVJV4HHwviUURGGIcuQOxY",
+                  "expire_at": "86701651407250"
+                },
+                "session_info_signature": {
                   "eip712": {
-                    "sig": "QnSzyw1ZbXZWTaa4YbRB6SyE/Qmufy+a2W9QrMCL9YULWm0QRdDtvwclCB5NVln8hLS49miTF9J66NcJM+IN7w==",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7IndoaXRlbGlzdGVkX2FjY291bnRzIjpbIjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiIsIjB4NWI3ZWY1ZjI4ZTMwNjAwMjkzYjg5NGQ1ZWUyNDYyNmU2N2I4NzBiNCIsIjB4OTNhYTEwOTY2M2NmYTYwMTBkNDQxNzNhYjc3YmQ1OTQyNmUxYzFlYyIsIjB4YTdlZjg3M2JkYzI0MTc1NjI3ZGNlYmE1YTFkYWFhNTIzZjJjOTFlNiIsIjB4YjI0NTE5YmM5YWEzNGI4ZTlkODIzYTBjZWJhMTY2MTJhMWUzYzVlOCIsIjB4YzNiN2U4MWVhNTQyMjUyZWRlMWE5ODVlN2NkZWUyNTE3MTkxZTM0OCIsIjB4YzRhODEzNmRkODVlYmQ4ZmVlZjBhYTU5Y2Y5YjMzYjc3NDRmOTdkYyIsIjB4ZmQ1NjgyNWU4OTg5YWU4YWE1OWMwYWIyYTdkYzNhNjViYThlMDAwYSJdLCJzZXNzaW9uX2tleSI6IkF2UGR2Qmk4VHJ5WTE0RzZMSjRUcVlFeExlWFlBYjJaRGtWOHdXdzYrTENWIiwiZXhwaXJlX2F0IjoiMTczMzk1MTIyNTg3NyJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6IndoaXRlbGlzdGVkX2FjY291bnRzIiwidHlwZSI6ImFkZHJlc3NbXSJ9LHsibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+                    "sig": "GnzbpM+jPRhwdEJX+ESEmbHBemeaCAbtTVNAk13B2cFK7opE/r88XG8t9MTW19CnSWp859XkrzywXSB1usRh5g==",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQWxDTDl3S01ya2ZNODJpdXVKZWN3TE1WSlY0SEh3dmlVVVJHR0ljdVFPeFkiLCJleHBpcmVfYXQiOiI4NjcwMTY1MTQwNzI1MCJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
                   }
-                }
-              },
-              "session_signature": "6l5I6BTGqEmjNiZNOIkFjmT6enAcgBR6gHkh1IOLMUJn+mal5sEzMnbvahHSn574SlO9goHnp6WV4XMGnHuLtw=="
-            }
-          },
-          "data": {
-            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
-            "username": "javier_1",
-            "sequence": 0
-          },
-          "msgs": [
-            {
+                },
+                "session_signature": "ykFMSUWlOLeq5dsjIJH/CWzycCThOactouPHn6ZLdchS1cnABiLJRiEs41EwysuVG6XhC8SKpk2Xd8t0SXcDIA=="
+              }
+            },
+            "data": {
+              "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
+              "username": "javier_1",
+              "sequence": 0
+            },
+            "msgs": [{
               "transfer": {
                 "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
-                  "uusdc": "1000000"
-                }
+                "coins": { "uusdc": "1000000" }
               }
-            }
-          ],
-          "gas_limit": 2647711
-        }"#;
+            }],
+            "gas_limit": 2729225
+          }"#;
 
         authenticate_tx(
             ctx.as_auth(),
