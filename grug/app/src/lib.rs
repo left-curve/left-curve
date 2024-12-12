@@ -19,6 +19,7 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
-    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    app::*, buffer::*, error::*, event::*, execute::*, gas::*, home::*, indexer::*,
+    proposal_preparer::*, providers::*, query::*, shared::*, state::*, submessage::*, traits::*,
+    vm::*,
 };

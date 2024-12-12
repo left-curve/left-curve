@@ -11,7 +11,7 @@ use {
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
+        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CommitmentStatus, CronOutcome, Duration, Event, GenericResult, GenericResultExt,
         GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
         QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
@@ -264,13 +264,13 @@ where
             );
 
             let gas_tracker = GasTracker::new_limitless();
-            let next_time = block.timestamp + cfg.cronjobs[&contract];
+            let next_time = block.block_info.timestamp + cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block,
+                block.block_info,
                 contract,
                 time,
                 next_time,
@@ -294,7 +294,7 @@ where
             let tx_outcome = process_tx(
                 self.vm.clone(),
                 buffer.clone(),
-                block,
+                block.block_info,
                 tx.clone(),
                 AuthMode::Finalize,
             );

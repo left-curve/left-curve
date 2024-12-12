@@ -13,13 +13,6 @@ use {
 pub struct BlockToIndex {
     pub block: Block,
     pub block_outcome: BlockOutcome,
-    // indexer_path: IndexerPath,
-    // /// Where the block is temporarily saved on disk. I use `String` instead of `PathBuf` because
-    // /// `PathBuf` can not be serialized by Borsh and using `PathBuf` with #[borsh(skip)] means
-    // /// a default value will be set.
-    // tmp_filename: String,
-    // /// Where the block is permanently saved on disk.
-    // filename: String,
 }
 
 impl BlockToIndex {

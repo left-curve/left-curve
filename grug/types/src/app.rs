@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Message, Timestamp},
+    crate::{Addr, Duration, Hash256, Json, Message, Timestamp, Tx},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
