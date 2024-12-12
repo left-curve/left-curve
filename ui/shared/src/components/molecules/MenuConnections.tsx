@@ -9,6 +9,7 @@ import { truncateAddress } from "@left-curve/utils";
 import { twMerge } from "../../utils";
 
 import { Button, CopyCheckIcon, CopyIcon, ProfileIcon, WalletIcon } from "../";
+import { useSessionKey } from "../../hooks";
 import type { VisibleRef } from "../../types";
 import { CrossIcon } from "../icons/Cross";
 
@@ -18,7 +19,8 @@ export const MenuConnections = forwardRef<VisibleRef>((props, ref) => {
   const [showMenu, setShowMenu] = useState(false);
   const [copyIcon, setCopyIcon] = useState(<CopyIcon className="w-6 h-6" />);
 
-  const { connector, account } = useAccount();
+  const { connector, account, accounts } = useAccount();
+  const { session, createSessionKey, deleteSessionkey } = useSessionKey();
   const { disconnect } = useDisconnect();
 
   useImperativeHandle(ref, () => ({
@@ -94,7 +96,32 @@ export const MenuConnections = forwardRef<VisibleRef>((props, ref) => {
               </Button>
             </div>
           )}
-          <Button size="sm" onClick={() => disconnect({ connectorUId: connector.uid })}>
+          {session ? (
+            <p className="bg-surface-rose-100 rounded-2xl p-2 text-center text-sm font-bold uppercase text-typography-black-200">
+              Trading session active
+            </p>
+          ) : (
+            <Button
+              size="sm"
+              variant="solid"
+              color="sand"
+              className="text-typography-black-200"
+              onClick={() =>
+                createSessionKey({
+                  expireAt: +new Date() * 24 * 60 * 60 * 1000,
+                  whitelistedAccounts:
+                    accounts?.filter(({ type }) => type !== "safe").map(({ address }) => address) ||
+                    [],
+                })
+              }
+            >
+              Enable trading session
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => [deleteSessionkey(), disconnect({ connectorUId: connector.uid })]}
+          >
             Log out
           </Button>
         </div>

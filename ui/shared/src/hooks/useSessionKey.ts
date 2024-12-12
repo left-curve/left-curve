@@ -15,7 +15,7 @@ export function useSessionKey() {
   const config = useConfig();
   const { username } = useAccount();
   const { data: connectorClient } = useConnectorClient();
-  const [session, setSession] = useStorage<SigningSession>("session_key", {
+  const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     storage: createStorage({ storage: sessionStorage }),
     version: 1,
   });
@@ -73,9 +73,14 @@ export function useSessionKey() {
     setSession(session);
   }
 
+  function deleteSessionkey() {
+    setSession(null);
+  }
+
   return {
     client,
-    createSessionKey,
     session,
+    deleteSessionkey,
+    createSessionKey,
   };
 }
