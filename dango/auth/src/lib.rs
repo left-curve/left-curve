@@ -204,7 +204,7 @@ fn verify_standard_credential(
     match (maybe_otp_key, credential.otp_signature) {
         (Some(otp_key), Some(otp_signature)) => verify_signature(
             api,
-            Key::Secp256k1(otp_key.key),
+            Key::Secp256k1(otp_key),
             Signature::Secp256k1(otp_signature),
             &data,
         ),

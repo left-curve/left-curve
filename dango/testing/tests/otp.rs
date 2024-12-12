@@ -1,7 +1,7 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{account_factory::ExecuteMsg, auth::OtpKey},
-    grug::{Addressable, Coin, Coins, Json, Op, ResultExt},
+    dango_types::account_factory::ExecuteMsg,
+    grug::{Addressable, Coin, Coins, Op, ResultExt},
 };
 
 #[test]
@@ -24,10 +24,7 @@ fn otp() {
                 &mut sender,
                 contracts.account_factory,
                 &ExecuteMsg::ConfigureUserOtp {
-                    key: Op::Insert(OtpKey {
-                        key: otp_key,
-                        policy: Json::null(),
-                    }),
+                    key: Op::Insert(otp_key),
                 },
                 Coins::default(),
             )

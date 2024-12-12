@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash160, Json, Message, Timestamp},
+    grug::{Addr, Binary, ByteArray, Hash160, Message, Timestamp},
     std::collections::BTreeSet,
 };
 
@@ -15,13 +15,7 @@ pub enum Key {
 }
 
 /// An OTP key info that can be associated with a [`Username`](crate::auth::Username).
-#[grug::derive(Serde, Borsh)]
-pub struct OtpKey {
-    /// An Secp256k1 public key in compressed form.
-    pub key: ByteArray<33>,
-    /// OTP  policy.
-    pub policy: Json,
-}
+pub type OtpKey = ByteArray<33>;
 
 /// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
 /// field.
