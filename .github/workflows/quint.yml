@@ -74,7 +74,7 @@ jobs:
           node-version: "18"
       - run: npm install -g @informalsystems/quint
       - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
-  
+
   quint-simulations-fancy:
     name: Simulate fancy
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
           node-version: "18"
       - run: npm install -g @informalsystems/quint
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
-    
+
   quint-simulations-simple:
     name: Simulate simple
     runs-on: ubuntu-latest
@@ -125,7 +125,7 @@ jobs:
           node-version: "18"
       - run: npm install -g @informalsystems/quint
       - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
-  
+
   quint-simulations-prune-fancy:
     name: Simulate fancy pruning
     runs-on: ubuntu-latest

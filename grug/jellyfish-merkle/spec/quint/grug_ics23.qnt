@@ -23,7 +23,7 @@ module grug_ics23 {
   import utils.* from "./utils"
 
   type InnerSpec = {
-    min_prefix_length: int, 
+    min_prefix_length: int,
     max_prefix_length: int,
     child_size: int,
     empty_child: Term,
@@ -65,7 +65,7 @@ module grug_ics23 {
 
   /// calculate a hash from an exists proof
   pure def exists_calculate(p: ExistenceProof): Term =
-    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
+    val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})
     // the inner node nodeHashes are concatenated and hashed upwards
     p.path.foldl(leafHash,
       (child, inner) =>
@@ -90,7 +90,7 @@ module grug_ics23 {
     proof.left != None implies {
       pure val left = proof.left.unwrap()
       and {
-        verify_existence(left, root, left.key, left.value), 
+        verify_existence(left, root, left.key, left.value),
         key.greater_than(left.key),
       }
     },

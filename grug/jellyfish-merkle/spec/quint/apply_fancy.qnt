@@ -15,7 +15,7 @@ module apply_fancy {
   import basicSpells.* from "./spells/basicSpells"
   import commonSpells.* from "./spells/commonSpells"
   import rareSpells.* from "./spells/rareSpells"
-  
+
   /// The return type of apply_* functions, as some of them modify the tree
   type ApplyResult = { outcome: Outcome, orphans_to_add: Set[OrphanId], nodes_to_add: Set[(NodeId, Node)] }
 

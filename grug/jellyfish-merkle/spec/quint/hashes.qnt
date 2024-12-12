@@ -163,9 +163,9 @@ module hashes {
   /// Slice a raw sequence represented by a term.
   /// Non-raw sequences are returned unmodified.
   pure def termSlice(term: Term, start: int, end: int): Term = {
-    if (size(keys(term)) != 1) 
+    if (size(keys(term)) != 1)
       term
-    else 
+    else
       pure val first = term.get([ 0 ])
       match first {
         | Raw(bytes) => raw(bytes.slice(start, end))

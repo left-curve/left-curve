@@ -44,7 +44,7 @@ module apply_fancy {
   import basicSpells.* from "./spells/basicSpells"
   import commonSpells.* from "./spells/commonSpells"
   import rareSpells.* from "./spells/rareSpells"
-  
+
   <<<definitions>>>
 }
 ```
@@ -245,7 +245,7 @@ Lastly, we make the recursive call
 As explained, we call `pre_compute_apply_at` to prepare for the recursion from calling `apply_at`.
 - `memo`, the result from the pre-computation, is given to `apply_at` so it uses it instead of doing recursion.
 - The result obtained from `apply_at` includes mutations to be made to the tree (`nodes_to_add` and `orphans_to_add`). We produce a new tree (`new_tree`) with those changes applied.
-- Then, we just need to match, in a less powerful but similar pattern matching. 
+- Then, we just need to match, in a less powerful but similar pattern matching.
 
 ```bluespec "definitions" +=
   pure val memo = pre_compute_apply_at(tree_1, new_version, batch)
@@ -469,7 +469,7 @@ In the rust code so far, we had potential mutations:
 - Calls to `apply_at_child` can add orhpans
 - The checks on the block above can add orphans
 
-We set up a result value that include this initial changes, to be used by most cases below. In the cases where we need to make more mutations on top of these, those are added to this initial result value. 
+We set up a result value that include this initial changes, to be used by most cases below. In the cases where we need to make more mutations on top of these, those are added to this initial result value.
 
 ```bluespec "definitions" +=
   pure val orphans_from_children =
@@ -796,7 +796,7 @@ pure def apply_at_child(
 ): ApplyResult = {
 ```
 
-Once again, Rust uses a `match`, and Quint will use a combination of `if` and `match` instead due to less powerful pattern matching. 
+Once again, Rust uses a `match`, and Quint will use a combination of `if` and `match` instead due to less powerful pattern matching.
 ```rust
     match (batch.is_empty(), child) {
 ```
@@ -919,7 +919,7 @@ We start by preparing the batch:
 -->
 
 And again, we have a `match`:
-  
+
 ```rust
     match (batch.is_empty(), op) {
 ```
@@ -1029,7 +1029,7 @@ fn partition_batch<T>(
 }
 ```
 
-In Quint, we do a simpler partition using a fold and list access for bits. 
+In Quint, we do a simpler partition using a fold and list access for bits.
 
 ```bluespec "definitions" +=
 pure def partition_batch(
@@ -1073,7 +1073,7 @@ fn partition_leaf(leaf: Option<LeafNode>, bits: BitArray) -> (Option<LeafNode>, 
 }
 ```
 
-Replacing `if let` with a `match` and `bit_at_index` with simple list access, we have: 
+Replacing `if let` with a `match` and `bit_at_index` with simple list access, we have:
 
 ```bluespec "definitions" +=
 pure def partition_leaf(leaf: Option[LeafNode], bits: BitArray): (Option[LeafNode], Option[LeafNode]) = {
@@ -1138,7 +1138,7 @@ pure def prepare_batch_for_subtree(
 }
 ```
 
-The way to write this in Quint that keeps tighter correspondance is to break down how we find `maybe_op` and `filtered_batch` into two different iterations. This happens because we can't have a mutable `maybe_op` as in Rust, and doing it all on a single iteration would require a more complicated fold. We favor cognitive correspondance over performance. 
+The way to write this in Quint that keeps tighter correspondance is to break down how we find `maybe_op` and `filtered_batch` into two different iterations. This happens because we can't have a mutable `maybe_op` as in Rust, and doing it all on a single iteration would require a more complicated fold. We favor cognitive correspondance over performance.
 
 For `maybe_op`:
 
@@ -1315,7 +1315,7 @@ Then we start the translation from the body of `create_subtree` in Rust:
     match (batch.len(), existing_leaf) {
 ```
 
-In Quint, this `match` will be if-else branches. 
+In Quint, this `match` will be if-else branches.
 
 First case:
 ```rust

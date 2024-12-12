@@ -6,7 +6,7 @@ In order to obtain confidence that the model is correct, in respect to the invar
 
 ## Summary of Simualation
 | Simulation Type                                                        | Time Taken | Parallel Instances | Max Steps | Samples per Command | Total Samples | Key Hash Length | Commit                                                                                                                |
-|------------------------------------------------------------------------|------------|--------------------|-----------|---------------------|---------------|-----------------|-----------------------------------------------------------------------------------------------------------------------|
+| ---------------------------------------------------------------------- | ---------- | ------------------ | --------- | ------------------- | ------------- | --------------- | --------------------------------------------------------------------------------------------------------------------- |
 | [Tree manipulation](#simulating-tree-manipulation)                     | 16 hours   | 12                 | 3         | 100k                | 1.2M          | 6               | [25e3960](https://github.com/informalsystems/left-curve-jmt/commit/25e3960869e5a200253c6def80ce0c19cdd0dff7)          |
 | [Proofs (First simulation)](#simulating-proofs-and-proof-verification) | 17 hours   | 12                 | 3         | 15k                 | 180k          | 4               | [30a7013](https://github.com/informalsystems/left-curve-jmt/pull/58/commits/30a70137328040e865a530295477359be90cd5b4) |
 | [Proofs (Second simulation)](#second-simulation)                       | 8 hours    | 12                 | 3         | 20k                 | 240k          | 4               | [be6b33b](https://github.com/informalsystems/left-curve-jmt/commit/be6b33ba547901ab7e5bb4863dd54b03d4baf0ac)          |
@@ -16,14 +16,14 @@ In order to obtain confidence that the model is correct, in respect to the invar
 ## Summary of Testing
 
 | Test Type                                                                               | Time Taken | Parallel Instances | Samples per Command | Total Samples | Test File                                        | Commit                                                                                                       |
-|-----------------------------------------------------------------------------------------|------------|--------------------|---------------------|---------------|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| --------------------------------------------------------------------------------------- | ---------- | ------------------ | ------------------- | ------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | [Simple apply vs Fancy apply](#simple-apply-vs-fancy-apply)                             | 6 hours    | 8                  | 10k                 | 80k           | [tree_test.qnt](../quint/test/tree_test.qnt)     | [7081237](https://github.com/informalsystems/left-curve-jmt/commit/7081237fdc646ebb4d3b4128be01286089e2ac27) |
 | [Proof verification across different trees](#proof-verification-across-different-trees) | 3 hours    | 10                 | 4k                  | 40k           | [proofs_test.qnt](../quint/test/proofs_test.qnt) | [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) |
 
 ## Summary of Model Checking
 
 | Setup               | Key Hash Length | Steps | Distinct States Found | Depth of State Graph | Time Taken | Commit                                                                                                       |
-|---------------------|-----------------|-------|-----------------------|----------------------|------------|--------------------------------------------------------------------------------------------------------------|
+| ------------------- | --------------- | ----- | --------------------- | -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------ |
 | [Setup A](#setup-a) | 3               | 1     | 16,777,472            | 2                    | 1h 55min   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f) |
 | [Setup B](#setup-b) | 2               | 2     | 1,052,688             | 3                    | 2min 46s   | [5b99741](https://github.com/informalsystems/left-curve-jmt/commit/5b997412efd1de6663204a96612b618f8baefc7f) |
 
@@ -115,7 +115,7 @@ ok leafNotExistsThenExistsTest passed 4000 test(s)
 ok leafExistsThenNotExistsTest passed 4000 test(s)
 ```
 
-Commit for this experiment: [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e) 
+Commit for this experiment: [93e2359](https://github.com/informalsystems/left-curve-jmt/commit/93e235970a6c1f85b398133bf54928e8ffb5c32e)
 
 ## **Model Checking**
 

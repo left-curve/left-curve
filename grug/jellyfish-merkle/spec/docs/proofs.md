@@ -61,7 +61,7 @@ pub fn ics23_prove_existence(
 ```
 
 ```bluespec "definitions" +=
-pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray) 
+pure def ics23_prove_existence(t: Tree, version: Version, key_hash: BitArray)
 : Option[List[InnerOp]] =
 ```
 <!---
@@ -78,7 +78,7 @@ val prefixes_list = 0.to(key_hash.length()).map( i => key_hash.slice(0,i)).toLis
 We set our `iterator` to a record that stores `path` - empty list, index of `key_prefix` in a `prefixes_list` - `0`, boolean value which indicates wether leaf has been found - `false` and a `child_version` which helps us find the correct version of internal node's child - `version` for which `ics23_prove_existence` is called.
 
 ```bluespec "ics23_prove_existence" +=
-val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) => 
+val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: version}, (iterator, key_prefix) =>
 ```
 <!--
 ```bluespec "ics23_prove_existence" +=
@@ -88,8 +88,8 @@ val r = prefixes_list.foldl({ path: List(), i: 0, found: false, child_version: v
 `iterator.found` is used in our early return workaround. If the algorithm has found the leaf with adequate `key_hash` or if it cannot find a leaf with corresponding `key_prefix` and `iterator.child_version`, iterator won't be changed until fold has finished.
 
 ```bluespec "ics23_prove_existence_1" +=
-if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version}))) 
-  iterator 
+if (iterator.found or not(t.nodes.keys().contains({key_hash: key_prefix, version: iterator.child_version})))
+  iterator
 ```
 <!--
 ```bluespec "ics23_prove_existence_1" +=
@@ -157,13 +157,13 @@ Since Quint's pattern matching is not as strong as Rust's we had to figure a way
 
 ```bluespec "ics23_prove_existence_2" +=
 match node {
-  | Leaf(l) => { ...iterator, i: iterator.i + 1, 
+  | Leaf(l) => { ...iterator, i: iterator.i + 1,
                             found: l.key_hash == key_hash }
-  | Internal(internal) => 
+  | Internal(internal) =>
     val next_bit_0 = key_prefix.append(0)
-    val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0) 
+    val child_version = if(prefixes_list[iterator.i + 1] == next_bit_0)
                           internal.left_child.unwrap().version
-                        else 
+                        else
                           internal.right_child.unwrap().version
 ```
 <!--
@@ -176,9 +176,9 @@ Then, we will take its version and declare it `child_version`. After doing so, w
 - If we are to end up in the `(Some(0), Some(child), sibling)` branch, that means that we will create `innerOp` variable with `prefix` being `InternalNodeHashPrefix` and `suffix` being either hash of the right child or zeroed out hash (`Hash256_ZERO`).
 
 ```bluespec "ics23_prove_existence_3" +=
-val innerOp = 
-  if(prefixes_list[iterator.i + 1] == next_bit_0) 
-    { prefix: InternalNodeHashPrefix, 
+val innerOp =
+  if(prefixes_list[iterator.i + 1] == next_bit_0)
+    { prefix: InternalNodeHashPrefix,
       suffix: match internal.right_child {
                 | None => Hash256_ZERO
                 | Some(c) => c.hash} }
@@ -203,11 +203,11 @@ path.push(InnerOp {
 - If we are to end up in the `(Some(1), sibling, Some(child))` branch, that means that we will create `innerOp` variable with `prefix` being concatanated values of InternalNodeHashPrefix and either hash of the left child or zeroed out hash (`Hash256_ZERO`). In this case, `suffix` will be an empty `Map()`, which corresponds to an empty vector in Rust implementation.
 
 ```bluespec "ics23_prove_existence_4" +=
-else 
+else
   { prefix: InternalNodeHashPrefix
               .termConcat(match internal.left_child {
                             | None => Hash256_ZERO
-                            | Some(c) => c.hash}), 
+                            | Some(c) => c.hash}),
     suffix: Map() }
 ```
 <!-- Empty line, to be tangled but not rendered
@@ -232,7 +232,7 @@ path.push(InnerOp {
 After creating the new inner op, we update `iterator` with new values, such as new index of `key_prefix`, `child_version` that we have created before creating `innerOp` and new entry in the `path` list.
 
 ```bluespec "ics23_prove_existence_3" +=
-{ ...iterator, path: iterator.path.append(innerOp),  
+{ ...iterator, path: iterator.path.append(innerOp),
   i: iterator.i + 1, child_version: child_version }
 ```
 <!--
@@ -305,13 +305,13 @@ First, we get all leaf nodes with `key_hash` smaller than the `key_hash` functio
 val smallerKeyNodes = t.values().filter(n => match n {
   | Leaf(l) => less_than(l.key_hash, k)
   | Internal(_) => false
-}) 
+})
 ```
 
 If there is no leaf nodes with smaller `key_hash`, we will return `None`.
 
 ```bluespec "leftNeighbor" +=
-if(smallerKeyNodes.empty()) None else 
+if(smallerKeyNodes.empty()) None else
 ```
 <!---
 ```bluespec "leftNeighbor" +=
@@ -321,18 +321,18 @@ if(smallerKeyNodes.empty()) None else
 If there are some leafs in `smallerKeyNodes`, the algorithm will find leaf that is the closest to the leaf with a `key_hash` passed into the function.
 
 ```bluespec "leftNeighbor1" +=
-val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
+val someLeaf = smallerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) =>
   match x {
-    | Leaf(l) =>  
+    | Leaf(l) =>
           l
     | Internal(_) => s
   })
 Some(smallerKeyNodes.fold( someLeaf, (s,x) =>
   match x {
-    | Leaf(l) =>  
+    | Leaf(l) =>
         if (less_than(s.key_hash, l.key_hash))
           l
-        else 
+        else
           s
     | Internal(_) => s
   }
@@ -369,20 +369,20 @@ pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
   val largerKeyNodes = t.values().filter(n => match n {
     | Leaf(l) => less_than(k, l.key_hash)
     | Internal(_) => false
-  }) 
-  if(largerKeyNodes.empty()) None else 
-    val someLeaf = largerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) => 
+  })
+  if(largerKeyNodes.empty()) None else
+    val someLeaf = largerKeyNodes.fold({key_hash: [], value_hash: []}, (s, x) =>
       match x {
-        | Leaf(l) =>  
+        | Leaf(l) =>
               l
         | Internal(_) => s
         })
     Some(largerKeyNodes.fold(someLeaf, (s, x) =>
       match x {
-        | Leaf(l) =>  
+        | Leaf(l) =>
             if (less_than(l.key_hash, s.key_hash) )
               l
-            else 
+            else
               s
         | Internal(_) => s
       }
@@ -391,7 +391,7 @@ pure def rightNeighbor(t: TreeMap, k: BitArray): Option[LeafNode] =
 <!---
 ```bluespec "definitions" +=
 
-/// Returns optional CommitmentProof based for the given key_hash. 
+/// Returns optional CommitmentProof based for the given key_hash.
 /// In implementation the key is passed instead of the key_hash.
 ```
 --->
@@ -463,7 +463,7 @@ match state_storage_read {
     | Some(value) =>
       // generating existence proof
       (...)
-    | None => 
+    | None =>
       // generating non-existence proof
       (...)
 }
@@ -516,7 +516,7 @@ Then, the algorithm matches `lneighborOption`. If there is a left neighbor, it w
 
 ```bluespec "nonexistence" +=
 val leftNeighborExistenceProof: Option[ExistenceProof] = match lneighborOption {
-  | Some(lneighbor) => 
+  | Some(lneighbor) =>
     val pathOption = ics23_prove_existence(t, version, lneighbor.key_hash)
     match pathOption {
       | Some(path) => Some({
@@ -536,7 +536,7 @@ The algorithm will create ExistenceProof of a right neighbor in the same way it 
 ```bluespec "nonexistence" +=
 val rneighborOption: Option[LeafNode]  = rightNeighbor(t.treeAtVersion(version), key_hash)
 val rightNeighborExistenceProof: Option[ExistenceProof] = match rneighborOption {
-  | Some(rneighbor) => 
+  | Some(rneighbor) =>
     val pathOption = ics23_prove_existence(t,version, rneighbor.key_hash)
     match pathOption {
       | Some(path) => Some({

@@ -91,7 +91,7 @@ pub struct InnerSpec {
 
 ```bluespec "definitions" +=
 type InnerSpec = {
-  min_prefix_length: int, 
+  min_prefix_length: int,
   max_prefix_length: int,
   child_size: int,
   empty_child: Term,
@@ -339,7 +339,7 @@ pub fn apply_leaf<H: HostFunctionsProvider>(
 ```
 
 ```bluespec "definitions" +=
-  val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})    
+  val leafHash = hashLeafNode({ key_hash: p.key, value_hash: p.value})
 ```
 
 After getting the hash of the leaf, it concatanates hashes of other nodes that are in `path`. This part emulates the [`apply_inner`](https://github.com/cosmos/ics23/blob/a31bd4d9ca77beca7218299727db5ad59e65f5b8/rust/src/ops.rs#L8-L14) Rust function.
@@ -481,7 +481,7 @@ Here is the snippet from the Rust implementation.
   proof.left != None implies {
     pure val left = proof.left.unwrap()
     and {
-      verify_existence(left, root, left.key, left.value), 
+      verify_existence(left, root, left.key, left.value),
       key.greater_than(left.key),
     }
   },
@@ -519,7 +519,7 @@ Since Quint's matching is not as powerful as Rust's, we had to find a work-aroun
         (Some(left), Some(right)) => ensure_left_neighbor(inner, &left.path, &right.path),
         ...
     }
-  } 
+  }
 ```
 
 ```bluespec "definitions" +=
@@ -634,7 +634,7 @@ pure def get_padding(spec: InnerSpec, branch: int): Option[Padding] = {
 Based on the `branch` value, which will be either `0` or `1`.
 
 - In the case when `branch = 0`, padding will look like this:
-  
+
   ```bluespec
   {
     min_prefix: spec.min_prefix_length,   // 1
@@ -644,7 +644,7 @@ Based on the `branch` value, which will be either `0` or `1`.
   ```
 
 - In the case when `branch = 1`, padding will look like this:
-  
+
   ```bluespec
   {
     min_prefix: spec.min_prefix_length + spec.child_size,   // 1 + 32 = 33
@@ -1101,7 +1101,7 @@ fn ensure_left_neighbor(
 }
 ```
 
-This uses mutable values and a `while` statement to search for the part of the left and right paths that don't share a prefix and a suffix, while their successors still do. In other words, we need to find the smallest indexes `li` and `ri` where the paths at the respective indexes don't match while they do match for `li + k` and `ri + k` for all positive `k`s in range. The Quint definition uses `exists` to search for this indexes in a less performant but more declarative way: 
+This uses mutable values and a `while` statement to search for the part of the left and right paths that don't share a prefix and a suffix, while their successors still do. In other words, we need to find the smallest indexes `li` and `ri` where the paths at the respective indexes don't match while they do match for `li + k` and `ri + k` for all positive `k`s in range. The Quint definition uses `exists` to search for this indexes in a less performant but more declarative way:
 
 ```bluespec "definitions" +=
 pure def is_left_neighbor(spec: InnerSpec, left: List[InnerOp], right: List[InnerOp]): bool = {
@@ -1139,7 +1139,7 @@ This part emulates the first part of `ensure_left_neighbor` Rust function:
       top_right = mut_right.pop().unwrap();
   }
 ```
-<!--- 
+<!---
 ```bluespec "definitions" +=
       // Now topleft and topright are the first divergent nodes
       // make sure they are left and right of each other.
@@ -1167,7 +1167,7 @@ Since we have wrapped all checks in one _big_ `and`, we can just call `is_left_s
 is_left_step(spec, left[li], right[ri]),
 ```
 
-<!--- 
+<!---
 ```bluespec "extensionLeftNeighbor" +=
 // left and right are remaining children below the split,
 // ensure left child is the rightmost path, and visa versa
@@ -1184,7 +1184,7 @@ ensure_left_most(spec, &mut_right)?;
 is_right_most(spec, left.slice(0, li)),
 is_left_most(spec, right.slice(0, ri)),
 ```
-<!--- 
+<!---
 ```bluespec "definitions" +=
     })
   )

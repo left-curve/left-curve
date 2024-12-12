@@ -741,7 +741,7 @@ We defined two runs that are verifying the functional equivalence of [`apply_fan
 - [`simpleVsFancyTest`](#simple-vs-fancy-test)
 - [`simpleVsFancyMultipleRepsTest`](#simple-vs-fancy-multiple-reps-test)
 
-<!--- 
+<!---
 ```bluespec quint/test/tree_test.qnt +=
 // -*- mode: Bluespec; -*-
 
@@ -776,7 +776,7 @@ Then we create a batch of randomly picked operations to apply on both trees.
   nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
   pure val ops = kms_with_value.to_operations()
 ```
-<!--- 
+<!---
 ```bluespec "tests" +=
 
 ```
@@ -793,7 +793,7 @@ Then, we assert their equivalence.
 ```bluespec "tests" +=
   assert(reference == result)
 ```
-<!--- 
+<!---
 ```bluespec "tests" +=
 
 ```
@@ -814,7 +814,7 @@ After that, we repeat the following set of operations three times. First we pick
   nondet kms_with_value = all_key_hashes.setOfMaps(VALUES).oneOf()
   pure val ops = kms_with_value.to_operations()
 ```
-<!--- 
+<!---
 ```bluespec "tests" +=
 
 ```
@@ -843,7 +843,7 @@ Then we update the state using operator `all`, which means that everyhing wrappe
 ## Testing proofs
 
 We defined several interesting scenarios in order to test proofs.
-<!--- 
+<!---
 ```bluespec quint/test/proofs_test.qnt +=
 // -*- mode: Bluespec; -*-
 
@@ -1067,7 +1067,7 @@ pure def assert_proof_on_different_trees(t1: Tree, t2: Tree, leaf: LeafNode, ver
   }
 }
 ```
-<!--- 
+<!---
 ```bluespec "proofs_helpers" +=
 
 ```
@@ -1102,7 +1102,7 @@ pure def assert_proof_on_equivalent_trees(t1: Tree, t2: Tree, leaf: LeafNode, ve
   }
 }
 ```
-<!--- 
+<!---
 ```bluespec "proofs_helpers" +=
 
 ```
@@ -1118,7 +1118,7 @@ run generate_one_tree = ({
   T1::step
 }))
 ```
-<!--- 
+<!---
 ```bluespec "proofs_helpers" +=
 
 ```
@@ -1134,7 +1134,7 @@ run generate_two_trees = (all {
   T2::step,
 }))
 ```
-<!--- 
+<!---
 ```bluespec "proofs_helpers" +=
 
 // Some values to make tests easier to read
@@ -1147,7 +1147,7 @@ val tree1 = T1::tree
 val tree2 = T2::tree
 val max_version = T1::version - 1
 ```
-<!--- 
+<!---
 ```bluespec "proofs_helpers" +=
 
 ```

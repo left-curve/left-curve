@@ -34,16 +34,16 @@ module utils {
 
   pure def commonPrefixBetweenKeys(a: List[int], b: List[int]) : List[int] =
     val indList = range(1, keylength + 1)
-    indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x)) 
-                                    b.slice(0, x) 
+    indList.foldl([], (s, x) => if (a.slice(0, x) == b.slice(0, x))
+                                    b.slice(0, x)
                                 else s )
 
   pure def commonPrefix(a: LeafNode, b: LeafNode) : Bytes =
     val indList = range(1, keylength + 1)
-    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x)) 
-                                    b.key_hash.slice(0, x) 
+    indList.foldl([], (s, x) => if (a.key_hash.slice(0, x) == b.key_hash.slice(0, x))
+                                    b.key_hash.slice(0, x)
                                 else s )
-  
+
   pure def prefix_of(l1: List[a], l2: List[b]): bool = and {
     l1.length() <= l2.length(),
     l1.indices().forall(i => l1[i] == l2[i])

@@ -7,10 +7,10 @@ module apply_simple {
   import hashes.* from "./hashes"
   import utils.* from "./utils"
 
-  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree = 
+  pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Set[OperationOnKey]): Tree =
     simple_apply(tree, old_version, new_version, batch)
-  
-  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] = 
+
+  pure def extractOrphansFromNewVersion(oldTree: Tree, updatedTree: Tree, old_version: Version, new_version: Version) : Set[OrphanId] =
     pure val nodes_at_old = updatedTree.treeAtVersion(old_version).keys()
     pure val nodes_at_new = updatedTree.treeAtVersion(new_version).keys()
     pure val orphaned_nodes = nodes_at_old.exclude(nodes_at_new)
@@ -22,25 +22,25 @@ module apply_simple {
     oldTree.orphans.union(new_orphans)
 
 
-  pure def unpackChild(child: Option[Child]) : Child = 
+  pure def unpackChild(child: Option[Child]) : Child =
     pure val EMPTY_MAP = Map()
     match child {
       | Some(c) => { version: c.version, hash: c.hash }
       | None => { version: -1, hash: EMPTY_MAP }
     }
   pure def unpackInternalNode(internal: InternalNode) : { left: Child, right: Child } =
-    { left: internal.left_child.unpackChild(), 
+    { left: internal.left_child.unpackChild(),
       right: internal.right_child.unpackChild() }
 
-  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool = 
+  pure def cmpInternalAndNode(internal : InternalNode, internalOldVersion: InternalNode) : bool =
     pure val unpackedNew = internal.unpackInternalNode()
     pure val unpackedOld = internalOldVersion.unpackInternalNode()
     unpackedNew.left.hash == unpackedOld.left.hash and unpackedNew.right.hash == unpackedOld.right.hash
-  
-  pure def updateChildVersions(nodes: NodeId->Node, old_version_nodes: TreeMap, new_version: Version) : NodeId->Node = 
+
+  pure def updateChildVersions(nodes: NodeId->Node, old_version_nodes: TreeMap, new_version: Version) : NodeId->Node =
     val internalNodes = allInternals(nodes)
     val internalNodesOld = allInternals(old_version_nodes)
-    
+
     internalNodesOld.keys().fold(nodes, (nodes, key) =>
         if (new_version > key.version and internalNodes.has({...key, version: new_version}))
           val internalOld = internalNodes.get(key)
@@ -63,13 +63,13 @@ module apply_simple {
           else if ( unpackedNew.right.hash == unpackedOld.right.hash and unpackedNew.right.version != unpackedOld.right.version )
             nodes.set({ ...key, version: new_version }, Internal({ ...internalNew, right_child: Some( unpackedOld.right) }))
           else nodes
-        else 
+        else
         nodes
       )
 
 
-  pure def removeDuplicateEntries(nodes: TreeMap, old_version_nodes: TreeMap, current_version: Version) : NodeId->Node = 
-    old_version_nodes.keys().fold(nodes, (nodes, key) => 
+  pure def removeDuplicateEntries(nodes: TreeMap, old_version_nodes: TreeMap, current_version: Version) : NodeId->Node =
+    old_version_nodes.keys().fold(nodes, (nodes, key) =>
       if(current_version > key.version and nodes.keys().contains({...key, version: current_version}))
         val nodeForKey = nodes.get(key)
         val nodeForKeyWithNewVersion = nodes.get({...key, version: current_version})
@@ -77,9 +77,9 @@ module apply_simple {
           nodes.mapRemove({...key, version: current_version})
         else
             match nodeForKeyWithNewVersion {
-             | Internal(internalNewVersion) 
+             | Internal(internalNewVersion)
                 => match nodeForKey {
-                  | Internal(internalOldVersion) =>  
+                  | Internal(internalOldVersion) =>
                     if(cmpInternalAndNode(internalNewVersion, internalOldVersion)
                         and not(key.isRoot()))
                       nodes.mapRemove({...key, version: current_version})
@@ -88,7 +88,7 @@ module apply_simple {
                 }
              | Leaf(_) => nodes
            }
-      else 
+      else
         nodes
     )
 
@@ -104,8 +104,8 @@ module apply_simple {
 
       pure val keys_with_values_without_new =  existing_keys_with_values
                                   .filter(x => not(batch.map(op => op.key_hash).contains(x.key_hash)))
-      
-      val keys_and_values_and_op = batch.fold(keys_with_values_without_new, (kv_set, op) => 
+
+      val keys_and_values_and_op = batch.fold(keys_with_values_without_new, (kv_set, op) =>
           match op.op {
             | Insert(value_hash) => kv_set.union(Set({key_hash: op.key_hash, value_hash: value_hash}))
             | Delete => kv_set
@@ -204,14 +204,14 @@ module apply_simple {
         (acc._1.union(queue_2), queue_2)
       })
     })
-    
+
     val nodes = result._2.map(kv => ({version: new_version, key_hash: kv.key_hash}, kv.node))
                       .fold(tree.nodes, (nodes, kv) => nodes.put(kv._1, kv._2))
                       .removeDuplicateEntries(treeAtVersion(tree, old_version), new_version)
                       .updateChildVersions(treeAtVersion(tree, old_version), new_version)
-    
+
     val orphans = extractOrphansFromNewVersion(tree, { nodes: nodes, orphans: Set() },
                                                old_version, new_version)
-      
+
     { nodes: nodes, orphans: orphans }
 }
