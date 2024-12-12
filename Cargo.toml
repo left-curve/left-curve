@@ -38,6 +38,7 @@ glob               = "0.3"
 hex                = "0.4"
 hex-literal        = "0.4"
 home               = "0.5"
+lzma-rs            = "0.3"
 paste              = "1"
 proc-macro2        = "1"
 proptest           = "1"
@@ -100,51 +101,50 @@ pyth-wormhole-attester-sdk = { git = "https://github.com/pyth-network/pyth-cross
 pythnet-sdk                = "2"
 
 # Grug packages
-grug = { path = "grug/std" }
-grug-app = { path = "grug/app" }
-grug-auth = { path = "grug/auth" }
-grug-client = { path = "grug/client" }
-grug-crypto = { path = "grug/crypto" }
-grug-db-disk = { path = "grug/db-disk" }
-grug-db-memory = { path = "grug/db-memory" }
-grug-ffi = { path = "grug/ffi" }
-grug-jmt = { path = "grug/jellyfish-merkle" }
-grug-macros = { path = "grug/macros" }
-grug-math = { path = "grug/math" }
+grug              = { path = "grug/std" }
+grug-app          = { path = "grug/app" }
+grug-auth         = { path = "grug/auth" }
+grug-client       = { path = "grug/client" }
+grug-crypto       = { path = "grug/crypto" }
+grug-db-disk      = { path = "grug/db-disk" }
+grug-db-memory    = { path = "grug/db-memory" }
+grug-ffi          = { path = "grug/ffi" }
+grug-jmt          = { path = "grug/jellyfish-merkle" }
+grug-macros       = { path = "grug/macros" }
+grug-math         = { path = "grug/math" }
 grug-mock-account = { path = "grug/mock-account" }
-grug-mock-bank = { path = "grug/mock-bank" }
-grug-mock-taxman = { path = "grug/mock-taxman" }
-grug-storage = { path = "grug/storage" }
-grug-tester = { path = "grug/tester" }
-grug-testing = { path = "grug/testing" }
-grug-types = { path = "grug/types" }
-grug-vm-rust = { path = "grug/vm-rust" }
-grug-vm-wasm = { path = "grug/vm-wasm" }
+grug-mock-bank    = { path = "grug/mock-bank" }
+grug-mock-taxman  = { path = "grug/mock-taxman" }
+grug-storage      = { path = "grug/storage" }
+grug-tester       = { path = "grug/tester" }
+grug-testing      = { path = "grug/testing" }
+grug-types        = { path = "grug/types" }
+grug-vm-rust      = { path = "grug/vm-rust" }
+grug-vm-wasm      = { path = "grug/vm-wasm" }
 
 # Dango packages
 dango-account-factory = { path = "dango/account-factory" }
-dango-account-margin = { path = "dango/account-margin" }
-dango-account-safe = { path = "dango/account-safe" }
-dango-account-spot = { path = "dango/account-spot" }
-dango-amm = { path = "dango/amm" }
-dango-app = { path = "dango/app" }
-dango-auth = { path = "dango/auth" }
-dango-bank = { path = "dango/bank" }
-dango-genesis = { path = "dango/genesis" }
-dango-ibc-transfer = { path = "dango/ibc-transfer" }
-dango-lending = { path = "dango/lending" }
-dango-oracle = { path = "dango/oracle" }
-dango-taxman = { path = "dango/taxman" }
-dango-testing = { path = "dango/testing" }
-dango-token-factory = { path = "dango/token-factory" }
-dango-types = { path = "dango/types" }
-dango-vesting = { path = "dango/vesting" }
+dango-account-margin  = { path = "dango/account-margin" }
+dango-account-safe    = { path = "dango/account-safe" }
+dango-account-spot    = { path = "dango/account-spot" }
+dango-amm             = { path = "dango/amm" }
+dango-app             = { path = "dango/app" }
+dango-auth            = { path = "dango/auth" }
+dango-bank            = { path = "dango/bank" }
+dango-genesis         = { path = "dango/genesis" }
+dango-ibc-transfer    = { path = "dango/ibc-transfer" }
+dango-lending         = { path = "dango/lending" }
+dango-oracle          = { path = "dango/oracle" }
+dango-taxman          = { path = "dango/taxman" }
+dango-testing         = { path = "dango/testing" }
+dango-token-factory   = { path = "dango/token-factory" }
+dango-types           = { path = "dango/types" }
+dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
-indexer-sql = { path = "indexer/sql" }
+indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
-indexer-disk-saver = { path = "indexer/disk-saver" }
-lzma-rs = "0.3"
+indexer-disk-saver    = { path = "indexer/disk-saver" }
 
 [workspace.dependencies.sea-orm]
 version = "1"
@@ -169,12 +169,12 @@ features = [
 ]
 
 [profile.release]
-codegen-units = 1
-debug = false
+codegen-units    = 1
+debug            = false
 debug-assertions = false
-incremental = false
-lto = true
-overflow-checks = true
-opt-level = 3
-panic = "abort"
-rpath = false
+incremental      = false
+lto              = true
+overflow-checks  = true
+opt-level        = 3
+panic            = "abort"
+rpath            = false

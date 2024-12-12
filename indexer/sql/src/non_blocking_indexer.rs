@@ -349,7 +349,6 @@ impl Indexer for NonBlockingIndexer {
         Ok(())
     }
 
-    /// NOTE: `index_block` is called *after* `index_transaction`
     fn index_block(&self, block: &Block, block_outcome: &BlockOutcome) -> error::Result<()> {
         if !self.indexing {
             bail!("Can't index after shutdown");

@@ -13,6 +13,9 @@ use {
 pub struct BlockToIndex {
     pub block: Block,
     pub block_outcome: BlockOutcome,
+    //#[serde(skip)]
+    //#[borsh(skip)]
+    //filename: PathBuf,
 }
 
 impl BlockToIndex {
@@ -78,47 +81,6 @@ impl BlockToIndex {
 
         Ok(())
     }
-
-    // pub fn save_tmp_file(&self) -> error::Result<()> {
-    //     let path = Path::new(&self.tmp_filename);
-    //     let Some(directory) = path.parent() else {
-    //         bail!("Can't detect parent directory");
-    //     };
-    //     let mut tmp_filename = NamedTempFile::new_in(directory)?;
-    //     let encoded_block = self.to_borsh_vec()?;
-    //     tmp_filename.write_all(&encoded_block)?;
-    //     tmp_filename.flush()?;
-
-    //     // TODO: look at the security implications of using `persist`
-    //     tmp_filename.persist(&self.tmp_filename)?;
-
-    //     #[cfg(feature = "tracing")]
-    //     tracing::debug!(path = %self.tmp_filename, block_height = self.block_info.height, "Saved tmp_file");
-    //     Ok(())
-    // }
-
-    // pub fn save_file(&self) -> error::Result<()> {
-    //     let path = Path::new(&self.filename);
-    //     let Some(directory) = path.parent() else {
-    //         bail!("Can't detect parent directory");
-    //     };
-    //     let mut tmp_filename = NamedTempFile::new_in(directory)?;
-    //     let encoded_block = self.to_borsh_vec()?;
-    //     tmp_filename.write_all(&encoded_block)?;
-    //     tmp_filename.flush()?;
-
-    //     // TODO: look at the security implications of using `persist`
-    //     tmp_filename.persist(&self.tmp_filename)?;
-
-    //     #[cfg(feature = "tracing")]
-    //     tracing::debug!(path = %self.tmp_filename, block_height = self.block_info.height, "Saved file");
-    //     Ok(())
-    // }
-
-    // pub fn load_tmp_file(filename: &PathBuf) -> error::Result<Self> {
-    //     let data = std::fs::read(filename)?;
-    //     Ok(data.deserialize_borsh()?)
-    // }
 }
 
 impl BlockToIndex {
