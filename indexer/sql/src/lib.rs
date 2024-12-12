@@ -1,5 +1,6 @@
 mod active_model;
-pub mod block;
+mod block;
+pub mod block_to_index;
 mod context;
 pub mod entity;
 mod error;

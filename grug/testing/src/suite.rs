@@ -7,9 +7,10 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, BlockInfo, BlockOutcome, Code, Coins, Config, ContractInfo,
-        Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt, Message, Outcome, Query,
-        QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
+        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, Code, Coins, Config,
+        ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt, Message,
+        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -310,13 +311,15 @@ where
             .map(|raw_tx| raw_tx.deserialize_json().unwrap())
             .collect();
 
+        let block = Block {
+            block_info: self.block,
+            txs,
+        };
+
         // Call ABCI `FinalizeBlock` method
-        let block_outcome = self
-            .app
-            .do_finalize_block(self.block, txs)
-            .unwrap_or_else(|err| {
-                panic!("fatal error while finalizing block: {err}");
-            });
+        let block_outcome = self.app.do_finalize_block(block).unwrap_or_else(|err| {
+            panic!("fatal error while finalizing block: {err}");
+        });
 
         // Call ABCI `Commit` method
         self.app.do_commit().unwrap_or_else(|err| {

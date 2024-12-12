@@ -2839,6 +2839,7 @@ dependencies = [
  "reqwest 0.12.9",
  "sea-orm",
  "serde",
+ "tempfile",
  "test-case",
  "thiserror 1.0.69",
  "tracing",
@@ -3490,7 +3491,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
-name = "indexer-sql"
+name = "indexer-disk-saver"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3500,6 +3501,30 @@ dependencies = [
  "grug-app",
  "grug-math",
  "grug-types",
+ "indexer-sql-migration",
+ "lzma-rs",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "indexer-sql"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "borsh 1.5.3",
+ "grug-app",
+ "grug-math",
+ "grug-types",
+ "indexer-disk-saver",
  "indexer-sql-migration",
  "sea-orm",
  "serde",

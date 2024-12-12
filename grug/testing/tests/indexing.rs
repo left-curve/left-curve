@@ -2,8 +2,8 @@ use {
     assertor::*,
     grug_app::{Db, Indexer},
     grug_testing::TestBuilder,
-    grug_types::{BlockInfo, BlockOutcome, Coins, Denom, Hash, Message, ResultExt},
-    indexer_sql::{block::BlockToIndex, entity},
+    grug_types::{Block, BlockInfo, BlockOutcome, Coins, Denom, Hash, Message, ResultExt},
+    indexer_sql::{block_to_index::BlockToIndex, entity},
     sea_orm::{EntityTrait, QueryOrder},
     std::str::FromStr,
 };
@@ -75,6 +75,7 @@ fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_keep_blocks(true)
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -129,19 +130,17 @@ fn parse_previous_block_after_restart() {
         cron_outcomes: vec![],
         tx_outcomes: vec![],
     };
-    let block_to_index = BlockToIndex::new(
+    let block = Block {
         block_info,
-        Some(block_outcome),
-        suite
-            .app
-            .indexer
-            .block_tmp_filename(block_info.height)
-            .to_string_lossy()
-            .to_string(),
-    );
+        txs: vec![],
+    };
+    let block_to_index = BlockToIndex::new(block, block_outcome);
+
+    let block_filename = suite.app.indexer.block_filename(block_info.height);
+
     block_to_index
-        .save_tmp_file()
-        .expect("Can't save tmp_file block");
+        .save_on_disk(block_filename)
+        .expect("Can't save block on disk");
 
     // 3. Start the indexer
     suite
@@ -239,19 +238,17 @@ fn no_sql_index_error_after_restart() {
         cron_outcomes: vec![],
         tx_outcomes: vec![],
     };
-    let block_to_index = BlockToIndex::new(
+    let block = Block {
         block_info,
-        Some(block_outcome),
-        suite
-            .app
-            .indexer
-            .block_tmp_filename(block_info.height)
-            .to_string_lossy()
-            .to_string(),
-    );
+        txs: vec![],
+    };
+    let block_to_index = BlockToIndex::new(block, block_outcome);
+
+    let block_filename = suite.app.indexer.block_filename(block_info.height);
+
     block_to_index
-        .save_tmp_file()
-        .expect("Can't save tmp_file block");
+        .save_on_disk(block_filename)
+        .expect("Can't save block on disk");
 
     // 3. Start the indexer
     suite
