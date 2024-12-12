@@ -2,7 +2,7 @@ use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{Addr, Coin, Coins, Empty, JsonSerExt, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
-    indexer_sql::events::flat_tx_events,
+    indexer_sql::events::{flat_tx_events, IndexCategory},
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };
@@ -448,7 +448,7 @@ fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: b
 }
 
 #[test]
-fn asd() {
+fn reply_fail() {
     let (mut suite, mut accounts, replier_addr) = setup();
 
     let result = suite.execute(
@@ -469,5 +469,7 @@ fn asd() {
             .unwrap()
     );
 
-    println!("{}", result.events.to_json_string_pretty().unwrap());
+    // println!("{}", result.events.to_json_string_pretty().unwrap());
+
+    println!("{}", IndexCategory::Tx.to_json_string().unwrap())
 }

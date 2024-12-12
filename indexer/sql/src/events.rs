@@ -7,7 +7,10 @@ use {
         MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, TxEvents,
     },
     serde::{de::Visitor, Deserialize, Serialize},
-    std::fmt,
+    std::{
+        fmt::{self, Display},
+        str::FromStr,
+    },
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -36,18 +39,50 @@ pub enum IndexCommitmentStatus {
     Reverted,
 }
 
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum IndexCategory {
+    Tx,
+    Cron,
+}
+
+impl Display for IndexCategory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            IndexCategory::Tx => write!(f, "tx"),
+            IndexCategory::Cron => write!(f, "cron"),
+        }
+    }
+}
+
+impl FromStr for IndexCategory {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "tx" => Ok(IndexCategory::Tx),
+            "cron" => Ok(IndexCategory::Cron),
+            _ => Err(format!("Invalid category: {}", s)),
+        }
+    }
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EventId {
     pub block: u64,
-    pub tx_index: u32,
+    pub category: IndexCategory,
+    pub category_index: u32,
     pub event_index: u32,
 }
 
 impl EventId {
-    pub fn new(block: u64, tx_index: u32) -> Self {
+    pub fn new(block: u64, category: IndexCategory, category_index: u32) -> Self {
         Self {
             block,
-            tx_index,
+            category,
+            category_index,
             event_index: 0,
         }
     }
@@ -55,7 +90,8 @@ impl EventId {
     pub fn clone_with_event_index(&self, event_index: u32) -> Self {
         Self {
             block: self.block,
-            tx_index: self.tx_index,
+            category: self.category,
+            category_index: self.category_index,
             event_index,
         }
     }
@@ -63,7 +99,11 @@ impl EventId {
 
 impl fmt::Display for EventId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}-{}-{}", self.block, self.tx_index, self.event_index)
+        write!(
+            f,
+            "{}-{}-{}-{}",
+            self.block, self.category, self.category_index, self.event_index
+        )
     }
 }
 
@@ -100,7 +140,7 @@ impl Visitor<'_> for EventVisitor {
     {
         let parts: Vec<&str> = value.split('-').collect();
 
-        if parts.len() != 3 {
+        if parts.len() != 4 {
             return Err(serde::de::Error::invalid_value(
                 serde::de::Unexpected::Str(value),
                 &self,
@@ -108,12 +148,16 @@ impl Visitor<'_> for EventVisitor {
         }
 
         let block = parts[0].parse().map_err(serde::de::Error::custom)?;
-        let tx_index = parts[1].parse().map_err(serde::de::Error::custom)?;
-        let event_index = parts[2].parse().map_err(serde::de::Error::custom)?;
+
+        let category = parts[1].parse().map_err(serde::de::Error::custom)?;
+
+        let tx_index = parts[2].parse().map_err(serde::de::Error::custom)?;
+        let event_index = parts[3].parse().map_err(serde::de::Error::custom)?;
 
         Ok(EventId {
             block,
-            tx_index,
+            category,
+            category_index: tx_index,
             event_index,
         })
     }
@@ -260,7 +304,8 @@ pub trait FlattenStatus {
 
 fn flat_commitment_status<T>(
     block_id: u64,
-    tx_id: u32,
+    category: IndexCategory,
+    category_id: u32,
     mut next_id: u32,
     commitment: CommitmentStatus<T>,
 ) -> (Vec<IndexEvent>, u32)
@@ -269,7 +314,8 @@ where
 {
     let parent = EventId {
         block: block_id,
-        tx_index: tx_id,
+        category,
+        category_index: category_id,
         event_index: 0,
     };
 
@@ -294,18 +340,45 @@ where
 pub fn flat_tx_events(tx_events: TxEvents, block_id: u64, tx_id: u32) -> Vec<IndexEvent> {
     let mut flat_events = vec![];
 
-    let (events, next_id) = flat_commitment_status(block_id, tx_id, 1, tx_events.withhold);
-    flat_events.extend(events);
     let (events, next_id) =
-        flat_commitment_status(block_id, tx_id, next_id, tx_events.authenticate);
+        flat_commitment_status(block_id, IndexCategory::Tx, tx_id, 1, tx_events.withhold);
     flat_events.extend(events);
-    let (events, next_id) =
-        flat_commitment_status(block_id, tx_id, next_id, tx_events.msgs_and_backrun);
+    let (events, next_id) = flat_commitment_status(
+        block_id,
+        IndexCategory::Tx,
+        tx_id,
+        next_id,
+        tx_events.authenticate,
+    );
     flat_events.extend(events);
-    let (events, _) = flat_commitment_status(block_id, tx_id, next_id, tx_events.finalize);
+    let (events, next_id) = flat_commitment_status(
+        block_id,
+        IndexCategory::Tx,
+        tx_id,
+        next_id,
+        tx_events.msgs_and_backrun,
+    );
+    flat_events.extend(events);
+    let (events, _) = flat_commitment_status(
+        block_id,
+        IndexCategory::Tx,
+        tx_id,
+        next_id,
+        tx_events.finalize,
+    );
     flat_events.extend(events);
 
     flat_events
+}
+
+pub fn flat_cron(
+    cron: CommitmentStatus<EventStatus<EvtCron>>,
+    block_id: u64,
+    cron_id: u32,
+) -> Vec<IndexEvent> {
+    let (events, _) = flat_commitment_status(block_id, IndexCategory::Cron, cron_id, 1, cron);
+
+    events
 }
 
 // -------------------------- impl Flatten for Status --------------------------
