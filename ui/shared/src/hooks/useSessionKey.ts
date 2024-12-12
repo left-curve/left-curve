@@ -8,7 +8,7 @@ import {
   useStorage,
 } from "@left-curve/react";
 import { createSessionSigner, createSignerClient } from "@left-curve/sdk";
-import type { Address, SigningSession, SigningSessionInfo } from "@left-curve/types";
+import type { SigningSession, SigningSessionInfo } from "@left-curve/types";
 import { useQuery } from "@tanstack/react-query";
 
 export function useSessionKey() {
@@ -34,15 +34,13 @@ export function useSessionKey() {
 
   async function createSessionKey(parameters: {
     expireAt: number;
-    whitelistedAccounts: Address[];
   }) {
     if (!connectorClient) return;
-    const { expireAt, whitelistedAccounts } = parameters;
+    const { expireAt } = parameters;
     const keyPair = Secp256k1.makeKeyPair();
     const publicKey = keyPair.getPublicKey();
 
     const sessionInfo: SigningSessionInfo = {
-      whitelistedAccounts,
       sessionKey: encodeBase64(publicKey),
       expireAt: expireAt.toString(),
     };
@@ -60,14 +58,14 @@ export function useSessionKey() {
     };
 
     const payload = connectorClient.type === "eip1193" ? typedData : sessionInfo;
-    const { credential, keyHash } = await connectorClient.signer.signArbitrary(payload);
+    const { signature, keyHash } = await connectorClient.signer.signArbitrary(payload);
 
     const session: SigningSession = {
       keyHash,
       sessionInfo,
       privateKey: keyPair.privateKey,
       publicKey: keyPair.getPublicKey(),
-      sessionInfoSignature: credential,
+      sessionInfoSignature: signature,
     };
 
     setSession(session);

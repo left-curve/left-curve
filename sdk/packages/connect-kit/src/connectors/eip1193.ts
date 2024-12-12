@@ -160,9 +160,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           keyAlgo: KeyAlgo.Secp256k1,
         });
 
-        const credential = { signature: { eip712 } };
-
-        return { credential, keyHash };
+        return { signature: { eip712 }, keyHash };
       },
       async signTx(signDoc) {
         try {
@@ -191,7 +189,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             typed_data: encodeBase64(encodeUtf8(signData)),
           };
 
-          const credential = { standard: { signature: { eip712 } } };
+          const credential = { standard: { eip712 } };
 
           const keyHash = createKeyHash({
             pubKey: await secp256k1RecoverPubKey(hashData, signature, true),

@@ -1,6 +1,5 @@
 import { Secp256k1, sha256 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
-import { createKeyHash } from "../accounts/key.js";
 
 import type {
   JsonValue,
@@ -37,8 +36,8 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   async function signArbitrary(payload: JsonValue) {
     const bytes = sha256(serialize(payload));
     const signature = signer.createSignature(bytes);
-    const credential = { signature: { secp256k1: encodeBase64(signature) } };
-    return { credential, keyHash };
+    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
+    return { signature: secp256k1Signature, keyHash };
   }
 
   return {

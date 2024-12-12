@@ -1,6 +1,5 @@
-import type { Address } from "./address.js";
-import type { StandardCredential } from "./credential.js";
 import type { Base64 } from "./encoding.js";
+import type { Signature } from "./signature.js";
 
 export type SessionCredential = {
   /** The `SigningSessionInfo` that contains data to be signed with user key and otp key. */
@@ -8,7 +7,7 @@ export type SessionCredential = {
   /** Signature of the `SignDoc` by the session key. */
   sessionSignature: Base64;
   /** Signatures of the `SigningSessionInfo` by the user key and OTP. */
-  sessionInfoSignature: StandardCredential;
+  sessionInfoSignature: Signature;
 };
 
 export type SigningSessionInfo = {
@@ -16,8 +15,6 @@ export type SigningSessionInfo = {
   sessionKey: Base64;
   /** Expiry time of the session key. */
   expireAt: string;
-  /** Addresses that can use the session key. */
-  whitelistedAccounts: Address[];
 };
 
 export type SigningSession = {
@@ -25,5 +22,5 @@ export type SigningSession = {
   privateKey: Uint8Array;
   keyHash: string;
   sessionInfo: SigningSessionInfo;
-  sessionInfoSignature: StandardCredential;
+  sessionInfoSignature: Signature;
 };

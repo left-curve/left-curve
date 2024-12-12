@@ -14,13 +14,6 @@ export type Metadata = {
 
 export type Credential =
   /**Signatures of the authorized key and optional OTP key. */
-  | { standard: StandardCredential }
+  | { standard: Signature }
   /** Session credential information with the authorization signatures */
   | { session: SessionCredential };
-
-export type StandardCredential = {
-  /** Signature of a user */
-  signature: Signature;
-  /** Signature of the OTP key */
-  otpSignature?: OtpSignature;
-};

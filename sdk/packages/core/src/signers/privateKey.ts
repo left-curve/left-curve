@@ -11,8 +11,8 @@ import {
   type KeyAlgoType,
   type KeyHash,
   type SignDoc,
+  type Signature,
   type Signer,
-  type StandardCredential,
 } from "@left-curve/types";
 
 export class PrivateKeySigner implements Signer {
@@ -72,21 +72,19 @@ export class PrivateKeySigner implements Signer {
     const signature = await this.signBytes(tx);
 
     const credential: Credential = {
-      standard: { signature: { secp256k1: encodeBase64(signature) } },
+      standard: { secp256k1: encodeBase64(signature) },
     };
     const keyHash = await this.getKeyHash();
 
     return { credential, keyHash };
   }
 
-  async signArbitrary(
-    payload: JsonValue,
-  ): Promise<{ credential: StandardCredential; keyHash: KeyHash }> {
+  async signArbitrary(payload: JsonValue): Promise<{ signature: Signature; keyHash: KeyHash }> {
     const bytes = sha256(serialize(payload));
     const signature = await this.signBytes(bytes);
-    const credential = { signature: { secp256k1: encodeBase64(signature) } };
+    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
     const keyHash = await this.getKeyHash();
-    return { credential, keyHash };
+    return { signature: secp256k1Signature, keyHash };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {

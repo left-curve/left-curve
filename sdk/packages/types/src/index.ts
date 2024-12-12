@@ -117,7 +117,6 @@ export type {
 export type {
   Metadata,
   Credential,
-  StandardCredential,
 } from "./credential.js";
 
 export type {

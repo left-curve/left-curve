@@ -1,11 +1,10 @@
 import type { Account, Username } from "./account.js";
 import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
-import type { StandardCredential } from "./credential.js";
 import type { Emitter } from "./emitter.js";
 import type { JsonValue } from "./encoding.js";
 import type { KeyHash } from "./key.js";
-import type { SignDoc, SignedDoc } from "./signature.js";
+import type { SignDoc, Signature, SignedDoc } from "./signature.js";
 import type { Signer } from "./signer.js";
 import type { Transport } from "./transports.js";
 
@@ -93,7 +92,7 @@ export type CreateConnectorFn<
   getClient(): Promise<Client<transport, chain, signer, any>>;
   getKeyHash(): Promise<KeyHash>;
   isAuthorized(): Promise<boolean>;
-  signArbitrary(data: JsonValue): Promise<{ credential: StandardCredential; keyHash: KeyHash }>;
+  signArbitrary(data: JsonValue): Promise<{ signature: Signature; keyHash: KeyHash }>;
   signTx(signDoc: signDoc): Promise<SignedDoc>;
   switchChain?(parameters: { chainId: string }): Promise<Chain>;
   onAccountsChanged?(accounts: string[]): void;
