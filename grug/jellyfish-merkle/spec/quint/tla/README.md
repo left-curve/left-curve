@@ -5,7 +5,7 @@ This folder contains TLA+ generated files used to run TLC over the model. See th
 The files were generated with the command:
 
 ``` sh
-$ quint compile --target=tlaplus apply_state_machine.qnt  --step=step_fancy --invariant=allInvariants > apply_state_machine.tla
+quint compile --target=tlaplus apply_state_machine.qnt  --step=step_fancy --invariant=allInvariants > apply_state_machine.tla
 ```
 
 but not before making some adjustments to the Quint spec to handle some integration issues. Some adjustments are in the process of being incorporated into the integrated tools (Apalache and Quint), and others that don't have fixes yet, along with some optimizations for model checking, can be found in a `.patch` file in the respective folders.
@@ -15,13 +15,14 @@ After generating the TLA+ file, we also manually fixed the `init` definitions, a
 ## Using TLC to model check
 
 Dependencies:
+
 - Install [TLC](https://github.com/tlaplus/tlaplus) (requires Java)
 - Install [Quint](https://quint-lang.org/docs/getting-started)
 
 You'll need to run some instance of `quint verify` as that command installs apalache for you, which you'll need for the command below. Go to the folder above this one with all the quint files and run (PS: this command will fail, it is fine):
 
 ``` sh
-$ quint verify apply_state_machine.qnt --step=step_fancy --max-steps=0
+quint verify apply_state_machine.qnt --step=step_fancy --max-steps=0
 ```
 
 Now, Quint should have downloaded Apalache into `~/.quint/`. Check if it's there:

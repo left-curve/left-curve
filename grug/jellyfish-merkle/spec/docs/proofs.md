@@ -1,6 +1,6 @@
 # Proofs
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This document describes how ICS23 proof generation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, since Quint does not support hashing, there were some challenges.
 
@@ -8,10 +8,11 @@ Most of the correspondance is shown by comparing the Rust code with Quint code s
 
 This document covers:
 
-- [`ics23_prove_existence`](#ics23-proving-existence)
-- [`leftNeighbor`](#get-left-neighbor)
-- [`rightNeighbor`](#get-right-neighbor)
-- [`ics23_prove`](#generating-commitment-proof)
+- [Proofs](#proofs)
+  - [ICS23 proving existence](#ics23-proving-existence)
+  - [Get left neighbor](#get-left-neighbor)
+  - [Get right neighbor](#get-right-neighbor)
+  - [Generating commitment proof](#generating-commitment-proof)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](../quint/proofs.qnt).

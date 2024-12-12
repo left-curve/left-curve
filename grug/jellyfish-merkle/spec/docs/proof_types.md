@@ -1,6 +1,6 @@
 # Proof types
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This document describes how we defined proof types, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. We defined types:
 

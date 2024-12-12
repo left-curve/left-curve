@@ -1,6 +1,6 @@
 # Grug ICS23 proof verification
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This document describes how ICS23 proof verification was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible.
 
@@ -13,18 +13,22 @@ This document covers main verification functions:
 
 And other helper functions that are used:
 
-- [`verify_existence`](#verifying-existence)
-- [`exists_calculate`](#calculating-root-hash-from-existence-proof)
-- [`verify_non_existence`](#verifying-nonexistence)
-- [`get_padding`](#get-padding)
-- [`is_left_most`](#is-left-most)
-- [`is_right_most`](#is-right-most)
-- [`has_padding`](#has-padding)
-- [`order_from_padding`](#order-from-padding)
-- [`left_branches_are_empty`](#left-branches-empty)
-- [`right_branches_are_empty`](#right-branches-empty)
-- [`is_left_step`](#is-left-step)
-- [`is_left_neighbor`](#is-left-neighbor)
+- [Grug ICS23 proof verification](#grug-ics23-proof-verification)
+  - [Types](#types)
+  - [Verifying Membership Proof](#verifying-membership-proof)
+  - [Verifying existence](#verifying-existence)
+  - [Calculating root hash from existence proof](#calculating-root-hash-from-existence-proof)
+  - [Verifying NonMembership proof](#verifying-nonmembership-proof)
+  - [Verifying NonExistence](#verifying-nonexistence)
+  - [Get Padding](#get-padding)
+  - [Is Left Most](#is-left-most)
+  - [Is Right Most](#is-right-most)
+  - [Has Padding](#has-padding)
+  - [Order from padding](#order-from-padding)
+  - [Left Branches Empty](#left-branches-empty)
+  - [Right Branches Empty](#right-branches-empty)
+  - [Is Left Step](#is-left-step)
+  - [Is Left Neighbor](#is-left-neighbor)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [grug_ics23.qnt](../quint/grug_ics23.qnt).

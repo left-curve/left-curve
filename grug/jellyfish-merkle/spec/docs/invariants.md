@@ -1,6 +1,6 @@
 # Invariants
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This part of the document describes invariants of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint file for verification.
 
@@ -180,7 +180,7 @@ This inserts a line break that is not rendered in the markdown
 
 In a tree, all nodes except from the root should have a parent. There should be no dangling nodes. If we find a node with key 1001, there should be a node for 100. At some other iteration, we'll also check that 100 has a parent (that is, 10), and so on.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Make sure the tree encoded in the map forms a tree (everyone has a parent, except for the root)
@@ -208,7 +208,7 @@ This inserts a line break that is not rendered in the markdown
 
 For any pair of leafs on the tree, there should be another node such that its key hash is the common prefix of the key hashes of both leafs.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Invariant that checks that for any two leaf nodes, there is a nodeId in the
@@ -240,7 +240,7 @@ This inserts a line break that is not rendered in the markdown
 
 Leafs should never be in the middle of a tree. If a there is a node with a key hash that is a prefix of the key hash of a leaf, then this is not a proper tree.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Make sure that the map encodes a tree. In particular, there is no internal node
@@ -270,7 +270,7 @@ This inserts a line break that is not rendered in the markdown
 
 Internal nodes can have 1 or 2 children, but never 0. Otherwise, they would be a leaf with no value.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// All nodes of type Internal have a child which is not None
@@ -304,7 +304,7 @@ This checks that collapsing works properly: there should never be an internal no
 
 This also means that the three is dense, not sparse.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// If a node has exactly one child, the child is an internal node
@@ -342,7 +342,7 @@ This inserts a line break that is not rendered in the markdown
 
 When nodes are updated (inserted, deleted) they are given a new version, and so are all the predecessors in the tree. At the same time, subtrees that are not touched by an update maintain their version. As a result, if the tree is properly maintained, the parent of a node, should have a version that is greater than or equal to the version of the node.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Invariant: For every node has predecessors with higer (or equal) version
@@ -373,7 +373,7 @@ Given the explanation around `versionInv` from above, we had the (wrong) intuiti
 - in the case of applying an empty batch, where we get a new root node at the new version, but the root node's subtrees are unchanged.
 However, for reference, we keep the formula here as it might be useful for understanding in the future.
 
-*Status:* FALSE
+_Status:_ FALSE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Every internal node must have at least one child with the same version
@@ -412,7 +412,7 @@ This inserts a line break that is not rendered in the markdown
 
 Orphans are used for state pruning. The implicit intuition is that orphaned nodes can be pruned as they are not needed for any tree operation (including proof construction or verification) for versions after they became orphans. This invariant makes it explicit why it is safe to prune orphans: No orphan is part of a tree at a version after it became orphaned.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Orphan should not be at one of the version trees after it gets orphaned
@@ -434,7 +434,7 @@ This inserts a line break that is not rendered in the markdown
 
 For all internal nodes, for each existing child, the hash should match the result of hashing the subtree under that child's key hash.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// Check that for all internal nodes, if they have a hash stored for a child,
@@ -473,7 +473,7 @@ This inserts a line break that is not rendered in the markdown
 
 We use an implementation of hashes that ensure no collision, since no collision of hashes is an assumption we can make. This invariant is a sanity check that the hashes that get saved in the child nodes are unique.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// All children in the tree should have different hashes
@@ -515,7 +515,7 @@ This inserts a line break that is not rendered in the markdown
 
 While the overall tree receives an entry for the same `key_hash` whenever the corresponding value changes in a new version; in the versioned tree, each node should contain at most one entry for each `key_hash`.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// The treemaps we use in the invariants should have unique key_hashes
@@ -540,7 +540,7 @@ This inserts a line break that is not rendered in the markdown
 Just as `key_hashes` in the invariant above, all nodes saved in the values of a tree map should be unique. This also mean that the mapping between node ids and nodes is bijective.
 We can simply check that the sizes of keys and values is the same, since keys are already guaranteed to be unique by Quint's `Map` data structure.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   /// TreeMap is a bijection: we can map keys to values but also values to keys
@@ -564,7 +564,7 @@ This inserts a line break that is not rendered in the markdown
 
 TODO: describe
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   val operationSuccessInv: bool =
@@ -602,17 +602,17 @@ These are invariants for completeness and soundness of both membership and non-m
 
 Completeness:
 
-  - Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
-  - Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
+- Membership: If a node exists, we should be able to get an existence proof for it and verify that proof against the tree root
+- Non-Membership: If a node does not exist, we should be able to get a non-existence proof for it and verify that proof against the tree root
 
 Soundness:
 
-  - Membership: If we can get an existence proof for a key_hash, there should be a leaf in the tree with that key hash.
-  - Non-Membership: If we can get a non-existence proof for a key_hash, there should not be a leaf in the tree with that key hash.
+- Membership: If we can get an existence proof for a key_hash, there should be a leaf in the tree with that key hash.
+- Non-Membership: If we can get a non-existence proof for a key_hash, there should not be a leaf in the tree with that key hash.
 
 See [completeness.qnt](../quint/completeness.qnt) and [soundness.qnt](../quint/soundness.qnt) for the formal definitions.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   val membershipCompletenessInv = versionsToCheck.forall(v => membershipCompleteness(tree, v))
@@ -640,7 +640,7 @@ we consider all possible values for `value_hash`. If there is a leaf in the tree
   - It should be verified for the `key_hash` it was proved with
   - It should not be verified with any of the `key_hash`es in the tree.
 
-*Status:* TRUE
+_Status:_ TRUE
 
 ```bluespec quint/apply_state_machine.qnt +=
   val verifyMembershipInv = {
@@ -730,11 +730,11 @@ This inserts a line break that is not rendered in the markdown
 ```
 -->
 
-# Tests
+## Tests
 
 This part of the document describes relevant tests for tree manipulation and ICS23 proofs of Grug's JellyFish Merkle Tree manipulation. The snippets in here get tangled into a Quint files for verification.
 
-## Testing functional equivalence
+### Testing functional equivalence
 
 We defined two runs that are verifying the functional equivalence of [`apply_fancy`](../quint/apply_fancy.qnt) and [`apply_simple`](../quint/apply_simple.qnt) algorithms:
 
@@ -840,7 +840,7 @@ Then we update the state using operator `all`, which means that everyhing wrappe
 }))
 ```
 
-## Testing proofs
+### Testing proofs
 
 We defined several interesting scenarios in order to test proofs.
 <!---

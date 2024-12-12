@@ -1,26 +1,37 @@
 # Tree manipulation
 
-*This document was prepared by the [Informal Systems security team](https://informal.systems/security)*
+_This document was prepared by the [Informal Systems security team](https://informal.systems/security)_
 
 This document describes how tree manipulation was modelled in Quint, and how everything corresponds to the Rust implementation. In this version of the Quint model, we tried to make things as close to the Rust implementation as possible. However, Rust and Quint are very different, so there are some challenges:
+
 - The Rust implementation uses recursion, which Quint doesn't support (due to Apalache)
 - Rust has mutable variables, while Quint is functional and does not
 - Pattern matching in Rust is more powerful than in Quint
 - Rust has early returns while Quint is functional and does not
 - Rust has statement if while Quint is functional and does not (every `if` needs an `else`).
 
-Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on the recursion emulation, which we explain in more detail on [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at) and [Recursion emulation for `create_subtree`](#recursion-emulation-for-create-subtree).
+Most of the correspondance is shown by comparing the Rust code with Quint code short snippets at a time. The most complicated correspondance is on the recursion emulation, which we explain in more detail on [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at) and [Recursion emulation for `create_subtree`](#recursion-emulation-for-create_subtree).
 
 This document covers the correspondance of all the `apply_*` functions and their main helper functions, including:
-- [`apply`](#top-level-apply)
-- [`apply_at`](#apply-at)
-- [`apply_at_internal`](#apply-at-internal)
-- [`apply_at_child`](#apply-at-child)
-- [`apply_at_leaf`](#apply-at-leaf)
-- [`partition_batch`](#partition-batch)
-- [`partition_leaf`](#partition-leaf)
-- [`prepare_batch_for_subtree`](#prepare-batch-for-subtree)
-- [`create_subtree`](#create-subtree)
+
+- [Tree manipulation](#tree-manipulation)
+  - [Types](#types)
+  - [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at)
+    - [Concrete example](#concrete-example)
+    - [Memoization](#memoization)
+  - [Apply operators](#apply-operators)
+    - [Top level apply](#top-level-apply)
+    - [Apply At](#apply-at)
+    - [Apply At Internal](#apply-at-internal)
+    - [Apply At Child](#apply-at-child)
+    - [Apply at Leaf](#apply-at-leaf)
+  - [Auxiliary functions](#auxiliary-functions)
+    - [Partition Batch](#partition-batch)
+    - [Partition Leaf](#partition-leaf)
+    - [Prepare Batch for Subtree](#prepare-batch-for-subtree)
+  - [Create Subtree](#create-subtree)
+    - [Recursion emulation for `create_subtree`](#recursion-emulation-for-create_subtree)
+    - [Create subtree operator](#create-subtree-operator)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](../quint/apply_fancy.qnt).
@@ -103,7 +114,8 @@ pure def pre_compute_apply_at(tree: Tree, new_version: Version, batch: Set[Opera
 ### Concrete example
 
 Consider the following tree:
-```
+
+```plain
        root
      ┌──┴──┐
     (0)    1
@@ -114,12 +126,14 @@ Consider the following tree:
 ```
 
 With `010` being a prefix for `0100` and `011` being a prefix `0110`. Consider the following batch:
-```
+
+```plain
 Delete 0100
 Insert 0110 <new value>
 ```
 
 The call stack for the Rust implementation looks something like this:
+
 ```rust
 apply_at(ROOT_BITS, [ Delete 0100, Insert 0110 ])
 ↳ apply_at_internal(ROOT_BITS, [ Delete 0100, Insert 0110 ])
@@ -142,6 +156,7 @@ apply_at(ROOT_BITS, [ Delete 0100, Insert 0110 ])
 ```
 
 To emulate recursion in Quint, we want to process the rightmost parts of the above call tree first. Considering only the `apply_at` calls, that is:
+
 ```rust
 1. apply_at(010, [ Delete 0100 ])
 2. apply_at(011, [ Insert 0110 ])
@@ -164,13 +179,14 @@ The example above only talks about `bits` and `batch`, but recursive calls of `a
 The other fields (`new_version`, `old_version`, `bits` and `batch`) are relevant, and we need to include all of them in the `memo` key so it doesn't end up returning a computation for a full batch while the implementation, at that point, would only have a partial batch. It's easy to predict what batches would be given as arguments to what bits, and we also how the `new_version` from the original call. `bits` can be any of the existing key hashes of the existing tree, and we want to iterate from the longest ones to the shortest ones. We couldn't find a good way to predict `old_version`, so we actually compute `memo` values for all possible versions from `0` to `new_version`, and then we know that it will have a value for whatever possible `old_version` it's called with.
 
 > [!NOTE]
-> There might be a way to predict `old_version` for each call and avoid unnecessary computations. We should look into this in the future. This does *not* affect correctness, only performance.
+> There might be a way to predict `old_version` for each call and avoid unnecessary computations. We should look into this in the future. This does _not_ affect correctness, only performance.
 
 ## Apply operators
 
 ### Top level apply
 
 First, the signature:
+
 ```rust
 pub fn apply(
     &self,
@@ -186,12 +202,14 @@ pure def apply(tree: Tree, old_version: Version, new_version: Version, batch: Se
 ```
 
 Some things to note:
+
 1. Quint takes and returns a tree instead of self + storage, as it is a functional language and doesn't have mutability.
 2. The batch is a set in Quint instead of a vector, but that is ok because batches in rust originate from maps and are guaranteed to be unique and idependent of ordering.
 3. While Rust returns an outcome, Quint only returns a tree. There are no verification goals for the outcome, so we ignore it. We return a tree because of (1).
 4. In general, we don't need to handle errors in Quint as the only errors in Rust are related to storage failures, which we don't model in Quint.
 
 Then we have a debug assertion in Rust, which we ignore in Quint. This is just input validation, so we only need to ensure we call this with the correct parameters on tests and the state machine.
+
 ```rust
   // The caller must make sure that versions are strictly incremental.
   // We assert this in debug mode must skip in release to save some time...
@@ -202,6 +220,7 @@ Then we have a debug assertion in Rust, which we ignore in Quint. This is just i
 ```
 
 Then, we might need to mark the node as orphaned.
+
 ```rust
   // If an old root node exists (i.e. tree isn't empty at the old version),
   // mark it as orphaned.
@@ -227,6 +246,7 @@ While Rust has a statement if with a mutation inside it. In Quint, we assign the
 -->
 
 Lastly, we make the recursive call
+
 ```rust
     // Recursively apply the ops, starting at the old root.
     match self.apply_at(storage, new_version, old_version, ROOT_BITS, batch)? {
@@ -243,6 +263,7 @@ Lastly, we make the recursive call
 ```
 
 As explained, we call `pre_compute_apply_at` to prepare for the recursion from calling `apply_at`.
+
 - `memo`, the result from the pre-computation, is given to `apply_at` so it uses it instead of doing recursion.
 - The result obtained from `apply_at` includes mutations to be made to the tree (`nodes_to_add` and `orphans_to_add`). We produce a new tree (`new_tree`) with those changes applied.
 - Then, we just need to match, in a less powerful but similar pattern matching.
@@ -465,6 +486,7 @@ Again, no mutations on Quint, so instead we return sets of orphans to be added (
 -->
 
 In the rust code so far, we had potential mutations:
+
 - Calls to `apply_at_child` can add nodes to the tree
 - Calls to `apply_at_child` can add orhpans
 - The checks on the block above can add orphans
@@ -493,6 +515,7 @@ We set up a result value that include this initial changes, to be used by most c
 -->
 
 Now, lets go case by case on the match expression, which are translated into if expressions in Quint for better readability/correspondence:
+
 ```rust
     match (left_outcome, right_outcome) {
 ```
@@ -518,7 +541,6 @@ First case:
 
 ```
 -->
-
 
 Second case:
 
@@ -624,7 +646,6 @@ Fifth case: Symmetrical to the third case:
         },
 ```
 
-
 ```bluespec "definitions" +=
   } else if ((left_outcome == Deleted or left_outcome == Unchanged(None)) and right_outcome.updated_to_leaf()) {
     // Left child is deleted, right child is a leaf.
@@ -676,6 +697,7 @@ Sixth case: Symmetrical to the fourth case
 -->
 
 Seventh case:
+
 ```rust
         // At least one child is updated and the path can't be collapsed.
         // Update the currenct node and return
@@ -797,6 +819,7 @@ pure def apply_at_child(
 ```
 
 Once again, Rust uses a `match`, and Quint will use a combination of `if` and `match` instead due to less powerful pattern matching.
+
 ```rust
     match (batch.is_empty(), child) {
 ```
@@ -849,6 +872,7 @@ The last non-bracket line is what makes the recursive call to `apply_at`. As exp
 > The `apply_at` call and `memo` access have the same parameters, except for the storage (tree) as discussed before. This is a good indication that the Quint spec replicates the implementation closely, since the value saved to `memo` is the exact call to the Quint `apply_at` definition. The only difference is that it was pre-computed and not computed on the spot at the recursive call.
 
 As a reminder, here's how we previously saved the value to `memo`:
+
 ```bluespec
 pure val memo_key = (new_version, old_version, bits, batch_here)
 pure val memo_value = tree.apply_at(memo, new_version, old_version, bits, batch_here)
@@ -903,6 +927,7 @@ pure def apply_at_leaf(
 ```
 
 We start by preparing the batch:
+
 ```rust
     let (batch, op) = prepare_batch_for_subtree(batch, Some(leaf_node));
 ```
@@ -1184,6 +1209,7 @@ When computing `filtered_batch`, Rust has an early return for when it finds an o
 -->
 
 And finally we return both:
+
 ```bluespec "definitions" +=
   (filtered_batch, maybe_op)
 }
@@ -1201,6 +1227,7 @@ The second recursive function is `create_subtree`, and we also have to emulate i
 ### Recursion emulation for `create_subtree`
 
 The Rust signature looks like this:
+
 ```rust
 fn create_subtree(
     &self,
@@ -1318,6 +1345,7 @@ Then we start the translation from the body of `create_subtree` in Rust:
 In Quint, this `match` will be if-else branches.
 
 First case:
+
 ```rust
         // The subtree to be created is empty: do nothing.
         (0, None) => Ok(Outcome::Unchanged(None)),
@@ -1335,6 +1363,7 @@ First case:
 -->
 
 Second case:
+
 ```rust
         // The subtree to be created contains exactly one node, which is an
         // existing leaf node.
@@ -1355,6 +1384,7 @@ Second case:
 -->
 
 Third case:
+
 ```rust
         // The subtree to be created contains exactly one node, which is a
         // new leaf node.
@@ -1387,6 +1417,7 @@ Third case:
 Fourth case. Let's break this one into smaller chunks:
 
 First, we call `partition_batch` and `partition_leaf`:
+
 ```rust
         // The subtree to be created contains more 2 or more nodes.
         // Recursively create the tree. Return the subtree's root, an
@@ -1461,6 +1492,7 @@ Then, we make the recursive calls for the left and the right side. In Quint, thi
 > Once again, the `create_subtree` calls and `memo` acceses have the same parameters, except for the storage (tree) as discussed before. This is a good indication that the Quint spec replicates the implementation closely, since the value saved to `memo` is the exact call to the Quint `create_subtree_with_memo` definition (which corresponds to Rust's `create_subtree`). The only difference is that it was pre-computed and not computed on the spot at the recursive call.
 
 Then, we save new nodes. In Quint, this means adding to `nodes_to_add`.
+
 ```rust
             // If a subtree is non-empty, save it's root node.
             if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &left_outcome {
