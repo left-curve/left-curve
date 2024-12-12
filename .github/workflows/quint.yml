@@ -1,0 +1,144 @@
+name: Quint checks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "grug/jellyfish-merkle/spec/**"
+  pull_request:
+    paths:
+      - "grug/jellyfish-merkle/spec/**"
+
+jobs:
+  lmt-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Install Go
+    - name: Install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.20' # Replace with the required Go version
+
+    # Step 3: Clone and build `lmt`
+    - name: Build LMT
+      run: |
+        go install github.com/driusan/lmt@latest
+        export PATH=$PATH:$(go env GOPATH)/bin
+
+    # Step 4: Run `lmt` and fail if differences are detected
+    - name: Run LMT
+      run: |
+        lmt docs/proofs.md
+        lmt docs/invariants.md
+        lmt docs/tree_manipulation.md
+        lmt docs/grug_ics23.md
+        lmt docs/proof_types.md
+        # Check that it is up to date
+        git diff --exit-code \
+          || ( echo ">>> ERROR: Tangled files are out of sync." &&  exit 1)
+
+  quint-typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: bash scripts/quint-forall.sh typecheck quint/**/*.qnt
+
+  quint-test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec
+    env:
+      MAX_SAMPLES: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint test --max-samples=$MAX_SAMPLES quint/test/test_all.qnt
+  
+  quint-simulations-fancy:
+    name: Simulate fancy
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec/quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy apply_state_machine.qnt
+    
+  quint-simulations-simple:
+    name: Simulate simple
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec/quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple apply_state_machine.qnt
+
+  quint-simulations-prune-simple:
+    name: Simulate simple pruning
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec/quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_simple pruning_state_machine.qnt
+  
+  quint-simulations-prune-fancy:
+    name: Simulate fancy pruning
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./grug/jellyfish-merkle/spec/quint
+    env:
+      MAX_SAMPLES: 100
+      MAX_STEPS: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npm install -g @informalsystems/quint
+      - run: quint run --max-samples=$MAX_SAMPLES --max-steps=$MAX_STEPS --invariant=allInvariants --step=step_fancy pruning_state_machine.qnt
