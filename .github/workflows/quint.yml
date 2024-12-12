@@ -1,4 +1,4 @@
-name: Quint checks
+name: Quint
 
 on:
   push:
