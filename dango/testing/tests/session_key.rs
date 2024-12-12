@@ -4,7 +4,7 @@ use {
         account::single::Params,
         account_factory::{AccountParams, Username},
     },
-    grug::{btree_set, Addressable, Coin, Coins, Duration, ResultExt},
+    grug::{Addressable, Coin, Coins, Duration, ResultExt},
     session_account::SessionAccount,
     std::str::FromStr,
 };
@@ -20,10 +20,7 @@ mod session_account {
             Timestamp, Tx, Undefined,
         },
         k256::ecdsa::SigningKey,
-        std::{
-            collections::BTreeSet,
-            ops::{Deref, DerefMut},
-        },
+        std::ops::{Deref, DerefMut},
     };
 
     /// Contains both SessionInfo and the SessionInfo signed with the user keys.
@@ -86,13 +83,11 @@ mod session_account {
         // Sign the `SessionInfo` with the username key.
         pub fn sign_session_key(
             self,
-            expiration: Timestamp,
-            whitelisted_accounts: BTreeSet<Addr>,
+            expire_at: Timestamp,
         ) -> anyhow::Result<SessionAccount<Defined<SessionInfoBuffer>>> {
             let session_info = SessionInfo {
                 session_key: self.session_pk,
-                expire_at: expiration,
-                whitelisted_accounts,
+                expire_at,
             };
 
             let session_credential = self
@@ -180,11 +175,8 @@ fn session_key() {
 
     suite.block_time = Duration::from_seconds(10);
 
-    let expiration = suite.block.timestamp + Duration::from_seconds(100);
-    let mut whitelisted_accounts = btree_set! { accounts.owner.address() };
-
     let mut owner = SessionAccount::new(accounts.owner)
-        .sign_session_key(expiration, whitelisted_accounts.clone())
+        .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
         .unwrap();
 
     // Ok transfer
@@ -216,10 +208,7 @@ fn session_key() {
     // Sign the session key again refreshing the timestamp
     {
         owner = owner
-            .sign_session_key(
-                suite.block.timestamp + Duration::from_seconds(100),
-                whitelisted_accounts.clone(),
-            )
+            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
             .unwrap();
 
         suite
@@ -229,26 +218,6 @@ fn session_key() {
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_succeed();
-    }
-
-    // Remove the address as whitelisted
-    {
-        owner = owner
-            .sign_session_key(
-                suite.block.timestamp + Duration::from_seconds(100),
-                btree_set! {},
-            )
-            .unwrap();
-
-        suite
-            .transfer(
-                &mut owner,
-                accounts.relayer.address(),
-                Coin::new("uusdc", 100).unwrap(),
-            )
-            .should_fail_with_error("not whitelisted");
-
-        owner.sequence -= 1;
     }
 
     // Try use the same session key signature with a different account.
@@ -265,15 +234,9 @@ fn session_key() {
             )
             .unwrap();
 
-        // Add the new account as whitelisted.
-        whitelisted_accounts.insert(owner2.address());
-
         // Refresh the session key signature
         owner = owner
-            .sign_session_key(
-                suite.block.timestamp + Duration::from_seconds(100),
-                whitelisted_accounts.clone(),
-            )
+            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
             .unwrap();
 
         // Create a SessionAccount from the new account
@@ -304,10 +267,7 @@ fn session_key() {
         owner = owner
             .refresh_session_key()
             .unwrap()
-            .sign_session_key(
-                suite.block.timestamp + Duration::from_seconds(100),
-                whitelisted_accounts,
-            )
+            .sign_session_key(suite.block.timestamp + Duration::from_seconds(100))
             .unwrap();
 
         // Send some coins to the relayer

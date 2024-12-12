@@ -127,15 +127,6 @@ pub fn authenticate_tx(
                     session.session_info.expire_at
                 );
 
-                ensure!(
-                    session
-                        .session_info
-                        .whitelisted_accounts
-                        .contains(&tx.sender),
-                    "account {} not whitelisted.",
-                    tx.sender
-                );
-
                 // Verify the `SessionInfo` signatures.
                 verify_signature(
                     ctx.api,
@@ -189,7 +180,6 @@ fn verify_signature(
                     json!({
                         "session_key": session_info.session_key,
                         "expire_at": session_info.expire_at,
-                        "whitelisted_accounts": session_info.whitelisted_accounts,
                     }),
                 ),
             };
@@ -544,16 +534,6 @@ mod tests {
           "credential": {
             "session": {
               "session_info": {
-                "whitelisted_accounts": [
-                  "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
-                  "0x5b7ef5f28e30600293b894d5ee24626e67b870b4",
-                  "0x93aa109663cfa6010d44173ab77bd59426e1c1ec",
-                  "0xa7ef873bdc24175627dceba5a1daaa523f2c91e6",
-                  "0xb24519bc9aa34b8e9d823a0ceba16612a1e3c5e8",
-                  "0xc3b7e81ea542252ede1a985e7cdee2517191e348",
-                  "0xc4a8136dd85ebd8feef0aa59cf9b33b7744f97dc",
-                  "0xfd56825e8989ae8aa59c0ab2a7dc3a65ba8e000a"
-                ],
                 "session_key": "AvPdvBi8TryY14G6LJ4TqYExLeXYAb2ZDkV8wWw6+LCV",
                 "expire_at": "1733951225877"
               },

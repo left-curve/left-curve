@@ -1,7 +1,6 @@
 use {
     crate::account_factory::Username,
     grug::{Addr, Binary, ByteArray, Hash160, Message, Timestamp},
-    std::collections::BTreeSet,
 };
 
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
@@ -48,8 +47,6 @@ pub struct SessionInfo {
     pub session_key: ByteArray<33>,
     /// Expiry time of the session key.
     pub expire_at: Timestamp,
-    /// Addresses that can use the session key.
-    pub whitelisted_accounts: BTreeSet<Addr>,
 }
 
 /// Data that a transaction's sender must sign with their private key.
