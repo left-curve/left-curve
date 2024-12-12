@@ -59,9 +59,7 @@ export const MenuNotifications = forwardRef<VisibleRef>((props, ref) => {
         aria-description="Notifications"
         onClick={() => setShowNotifications((prev) => !prev)}
         color="gray"
-        radius="lg"
-        isIconOnly
-        className="font-bold hidden lg:flex"
+        className="p-4 hidden lg:flex rounded-[20px]"
       >
         <BellIcon className="h-5 w-5" />
       </Button>

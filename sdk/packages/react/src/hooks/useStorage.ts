@@ -7,12 +7,13 @@ import { useQuery } from "../query.js";
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
   storage?: Storage;
+  version?: number;
 };
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T, Dispatch<SetStateAction<T>>] {
-  const { initialValue: _initialValue_, storage: _storage_ } = options;
+  const { initialValue: _initialValue_, storage: _storage_, version: __version__ = 1 } = options;
 
   const storage = (() => {
     if (_storage_) return _storage_;
@@ -31,10 +32,19 @@ export function useStorage<T = undefined>(
   const { data, refetch } = useQuery<T, Error, T, string[]>({
     queryKey: [key],
     queryFn: () => {
-      const value = storage.getItem(key);
-      if (value) return value as T;
-      storage.setItem(key, initialValue);
-      return initialValue as T;
+      const item = storage.getItem(key, {
+        version: __version__,
+        value: initialValue!,
+      });
+
+      const { version, value } = item as { version: number; value: T };
+
+      if (__version__ > version) {
+        storage.setItem(key, { version: __version__, value });
+        return value as T;
+      }
+
+      return value;
     },
     initialData: initialValue,
   });
@@ -45,7 +55,7 @@ export function useStorage<T = undefined>(
       return (valOrFunc as (prevState: T) => T)(data as T);
     })();
 
-    storage.setItem(key, newState);
+    storage.setItem(key, { version: __version__, value: newState });
     refetch();
   };
 

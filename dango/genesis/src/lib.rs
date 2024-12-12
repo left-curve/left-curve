@@ -124,14 +124,11 @@ where
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
 
     // Instantiate account factory.
-    let keys = genesis_users
-        .values()
-        .map(|user| (user.key_hash, user.key))
-        .collect();
     let users = genesis_users
         .iter()
-        .map(|(username, user)| (username.clone(), user.key_hash))
+        .map(|(username, user)| (username.clone(), (user.key_hash, user.key)))
         .collect();
+
     let account_factory = instantiate(
         &mut msgs,
         account_factory_code_hash,
@@ -141,7 +138,6 @@ where
                 AccountType::Safe   => account_safe_code_hash,
                 AccountType::Spot   => account_spot_code_hash,
             },
-            keys,
             users,
         },
         "dango/account_factory",
@@ -176,6 +172,7 @@ where
     let token_creation_fee = token_creation_fee
         .map(|amount| Coin::new(fee_denom.clone(), amount).and_then(NonZero::new))
         .transpose()?;
+
     let token_factory = instantiate(
         &mut msgs,
         token_factory_code_hash,

@@ -1,5 +1,5 @@
 use {
-    crate::{Event, Outcome, TxError, TxOutcome, TxSuccess},
+    crate::{CheckTxOutcome, TxError, TxOutcome, TxSuccess},
     std::fmt::{Debug, Display},
 };
 
@@ -138,25 +138,6 @@ where
     }
 }
 
-impl ResultExt for Outcome {
-    type Error = String;
-    type Success = Vec<Event>;
-
-    fn should_succeed(self) -> Self::Success {
-        match self.result {
-            Ok(events) => events,
-            Err(error) => panic!("expected success, got error: {error}"),
-        }
-    }
-
-    fn should_fail(self) -> Self::Error {
-        match self.result {
-            Err(error) => error,
-            Ok(_) => panic!("expected error, got success"),
-        }
-    }
-}
-
 impl ResultExt for TxOutcome {
     type Error = TxError;
     type Success = TxSuccess;
@@ -181,6 +162,25 @@ impl ResultExt for TxOutcome {
                 events: self.events,
             },
             Ok(_) => panic!("expected error, got success"),
+        }
+    }
+}
+
+impl ResultExt for CheckTxOutcome {
+    type Error = String;
+    type Success = ();
+
+    fn should_succeed(self) -> Self::Success {
+        match self.result {
+            Ok(_) => (),
+            Err(_) => panic!("expecting success, got error"),
+        }
+    }
+
+    fn should_fail(self) -> Self::Error {
+        match self.result {
+            Err(error) => error,
+            Ok(_) => panic!("expecting error, got success"),
         }
     }
 }

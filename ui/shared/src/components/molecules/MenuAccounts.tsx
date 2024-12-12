@@ -55,10 +55,9 @@ export const MenuAccounts = forwardRef<VisibleRef, Props>(({ images, manageActio
         ref={buttonRef}
         onClick={() => setShowMenu(!showMenu)}
         color="gray"
-        radius="lg"
-        className="font-bold px-4 py-2 min-w-32 truncate hidden lg:flex"
+        className="font-bold px-4 py-2 min-w-32 hidden lg:flex rounded-[20px] overflow-hidden"
       >
-        {capitalize(accountName)}
+        <span className="font-diatype-rounded truncate">{capitalize(accountName)}</span>
       </Button>
 
       <div
@@ -84,12 +83,16 @@ export const MenuAccounts = forwardRef<VisibleRef, Props>(({ images, manageActio
 
         <div className="relative flex-1 overflow-hidden flex flex-col gap-4">
           <div className="flex flex-col w-full gap-2">
-            <AccountCard avatarUrl={images[selectedAccount.type]} account={selectedAccount} />
+            <AccountCard
+              avatarUrl={images[selectedAccount.type]}
+              account={selectedAccount}
+              onClick={() => [manageAction?.(selectedAccount), setShowMenu(false)]}
+            />
             <Button
               variant="bordered"
               color="purple"
               size="sm"
-              onClick={() => manageAction?.(selectedAccount)}
+              onClick={() => [manageAction?.(selectedAccount), setShowMenu(false)]}
             >
               Manage
             </Button>

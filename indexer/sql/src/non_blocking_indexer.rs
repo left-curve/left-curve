@@ -129,8 +129,54 @@ pub struct NonBlockingIndexer {
     pub context: Context,
     pub handle: RuntimeHandler,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
+    // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
+    // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
+    // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     keep_blocks: bool,
+}
+
+/// Saves the block and its transactions in memory
+#[derive(Debug, Clone)]
+struct BlockToIndex {
+    pub block_info: BlockInfo,
+    pub txs: Vec<(Tx, TxOutcome)>,
+}
+
+impl BlockToIndex {
+    /// Takes care of inserting the data in the database
+    pub async fn save(self, db: &DatabaseTransaction) -> error::Result<()> {
+        #[cfg(feature = "tracing")]
+        tracing::info!(block_height = self.block_info.height, "Indexing block");
+
+        let mut models = Models::build(&self.block_info)?;
+        for (tx, tx_outcome) in self.txs.into_iter() {
+            models.push(tx, tx_outcome)?;
+        }
+
+        // TODO: if the process was to crash in the middle and restarted, we could try to
+        // reinsert existing data. We should use `on_conflict()` to avoid this, return the
+        // existing block and change `block_id` when/if we added foreign keys
+        models.block.insert(db).await?;
+
+        if !models.transactions.is_empty() {
+            entity::transactions::Entity::insert_many(models.transactions)
+                .exec(db)
+                .await?;
+        }
+        if !models.messages.is_empty() {
+            entity::messages::Entity::insert_many(models.messages)
+                .exec(db)
+                .await?;
+        }
+        if !models.events.is_empty() {
+            entity::events::Entity::insert_many(models.events)
+                .exec(db)
+                .await?;
+        }
+
+        Ok(())
+    }
 }
 
 impl NonBlockingIndexer {
@@ -418,6 +464,7 @@ impl Indexer for NonBlockingIndexer {
         Ok(())
     }
 }
+
 
 impl Drop for NonBlockingIndexer {
     fn drop(&mut self) {

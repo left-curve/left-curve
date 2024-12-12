@@ -23,6 +23,15 @@ export const tailwindConfig: Partial<Config> = {
           start: "#FFF2E2",
           end: "#C4B7BA",
         },
+        "borders-blue": {
+          600: "#536BA2",
+        },
+        "borders-rose": {
+          600: "#C9A274",
+        },
+        "borders-pink": {
+          300: "#D07781",
+        },
         "borders-purple": {
           600: "#A38590",
         },
@@ -47,7 +56,8 @@ export const tailwindConfig: Partial<Config> = {
         },
         "typography-pink": {
           200: "#D88F97",
-          300: "#C93646",
+          300: "#CA6872",
+          400: "#C93646",
         },
         "typography-rose": {
           500: "#E0B989",
@@ -57,6 +67,9 @@ export const tailwindConfig: Partial<Config> = {
         "typography-yellow": {
           300: "#CFBA4F",
           400: "#C8B137",
+        },
+        "surface-blue": {
+          600: "#303F5F",
         },
         "surface-rose": {
           100: "#FEF1E1",
@@ -71,7 +84,7 @@ export const tailwindConfig: Partial<Config> = {
           300: "#CFBFC5",
         },
         "surface-green": {
-          100: "#EEF2F0",
+          100: "#F9FBFA",
           200: "#EEF2F0",
           300: "#DCE4E0",
           400: "#C2D0C9",
@@ -149,7 +162,127 @@ export const tailwindConfig: Partial<Config> = {
   plugins: [
     require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
-    plugin(({ addUtilities, addComponents }) => {
+    plugin(({ addUtilities, addComponents, theme }) => {
+      addUtilities({
+        ".typography-display-xl": {
+          fontWeight: "900",
+          fontSize: "6rem",
+          fontFamily: theme("fontFamily.exposure"),
+        },
+        ".typography-display-xs": {
+          fontWeight: "900",
+          fontSize: "2rem",
+          fontFamily: theme("fontFamily.exposure"),
+        },
+        ".typography-headline-l": {
+          fontWeight: "900",
+          fontSize: "1.5rem",
+          lineHeight: "1.98rem",
+          letterSpacing: "0.375rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-headline-m": {
+          fontWeight: "900",
+          fontSize: "1.125rem",
+          lineHeight: "1.485rem",
+          letterSpacing: "0.28125rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-headline-s": {
+          fontWeight: "900",
+          fontSize: "0.875rem",
+          lineHeight: "1.16375rem",
+          letterSpacing: "0.21875rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-headline-xs": {
+          fontWeight: "900",
+          fontSize: "0.75rem",
+          lineHeight: "0.9975rem",
+          letterSpacing: "0.1875rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-body-xl": {
+          fontWeight: "400",
+          fontSize: "2rem",
+          lineHeight: "2.66rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-body-l": {
+          fontWeight: "400",
+          fontSize: "1.25rem",
+          lineHeight: "133%",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-body-m": {
+          fontWeight: "400",
+          fontSize: "1rem",
+          lineHeight: "1.33rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-body-s": {
+          fontWeight: "400",
+          fontSize: "0.875rem",
+          lineHeight: "1.05rem",
+          letterSpacing: "0.0175rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-body-xs": {
+          fontWeight: "400",
+          fontSize: "0.75rem",
+          lineHeight: "0.9975rem",
+          letterSpacing: "0.075rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-button-l": {
+          fontWeight: "700",
+          fontSize: "1.25rem",
+          fontFamily: theme("fontFamily.exposure"),
+        },
+        ".typography-button-s": {
+          fontWeight: "700",
+          fontSize: "1rem",
+          lineHeight: "1rem",
+          fontFamily: theme("fontFamily.exposure"),
+        },
+        ".typography-button-xs": {
+          fontWeight: "700",
+          fontSize: "0.875rem",
+          lineHeight: "1rem",
+          fontFamily: theme("fontFamily.exposure"),
+        },
+        ".typography-search-m": {
+          fontWeight: "400",
+          fontSize: "1.25rem",
+          lineHeight: "1.75rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-search-s": {
+          fontWeight: "400",
+          fontSize: "1rem",
+          lineHeight: "1.4rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-caption-l": {
+          fontWeight: "700",
+          fontSize: "0.875rem",
+          lineHeight: "1.3125rem",
+          letterSpacing: "0.21875rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-caption-m": {
+          fontWeight: "700",
+          fontSize: "0.75rem",
+          lineHeight: "1.125rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+        ".typography-caption-s": {
+          fontWeight: "700",
+          fontSize: "0.625rem",
+          lineHeight: "0.9375rem",
+          fontFamily: theme("fontFamily.diatype-rounded"),
+        },
+      });
       addUtilities({
         ".tap-highlight-transparent": {
           "-webkit-tap-highlight-color": "transparent",

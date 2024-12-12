@@ -93,9 +93,9 @@ export function Select<T extends object>(props: SelectProps<T>) {
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-full transition-all shadow-sm duration-300",
+    base: "group inline-flex flex-col relative w-full transition-all shadow-sm duration-500",
     listboxWrapper:
-      "h-0 py-0 px-4 scroll-py-6 max-h-64 w-full transition-all overflow-hidden duration-300",
+      "h-0 py-0 px-4 scroll-py-6 max-h-64 w-full transition-all overflow-hidden duration-500",
     listbox: "",
     value: ["text-foreground-500", "font-normal", "w-full", "text-left", "rtl:text-right"],
     selectorIcon: "w-5 h-5 transition-all duration-300",
@@ -134,7 +134,7 @@ const selectVariants = tv({
     isOpen: {
       true: {
         base: "rounded-t-xl rounded-b-none",
-        listboxWrapper: "h-fit z-30 py-4",
+        listboxWrapper: "h-48 z-30 py-4",
       },
     },
   },

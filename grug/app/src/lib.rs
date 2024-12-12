@@ -2,14 +2,14 @@
 mod abci;
 mod app;
 mod buffer;
-mod context;
 mod error;
-mod events;
+mod event;
 mod execute;
 mod gas;
 mod home;
 mod indexer;
-mod proposal;
+mod macros;
+mod proposal_preparer;
 mod providers;
 mod query;
 mod shared;
@@ -19,6 +19,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, context::*, error::*, events::*, execute::*, gas::*, home::*, indexer::*,
-    proposal::*, providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
+    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
 };

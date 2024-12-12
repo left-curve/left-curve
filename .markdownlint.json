@@ -1,7 +1,14 @@
 {
+  "emphasis-style": {
+    "style": "underscore"
+  },
+  "strong-style": {
+    "style": "asterisk"
+  },
   "first-line-heading": false,
   "heading-increment": false,
   "line-length": false,
   "no-alt-text": false,
+  "no-bare-urls": false,
   "no-inline-html": false
 }

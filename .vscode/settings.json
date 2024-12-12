@@ -1,6 +1,4 @@
 {
-  "rust-analyzer.check.command": "clippy",
-  "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
   "[json]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -43,5 +41,8 @@
     "timelock",
     "timelocked",
     "uusdc"
-  ]
+  ],
+  "markdown.extension.toc.updateOnSave": false,
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
 }

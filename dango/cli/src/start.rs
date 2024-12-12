@@ -21,9 +21,9 @@ pub struct StartCmd {
     #[arg(long, default_value = "1000")]
     wasm_cache_capacity: usize,
 
-    /// Gas limit when serving query requests [default: u64::MAX]
-    #[arg(long)]
-    query_gas_limit: Option<u64>,
+    /// Gas limit when serving query requests
+    #[arg(long, default_value_t = u64::MAX)]
+    query_gas_limit: u64,
 
     /// Enable the internal indexer
     #[arg(long, default_value = "false")]
@@ -74,7 +74,7 @@ impl StartCmd {
             vm,
             ProposalPreparer::new(),
             indexer,
-            self.query_gas_limit.unwrap_or(u64::MAX),
+            self.query_gas_limit,
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

@@ -7,10 +7,10 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, Code, Coins, Config,
+        Addr, Addressable, Binary, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins, Config,
         ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt, Message,
-        Outcome, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
-        TxSuccess, UnsignedTx,
+        Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess,
+        UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -282,7 +282,7 @@ where
     }
 
     /// Perform ABCI `CheckTx` call of a transaction.
-    pub fn check_tx(&self, tx: Tx) -> Outcome {
+    pub fn check_tx(&self, tx: Tx) -> CheckTxOutcome {
         self.app
             .do_check_tx(tx)
             .unwrap_or_else(|err| panic!("fatal error while checking tx: {err}"))
@@ -584,10 +584,14 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
-            Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        ]);
+        let outcome = self.send_messages_with_gas(
+            signer,
+            gas_limit,
+            vec![
+                Message::upload(code),
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            ],
+        );
 
         UploadAndInstantiateOutcome {
             address,

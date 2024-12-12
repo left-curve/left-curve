@@ -2,13 +2,11 @@ import { Spinner } from "@dango/shared";
 import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
-import { AuthLayout } from "./components/AuthLayout";
 
 import { NotFoundView } from "./views/NotFound";
 
 // Auth routes
-const LoginView = lazy(() => import(/* webpackPrefetch: true */ "./views/Login"));
-const SignupView = lazy(() => import(/* webpackPrefetch: true */ "./views/Signup"));
+const AuthView = lazy(() => import(/* webpackPrefetch: true */ "./views/Auth"));
 
 // Portal routes
 const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
@@ -24,15 +22,15 @@ export const AppRouter: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="h-screen w-full flex justify-center items-center">
+        <div className="h-screen w-full flex justify-center items-center bg-surface-off-white-200">
           <Spinner size="lg" color="pink" />
         </div>
       }
     >
       <Routes>
-        <Route path="/auth" element={<AuthLayout />}>
-          <Route path="login" element={<LoginView />} />
-          <Route path="signup" element={<SignupView />} />
+        <Route path="/auth">
+          <Route path="login" element={<AuthView />} />
+          <Route path="signup" element={<AuthView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
           <Route path="accounts" element={<AccountView />} />
