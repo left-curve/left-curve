@@ -50,7 +50,6 @@ export function useSessionKey() {
       message: sessionInfo,
       types: {
         Message: [
-          { name: "whitelisted_accounts", type: "address[]" },
           { name: "session_key", type: "string" },
           { name: "expire_at", type: "string" },
         ],
