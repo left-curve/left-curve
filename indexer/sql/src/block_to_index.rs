@@ -13,16 +13,17 @@ use {
 pub struct BlockToIndex {
     pub block: Block,
     pub block_outcome: BlockOutcome,
-    //#[serde(skip)]
-    //#[borsh(skip)]
-    // filename: PathBuf,
+    #[serde(skip)]
+    #[borsh(skip)]
+    filename: PathBuf,
 }
 
 impl BlockToIndex {
-    pub fn new(block: Block, block_outcome: BlockOutcome) -> Self {
+    pub fn new(filename: PathBuf, block: Block, block_outcome: BlockOutcome) -> Self {
         Self {
             block,
             block_outcome,
+            filename,
         }
     }
 
@@ -84,16 +85,18 @@ impl BlockToIndex {
 }
 
 impl BlockToIndex {
-    pub fn save_on_disk(&self, file_path: PathBuf) -> error::Result<()> {
-        Ok(DiskPersistence::new(file_path, true).save(self)?)
+    pub fn save_on_disk(&self) -> error::Result<()> {
+        Ok(DiskPersistence::new(self.filename.clone(), true).save(self)?)
     }
 
     pub fn load_from_disk(file_path: PathBuf) -> error::Result<Self> {
-        Ok(DiskPersistence::new(file_path, true).load()?)
+        let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), true).load()?;
+        block_to_index.filename = file_path;
+        Ok(block_to_index)
     }
 
-    pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
-        Ok(DiskPersistence::new(file_path, true).delete()?)
+    pub fn delete_from_disk(file_path: &PathBuf) -> error::Result<()> {
+        Ok(DiskPersistence::delete(file_path)?)
     }
 }
 
@@ -128,14 +131,14 @@ mod tests {
         let temp_file = NamedTempFile::new().expect("Failed to create a temp file");
         let temp_filename = temp_file.path().to_path_buf();
 
-        let block_to_index = BlockToIndex::new(block, block_outcome);
+        let block_to_index = BlockToIndex::new(temp_filename.clone(), block, block_outcome);
 
-        assert_that!(block_to_index.save_on_disk(temp_filename.clone())).is_ok();
+        assert_that!(block_to_index.save_on_disk()).is_ok();
 
         let saved_block_to_index =
             BlockToIndex::load_from_disk(temp_filename.clone()).expect("Can't load tmp file");
 
         assert_that!(saved_block_to_index).is_equal_to(block_to_index);
-        assert_that!(BlockToIndex::delete_from_disk(temp_filename)).is_ok();
+        assert_that!(BlockToIndex::delete_from_disk(&temp_filename)).is_ok();
     }
 }

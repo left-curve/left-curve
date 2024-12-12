@@ -20,13 +20,13 @@ pub struct DiskPersistence {
 }
 
 impl DiskPersistence {
-    pub fn new(mut file_path: PathBuf, should_compress: bool) -> Self {
-        // let mut file_path = file_path.clone();
-        file_path.set_extension("borsh");
-
-        if should_compress {
-            file_path.set_extension("xz");
-        }
+    pub fn new(file_path: PathBuf, should_compress: bool) -> Self {
+        // NOTE: I'd like to add extensions but I'd need to change Self::delete() to self::delete()
+        // file_path.set_extension("borsh");
+        //
+        // if should_compress {
+        //    file_path.set_extension("xz");
+        //}
 
         Self {
             file_path,
@@ -72,8 +72,8 @@ impl DiskPersistence {
         Ok(data)
     }
 
-    pub fn delete(&self) -> Result<(), Error> {
-        std::fs::remove_file(&self.file_path)?;
+    pub fn delete(file_path: &PathBuf) -> Result<(), Error> {
+        std::fs::remove_file(file_path)?;
         Ok(())
     }
 }

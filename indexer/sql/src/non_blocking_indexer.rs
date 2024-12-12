@@ -140,6 +140,7 @@ impl NonBlockingIndexer {
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
+        block_filename: PathBuf,
         block: &Block,
         block_outcome: &BlockOutcome,
         action: F,
@@ -150,7 +151,11 @@ impl NonBlockingIndexer {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
         let block_to_index = blocks
             .entry(block.block_info.height)
-            .or_insert(BlockToIndex::new(block.clone(), block_outcome.clone()));
+            .or_insert(BlockToIndex::new(
+                block_filename,
+                block.clone(),
+                block_outcome.clone(),
+            ));
 
         block_to_index.block_outcome = block_outcome.clone();
 
@@ -267,7 +272,10 @@ impl NonBlockingIndexer {
             })?;
 
             if !self.keep_blocks {
-                BlockToIndex::delete_from_disk(block_filename)?
+                if let Err(_err) = BlockToIndex::delete_from_disk(&block_filename) {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
+                }
             }
 
             #[cfg(feature = "tracing")]
@@ -357,14 +365,16 @@ impl Indexer for NonBlockingIndexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height = block.block_info.height, "index_block called");
 
-        self.find_or_create(block, block_outcome, |block_to_index| {
+        let block_filename = self.block_filename(block.block_info.height);
+
+        self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
             tracing::debug!(
                 block_height = block.block_info.height,
                 "index_block started"
             );
 
-            block_to_index.save_on_disk(self.block_filename(block.block_info.height))?;
+            block_to_index.save_on_disk()?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -403,9 +413,9 @@ impl Indexer for NonBlockingIndexer {
             db.commit().await?;
 
             if !keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename) {
+                if let Err(_err) = BlockToIndex::delete_from_disk(&block_filename) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "Can't delete block from disk");
+                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
                 }
             }
 
@@ -490,7 +500,7 @@ impl RuntimeHandler {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage};
+    use {super::*, grug_types::MockStorage, tracing_subscriber};
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
