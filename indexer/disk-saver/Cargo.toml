@@ -1,13 +1,13 @@
 [package]
-name = "indexer-disk-saver"
-version = { workspace = true }
-authors = { workspace = true }
-edition = { workspace = true }
-rust-version = { workspace = true }
+name          = "indexer-disk-saver"
+version       = { workspace = true }
+authors       = { workspace = true }
+edition       = { workspace = true }
+rust-version  = { workspace = true }
 documentation = { workspace = true }
-repository = { workspace = true }
-license = { workspace = true }
-categories = { workspace = true }
+repository    = { workspace = true }
+license       = { workspace = true }
+categories    = { workspace = true }
 
 [lib]
 path = "src/lib.rs"

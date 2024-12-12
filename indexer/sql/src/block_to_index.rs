@@ -15,7 +15,7 @@ pub struct BlockToIndex {
     pub block_outcome: BlockOutcome,
     //#[serde(skip)]
     //#[borsh(skip)]
-    //filename: PathBuf,
+    // filename: PathBuf,
 }
 
 impl BlockToIndex {
