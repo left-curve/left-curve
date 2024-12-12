@@ -457,15 +457,17 @@ fn asd() {
         &ExecuteMsg::perform(
             "1",
             ExecuteMsg::ok("2"),
-            ReplyOn::error(&ReplyMsg::Ok(ExecuteMsg::fail("reply deep 1 fail"))).unwrap(),
+            ReplyOn::success(&ReplyMsg::Ok(ExecuteMsg::fail("reply deep 1 fail"))).unwrap(),
         ),
         Coins::default(),
     );
 
     println!(
         "{}",
-        flat_tx_events(result.events, 123, 1)
+        flat_tx_events(result.events.clone(), 123, 1)
             .to_json_string_pretty()
             .unwrap()
     );
+
+    println!("{}", result.events.to_json_string_pretty().unwrap());
 }

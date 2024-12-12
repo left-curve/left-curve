@@ -3,8 +3,8 @@ use {
     grug_types::{
         Addr, Coins, CommitmentStatus, ContractEvent, Event, EventStatus, EvtAuthenticate,
         EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest, EvtInstantiate,
-        EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, HandleEventStatus, Hash256,
-        Json, Label, MsgsAndBackrunEvents, ReplyOn, SubEvent, Timestamp, TxEvents,
+        EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, Hash256, Json, Label,
+        MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, TxEvents,
     },
     serde::{de::Visitor, Deserialize, Serialize},
     std::fmt,
@@ -32,8 +32,8 @@ pub enum IndexEventStatus {
 #[serde(rename_all = "snake_case")]
 pub enum IndexCommitmentStatus {
     Committed,
-    Failed(String),
-    Reverted(String),
+    Failed,
+    Reverted,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -258,7 +258,7 @@ pub trait FlattenStatus {
     ) -> Vec<IndexEvent>;
 }
 
-pub fn flat_commitment_status<T>(
+fn flat_commitment_status<T>(
     block_id: u64,
     tx_id: u32,
     mut next_id: u32,
@@ -277,11 +277,11 @@ where
         CommitmentStatus::Committed(event) => {
             event.flat_status(&parent, next_id, IndexCommitmentStatus::Committed)
         },
-        CommitmentStatus::Failed { event, error } => {
-            event.flat_status(&parent, next_id, IndexCommitmentStatus::Failed(error))
+        CommitmentStatus::Failed { event, .. } => {
+            event.flat_status(&parent, next_id, IndexCommitmentStatus::Failed)
         },
-        CommitmentStatus::Reverted { event, revert_by } => {
-            event.flat_status(&parent, next_id, IndexCommitmentStatus::Reverted(revert_by))
+        CommitmentStatus::Reverted { event, .. } => {
+            event.flat_status(&parent, next_id, IndexCommitmentStatus::Reverted)
         },
         CommitmentStatus::NotReached => vec![],
     };
@@ -308,7 +308,7 @@ pub fn flat_tx_events(tx_events: TxEvents, block_id: u64, tx_id: u32) -> Vec<Ind
     flat_events
 }
 
-// ------------------------------- Trait Flatten for status---------------------
+// -------------------------- impl Flatten for Status --------------------------
 
 impl<T> FlattenStatus for EventStatus<T>
 where
@@ -333,30 +333,30 @@ where
     }
 }
 
-impl FlattenStatus for HandleEventStatus {
+impl FlattenStatus for SubEventStatus {
     fn flat_status(
         self,
         parent: &EventId,
         next_id: u32,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
-        match self {
-            HandleEventStatus::Ok(event) => {
-                event.flat(parent, next_id, commitment, IndexEventStatus::Ok)
+        let (event, commitment, status) = match self {
+            SubEventStatus::Ok(event) => (event, commitment, IndexEventStatus::Ok),
+            SubEventStatus::NestedFailed(event) => (event, commitment, IndexEventStatus::SubFailed),
+            SubEventStatus::Failed { event, error } => {
+                (event, commitment, IndexEventStatus::Failed(error))
             },
-            HandleEventStatus::NestedFailed(event) => {
-                event.flat(parent, next_id, commitment, IndexEventStatus::SubFailed)
-            },
-            HandleEventStatus::Failed { event, error } => {
-                event.flat(parent, next_id, commitment, IndexEventStatus::Failed(error))
-            },
-            HandleEventStatus::Handled { event, error } => event.flat(
-                parent,
-                next_id,
-                commitment,
+            // SubEventStatus::Handled is a particular case.
+            // It means that a submsg fails but the error has been handled on reply.
+            // In this case, the commitment status is Failed regardless of the original commitment status.
+            SubEventStatus::Handled { event, error } => (
+                event,
+                IndexCommitmentStatus::Failed,
                 IndexEventStatus::Handled(error),
             ),
-        }
+        };
+
+        event.flat(parent, next_id, commitment, status)
     }
 }
 
@@ -382,7 +382,7 @@ impl FlattenStatus for MsgsAndBackrunEvents {
     }
 }
 
-// ------------------------------- Trait Flatten for event----------------------
+// -------------------------- impl Flatten for Events --------------------------
 
 impl Flatten for EvtConfigure {
     fn flat(

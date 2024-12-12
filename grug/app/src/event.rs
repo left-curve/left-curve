@@ -1,13 +1,13 @@
 use {
     crate::AppError,
-    grug_types::{CommitmentStatus, Event, EventStatus, HandleEventStatus},
+    grug_types::{CommitmentStatus, Event, EventStatus, SubEventStatus},
 };
 
 #[derive(Debug, Clone)]
 pub enum EventResult<T> {
     Ok(T),
     Err { event: T, error: AppError },
-    SubErr { event: T, error: AppError },
+    NestedErr { event: T, error: AppError },
 }
 
 impl<T> EventResult<T> {
@@ -29,7 +29,7 @@ impl<T> EventResult<T> {
                 event: callback(event),
                 error,
             },
-            EventResult::SubErr { event, error } => EventResult::SubErr {
+            EventResult::NestedErr { event, error } => EventResult::NestedErr {
                 event: callback(event),
                 error,
             },
@@ -42,8 +42,8 @@ impl<T> EventResult<T> {
     {
         match self {
             EventResult::Ok(event) => EventResult::Ok(callback(event, merge)),
-            EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
-                EventResult::SubErr {
+            EventResult::Err { event, error } | EventResult::NestedErr { event, error } => {
+                EventResult::NestedErr {
                     event: callback(event, merge),
                     error,
                 }
@@ -54,7 +54,7 @@ impl<T> EventResult<T> {
     pub fn as_result(self) -> Result<T, (T, AppError)> {
         match self {
             EventResult::Ok(val) => Ok(val),
-            EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
+            EventResult::Err { event, error } | EventResult::NestedErr { event, error } => {
                 Err((event, error))
             },
         }
@@ -63,7 +63,7 @@ impl<T> EventResult<T> {
     pub fn into_commitment_status(self) -> CommitmentStatus<EventStatus<T>> {
         match &self {
             EventResult::Ok(..) => CommitmentStatus::Committed(self.into()),
-            EventResult::Err { error, .. } | EventResult::SubErr { error, .. } => {
+            EventResult::Err { error, .. } | EventResult::NestedErr { error, .. } => {
                 CommitmentStatus::Failed {
                     error: error.to_string(),
                     event: self.into(),
@@ -75,7 +75,7 @@ impl<T> EventResult<T> {
     pub fn into_commitment(self) -> CommitmentStatus<T> {
         match self {
             EventResult::Ok(event) => CommitmentStatus::Committed(event),
-            EventResult::Err { event, error } | EventResult::SubErr { event, error } => {
+            EventResult::Err { event, error } | EventResult::NestedErr { event, error } => {
                 CommitmentStatus::Failed {
                     error: error.to_string(),
                     event,
@@ -96,19 +96,19 @@ impl<T> EventResult<T> {
             EventResult::Err { error, .. } => {
                 tracing::warn!(err = error.to_string(), error_msg);
             },
-            EventResult::SubErr { error, .. } => {
+            EventResult::NestedErr { error, .. } => {
                 tracing::warn!(err = error.to_string(), "Sub error encountered");
             },
         }
     }
 }
 
-impl From<EventResult<Event>> for HandleEventStatus {
+impl From<EventResult<Event>> for SubEventStatus {
     fn from(value: EventResult<Event>) -> Self {
         match value {
-            EventResult::Ok(event) => HandleEventStatus::Ok(event),
-            EventResult::Err { event, error } => HandleEventStatus::failed(event, error),
-            EventResult::SubErr { event, .. } => HandleEventStatus::NestedFailed(event),
+            EventResult::Ok(event) => SubEventStatus::Ok(event),
+            EventResult::Err { event, error } => SubEventStatus::failed(event, error),
+            EventResult::NestedErr { event, .. } => SubEventStatus::NestedFailed(event),
         }
     }
 }
@@ -121,7 +121,7 @@ impl<T> From<EventResult<T>> for EventStatus<T> {
                 event,
                 error: error.to_string(),
             },
-            EventResult::SubErr { event, .. } => EventStatus::NestedFailed(event),
+            EventResult::NestedErr { event, .. } => EventStatus::NestedFailed(event),
         }
     }
 }
