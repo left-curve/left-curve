@@ -8,11 +8,10 @@ Most of the correspondance is shown by comparing the Rust code with Quint code s
 
 This document covers:
 
-- [Proofs](#proofs)
-  - [ICS23 proving existence](#ics23-proving-existence)
-  - [Get left neighbor](#get-left-neighbor)
-  - [Get right neighbor](#get-right-neighbor)
-  - [Generating commitment proof](#generating-commitment-proof)
+- [`ics23_prove_existence`](#ics23-proving-existence)
+- [`leftNeighbor`](#get-left-neighbor)
+- [`rightNeighbor`](#get-right-neighbor)
+- [`ics23_prove`](#generating-commitment-proof)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [proofs.qnt](../quint/proofs.qnt).

@@ -14,24 +14,15 @@ Most of the correspondance is shown by comparing the Rust code with Quint code s
 
 This document covers the correspondance of all the `apply_*` functions and their main helper functions, including:
 
-- [Tree manipulation](#tree-manipulation)
-  - [Types](#types)
-  - [Recursion emulation for `apply_at`](#recursion-emulation-for-apply_at)
-    - [Concrete example](#concrete-example)
-    - [Memoization](#memoization)
-  - [Apply operators](#apply-operators)
-    - [Top level apply](#top-level-apply)
-    - [Apply At](#apply-at)
-    - [Apply At Internal](#apply-at-internal)
-    - [Apply At Child](#apply-at-child)
-    - [Apply at Leaf](#apply-at-leaf)
-  - [Auxiliary functions](#auxiliary-functions)
-    - [Partition Batch](#partition-batch)
-    - [Partition Leaf](#partition-leaf)
-    - [Prepare Batch for Subtree](#prepare-batch-for-subtree)
-  - [Create Subtree](#create-subtree)
-    - [Recursion emulation for `create_subtree`](#recursion-emulation-for-create_subtree)
-    - [Create subtree operator](#create-subtree-operator)
+- [`apply`](#top-level-apply)
+- [`apply_at`](#apply-at)
+- [`apply_at_internal`](#apply-at-internal)
+- [`apply_at_child`](#apply-at-child)
+- [`apply_at_leaf`](#apply-at-leaf)
+- [`partition_batch`](#partition-batch)
+- [`partition_leaf`](#partition-leaf)
+- [`prepare_batch_for_subtree`](#prepare-batch-for-subtree)
+- [`create_subtree`](#create-subtree)
 
 > [!TIP]
 > This markdown file contains some metadata and comments that enable it to be tangled to a full Quint file (using [lmt](https://github.com/driusan/lmt)). The Quint file can be found at [apply_fancy.qnt](../quint/apply_fancy.qnt).
