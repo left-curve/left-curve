@@ -24,10 +24,7 @@ use {
 
 // ------------------------------- IndexerBuilder ------------------------------
 
-pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks>
-where
-    H: Hooks + Clone + Send + 'static,
-{
+pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks> {
     handle: RuntimeHandler,
     db_url: DB,
     indexer_path: P,
@@ -88,10 +85,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
     }
 }
 
-impl<DB, P, H> IndexerBuilder<DB, P, H>
-where
-    H: Hooks + Clone + Send + 'static,
-{
+impl<DB, P, H> IndexerBuilder<DB, P, H> {
     pub fn with_hooks<I>(self, hooks: I) -> IndexerBuilder<DB, P, I>
     where
         I: Hooks + Clone + Send + 'static,
