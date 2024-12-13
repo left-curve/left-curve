@@ -415,8 +415,16 @@ impl Indexer for NonBlockingIndexer {
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
+                    tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
                 }
+            } else {
+                // compress takes CPU, so we do it in a spawned blocking task
+                tokio::task::spawn_blocking(|| async move {
+                    if let Err(_err) = BlockToIndex::compress_on_disk(block_filename.clone()) {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
+                    }
+                });
             }
 
             Self::remove_or_fail(blocks, &block_height)?;

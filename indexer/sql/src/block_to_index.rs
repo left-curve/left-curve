@@ -86,17 +86,22 @@ impl BlockToIndex {
 
 impl BlockToIndex {
     pub fn save_on_disk(&self) -> error::Result<()> {
-        Ok(DiskPersistence::new(self.filename.clone(), true).save(self)?)
+        Ok(DiskPersistence::new(self.filename.clone(), false).save(self)?)
+    }
+
+    pub fn compress_on_disk(file_path: PathBuf) -> error::Result<()> {
+        DiskPersistence::new(file_path, false).compress()?;
+        Ok(())
     }
 
     pub fn load_from_disk(file_path: PathBuf) -> error::Result<Self> {
-        let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), true).load()?;
+        let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), false).load()?;
         block_to_index.filename = file_path;
         Ok(block_to_index)
     }
 
     pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
-        Ok(DiskPersistence::new(file_path, true).delete()?)
+        Ok(DiskPersistence::new(file_path, false).delete()?)
     }
 }
 
