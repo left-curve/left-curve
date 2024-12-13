@@ -24,18 +24,15 @@ use {
 
 // ------------------------------- IndexerBuilder ------------------------------
 
-pub struct IndexerBuilder<
-    DB = Undefined<String>,
-    P = Undefined<IndexerPath>,
-    G = NullHooks,
-    H = Undefined<G>,
-> {
+pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     handle: RuntimeHandler,
     db_url: DB,
     indexer_path: P,
     keep_blocks: bool,
     hooks: H,
-    phantom_g: std::marker::PhantomData<G>,
 }
 
 impl Default for IndexerBuilder {
@@ -45,8 +42,7 @@ impl Default for IndexerBuilder {
             db_url: Undefined::default(),
             indexer_path: Undefined::default(),
             keep_blocks: false,
-            hooks: Undefined::default(),
-            phantom_g: std::marker::PhantomData,
+            hooks: NullHooks,
         }
     }
 }
@@ -62,7 +58,6 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_url: Defined::new(db_url.to_string()),
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
-            phantom_g: std::marker::PhantomData,
         }
     }
 
@@ -79,7 +74,6 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
-            phantom_g: std::marker::PhantomData,
         }
     }
 
@@ -90,47 +84,33 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
-            phantom_g: std::marker::PhantomData,
         }
     }
 }
 
-impl<DB, P, G> IndexerBuilder<DB, P, G, Undefined<G>> {
-    pub fn with_hooks<I>(self, hooks: I) -> IndexerBuilder<DB, P, I, Defined<I>>
+impl<DB, P, H> IndexerBuilder<DB, P, H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
+    pub fn with_hooks<I>(self, hooks: I) -> IndexerBuilder<DB, P, I>
     where
-        I: Hooks,
+        I: Hooks + Clone + Send + 'static,
     {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
-            hooks: Defined::new(hooks),
-            phantom_g: std::marker::PhantomData,
+            hooks,
         }
     }
 }
 
-impl<DB, P, G> IndexerBuilder<DB, P, G, Undefined<G>>
-where
-    G: Hooks,
-{
-    pub fn without_hooks(self) -> IndexerBuilder<DB, P, NullHooks, Undefined<G>> {
-        IndexerBuilder {
-            handle: self.handle,
-            db_url: self.db_url,
-            indexer_path: self.indexer_path,
-            keep_blocks: self.keep_blocks,
-            hooks: Undefined::default(),
-            phantom_g: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<DB, P, G> IndexerBuilder<DB, P, G, Undefined<G>>
+impl<DB, P, H> IndexerBuilder<DB, P, H>
 where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
+    H: Hooks + Clone + Send + 'static,
 {
     /// If true, the block/block_outcome used by the indexer will be kept on disk after being
     /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
@@ -142,11 +122,10 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             hooks: self.hooks,
-            phantom_g: std::marker::PhantomData,
         }
     }
 
-    pub fn build(self) -> error::Result<NonBlockingIndexer<NullHooks>> {
+    pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
                 .handle
@@ -164,36 +143,7 @@ where
             blocks: Default::default(),
             indexing: false,
             keep_blocks: self.keep_blocks,
-            hooks: NullHooks,
-        })
-    }
-}
-
-impl<DB, P, G> IndexerBuilder<DB, P, G, Defined<G>>
-where
-    DB: MaybeDefined<String>,
-    P: MaybeDefined<IndexerPath>,
-    G: Hooks + Clone + Send + 'static,
-{
-    pub fn build_with_hooks(self) -> error::Result<NonBlockingIndexer<G>> {
-        let db = match self.db_url.maybe_into_inner() {
-            Some(url) => self
-                .handle
-                .block_on(async { Context::connect_db_with_url(&url).await }),
-            None => self.handle.block_on(async { Context::connect_db().await }),
-        }?;
-
-        let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
-        indexer_path.create_dirs_if_needed()?;
-
-        Ok(NonBlockingIndexer {
-            indexer_path,
-            context: Context { db },
-            handle: self.handle,
-            blocks: Default::default(), // Arc::new(Mutex::new(HashMap::new())),
-            indexing: false,
-            keep_blocks: self.keep_blocks,
-            hooks: self.hooks.into_inner(),
+            hooks: self.hooks,
         })
     }
 }
@@ -642,7 +592,6 @@ mod tests {
         let mut indexer: NonBlockingIndexer<NullHooks> = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
-            .without_hooks()
             .build()?;
         let storage = MockStorage::new();
 
@@ -672,7 +621,7 @@ mod tests {
             .with_memory_database()
             .with_tmpdir()
             .with_hooks(MyHooks)
-            .build_with_hooks()?;
+            .build()?;
 
         let storage = MockStorage::new();
 
