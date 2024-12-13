@@ -6,5 +6,6 @@ pub mod entity;
 mod error;
 mod indexer_path;
 pub mod non_blocking_indexer;
+pub mod hooks;
 
 use context::Context;
