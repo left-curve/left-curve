@@ -272,7 +272,7 @@ impl NonBlockingIndexer {
             })?;
 
             if !self.keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(&block_filename) {
+                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk");
                 }
@@ -413,7 +413,7 @@ impl Indexer for NonBlockingIndexer {
             db.commit().await?;
 
             if !keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(&block_filename) {
+                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
                 }

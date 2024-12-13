@@ -95,8 +95,8 @@ impl BlockToIndex {
         Ok(block_to_index)
     }
 
-    pub fn delete_from_disk(file_path: &PathBuf) -> error::Result<()> {
-        Ok(DiskPersistence::delete(file_path)?)
+    pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
+        Ok(DiskPersistence::new(file_path, true).delete()?)
     }
 }
 
@@ -139,6 +139,6 @@ mod tests {
             BlockToIndex::load_from_disk(temp_filename.clone()).expect("Can't load tmp file");
 
         assert_that!(saved_block_to_index).is_equal_to(block_to_index);
-        assert_that!(BlockToIndex::delete_from_disk(&temp_filename)).is_ok();
+        assert_that!(BlockToIndex::delete_from_disk(temp_filename)).is_ok();
     }
 }
