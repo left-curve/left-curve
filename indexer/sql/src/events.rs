@@ -6,11 +6,7 @@ use {
         EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, Hash256, Json, Label,
         MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, TxEvents,
     },
-    serde::{de::Visitor, Deserialize, Serialize},
-    std::{
-        fmt::{self, Display},
-        str::FromStr,
-    },
+    serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -48,28 +44,7 @@ pub enum IndexCategory {
     Cron,
 }
 
-impl Display for IndexCategory {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            IndexCategory::Tx => write!(f, "tx"),
-            IndexCategory::Cron => write!(f, "cron"),
-        }
-    }
-}
-
-impl FromStr for IndexCategory {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "tx" => Ok(IndexCategory::Tx),
-            "cron" => Ok(IndexCategory::Cron),
-            _ => Err(format!("Invalid category: {}", s)),
-        }
-    }
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EventId {
     pub block: u64,
     pub category: IndexCategory,
@@ -97,73 +72,7 @@ impl EventId {
     }
 }
 
-impl fmt::Display for EventId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}-{}-{}-{}",
-            self.block, self.category, self.category_index, self.event_index
-        )
-    }
-}
-
-impl serde::Serialize for EventId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for EventId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(EventVisitor)
-    }
-}
-
-struct EventVisitor;
-
-impl Visitor<'_> for EventVisitor {
-    type Value = EventId;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string in the format 'block-tx_index-event_index'")
-    }
-
-    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        let parts: Vec<&str> = value.split('-').collect();
-
-        if parts.len() != 4 {
-            return Err(serde::de::Error::invalid_value(
-                serde::de::Unexpected::Str(value),
-                &self,
-            ));
-        }
-
-        let block = parts[0].parse().map_err(serde::de::Error::custom)?;
-
-        let category = parts[1].parse().map_err(serde::de::Error::custom)?;
-
-        let tx_index = parts[2].parse().map_err(serde::de::Error::custom)?;
-        let event_index = parts[3].parse().map_err(serde::de::Error::custom)?;
-
-        Ok(EventId {
-            block,
-            category,
-            category_index: tx_index,
-            event_index,
-        })
-    }
-}
-
-pub fn get_next_event_index(events: &[IndexEvent]) -> Option<u32> {
+fn get_next_event_index(events: &[IndexEvent]) -> Option<u32> {
     events.last().map(|event| event.id.event_index + 1)
 }
 
@@ -283,20 +192,20 @@ pub struct FlattenEvtGuest {
 
 // ------------------------------- Trait Flatten -------------------------------
 
-pub trait Flatten {
+trait Flatten {
     fn flat(
         self,
-        parent: &EventId,
+        parent_id: &EventId,
         next: u32,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent>;
 }
 
-pub trait FlattenStatus {
+trait FlattenStatus {
     fn flat_status(
         self,
-        parent: &EventId,
+        parent_id: &EventId,
         next_id: u32,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent>;
@@ -312,7 +221,7 @@ fn flat_commitment_status<T>(
 where
     T: FlattenStatus,
 {
-    let parent = EventId {
+    let parent_id = EventId {
         block: block_id,
         category,
         category_index: category_id,
@@ -321,13 +230,13 @@ where
 
     let events = match commitment {
         CommitmentStatus::Committed(event) => {
-            event.flat_status(&parent, next_id, IndexCommitmentStatus::Committed)
+            event.flat_status(&parent_id, next_id, IndexCommitmentStatus::Committed)
         },
         CommitmentStatus::Failed { event, .. } => {
-            event.flat_status(&parent, next_id, IndexCommitmentStatus::Failed)
+            event.flat_status(&parent_id, next_id, IndexCommitmentStatus::Failed)
         },
         CommitmentStatus::Reverted { event, .. } => {
-            event.flat_status(&parent, next_id, IndexCommitmentStatus::Reverted)
+            event.flat_status(&parent_id, next_id, IndexCommitmentStatus::Reverted)
         },
         CommitmentStatus::NotReached => vec![],
     };
@@ -389,17 +298,22 @@ where
 {
     fn flat_status(
         self,
-        parent: &EventId,
+        parent_id: &EventId,
         next_id: u32,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
         match self {
-            EventStatus::Ok(event) => event.flat(parent, next_id, commitment, IndexEventStatus::Ok),
-            EventStatus::Failed { event, error } => {
-                event.flat(parent, next_id, commitment, IndexEventStatus::Failed(error))
+            EventStatus::Ok(event) => {
+                event.flat(parent_id, next_id, commitment, IndexEventStatus::Ok)
             },
+            EventStatus::Failed { event, error } => event.flat(
+                parent_id,
+                next_id,
+                commitment,
+                IndexEventStatus::Failed(error),
+            ),
             EventStatus::NestedFailed(event) => {
-                event.flat(parent, next_id, commitment, IndexEventStatus::SubFailed)
+                event.flat(parent_id, next_id, commitment, IndexEventStatus::SubFailed)
             },
             EventStatus::NotReached => vec![],
         }
@@ -409,7 +323,7 @@ where
 impl FlattenStatus for SubEventStatus {
     fn flat_status(
         self,
-        parent: &EventId,
+        parent_id: &EventId,
         next_id: u32,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
@@ -429,7 +343,7 @@ impl FlattenStatus for SubEventStatus {
             ),
         };
 
-        event.flat(parent, next_id, commitment, status)
+        event.flat(parent_id, next_id, commitment, status)
     }
 }
 
@@ -460,14 +374,14 @@ impl FlattenStatus for MsgsAndBackrunEvents {
 impl Flatten for EvtConfigure {
     fn flat(
         self,
-        parent: &EventId,
+        parent_id: &EventId,
         next_id: u32,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
         vec![IndexEvent {
-            id: parent.clone_with_event_index(next_id),
-            parent_id: parent.clone(),
+            id: parent_id.clone_with_event_index(next_id),
+            parent_id: parent_id.clone(),
             commitment_status: commitment,
             event_status: status,
             event: FlattenEvent::Configure(self),
