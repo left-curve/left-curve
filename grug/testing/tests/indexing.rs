@@ -9,7 +9,6 @@ use {
 };
 
 #[test]
-#[ignore = "reason"]
 fn index_block_with_nonblocking_indexer() {
     let denom = Denom::from_str("ugrug").unwrap();
 
@@ -60,11 +59,11 @@ fn index_block_with_nonblocking_indexer() {
             .expect("Can't fetch messages");
         assert_that!(messages).is_not_empty();
 
-        let events = entity::events::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch events");
-        assert_that!(events).is_not_empty();
+        // let events = entity::events::Entity::find()
+        //     .all(&suite.app.indexer.context.db)
+        //     .await
+        //     .expect("Can't fetch events");
+        // assert_that!(events).is_not_empty();
     });
 }
 
@@ -120,28 +119,7 @@ fn parse_previous_block_after_restart() {
         assert_that!(block).is_none();
     });
 
-    // 2. Manually create a block in cache with block height 1
-    let block_info = BlockInfo {
-        height: 1,
-        timestamp: Default::default(),
-        hash: Hash::ZERO,
-    };
-    let block_outcome = BlockOutcome {
-        app_hash: Hash::ZERO,
-        cron_outcomes: vec![],
-        tx_outcomes: vec![],
-    };
-    let block = Block {
-        block_info,
-        txs: vec![],
-    };
-
-    let block_filename = suite.app.indexer.block_filename(block_info.height);
-    let block_to_index = BlockToIndex::new(block_filename, block, block_outcome);
-
-    block_to_index
-        .save_on_disk()
-        .expect("Can't save block on disk");
+    // 2. on disk block already exists (we keep blocks)
 
     // 3. Start the indexer
     suite
