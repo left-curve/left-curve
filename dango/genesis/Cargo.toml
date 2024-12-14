@@ -10,10 +10,22 @@ license       = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-anyhow      = { workspace = true }
-dango-types = { workspace = true }
-grug        = { workspace = true }
-serde       = { workspace = true }
+anyhow                = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-account-margin  = { workspace = true, features = ["library"] }
+dango-account-safe    = { workspace = true, features = ["library"] }
+dango-account-spot    = { workspace = true, features = ["library"] }
+dango-amm             = { workspace = true, features = ["library"] }
+dango-bank            = { workspace = true, features = ["library"] }
+dango-ibc-transfer    = { workspace = true, features = ["library"] }
+dango-lending         = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
+dango-taxman          = { workspace = true, features = ["library"] }
+dango-token-factory   = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+dango-vesting         = { workspace = true, features = ["library"] }
+grug                  = { workspace = true }
+serde                 = { workspace = true }
 
 [dev-dependencies]
 bip32       = { workspace = true }

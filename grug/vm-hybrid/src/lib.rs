@@ -1,5 +1,5 @@
 use {
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{AppError, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{Context, Hash256},
     grug_vm_rust::{RustInstance, RustVm},
     grug_vm_wasm::{WasmInstance, WasmVm},
@@ -14,6 +14,12 @@ pub enum VmError {
 
     #[error("WasmVm error: {0}")]
     Wasm(#[from] grug_vm_wasm::VmError),
+}
+
+impl From<VmError> for AppError {
+    fn from(err: VmError) -> Self {
+        AppError::Vm(err.to_string())
+    }
 }
 
 #[derive(Clone)]
