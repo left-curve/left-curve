@@ -6,7 +6,7 @@ use {
         query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
         query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db,
         EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
-        ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
+        ProposalPreparer, QuerierProviderImpl, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
         LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
@@ -62,7 +62,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -178,7 +178,7 @@ where
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-        let querier = QuerierProvider::new(
+        let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
             Box::new(storage),
             GasTracker::new_limitless(),
@@ -522,7 +522,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -606,7 +606,7 @@ where
 fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Create the gas tracker, with the limit being the gas limit requested by
@@ -758,7 +758,7 @@ fn process_msgs_then_backrun<S, VM>(
 ) -> EventResult<MsgsAndBackrunEvents>
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = MsgsAndBackrunEvents::base();
@@ -810,7 +810,7 @@ fn process_finalize_fee<S, VM>(
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
@@ -854,7 +854,7 @@ pub fn process_msg<VM>(
     msg: Message,
 ) -> EventResult<Event>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     match msg {
@@ -903,7 +903,7 @@ pub fn process_query<VM>(
     req: Query,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     match req {

@@ -17,7 +17,7 @@ pub fn do_transfer<VM>(
     do_receive: bool,
 ) -> EventResult<EvtTransfer>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_transfer(
@@ -62,7 +62,7 @@ pub(crate) fn _do_transfer<VM>(
     do_receive: bool,
 ) -> EventResult<EvtTransfer>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtTransfer::base(sender, msg.to, msg.coins.clone());
@@ -135,7 +135,7 @@ fn _do_receive<VM>(
     msg: BankMsg,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let (code_hash, chain_id) = catch_event! {

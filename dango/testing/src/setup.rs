@@ -88,7 +88,7 @@ fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
 where
     T: Clone + Into<Binary>,
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

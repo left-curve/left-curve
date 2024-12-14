@@ -48,7 +48,7 @@ impl Vm for HybridVm {
         code_hash: Hash256,
         storage: StorageProvider,
         state_mutable: bool,
-        querier: QuerierProvider<Self>,
+        querier: Box<dyn QuerierProvider>,
         query_depth: usize,
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error> {

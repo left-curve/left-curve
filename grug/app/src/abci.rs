@@ -27,7 +27,7 @@ use {
 impl<DB, VM, PP, ID> Service<Request> for App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -50,7 +50,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     ID: Indexer + Clone + Send + 'static,
     PP: ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
