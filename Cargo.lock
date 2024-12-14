@@ -2881,6 +2881,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-vm-hybrid"
+version = "0.0.0"
+dependencies = [
+ "grug-app",
+ "grug-types",
+ "grug-vm-rust",
+ "grug-vm-wasm",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
