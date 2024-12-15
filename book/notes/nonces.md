@@ -15,7 +15,7 @@ The first time an account sends a tx, the tx should include a non of $0$; the se
 
 ## The problem
 
-The drawback this naïve approach to handling nonces is _it enforces a strict ordering of all txs_, which doesn't do well in use cases where users are expected to submit txs with high frequency. Consider this situation:
+The drawback of this naïve approach to handling nonces is _it enforces a strict ordering of all txs_, which doesn't do well in use cases where users are expected to submit txs with high frequency. Consider this situation:
 
 - Alice's account currently expects a nonce of $N$;
 - Alice sends a tx (let's call this tx A) with nonce $N$;
@@ -28,11 +28,11 @@ Imagine Alice is trading on an orderbook exchange and wants to cancel two active
 
 ## HyperLiquid's solution
 
-Described here: https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets
+As described [here](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/nonces-and-api-wallets).
 
 In HyperLiquid, an account can have many **session keys**, each of which has its own nonce. In our case, to simplify things, let's just have one nonce for each account.
 
-Instead of tracking a single nonce, _the account would track the most recent $X$ nonces it has seen_ (let's call these the `SEEN_NONCES`). HyperLiquid uses $X = 20$, while for simplicity in the discussion below let's use $X = 5$.
+Instead of tracking a single nonce, _the account tracks the most recent $X$ nonces it has seen_ (let's call these the `SEEN_NONCES`). HyperLiquid uses $X = 20$, while for simplicity in the discussion below let's use $X = 5$.
 
 Suppose Alice's account has the following `SEEN_NONCES`: $[5, 6, 7, 9, 10]$. $8$ is missing because it got lost due to network problems.
 
@@ -53,6 +53,6 @@ This solves the UX problem we mentioned in the previous section.
 
 Now suppose tx $8$ finally arrives. Since it was created a long while ago, it's most likely not relevant any more. However, following the account's logic, it will still be accepted.
 
-To prevent, we should add an `expiry` parameter into the transaction metadata. If the expiry is earlier than the current block time, the tx is rejected, regardless of the nonce rule.
+To prevent, we should add an `expiry` parameter into the tx metadata. If the expiry is earlier than the current block time, the tx is rejected, regardless of the nonce rule.
 
 `expiry` can be either a block height or timestamp. For Dango's use case, timestamp probably makes more sense.
