@@ -13,6 +13,7 @@
 - [Liquidity provision](notes/liquidity-provision.md)
 - [Margin account: health](notes/margin-account-health.md)
 - [Math](notes/math.md)
+- [Nonces and unordered transactions](notes/nonces.md)
 - [Transaction lifecycle](notes/transaction-lifecycle.md)
 
 ---
