@@ -3855,6 +3855,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "assertor",
+ "clap",
  "sea-orm",
  "serde",
  "serde_json",
@@ -3862,6 +3863,7 @@ dependencies = [
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 
