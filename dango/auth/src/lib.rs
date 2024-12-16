@@ -265,7 +265,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, DANGO_DENOM},
         },
-        grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        grug::{Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
     };
 
@@ -319,12 +319,9 @@ mod tests {
                 dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    // Address below don't matter for this test.
-                    ibc_transfer: Addr::mock(0),
-                    oracle: Addr::mock(1),
-                    lending: Addr::mock(0), // doesn't matter for this test
+                    ..Default::default()
                 },
-                collateral_powers: btree_map! {},
+                ..Default::default()
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -362,12 +359,9 @@ mod tests {
                 dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    // Address below don't matter for this test.
-                    ibc_transfer: Addr::mock(0),
-                    oracle: Addr::mock(1),
-                    lending: Addr::mock(0), // doesn't matter for this test
+                    ..Default::default()
                 },
-                collateral_powers: btree_map! {},
+                ..Default::default()
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
@@ -465,11 +459,9 @@ mod tests {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
-                    ibc_transfer: Addr::mock(0),
-                    oracle: Addr::mock(1),
-                    lending: Addr::mock(0), // doesn't matter for this test
+                    ..Default::default()
                 },
-                collateral_powers: btree_map! {},
+                ..Default::default()
             })
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {

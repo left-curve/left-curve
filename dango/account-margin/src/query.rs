@@ -13,7 +13,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::Health {} => {
-            let res = ctx.querier.query_health(ctx.contract)?;
+            let res = ctx.querier.query_health(ctx.contract, None)?;
             res.to_json_value()
         },
     }
