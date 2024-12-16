@@ -145,6 +145,12 @@ dango-vesting         = { path = "dango/vesting" }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 indexer-disk-saver    = { path = "indexer/disk-saver" }
+indexer-httpd         = { path = "indexer/httpd" }
+
+# httpd packages
+actix-web   = "4"
+actix-files = "0"
+actix       = "0.13"
 
 [workspace.dependencies.sea-orm]
 version = "1"
