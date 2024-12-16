@@ -1748,6 +1748,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-ibc-host"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-ibc-transfer"
 version = "0.0.0"
 dependencies = [
