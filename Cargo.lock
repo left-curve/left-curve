@@ -1733,6 +1733,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-dex"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [

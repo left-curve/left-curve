@@ -4,6 +4,7 @@ pub mod amm;
 pub mod auth;
 pub mod bank;
 pub mod config;
+pub mod dex;
 pub mod ibc_transfer;
 pub mod lending;
 pub mod oracle;
