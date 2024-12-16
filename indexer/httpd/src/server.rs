@@ -1,12 +1,8 @@
 use {
     super::error::Error,
-    actix_web::{get, App, HttpServer, Responder},
+    crate::{context::Context, routes},
+    actix_web::{App, HttpServer},
 };
-
-#[get("/")]
-async fn index() -> impl Responder {
-    "OK"
-}
 
 pub async fn run_server(ip: Option<&str>, port: Option<u16>) -> Result<(), Error> {
     let port = port
@@ -18,10 +14,16 @@ pub async fn run_server(ip: Option<&str>, port: Option<u16>) -> Result<(), Error
         .unwrap_or(8080);
     let ip = ip.unwrap_or("0.0.0.0");
 
-    HttpServer::new(|| App::new().service(index))
-        .bind((ip, port))?
-        .run()
-        .await?;
+    let context = Context::new().await?;
+
+    HttpServer::new(move || {
+        App::new()
+            .service(routes::index::index)
+            .app_data(context.clone())
+    })
+    .bind((ip, port))?
+    .run()
+    .await?;
 
     Ok(())
 }

@@ -4,4 +4,7 @@ use {std::io, thiserror::Error};
 pub enum Error {
     #[error(transparent)]
     Io(#[from] io::Error),
+
+    #[error(transparent)]
+    SeaOrm(#[from] sea_orm::DbErr),
 }

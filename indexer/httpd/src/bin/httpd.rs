@@ -15,6 +15,10 @@ pub struct Cli {
     /// Logging verbosity: error|warn|info|debug|trace
     #[arg(long, global = true, default_value = "info")]
     tracing_level: LevelFilter,
+
+    /// The database url
+    #[arg(long, default_value = "postgres://localhost")]
+    indexer_database_url: String,
 }
 
 #[tokio::main]
