@@ -3,9 +3,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::dex::{ExecuteMsg, InstantiateMsg, Order, OrderId, OrderSide, Pair, PairId},
     grug::{
-        btree_map, Coins, Message, MutableCtx, NumberConst, Response, StdResult, SudoCtx, Udec128,
-        Uint128,
+        btree_map, Coins, Message, MsgTransfer, MutableCtx, NumberConst, Response, StdResult,
+        SudoCtx, Udec128, Uint128,
     },
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -142,6 +143,37 @@ fn cancel_order(ctx: MutableCtx, order_id: OrderId) -> anyhow::Result<Response> 
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(_ctx: SudoCtx) -> anyhow::Result<Response> {
-    todo!()
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    // TODO: create a `BatchTransfer` method at the bank contract and use that.
+    let mut refunds: Vec<MsgTransfer> = vec![];
+
+    // TODO: instead of iterate through all pairs, only iterate through pairs
+    // with active orders.
+    for res in PAIRS.range(ctx.storage, None, None, grug::Order::Ascending) {
+        let (pair_id, pair) = res?;
+
+        // Iterate all active BUY orders of this pair, from the highest limit
+        // price to the lowest.
+        let mut buys = ORDERS.prefix(pair_id).append(OrderSide::Buy).range(
+            ctx.storage,
+            None,
+            None,
+            grug::Order::Descending,
+        );
+
+        // Iterate all active SELL orders of this pair, from the lowest limit
+        // price to the highest.
+        let mut sells = ORDERS.prefix(pair_id).append(OrderSide::Sell).range(
+            ctx.storage,
+            None,
+            None,
+            grug::Order::Ascending,
+        );
+
+        loop {
+            todo!("match and fill the orders");
+        }
+    }
+
+    Ok(Response::new().add_messages(refunds))
 }
