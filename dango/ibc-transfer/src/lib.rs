@@ -5,7 +5,7 @@ use {
         config::AppConfig,
         ibc_transfer::{ExecuteMsg, InstantiateMsg},
     },
-    grug::{Addr, Message, MutableCtx, Response, StdResult},
+    grug::{Addr, Coins, Message, MutableCtx, Response, StdError, StdResult},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -15,9 +15,27 @@ pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> StdResult<Response> {
+    reject_unintended_deposits(ctx.funds.clone(), msg.clone())?;
     match msg {
         ExecuteMsg::ReceiveTransfer { recipient } => receive_transfer(ctx, recipient),
     }
+}
+
+// reject_unintended_deposits returns error when funds are provided for messages
+// not explicitly whitelisted.
+fn reject_unintended_deposits(funds: Coins, msg: ExecuteMsg) -> StdResult<()> {
+    match msg {
+        ExecuteMsg::ReceiveTransfer { .. } => (),
+        _ => {
+            if !funds.is_empty() {
+                return Err(StdError::invalid_coins(format!(
+                    "unexpected funds: {}",
+                    funds,
+                )));
+            }
+        },
+    }
+    Ok(())
 }
 
 fn receive_transfer(ctx: MutableCtx, recipient: Addr) -> StdResult<Response> {
