@@ -6,6 +6,7 @@ use {
     anyhow::ensure,
     dango_types::ibc::{
         self,
+        events::{ClientCreated, ClientUpdated},
         host::{Client, ClientId, ClientType, ExecuteMsg, InstantiateMsg},
     },
     grug::{Addr, Json, MutableCtx, Response, StdResult},
@@ -103,7 +104,11 @@ fn create_client(
         &ctx.api.keccak256(&res.raw_consensus_state),
     )?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event("client_created", &ClientCreated {
+        client_id,
+        client_type,
+        consensus_height: res.latest_height,
+    })?)
 }
 
 fn update_client(
@@ -146,5 +151,9 @@ fn update_client(
         &ctx.api.keccak256(&res.raw_consensus_state),
     )?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event("client_updated", &ClientUpdated {
+        client_id,
+        client_type: client.client_type,
+        height: res.height,
+    })?)
 }
