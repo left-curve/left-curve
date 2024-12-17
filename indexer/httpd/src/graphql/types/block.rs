@@ -1,7 +1,9 @@
-use async_graphql::{ComplexObject, SimpleObject};
-use chrono::{DateTime, TimeZone, Utc};
-use indexer_sql::entity;
-use serde::Deserialize;
+use {
+    async_graphql::{ComplexObject, SimpleObject},
+    chrono::{DateTime, TimeZone, Utc},
+    indexer_sql::entity,
+    serde::Deserialize,
+};
 
 #[derive(Clone, Debug, SimpleObject, Deserialize, Default, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
@@ -12,7 +14,7 @@ pub struct Block {
     // NOTE: disabling this, as those ID will change based on server and using them
     // will probably lead to issues. Noone should rely on those uuids.
     //#[serde(default)]
-    //pub id: async_graphql::ID,
+    // pub id: async_graphql::ID,
     pub block_height: i64,
     pub created_at: DateTime<Utc>,
     pub hash: String,

@@ -1,10 +1,9 @@
-use crate::context::Context;
-use crate::graphql::types;
-use async_graphql::{Object, Result};
-use indexer_sql::entity;
-use sea_orm::ColumnTrait;
-use sea_orm::EntityTrait;
-use sea_orm::QueryFilter;
+use {
+    crate::{context::Context, graphql::types},
+    async_graphql::{Object, Result},
+    indexer_sql::entity,
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter},
+};
 
 #[derive(Default, Debug)]
 pub struct BlockQuery {}

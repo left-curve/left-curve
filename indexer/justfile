@@ -24,3 +24,7 @@ refresh_dev_db:
 # Generate entity from the datatabase
 generate_entity:
   sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default, serde::Serialize, serde::Deserialize'
+
+# Run dango with indexer
+dango:
+  cargo run --manifest-path ../dango/cli/Cargo.toml -- start --indexer-keep-blocks --indexer-database-url postgres://postgres@localhost --indexer-enabled
