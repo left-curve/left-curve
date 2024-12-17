@@ -50,7 +50,7 @@ fn register_client(
 
     ensure!(
         ctx.sender == cfg.owner,
-        "only the owner can register clients"
+        "only the chain owner can register clients"
     );
 
     CLIENT_REGISTRY.save(ctx.storage, client_type, &client_impl)?;
@@ -64,6 +64,13 @@ fn create_client(
     client_state: Json,
     consensus_state: Json,
 ) -> anyhow::Result<Response> {
+    let cfg = ctx.querier.query_config()?;
+
+    ensure!(
+        ctx.sender == cfg.owner,
+        "only the chain owner can create clients"
+    );
+
     let client_impl = CLIENT_REGISTRY.load(ctx.storage, client_type)?;
     let (client_id, _) = NEXT_CLIENT_ID.increment(ctx.storage)?;
 
