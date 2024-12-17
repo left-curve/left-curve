@@ -374,7 +374,7 @@ impl Indexer for NonBlockingIndexer {
                 "index_block started"
             );
 
-            block_to_index.save_on_disk()?;
+            block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -419,7 +419,7 @@ impl Indexer for NonBlockingIndexer {
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
                 tokio::task::spawn_blocking(|| async move {
-                    if let Err(_err) = BlockToIndex::compress_on_disk(block_filename.clone()) {
+                    if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
                         tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
                     }

@@ -85,11 +85,11 @@ impl BlockToIndex {
 }
 
 impl BlockToIndex {
-    pub fn save_on_disk(&self) -> error::Result<()> {
+    pub fn save_to_disk(&self) -> error::Result<()> {
         Ok(DiskPersistence::new(self.filename.clone(), false).save(self)?)
     }
 
-    pub fn compress_on_disk(file_path: PathBuf) -> error::Result<()> {
+    pub fn compress_file(file_path: PathBuf) -> error::Result<()> {
         DiskPersistence::new(file_path, false).compress()?;
         Ok(())
     }
@@ -138,7 +138,7 @@ mod tests {
 
         let block_to_index = BlockToIndex::new(temp_filename.clone(), block, block_outcome);
 
-        assert_that!(block_to_index.save_on_disk()).is_ok();
+        assert_that!(block_to_index.save_to_disk()).is_ok();
 
         let saved_block_to_index =
             BlockToIndex::load_from_disk(temp_filename.clone()).expect("Can't load tmp file");

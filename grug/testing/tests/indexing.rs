@@ -226,7 +226,7 @@ fn no_sql_index_error_after_restart() {
     let block_to_index = BlockToIndex::new(block_filename, block, block_outcome);
 
     block_to_index
-        .save_on_disk()
+        .save_to_disk()
         .expect("Can't save block on disk");
 
     // 3. Start the indexer
