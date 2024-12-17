@@ -5,7 +5,7 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, DANGO_DENOM},
-        ibc_transfer,
+        ibc,
         lending::{self, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
@@ -163,7 +163,7 @@ where
     let ibc_transfer = instantiate(
         &mut msgs,
         ibc_transfer_code_hash,
-        &ibc_transfer::InstantiateMsg {},
+        &ibc::transfer::InstantiateMsg {},
         "dango/ibc_transfer",
         "dango/ibc_transfer",
     )?;
@@ -233,7 +233,7 @@ where
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
         amm::NAMESPACE.clone()           => amm,
-        ibc_transfer::NAMESPACE.clone()  => ibc_transfer,
+        ibc::transfer::NAMESPACE.clone()  => ibc_transfer,
         lending::NAMESPACE.clone()       => lending,
         token_factory::NAMESPACE.clone() => token_factory,
     };
