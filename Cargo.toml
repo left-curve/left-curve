@@ -88,7 +88,9 @@ tendermint     = "0.40"
 tendermint-rpc = "0.40"
 
 # IBC packages
-ics23 = "0.12"
+# TODO: update once published to crates.io
+ibc-union-spec = { git = "https://github.com/left-curve/union", branch = "fix-missing-feature" }
+ics23          = "0.12"
 
 # Pyth packages
 #

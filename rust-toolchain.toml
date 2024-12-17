@@ -1,0 +1,4 @@
+[toolchain]
+# Unionlabs monorepo (which we depend on) uses nightly, so we have to.
+# We can change this once relevant repos have been published to crates.io.
+channel = "nightly"

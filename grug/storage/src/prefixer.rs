@@ -34,6 +34,12 @@ impl Prefixer for &[u8] {
     }
 }
 
+impl<const N: usize> Prefixer for [u8; N] {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
+    }
+}
+
 impl Prefixer for Vec<u8> {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         vec![Cow::Borrowed(self)]

@@ -1,7 +1,12 @@
 use {
-    grug::{Addr, PrimaryKey, StdError, StdResult},
+    grug::{Addr, Json, PrimaryKey, StdError, StdResult},
     std::{borrow::Cow, collections::BTreeMap},
 };
+
+pub type ClientId = u32;
+
+// In ibc-union, the key and value of a commitment are both Keccak256 hashes.
+pub type Commitment = [u8; 32];
 
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord)]
@@ -40,6 +45,12 @@ impl PrimaryKey for ClientType {
     }
 }
 
+#[grug::derive(Serde, Borsh)]
+pub struct Client {
+    pub client_type: ClientType,
+    pub client_impl: Addr,
+}
+
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub client_impls: BTreeMap<ClientType, Addr>,
@@ -48,14 +59,19 @@ pub struct InstantiateMsg {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     RegisterClients(BTreeMap<ClientType, Addr>),
+    CreateClient {
+        client_type: ClientType,
+        client_state: Json,
+        consensus_state: Json,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     #[returns(Addr)]
-    Client(ClientType),
+    ClientImpl(ClientType),
     #[returns(BTreeMap<ClientType, Addr>)]
-    Clients {
+    ClientImpls {
         start_after: Option<ClientType>,
         limit: Option<u32>,
     },

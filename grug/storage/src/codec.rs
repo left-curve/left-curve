@@ -86,3 +86,13 @@ impl Codec<Vec<u8>> for Raw {
         Ok(data.to_vec())
     }
 }
+
+impl<const N: usize> Codec<[u8; N]> for Raw {
+    fn encode(data: &[u8; N]) -> StdResult<Vec<u8>> {
+        Ok(data.to_vec())
+    }
+
+    fn decode(data: &[u8]) -> StdResult<[u8; N]> {
+        Ok(data.try_into()?)
+    }
+}

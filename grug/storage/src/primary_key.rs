@@ -144,6 +144,22 @@ impl PrimaryKey for &[u8] {
     }
 }
 
+impl<const N: usize> PrimaryKey for [u8; N] {
+    type Output = Self;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(self)]
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        Ok(bytes.try_into()?) // TODO: make the error message more informative?
+    }
+}
+
 impl PrimaryKey for Vec<u8> {
     type Output = Vec<u8>;
     type Prefix = ();
