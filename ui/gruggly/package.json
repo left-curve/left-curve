@@ -1,0 +1,30 @@
+{
+  "name": "@left-curve/gruggly",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@nextui-org/react": "^2.6.8",
+    "@tabler/icons-react": "^3.26.0",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "framer-motion": "catalog:",
+    "globals": "^15.12.0",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "vite": "^6.0.1"
+  }
+}
