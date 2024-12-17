@@ -80,6 +80,9 @@ where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
 {
+    /// If true, the block/block_outcome used by the indexer will be kept on disk after being
+    /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
+    /// we'll want to run at least one node with this enabled and sync those on S3.
     pub fn with_keep_blocks(self, keep_blocks: bool) -> Self {
         Self {
             handle: self.handle,
@@ -231,12 +234,12 @@ impl NonBlockingIndexer {
     /// Where will this block be temporarily saved on disk
     pub fn block_filename(&self, block_height: u64) -> PathBuf {
         let directory = self.indexer_path.block_path();
-        let filename = format!("{block_height}");
+        let filename = block_height.to_string();
         directory.join(filename)
     }
 
-    /// Load all existing tmp files and ensure they've been indexed
-    fn ensure_previous_indexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
+    /// Index all previous blocks not yet indexed.
+    fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
             entity::blocks::Entity::find_last_block_height(&self.context.db).await
         })?;
@@ -249,19 +252,16 @@ impl NonBlockingIndexer {
         for block_height in last_indexed_block_height..=latest_block_height {
             let block_filename = self.block_filename(block_height);
 
-            let block_to_index = match BlockToIndex::load_from_disk(block_filename.clone()) {
-                Ok(block_to_index) => block_to_index,
-                Err(err) => {
+            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|err| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %err, block_height, "can't load block from disk");
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-                },
-            };
+            });
 
             #[cfg(feature = "tracing")]
             tracing::info!(
                 block_height = block_height,
-                "ensure_previous_indexed_blocks started"
+                "index_previous_unindexed_blocks started"
             );
 
             self.handle.block_on(async {
@@ -281,7 +281,7 @@ impl NonBlockingIndexer {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 block_height = block_height,
-                "ensure_previous_indexed_blocks ended"
+                "index_previous_unindexed_blocks ended"
             );
         }
 
@@ -311,7 +311,7 @@ impl Indexer for NonBlockingIndexer {
                     block_height = block.height,
                     "start called, found a previous block"
                 );
-                self.ensure_previous_indexed_blocks(block.height)?;
+                self.index_previous_unindexed_blocks(block.height)?;
             },
         }
 
@@ -402,7 +402,6 @@ impl Indexer for NonBlockingIndexer {
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
         // the shutdown method could be called and see no current block being indexed, and quit.
         // The block would then not be indexed.
-
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block_height, "post_indexing started");
