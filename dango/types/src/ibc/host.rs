@@ -1,5 +1,6 @@
 use {
-    grug::{Addr, Json, PrimaryKey, StdError, StdResult},
+    crate::ibc::client::Height,
+    grug::{Addr, Binary, Json, PrimaryKey, StdError, StdResult},
     std::{borrow::Cow, collections::BTreeMap},
 };
 
@@ -78,11 +79,41 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the implementation contract of a given client type.
     #[returns(Addr)]
-    ClientImpl(ClientType),
+    ClientImpl { client_type: ClientType },
+    /// Enumerate implementation contracts for all client types.
     #[returns(BTreeMap<ClientType, Addr>)]
     ClientImpls {
         start_after: Option<ClientType>,
+        limit: Option<u32>,
+    },
+    /// Query a single client by ID.
+    #[returns(Client)]
+    Client { client_id: ClientId },
+    /// Enumerate all clients.
+    #[returns(BTreeMap<ClientId, Client>)]
+    Clients {
+        start_after: Option<ClientId>,
+        limit: Option<u32>,
+    },
+    /// Query the state of a client.
+    #[returns(Binary)]
+    ClientState { client_id: ClientId },
+    /// Enumerate states of all clients.
+    #[returns(BTreeMap<ClientId, Binary>)]
+    ClientStates {
+        start_after: Option<ClientId>,
+        limit: Option<u32>,
+    },
+    /// Query the consensus state of a client at a given height.
+    #[returns(Binary)]
+    ConsensusState { client_id: ClientId, height: Height },
+    /// Enumerate consensus states of a client of all heights.
+    #[returns(BTreeMap<Height, Binary>)]
+    ConsensusStates {
+        client_id: ClientId,
+        start_after: Option<Height>,
         limit: Option<u32>,
     },
 }
