@@ -14,6 +14,7 @@ run_dev_db:
 
 # Migrate the development database
 migrate_dev_db:
+  # DATABASE_URL=postgres://postgres@localhost/grug_dev sea-orm-cli migrate up -d sql-migration
   sea-orm-cli migrate up -d sql-migration
 
 # Reset the development database

@@ -9,8 +9,11 @@ pub struct Context {
 }
 
 impl Context {
-    pub async fn new() -> Result<Self, Error> {
-        let db = Self::connect_db().await?;
+    pub async fn new(database_url: Option<String>) -> Result<Self, Error> {
+        let db = match database_url {
+            Some(database_url) => Self::connect_db_with_url(&database_url).await?,
+            None => Self::connect_db().await?,
+        };
         Ok(Self { db })
     }
 
