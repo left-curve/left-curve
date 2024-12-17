@@ -1,7 +1,8 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_math::Inner,
     grug_types::{
-        BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ProtoDeExt, ProtoSerExt, StdResult,
+        Binary, BorshDeExt, BorshSerExt, JsonDeExt, JsonSerExt, ProtoDeExt, ProtoSerExt, StdResult,
     },
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -77,6 +78,16 @@ where
 /// Represents raw bytes without encoding.
 pub struct Raw;
 
+impl<const N: usize> Codec<[u8; N]> for Raw {
+    fn encode(data: &[u8; N]) -> StdResult<Vec<u8>> {
+        Ok(data.to_vec())
+    }
+
+    fn decode(data: &[u8]) -> StdResult<[u8; N]> {
+        Ok(data.try_into()?)
+    }
+}
+
 impl Codec<Vec<u8>> for Raw {
     fn encode(data: &Vec<u8>) -> StdResult<Vec<u8>> {
         Ok(data.clone())
@@ -87,12 +98,12 @@ impl Codec<Vec<u8>> for Raw {
     }
 }
 
-impl<const N: usize> Codec<[u8; N]> for Raw {
-    fn encode(data: &[u8; N]) -> StdResult<Vec<u8>> {
-        Ok(data.to_vec())
+impl Codec<Binary> for Raw {
+    fn encode(data: &Binary) -> StdResult<Vec<u8>> {
+        Ok(data.clone().into_inner())
     }
 
-    fn decode(data: &[u8]) -> StdResult<[u8; N]> {
-        Ok(data.try_into()?)
+    fn decode(data: &[u8]) -> StdResult<Binary> {
+        Ok(Binary::from_inner(data.to_vec()))
     }
 }

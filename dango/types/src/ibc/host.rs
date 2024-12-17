@@ -58,11 +58,21 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    RegisterClients(BTreeMap<ClientType, Addr>),
+    /// Associate a client implementation with a client type.
+    RegisterClient {
+        client_type: ClientType,
+        client_impl: Addr,
+    },
+    /// Create an instance of a client of the given type.
     CreateClient {
         client_type: ClientType,
         client_state: Json,
         consensus_state: Json,
+    },
+    /// Update the state of a client.
+    UpdateClient {
+        client_id: ClientId,
+        client_message: Json,
     },
 }
 
