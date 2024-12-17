@@ -1,5 +1,7 @@
-use crate::graphql::query::index::{graphiql_playgound, graphql_index, graphql_ws};
-use actix_web::{web, Resource};
+use {
+    crate::graphql::query::index::{graphiql_playgound, graphql_index, graphql_ws},
+    actix_web::{web, Resource},
+};
 
 pub fn graphql_route() -> Resource {
     web::resource("/graphql")

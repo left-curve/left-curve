@@ -1,5 +1,4 @@
-use async_graphql::MergedObject;
-use block::BlockQuery;
+use {async_graphql::MergedObject, block::BlockQuery};
 
 pub mod block;
 pub mod index;

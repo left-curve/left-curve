@@ -1,8 +1,7 @@
 use {
     super::error::Error,
     crate::{context::Context, graphql::build_schema, routes},
-    actix_web::middleware::Logger,
-    actix_web::{App, HttpServer},
+    actix_web::{middleware::Logger, App, HttpServer},
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.

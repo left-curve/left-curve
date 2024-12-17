@@ -1,8 +1,9 @@
-use crate::graphql::AppSchema;
-use actix_web::{web, HttpRequest, HttpResponse};
-use async_graphql::http::*;
-use async_graphql::Schema;
-use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
+use {
+    crate::graphql::AppSchema,
+    actix_web::{web, HttpRequest, HttpResponse},
+    async_graphql::{http::*, Schema},
+    async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
+};
 
 #[tracing::instrument(name = "graphql::graphql_index", skip_all)]
 pub(crate) async fn graphql_index(

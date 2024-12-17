@@ -1,5 +1,7 @@
-use async_graphql::{extensions, EmptyMutation, EmptySubscription, Schema};
-use query::Query;
+use {
+    async_graphql::{extensions, EmptyMutation, EmptySubscription, Schema},
+    query::Query,
+};
 
 pub mod query;
 
