@@ -233,9 +233,10 @@ where
         // This is doing the same order as in Dango.
         // 1. Calling `start` on the indexer
 
-        let previous_block_height = match genesis_block.height {
-            0..=1 => None,
-            2.. => Some(genesis_block.height - 1),
+        let previous_block_height = if let 0 | 1 = genesis_block.height {
+            None
+        } else {
+            Some(genesis_block.height - 1)
         };
 
         let state_storage = db
@@ -584,10 +585,14 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
-            Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        ]);
+        let outcome = self.send_messages_with_gas(
+            signer,
+            gas_limit,
+            vec![
+                Message::upload(code),
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            ],
+        );
 
         UploadAndInstantiateOutcome {
             address,

@@ -2,7 +2,7 @@ use grug_types::{Block, BlockOutcome, Storage};
 
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
 pub trait Indexer {
-    type Error: ToString + std::fmt::Debug;
+    type Error: ToString;
 
     /// Called when initializing the indexer, allowing for DB migration if needed
     fn start<S>(&mut self, _storage: &S) -> Result<(), Self::Error>

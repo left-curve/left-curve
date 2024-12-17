@@ -6,7 +6,7 @@ use {
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,
-    std::time,
+    std::{fmt::Debug, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -60,6 +60,7 @@ impl StartCmd {
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
+        ID::Error: Debug,
         AppError: From<ID::Error>,
     {
         let db = DiskDb::open(app_dir.data_dir())?;
