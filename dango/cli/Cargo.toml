@@ -29,6 +29,7 @@ grug-vm-wasm       = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }
+indexer-httpd      = { workspace = true }
 serde              = { workspace = true }
 tokio              = { workspace = true }
 tower              = { workspace = true, features = ["full"] }

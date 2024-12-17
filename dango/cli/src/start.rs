@@ -29,6 +29,10 @@ pub struct StartCmd {
     #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
+    /// Enable the indexer httpd
+    #[arg(long, default_value = "false")]
+    indexer_httpd_enabled: bool,
+
     /// Enable the internal indexer
     #[arg(long, default_value = "false")]
     indexer_keep_blocks: bool,

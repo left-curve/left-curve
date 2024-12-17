@@ -18,6 +18,8 @@ path = "src/lib.rs"
 actix-web   = { workspace = true }
 actix-files = { workspace = true }
 actix       = { workspace = true }
+async-graphql-actix-web = { workspace = true }
+async-graphql = { workspace = true }
 anyhow      = { workspace = true }
 clap        = { workspace = true, features = ["derive", "wrap_help"] }
 num_cpus    = { workspace = true }
@@ -28,6 +30,7 @@ tempfile    = { workspace = true }
 thiserror   = { workspace = true }
 tokio       = { workspace = true }
 tracing     = { workspace = true  }
+tracing-actix-web = { workspace = true }
 tracing-subscriber = { workspace = true  }
 uuid        = { workspace = true }
 

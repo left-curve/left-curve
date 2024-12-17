@@ -65,7 +65,7 @@ toml               = "0.8"
 tower              = "0.5"
 tower-abci         = "0.18"
 tracing            = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 uuid               = { version = "1", features = ["serde", "v4"] }
 wasmer             = "5"
 wasmer-middlewares = "5"
@@ -143,15 +143,31 @@ dango-types           = { path = "dango/types" }
 dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
-indexer-sql           = { path = "indexer/sql" }
-indexer-sql-migration = { path = "indexer/sql-migration" }
-indexer-disk-saver    = { path = "indexer/disk-saver" }
-indexer-httpd         = { path = "indexer/httpd" }
+indexer-sql             = { path = "indexer/sql" }
+indexer-sql-migration   = { path = "indexer/sql-migration" }
+indexer-disk-saver      = { path = "indexer/disk-saver" }
+indexer-httpd           = { path = "indexer/httpd" }
 
 # httpd packages
-actix-web   = "4"
-actix-files = "0"
-actix       = "0.13"
+actix                   = "0.13"
+actix-files             = "0"
+async-graphql           = { version = "7.0", features = [
+  "chrono",
+  "decimal",
+  "dataloader",
+  "tracing",
+  "opentelemetry",
+  "log",
+  "url",
+  "unblock",
+  "apollo_persisted_queries",
+  "uuid",
+  "apollo_tracing",
+] }
+async-graphql-actix-web = "7.0"
+actix-web               = "4"
+tera                    = "1"
+tracing-actix-web       = "0.7"
 
 [workspace.dependencies.sea-orm]
 version = "1"
