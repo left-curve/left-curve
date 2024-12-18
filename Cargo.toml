@@ -69,7 +69,7 @@ tempfile           = "3"
 tendermint         = "0.40"
 tendermint-rpc     = "0.40"
 test-case          = "3"
-thiserror          = "1"
+thiserror          = "2"
 tokio              = { version = "1", features = ["full"] }
 toml               = "0.8"
 tower              = "0.5"
