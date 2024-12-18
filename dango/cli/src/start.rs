@@ -73,23 +73,20 @@ impl StartCmd {
             .expect("Can't start indexer");
 
         let codes = build_rust_codes();
-        let vm = HybridVm::new(
-            self.wasm_cache_capacity,
-            [
-                codes.account_factory.to_bytes().hash256(),
-                codes.account_margin.to_bytes().hash256(),
-                codes.account_safe.to_bytes().hash256(),
-                codes.account_spot.to_bytes().hash256(),
-                codes.amm.to_bytes().hash256(),
-                codes.bank.to_bytes().hash256(),
-                codes.ibc_transfer.to_bytes().hash256(),
-                codes.lending.to_bytes().hash256(),
-                codes.oracle.to_bytes().hash256(),
-                codes.taxman.to_bytes().hash256(),
-                codes.token_factory.to_bytes().hash256(),
-                codes.vesting.to_bytes().hash256(),
-            ],
-        );
+        let vm = HybridVm::new(self.wasm_cache_capacity, [
+            codes.account_factory.to_bytes().hash256(),
+            codes.account_margin.to_bytes().hash256(),
+            codes.account_safe.to_bytes().hash256(),
+            codes.account_spot.to_bytes().hash256(),
+            codes.amm.to_bytes().hash256(),
+            codes.bank.to_bytes().hash256(),
+            codes.ibc_transfer.to_bytes().hash256(),
+            codes.lending.to_bytes().hash256(),
+            codes.oracle.to_bytes().hash256(),
+            codes.taxman.to_bytes().hash256(),
+            codes.token_factory.to_bytes().hash256(),
+            codes.vesting.to_bytes().hash256(),
+        ]);
 
         let app = App::new(
             db,
