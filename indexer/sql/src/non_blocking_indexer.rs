@@ -488,7 +488,6 @@ where
 impl<H> Drop for NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + 'static,
-    // error::IndexerError: From<H::Error>,
 {
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
