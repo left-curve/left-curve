@@ -54,6 +54,20 @@ pub enum QueryMsg {
     /// the other is via an execute message, also implemented in this contract.
     #[returns(())]
     StackOverflow {},
+    /// Similar to `QueryMsg::StackOverflow`, but this time if the contract
+    /// reach the query limit (handling the error), it enters a loop.
+    ///
+    /// This is used to test what happen if a contract handle a query limit
+    ///
+    /// In particular, the first time a query fails due to the query limit,
+    /// the contract can handle the error but continuing the execution.
+    ///
+    /// Continuing the execution the contract can only return a result, or looping
+    /// forever.
+    /// - Looping is not a problem (middlewares can handle it);
+    /// - Returning a result is also fine because it unnest the loop.
+    #[returns(())]
+    StackOverflowThenLoop {},
     /// Verify a single Secp256r1 signature.
     #[returns(())]
     VerifySecp256r1 {

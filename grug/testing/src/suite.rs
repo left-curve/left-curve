@@ -257,7 +257,7 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX);
+        let app = App::new(db, vm, pp, id, default_gas_limit);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

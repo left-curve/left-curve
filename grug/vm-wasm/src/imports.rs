@@ -229,11 +229,15 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     let req_bytes = read_from_memory(env, &store, req_ptr)?;
     let req: Query = req_bytes.deserialize_borsh()?;
 
+    // TODO: consume gas spent so far
+
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
     let res = env.querier.do_query_chain(req); // important: increase query depth
     let res_bytes = res.to_borsh_vec()?;
+
+    // TODO: Update middleware to consume gas spent during the query
 
     write_to_memory(env, &mut store, &res_bytes)
 }

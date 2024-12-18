@@ -127,6 +127,18 @@ fn query_stack_overflow() {
 }
 
 #[test]
+fn query_stack_overflow_then_loop() {
+    let (suite, _, tester) = setup_test();
+
+    // The contract attempts to call with `QueryMsg::StackOverflowThenLoop` to itself in
+    // a loop. Should raise the "VM error: out of gas!" error because after reaching the max query
+    // depth, it enters an infinite loop.
+    suite
+        .query_wasm_smart(tester, grug_tester::QueryStackOverflowThenLoopRequest {})
+        .should_fail_with_error("VM error: out of gas!");
+}
+
+#[test]
 fn message_stack_overflow() {
     let (mut suite, mut accounts, tester) = setup_test();
 

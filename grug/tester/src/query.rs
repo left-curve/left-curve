@@ -1,5 +1,5 @@
 use {
-    crate::QueryStackOverflowRequest,
+    crate::{QueryStackOverflowRequest, QueryStackOverflowThenLoopRequest},
     grug::{Binary, ImmutableCtx, Number, StdResult, Uint128},
 };
 
@@ -102,4 +102,12 @@ pub fn query_stack_overflow(ctx: ImmutableCtx) -> StdResult<()> {
         .query_wasm_smart(ctx.contract, QueryStackOverflowRequest {})?;
 
     Ok(())
+}
+
+pub fn query_stack_overflow_then_loop(ctx: ImmutableCtx) -> StdResult<()> {
+    loop {
+        let _ = ctx
+            .querier
+            .query_wasm_smart(ctx.contract, QueryStackOverflowThenLoopRequest {});
+    }
 }
