@@ -27,7 +27,6 @@ pub async fn run_server(
             .wrap(Logger::default())
             .service(routes::index::index)
             .service(routes::graphql::graphql_route())
-            .app_data(web::Data::new(context.db.clone()))
             .app_data(web::Data::new(context.clone()))
             .app_data(web::Data::new(graphql_schema.clone()))
     })

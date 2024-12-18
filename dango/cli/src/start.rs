@@ -1,5 +1,5 @@
 use {
-    anyhow::anyhow,
+    anyhow::{anyhow, Ok},
     clap::Parser,
     dango_app::ProposalPreparer,
     grug_app::{App, AppError, Db, HomeDirectory, Indexer, NullIndexer},
@@ -51,10 +51,26 @@ impl StartCmd {
                 .with_dir(app_dir.indexer_dir())
                 .build()
                 .expect("Can't create indexer");
-            self.run_with_indexer(app_dir, indexer).await
+
+            if self.indexer_httpd_enabled {
+                tokio::try_join!(
+                    Self::run_httpd_server(self.indexer_database_url.clone()),
+                    self.run_with_indexer(app_dir, indexer)
+                )?;
+
+                Ok(())
+            } else {
+                self.run_with_indexer(app_dir, indexer).await
+            }
         } else {
             self.run_with_indexer(app_dir, NullIndexer).await
         }
+    }
+
+    /// Run the HTTP server for the indexer
+    async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(None, None, database_url).await?;
+        Ok(())
     }
 
     async fn run_with_indexer<ID>(

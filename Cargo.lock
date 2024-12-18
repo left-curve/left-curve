@@ -2168,6 +2168,7 @@ dependencies = [
  "colored_json",
  "dango-app",
  "dialoguer",
+ "futures",
  "grug-app",
  "grug-client",
  "grug-db-disk",
