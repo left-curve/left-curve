@@ -66,7 +66,7 @@ impl StartCmd {
         ID::Error: Debug,
         AppError: From<ID::Error>,
     {
-        let db = DiskDb::open(data_dir)?;
+        let db = DiskDb::open(app_dir.data_dir())?;
 
         indexer
             .start(&db.state_storage(None)?)
