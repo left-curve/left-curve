@@ -183,6 +183,7 @@ where
             Box::new(storage),
             GasTracker::new_limitless(),
             block,
+            0,
         );
 
         Ok(self

@@ -72,9 +72,6 @@ pub enum VmError {
 
     #[error("attempt to write to storage during an state immutable call")]
     ImmutableState,
-
-    #[error("max query depth exceeded")]
-    ExceedMaxQueryDepth,
 }
 
 impl From<CompileError> for VmError {

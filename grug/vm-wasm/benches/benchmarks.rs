@@ -52,6 +52,7 @@ fn looping(c: &mut Criterion) {
                             storage.clone(),
                             gas_tracker.clone(),
                             MOCK_BLOCK,
+                            0,
                         );
                         let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
 
@@ -62,7 +63,6 @@ fn looping(c: &mut Criterion) {
                                 storage,
                                 true,
                                 querier,
-                                0,
                                 gas_tracker.clone(),
                             )
                             .unwrap();

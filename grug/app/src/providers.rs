@@ -6,6 +6,14 @@ use {
     },
 };
 
+/// Maximum number of chained queries.
+///
+/// E.g. contract A queries contract B; when handling this query, contract B
+/// calls contract C; so on.
+///
+/// Without a limit, this can leads to stack overflow which halts the chain.
+pub const MAX_QUERY_DEPTH: usize = 3;
+
 // ---------------------------------- storage ----------------------------------
 
 /// Provides access to an account's storage to the VM.
@@ -133,13 +141,13 @@ fn prefixed_range_bounds(
 ///   this generic, otherwise we run into infinite recursive types with the
 ///   hybrid VM. (When using a single VM, this isn't a problem.)
 pub trait QuerierProvider {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
+    fn do_query_chain(&self, req: Query) -> GenericResult<QueryResponse>;
 }
 
 impl Querier for Box<dyn QuerierProvider> {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         // TODO: ignoring query depth for now
-        self.do_query_chain(req, 0).map_err(StdError::host)
+        self.do_query_chain(req).map_err(StdError::host)
     }
 }
 
@@ -149,6 +157,7 @@ pub struct QuerierProviderImpl<VM> {
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    query_depth: usize,
 }
 
 impl<VM> QuerierProviderImpl<VM> {
@@ -157,12 +166,14 @@ impl<VM> QuerierProviderImpl<VM> {
         storage: Box<dyn Storage>,
         gas_tracker: GasTracker,
         block: BlockInfo,
+        query_depth: usize,
     ) -> Self {
         Self {
             vm,
             storage,
             gas_tracker,
             block,
+            query_depth,
         }
     }
 }
@@ -177,8 +188,9 @@ where
         storage: Box<dyn Storage>,
         gas_tracker: GasTracker,
         block: BlockInfo,
+        query_depth: usize,
     ) -> Box<dyn QuerierProvider> {
-        Box::new(Self::new(vm, storage, gas_tracker, block))
+        Box::new(Self::new(vm, storage, gas_tracker, block, query_depth))
     }
 }
 
@@ -187,13 +199,19 @@ where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
+    fn do_query_chain(&self, req: Query) -> GenericResult<QueryResponse> {
+        let next_depth = self.query_depth + 1;
+
+        if next_depth > MAX_QUERY_DEPTH {
+            return Err(AppError::ExceedMaxQueryDepth).into_generic_result();
+        }
+
         process_query(
             self.vm.clone(),
             self.storage.clone(),
             self.gas_tracker.clone(),
             self.block,
-            query_depth,
+            next_depth,
             req,
         )
         .into_generic_result()

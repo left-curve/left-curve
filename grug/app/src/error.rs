@@ -56,6 +56,9 @@ pub enum AppError {
 
     #[error("max message depth exceeded")]
     ExceedMaxMessageDepth,
+
+    #[error("max query depth exceeded")]
+    ExceedMaxQueryDepth,
 }
 
 pub type AppResult<T> = core::result::Result<T, AppError>;

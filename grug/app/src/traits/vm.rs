@@ -20,7 +20,6 @@ pub trait Vm: Sized {
         storage: StorageProvider,
         state_mutable: bool,
         querier: Box<dyn QuerierProvider>,
-        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error>;
 }

@@ -232,7 +232,7 @@ pub fn query_chain(mut fe: FunctionEnvMut<Environment>, req_ptr: u32) -> VmResul
     // Note that although the query may fail, we don't unwrap the result here.
     // Instead, we serialize the `GenericResult` and pass it to the contract.
     // Let the contract decide how to handle the error.
-    let res = env.querier.do_query_chain(req, env.query_depth + 1); // important: increase query depth
+    let res = env.querier.do_query_chain(req); // important: increase query depth
     let res_bytes = res.to_borsh_vec()?;
 
     write_to_memory(env, &mut store, &res_bytes)
@@ -540,13 +540,13 @@ mod tests {
                 Box::new(storage.clone()),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
+                0,
             );
 
             let env = Environment::new(
                 storage_provider.clone(),
                 true,
                 querier_provider,
-                10,
                 gas_tracker,
                 gas_checkpoint,
             );

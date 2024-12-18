@@ -350,6 +350,7 @@ where
         storage.clone(),
         gas_tracker.clone(),
         block,
+        query_depth,
     ));
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
 
@@ -359,7 +360,6 @@ where
         storage,
         state_mutable,
         querier,
-        query_depth,
         gas_tracker,
     )?)
 }

@@ -55,7 +55,6 @@ impl Vm for HybridVm {
         storage: StorageProvider,
         state_mutable: bool,
         querier: Box<dyn QuerierProvider>,
-        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> Result<Self::Instance, Self::Error> {
         if self.code_hashes_for_rust.contains(&code_hash) {
@@ -65,7 +64,6 @@ impl Vm for HybridVm {
                 storage,
                 state_mutable,
                 querier,
-                query_depth,
                 gas_tracker,
             )?;
             Ok(HybridInstance::Rust(instance))
@@ -76,7 +74,6 @@ impl Vm for HybridVm {
                 storage,
                 state_mutable,
                 querier,
-                query_depth,
                 gas_tracker,
             )?;
             Ok(HybridInstance::Wasm(instance))

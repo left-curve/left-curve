@@ -48,7 +48,6 @@ impl Vm for RustVm {
         _storage_readonly: bool,
         querier: Box<dyn QuerierProvider>,
         // In Rust VM, we don't check for max query depth.
-        _query_depth: usize,
         // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
@@ -332,6 +331,7 @@ mod tests {
             Box::new(db.clone()),
             gas_tracker.clone(),
             block,
+            0,
         );
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
@@ -343,7 +343,6 @@ mod tests {
                 storage_provider,
                 false,
                 querier_provider,
-                0,
                 gas_tracker,
             )
             .unwrap();

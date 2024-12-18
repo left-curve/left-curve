@@ -123,7 +123,7 @@ fn query_stack_overflow() {
     // a loop. Should raise the "exceeded max query depth" error.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
-        .should_fail_with_error(VmError::ExceedMaxQueryDepth);
+        .should_fail_with_error(AppError::ExceedMaxQueryDepth);
 }
 
 #[test]

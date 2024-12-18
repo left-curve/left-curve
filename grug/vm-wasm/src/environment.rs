@@ -12,7 +12,6 @@ pub struct Environment {
     pub storage: StorageProvider,
     pub state_mutable: bool,
     pub querier: Box<dyn QuerierProvider>,
-    pub query_depth: usize,
     pub gas_tracker: GasTracker,
     /// The amount of gas points remaining in the `Metering` middleware the last
     /// time we updated the `gas_tracker`.
@@ -53,7 +52,6 @@ impl Environment {
         storage: StorageProvider,
         state_mutable: bool,
         querier: Box<dyn QuerierProvider>,
-        query_depth: usize,
         gas_tracker: GasTracker,
         gas_checkpoint: u64,
     ) -> Self {
@@ -61,7 +59,6 @@ impl Environment {
             storage,
             state_mutable,
             querier,
-            query_depth,
             gas_tracker,
             gas_checkpoint,
             iterators: HashMap::new(),
@@ -338,13 +335,13 @@ mod test {
                 Box::new(storage),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
+                0,
             );
 
             let mut env = Environment::new(
                 storage_provider,
                 true,
                 querier_provider,
-                10,
                 gas_tracker,
                 gas_checkpoint,
             );

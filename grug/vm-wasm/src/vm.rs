@@ -19,14 +19,6 @@ use {
 /// Gas cost per Wasmer operation.
 pub const GAS_PER_OPERATION: u64 = 1;
 
-/// Maximum number of chained queries.
-///
-/// E.g. contract A queries contract B; when handling this query, contract B
-/// calls contract C; so on.
-///
-/// Without a limit, this can leads to stack overflow which halts the chain.
-pub const MAX_QUERY_DEPTH: usize = 3;
-
 /// Wasm memory size limit in MiB.
 ///
 /// ## Note
@@ -76,13 +68,8 @@ impl Vm for WasmVm {
         storage: StorageProvider,
         state_mutable: bool,
         querier: Box<dyn QuerierProvider>,
-        query_depth: usize,
         gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
-        if query_depth > MAX_QUERY_DEPTH {
-            return Err(VmError::ExceedMaxQueryDepth);
-        }
-
         let (module, engine) = if let Some(cache) = &self.cache {
             // Attempt to fetch a pre-built Wasmer module from the cache.
             // If not found, build it and insert it into the cache.
@@ -113,7 +100,6 @@ impl Vm for WasmVm {
                 storage,
                 state_mutable,
                 querier,
-                query_depth,
                 gas_tracker.clone(),
                 gas_remaining,
             ),
