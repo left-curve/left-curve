@@ -4,7 +4,7 @@ use {
         account::single,
         account_factory::{self, Account, AccountParams, Username},
         auth::Key,
-        ibc_transfer,
+        ibc,
     },
     grug::{
         btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, NonEmpty,
@@ -32,7 +32,7 @@ fn user_onboarding() {
         .execute(
             &mut accounts.relayer,
             contracts.ibc_transfer,
-            &ibc_transfer::ExecuteMsg::ReceiveTransfer {
+            &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
             },
             Coins::one("uusdc", 123).unwrap(),
@@ -109,7 +109,7 @@ fn onboarding_existing_user() {
             .execute(
                 &mut accounts.relayer,
                 contracts.ibc_transfer,
-                &ibc_transfer::ExecuteMsg::ReceiveTransfer {
+                &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                     recipient: user.address(),
                 },
                 Coins::one("uusdc", 123).unwrap(),
