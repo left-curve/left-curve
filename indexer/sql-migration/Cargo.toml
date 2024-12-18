@@ -1,8 +1,8 @@
 [package]
-name    = "indexer-sql-migration"
-version = "0.1.0"
 edition = "2021"
+name    = "indexer-sql-migration"
 publish = false
+version = "0.1.0"
 
 [lib]
 name = "migration"

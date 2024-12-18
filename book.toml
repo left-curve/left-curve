@@ -1,10 +1,10 @@
 [book]
-title        = "The Left Curve Book"
-description  = "Everything about the Left Curve Stack"
 authors      = ["Left Curve Software Ltd. (https://grug.build/about)"]
+description  = "Everything about the Left Curve Stack"
 language     = "en"
 multilingual = false
 src          = "book/"
+title        = "The Left Curve Book"
 
 [output.html]
 git-repository-url = "https://github.com/left-curve/left-curve"

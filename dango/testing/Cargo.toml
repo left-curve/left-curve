@@ -1,13 +1,13 @@
 [package]
-name          = "dango-testing"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-testing"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
 dango-app      = { workspace = true }
@@ -33,5 +33,5 @@ test-case   = { workspace = true }
 tracing     = { workspace = true }
 
 [[bench]]
-name = "benchmarks"
 harness = false
+name    = "benchmarks"

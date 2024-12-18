@@ -1,13 +1,13 @@
 [package]
-name          = "grug-mock-taxman"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-mock-taxman"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -23,7 +23,7 @@ library = []
 # Instead, they have to use Grug crates (types, storage, ffi) individually.
 [dependencies]
 anyhow         = { workspace = true }
-borsh          = { workspace = true, features = ["derive", "de_strict_order"] }
+borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-ffi       = { workspace = true }
 grug-math      = { workspace = true }
 grug-mock-bank = { workspace = true, features = ["library"] }
