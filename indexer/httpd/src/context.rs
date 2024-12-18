@@ -8,7 +8,17 @@ pub struct Context {
     pub db: DatabaseConnection,
 }
 
+impl From<indexer_sql::Context> for Context {
+    fn from(ctx: indexer_sql::Context) -> Self {
+        Self { db: ctx.db }
+    }
+}
+
 impl Context {
+    pub fn new_with_database_connection(db: DatabaseConnection) -> Self {
+        Self { db }
+    }
+
     pub async fn new(database_url: Option<String>) -> Result<Self, Error> {
         let db = match database_url {
             Some(database_url) => Self::connect_db_with_url(&database_url).await?,

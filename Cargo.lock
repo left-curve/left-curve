@@ -3303,6 +3303,8 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
+ "anyhow",
  "assertor",
  "borsh 1.5.3",
  "grug-app",
@@ -3315,6 +3317,7 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "grug-vm-rust",
+ "indexer-httpd",
  "indexer-sql",
  "k256",
  "prost",
@@ -3322,8 +3325,10 @@ dependencies = [
  "reqwest 0.12.9",
  "sea-orm",
  "serde",
+ "serde_json",
  "test-case",
  "thiserror 1.0.69",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
