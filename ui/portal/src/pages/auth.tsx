@@ -1,7 +1,8 @@
-import { createRoute, useLocation } from "@tanstack/react-router";
+import { createRoute, notFound, redirect, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { WizardProvider } from "@dango/shared";
+import { RootRouter } from "~/AppRouter";
 import {
   AuthWizard,
   ConnectStep,
@@ -10,11 +11,16 @@ import {
   LoginStep,
   TransferStep,
 } from "~/components/AuthWizard";
-import { MainRoute } from "./layout";
 
 export const AuthRoute = createRoute({
-  getParentRoute: () => MainRoute,
-  path: "/auth/$",
+  getParentRoute: () => RootRouter,
+  path: "/auth/*",
+  beforeLoad: async ({ context }) => {
+    const { account } = context;
+    if (account?.isConnected) {
+      throw redirect({ to: "/" });
+    }
+  },
   component: () => {
     const location = useLocation();
 

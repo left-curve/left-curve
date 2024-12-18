@@ -3,7 +3,8 @@ import { createRoute, notFound } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { AccountRouter } from "~/components/AccountRouter";
-import { AppRoute } from "./layout";
+
+import { AppRoute } from "~/AppRouter";
 
 export const AccountsRoute = createRoute({
   getParentRoute: () => AppRoute,
