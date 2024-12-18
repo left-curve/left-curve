@@ -7,15 +7,13 @@ use {
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn returns_graphql_block() {
+async fn graphql_returns_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
-
-    // let runtime = actix_web::rt::System::with_tokio_rt(|| indexer.handle.runtime.unwrap());
 
     let httpd_context: Context = indexer.context.clone().into();
 
