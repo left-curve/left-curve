@@ -1,6 +1,6 @@
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { type PropsWithChildren, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button, useMeasure, useWizard } from "@dango/shared";
 import { WizardLoginWrapper } from "./LoginWrapper";
@@ -39,7 +39,7 @@ export const AuthWizard: React.FC<PropsWithChildren> = ({ children }) => {
         color="rose"
         className="italic"
         onClick={() =>
-          activeStep ? previousStep() : navigate(isSignup ? "/auth/login" : "/auth/signup")
+          activeStep ? previousStep() : navigate({ to: isSignup ? "/auth/login" : "/auth/signup" })
         }
       >
         {activeStep ? "Back" : isSignup ? "Already have an account?" : "Don't have an account?"}

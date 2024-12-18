@@ -1,6 +1,5 @@
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
-import { BrowserRouter } from "react-router-dom";
 
 import { AppProvider } from "./AppProvider";
 import { AppRouter } from "./AppRouter";
@@ -11,12 +10,10 @@ import "@dango/config/fonts/Exposure/index.css";
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <AppProvider>
-        <AppRouter />
-        <Toaster position="bottom-center" />
-      </AppProvider>
-    </BrowserRouter>
+    <AppProvider>
+      <AppRouter />
+      <Toaster position="bottom-center" />
+    </AppProvider>
   );
 };
 
