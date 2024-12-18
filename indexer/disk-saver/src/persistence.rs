@@ -95,6 +95,7 @@ impl DiskPersistence {
 
         tmp_file.flush()?;
         tmp_file.persist(&self.file_path)?;
+
         Ok(())
     }
 
@@ -182,6 +183,8 @@ impl DiskPersistence {
         Ok(())
     }
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {

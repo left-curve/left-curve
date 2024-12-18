@@ -6,7 +6,6 @@ mod error;
 mod event;
 mod execute;
 mod gas;
-mod home;
 mod indexer;
 mod macros;
 mod proposal_preparer;
@@ -19,7 +18,6 @@ mod traits;
 mod vm;
 
 pub use crate::{
-    app::*, buffer::*, error::*, event::*, execute::*, gas::*, home::*, indexer::*,
-    proposal_preparer::*, providers::*, query::*, shared::*, state::*, submessage::*, traits::*,
-    vm::*,
+    app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
+    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
 };

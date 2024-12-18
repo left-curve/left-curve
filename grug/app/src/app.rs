@@ -198,21 +198,21 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        self.indexer.pre_indexing(block.block_info.height)?;
+        self.indexer.pre_indexing(block.info.height)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
-        if block.block_info.height != last_finalized_block.height + 1 {
+        if block.info.height != last_finalized_block.height + 1 {
             return Err(AppError::IncorrectBlockHeight {
                 expect: last_finalized_block.height + 1,
-                actual: block.block_info.height,
+                actual: block.info.height,
             });
         }
 
         // Remove orphaned codes (those that are not used by any contract) that
         // have been orphaned longer than the maximum age.
         if let Some(since) = block
-            .block_info
+            .info
             .timestamp
             .into_nanos()
             .checked_sub(cfg.max_orphan_age.into_nanos())
@@ -241,7 +241,7 @@ where
             .prefix_range(
                 &buffer,
                 None,
-                Some(PrefixBound::Inclusive(block.block_info.timestamp)),
+                Some(PrefixBound::Inclusive(block.info.timestamp)),
                 Order::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()?;
@@ -250,7 +250,7 @@ where
         NEXT_CRONJOBS.prefix_clear(
             &mut buffer,
             None,
-            Some(PrefixBound::Inclusive(block.block_info.timestamp)),
+            Some(PrefixBound::Inclusive(block.info.timestamp)),
         );
 
         // Perform the cronjobs.
@@ -264,13 +264,13 @@ where
             );
 
             let gas_tracker = GasTracker::new_limitless();
-            let next_time = block.block_info.timestamp + cfg.cronjobs[&contract];
+            let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block.block_info,
+                block.info,
                 contract,
                 time,
                 next_time,
@@ -294,7 +294,7 @@ where
             let tx_outcome = process_tx(
                 self.vm.clone(),
                 buffer.clone(),
-                block.block_info,
+                block.info,
                 tx.clone(),
                 AuthMode::Finalize,
             );
@@ -307,7 +307,7 @@ where
         // Note that we do this _after_ the transactions have been executed.
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
-        LAST_FINALIZED_BLOCK.save(&mut buffer, &block.block_info)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block.info)?;
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
@@ -317,13 +317,13 @@ where
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
         // - Merkle tree isn't empty
-        debug_assert_eq!(block.block_info.height, version);
+        debug_assert_eq!(block.info.height, version);
         debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            height = block.block_info.height,
-            time = into_utc_string(block.block_info.timestamp),
+            height = block.info.height,
+            time = into_utc_string(block.info.timestamp),
             app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
@@ -572,7 +572,10 @@ where
             })
             .collect();
 
-        let block = Block { block_info, txs };
+        let block = Block {
+            info: block_info,
+            txs,
+        };
 
         self.do_finalize_block(block)
     }

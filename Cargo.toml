@@ -142,9 +142,9 @@ dango-types           = { path = "dango/types" }
 dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
+indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
-indexer-disk-saver    = { path = "indexer/disk-saver" }
 
 [workspace.dependencies.sea-orm]
 version = "1"

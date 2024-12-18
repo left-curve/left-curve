@@ -313,7 +313,7 @@ where
             .collect();
 
         let block = Block {
-            block_info: self.block,
+            info: self.block,
             txs,
         };
 

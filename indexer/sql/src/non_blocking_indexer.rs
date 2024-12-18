@@ -152,13 +152,11 @@ impl NonBlockingIndexer {
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("Can't lock blocks");
-        let block_to_index = blocks
-            .entry(block.block_info.height)
-            .or_insert(BlockToIndex::new(
-                block_filename,
-                block.clone(),
-                block_outcome.clone(),
-            ));
+        let block_to_index = blocks.entry(block.info.height).or_insert(BlockToIndex::new(
+            block_filename,
+            block.clone(),
+            block_outcome.clone(),
+        ));
 
         block_to_index.block_outcome = block_outcome.clone();
 
@@ -363,24 +361,18 @@ impl Indexer for NonBlockingIndexer {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height = block.block_info.height, "index_block called");
+        tracing::debug!(block_height = block.info.height, "index_block called");
 
-        let block_filename = self.block_filename(block.block_info.height);
+        let block_filename = self.block_filename(block.info.height);
 
         self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                block_height = block.block_info.height,
-                "index_block started"
-            );
+            tracing::debug!(block_height = block.info.height, "index_block started");
 
             block_to_index.save_to_disk()?;
 
             #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height = block.block_info.height,
-                "index_block finished"
-            );
+            tracing::info!(block_height = block.info.height, "index_block finished");
             Ok(())
         })
     }
@@ -397,7 +389,7 @@ impl Indexer for NonBlockingIndexer {
         let block_to_index = self.find_or_fail(block_height)?;
         let blocks = self.blocks.clone();
         let keep_blocks = self.keep_blocks;
-        let block_filename = self.block_filename(block_to_index.block.block_info.height);
+        let block_filename = self.block_filename(block_to_index.block.info.height);
 
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
         // the shutdown method could be called and see no current block being indexed, and quit.
@@ -407,7 +399,7 @@ impl Indexer for NonBlockingIndexer {
             tracing::debug!(block_height = block_height, "post_indexing started");
 
             let db = context.db.begin().await?;
-            let block_height = block_to_index.block.block_info.height;
+            let block_height = block_to_index.block.info.height;
             block_to_index.save(&db).await?;
             db.commit().await?;
 

@@ -1,12 +1,12 @@
 mod db;
+mod home_directory;
 mod query;
 mod start;
 
 use {
-    crate::{db::DbCmd, query::QueryCmd, start::StartCmd},
+    crate::{db::DbCmd, home_directory::HomeDirectory, query::QueryCmd, start::StartCmd},
     anyhow::anyhow,
     clap::Parser,
-    grug_app::HomeDirectory,
     home::home_dir,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,

@@ -1,8 +1,9 @@
 use {
+    crate::home_directory::HomeDirectory,
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, AppError, Db, HomeDirectory, Indexer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_vm_wasm::WasmVm,
     indexer_sql::non_blocking_indexer,

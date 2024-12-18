@@ -100,7 +100,7 @@ pub struct BlockInfo {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Block {
-    pub block_info: BlockInfo,
+    pub info: BlockInfo,
     pub txs: Vec<Tx>,
 }
 

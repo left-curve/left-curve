@@ -30,10 +30,7 @@ impl BlockToIndex {
     /// Takes care of inserting the data in the database in a single DB transaction
     pub async fn save<C: ConnectionTrait>(&self, db: &C) -> error::Result<()> {
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height = self.block.block_info.height,
-            "Indexing block"
-        );
+        tracing::info!(block_height = self.block.info.height, "Indexing block");
 
         let mut models = Models::build(&self.block, &self.block_outcome)?;
 
@@ -52,7 +49,7 @@ impl BlockToIndex {
         // This scenario could happen if the process has crashed after block was
         // indexed but before the tmp_file was removed.
         let existing_block = entity::blocks::Entity::find()
-            .filter(entity::blocks::Column::BlockHeight.eq(self.block.block_info.height))
+            .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
             .one(db)
             .await?;
 
@@ -105,6 +102,8 @@ impl BlockToIndex {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
@@ -123,7 +122,7 @@ mod tests {
         };
 
         let block = Block {
-            block_info,
+            info: block_info,
             txs: vec![],
         };
 

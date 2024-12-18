@@ -218,7 +218,7 @@ fn no_sql_index_error_after_restart() {
         tx_outcomes: vec![],
     };
     let block = Block {
-        block_info,
+        info: block_info,
         txs: vec![],
     };
 

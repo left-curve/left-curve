@@ -14,6 +14,6 @@ pub enum Error {
     #[error(transparent)]
     Lzma(#[from] lzma_rs::error::Error),
 
-    #[error("File already exists: {0}")]
+    #[error("file already exists: {0}")]
     AlreadyExists(PathBuf),
 }
