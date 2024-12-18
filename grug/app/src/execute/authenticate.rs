@@ -15,7 +15,7 @@ pub fn do_authenticate<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_authenticate(vm, storage, gas_tracker, block, tx, mode);
@@ -40,7 +40,7 @@ pub fn _do_authenticate<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtAuthenticate>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtAuthenticate::base(tx.sender);

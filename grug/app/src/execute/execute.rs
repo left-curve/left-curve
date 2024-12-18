@@ -16,7 +16,7 @@ pub fn do_execute<VM>(
     msg: MsgExecute,
 ) -> EventResult<EvtExecute>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_execute(
@@ -50,7 +50,7 @@ fn _do_execute<VM>(
     msg: MsgExecute,
 ) -> EventResult<EvtExecute>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone(), msg.msg.clone());

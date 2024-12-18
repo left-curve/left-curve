@@ -154,7 +154,7 @@ impl TestSuite {
 
 impl<VM> TestSuite<MemDb, VM, NaiveProposalPreparer, NullIndexer>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     /// Create a new test suite with `MemDb`, `NaiveProposalPreparer`, and the
@@ -213,7 +213,7 @@ where
 impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,

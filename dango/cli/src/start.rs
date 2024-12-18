@@ -3,9 +3,11 @@ use {
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
+    dango_genesis::build_rust_codes,
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
-    grug_vm_wasm::WasmVm,
+    grug_types::HashExt,
+    grug_vm_hybrid::HybridVm,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, time},
     tower::ServiceBuilder,
@@ -64,12 +66,30 @@ impl StartCmd {
         ID::Error: Debug,
         AppError: From<ID::Error>,
     {
-        let db = DiskDb::open(app_dir.data_dir())?;
-        let vm = WasmVm::new(self.wasm_cache_capacity);
+        let db = DiskDb::open(data_dir)?;
 
         indexer
             .start(&db.state_storage(None)?)
             .expect("Can't start indexer");
+
+        let codes = build_rust_codes();
+        let vm = HybridVm::new(
+            self.wasm_cache_capacity,
+            [
+                codes.account_factory.to_bytes().hash256(),
+                codes.account_margin.to_bytes().hash256(),
+                codes.account_safe.to_bytes().hash256(),
+                codes.account_spot.to_bytes().hash256(),
+                codes.amm.to_bytes().hash256(),
+                codes.bank.to_bytes().hash256(),
+                codes.ibc_transfer.to_bytes().hash256(),
+                codes.lending.to_bytes().hash256(),
+                codes.oracle.to_bytes().hash256(),
+                codes.taxman.to_bytes().hash256(),
+                codes.token_factory.to_bytes().hash256(),
+                codes.vesting.to_bytes().hash256(),
+            ],
+        );
 
         let app = App::new(
             db,

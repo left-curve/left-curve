@@ -16,7 +16,7 @@ pub fn do_finalize_fee<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtFinalize>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_finalize_fee(vm, storage, gas_tracker, block, tx, outcome, mode);
@@ -46,7 +46,7 @@ pub fn _do_finalize_fee<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtFinalize>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtFinalize::base(tx.sender, tx.gas_limit, outcome.gas_used);

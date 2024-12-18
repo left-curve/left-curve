@@ -538,7 +538,7 @@ where
     M1: Serialize,
     M2: Serialize,
     M3: Serialize,
-    VM: TestVm + Clone,
+    VM: TestVm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<VM::Error> + From<PP::Error> + From<ID::Error> + From<DB::Error>,

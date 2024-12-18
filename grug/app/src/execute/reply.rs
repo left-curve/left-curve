@@ -18,7 +18,7 @@ pub fn do_reply<VM>(
     reply_on: &ReplyOn,
 ) -> EventResult<EvtReply>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_reply(
@@ -56,7 +56,7 @@ fn _do_reply<VM>(
     reply_on: &ReplyOn,
 ) -> EventResult<EvtReply>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtReply::base(contract, reply_on.clone());

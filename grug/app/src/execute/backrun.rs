@@ -15,7 +15,7 @@ pub fn do_backrun<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtBackrun>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_backrun(vm, storage, gas_tracker, block, tx, mode);
@@ -40,7 +40,7 @@ pub fn _do_backrun<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtBackrun>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtBackrun::base(tx.sender);
