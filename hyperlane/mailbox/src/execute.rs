@@ -1,6 +1,6 @@
 use {
     crate::{CONFIG, DELIVERIES, LATEST_DISPATCHED_ID, MAILBOX_VERSION, NONCE},
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     grug::{Addr, Coins, HexBinary, HexByteArray, MutableCtx, Response, StdResult},
     hyperlane_types::{
         hook::{self, QueryQuoteDispatchRequest},
@@ -151,10 +151,12 @@ fn process(
         .unwrap_or(cfg.default_ism);
 
     // Query the ISM to verify the message.
-    ctx.querier.query_wasm_smart(ism, QueryVerifyRequest {
-        raw_message,
-        metadata,
-    })?;
+    ctx.querier
+        .query_wasm_smart(ism, QueryVerifyRequest {
+            raw_message,
+            metadata,
+        })
+        .map_err(|err| anyhow!("ISM verification failed: {err}"))?;
 
     // Commit the delivery.
     DELIVERIES.insert(ctx.storage, message_id)?;
