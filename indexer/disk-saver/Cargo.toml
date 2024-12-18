@@ -1,5 +1,5 @@
 [package]
-name          = "indexer-sql"
+name          = "indexer-disk-saver"
 version       = { workspace = true }
 authors       = { workspace = true }
 edition       = { workspace = true }
@@ -17,12 +17,13 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
-borsh                 = { workspace = true }
+borsh                 = { workspace = true, features = ["derive", "de_strict_order"] }
+glob                  = { workspace = true }
 grug-app              = { workspace = true }
 grug-types            = { workspace = true }
 grug-math             = { workspace = true }
-indexer-disk-saver    = { workspace = true }
 indexer-sql-migration = { workspace = true }
+lzma-rs               = { workspace = true }
 sea-orm               = { workspace = true }
 serde                 = { workspace = true }
 serde_json            = { workspace = true }
@@ -33,4 +34,6 @@ tracing               = { workspace = true, optional = true }
 uuid                  = { workspace = true }
 
 [dev-dependencies]
-assertor = { workspace = true }
+assertor              = { workspace = true }
+tracing               = { workspace = true }
+tracing-subscriber    = { workspace = true }

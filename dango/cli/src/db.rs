@@ -1,9 +1,6 @@
 use {
-    clap::Subcommand,
-    colored::Colorize,
-    grug_app::PrunableDb,
-    grug_db_disk::DiskDb,
-    std::{fs, path::PathBuf},
+    crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize,
+    grug_app::PrunableDb, grug_db_disk::DiskDb, std::fs,
 };
 
 #[derive(Subcommand)]
@@ -25,7 +22,9 @@ pub enum DbCmd {
 }
 
 impl DbCmd {
-    pub fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
+    pub fn run(self, dir: HomeDirectory) -> anyhow::Result<()> {
+        let data_dir = dir.data_dir();
+
         if !data_dir.exists() {
             println!("Data directory {data_dir:?} not found, nothing to do.");
             return Ok(());

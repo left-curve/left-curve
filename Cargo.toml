@@ -38,6 +38,7 @@ glob               = "0.3"
 hex                = "0.4"
 hex-literal        = "0.4"
 home               = "0.5"
+lzma-rs            = "0.3"
 paste              = "1"
 proc-macro2        = "1"
 proptest           = "1"
@@ -142,6 +143,7 @@ dango-types           = { path = "dango/types" }
 dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
+indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 

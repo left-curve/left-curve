@@ -23,6 +23,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(string(Block::Hash))
+                    .col(string(Block::AppHash))
                     .to_owned(),
             )
             .await?;
@@ -133,6 +134,17 @@ impl MigrationTrait for Migration {
                     .name("messages-block_height")
                     .table(Message::Table)
                     .col(Message::BlockHeight)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                sea_query::Index::create()
+                    .if_not_exists()
+                    .name("events-block_height")
+                    .table(Event::Table)
+                    .col(Event::BlockHeight)
                     .to_owned(),
             )
             .await?;

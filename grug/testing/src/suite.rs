@@ -7,10 +7,10 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins, Config,
-        ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt, Message,
-        Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome, TxSuccess,
-        UnsignedTx,
+        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins,
+        Config, ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt,
+        Message, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -223,13 +223,39 @@ where
         db: DB,
         vm: VM,
         pp: PP,
-        id: ID,
+        mut id: ID,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
         genesis_state: GenesisState,
     ) -> Self {
+        // This is doing the same order as in Dango.
+        // 1. Calling `start` on the indexer
+
+        let previous_block_height = if let 0 | 1 = genesis_block.height {
+            None
+        } else {
+            Some(genesis_block.height - 1)
+        };
+
+        let state_storage = db
+            .state_storage(previous_block_height)
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Fatal error while getting the state storage: {}",
+                    err.to_string()
+                );
+            });
+
+        id.start(&state_storage).unwrap_or_else(|err| {
+            panic!(
+                "fatal error while running indexer start: {}",
+                err.to_string()
+            );
+        });
+
+        // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX);
 
@@ -286,13 +312,15 @@ where
             .map(|raw_tx| raw_tx.deserialize_json().unwrap())
             .collect();
 
+        let block = Block {
+            info: self.block,
+            txs,
+        };
+
         // Call ABCI `FinalizeBlock` method
-        let block_outcome = self
-            .app
-            .do_finalize_block(self.block, txs)
-            .unwrap_or_else(|err| {
-                panic!("fatal error while finalizing block: {err}");
-            });
+        let block_outcome = self.app.do_finalize_block(block).unwrap_or_else(|err| {
+            panic!("fatal error while finalizing block: {err}");
+        });
 
         // Call ABCI `Commit` method
         self.app.do_commit().unwrap_or_else(|err| {

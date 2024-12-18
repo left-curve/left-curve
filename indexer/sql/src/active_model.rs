@@ -1,7 +1,7 @@
 use {
     crate::{entity, error::IndexerError},
     grug_math::Inner,
-    grug_types::{BlockInfo, JsonSerExt, Tx, TxOutcome},
+    grug_types::{Block, BlockOutcome, JsonSerExt, Tx, TxOutcome},
     sea_orm::{prelude::*, sqlx::types::chrono::TimeZone, Set},
 };
 
@@ -14,7 +14,7 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn push(&mut self, tx: Tx, tx_outcome: TxOutcome) -> crate::error::Result<()> {
+    pub fn push(&mut self, tx: &Tx, tx_outcome: &TxOutcome) -> crate::error::Result<()> {
         let transaction_id = Uuid::new_v4();
         let sender = tx.sender.to_string();
         let new_transaction = entity::transactions::ActiveModel {
@@ -65,8 +65,8 @@ impl Models {
         Ok(())
     }
 
-    pub fn build(block: &BlockInfo) -> Result<Self, IndexerError> {
-        let epoch_millis = block.timestamp.into_millis();
+    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self, IndexerError> {
+        let epoch_millis = block.info.timestamp.into_millis();
         let seconds = (epoch_millis / 1_000) as i64;
         let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
 
@@ -78,9 +78,10 @@ impl Models {
 
         let block = entity::blocks::ActiveModel {
             id: Set(Uuid::new_v4()),
-            block_height: Set(block.height.try_into()?),
+            block_height: Set(block.info.height.try_into()?),
             created_at: Set(naive_datetime),
-            hash: Set(block.hash.to_string()),
+            hash: Set(block.info.hash.to_string()),
+            app_hash: Set(block_outcome.app_hash.to_string()),
         };
 
         Ok(Self {
