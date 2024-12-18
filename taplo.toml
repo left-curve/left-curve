@@ -1,3 +1,8 @@
+# Note: For VS Code, if this file is changed, the evenBetterToml extension needs
+# to be reloaded to pick up the changes. To do this, type ⌘ + ⇧ + P to enter the
+# Command Palette, and chose "Reload Window".
+#
+# https://taplo.tamasfe.dev/configuration/formatter-options.html
 [formatting]
 align_comments        = true
 align_entries         = true
