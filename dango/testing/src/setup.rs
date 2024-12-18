@@ -1,7 +1,9 @@
 use {
     crate::{Accounts, TestAccount},
     dango_app::ProposalPreparer,
-    dango_genesis::{build_genesis, build_rust_codes, Codes, Contracts, GenesisUser},
+    dango_genesis::{
+        build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisUser,
+    },
     grug::{
         btree_map, Binary, BlockInfo, Coin, ContractWrapper, Duration, HashExt, NumberConst,
         Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
@@ -11,7 +13,8 @@ use {
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
-    std::sync::LazyLock,
+    grug_vm_wasm::WasmVm,
+    std::{path::PathBuf, sync::LazyLock},
 };
 
 pub const CHAIN_ID: &str = "dev-1";
@@ -58,7 +61,7 @@ pub fn setup_test_naive() -> (
 
 /// Set up a `TestSuite` with `DiskDb`, `HybridVm`, and `ContractWrapper` codes.
 /// Used for benchmarks.
-pub fn setup_benchmark(
+pub fn setup_benchmark_hybrid(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
@@ -83,6 +86,23 @@ pub fn setup_benchmark(
         codes.token_factory.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
     ]);
+
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+}
+
+pub fn setup_benchmark_wasm(
+    dir: &TempDataDir,
+    wasm_cache_size: usize,
+) -> (
+    TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
+    Accounts,
+    Codes<Vec<u8>>,
+    Contracts,
+) {
+    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
+        .unwrap();
+    let db = DiskDb::open(dir).unwrap();
+    let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
 }
