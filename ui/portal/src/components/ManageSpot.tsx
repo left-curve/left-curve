@@ -8,7 +8,7 @@ interface Props {
   account: Account;
 }
 
-export const ManageSpot: React.FC<Props> = ({ account }) => {
+const ManageSpot: React.FC<Props> = ({ account }) => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -33,3 +33,5 @@ export const ManageSpot: React.FC<Props> = ({ account }) => {
     </div>
   );
 };
+
+export default ManageSpot;
