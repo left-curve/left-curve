@@ -71,7 +71,7 @@ pub fn handle_submessages<VM>(
     submsgs: Vec<SubMessage>,
 ) -> EventResult<Vec<EventStatus<SubEvent>>>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut events = vec![];

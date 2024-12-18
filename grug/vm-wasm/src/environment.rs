@@ -1,5 +1,5 @@
 use {
-    crate::{Iterator, VmError, VmResult, WasmVm},
+    crate::{Iterator, VmError, VmResult},
     grug_app::{GasTracker, QuerierProvider, StorageProvider},
     grug_types::{Record, StdError},
     std::{collections::HashMap, ptr::NonNull},
@@ -11,7 +11,7 @@ use {
 pub struct Environment {
     pub storage: StorageProvider,
     pub state_mutable: bool,
-    pub querier: QuerierProvider<WasmVm>,
+    pub querier: Box<dyn QuerierProvider>,
     pub query_depth: usize,
     pub gas_tracker: GasTracker,
     /// The amount of gas points remaining in the `Metering` middleware the last
@@ -52,7 +52,7 @@ impl Environment {
     pub fn new(
         storage: StorageProvider,
         state_mutable: bool,
-        querier: QuerierProvider<WasmVm>,
+        querier: Box<dyn QuerierProvider>,
         query_depth: usize,
         gas_tracker: GasTracker,
         gas_checkpoint: u64,
@@ -280,7 +280,7 @@ impl Environment {
 mod test {
     use {
         crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
-        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider},
+        grug_app::{GasTracker, QuerierProviderImpl, Shared, StorageProvider},
         grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
         std::sync::Arc,
         test_case::test_case,
@@ -333,7 +333,7 @@ mod test {
             let storage = Shared::new(MockStorage::new());
             let storage_provider = StorageProvider::new(Box::new(storage.clone()), &[b"prefix"]);
 
-            let querier_provider = QuerierProvider::new(
+            let querier_provider = QuerierProviderImpl::new_boxed(
                 WasmVm::new(0),
                 Box::new(storage),
                 gas_tracker.clone(),

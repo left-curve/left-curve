@@ -18,7 +18,7 @@ pub fn do_migrate<VM>(
     msg: MsgMigrate,
 ) -> EventResult<EvtMigrate>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_migrate(vm, storage, gas_tracker, block, msg_depth, sender, msg);
@@ -44,7 +44,7 @@ fn _do_migrate<VM>(
     msg: MsgMigrate,
 ) -> EventResult<EvtMigrate>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtMigrate::base(sender, msg.contract, msg.msg.clone(), msg.new_code_hash);

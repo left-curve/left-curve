@@ -19,13 +19,14 @@ clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
 dango-app          = { workspace = true }
+dango-genesis      = { workspace = true }
 dialoguer          = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-client        = { workspace = true }
 grug-db-disk       = { workspace = true }
 grug-jmt           = { workspace = true }
 grug-types         = { workspace = true }
-grug-vm-wasm       = { workspace = true }
+grug-vm-hybrid     = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }
