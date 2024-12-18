@@ -14,7 +14,7 @@ use {
 
 /// A wrapper over some bytes that encodes them into a string with a specific
 /// encoding scheme.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EncodedBytes<B, E>
 where
     B: Bytes,

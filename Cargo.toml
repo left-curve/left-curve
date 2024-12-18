@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members  = ["dango/*", "grug/*", "indexer/*"]
+members  = ["dango/*", "grug/*", "hyperlane/*", "indexer/*"]
 exclude  = ["indexer/.data"]
 
 [workspace.package]
@@ -143,6 +143,10 @@ dango-vesting         = { path = "dango/vesting" }
 # Indexer packages
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+
+# Hyperlane packages
+hyperlane-mailbox = { path = "hyperlane/mailbox" }
+hyperlane-types   = { path = "hyperlane/types" }
 
 [workspace.dependencies.sea-orm]
 version = "1"
