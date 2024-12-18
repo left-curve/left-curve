@@ -13,7 +13,7 @@ interface Props {
   account: Account;
 }
 
-export const ManageSafe: React.FC<Props> = ({ account }) => {
+const ManageSafe: React.FC<Props> = ({ account }) => {
   return (
     <Tabs
       key="manage-safe-tabs"
@@ -34,3 +34,5 @@ export const ManageSafe: React.FC<Props> = ({ account }) => {
     </Tabs>
   );
 };
+
+export default ManageSafe;
