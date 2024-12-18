@@ -10,12 +10,13 @@ import {
 import { AccountType } from "@left-curve/types";
 
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { applets } from "../../applets";
 import { HamburgerMenu } from "./HamburguerMenu";
 
 export const Header: React.FC = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: "." });
   const [showCommandBar, setShowCommandBar] = useState(false);
 
   const hamburgerRef = useRef<VisibleRef>(null);
@@ -23,13 +24,13 @@ export const Header: React.FC = () => {
   const menuConnectionsRef = useRef<VisibleRef>(null);
   const menuNotificationsRef = useRef<VisibleRef>(null);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const showAccounts = searchParams.get("showAccounts");
+  const search = useSearch({ strict: false });
+  const { showAccounts } = search;
 
   useEffect(() => {
-    if (showAccounts === "true") {
+    if (showAccounts) {
       menuAccountsRef.current?.changeVisibility(true);
-      setSearchParams(new URLSearchParams());
+      navigate({ search: () => ({}) });
     }
   }, [showAccounts]);
 
@@ -51,7 +52,7 @@ export const Header: React.FC = () => {
         >
           <CommandBar
             applets={applets}
-            action={({ path }) => navigate(path)}
+            action={({ path }) => navigate({ to: path })}
             changeVisibility={setShowCommandBar}
             isVisible={showCommandBar}
             hamburgerRef={hamburgerRef}
@@ -69,7 +70,7 @@ export const Header: React.FC = () => {
           <MenuNotifications ref={menuNotificationsRef} />
           <MenuAccounts
             ref={menuAccountsRef}
-            manageAction={(account) => navigate(`/accounts?address=${account.address}`)}
+            manageAction={(account) => navigate({ to: `/accounts?address=${account.address}` })}
             images={{
               [AccountType.Spot]: "/images/avatars/spot.svg",
               [AccountType.Margin]: "/images/avatars/margin.svg",

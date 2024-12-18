@@ -1,6 +1,6 @@
 import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@dango/shared";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 import type { Account } from "@left-curve/types";
 
@@ -25,8 +25,8 @@ const ManageSpot: React.FC<Props> = ({ account }) => {
           />
           <SpotPortfolioTable
             account={account}
-            sendAction={() => navigate("/transfer?action=send")}
-            receiveAction={() => navigate("/transfer?action=receive")}
+            sendAction={() => navigate({ to: "/transfer?action=send" })}
+            receiveAction={() => navigate({ to: "/transfer?action=receive" })}
           />
         </>
       )}

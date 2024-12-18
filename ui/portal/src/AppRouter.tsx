@@ -35,15 +35,11 @@ export const AppRoute = createRoute({
 });
 
 export const AppRouteWithChildren = AppRoute.addChildren([
+  AccountsRoute,
   createRoute({
     getParentRoute: () => AppRoute,
     path: "/",
   }),
-
-  createRoute({
-    getParentRoute: () => AppRoute,
-    path: "/accounts",
-  }).update(AccountsRoute),
 
   createRoute({
     getParentRoute: () => AppRoute,
@@ -109,7 +105,7 @@ const router = createRouter({
   routeTree: RootRouter.addChildren([AppRoute, AuthRoute]),
   defaultPreload: "intent",
   defaultPendingComponent: () => (
-    <div className="h-screen w-full flex justify-center items-center">
+    <div className="flex-1 w-full flex justify-center items-center">
       <Spinner size="lg" color="pink" />
     </div>
   ),

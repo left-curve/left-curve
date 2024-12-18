@@ -23,8 +23,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
-    "react-hot-toast": "catalog:",
-    "react-router-dom": "catalog:"
+    "react-hot-toast": "catalog:"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

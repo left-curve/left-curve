@@ -1,13 +1,9 @@
-import { Button, twMerge, useMeasure, useWizard } from "@dango/shared";
-import { motion } from "framer-motion";
+import { twMerge, useWizard } from "@dango/shared";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { useNavigate } from "react-router-dom";
 
 export const WizardSignupWrapper: React.FC<PropsWithChildren> = ({ children }) => {
-  const { activeStep, previousStep } = useWizard();
-  const navigate = useNavigate();
-  const [containerRef, { height }] = useMeasure<HTMLDivElement>();
+  const { activeStep } = useWizard();
 
   const isFirstStep = activeStep === 0;
   const isSecondStep = activeStep === 1;
