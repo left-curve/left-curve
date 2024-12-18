@@ -46,9 +46,13 @@ impl Message {
 
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
+    // Domain registry: https://github.com/hyperlane-xyz/hyperlane-registry
     pub local_domain: u32,
+    // Note: this is typically set to the message ID multisig ISM.
     pub default_ism: Addr,
+    // Note: this is typically set to the Merkle tree hook.
     pub default_hook: Addr,
+    // Note: this is typically set to the IGP (interchain gas paymaster) hook.
     pub required_hook: Addr,
 }
 
