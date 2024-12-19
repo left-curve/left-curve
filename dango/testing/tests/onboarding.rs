@@ -7,7 +7,7 @@ use {
         ibc,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, NonEmpty,
+        btree_map, Addressable, ByteArray, Coins, Hash256, HashExt, Json, Message, NonEmpty,
         ResultExt, Tx, Uint128,
     },
     std::str::FromStr,
@@ -197,13 +197,13 @@ fn onboarding_without_deposit() {
 #[test_case(
     None,
     None,
-    Some(Hash160::from_inner([0; 20]));
+    Some(Hash256::from_inner([0; 32]));
     "false key hash"
 )]
 fn false_factory_tx(
     false_username: Option<Username>,
     false_key: Option<Key>,
-    false_key_hash: Option<Hash160>,
+    false_key_hash: Option<Hash256>,
 ) {
     let (mut suite, _, codes, contracts) = setup_test();
 

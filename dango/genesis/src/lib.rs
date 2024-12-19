@@ -57,7 +57,7 @@ pub struct Codes<T> {
 
 pub struct GenesisUser {
     pub key: Key,
-    pub key_hash: Hash160,
+    pub key_hash: Hash256,
     pub balances: Coins,
 }
 
