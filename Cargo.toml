@@ -129,6 +129,7 @@ indexer-sql-migration = { path = "indexer/sql-migration" }
 
 # Hyperlane packages
 hyperlane-mailbox = { path = "hyperlane/mailbox" }
+hyperlane-merkle  = { path = "hyperlane/merkle" }
 hyperlane-types   = { path = "hyperlane/types" }
 
 [workspace.dependencies.sea-orm]

@@ -3298,6 +3298,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperlane-merkle-hook"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hex-literal",
+ "hyperlane-types",
+ "sha3",
+]
+
+[[package]]
 name = "hyperlane-types"
 version = "0.0.0"
 dependencies = [
