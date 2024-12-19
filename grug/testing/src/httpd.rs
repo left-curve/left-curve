@@ -6,6 +6,7 @@ use {
         App, Error,
     },
     indexer_httpd::{context::Context, graphql::build_schema, routes, server::build_actix_app},
+    std::collections::HashMap,
 };
 
 pub async fn build_actix_test_app(
@@ -39,20 +40,30 @@ pub fn config_app(// app_ctx: web::Data<AppContext>,
 
 #[derive(serde::Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
+    pub name: &'a str,
     pub query: &'a str,
     pub variables: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(serde::Deserialize, Debug)]
-pub struct GraphQLCustomResponse {
-    pub data: serde_json::Value,
+pub struct GraphQLResponse {
+    pub data: HashMap<String, serde_json::Value>,
     pub errors: Option<Vec<serde_json::Value>>,
 }
 
-pub async fn call_graphql(
+#[derive(serde::Deserialize, Debug)]
+pub struct GraphQLCustomResponse<R> {
+    pub data: R,
+    pub errors: Option<Vec<serde_json::Value>>,
+}
+
+pub async fn call_graphql<'de, R>(
     app_ctx: Context,
     request_body: GraphQLCustomRequest<'_>,
-) -> Result<GraphQLCustomResponse, anyhow::Error> {
+) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+where
+    R: serde::de::DeserializeOwned,
+{
     let app = actix_web::test::init_service(build_actix_app(app_ctx)).await;
 
     let request = actix_web::test::TestRequest::post()
@@ -60,5 +71,18 @@ pub async fn call_graphql(
         .set_json(&request_body)
         .to_request();
 
-    Ok(actix_web::test::call_and_read_body_json(&app, request).await)
+    let mut graphql_response: GraphQLResponse =
+        actix_web::test::call_and_read_body_json(&app, request).await;
+
+    if let Some(data) = graphql_response.data.remove(request_body.name) {
+        Ok(GraphQLCustomResponse {
+            data: serde_json::from_value(data)?,
+            errors: graphql_response.errors,
+        })
+    } else {
+        Err(anyhow::anyhow!(
+            "Can't find {} in response",
+            request_body.name
+        ))
+    }
 }

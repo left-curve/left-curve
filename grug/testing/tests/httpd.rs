@@ -1,6 +1,6 @@
 use {
     assertor::*,
-    grug_testing::{call_graphql, GraphQLCustomRequest, TestBuilder},
+    grug_testing::{call_graphql, GraphQLCustomRequest, GraphQLCustomResponse, TestBuilder},
     grug_types::{Coins, Denom, Message, ResultExt},
     indexer_httpd::context::Context,
     std::str::FromStr,
@@ -57,32 +57,28 @@ async fn graphql_returns_block() {
     .to_owned();
 
     let request_body = GraphQLCustomRequest {
+        name: "block",
         query: graphql_query,
         variables,
     };
 
     let local_set = tokio::task::LocalSet::new();
 
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct BlockResponse {
+        block_height: u64,
+    }
+
     local_set
         .run_until(async {
             tokio::task::spawn_local(async {
-                let response = call_graphql(httpd_context, request_body)
-                    .await
-                    .expect("Can't call graphql");
+                let response: GraphQLCustomResponse<BlockResponse> =
+                    call_graphql(httpd_context, request_body)
+                        .await
+                        .expect("Can't call graphql");
 
-                assert_that!(response
-                    .data
-                    .as_object()
-                    .unwrap()
-                    .get("block")
-                    .unwrap()
-                    .as_object()
-                    .unwrap()
-                    .get("blockHeight")
-                    .unwrap()
-                    .as_u64()
-                    .unwrap())
-                .is_equal_to(1);
+                assert_that!(response.data.block_height).is_equal_to(1);
             })
             .await
             .unwrap();
