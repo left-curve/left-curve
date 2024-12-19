@@ -52,7 +52,7 @@ export const Header: React.FC = () => {
         >
           <CommandBar
             applets={applets}
-            action={({ path }) => navigate({ to: path })}
+            action={({ path }) => navigate({ to: path, from: "/" })}
             changeVisibility={setShowCommandBar}
             isVisible={showCommandBar}
             hamburgerRef={hamburgerRef}
