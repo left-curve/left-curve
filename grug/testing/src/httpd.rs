@@ -57,7 +57,7 @@ pub struct GraphQLCustomResponse<R> {
     pub errors: Option<Vec<serde_json::Value>>,
 }
 
-pub async fn call_graphql<'de, R>(
+pub async fn call_graphql<R>(
     app_ctx: Context,
     request_body: GraphQLCustomRequest<'_>,
 ) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
