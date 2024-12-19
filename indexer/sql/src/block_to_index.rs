@@ -40,7 +40,7 @@ impl BlockToIndex {
             .iter()
             .zip(self.block_outcome.tx_outcomes.iter())
         {
-            models.push(tx, tx_outcome)?;
+            models.push(&self.block, tx, tx_outcome)?;
         }
 
         // I check if the block already exists, if so it means we can skip the

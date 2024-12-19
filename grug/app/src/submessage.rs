@@ -1,7 +1,7 @@
 use {
     crate::{do_reply, process_msg, AppError, Buffer, EventResult, GasTracker, Shared, Vm},
     grug_types::{
-        Addr, BlockInfo, EventStatus, GenericResult, HandleEventStatus, ReplyOn, Storage, SubEvent,
+        Addr, BlockInfo, EventStatus, GenericResult, ReplyOn, Storage, SubEvent, SubEventStatus,
         SubMessage,
     },
 };
@@ -30,19 +30,19 @@ macro_rules! try_add_subevent {
                         }),
                     })
                 );
-                return EventResult::SubErr {
+                return EventResult::NestedErr {
                     event: $events,
                     error,
                 };
             },
-            EventResult::SubErr { event, error } => {
+            EventResult::NestedErr { event, error } => {
                 $events.push(EventStatus::NestedFailed(
                     SubEvent {
                         event: $submsg_event,
                         reply: Some(EventStatus::NestedFailed(event)),
                     },
                 ));
-                return EventResult::SubErr {
+                return EventResult::NestedErr {
                     event: $events,
                     error,
                 };
@@ -113,7 +113,7 @@ where
                     &submsg.reply_on,
                 );
 
-                let submsg_event = HandleEventStatus::Ok(submsg_event);
+                let submsg_event = SubEventStatus::Ok(submsg_event);
 
                 try_add_subevent!(events, submsg_event, reply);
             },
@@ -136,11 +136,11 @@ where
                 );
 
                 let submsg_event = if reply.is_ok() {
-                    HandleEventStatus::handled(submsg_event, err)
+                    SubEventStatus::handled(submsg_event, err)
                 } else if let EventResult::Err { .. } = result {
-                    HandleEventStatus::failed(submsg_event, err)
+                    SubEventStatus::failed(submsg_event, err)
                 } else {
-                    HandleEventStatus::NestedFailed(submsg_event)
+                    SubEventStatus::NestedFailed(submsg_event)
                 };
 
                 try_add_subevent!(events, submsg_event, reply);
@@ -150,7 +150,7 @@ where
             (ReplyOn::Error(_), Result::Ok(submsg_event)) => {
                 buffer.disassemble().consume();
                 events.push(EventStatus::Ok(SubEvent {
-                    event: HandleEventStatus::Ok(submsg_event),
+                    event: SubEventStatus::Ok(submsg_event),
                     reply: Some(EventStatus::NotReached),
                 }));
             },
@@ -159,7 +159,7 @@ where
                 buffer.disassemble().consume();
 
                 events.push(EventStatus::Ok(SubEvent {
-                    event: HandleEventStatus::Ok(submsg_event),
+                    event: SubEventStatus::Ok(submsg_event),
                     // Not requested
                     reply: None,
                 }));
@@ -172,7 +172,7 @@ where
                     reply: None,
                 }));
 
-                return EventResult::SubErr {
+                return EventResult::NestedErr {
                     event: events,
                     error: err,
                 };
@@ -184,7 +184,7 @@ where
                     reply: None,
                 }));
 
-                return EventResult::SubErr {
+                return EventResult::NestedErr {
                     event: events,
                     error: err,
                 };

@@ -83,9 +83,13 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(pk_uuid(Event::Id))
                     // TODO: add foreign key to transactions
-                    .col(uuid(Event::TransactionId))
+                    .col(uuid_null(Event::TransactionId))
                     .col(date_time(Event::CreatedAt))
                     .col(string(Event::Type))
+                    .col(string_null(Event::Method))
+                    .col(string(Event::EventStatus))
+                    .col(string(Event::CommitmentStatus))
+                    .col(integer(Event::OrderId))
                     .col(json_binary(Event::Attributes))
                     // TODO: add foreign key to blocks
                     .col(ColumnDef::new(Event::BlockHeight).big_unsigned().not_null())
