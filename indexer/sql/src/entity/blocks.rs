@@ -11,6 +11,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub block_height: i64,
     pub hash: String,
+    pub app_hash: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

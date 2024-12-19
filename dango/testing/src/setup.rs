@@ -1,17 +1,20 @@
 use {
     crate::{Accounts, TestAccount},
     dango_app::ProposalPreparer,
-    dango_genesis::{build_genesis, read_wasm_files, Codes, Contracts, GenesisUser},
+    dango_genesis::{
+        build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisUser,
+    },
     grug::{
-        btree_map, Binary, BlockInfo, Coin, ContractBuilder, ContractWrapper, Duration,
-        NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        btree_map, Binary, BlockInfo, Coin, ContractWrapper, Duration, HashExt, NumberConst,
+        Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
+    grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
-    std::{env, path::PathBuf, sync::LazyLock},
+    std::{path::PathBuf, sync::LazyLock},
 };
 
 pub const CHAIN_ID: &str = "dev-1";
@@ -27,7 +30,7 @@ pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullInde
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` and `ContractWrapper` codes.
 pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
-    let codes = build_codes();
+    let codes = build_rust_codes();
 
     setup_suite_with_db_and_vm(
         MemDb::new(),
@@ -45,7 +48,7 @@ pub fn setup_test_naive() -> (
     Codes<ContractWrapper>,
     Contracts,
 ) {
-    let codes = build_codes();
+    let codes = build_rust_codes();
 
     setup_suite_with_db_and_vm(
         MemDb::new(),
@@ -56,9 +59,38 @@ pub fn setup_test_naive() -> (
     )
 }
 
-/// Set up a `TestSuite` with `DiskDb`, `WasmVm`, and `Vec<u8>` codes.
+/// Set up a `TestSuite` with `DiskDb`, `HybridVm`, and `ContractWrapper` codes.
 /// Used for benchmarks.
-pub fn setup_benchmark(
+pub fn setup_benchmark_hybrid(
+    dir: &TempDataDir,
+    wasm_cache_size: usize,
+) -> (
+    TestSuite<NaiveProposalPreparer, DiskDb, HybridVm, NullIndexer>,
+    Accounts,
+    Codes<ContractWrapper>,
+    Contracts,
+) {
+    let codes = build_rust_codes();
+    let db = DiskDb::open(dir).unwrap();
+    let vm = HybridVm::new(wasm_cache_size, [
+        codes.account_factory.to_bytes().hash256(),
+        codes.account_margin.to_bytes().hash256(),
+        codes.account_safe.to_bytes().hash256(),
+        codes.account_spot.to_bytes().hash256(),
+        codes.amm.to_bytes().hash256(),
+        codes.bank.to_bytes().hash256(),
+        codes.ibc_transfer.to_bytes().hash256(),
+        codes.lending.to_bytes().hash256(),
+        codes.oracle.to_bytes().hash256(),
+        codes.taxman.to_bytes().hash256(),
+        codes.token_factory.to_bytes().hash256(),
+        codes.vesting.to_bytes().hash256(),
+    ]);
+
+    setup_suite_with_db_and_vm(db, vm, codes, NaiveProposalPreparer, NullIndexer)
+}
+
+pub fn setup_benchmark_wasm(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
@@ -67,10 +99,8 @@ pub fn setup_benchmark(
     Codes<Vec<u8>>,
     Contracts,
 ) {
-    // TODO: create a `testdata` directory for the wasm files
     let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
         .unwrap();
-
     let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
@@ -88,7 +118,7 @@ fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
 where
     T: Clone + Into<Binary>,
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     ID: Indexer,
     PP: grug_app::ProposalPreparer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -100,8 +130,8 @@ where
         codes.clone(),
         btree_map! {
             owner.username.clone() => GenesisUser {
-                key: owner.key,
-                key_hash: owner.key_hash,
+                key: *owner.key(),
+                key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
                 balances: btree_map! {
@@ -112,8 +142,8 @@ where
                 .unwrap(),
             },
             relayer.username.clone() => GenesisUser {
-                key: relayer.key,
-                key_hash: relayer.key_hash,
+                key: *relayer.key(),
+                key_hash: relayer.key_hash(),
                 balances: btree_map! {
                     "udng"  => 100_000_000_000_000,
                     "uusdc" => 100_000_000_000_000,
@@ -154,91 +184,4 @@ where
     };
 
     (suite, accounts, codes, contracts)
-}
-
-fn build_codes() -> Codes<ContractWrapper> {
-    let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
-        .with_execute(Box::new(dango_account_factory::execute))
-        .with_query(Box::new(dango_account_factory::query))
-        .with_authenticate(Box::new(dango_account_factory::authenticate))
-        .build();
-
-    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
-        .with_authenticate(Box::new(dango_account_margin::authenticate))
-        .with_backrun(Box::new(dango_account_margin::backrun))
-        .with_receive(Box::new(dango_account_margin::receive))
-        .with_query(Box::new(dango_account_margin::query))
-        .build();
-
-    let account_safe = ContractBuilder::new(Box::new(dango_account_safe::instantiate))
-        .with_authenticate(Box::new(dango_account_safe::authenticate))
-        .with_receive(Box::new(dango_account_safe::receive))
-        .with_execute(Box::new(dango_account_safe::execute))
-        .with_query(Box::new(dango_account_safe::query))
-        .build();
-
-    let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
-        .with_authenticate(Box::new(dango_account_spot::authenticate))
-        .with_receive(Box::new(dango_account_spot::receive))
-        .with_query(Box::new(dango_account_spot::query))
-        .build();
-
-    let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
-        .with_execute(Box::new(dango_amm::execute))
-        .with_query(Box::new(dango_amm::query))
-        .build();
-
-    let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
-        .with_execute(Box::new(dango_bank::execute))
-        .with_query(Box::new(dango_bank::query))
-        .with_bank_execute(Box::new(dango_bank::bank_execute))
-        .with_bank_query(Box::new(dango_bank::bank_query))
-        .build();
-
-    let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
-        .with_execute(Box::new(dango_ibc_transfer::execute))
-        .build();
-
-    let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
-        .with_execute(Box::new(dango_oracle::execute))
-        .with_authenticate(Box::new(dango_oracle::authenticate))
-        .with_query(Box::new(dango_oracle::query))
-        .build();
-
-    let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
-        .with_execute(Box::new(dango_lending::execute))
-        .with_query(Box::new(dango_lending::query))
-        .build();
-
-    let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
-        .with_execute(Box::new(dango_taxman::execute))
-        .with_query(Box::new(dango_taxman::query))
-        .with_withhold_fee(Box::new(dango_taxman::withhold_fee))
-        .with_finalize_fee(Box::new(dango_taxman::finalize_fee))
-        .build();
-
-    let token_factory = ContractBuilder::new(Box::new(dango_token_factory::instantiate))
-        .with_execute(Box::new(dango_token_factory::execute))
-        .with_query(Box::new(dango_token_factory::query))
-        .build();
-
-    let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
-        .with_execute(Box::new(dango_vesting::execute))
-        .with_query(Box::new(dango_vesting::query))
-        .build();
-
-    Codes {
-        account_factory,
-        account_margin,
-        account_safe,
-        account_spot,
-        amm,
-        bank,
-        ibc_transfer,
-        lending,
-        oracle,
-        taxman,
-        token_factory,
-        vesting,
-    }
 }

@@ -9,6 +9,7 @@ pub enum Block {
     BlockHeight,
     CreatedAt,
     Hash,
+    AppHash,
 }
 
 #[derive(DeriveIden)]

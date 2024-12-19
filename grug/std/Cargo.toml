@@ -1,16 +1,16 @@
 [package]
-name          = "grug"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
-borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-macros  = { workspace = true }
 grug-math    = { workspace = true }
 grug-storage = { workspace = true }

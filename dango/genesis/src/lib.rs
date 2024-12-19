@@ -5,7 +5,7 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, DANGO_DENOM},
-        ibc_transfer,
+        ibc,
         lending::{self, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
@@ -14,9 +14,9 @@ use {
         taxman, token_factory, vesting,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, Denom, Duration, GenesisState,
-        Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, NonZero, Permission, Permissions,
-        StdResult, Udec128, Uint128, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
+        Denom, Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message,
+        NonZero, Permission, Permissions, StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
@@ -59,6 +59,93 @@ pub struct GenesisUser {
     pub key: Key,
     pub key_hash: Hash160,
     pub balances: Coins,
+}
+
+pub fn build_rust_codes() -> Codes<ContractWrapper> {
+    let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
+        .with_execute(Box::new(dango_account_factory::execute))
+        .with_query(Box::new(dango_account_factory::query))
+        .with_authenticate(Box::new(dango_account_factory::authenticate))
+        .build();
+
+    let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_authenticate(Box::new(dango_account_margin::authenticate))
+        .with_backrun(Box::new(dango_account_margin::backrun))
+        .with_receive(Box::new(dango_account_margin::receive))
+        .with_query(Box::new(dango_account_margin::query))
+        .build();
+
+    let account_safe = ContractBuilder::new(Box::new(dango_account_safe::instantiate))
+        .with_authenticate(Box::new(dango_account_safe::authenticate))
+        .with_receive(Box::new(dango_account_safe::receive))
+        .with_execute(Box::new(dango_account_safe::execute))
+        .with_query(Box::new(dango_account_safe::query))
+        .build();
+
+    let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
+        .with_authenticate(Box::new(dango_account_spot::authenticate))
+        .with_receive(Box::new(dango_account_spot::receive))
+        .with_query(Box::new(dango_account_spot::query))
+        .build();
+
+    let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
+        .with_execute(Box::new(dango_amm::execute))
+        .with_query(Box::new(dango_amm::query))
+        .build();
+
+    let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
+        .with_execute(Box::new(dango_bank::execute))
+        .with_query(Box::new(dango_bank::query))
+        .with_bank_execute(Box::new(dango_bank::bank_execute))
+        .with_bank_query(Box::new(dango_bank::bank_query))
+        .build();
+
+    let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
+        .with_execute(Box::new(dango_ibc_transfer::execute))
+        .build();
+
+    let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
+        .with_execute(Box::new(dango_oracle::execute))
+        .with_authenticate(Box::new(dango_oracle::authenticate))
+        .with_query(Box::new(dango_oracle::query))
+        .build();
+
+    let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
+        .with_execute(Box::new(dango_lending::execute))
+        .with_query(Box::new(dango_lending::query))
+        .build();
+
+    let taxman = ContractBuilder::new(Box::new(dango_taxman::instantiate))
+        .with_execute(Box::new(dango_taxman::execute))
+        .with_query(Box::new(dango_taxman::query))
+        .with_withhold_fee(Box::new(dango_taxman::withhold_fee))
+        .with_finalize_fee(Box::new(dango_taxman::finalize_fee))
+        .build();
+
+    let token_factory = ContractBuilder::new(Box::new(dango_token_factory::instantiate))
+        .with_execute(Box::new(dango_token_factory::execute))
+        .with_query(Box::new(dango_token_factory::query))
+        .build();
+
+    let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
+        .with_execute(Box::new(dango_vesting::execute))
+        .with_query(Box::new(dango_vesting::query))
+        .build();
+
+    Codes {
+        account_factory,
+        account_margin,
+        account_safe,
+        account_spot,
+        amm,
+        bank,
+        ibc_transfer,
+        lending,
+        oracle,
+        taxman,
+        token_factory,
+        vesting,
+    }
 }
 
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
@@ -163,7 +250,7 @@ where
     let ibc_transfer = instantiate(
         &mut msgs,
         ibc_transfer_code_hash,
-        &ibc_transfer::InstantiateMsg {},
+        &ibc::transfer::InstantiateMsg {},
         "dango/ibc_transfer",
         "dango/ibc_transfer",
     )?;
@@ -233,7 +320,7 @@ where
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
         amm::NAMESPACE.clone()           => amm,
-        ibc_transfer::NAMESPACE.clone()  => ibc_transfer,
+        ibc::transfer::NAMESPACE.clone()  => ibc_transfer,
         lending::NAMESPACE.clone()       => lending,
         token_factory::NAMESPACE.clone() => token_factory,
     };

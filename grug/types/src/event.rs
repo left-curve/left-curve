@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Coins, ContractEvent, Hash256, Json, Label, ReplyOn, Timestamp},
+    crate::{Addr, Coins, ContractEvent, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -318,54 +318,6 @@ pub struct SubEvent {
     pub event: SubEventStatus,
     /// None means the contract did not request a reply.
     pub reply: Option<EventStatus<EvtReply>>,
-}
-
-//  ------------------------------ Event Statuses ------------------------------
-
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum CommitmentStatus<T> {
-    Committed(T),
-    Failed { event: T, error: String },
-    Reverted { event: T, revert_by: String },
-    NotReached,
-}
-
-impl<T> CommitmentStatus<T> {
-    pub fn maybe_error(&self) -> Option<&str> {
-        match self {
-            Self::Failed { error, .. }
-            | Self::Reverted {
-                revert_by: error, ..
-            } => Some(error),
-            _ => None,
-        }
-    }
-
-    pub fn as_result(&self) -> Result<&T, (&T, &str)> {
-        match self {
-            Self::Committed(event) => Ok(event),
-            Self::Failed { event, error }
-            | Self::Reverted {
-                event,
-                revert_by: error,
-            } => Err((event, error)),
-            Self::NotReached => panic!("not reached"),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum EventStatus<T> {
-    /// The event succeeded.
-    Ok(T),
-    /// A nested event failed.
-    NestedFailed(T),
-    /// The event failed.
-    Failed { event: T, error: String },
-    /// Not reached because a previous event failed.
-    NotReached,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

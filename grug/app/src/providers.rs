@@ -119,15 +119,39 @@ fn prefixed_range_bounds(
 
 // ---------------------------------- querier ----------------------------------
 
+/// Represents the capability to perform queries on the chain.
+///
+/// ## Notes
+///
+/// - Compared to `Querier`, which is intended to be used in guest contracts,
+///   `QuerierProvider` is intended to be used in the host, and takes an
+///   additional parameter `query_depth` to prevent the call stack from getting
+///   too deep.
+/// - Compared to `StorageProvider`, we use this as a box (`Box<dyn QuerierProvider>`)
+///   because performing queries involves calling a VM (while read or write
+///   storage doesn't). The VM has to be added as a generic. We need to hide
+///   this generic, otherwise we run into infinite recursive types with the
+///   hybrid VM. (When using a single VM, this isn't a problem.)
+pub trait QuerierProvider {
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
+}
+
+impl Querier for Box<dyn QuerierProvider> {
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        // TODO: ignoring query depth for now
+        self.do_query_chain(req, 0).map_err(StdError::host)
+    }
+}
+
 /// Provides querier functionalities to the VM.
-pub struct QuerierProvider<VM> {
+pub struct QuerierProviderImpl<VM> {
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
 }
 
-impl<VM> QuerierProvider<VM> {
+impl<VM> QuerierProviderImpl<VM> {
     pub fn new(
         vm: VM,
         storage: Box<dyn Storage>,
@@ -143,13 +167,27 @@ impl<VM> QuerierProvider<VM> {
     }
 }
 
-// This is for use in `WasmVm`.
-impl<VM> QuerierProvider<VM>
+impl<VM> QuerierProviderImpl<VM>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    pub fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
+    pub fn new_boxed(
+        vm: VM,
+        storage: Box<dyn Storage>,
+        gas_tracker: GasTracker,
+        block: BlockInfo,
+    ) -> Box<dyn QuerierProvider> {
+        Box::new(Self::new(vm, storage, gas_tracker, block))
+    }
+}
+
+impl<VM> QuerierProvider for QuerierProviderImpl<VM>
+where
+    VM: Vm + Clone + 'static,
+    AppError: From<VM::Error>,
+{
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
@@ -159,20 +197,5 @@ where
             req,
         )
         .into_generic_result()
-    }
-}
-
-// This is for use in `RustVm`.
-impl<VM> Querier for QuerierProvider<VM>
-where
-    VM: Vm + Clone,
-    AppError: From<VM::Error>,
-{
-    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        // We don't check for max query depth in Rust VM, do simply use zero as
-        // `query_depth` here.
-        // Cast the error to `StdError::Ffi`, pretending it came over the FFI
-        // boundary (although in `RustVm` there isn't one).
-        self.do_query_chain(req, 0).map_err(StdError::host)
     }
 }

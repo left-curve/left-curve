@@ -1,37 +1,26 @@
 [package]
-name          = "dango-testing"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-testing"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-account-margin  = { workspace = true, features = ["library"] }
-dango-account-safe    = { workspace = true, features = ["library"] }
-dango-account-spot    = { workspace = true, features = ["library"] }
-dango-amm             = { workspace = true, features = ["library"] }
-dango-app             = { workspace = true }
-dango-bank            = { workspace = true, features = ["library"] }
-dango-genesis         = { workspace = true }
-dango-ibc-transfer    = { workspace = true, features = ["library"] }
-dango-lending         = { workspace = true, features = ["library"] }
-dango-oracle          = { workspace = true, features = ["library"] }
-dango-taxman          = { workspace = true, features = ["library"] }
-dango-token-factory   = { workspace = true, features = ["library"] }
-dango-types           = { workspace = true }
-dango-vesting         = { workspace = true, features = ["library"] }
-grug                  = { workspace = true }
-grug-app              = { workspace = true }
-grug-db-disk          = { workspace = true }
-grug-db-memory        = { workspace = true }
-grug-vm-rust          = { workspace = true }
-grug-vm-wasm          = { workspace = true }
-k256                  = { workspace = true }
+dango-app      = { workspace = true }
+dango-genesis  = { workspace = true }
+dango-types    = { workspace = true }
+grug           = { workspace = true }
+grug-app       = { workspace = true }
+grug-db-disk   = { workspace = true }
+grug-db-memory = { workspace = true }
+grug-vm-hybrid = { workspace = true }
+grug-vm-rust   = { workspace = true }
+grug-vm-wasm   = { workspace = true }
+k256           = { workspace = true }
 
 [dev-dependencies]
 anyhow      = { workspace = true }
@@ -44,5 +33,5 @@ test-case   = { workspace = true }
 tracing     = { workspace = true }
 
 [[bench]]
-name = "benchmarks"
 harness = false
+name    = "benchmarks"

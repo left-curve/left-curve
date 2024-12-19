@@ -6,12 +6,12 @@ use {
         query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
         query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db,
         EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
-        ProposalPreparer, QuerierProvider, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
+        ProposalPreparer, QuerierProviderImpl, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
         LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
     },
     grug_storage::PrefixBound,
     grug_types::{
-        Addr, AuthMode, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
+        Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
         GenericResultExt, GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents,
         Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
@@ -28,10 +28,10 @@ use {data_encoding::BASE64, grug_types::JsonDeExt};
 /// <https://github.com/informalsystems/tendermint-rs/blob/v0.34.0/abci/src/application.rs#L22-L25>
 #[derive(Clone)]
 pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
-    db: DB,
+    pub db: DB,
     vm: VM,
     pp: PP,
-    indexer: ID,
+    pub indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -62,7 +62,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -158,10 +158,10 @@ where
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
-            .unwrap_or_else(|err| {
+            .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
-                    err = err.to_string(),
+                    err = _err.to_string(),
                     "Failed to prepare proposal! Falling back to naive preparer."
                 );
 
@@ -178,7 +178,7 @@ where
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-        let querier = QuerierProvider::new(
+        let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
             Box::new(storage),
             GasTracker::new_limitless(),
@@ -190,7 +190,7 @@ where
             .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
     }
 
-    pub fn do_finalize_block(&self, block: BlockInfo, txs: Vec<Tx>) -> AppResult<BlockOutcome> {
+    pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -198,20 +198,21 @@ where
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
 
-        self.indexer.pre_indexing(block.height)?;
+        self.indexer.pre_indexing(block.info.height)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
-        if block.height != last_finalized_block.height + 1 {
+        if block.info.height != last_finalized_block.height + 1 {
             return Err(AppError::IncorrectBlockHeight {
                 expect: last_finalized_block.height + 1,
-                actual: block.height,
+                actual: block.info.height,
             });
         }
 
         // Remove orphaned codes (those that are not used by any contract) that
         // have been orphaned longer than the maximum age.
         if let Some(since) = block
+            .info
             .timestamp
             .into_nanos()
             .checked_sub(cfg.max_orphan_age.into_nanos())
@@ -240,7 +241,7 @@ where
             .prefix_range(
                 &buffer,
                 None,
-                Some(PrefixBound::Inclusive(block.timestamp)),
+                Some(PrefixBound::Inclusive(block.info.timestamp)),
                 Order::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()?;
@@ -249,7 +250,7 @@ where
         NEXT_CRONJOBS.prefix_clear(
             &mut buffer,
             None,
-            Some(PrefixBound::Inclusive(block.timestamp)),
+            Some(PrefixBound::Inclusive(block.info.timestamp)),
         );
 
         // Perform the cronjobs.
@@ -263,13 +264,13 @@ where
             );
 
             let gas_tracker = GasTracker::new_limitless();
-            let next_time = block.timestamp + cfg.cronjobs[&contract];
+            let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
-                block,
+                block.info,
                 contract,
                 time,
                 next_time,
@@ -286,20 +287,17 @@ where
         }
 
         // Process transactions one-by-one.
-        for (_idx, tx) in txs.into_iter().enumerate() {
+        for (_idx, tx) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
             let tx_outcome = process_tx(
                 self.vm.clone(),
                 buffer.clone(),
-                block,
+                block.info,
                 tx.clone(),
                 AuthMode::Finalize,
             );
-
-            self.indexer
-                .index_transaction(&block, tx, tx_outcome.clone())?;
 
             tx_outcomes.push(tx_outcome);
         }
@@ -309,7 +307,7 @@ where
         // Note that we do this _after_ the transactions have been executed.
         // If a contract queries the last committed block during the execution,
         // it gets the previous block, not the current one.
-        LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
+        LAST_FINALIZED_BLOCK.save(&mut buffer, &block.info)?;
 
         // Flush the state changes to the DB, but keep it in memory, not persist
         // to disk yet. It will be done in the ABCI `Commit` call.
@@ -319,13 +317,13 @@ where
         // Sanity checks, same as in `do_init_chain`:
         // - Block height matches DB version
         // - Merkle tree isn't empty
-        debug_assert_eq!(block.height, version);
+        debug_assert_eq!(block.info.height, version);
         debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            height = block.height,
-            time = into_utc_string(block.timestamp),
+            height = block.info.height,
+            time = into_utc_string(block.info.timestamp),
             app_hash = app_hash.as_ref().unwrap().to_string(),
             "Finalized block"
         );
@@ -522,7 +520,7 @@ where
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
@@ -540,7 +538,7 @@ where
 
     pub fn do_finalize_block_raw<T>(
         &self,
-        block: BlockInfo,
+        block_info: BlockInfo,
         raw_txs: &[T],
     ) -> AppResult<BlockOutcome>
     where
@@ -574,7 +572,12 @@ where
             })
             .collect();
 
-        self.do_finalize_block(block, txs)
+        let block = Block {
+            info: block_info,
+            txs,
+        };
+
+        self.do_finalize_block(block)
     }
 
     pub fn do_check_tx_raw(&self, raw_tx: &[u8]) -> AppResult<CheckTxOutcome> {
@@ -606,7 +609,7 @@ where
 fn process_tx<S, VM>(vm: VM, storage: S, block: BlockInfo, tx: Tx, mode: AuthMode) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Create the gas tracker, with the limit being the gas limit requested by
@@ -762,7 +765,7 @@ fn process_msgs_then_backrun<S, VM>(
 ) -> EventResult<MsgsAndBackrunEvents>
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = MsgsAndBackrunEvents::base();
@@ -814,7 +817,7 @@ fn process_finalize_fee<S, VM>(
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let outcome_so_far = new_tx_outcome(gas_tracker.clone(), events.clone(), result.clone());
@@ -858,7 +861,7 @@ pub fn process_msg<VM>(
     msg: Message,
 ) -> EventResult<Event>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     match msg {
@@ -907,7 +910,7 @@ pub fn process_query<VM>(
     req: Query,
 ) -> AppResult<QueryResponse>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     match req {

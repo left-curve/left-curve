@@ -4,7 +4,7 @@ set positional-arguments
 default:
   @just --list
 
-# Delete all git branches except for main
+# Delete all local git branches except for main
 clean-branches:
   git branch | grep -v "main" | xargs git branch -D
 

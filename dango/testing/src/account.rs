@@ -3,17 +3,18 @@ use {
     dango_types::{
         account::single,
         account_factory::{
-            self, AccountParams, NewUserSalt, QueryNextAccountIndexRequest, Salt, Username,
+            self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
+            QueryNextAccountIndexRequest, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc},
+        auth::{Credential, Key, Metadata, SignDoc, Signature},
     },
     grug::{
-        Addr, Addressable, Coins, Defined, Hash160, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
+        btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash160, Hash256, HashExt, Json,
+        JsonSerExt, MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{
-        ecdsa::{signature::Signer as SignerTrait, Signature, SigningKey},
+        ecdsa::{signature::Signer as SignerTrait, Signature as EcdsaSignature, SigningKey},
         elliptic_curve::rand_core::OsRng,
     },
     std::{collections::BTreeMap, str::FromStr},
@@ -27,38 +28,44 @@ pub struct Accounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug)]
-pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
+pub struct TestAccount<
+    T: MaybeDefined<Addr> = Defined<Addr>,
+    K = BTreeMap<Hash160, (SigningKey, Key)>,
+> {
     pub username: Username,
-    pub key: Key,
-    pub key_hash: Hash160,
     pub sequence: u32,
-    pub sk: SigningKey,
+    pub opt: Option<(SigningKey, ByteArray<33>)>,
+    pub use_otp: bool,
+    keys: K,
+    sign_with: Hash160,
     address: T,
 }
 
-impl TestAccount<Undefined<Addr>> {
-    pub fn new_random(username: &str) -> Self {
-        // Generate a random Secp256k1 key pair.
-        let sk = SigningKey::random(&mut OsRng);
-        let pk = sk
-            .verifying_key()
-            .to_encoded_point(true)
-            .to_bytes()
-            .to_vec()
-            .try_into()
-            .unwrap();
+impl<T, K> TestAccount<T, K>
+where
+    T: MaybeDefined<Addr>,
+{
+    pub fn with_random_otp(&mut self) {
+        self.opt = Some(generate_random_key());
+        self.use_otp = true;
+    }
+}
 
+impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
+    pub fn new_random(username: &str) -> Self {
+        let (sk, pk) = generate_random_key();
         let username = Username::from_str(username).unwrap();
         let key = Key::Secp256k1(pk);
         let key_hash = pk.hash160();
 
         Self {
             username,
-            key,
-            key_hash,
             sequence: 0,
-            sk,
             address: Undefined::new(),
+            keys: (sk, key),
+            sign_with: key_hash,
+            opt: None,
+            use_otp: false,
         }
     }
 
@@ -71,8 +78,8 @@ impl TestAccount<Undefined<Addr>> {
         let salt = if new_user_salt {
             NewUserSalt {
                 username: &self.username,
-                key: self.key,
-                key_hash: self.key_hash,
+                key: self.keys.1,
+                key_hash: self.sign_with,
             }
             .into_bytes()
         } else {
@@ -83,11 +90,12 @@ impl TestAccount<Undefined<Addr>> {
 
         TestAccount {
             username: self.username,
-            key: self.key,
-            key_hash: self.key_hash,
             sequence: self.sequence,
-            sk: self.sk,
             address: Defined::new(address),
+            keys: btree_map!(self.sign_with => self.keys),
+            sign_with: self.sign_with,
+            opt: self.opt,
+            use_otp: self.use_otp,
         }
     }
 
@@ -96,11 +104,12 @@ impl TestAccount<Undefined<Addr>> {
 
         TestAccount {
             username: self.username,
-            key: self.key,
-            key_hash: self.key_hash,
             sequence: self.sequence,
-            sk: self.sk,
             address: Defined::new(address),
+            keys: btree_map!(self.sign_with => self.keys),
+            sign_with: self.sign_with,
+            opt: self.opt,
+            use_otp: self.use_otp,
         }
     }
 }
@@ -124,19 +133,21 @@ where
         }
         .to_json_vec()?;
 
-        // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
-        // use another hash, it's necessary to update this.
-        let signature: Signature = self.sk.sign(&sign_bytes);
+        let standard_credential = self.create_standard_credential(&sign_bytes)?;
 
         let data = Metadata {
             username: self.username.clone(),
-            key_hash: self.key_hash,
+            key_hash: self.sign_with,
             sequence,
         };
 
-        let credential = Credential::Secp256k1(signature.to_bytes().to_vec().try_into()?);
+        Ok((data, Credential::Standard(standard_credential)))
+    }
 
-        Ok((data, credential))
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<Signature> {
+        let sk = &self.keys.get(&self.sign_with).unwrap().0;
+
+        create_signature(sk, sign_bytes).map(Signature::Secp256k1)
     }
 }
 
@@ -151,27 +162,35 @@ where
         &mut self,
         test_suite: &mut TestSuite<PP>,
         factory: Addr,
-        code_hash: Hash256,
         params: AccountParams,
         funds: Coins,
-    ) -> StdResult<TestAccount<Defined<Addr>>>
+    ) -> StdResult<TestAccount>
     where
         PP: ProposalPreparer,
         AppError: From<PP::Error>,
     {
         // If registering a single account, ensure the supplied username matches this account's username.
-        match &params {
-            AccountParams::Spot(single::Params { owner, .. })
-            | AccountParams::Margin(single::Params { owner, .. }) => {
+        let account_type = match &params {
+            AccountParams::Spot(single::Params { owner, .. }) => {
                 assert_eq!(owner, &self.username);
+                AccountType::Spot
             },
-            _ => {},
-        }
+            AccountParams::Margin(single::Params { owner, .. }) => {
+                assert_eq!(owner, &self.username);
+                AccountType::Margin
+            },
+            AccountParams::Safe(_) => AccountType::Safe,
+        };
 
         // Derive the new accounts address.
         let index = test_suite
             .query_wasm_smart(factory, QueryNextAccountIndexRequest {})
             .unwrap();
+
+        let code_hash = test_suite
+            .query_wasm_smart(factory, QueryCodeHashRequest { account_type })
+            .should_succeed();
+
         let address = Addr::derive(factory, code_hash, Salt { index }.into_bytes().as_slice());
 
         // Create a new account
@@ -186,22 +205,57 @@ where
 
         Ok(TestAccount {
             username: self.username.clone(),
-            key: self.key,
-            key_hash: self.key_hash,
             sequence: 0,
-            sk: self.sk.clone(),
             address: Defined::new(address),
+            keys: self.keys.clone(),
+            sign_with: self.sign_with,
+            opt: self.opt.clone(),
+            use_otp: self.use_otp,
         })
     }
 }
 
-impl Addressable for TestAccount<Defined<Addr>> {
+impl<T> TestAccount<T, (SigningKey, Key)>
+where
+    T: MaybeDefined<Addr>,
+{
+    pub fn key(&self) -> &Key {
+        &self.keys.1
+    }
+
+    pub fn key_hash(&self) -> Hash160 {
+        self.sign_with
+    }
+}
+
+impl<T> TestAccount<T>
+where
+    T: MaybeDefined<Addr>,
+{
+    pub fn first_key(&self) -> Key {
+        self.keys.iter().next().unwrap().1 .1
+    }
+
+    pub fn first_key_hash(&self) -> Hash160 {
+        *self.keys.keys().next().unwrap()
+    }
+
+    pub fn keys(&self) -> &BTreeMap<Hash160, (SigningKey, Key)> {
+        &self.keys
+    }
+
+    pub fn sign_with(&self) -> Hash160 {
+        self.sign_with
+    }
+}
+
+impl Addressable for TestAccount {
     fn address(&self) -> Addr {
         *self.address.inner()
     }
 }
 
-impl Signer for TestAccount<Defined<Addr>> {
+impl Signer for TestAccount {
     fn sign_transaction(
         &mut self,
         msgs: Vec<Message>,
@@ -226,6 +280,25 @@ impl Signer for TestAccount<Defined<Addr>> {
             credential: credential.to_json_value()?,
         })
     }
+}
+
+pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
+    let sk = SigningKey::random(&mut OsRng);
+    let pk = sk
+        .verifying_key()
+        .to_encoded_point(true)
+        .to_bytes()
+        .to_vec()
+        .try_into()
+        .unwrap();
+    (sk, pk)
+}
+
+pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> StdResult<ByteArray<64>> {
+    // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
+    // use another hash, it's necessary to update this.
+    let signature: EcdsaSignature = sk.sign(sign_bytes);
+    signature.to_bytes().to_vec().try_into()
 }
 
 // ---------------------------------- factory ----------------------------------

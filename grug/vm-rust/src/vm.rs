@@ -46,7 +46,7 @@ impl Vm for RustVm {
         // in Rust, the compiler can prevent storage writes in query methods
         // (unlike Wasm VM where an FFI is involved).
         _storage_readonly: bool,
-        querier: QuerierProvider<Self>,
+        querier: Box<dyn QuerierProvider>,
         // In Rust VM, we don't check for max query depth.
         _query_depth: usize,
         // Rust VM doesn't support gas tracking, so we make no use of the
@@ -63,7 +63,7 @@ impl Vm for RustVm {
 
 pub struct RustInstance {
     storage: StorageProvider,
-    querier: QuerierProvider<RustVm>,
+    querier: Box<dyn QuerierProvider>,
     wrapper: ContractWrapper,
 }
 
@@ -268,7 +268,7 @@ impl Instance for RustInstance {
 mod tests {
     use {
         crate::{ContractBuilder, RustVm},
-        grug_app::{GasTracker, Instance, QuerierProvider, Shared, StorageProvider, Vm},
+        grug_app::{GasTracker, Instance, QuerierProviderImpl, Shared, StorageProvider, Vm},
         grug_types::{
             Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
             Storage, Timestamp,
@@ -327,8 +327,12 @@ mod tests {
 
         let gas_tracker = GasTracker::new_limitless();
 
-        let querier_provider =
-            QuerierProvider::new(vm.clone(), Box::new(db.clone()), gas_tracker.clone(), block);
+        let querier_provider = QuerierProviderImpl::new_boxed(
+            vm.clone(),
+            Box::new(db.clone()),
+            gas_tracker.clone(),
+            block,
+        );
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
