@@ -1,4 +1,5 @@
 mod address;
+pub mod fee;
 pub mod hook;
 pub mod ism;
 pub mod mailbox;
