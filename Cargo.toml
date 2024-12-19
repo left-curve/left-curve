@@ -1,6 +1,6 @@
 [workspace]
 exclude  = ["indexer/.data"]
-members  = ["dango/*", "grug/*", "indexer/*"]
+members  = ["dango/*", "grug/*", "hyperlane/*", "indexer/*"]
 resolver = "2"
 
 [workspace.package]
@@ -126,6 +126,11 @@ dango-vesting         = { path = "dango/vesting" }
 indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+
+# Hyperlane packages
+hyperlane-mailbox = { path = "hyperlane/mailbox" }
+hyperlane-merkle  = { path = "hyperlane/merkle" }
+hyperlane-types   = { path = "hyperlane/types" }
 
 [workspace.dependencies.sea-orm]
 features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"]

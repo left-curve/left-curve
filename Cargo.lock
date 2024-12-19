@@ -3289,6 +3289,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperlane-mailbox"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hyperlane-types",
+]
+
+[[package]]
+name = "hyperlane-merkle-hook"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hex-literal",
+ "hyperlane-types",
+ "sha3",
+]
+
+[[package]]
+name = "hyperlane-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha3",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
