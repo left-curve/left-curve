@@ -1,7 +1,7 @@
 import { Button, Select, SelectItem, useWizard } from "@dango/shared";
 import { useConfig, useConnectors } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 
 export const ConnectorStep: React.FC = () => {
   const connectors = useConnectors();
@@ -20,7 +20,7 @@ export const ConnectorStep: React.FC = () => {
           chainId: chains.at(0)!.id,
           challenge: "Please sign this message to confirm your identity.",
         });
-        navigate("/");
+        navigate({ to: "/" });
       } catch (err) {
         console.error(err);
         setData({ retry: true, username });
