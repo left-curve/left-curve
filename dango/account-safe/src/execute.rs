@@ -360,8 +360,6 @@ mod tests {
                 credential: Json::null(),
             });
 
-            println!("{:?}", res);
-
             assert!(res.is_err_and(|err| err.to_string().contains(&format!(
                 "account {SAFE} isn't associated with user `{non_member}`"
             ))));

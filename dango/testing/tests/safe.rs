@@ -467,10 +467,16 @@ fn safe() {
             username.to_json_value().unwrap().into_inner(),
         );
 
-        tx.data.as_object_mut().unwrap().insert(
-            "key_hash".to_string(),
-            key_hash.to_json_value().unwrap().into_inner(),
-        );
+        tx.credential
+            .as_object_mut()
+            .and_then(|obj| obj.get_mut("standard"))
+            .and_then(|val| val.as_object_mut())
+            .map(|standard| {
+                standard.insert(
+                    "key_hash".to_string(),
+                    key_hash.to_json_value().unwrap().into_inner(),
+                )
+            });
 
         suite.send_transaction(tx).should_fail_with_error(error);
     }
