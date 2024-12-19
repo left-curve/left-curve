@@ -5,6 +5,7 @@ use {
 
 // ----------------------------------- types -----------------------------------
 
+// Messages are identified by Keccak hashes.
 pub type MessageId = HexByteArray<32>;
 
 #[grug::derive(Serde)]
@@ -31,6 +32,7 @@ impl Message {
         buf.into()
     }
 
+    // TODO: this panics if buffer is less than 77 bytes. handle this gracefully
     pub fn decode(buf: &[u8]) -> Self {
         Self {
             version: buf[0],
