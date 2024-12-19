@@ -34,7 +34,7 @@ fn main() {
     let users = btree_map! {
         Username::from_str("owner").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_OWNER.into()),
-            key_hash: PK_OWNER.hash160(),
+            key_hash: PK_OWNER.hash256(),
             balances: [
                 Coin::new("udng", 30_000_000_000).unwrap(),
                 Coin::new("uusdc", 100_000_000_000_000).unwrap(),
@@ -44,17 +44,17 @@ fn main() {
         },
         Username::from_str("user1").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER1.into()),
-            key_hash: PK_USER1.hash160(),
+            key_hash: PK_USER1.hash256(),
             balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
         },
         Username::from_str("user2").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER2.into()),
-            key_hash: PK_USER2.hash160(),
+            key_hash: PK_USER2.hash256(),
             balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
         },
         Username::from_str("user3").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER3.into()),
-            key_hash: PK_USER3.hash160(),
+            key_hash: PK_USER3.hash256(),
             balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
         },
     };

@@ -11,7 +11,7 @@ use {
         config::AppConfig,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
+        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
         MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
@@ -135,7 +135,7 @@ fn register_user(
     ctx: MutableCtx,
     username: Username,
     key: Key,
-    key_hash: Hash160,
+    key_hash: Hash256,
 ) -> anyhow::Result<Response> {
     // The username must not already exist.
     // We ensure this by asserting there isn't any key already associated with
@@ -170,7 +170,7 @@ fn onboard_new_user(
     factory: Addr,
     username: Username,
     key: Key,
-    key_hash: Hash160,
+    key_hash: Hash256,
     must_have_deposit: bool,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
@@ -272,7 +272,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_key(ctx: MutableCtx, key_hash: Hash160, key: Op<Key>) -> anyhow::Result<Response> {
+fn configure_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
     let username = get_username_by_address(ctx.storage, ctx.sender)?;
 
     match key {

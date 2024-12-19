@@ -444,7 +444,7 @@ fn safe() {
         // Sign the tx with attackers's private key.
         let mut tx = safe
             .with_signer(&attacker)
-            .with_sequence(12) // TODO: sequence isn't incremented if auth fails... should we make sure it increments?
+            .with_nonce(12) // TODO: sequence isn't incremented if auth fails... should we make sure it increments?
             .sign_transaction(
                 vec![Message::execute(
                     safe_address,
