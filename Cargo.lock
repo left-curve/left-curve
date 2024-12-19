@@ -3298,7 +3298,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperlane-merkle-hook"
+name = "hyperlane-merkle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
