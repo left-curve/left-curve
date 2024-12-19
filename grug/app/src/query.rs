@@ -32,7 +32,7 @@ pub fn query_balance<VM>(
     req: QueryBalanceRequest,
 ) -> AppResult<Coin>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     _query_bank(
@@ -55,7 +55,7 @@ pub fn query_balances<VM>(
     req: QueryBalancesRequest,
 ) -> AppResult<Coins>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     _query_bank(
@@ -78,7 +78,7 @@ pub fn query_supply<VM>(
     req: QuerySupplyRequest,
 ) -> AppResult<Coin>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     _query_bank(
@@ -101,7 +101,7 @@ pub fn query_supplies<VM>(
     req: QuerySuppliesRequest,
 ) -> AppResult<Coins>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     _query_bank(
@@ -124,7 +124,7 @@ fn _query_bank<VM>(
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let cfg = CONFIG.load(&storage)?;
@@ -241,7 +241,7 @@ pub fn query_wasm_smart<VM>(
     req: QueryWasmSmartRequest,
 ) -> AppResult<Json>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let chain_id = CHAIN_ID.load(&storage)?;

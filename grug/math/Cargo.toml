@@ -1,17 +1,17 @@
 [package]
-name          = "grug-math"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-math"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
 bnum      = { workspace = true, features = ["borsh"] }
-borsh     = { workspace = true, features = ["derive", "de_strict_order"] }
+borsh     = { workspace = true, features = ["de_strict_order", "derive"] }
 paste     = { workspace = true }
 serde     = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }

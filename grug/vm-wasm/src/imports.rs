@@ -414,7 +414,9 @@ mod tests {
             db_read, db_remove, db_remove_range, db_scan, db_write, debug, read_from_memory,
             write_to_memory, Environment, VmResult, WasmVm, GAS_PER_OPERATION,
         },
-        grug_app::{GasTracker, QuerierProvider, Shared, StorageProvider, APP_CONFIG, GAS_COSTS},
+        grug_app::{
+            GasTracker, QuerierProviderImpl, Shared, StorageProvider, APP_CONFIG, GAS_COSTS,
+        },
         grug_crypto::{Identity256, Identity512},
         grug_types::{
             encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
@@ -533,7 +535,7 @@ mod tests {
             let storage_provider =
                 StorageProvider::new(Box::new(storage.clone()), &[NAMESPACE_CONTRACT]);
 
-            let querier_provider = QuerierProvider::new(
+            let querier_provider = QuerierProviderImpl::new_boxed(
                 WasmVm::new(0),
                 Box::new(storage.clone()),
                 gas_tracker.clone(),

@@ -1,13 +1,13 @@
 [package]
-name          = "dango-cli"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-cli"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [[bin]]
 name = "dango"
@@ -19,13 +19,14 @@ clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
 dango-app          = { workspace = true }
+dango-genesis      = { workspace = true }
 dialoguer          = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-client        = { workspace = true }
 grug-db-disk       = { workspace = true }
 grug-jmt           = { workspace = true }
 grug-types         = { workspace = true }
-grug-vm-wasm       = { workspace = true }
+grug-vm-hybrid     = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }

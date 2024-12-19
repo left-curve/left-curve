@@ -1,7 +1,7 @@
 use {
     crate::{
         catch_event, handle_submessages, AppError, AppResult, EventResult, GasTracker, Instance,
-        QuerierProvider, StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
+        QuerierProviderImpl, StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
@@ -24,7 +24,7 @@ pub fn call_in_0_out_1<VM, R>(
 ) -> AppResult<R>
 where
     R: BorshDeserialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -62,7 +62,7 @@ pub fn call_in_1_out_1<VM, P, R>(
 where
     P: BorshSerialize,
     R: BorshDeserialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -105,7 +105,7 @@ where
     P1: BorshSerialize,
     P2: BorshSerialize,
     R: BorshDeserialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Create the VM instance
@@ -146,7 +146,7 @@ pub fn call_in_0_out_1_handle_response<VM>(
     ctx: &Context,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -192,7 +192,7 @@ pub fn call_in_1_out_1_handle_response<VM, P>(
 ) -> EventResult<EvtGuest>
 where
     P: BorshSerialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -237,7 +237,7 @@ pub fn call_in_1_out_1_handle_auth_response<VM, P>(
 ) -> EventResult<EvtGuest>
 where
     P: BorshSerialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -296,7 +296,7 @@ pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
 where
     P1: BorshSerialize,
     P2: BorshSerialize,
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = EvtGuest::base(ctx.contract, name);
@@ -338,14 +338,19 @@ fn create_vm_instance<VM>(
     code_hash: Hash256,
 ) -> AppResult<VM::Instance>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     // Load the program code from storage and deserialize
     let code = CODES.load(&storage, code_hash)?;
 
     // Create the providers
-    let querier = QuerierProvider::new(vm.clone(), storage.clone(), gas_tracker.clone(), block);
+    let querier = Box::new(QuerierProviderImpl::new(
+        vm.clone(),
+        storage.clone(),
+        gas_tracker.clone(),
+        block,
+    ));
     let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(vm.build_instance(
@@ -359,7 +364,7 @@ where
     )?)
 }
 
-pub(crate) fn handle_response<VM>(
+fn handle_response<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
@@ -369,7 +374,7 @@ pub(crate) fn handle_response<VM>(
     mut evt: EvtGuest,
 ) -> EventResult<EvtGuest>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     evt.contract_events = response.subevents;

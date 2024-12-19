@@ -16,7 +16,7 @@ pub fn do_cron_execute<VM>(
     next: Timestamp,
 ) -> EventResult<EvtCron>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_cron_execute(vm, storage, gas_tracker, block, contract, time, next);
@@ -43,7 +43,7 @@ fn _do_cron_execute<VM>(
     next: Timestamp,
 ) -> EventResult<EvtCron>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtCron::base(contract, time, next);

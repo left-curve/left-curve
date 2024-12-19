@@ -1,12 +1,15 @@
 use {
+    crate::home_directory::HomeDirectory,
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
-    grug_app::{App, AppError, Indexer, NullIndexer},
+    dango_genesis::build_rust_codes,
+    grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
-    grug_vm_wasm::WasmVm,
+    grug_types::HashExt,
+    grug_vm_hybrid::HybridVm,
     indexer_sql::non_blocking_indexer,
-    std::{path::PathBuf, time},
+    std::{fmt::Debug, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -29,32 +32,62 @@ pub struct StartCmd {
     #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
+    /// Enable the internal indexer
+    #[arg(long, default_value = "false")]
+    indexer_keep_blocks: bool,
+
     /// The indexer database url
     #[arg(long, default_value = "postgres://localhost")]
     indexer_database_url: String,
 }
 
 impl StartCmd {
-    pub async fn run(self, data_dir: PathBuf) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         if self.indexer_enabled {
-            let mut indexer = non_blocking_indexer::IndexerBuilder::default()
+            let indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_keep_blocks(self.indexer_keep_blocks)
                 .with_database_url(&self.indexer_database_url)
+                .with_dir(app_dir.indexer_dir())
                 .build()
                 .expect("Can't create indexer");
-            indexer.start().expect("Can't start indexer");
-            self.run_with_indexer(data_dir, indexer).await
+            self.run_with_indexer(app_dir, indexer).await
         } else {
-            self.run_with_indexer(data_dir, NullIndexer).await
+            self.run_with_indexer(app_dir, NullIndexer).await
         }
     }
 
-    async fn run_with_indexer<ID>(self, data_dir: PathBuf, indexer: ID) -> anyhow::Result<()>
+    async fn run_with_indexer<ID>(
+        self,
+        app_dir: HomeDirectory,
+        mut indexer: ID,
+    ) -> anyhow::Result<()>
     where
-        ID: Indexer + Send + Clone + 'static,
+        ID: Indexer + Send + 'static,
+        ID::Error: Debug,
         AppError: From<ID::Error>,
     {
-        let db = DiskDb::open(data_dir)?;
-        let vm = WasmVm::new(self.wasm_cache_capacity);
+        let db = DiskDb::open(app_dir.data_dir())?;
+
+        indexer
+            .start(&db.state_storage(None)?)
+            .expect("Can't start indexer");
+
+        let codes = build_rust_codes();
+        let vm = HybridVm::new(self.wasm_cache_capacity, [
+            codes.account_factory.to_bytes().hash256(),
+            codes.account_margin.to_bytes().hash256(),
+            codes.account_safe.to_bytes().hash256(),
+            codes.account_spot.to_bytes().hash256(),
+            codes.amm.to_bytes().hash256(),
+            codes.bank.to_bytes().hash256(),
+            codes.ibc_transfer.to_bytes().hash256(),
+            codes.lending.to_bytes().hash256(),
+            codes.oracle.to_bytes().hash256(),
+            codes.taxman.to_bytes().hash256(),
+            codes.token_factory.to_bytes().hash256(),
+            codes.vesting.to_bytes().hash256(),
+        ]);
+
         let app = App::new(
             db,
             vm,

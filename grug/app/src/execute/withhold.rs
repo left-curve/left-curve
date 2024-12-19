@@ -15,7 +15,7 @@ pub fn do_withhold_fee<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtWithhold>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode);
@@ -40,7 +40,7 @@ pub fn _do_withhold_fee<VM>(
     mode: AuthMode,
 ) -> EventResult<EvtWithhold>
 where
-    VM: Vm + Clone,
+    VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
     let mut evt = EvtWithhold::base(tx.sender, tx.gas_limit);
