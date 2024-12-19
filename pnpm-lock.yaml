@@ -509,6 +509,12 @@ importers:
       '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../sdk/packages/connect-kit
+      '@left-curve/crypto':
+        specifier: workspace:^
+        version: link:../../sdk/packages/crypto
+      '@left-curve/encoding':
+        specifier: workspace:^
+        version: link:../../sdk/packages/encoding
       '@left-curve/react':
         specifier: workspace:^
         version: link:../../sdk/packages/react
