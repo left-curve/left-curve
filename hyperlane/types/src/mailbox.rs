@@ -1,12 +1,9 @@
 use {
     crate::Addr32,
-    grug::{Addr, HexBinary, HexByteArray, Inner},
+    grug::{Addr, Hash256, HexBinary, Inner},
 };
 
 // ----------------------------------- types -----------------------------------
-
-// Messages are identified by Keccak hashes.
-pub type MessageId = HexByteArray<32>;
 
 #[grug::derive(Serde)]
 pub struct Message {
@@ -96,7 +93,7 @@ pub enum QueryMsg {
     Nonce {},
     /// Query whether a message has been delivered.
     #[returns(bool)]
-    Delivered { message_id: MessageId },
+    Delivered { message_id: Hash256 },
 }
 
 // ---------------------------------- events -----------------------------------
@@ -111,7 +108,7 @@ pub struct Dispatch {
 
 #[grug::derive(Serde)]
 pub struct DispatchId {
-    pub message_id: MessageId,
+    pub message_id: Hash256,
 }
 
 #[grug::derive(Serde)]
@@ -123,5 +120,5 @@ pub struct Process {
 
 #[grug::derive(Serde)]
 pub struct ProcessId {
-    pub message_id: MessageId,
+    pub message_id: Hash256,
 }

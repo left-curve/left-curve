@@ -1,7 +1,7 @@
 use {
     crate::{CONFIG, DELIVERIES, LATEST_DISPATCHED_ID, MAILBOX_VERSION, NONCE},
     anyhow::{anyhow, ensure},
-    grug::{Addr, Coins, HexBinary, HexByteArray, MutableCtx, Response, StdResult},
+    grug::{Addr, Coins, Hash, HexBinary, MutableCtx, Response, StdResult},
     hyperlane_types::{
         hook::{self, QueryQuoteDispatchRequest},
         ism::QueryVerifyRequest,
@@ -66,7 +66,7 @@ fn dispatch(
     };
 
     let raw_message = message.encode();
-    let message_id = HexByteArray::from_inner(ctx.api.keccak256(&raw_message));
+    let message_id = Hash::from_inner(ctx.api.keccak256(&raw_message));
 
     // Query the required hook for fee amount.
     let fees = ctx
@@ -120,7 +120,7 @@ fn process(
 
     // Decode the Hyperlane message.
     let message = Message::decode(&raw_message);
-    let message_id = HexByteArray::from_inner(ctx.api.keccak256(&raw_message));
+    let message_id = Hash::from_inner(ctx.api.keccak256(&raw_message));
     let recipient = message.recipient.try_into()?;
 
     ensure!(

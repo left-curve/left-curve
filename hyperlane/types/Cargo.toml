@@ -1,16 +1,18 @@
 [package]
-name          = "hyperlane-types"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "hyperlane-types"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
-anyhow = { workspace = true }
-grug   = { workspace = true }
+anyhow      = { workspace = true }
+grug        = { workspace = true }
+hex-literal = { workspace = true }
+sha3        = { workspace = true }
 
 [dev-dependencies]

@@ -1,7 +1,7 @@
 use {
     crate::{CONFIG, DELIVERIES, NONCE},
-    grug::{ImmutableCtx, Json, JsonSerExt, StdResult},
-    hyperlane_types::mailbox::{Config, MessageId, QueryMsg},
+    grug::{Hash256, ImmutableCtx, Json, JsonSerExt, StdResult},
+    hyperlane_types::mailbox::{Config, QueryMsg},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -33,6 +33,6 @@ fn query_nonce(ctx: ImmutableCtx) -> StdResult<u32> {
 }
 
 #[inline]
-fn query_delivered(ctx: ImmutableCtx, message_id: MessageId) -> bool {
+fn query_delivered(ctx: ImmutableCtx, message_id: Hash256) -> bool {
     DELIVERIES.has(ctx.storage, message_id)
 }

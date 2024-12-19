@@ -3303,6 +3303,8 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
+ "hex-literal",
+ "sha3",
 ]
 
 [[package]]
