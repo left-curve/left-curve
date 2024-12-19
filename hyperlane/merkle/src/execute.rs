@@ -25,10 +25,11 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 #[inline]
 fn post_dispatch(ctx: MutableCtx, raw_message: HexBinary) -> anyhow::Result<Response> {
-    // This method can only be called by the mailbox contract, and the message
-    // must match the last dispatched message ID.
-    // Here we only check the sender, trusting the mailbox is implemented
-    // correctly, i.e. will only call this right after a message is dispatched.
+    // In the reference implementation, we should check here that the message ID
+    // matches the mailbox's last dispatched ID.
+    // Here instead, we just ensure the sender is the mailbox, and trust the
+    // mailbox is properly implemented, i.e. it only calls this right after
+    // dispatching a message.
     ensure!(
         ctx.sender == MAILBOX.load(ctx.storage)?,
         "sender is not mailbox"

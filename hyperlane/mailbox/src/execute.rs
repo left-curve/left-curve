@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, DELIVERIES, LATEST_DISPATCHED_ID, MAILBOX_VERSION, NONCE},
+    crate::{CONFIG, DELIVERIES, MAILBOX_VERSION, NONCE},
     anyhow::{anyhow, ensure},
     grug::{Addr, Coins, Hash, HexBinary, MutableCtx, Response, StdResult},
     hyperlane_types::{
@@ -81,9 +81,6 @@ fn dispatch(
     // sender specified hook, or the default hook if not specified.
     ctx.funds.deduct_many(fees.clone())?;
 
-    // Commit the message.
-    LATEST_DISPATCHED_ID.save(ctx.storage, &message_id)?;
-
     Ok(Response::new()
         .add_message(grug::Message::execute(
             cfg.required_hook,
@@ -158,7 +155,7 @@ fn process(
         })
         .map_err(|err| anyhow!("ISM verification failed: {err}"))?;
 
-    // Commit the delivery.
+    // Mark the message as delivered.
     DELIVERIES.insert(ctx.storage, message_id)?;
 
     Ok(Response::new()
