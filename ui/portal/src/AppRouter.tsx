@@ -5,6 +5,8 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  redirect,
+  useNavigate,
 } from "@tanstack/react-router";
 
 import { useAccount, useConfig, usePublicClient } from "@left-curve/react";
@@ -20,11 +22,25 @@ import type {
   UseConfigReturnType,
   UsePublicClientReturnType,
 } from "@left-curve/react";
+import { useEffect } from "react";
 
 export const AppRoute = createRoute({
   id: "app-layout",
   getParentRoute: () => RootRouter,
+  beforeLoad: async ({ context }) => {
+    const { account } = context;
+    if (!account?.isConnected) throw redirect({ to: "/auth/login" });
+  },
   component: () => {
+    const { account, isConnected } = useAccount();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+      if (!isConnected) {
+        navigate({ to: "/auth/login" });
+      }
+    }, [account]);
+
     return (
       <>
         <AppLayout>
