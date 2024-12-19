@@ -372,6 +372,9 @@ export function createConfig<
       get store() {
         return store as StoreApi;
       },
+      get events() {
+        return { change, connect, disconnect };
+      },
       connectors: {
         setup,
         setState(value) {
