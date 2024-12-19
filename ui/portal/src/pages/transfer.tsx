@@ -1,5 +1,4 @@
-import { createLazyRoute } from "@tanstack/react-router";
-import { useQueryState } from "nuqs";
+import { createLazyRoute, useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Tab, Tabs } from "@dango/shared";
 import { ReceiveContainer } from "~/components/ReceiveContainer";
@@ -9,10 +8,8 @@ const actions = ["send", "receive"];
 
 export const TransferRoute = createLazyRoute("/transfer")({
   component: () => {
-    const [action, setAction] = useQueryState("action", {
-      defaultValue: "send",
-      clearOnDefault: false,
-    });
+    const { action } = useSearch({ strict: false });
+    const navigate = useNavigate({ from: "." });
 
     return (
       <div className="min-h-full w-full flex-1 flex items-center justify-center z-10 relative p-4">
@@ -22,7 +19,7 @@ export const TransferRoute = createLazyRoute("/transfer")({
               <Tabs
                 key="transfer-actions"
                 defaultSelectedKey={action}
-                onSelectionChange={(key) => setAction(key.toString())}
+                onSelectionChange={(key) => navigate({ search: { action: key.toString() } })}
                 classNames={{
                   tabsWrapper:
                     "p-1 bg-surface-green-300 text-typography-green-300 rounded-2xl gap-0",

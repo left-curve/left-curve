@@ -1,17 +1,19 @@
-import { createLazyFileRoute, createLazyRoute } from "@tanstack/react-router";
+import { createLazyRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { PoolManagment, PoolSelector, Tab, Tabs } from "@dango/shared";
-import { parseAsInteger, useQueryState } from "nuqs";
 
 const actions = ["deposit", "withdraw"];
 
 export const AmmRoute = createLazyRoute("/amm")({
   component: () => {
-    const [poolId, setPoolId] = useQueryState("pool", parseAsInteger);
-    const [action, setAction] = useQueryState("action");
+    const { poolId, action } = useSearch({ strict: false });
+    const navigate = useNavigate({ from: "." });
 
     const [showPoolSelector, setShowPoolSelector] = useState(false);
+
+    const setPoolId = (id: number) => navigate({ search: { poolId: id } });
+    const setAction = (action: string) => navigate({ search: { action } });
 
     useEffect(() => {
       if (!action) setAction("deposit");
@@ -44,16 +46,16 @@ export const AmmRoute = createLazyRoute("/amm")({
             </Tabs>
           </div>
           {showPoolSelector ? (
-            <PoolSelector onPoolSelected={() => setShowPoolSelector(false)} />
+            <PoolSelector onPoolSelected={(id) => [setPoolId(id), setShowPoolSelector(false)]} />
           ) : (
-            <PoolManagment onRequestPoolSelection={() => setShowPoolSelector(true)} />
+            <PoolManagment
+              poolId={poolId}
+              action={action}
+              onRequestPoolSelection={() => setShowPoolSelector(true)}
+            />
           )}
         </div>
       </div>
     );
   },
 });
-
-function RouteComponent() {
-  return <div>Hello "/amm"!</div>;
-}

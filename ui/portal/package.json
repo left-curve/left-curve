@@ -20,7 +20,6 @@
     "@tanstack/react-router": "catalog:",
     "@tanstack/zod-adapter": "catalog:",
     "framer-motion": "catalog:",
-    "nuqs": "catalog:",
     "react": "catalog:",
     "zod": "catalog:",
     "react-dom": "catalog:",
