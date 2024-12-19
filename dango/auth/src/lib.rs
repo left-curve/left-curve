@@ -5,7 +5,10 @@ use {
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
-        auth::{ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature},
+        auth::{
+            ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature,
+            StandardCredential,
+        },
         config::AppConfig,
     },
     grug::{
@@ -14,11 +17,11 @@ use {
     },
 };
 
-/// Expected sequence number of the next transaction this account sends.
+/// Expected nonce number of the next transaction this account sends.
 ///
-/// All three account types (spot, margin, Safe) stores their sequences in this
+/// All three account types (spot, margin, Safe) stores their nonces in this
 /// same storage slot.
-pub const NEXT_SEQUENCE: Counter<u32> = Counter::new("sequence", 0, 1);
+pub const NEXT_NONCE: Counter<u32> = Counter::new("nonce", 0, 1);
 
 /// Authenticate a transaction.
 ///
@@ -46,8 +49,19 @@ pub fn authenticate_tx(
         tx.data.deserialize_json()?
     };
 
-    // Increment the sequence.
-    let (sequence, _) = NEXT_SEQUENCE.increment(ctx.storage)?;
+    let (standard_credential, session_credential) =
+        match tx.credential.deserialize_json::<Credential>()? {
+            Credential::Session(c) => (c.authorization, Some(c)),
+            Credential::Standard(c) => (c, None),
+        };
+
+    let StandardCredential {
+        key_hash,
+        signature,
+    } = standard_credential;
+
+    // Increment the nonce.
+    let (nonce, _) = NEXT_NONCE.increment(ctx.storage)?;
 
     // Query the account factory. We need to do three things:
     // - ensure the `tx.sender` is associated with the username;
@@ -62,7 +76,7 @@ pub fn authenticate_tx(
                 factory,
                 ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
             ),
-            Query::wasm_raw(factory, KEYS.path((&metadata.username, metadata.key_hash))),
+            Query::wasm_raw(factory, KEYS.path((&metadata.username, key_hash))),
         ])?;
 
         // If the sender account is associated with the username, then an entry
@@ -76,51 +90,55 @@ pub fn authenticate_tx(
         );
 
         res2.as_wasm_raw()
-            .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
+            .ok_or_else(|| anyhow!("key hash {} not found", key_hash))?
             .deserialize_borsh()?
     };
 
-    // Verify sequence.
+    // Verify nonce.
     match ctx.mode {
-        // For `CheckTx`, we only make sure the tx's sequence is no smaller than
-        // the stored sequence. This allows the account to broadcast multiple
+        // For `CheckTx`, we only make sure the tx's nonce is no smaller than
+        // the stored nonce. This allows the account to broadcast multiple
         // txs for the same block.
         AuthMode::Check => {
             ensure!(
-                metadata.sequence >= sequence,
-                "sequence is too old: expecting at least {}, found {}",
-                sequence,
-                metadata.sequence
+                metadata.nonce >= nonce,
+                "nonce is too old: expecting at least {}, found {}",
+                nonce,
+                metadata.nonce
             );
+
+            if let Some(expiry) = metadata.expiry {
+                ensure!(
+                    expiry > ctx.block.timestamp,
+                    "transaction expired at {:?}",
+                    expiry
+                );
+            }
         },
-        // For `FinalizeBlock`, we make sure the tx's sequence matches exactly
-        // the stored sequence.
+        // For `FinalizeBlock`, we make sure the tx's nonce matches exactly
+        // the stored nonce.
         AuthMode::Finalize => {
             ensure!(
-                metadata.sequence == sequence,
-                "incorrect sequence: expecting {}, got {}",
-                sequence,
-                metadata.sequence
+                metadata.nonce == nonce,
+                "incorrect nonce: expecting {}, got {}",
+                nonce,
+                metadata.nonce
             );
         },
-        // No need to verify sequence in simulation mode.
+        // No need to verify nonce in simulation mode.
         AuthMode::Simulate => (),
     }
 
     let sign_doc = SignDoc {
+        gas_limit: tx.gas_limit,
         sender: ctx.contract,
         messages: tx.msgs.into_inner(),
-        chain_id: ctx.chain_id,
-        sequence,
+        data: metadata,
     };
 
     match ctx.mode {
-        AuthMode::Check | AuthMode::Finalize => match tx.credential.deserialize_json()? {
-            Credential::Standard(signature) => {
-                // Verify the `SignDoc` signatures.
-                verify_signature(ctx.api, key, signature, &VerifyData::SignDoc(&sign_doc))?;
-            },
-            Credential::Session(session) => {
+        AuthMode::Check | AuthMode::Finalize => {
+            if let Some(session) = session_credential {
                 ensure!(
                     session.session_info.expire_at > ctx.block.timestamp,
                     "session expired at {:?}.",
@@ -131,7 +149,7 @@ pub fn authenticate_tx(
                 verify_signature(
                     ctx.api,
                     key,
-                    session.session_info_signature,
+                    signature,
                     &VerifyData::SessionInfo(&session.session_info),
                 )?;
 
@@ -142,7 +160,10 @@ pub fn authenticate_tx(
                     Signature::Secp256k1(session.session_signature),
                     &VerifyData::SignDoc(&sign_doc),
                 )?;
-            },
+            } else {
+                // Verify the `SignDoc` signatures.
+                verify_signature(ctx.api, key, signature, &VerifyData::SignDoc(&sign_doc))?;
+            }
         },
         AuthMode::Simulate => (),
     };
@@ -170,7 +191,7 @@ fn verify_signature(
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
                     json!({
                         "chainId": sign_doc.chain_id,
-                        "sequence": sign_doc.sequence,
+                        "nonce": sign_doc.sequence,
                         "messages": sign_doc.messages,
                     }),
                 ),
