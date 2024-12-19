@@ -35,6 +35,8 @@ fn post_dispatch(ctx: MutableCtx, raw_message: HexBinary) -> anyhow::Result<Resp
         "sender is not mailbox"
     );
 
+    // TODO: why don't we have the mailbox provide the `message_id`, so no need
+    // to recompute here?
     let message_id = Hash256::from_inner(ctx.api.keccak256(&raw_message));
 
     let tree = MERKLE_TREE.update(ctx.storage, |mut tree| -> anyhow::Result<_> {
@@ -42,9 +44,12 @@ fn post_dispatch(ctx: MutableCtx, raw_message: HexBinary) -> anyhow::Result<Resp
         Ok(tree)
     })?;
 
-    let index = tree.count - 1;
-
     Ok(Response::new()
-        .add_event("post_dispatch", PostDispatch { message_id, index })?
-        .add_event("inserted_into_tree", InsertedIntoTree { index })?)
+        .add_event("post_dispatch", PostDispatch {
+            message_id,
+            index: tree.count - 1,
+        })?
+        .add_event("inserted_into_tree", InsertedIntoTree {
+            index: tree.count - 1,
+        })?)
 }
