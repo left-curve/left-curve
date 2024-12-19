@@ -3314,7 +3314,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
- "hex-literal",
+ "hex",
+ "serde",
+ "serde_json",
  "sha3",
 ]
 

@@ -59,7 +59,7 @@ impl Default for MerkleTree {
 }
 
 impl MerkleTree {
-    pub fn insert(mut self, node: Hash256) -> anyhow::Result<Self> {
+    pub fn insert(&mut self, node: Hash256) -> anyhow::Result<()> {
         ensure!(self.count < MAX_LEAVES, "tree is full");
 
         self.count += 1;
@@ -70,7 +70,7 @@ impl MerkleTree {
         for (i, next) in self.branch.iter().enumerate() {
             if (size & 1) == 1 {
                 self.branch[i] = node;
-                return Ok(self);
+                return Ok(());
             }
 
             node = keccak256_two(next, node);
@@ -107,4 +107,60 @@ where
     hasher.update(a);
     hasher.update(b);
     Hash256::from_inner(hasher.finalize().into())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+// Adapted from:
+// https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/test/merkle.test.ts
+#[cfg(test)]
+mod tests {
+    use {super::*, serde::Deserialize};
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct TestCase {
+        pub test_name: String,
+        pub expected_root: String,
+        pub leaves: Vec<String>,
+    }
+
+    // https://docs.rs/web3/latest/src/web3/signing.rs.html#226-236
+    fn eip191_hash<T>(message: T) -> [u8; 32]
+    where
+        T: AsRef<[u8]>,
+    {
+        let mut hasher = Keccak256::new();
+        hasher.update(b"\x19Ethereum Signed Message:\n");
+        hasher.update(message.as_ref().len().to_string());
+        hasher.update(message);
+        hasher.finalize().into()
+    }
+
+    #[test]
+    fn merkle_tree_insertion_works() {
+        let cases = include_str!("../testdata/merkle.json");
+        let cases: Vec<TestCase> = serde_json::from_str(cases).unwrap();
+
+        for case in cases {
+            let mut tree = MerkleTree::default();
+
+            for leaf in case.leaves {
+                let leaf_hash = eip191_hash(leaf);
+                tree.insert(leaf_hash.into()).unwrap();
+            }
+
+            let root = tree.root();
+            let expected_root = hex::decode(&case.expected_root[2..]).unwrap();
+
+            assert_eq!(
+                root.as_ref(),
+                expected_root,
+                "root hash mismatch! name: {}, expect: {}, got {}",
+                case.test_name,
+                hex::encode(root),
+                hex::encode(&expected_root)
+            );
+        }
+    }
 }

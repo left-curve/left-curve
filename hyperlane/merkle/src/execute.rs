@@ -34,11 +34,13 @@ fn post_dispatch(ctx: MutableCtx, raw_message: HexBinary) -> anyhow::Result<Resp
         "sender is not mailbox"
     );
 
-    // Insert the message into the Merkle tree.
     let message_id = Hash256::from_inner(ctx.api.keccak256(&raw_message));
-    let tree = MERKLE_TREE.update(ctx.storage, |tree| tree.insert(message_id))?;
 
-    // Index starts from zero, so minus one.
+    let tree = MERKLE_TREE.update(ctx.storage, |mut tree| -> anyhow::Result<_> {
+        tree.insert(message_id)?;
+        Ok(tree)
+    })?;
+
     let index = tree.count - 1;
 
     Ok(Response::new()
