@@ -1,7 +1,8 @@
 import type { Account, Username } from "./account.js";
 import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
-import type { Emitter } from "./emitter.js";
+
+import type { Emitter, EventData } from "./emitter.js";
 import type { Signer } from "./signer.js";
 import type { Transport } from "./transports.js";
 import type { Prettify } from "./utils.js";
@@ -60,6 +61,12 @@ export type ConnectorEventMap = {
     type: string;
     data?: unknown | undefined;
   };
+};
+
+export type ConnectorEvents = {
+  change: (event: EventData<ConnectorEventMap, "change">) => void;
+  connect: (event: EventData<ConnectorEventMap, "connect">) => void;
+  disconnect: (event: EventData<ConnectorEventMap, "disconnect">) => void;
 };
 
 export type CreateConnectorFn<

@@ -1,7 +1,13 @@
 import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
 import type { AnyCoin, Denom } from "./coin.js";
-import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector.js";
+import type {
+  Connection,
+  Connector,
+  ConnectorEvents,
+  ConnectorUId,
+  CreateConnectorFn,
+} from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 import type { Transport } from "./transports.js";
@@ -98,6 +104,7 @@ type Internal<
   readonly mipd: MipdStore | undefined;
   readonly store: StoreApi;
   readonly transports: transports;
+  readonly events: ConnectorEvents;
   connectors: {
     setup: (connectorFn: CreateConnectorFn) => Connector;
     setState(value: Connector[] | ((state: Connector[]) => Connector[])): void;
