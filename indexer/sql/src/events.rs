@@ -1,12 +1,14 @@
 use {
+    crate::entity,
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, Coins, CommitmentStatus, ContractEvent, Event, EventStatus, EvtAuthenticate,
+        Addr, Block, Coins, CommitmentStatus, ContractEvent, Event, EventStatus, EvtAuthenticate,
         EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest, EvtInstantiate,
         EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, Hash256, Json, Label,
-        MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, TxEvents,
+        MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, Tx, TxEvents,
     },
     serde::{Deserialize, Serialize},
+    strum_macros::Display,
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -18,20 +20,33 @@ pub struct IndexEvent {
     pub event: FlattenEvent,
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum IndexEventStatus {
+    #[strum(serialize = "0")]
     Ok,
+    #[strum(serialize = "1")]
     Failed(String),
+    #[strum(serialize = "2")]
     SubFailed,
+    #[strum(serialize = "3")]
     Handled(String),
 }
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum IndexCommitmentStatus {
+    #[strum(serialize = "0")]
     Committed,
+    #[strum(serialize = "1")]
     Failed,
+    #[strum(serialize = "2")]
     Reverted,
 }
 
@@ -78,8 +93,11 @@ fn get_next_event_index(events: &[IndexEvent]) -> Option<u32> {
 
 // ------------------------------ Flatten Events -------------------------------
 
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum FlattenEvent {
     Configure(EvtConfigure),
     /// Coins were transferred from one account to another.
@@ -192,7 +210,7 @@ pub struct FlattenEvtGuest {
 
 // ------------------------------- Trait Flatten -------------------------------
 
-trait Flatten {
+pub trait Flatten {
     fn flat(
         self,
         parent_id: &EventId,
@@ -202,7 +220,7 @@ trait Flatten {
     ) -> Vec<IndexEvent>;
 }
 
-trait FlattenStatus {
+pub trait FlattenStatus {
     fn flat_status(
         self,
         parent_id: &EventId,
@@ -211,7 +229,7 @@ trait FlattenStatus {
     ) -> Vec<IndexEvent>;
 }
 
-fn flat_commitment_status<T>(
+pub fn flat_commitment_status<T>(
     block_id: u64,
     category: IndexCategory,
     category_id: u32,

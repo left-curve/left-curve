@@ -7,9 +7,13 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub transaction_id: Uuid,
+    pub transaction_id: Option<Uuid>,
     pub created_at: DateTime,
     pub r#type: String,
+    pub method: Option<String>,
+    pub event_status: String,
+    pub commitment_status: String,
+    pub order_id: i32,
     #[sea_orm(column_type = "JsonBinary")]
     pub attributes: Json,
     pub block_height: i64,
