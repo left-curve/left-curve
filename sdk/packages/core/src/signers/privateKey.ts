@@ -5,6 +5,7 @@ import { createKeyHash } from "../accounts/index.js";
 
 import type { KeyPair } from "@left-curve/crypto";
 import {
+  type JsonValue,
   KeyAlgo,
   type KeyAlgoType,
   type KeyHash,
@@ -63,15 +64,29 @@ export class PrivateKeySigner implements Signer {
   }
 
   async signTx(signDoc: SignDoc) {
-    const { messages, chainId, sequence, sender } = signDoc;
-    const tx = sha256(serialize({ sender, messages, chainId, sequence }));
+    const { messages, sender, data, gasLimit } = signDoc;
+    const tx = sha256(serialize({ sender, messages, data, gasLimit }));
 
     const signature = await this.signBytes(tx);
 
-    const credential = { secp256k1: encodeBase64(signature) };
     const keyHash = await this.getKeyHash();
 
-    return { credential, keyHash };
+    const credential = {
+      standard: {
+        signature: { secp256k1: encodeBase64(signature) },
+        keyHash,
+      },
+    };
+
+    return { credential, signDoc };
+  }
+
+  async signArbitrary(payload: JsonValue) {
+    const bytes = sha256(serialize(payload));
+    const signature = await this.signBytes(bytes);
+    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
+    const keyHash = await this.getKeyHash();
+    return { signature: secp256k1Signature, keyHash };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {
