@@ -4,7 +4,7 @@ use crate::{EncodedBytes, HashEncoder};
 ///
 /// This equivalent to:
 ///
-/// ```no_run
+/// ```ignore
 /// Hash::from_inner(hex_literal::hex!("..."))
 /// ```
 #[macro_export]
