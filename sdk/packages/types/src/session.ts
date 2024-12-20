@@ -1,13 +1,13 @@
+import type { StandardCredential } from "./credential.js";
 import type { Base64 } from "./encoding.js";
-import type { Signature } from "./signature.js";
 
 export type SessionCredential = {
   /** The `SigningSessionInfo` that contains data to be signed with user key and otp key. */
   sessionInfo: SigningSessionInfo;
   /** Signature of the `SignDoc` by the session key. */
   sessionSignature: Base64;
-  /** Signatures of the `SigningSessionInfo` by the user key and OTP. */
-  sessionInfoSignature: Signature;
+  /** Signatures of the `SigningSessionInfo` by the user key */
+  authorization: StandardCredential;
 };
 
 export type SigningSessionInfo = {
@@ -22,5 +22,5 @@ export type SigningSession = {
   privateKey: Uint8Array;
   keyHash: string;
   sessionInfo: SigningSessionInfo;
-  sessionInfoSignature: Signature;
+  authorization: StandardCredential;
 };
