@@ -1,23 +1,25 @@
 use {
-    dango_genesis::{Codes, Contracts},
+    dango_genesis::Contracts,
     dango_testing::{setup_test_naive, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
             self,
-            margin::{CollateralPower, QueryHealthRequest},
+            margin::{CollateralPower, LiquidationEvent, QueryHealthRequest},
             single,
         },
         account_factory::AccountParams,
         config::AppConfig,
         lending::{self, MarketUpdates, QueryDebtRequest},
-        oracle::{self, PythId, WBTC_USD_ID},
+        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PythId, WBTC_USD_ID},
     },
     grug::{
-        btree_map, Addressable, Binary, Coins, ContractWrapper, Denom, HashExt, JsonSerExt,
-        Message, MsgConfigure, NonEmpty, NumberConst, QuerierExt, ResultExt, Udec128, Uint128,
+        btree_map, Addr, Addressable, Binary, Coins, ContractEvent, Denom, JsonDeExt, JsonSerExt,
+        Message, MsgConfigure, NextNumber, NonEmpty, Number, NumberConst, PrevNumber, QuerierExt,
+        ResultExt, SearchEvent, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
-    std::{str::FromStr, sync::LazyLock},
+    proptest::{collection::vec, prelude::*, proptest},
+    std::{cmp::min, str::FromStr, sync::LazyLock},
 };
 
 static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
@@ -44,12 +46,11 @@ const WBTC_VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neOb
 /// - publish_time: **1732965697**
 const WBTC_VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQNHHIXSITl1E5rklfcRJ+fTmdXaBHA1Rhpd4AKd6gpJbGvcVZT0bmi5p1aaw10oEkruufXhvmEDgtCE1WENpk0xAARVRgaUYTxGBqPnzyOD6flYdHgL21qD2wm4AwHw8WMNOR3yvLDjuRkPdKCUHLUbOuaiUPJzK7DqphslPmTtChyXAQba+OsLHO3tJP5mFTfp9C0+wYbFk5DaXLYo0dHpshKqkC0tzXFrxzwiFUJscJ/qO5YC/ELvSB7eOyyYACqdzwJ+AQi+TpwsCHYMqT/DgSC3R4Il8WVVwp9KByaoAwswCH4y1mCtaV/rkpDHbK9dA9hm1hsEhpt3706y0YgttJny7uqCAQrPJK5440aRWGWqAUOH9COAomYlwb/qS+GJPRu5WizFIkhlsFK1osJSnHD5hmyXL0y58IyznYIjSr23/7RwWu//AAtm1B5zLdF2QgpQOLn3GGO8XNsvyWTb78I9oh1PQxnM+Rg89ImtRNpcbB9bF7wL3/wFUlZuBQGkm6igEzwzn/MGAAweFo1G9Fi0U9O9TjkUwGAKu4vVjwyP7j7tUI1FaYvRSxgL8Xvsx6uGePebx1y8V6TPcbjVR7ElL6TdKkOoVYxkAQ0M2X/klMnTmnBEZP1uMv4uAirn5QtFPX+q0FRI2Vnd/mPc1hF1saZ7kxah9M+V/1uGTQACalJBcLDLLbIcugy4AA5pvhB/AMUhVT5ejOO8ivazNhNtRhyp21Qk/qVYk8dmkhA+QY7RdjTXuU8TQg8e9HPhCo1/pNvt3NCZIP/ylNPHAQ+YF5H8kAq8OVTZlGvI7WvE6TKNtu8O9TuSdgibj5M3xFfZWf2hZZjuugKHVCe9DI0T+TIcjlyvON6+PrETUwNgARCfgdbK0GZ/Rw2GxakrXnE65vyUfMzTY63S93XcVrNlvSpEJIWbS2hhvxFw45WEksxPko6UfMJPpTZKG3sIAb4jABG1t35Wbn+AJ0fkoBPQL5lbRJVBTtY4RgBwhQnFKb2BdH8kHFI2DZD1pH+563Z08/RBPCjN48GZZzitp9OvBx8hABJTX8Up7HtYhLbqQendITTU3L27cmrGzjYHM7lR7VBlCBV7ebLHD8gShmxcJrPWnCCbuk6BrGRsTU7dgtz46U7jAGdJxewAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFv/gqAUFVV1YAAAAAAArM0q4AACcQvH/JSE5oq9bhIvQg1VV414fW/SsBAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAjRZEA9pwAAAAKQIm7x////+AAAAABnScXsAAAAAGdJxewAAAjPg8DAoAAAAAKaCFQ0CwdL0pYZ6jFIksWRnD8Yx1WX4LYMrhe9/+Z0T3i7MarKAlss59jV+mt6A/kKK+jDSP/oJz8vRNcCi8ZBhb/Qe7dJHJxIUzii5JHD9ItZ66YI1350NAVkQOysOWecA2JNOP1cK9RCHretlbv//OPlp7zfi8yn/wOr2RxcXPaERgM9r95qX6ltsOq8F6ZA45dR5DLrkby3Ymn1z+pLBYQWSubgJD5s8LNiBGKhME1OtZozdQZ9ifYY4FxdYRqBeiGgfunKrCJYh9Ud6LA+Xl+hRui8fmq8VIhmsxaPpPg=";
 
-/// Asserts that two `Udec128` values are approximately equal within a specified
-/// relative difference
-fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
+/// Calculates the relative difference between two `Udec128` values
+fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
     // Handle the case where both numbers are zero
     if a == Udec128::ZERO && b == Udec128::ZERO {
-        return;
+        return Udec128::ZERO;
     }
 
     // Calculate absolute difference
@@ -67,9 +68,13 @@ fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
     };
 
     // Calculate relative difference
-    let rel_diff = abs_diff / larger;
+    abs_diff / larger
+}
 
-    // Assert that the relative difference is within the maximum allowed
+/// Asserts that two `Udec128` values are approximately equal within a specified
+/// relative difference
+fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
+    let rel_diff = relative_difference(a, b);
     assert!(
         rel_diff <= Udec128::from_str(max_rel_diff).unwrap(),
         "assertion failed: values are not approximately equal\n  left: {}\n right: {}\n  max_rel_diff: {}\n  actual_rel_diff: {}",
@@ -132,6 +137,7 @@ fn register_and_feed_usdc_price(
     feed_oracle_price(suite, accounts, contracts, USDC_VAA);
 }
 
+/// Feeds the oracle contract a price for WBTC
 fn register_and_feed_btc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -143,6 +149,7 @@ fn register_and_feed_btc_price(
     feed_oracle_price(suite, accounts, contracts, WBTC_VAA_1);
 }
 
+/// Sets the collateral power for a given denom
 fn set_collateral_power(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -172,20 +179,68 @@ fn set_collateral_power(
         .should_succeed_and_equal(config.clone());
 }
 
+/// Helper function to mint several coins
+fn mint_coins(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+    address: Addr,
+    coins: Coins,
+) {
+    for coin in coins {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.bank,
+                &dango_types::bank::ExecuteMsg::Mint {
+                    to: address,
+                    amount: coin.amount,
+                    denom: coin.denom,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+}
+
+/// Helper function to register a fixed price for a collateral
+fn register_fixed_price(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+    denom: Denom,
+    price: Udec128,
+    precision: u8,
+) {
+    // Register price source
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                denom => dango_types::oracle::PriceSource::Fixed {
+                    humanized_price: price,
+                    precision,
+                    timestamp: 0,
+                }
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+}
+
 #[test]
 fn margin_account_creation() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     // Create a margin account.
+    let username = accounts.user1.username.clone();
     accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(username)),
             Coins::new(),
         )
         .should_succeed();
@@ -201,23 +256,20 @@ fn margin_account_creation() {
 /// - borrows from the margin account
 fn setup_margin_test_env(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
-    codes: &Codes<ContractWrapper>,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> TestAccount {
     register_and_feed_usdc_price(suite, accounts, contracts);
     register_and_feed_btc_price(suite, accounts, contracts);
 
     // Create a margin account.
+    let username = accounts.user1.username.clone();
     let margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             suite,
             contracts.account_factory,
-            codes.account_margin.to_bytes().hash256(),
-            AccountParams::Margin(single::Params {
-                owner: accounts.relayer.username.clone(),
-            }),
+            AccountParams::Margin(single::Params::new(username)),
             Coins::new(),
         )
         .should_succeed();
@@ -225,7 +277,7 @@ fn setup_margin_test_env(
     // Deposit some USDC to the lending pool
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100_000_000_000).unwrap(),
@@ -255,7 +307,7 @@ fn setup_margin_test_env(
     // Deposit some btc to the lending pool
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(BTC.clone(), 100_000_000_000).unwrap(),
@@ -275,8 +327,8 @@ fn setup_margin_test_env(
 
 #[test]
 fn cant_liquidate_when_overcollateralised() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &codes, &contracts);
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
 
     // Borrow with the margin account
     suite
@@ -291,7 +343,7 @@ fn cant_liquidate_when_overcollateralised() {
     // Try to liquidate the margin account, should fail as it's not undercollateralized
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: USDC.clone(),
@@ -303,8 +355,8 @@ fn cant_liquidate_when_overcollateralised() {
 
 #[test]
 fn liquidation_works() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &codes, &contracts);
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
 
     // Borrow with the margin account
     suite
@@ -338,13 +390,13 @@ fn liquidation_works() {
 
     // Check liquidator account's USDC balance before
     let balance_before = suite
-        .query_balance(&accounts.relayer.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, should succeed
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: USDC.clone(),
@@ -355,7 +407,7 @@ fn liquidation_works() {
 
     // Check liquidator account's USDC balance after
     let balance_after = suite
-        .query_balance(&accounts.relayer.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -377,7 +429,7 @@ fn liquidation_works() {
     // Try to liquidate the rest of the account's collateral, should succeed
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: USDC.clone(),
@@ -389,7 +441,7 @@ fn liquidation_works() {
     // Check liquidator account's USDC balance after
     let balance_before = balance_after;
     let balance_after = suite
-        .query_balance(&accounts.relayer.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -414,8 +466,8 @@ fn liquidation_works() {
 
 #[test]
 fn liquidation_works_with_multiple_debt_denoms() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &codes, &contracts);
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
 
     // Borrow some USDC with the margin account
     suite
@@ -430,7 +482,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
     // Send some more USDC to the margin account as collateral
     suite
         .transfer(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             Coins::one(USDC.clone(), 15_000_000_000).unwrap(), // 15k USDC
         )
@@ -447,10 +499,9 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .should_succeed();
 
     // Query account's health
-    let health = suite
+    suite
         .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
-        .unwrap();
-    assert!(health.utilization_rate < Udec128::ONE);
+        .should_succeed_and(|health| health.utilization_rate < Udec128::ONE);
 
     // Update the oracle price of BTC to go from $71k to $96k, making the account undercollateralised
     feed_oracle_price(&mut suite, &mut accounts, &contracts, WBTC_VAA_2);
@@ -464,14 +515,14 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's USDC balance before
     let usdc_balance_before = suite
-        .query_balance(&accounts.relayer.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, fully paying off USDC debt,
     // and some of the BTC debt
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: USDC.clone(),
@@ -486,7 +537,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's USDC balance after
     let usdc_balance_after = suite
-        .query_balance(&accounts.relayer.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC.clone())
         .unwrap();
 
     // Ensure liquidators USDC balance increased
@@ -509,7 +560,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
     // to cover the debt. Should fail since the account no longer has USDC debt.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: BTC.clone(),
@@ -520,13 +571,13 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's BTC balance before
     let btc_balance_before = suite
-        .query_balance(&accounts.relayer.address(), BTC.clone())
+        .query_balance(&accounts.user1.address(), BTC.clone())
         .unwrap();
 
     // Try to liquidate the rest of the account's collateral, should succeed
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
                 collateral: BTC.clone(),
@@ -537,7 +588,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's BTC balance after
     let btc_balance_after = suite
-        .query_balance(&accounts.relayer.address(), BTC.clone())
+        .query_balance(&accounts.user1.address(), BTC.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -575,4 +626,471 @@ fn liquidation_works_with_multiple_debt_denoms() {
         Udec128::from_str("46232.96693").unwrap(),
         "0.0001",
     );
+}
+
+#[derive(Debug, Clone)]
+struct TestDenom {
+    denom: Denom,
+    initial_price: PrecisionedPrice,
+}
+
+#[derive(Debug, Clone)]
+struct Collateral {
+    denom: TestDenom,
+    amount: Uint128,
+    collateral_power: CollateralPower,
+}
+
+#[derive(Debug, Clone)]
+struct Debt {
+    denom: TestDenom,
+    amount: Uint128,
+}
+
+/// Proptest strategy for generating a single Denom
+fn denom(index: usize) -> impl Strategy<Value = Denom> {
+    Just(Denom::from_str(&format!("denom{}", index)).unwrap())
+}
+
+/// Proptest strategy for generating a single TestDenom
+fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
+    (
+        denom(index),
+        // Precision between 6-18 decimals
+        (6u8..=18u8),
+        // Initial price between 0.01 and 10M USD
+        (1u128..1_000_000_000u128).prop_map(Udec128::new_percent),
+    )
+        .prop_map(|(denom, precision, price)| TestDenom {
+            denom,
+            initial_price: PrecisionlessPrice::new(price, price, 0u64).with_precision(precision),
+        })
+}
+
+/// Proptest strategy for generating a set of test denoms
+fn test_denoms(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<TestDenom>> {
+    // Generate size first
+    (min_size..=max_size).prop_flat_map(move |size| {
+        // Generate vec of indices from 1 to size and map to test denoms
+        (1..=size)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(test_denom)
+            .collect::<Vec<_>>()
+    })
+}
+
+/// Proptest strategy for generating a collateral
+fn collateral(denom: TestDenom) -> impl Strategy<Value = Collateral> {
+    (
+        // Value between $20 and $10M
+        (20u128..10_000_000u128).prop_map(Udec128::new),
+        // Collateral power between 30% and 95%
+        (30u128..95u128).prop_map(|x| CollateralPower::new(Udec128::new_percent(x)).unwrap()),
+    )
+        .prop_map(move |(value, collateral_power)| {
+            let amount = denom.initial_price.unit_amount_from_value(value).unwrap();
+            Collateral {
+                denom: denom.clone(),
+                amount,
+                collateral_power,
+            }
+        })
+}
+
+/// Represents a test scenario for a liquidation.
+/// The scenario contains the initial collaterals and debts for a margin account,
+/// along with a selected debt denom whose price will be changed to trigger liquidation.
+#[derive(Debug)]
+struct LiquidationScenario {
+    /// The denoms used for both collaterals and debts
+    test_denoms: Vec<TestDenom>,
+    /// The collaterals of the margin account before liquidation
+    collaterals: Vec<Collateral>,
+    /// The debts of the margin account before liquidation
+    debts: Vec<Debt>,
+    /// The denom whose price will be changed to trigger liquidation
+    changed_denom: TestDenom,
+    /// The new price of the changed denom
+    new_price: Udec128,
+}
+
+/// Proptest strategy for generating a liquidation scenario
+fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
+    (
+        // Generate a single set of denoms that will be used for both collaterals and debts
+        test_denoms(2, 7),
+        // Generate initial utilization rate from 80% to 99%
+        (80u128..=99u128).prop_map(Udec128::new_percent),
+        // Generate utilization rate after price change from 101% to 150%
+        (101u128..=150u128).prop_map(Udec128::new_percent),
+    )
+        .prop_flat_map(
+            |(all_denoms, initial_utilization_rate, utilization_rate_after_price_change)| {
+                // From the set of `all_denoms`, pick 1-3 randomly for debts and select one as the denom whose price will be changed
+                let debt_denoms =
+                    prop::sample::subsequence(all_denoms.clone(), 1..min(all_denoms.len(), 3))
+                        .prop_flat_map(|denoms| {
+                            let changed_denom = prop::sample::select(denoms.clone());
+                            (Just(denoms), changed_denom)
+                        });
+
+                (
+                    Just(all_denoms),
+                    debt_denoms,
+                    Just(initial_utilization_rate),
+                    Just(utilization_rate_after_price_change),
+                )
+            },
+        )
+        .prop_flat_map(
+            |(
+                all_denoms,
+                (debt_denoms, changed_denom),
+                initial_utilization_rate,
+                utilization_rate_after_price_change,
+            )| {
+                // Generate how many percent of the total debt value each debt denom should be
+                let debt_percentages =
+                    vec(1u128..1_000_000, debt_denoms.len()).prop_map(move |weights| {
+                        let sum: u128 = weights.iter().sum();
+                        weights
+                            .into_iter()
+                            .map(|w| Udec128::checked_from_ratio(w, sum).unwrap())
+                            .collect::<Vec<_>>()
+                    });
+
+                // Select 1-4 collateral denoms from the set of `all_denoms` excluding the changed debt denom.
+                let choices: Vec<TestDenom> = all_denoms
+                    .clone()
+                    .into_iter()
+                    .filter(|x| x.denom != changed_denom.denom)
+                    .collect();
+                let collaterals =
+                    prop::sample::subsequence(choices.clone(), 1..=min(choices.len(), 4))
+                        .prop_flat_map(|denoms| {
+                            denoms.into_iter().map(collateral).collect::<Vec<_>>()
+                        });
+
+                (
+                    Just(all_denoms),
+                    collaterals,
+                    Just(debt_denoms),
+                    Just(changed_denom),
+                    debt_percentages,
+                    Just(initial_utilization_rate),
+                    Just(utilization_rate_after_price_change),
+                )
+            },
+        )
+        .prop_flat_map(
+            |(
+                all_denoms,
+                collaterals,
+                debt_denoms,
+                changed_denom,
+                debt_percentages,
+                initial_utilization_rate,
+                utilization_rate_after_price_change,
+            )| {
+                // Generate debts such that the initial utilization rate is met
+                // Since the debts can also act as collaterals we must solve this equation:
+                // where: u = utilization rate, d = debt value, c = adjusted collateral value, p = average collateral power of debt denoms
+                // u = d / c => u = d / (c + d * p)
+                // And then solve for d to get:
+                // d = (u * c) / (1 - u * p)
+                let total_adjusted_collateral_value = collaterals
+                    .iter()
+                    .map(|c| {
+                        c.denom
+                            .initial_price
+                            .value_of_unit_amount(c.amount)
+                            .unwrap()
+                            * *c.collateral_power
+                    })
+                    .fold(Udec128::ZERO, |acc, x| acc + x);
+
+                let average_debt_collateral_power = debt_denoms
+                    .iter()
+                    .zip(debt_percentages.clone())
+                    .filter(|(d, _)| collaterals.iter().any(|c| c.denom.denom == d.denom))
+                    .map(|(denom, percentage)| {
+                        *collaterals
+                            .iter()
+                            .find(|c| c.denom.denom == denom.denom)
+                            .unwrap()
+                            .collateral_power
+                            * percentage
+                    })
+                    .fold(Udec128::ZERO, |acc, x| acc + x);
+
+                let total_debt_value = (initial_utilization_rate * total_adjusted_collateral_value)
+                    / (Udec128::ONE - initial_utilization_rate * average_debt_collateral_power);
+
+                let debts: Vec<Debt> = debt_denoms
+                    .iter()
+                    .zip(debt_percentages.clone())
+                    .map(|(denom, percentage)| {
+                        let value = total_debt_value * percentage;
+                        Debt {
+                            denom: denom.clone(),
+                            amount: denom.initial_price.unit_amount_from_value(value).unwrap(),
+                        }
+                    })
+                    .collect();
+
+                // Next, generate the price change such that the utilization rate after the price change is met
+                let changed_debt = debts
+                    .iter()
+                    .find(|d| d.denom.denom == changed_denom.denom)
+                    .unwrap();
+
+                // Get the value of all the other debts
+                let other_debt_values = total_debt_value
+                    - changed_debt
+                        .denom
+                        .initial_price
+                        .value_of_unit_amount(changed_debt.amount)
+                        .unwrap();
+
+                // The ajusted value of all debt denoms not including the changed denom
+                let other_debt_adjusted_value = debts
+                    .iter()
+                    .filter(|d| collaterals.iter().any(|c| c.denom.denom == d.denom.denom))
+                    .filter(|d| d.denom.denom != changed_debt.denom.denom)
+                    .map(|debt| {
+                        debt.denom
+                            .initial_price
+                            .value_of_unit_amount(debt.amount)
+                            .unwrap()
+                            * *collaterals
+                                .iter()
+                                .find(|c| c.denom.denom == debt.denom.denom)
+                                .unwrap()
+                                .collateral_power
+                    })
+                    .fold(Udec128::ZERO, |acc, x| acc + x);
+
+                let price_after: Udec128 = ((utilization_rate_after_price_change
+                    * (total_adjusted_collateral_value + other_debt_adjusted_value)
+                    - other_debt_values)
+                    .into_next()
+                    / changed_debt.amount.into_next().checked_into_dec().unwrap())
+                .checked_into_prev()
+                .unwrap();
+
+                let price_after_humanized = price_after
+                    * Udec128::new(10)
+                        .checked_pow(changed_debt.denom.initial_price.precision() as u32)
+                        .unwrap();
+
+                (
+                    Just(all_denoms),
+                    Just(collaterals),
+                    Just(debts),
+                    Just(price_after_humanized),
+                    Just(changed_denom),
+                )
+            },
+        )
+        .prop_map(
+            |(all_denoms, collaterals, debts, new_price, changed_denom)| LiquidationScenario {
+                test_denoms: all_denoms,
+                collaterals,
+                debts,
+                new_price,
+                changed_denom,
+            },
+        )
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 128,
+        max_local_rejects: 0,
+        max_global_rejects: 0,
+        max_shrink_iters: 128,
+        verbose: 1,
+        ..ProptestConfig::default()
+    })]
+
+    /// Uses proptest to generate a random liquidation scenarios and tests them
+    #[test]
+    fn test_liquidation_scenario(scenario in liquidation_scenario()) {
+        let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+        // Create margin account that will borrow and be liquidated
+        let username = accounts.user1.username.clone();
+        let mut margin_account = accounts
+            .user1
+            .register_new_account(
+                &mut suite,
+                contracts.account_factory,
+                AccountParams::Margin(single::Params::new(username.clone())),
+                Coins::new(),
+            )
+            .should_succeed();
+
+        // Create margin account as liquidator (we use margin account instead of
+        // spot so we can easily check the liquidator's account worth via health query)
+        let mut liquidator = accounts
+            .user1
+            .register_new_account(
+                &mut suite,
+                contracts.account_factory,
+                AccountParams::Margin(single::Params::new(username.clone())),
+                Coins::new(),
+            )
+            .should_succeed();
+
+        // Setup prices for all denoms
+        for denom in &scenario.test_denoms {
+            register_fixed_price(
+                &mut suite,
+                &mut accounts,
+                &contracts,
+                denom.denom.clone(),
+                denom.initial_price.humanized_price,
+                denom.initial_price.precision(),
+            );
+        }
+
+        for collateral in &scenario.collaterals {
+            // Set collateral power for each collateral
+            set_collateral_power(
+                &mut suite,
+                &mut accounts,
+                collateral.denom.denom.clone(),
+                collateral.collateral_power.clone(),
+            );
+
+            // Mint collateral to margin account
+            mint_coins(
+                &mut suite,
+                &mut accounts,
+                &contracts,
+                margin_account.address(),
+                Coins::one(collateral.denom.denom.clone(), collateral.amount).unwrap(),
+            );
+        }
+
+        // Mint debt denoms, provide to lending market, and borrow against it
+        for debt in &scenario.debts {
+            // Mint debt denom to the liquidator account (for repaying debt)
+            mint_coins(
+                &mut suite,
+                &mut accounts,
+                &contracts,
+                liquidator.address(),
+                Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
+            );
+
+            // Mint debt denom to the user account
+            let user = accounts.user1.address();
+            mint_coins(
+                &mut suite,
+                &mut accounts,
+                &contracts,
+                user,
+                Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
+            );
+
+            // Create borrow/lend market for each denom
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.lending,
+                    &lending::ExecuteMsg::UpdateMarkets(btree_map! {
+                        debt.denom.denom.clone() => MarketUpdates {},
+                    }),
+                    Coins::new(),
+                )
+                .should_succeed();
+
+            // Provide to lending market from the user account
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.lending,
+                    &lending::ExecuteMsg::Deposit {},
+                    Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
+                )
+                .should_succeed();
+
+            // Borrow the coins from the lending market with the margin account
+            suite
+                .execute(
+                    &mut margin_account,
+                    contracts.lending,
+                    &lending::ExecuteMsg::Borrow(
+                        Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
+                    ),
+                    Coins::new(),
+                )
+                .should_succeed();
+        }
+
+        // Change price of chosen debt denom to make margin account undercollateralized
+        register_fixed_price(
+            &mut suite,
+            &mut accounts,
+            &contracts,
+            scenario.changed_denom.denom.clone(),
+            scenario.new_price,
+            scenario.changed_denom.initial_price.precision(),
+        );
+
+        // Check margin accounts health
+        let margin_account_health = suite
+            .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+            .unwrap();
+
+
+        // Check liquidators account health before liquidation
+        let liquidator_health_before = suite
+            .query_wasm_smart(liquidator.address(), QueryHealthRequest {})
+            .unwrap();
+
+        // Attempt liquidation
+        let res = suite
+            .execute(
+                &mut liquidator,
+                margin_account.address(),
+                &account::margin::ExecuteMsg::Liquidate {
+                    collateral: scenario.collaterals[0].denom.denom.clone(),
+                },
+                margin_account_health.debts.clone(),
+            )
+            .should_succeed();
+
+        // Property: Liquidation bonus is within the bounds
+        let config = suite.query_app_config::<AppConfig>().unwrap();
+        let liquidation_event: LiquidationEvent = res.events
+            .search_event::<ContractEvent>()
+            .with_predicate(|e| e.ty == "margin/liquidation")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json()
+            .unwrap();
+
+        let liquidation_bonus: Udec128 = liquidation_event.liquidation_bonus;
+        prop_assert!(
+            liquidation_bonus >= *config.min_liquidation_bonus && liquidation_bonus <= *config.max_liquidation_bonus,
+            "Liquidation bonus should be within the bounds"
+        );
+
+        // Check liquidators account health after liquidation
+        let liquidator_health_after = suite
+            .query_wasm_smart(liquidator.address(), QueryHealthRequest {})
+            .unwrap();
+
+        // Property: Liquidation should always result in a profit for the liquidator
+        prop_assert!(
+            liquidator_health_after.total_collateral_value
+                > liquidator_health_before.total_collateral_value,
+            "Liquidation should result in profit for liquidator"
+        );
+    }
 }

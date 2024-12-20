@@ -5,7 +5,7 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{
         account::{
-            margin::{ExecuteMsg, HealthResponse},
+            margin::{ExecuteMsg, HealthResponse, LiquidationEvent},
             InstantiateMsg,
         },
         config::AppConfig,
@@ -200,15 +200,29 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     );
 
     // Send the claimed collateral and any debt refunds to the liquidator.
-    refunds.insert(Coin::new(liquidation_denom.clone(), claimed_collateral)?)?;
-    let send_msg = Message::transfer(ctx.sender, refunds)?;
+    let mut send_coins = refunds.clone();
+    send_coins.insert(Coin::new(liquidation_denom.clone(), claimed_collateral)?)?;
+    let send_msg = Message::transfer(ctx.sender, send_coins)?;
 
     // Create message to repay debt
     let repay_msg = Message::execute(
         app_cfg.addresses.lending,
         &lending::ExecuteMsg::Repay {},
-        repay_coins,
+        repay_coins.clone(),
     )?;
 
-    Ok(Response::new().add_message(repay_msg).add_message(send_msg))
+    let liquidation_event = LiquidationEvent {
+        liquidation_denom,
+        repay_coins,
+        refunds,
+        repaid_debt_value,
+        claimed_collateral,
+        liquidation_bonus: liq_bonus,
+        target_health_factor,
+    };
+
+    Ok(Response::new()
+        .add_message(repay_msg)
+        .add_message(send_msg)
+        .add_event("margin/liquidation", liquidation_event)?)
 }

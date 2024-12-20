@@ -38,6 +38,7 @@ reqwest         = { workspace = true, features = ["json"] }
 test-case       = { workspace = true }
 tokio           = { workspace = true, features = ["full"] }
 tracing         = { workspace = true }
+proptest        = { workspace = true }
 
 [[bench]]
 harness = false

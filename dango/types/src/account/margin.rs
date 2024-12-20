@@ -1,6 +1,6 @@
 use {
     crate::auth::Nonce,
-    grug::{Bounded, Coins, Denom, Udec128, ZeroExclusiveOneInclusive},
+    grug::{Bounded, Coins, Denom, Udec128, Uint128, ZeroExclusiveOneInclusive},
     std::collections::BTreeSet,
 };
 
@@ -43,4 +43,15 @@ pub enum QueryMsg {
     /// Queries the health of the margin account.
     #[returns(HealthResponse)]
     Health {},
+}
+
+#[grug::derive(Serde)]
+pub struct LiquidationEvent {
+    pub liquidation_denom: Denom,
+    pub repay_coins: Coins,
+    pub refunds: Coins,
+    pub repaid_debt_value: Udec128,
+    pub claimed_collateral: Uint128,
+    pub liquidation_bonus: Udec128,
+    pub target_health_factor: Udec128,
 }

@@ -57,6 +57,13 @@ impl Event {
             guest_event,
         })
     }
+
+    pub fn as_execute(self) -> EvtExecute {
+        match self {
+            Self::Execute(evt) => evt,
+            _ => panic!("not an execute event"),
+        }
+    }
 }
 
 /// An event indicating that the chain- or app-level configurations were updated.

@@ -83,8 +83,9 @@ impl<'a> MarginQuerier for QuerierWrapper<'a> {
             // regardless of collateral value.
             Udec128::ZERO
         } else if total_adjusted_collateral_value.is_zero() {
-            // The account has non-zero debt but zero collateral. This should
-            // not happen! We set utilization to maximum.
+            // The account has non-zero debt but zero collateral. This can
+            // happen if the account is liquidated. We set utilization to
+            // maximum.
             Udec128::MAX
         } else {
             total_debt_value / total_adjusted_collateral_value
