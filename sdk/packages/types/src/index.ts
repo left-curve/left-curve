@@ -165,12 +165,11 @@ export {
 
 export type {
   RawSignature,
-  OtpSignature,
   PasskeySignature,
   Eip712Signature,
   Signature,
   SignDoc,
-  SignedDoc,
+  SignatureOutcome,
   EthPersonalMessage,
 } from "./signature.js";
 
