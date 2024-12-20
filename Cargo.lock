@@ -1597,6 +1597,7 @@ dependencies = [
  "grug-vm-rust",
  "grug-vm-wasm",
  "k256",
+ "proptest",
  "pyth-sdk 0.8.0",
  "rand",
  "reqwest 0.12.9",

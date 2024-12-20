@@ -202,15 +202,25 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     );
 
     // Send the claimed collateral and any debt refunds to the liquidator.
-    refunds.insert(Coin::new(liquidation_denom.clone(), claimed_collateral)?)?;
-    let send_msg = Message::transfer(ctx.sender, refunds)?;
+    let mut send_coins = refunds.clone();
+    send_coins.insert(Coin::new(liquidation_denom.clone(), claimed_collateral)?)?;
+    let send_msg = Message::transfer(ctx.sender, send_coins)?;
 
     // Create message to repay debt
     let repay_msg = Message::execute(
         app_cfg.addresses.lending,
         &lending::ExecuteMsg::Repay {},
-        repay_coins,
+        repay_coins.clone(),
     )?;
 
-    Ok(Response::new().add_message(repay_msg).add_message(send_msg))
+    Ok(Response::new()
+        .add_message(repay_msg)
+        .add_message(send_msg)
+        .add_attribute("liquidation_denom", liquidation_denom)
+        .add_attribute("repay_coins", repay_coins)
+        .add_attribute("refunds", refunds)
+        .add_attribute("repaid_debt_value", repaid_debt_value)
+        .add_attribute("claimed_collateral", claimed_collateral)
+        .add_attribute("liquidation_bonus", liq_bonus)
+        .add_attribute("target_health_factor", target_health_factor))
 }
