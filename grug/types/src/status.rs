@@ -59,6 +59,17 @@ pub enum EventStatus<T> {
     NotReached,
 }
 
+impl<T> EventStatus<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::Ok(event) => event,
+            Self::NestedFailed(_) => panic!("nested failed"),
+            Self::Failed { .. } => panic!("failed"),
+            Self::NotReached => panic!("not reached"),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleEventStatus {
