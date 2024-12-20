@@ -64,7 +64,10 @@ export function useSessionKey() {
       sessionInfo,
       privateKey: keyPair.privateKey,
       publicKey: keyPair.getPublicKey(),
-      sessionInfoSignature: signature,
+      authorization: {
+        keyHash,
+        signature,
+      },
     };
 
     setSession(session);
