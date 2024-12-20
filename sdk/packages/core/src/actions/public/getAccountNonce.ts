@@ -1,12 +1,12 @@
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
 import { queryWasmSmart } from "./queryWasmSmart.js";
 
-export type GetAccountSequenceParameters = {
+export type GetAccountNonceParameters = {
   address: Address;
   height?: number;
 };
 
-export type GetAccountSequenceReturnType = Promise<number>;
+export type GetAccountNonceReturnType = Promise<number>;
 
 /**
  * Get the account state.
@@ -15,13 +15,13 @@ export type GetAccountSequenceReturnType = Promise<number>;
  * @param parameters.height The height at which to query the account state.
  * @returns The account state.
  */
-export async function getAccountSequence<
+export async function getAccountNonce<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetAccountSequenceParameters,
-): GetAccountSequenceReturnType {
+  parameters: GetAccountNonceParameters,
+): GetAccountNonceReturnType {
   const { address, height = 0 } = parameters;
   const msg = { sequence: {} };
   return await queryWasmSmart<number, chain, signer>(client, {

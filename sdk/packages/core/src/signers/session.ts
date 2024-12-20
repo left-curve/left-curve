@@ -10,7 +10,7 @@ import type {
 } from "@left-curve/types";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
-  const { sessionInfo, sessionInfoSignature, privateKey, keyHash } = session;
+  const { sessionInfo, authorization, privateKey, keyHash } = session;
   const signer = new Secp256k1(privateKey);
 
   async function getKeyHash() {
@@ -18,19 +18,20 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   }
 
   async function signTx(signDoc: SignDoc) {
-    const { messages, chainId, sequence, sender } = signDoc;
-    const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
+    const { messages, sender, data, gasLimit } = signDoc;
+    const bytes = sha256(serialize({ sender, messages, data, gasLimit }));
     const signature = signer.createSignature(bytes);
 
     const session: SessionCredential = {
       sessionInfo,
-      sessionInfoSignature,
+      authorization,
       sessionSignature: encodeBase64(signature),
     };
 
-    const credential = { session };
-
-    return { credential, keyHash };
+    return {
+      credential: { session, keyHash },
+      signDoc,
+    };
   }
 
   async function signArbitrary(payload: JsonValue) {

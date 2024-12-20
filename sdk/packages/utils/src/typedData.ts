@@ -73,7 +73,7 @@ export function composeTxTypedData(
   typeData?: Partial<TypedDataParameter<TxMessageType>>,
 ): TypedData {
   const { type = [], extraTypes = {} } = typeData || {};
-  const { chainId, sequence, messages } = message;
+  const { messages, metadata, gas_limit } = message;
 
   return {
     types: {
@@ -82,9 +82,15 @@ export function composeTxTypedData(
         { name: "verifyingContract", type: "address" },
       ],
       Message: [
-        { name: "chainId", type: "string" },
-        { name: "sequence", type: "uint32" },
+        { name: "metadata", type: "Metadata" },
+        { name: "gas_limit", type: "uint32" },
         { name: "messages", type: "TxMessage[]" },
+      ],
+      Metadata: [
+        { name: "username", type: "string" },
+        { name: "chain_id", type: "string" },
+        { name: "nonce", type: "uint32" },
+        ...(metadata.expiry ? [{ name: "expiry", type: "string" }] : []),
       ],
       TxMessage: type,
       ...extraTypes,
@@ -92,8 +98,8 @@ export function composeTxTypedData(
     primaryType: "Message",
     domain,
     message: {
-      chainId,
-      sequence,
+      metadata,
+      gas_limit,
       messages: recursiveTransform(messages, camelToSnake) as Message[],
     },
   };

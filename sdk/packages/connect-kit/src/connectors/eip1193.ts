@@ -1,6 +1,6 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
-import { ConnectorSigner, createKeyHash, createSignerClient } from "@left-curve/sdk";
+import { createKeyHash, createSignerClient } from "@left-curve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
 import { KeyAlgo } from "@left-curve/types";
 import {
@@ -85,7 +85,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async getClient() {
         if (!_client) {
           _client = createSignerClient({
-            signer: new ConnectorSigner(this),
+            signer: this,
             type: "eip1193",
             username: _username,
             transport: _transport,
@@ -162,9 +162,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
 
         return { signature: { eip712 }, keyHash };
       },
-      async signTx(signDoc) {
+      async signTx(signDoc, extra) {
+        const { typedData: types } = extra as { typedData?: Record<string, TypedDataProperty[]> };
         try {
-          const { typedData: types, sender, ...txMessage } = signDoc;
+          const { sender, messages, gasLimit: gas_limit, data: metadata } = signDoc;
           const provider = await this.getProvider();
           const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
@@ -175,7 +176,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             verifyingContract: sender,
           };
 
-          const typedData = composeTxTypedData(txMessage, domain, types);
+          const typedData = composeTxTypedData({ messages, gas_limit, metadata }, domain, types);
           const hashData = await hashTypedData(typedData);
           const signData = JSON.stringify(typedData);
 
@@ -189,14 +190,14 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             typed_data: encodeBase64(encodeUtf8(signData)),
           };
 
-          const credential = { standard: { eip712 } };
-
           const keyHash = createKeyHash({
             pubKey: await secp256k1RecoverPubKey(hashData, signature, true),
             keyAlgo: KeyAlgo.Secp256k1,
           });
 
-          return { credential, keyHash, signDoc };
+          const standard = { signature: { eip712 }, keyHash };
+
+          return { credential: { standard }, signDoc };
         } catch (error) {
           console.error(error);
           throw error;
