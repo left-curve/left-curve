@@ -11,7 +11,7 @@ import {
   getConnectorClientQueryOptions,
 } from "@left-curve/connect-kit/handlers";
 
-export type UseSigningClientParameters<
+export type UseConnectorClientParameters<
   config extends Config = Config,
   selectData = GetConnectorClientData,
 > = Prettify<
@@ -25,14 +25,14 @@ export type UseSigningClientParameters<
     >
 >;
 
-export type UseSigningClientReturnType<selectData = GetConnectorClientData> = UseQueryReturnType<
+export type UseConnectorClientReturnType<selectData = GetConnectorClientData> = UseQueryReturnType<
   selectData,
   GetConnectorClientErrorType
 >;
 
-export function useSigningClient(
-  parameters: UseSigningClientParameters = {},
-): UseSigningClientReturnType {
+export function useConnectorClient(
+  parameters: UseConnectorClientParameters = {},
+): UseConnectorClientReturnType {
   const { query = {} } = parameters;
 
   const config = useConfig(parameters);

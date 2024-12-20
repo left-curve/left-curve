@@ -6,3 +6,6 @@ export {
   type UseAccountNameReturnType,
   useAccountName,
 } from "./useAccountName";
+
+export { useSessionKey } from "./useSessionKey";
+export { useSigningClient } from "./useSigningClient";
