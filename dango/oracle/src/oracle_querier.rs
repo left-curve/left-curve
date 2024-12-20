@@ -32,6 +32,14 @@ where
                     .with_precision(precision);
                 Ok(price)
             },
+            PriceSource::Fixed {
+                humanized_price,
+                precision,
+                timestamp,
+            } => {
+                let price = PrecisionlessPrice::new(humanized_price, humanized_price, timestamp);
+                Ok(price.with_precision(precision))
+            },
         }
     }
 }
