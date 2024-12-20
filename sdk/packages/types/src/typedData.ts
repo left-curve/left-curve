@@ -1,4 +1,5 @@
 import type { Address } from "./address.js";
+import type { Metadata } from "./credential.js";
 import type { Message } from "./tx.js";
 
 // biome-ignore format: no formatting
@@ -40,9 +41,15 @@ export type DomainType = [
 ];
 
 export type MessageType = [
-  { name: "chainId"; type: "string" },
-  { name: "sequence"; type: "uint32" },
+  { name: "metadata"; type: "Metadata" },
+  { name: "gas_limit"; type: "uint32" },
   { name: "messages"; type: "TxMessage[]" },
+];
+
+export type MetadataType = [
+  { name: "username"; type: "string" },
+  { name: "chainId"; type: "string" },
+  { name: "nonce"; type: "uint32" },
 ];
 
 export type TxMessageType =
@@ -63,11 +70,12 @@ export type TypedData<TType extends TxMessageType | unknown = TxMessageType | un
 export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType | unknown> =
   Record<"Message", MessageType> &
     Record<"TxMessage", TMessage[]> &
+    Record<"Metadata", TypedDataProperty[]> &
     Record<"EIP712Domain", DomainType>;
 
 export type EIP712Message = {
-  chainId: string;
-  sequence: number;
+  metadata: Metadata;
+  gas_limit: number;
   messages: Message[];
 };
 

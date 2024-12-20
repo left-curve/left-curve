@@ -8,7 +8,7 @@ import type { SignerClient } from "@left-curve/sdk/clients";
 import { KeyAlgo } from "@left-curve/types";
 import { getRootDomain } from "@left-curve/utils";
 
-import type { AccountTypes, Address, Signature, Transport } from "@left-curve/types";
+import type { AccountTypes, Address, Transport } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;
@@ -118,8 +118,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         return { signature: { passkey }, keyHash };
       },
       async signTx(signDoc) {
-        const { sender, messages, chainId, sequence } = signDoc;
-        const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
+        const { sender, messages, data, gasLimit } = signDoc;
+        const bytes = sha256(serialize({ sender, messages, data, gasLimit }));
 
         const {
           webauthn,
@@ -141,10 +141,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const credential = { standard: { passkey } };
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        const standard = { signature: { passkey }, keyHash };
 
-        return { credential, keyHash, signDoc };
+        return { credential: { standard }, signDoc };
       },
       onConnect({ chainId, username }) {
         _username = username;
