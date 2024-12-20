@@ -3,7 +3,7 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 
-import type { Hex, Signature } from "@left-curve/types";
+import type { Hex, RawSignature } from "@left-curve/types";
 import type { KeyPair } from "./keypair.js";
 
 /**
@@ -15,7 +15,7 @@ import type { KeyPair } from "./keypair.js";
  */
 export async function secp256k1RecoverPubKey(
   hash: Hex | Uint8Array,
-  _signature_: Hex | Uint8Array | Signature,
+  _signature_: Hex | Uint8Array | RawSignature,
   compressed = false,
 ): Promise<Uint8Array> {
   const hashHex = isHex(hash) ? hash.replace("0x", "") : encodeHex(hash);

@@ -1,9 +1,14 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
-import { createKeyHash, createSignerClient } from "@left-curve/sdk";
+import { ConnectorSigner, createKeyHash, createSignerClient } from "@left-curve/sdk";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/sdk/actions";
 import { KeyAlgo } from "@left-curve/types";
-import { composeTypedData, getRootDomain, hashTypedData } from "@left-curve/utils";
+import {
+  composeArbitraryTypedData,
+  composeTxTypedData,
+  getRootDomain,
+  hashTypedData,
+} from "@left-curve/utils";
 import { createConnector } from "./createConnector.js";
 
 import type {
@@ -11,13 +16,14 @@ import type {
   Address,
   ConnectorId,
   EIP1193Provider,
-  Eip712Credential,
+  Eip712Signature,
+  Json,
   Transport,
+  TypedDataProperty,
 } from "@left-curve/types";
 
 import "@left-curve/types/window";
 import type { SignerClient } from "@left-curve/sdk/clients";
-import { ConnectorSigner } from "@left-curve/sdk/signers";
 
 type EIP1193ConnectorParameters = {
   id: ConnectorId;
@@ -79,9 +85,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async getClient() {
         if (!_client) {
           _client = createSignerClient({
-            transport: _transport,
             signer: new ConnectorSigner(this),
+            type: "eip1193",
             username: _username,
+            transport: _transport,
           });
         }
         return _client;
@@ -123,7 +130,39 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       async isAuthorized() {
         return _isAuthorized;
       },
-      async requestSignature(signDoc) {
+      async signArbitrary(payload) {
+        const { types, primaryType, message } = payload as {
+          types: Record<string, TypedDataProperty[]>;
+          message: Json;
+          primaryType: string;
+        };
+        if (!types || !primaryType) throw new Error("Typed data required");
+
+        const provider = await this.getProvider();
+        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+
+        const typedData = composeArbitraryTypedData({ message, types, primaryType });
+        const hashData = await hashTypedData(typedData);
+        const signData = JSON.stringify(typedData);
+
+        const signature = await provider.request({
+          method: "eth_signTypedData_v4",
+          params: [controllerAddress, signData],
+        });
+
+        const eip712: Eip712Signature = {
+          sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
+          typed_data: encodeBase64(encodeUtf8(signData)),
+        };
+
+        const keyHash = createKeyHash({
+          pubKey: await secp256k1RecoverPubKey(hashData, signature, true),
+          keyAlgo: KeyAlgo.Secp256k1,
+        });
+
+        return { signature: { eip712 }, keyHash };
+      },
+      async signTx(signDoc) {
         try {
           const { typedData: types, sender, ...txMessage } = signDoc;
           const provider = await this.getProvider();
@@ -136,7 +175,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             verifyingContract: sender,
           };
 
-          const typedData = composeTypedData(txMessage, domain, types);
+          const typedData = composeTxTypedData(txMessage, domain, types);
           const hashData = await hashTypedData(typedData);
           const signData = JSON.stringify(typedData);
 
@@ -145,12 +184,12 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             params: [controllerAddress, signData],
           });
 
-          const eip712: Eip712Credential = {
+          const eip712: Eip712Signature = {
             sig: encodeBase64(decodeHex(signature.slice(2).substring(0, 128))),
             typed_data: encodeBase64(encodeUtf8(signData)),
           };
 
-          const credential = { eip712 };
+          const credential = { standard: { eip712 } };
 
           const keyHash = createKeyHash({
             pubKey: await secp256k1RecoverPubKey(hashData, signature, true),
