@@ -23,6 +23,16 @@ pub struct Price<P = Defined<u8>> {
 }
 
 impl PrecisionlessPrice {
+    /// Creates a new PrecisionlessPrice with the given humanized price.
+    pub fn new(humanized_price: Udec128, humanized_ema: Udec128, timestamp: u64) -> Self {
+        Self {
+            humanized_price,
+            humanized_ema,
+            timestamp,
+            precision: Undefined::new(),
+        }
+    }
+
     pub fn with_precision(self, precision: u8) -> Price<Defined<u8>> {
         Price {
             humanized_price: self.humanized_price,
