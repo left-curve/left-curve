@@ -65,7 +65,19 @@ export class PrivateKeySigner implements Signer {
 
   async signTx(signDoc: SignDoc) {
     const { messages, sender, data, gasLimit } = signDoc;
-    const tx = sha256(serialize({ sender, messages, data, gasLimit }));
+    const tx = sha256(
+      serialize({
+        sender,
+        gasLimit,
+        messages,
+        data: {
+          username: data.username,
+          chainId: data.chainId,
+          nonce: data.nonce,
+          expiry: data.expiry,
+        },
+      }),
+    );
 
     const signature = await this.signBytes(tx);
 
@@ -83,10 +95,15 @@ export class PrivateKeySigner implements Signer {
 
   async signArbitrary(payload: JsonValue) {
     const bytes = sha256(serialize(payload));
-    const signature = await this.signBytes(bytes);
-    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
+    const signedBytes = await this.signBytes(bytes);
+
+    const signature = { secp256k1: encodeBase64(signedBytes) };
     const keyHash = await this.getKeyHash();
-    return { signature: secp256k1Signature, keyHash };
+
+    return {
+      credential: { standard: { keyHash, signature } },
+      payload,
+    };
   }
 
   async signBytes(bytes: Uint8Array): Promise<Uint8Array> {

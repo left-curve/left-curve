@@ -19,7 +19,35 @@ export const createSessionSigner = (session: SigningSession): Signer => {
 
   async function signTx(signDoc: SignDoc) {
     const { messages, sender, data, gasLimit } = signDoc;
-    const bytes = sha256(serialize({ sender, messages, data, gasLimit }));
+    const tx = sha256(
+      serialize({
+        sender,
+        gasLimit,
+        messages,
+        data: {
+          username: data.username,
+          chainId: data.chainId,
+          nonce: data.nonce,
+          expiry: data.expiry,
+        },
+      }),
+    );
+    const signature = signer.createSignature(tx);
+
+    const session: SessionCredential = {
+      sessionInfo,
+      authorization,
+      sessionSignature: encodeBase64(signature),
+    };
+
+    return {
+      credential: { session },
+      signDoc,
+    };
+  }
+
+  async function signArbitrary(payload: JsonValue) {
+    const bytes = sha256(serialize(payload));
     const signature = signer.createSignature(bytes);
 
     const session: SessionCredential = {
@@ -29,16 +57,9 @@ export const createSessionSigner = (session: SigningSession): Signer => {
     };
 
     return {
-      credential: { session, keyHash },
-      signDoc,
+      credential: { session },
+      payload,
     };
-  }
-
-  async function signArbitrary(payload: JsonValue) {
-    const bytes = sha256(serialize(payload));
-    const signature = signer.createSignature(bytes);
-    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
-    return { signature: secp256k1Signature, keyHash };
   }
 
   return {

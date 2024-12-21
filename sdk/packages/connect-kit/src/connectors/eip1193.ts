@@ -160,7 +160,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           keyAlgo: KeyAlgo.Secp256k1,
         });
 
-        return { signature: { eip712 }, keyHash };
+        return {
+          credential: { standard: { keyHash, signature: { eip712 } } },
+          payload,
+        };
       },
       async signTx(signDoc, extra) {
         const { typedData: types } = extra as { typedData?: Record<string, TypedDataProperty[]> };

@@ -5,6 +5,7 @@ import type {
   Hex,
   Json,
   Message,
+  Metadata,
   Power,
   TxMessageType,
   TypedData,
@@ -74,6 +75,7 @@ export function composeTxTypedData(
 ): TypedData {
   const { type = [], extraTypes = {} } = typeData || {};
   const { messages, metadata, gas_limit } = message;
+  const { expiry } = metadata;
 
   return {
     types: {
@@ -98,7 +100,10 @@ export function composeTxTypedData(
     primaryType: "Message",
     domain,
     message: {
-      metadata,
+      metadata: recursiveTransform(
+        { ...metadata, ...(expiry ? { expiry } : {}) },
+        camelToSnake,
+      ) as Metadata,
       gas_limit,
       messages: recursiveTransform(messages, camelToSnake) as Message[],
     },

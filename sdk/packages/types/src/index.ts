@@ -171,6 +171,7 @@ export type {
   SignDoc,
   SignatureOutcome,
   EthPersonalMessage,
+  ArbitrarySignatureOutcome,
 } from "./signature.js";
 
 export type {

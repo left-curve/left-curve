@@ -115,18 +115,29 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
 
-        return { signature: { passkey }, keyHash };
+        return {
+          credential: { standard: { keyHash, signature: { passkey } } },
+          payload,
+        };
       },
       async signTx(signDoc) {
         const { sender, messages, data, gasLimit } = signDoc;
-        const bytes = sha256(serialize({ sender, messages, data, gasLimit }));
+        const { username, chainId, nonce, expiry } = data;
+        const tx = sha256(
+          serialize({
+            sender,
+            gasLimit,
+            messages,
+            data: { username, chainId, nonce, expiry },
+          }),
+        );
 
         const {
           webauthn,
           credentialId,
           signature: asnSignature,
         } = await requestWebAuthnSignature({
-          challenge: bytes,
+          challenge: tx,
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });

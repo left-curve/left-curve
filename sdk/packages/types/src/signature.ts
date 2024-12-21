@@ -1,6 +1,6 @@
 import type { Address } from "./address.js";
 import type { Credential, Metadata } from "./credential.js";
-import type { Base64, Hex } from "./encoding.js";
+import type { Base64, Hex, JsonValue } from "./encoding.js";
 import type { Message } from "./tx.js";
 
 export type EthPersonalMessage = Hex | string | Uint8Array;
@@ -21,6 +21,11 @@ export type SignDoc = {
 export type SignatureOutcome = {
   credential: Credential;
   signDoc: SignDoc;
+};
+
+export type ArbitrarySignatureOutcome = {
+  credential: Credential;
+  payload: JsonValue;
 };
 
 export type Signature =
