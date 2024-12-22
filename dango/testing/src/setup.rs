@@ -149,6 +149,10 @@ where
                     "uusdc" => 100_000_000_000_000,
                     "uatom" => 100_000_000_000_000,
                     "uosmo" => 100_000_000_000_000,
+                    // In reality, it's not possible that anyone has Hyperlane
+                    // synthetic tokens in genesis. We add this just for testing
+                    // purose.
+                    "hpl/ethereum/ether" => 100_000_000_000_000,
                 }
                 .try_into()
                 .unwrap(),

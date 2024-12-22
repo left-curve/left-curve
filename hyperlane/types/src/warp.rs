@@ -13,18 +13,16 @@ use {
 /// Synthetic tokens will be given denoms with the format:
 ///
 /// ```plain
-/// hpl/{origin_domain}/{route}
+/// hpl/{chain_symbol}/{token_symbol}
 /// ```
 ///
-/// For example, USDC from Ethereum mainnet will be:
+/// For examples,
 ///
-/// ```plain
-/// hpl/1/000000000000000000000000e1de9910fe71cc216490ac7fcf019e13a34481d7
-/// ```
+/// - `hpl/btc/btc`
+/// - `hpl/eth/eth`
+/// - `hpl/sol/bonk`
 ///
-/// where `1` is Ethereum's [domain ID](https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains/ethereum),
-/// and `0000...e1de...81d7` is USDC's [`HypERC20Collateral`](https://etherscan.io/address/0xe1de9910fe71cc216490ac7fcf019e13a34481d7#code)
-/// contract address padded to 32 bytes.
+/// TODO: The exception to this is alloyed tokens (unimplemented yet).
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hpl"));
 
 /// The message to be sent via Hyperlane mailbox.
