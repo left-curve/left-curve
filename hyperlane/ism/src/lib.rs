@@ -15,8 +15,8 @@ pub fn query(ctx: ImmutableCtx, query: QueryMsg) -> StdResult<Json> {
             raw_message,
             metadata,
         } => {
-            let res = query_verify(ctx, raw_message, metadata)?;
-            res.to_json_value()
+            query_verify(ctx, raw_message, metadata)?;
+            ().to_json_value()
         },
     }
 }
