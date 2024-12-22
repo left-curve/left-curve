@@ -340,8 +340,8 @@ where
         &mut msgs,
         hyperlane_ism_code_hash,
         &Empty {},
-        "hyperlane/ism/message_id",
-        "hyperlane/ism/message_id",
+        "hyperlane/ism/message_id_multisig",
+        "hyperlane/ism/message_id_multisig",
     )?;
 
     // Instantiate Hyperlane Warp contract.
