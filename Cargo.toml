@@ -132,6 +132,7 @@ hyperlane-fee     = { path = "hyperlane/fee" }
 hyperlane-mailbox = { path = "hyperlane/mailbox" }
 hyperlane-merkle  = { path = "hyperlane/merkle" }
 hyperlane-types   = { path = "hyperlane/types" }
+hyperlane-warp    = { path = "hyperlane/warp" }
 
 [workspace.dependencies.sea-orm]
 features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"]

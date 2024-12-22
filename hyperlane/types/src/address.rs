@@ -1,11 +1,15 @@
 use {
     anyhow::ensure,
-    grug::{Addr, EncodedBytes, HexEncoder, Inner},
+    grug::{Addr, EncodedBytes, HexEncoder, Inner, Prefixer, PrimaryKey, StdResult},
+    std::{
+        borrow::Cow,
+        fmt::{self, Display},
+    },
 };
 
 /// Hyperlane addresses are left-padded to 32 bytes. See:
 /// <https://docs.hyperlane.xyz/docs/reference/messaging/send#:~:text=Recipient%20addresses%20are%20left%2Dpadded>
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub struct Addr32(EncodedBytes<[u8; 32], HexEncoder>);
 
@@ -48,5 +52,34 @@ impl TryFrom<Addr32> for Addr {
         addr.copy_from_slice(&addr32.0[12..]);
 
         Ok(Addr::from_inner(addr))
+    }
+}
+
+impl PrimaryKey for Addr32 {
+    type Output = Addr32;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 1;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(&self.0)]
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        // TODO: more informative error message
+        bytes.try_into().map(Self::from_inner).map_err(Into::into)
+    }
+}
+
+impl Prefixer for Addr32 {
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        vec![Cow::Borrowed(&self.0)]
+    }
+}
+
+impl Display for Addr32 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

@@ -1,0 +1,66 @@
+use {
+    crate::{MAILBOX, ROUTES},
+    grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    hyperlane_types::{
+        warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem},
+        Addr32,
+    },
+};
+
+const DEFAULT_PAGE_LIMIT: u32 = 30;
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+    match msg {
+        QueryMsg::Mailbox {} => {
+            let res = query_mailbox(ctx)?;
+            res.to_json_value()
+        },
+        QueryMsg::Route {
+            denom,
+            destination_domain,
+        } => {
+            let res = query_route(ctx, denom, destination_domain)?;
+            res.to_json_value()
+        },
+        QueryMsg::Routes { start_after, limit } => {
+            let res = query_routes(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+    }
+}
+
+#[inline]
+fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
+    MAILBOX.load(ctx.storage)
+}
+
+#[inline]
+fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: u32) -> StdResult<Addr32> {
+    ROUTES.load(ctx.storage, (&denom, destination_domain))
+}
+
+#[inline]
+fn query_routes(
+    ctx: ImmutableCtx,
+    start_after: Option<QueryRoutesPageParam>,
+    limit: Option<u32>,
+) -> StdResult<Vec<QueryRoutesResponseItem>> {
+    let start = start_after
+        .as_ref()
+        .map(|p| Bound::Exclusive((&p.denom, p.destination_domain)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    ROUTES
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| {
+            let ((denom, destination_domain), route) = res?;
+            Ok(QueryRoutesResponseItem {
+                denom,
+                destination_domain,
+                route,
+            })
+        })
+        .collect()
+}
