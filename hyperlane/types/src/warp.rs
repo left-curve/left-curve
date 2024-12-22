@@ -25,7 +25,7 @@ use {
 /// where `1` is Ethereum's [domain ID](https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains/ethereum),
 /// and `0000...e1de...81d7` is USDC's [`HypERC20Collateral`](https://etherscan.io/address/0xe1de9910fe71cc216490ac7fcf019e13a34481d7#code)
 /// contract address padded to 32 bytes.
-pub const NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hpl"));
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hpl"));
 
 /// The message to be sent via Hyperlane mailbox.
 pub struct TokenMessage {
