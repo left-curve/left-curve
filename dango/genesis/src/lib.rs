@@ -444,9 +444,10 @@ where
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
         amm::NAMESPACE.clone()           => amm,
-        ibc::transfer::NAMESPACE.clone()  => ibc_transfer,
+        ibc::transfer::NAMESPACE.clone() => ibc_transfer,
         lending::NAMESPACE.clone()       => lending,
         token_factory::NAMESPACE.clone() => token_factory,
+        warp::NAMESPACE.clone()          => warp,
     };
 
     // Instantiate the bank contract.
