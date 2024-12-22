@@ -1756,6 +1756,12 @@ dependencies = [
  "hex",
  "hex-literal",
  "home",
+ "hyperlane-fee",
+ "hyperlane-ism",
+ "hyperlane-mailbox",
+ "hyperlane-merkle",
+ "hyperlane-types",
+ "hyperlane-warp",
  "rand",
  "serde",
 ]
