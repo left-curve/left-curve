@@ -6,8 +6,8 @@ use {
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response> {
-    // TODO
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
+    MAILBOX.save(ctx.storage, &msg.mailbox)?;
 
     Ok(Response::new())
 }

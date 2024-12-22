@@ -7,6 +7,13 @@ use {
     },
 };
 
+#[macro_export]
+macro_rules! addr32 {
+    ($hex_str:literal) => {
+        $crate::Addr32::from_inner(::grug::__private::hex_literal::hex!($hex_str))
+    };
+}
+
 /// Hyperlane addresses are left-padded to 32 bytes. See:
 /// <https://docs.hyperlane.xyz/docs/reference/messaging/send#:~:text=Recipient%20addresses%20are%20left%2Dpadded>
 #[grug::derive(Serde, Borsh)]
