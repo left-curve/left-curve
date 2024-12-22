@@ -1,5 +1,5 @@
 use {
-    dango_genesis::{build_genesis, read_wasm_files, GenesisUser},
+    dango_genesis::{build_genesis, build_rust_codes, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
     grug::{
         btree_map, Coin, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
@@ -7,7 +7,7 @@ use {
     },
     hex_literal::hex,
     home::home_dir,
-    std::{env, fs, path::PathBuf, str::FromStr},
+    std::{env, fs, str::FromStr},
 };
 
 // See docs for the seed phrases of these keys.
@@ -27,8 +27,7 @@ fn main() {
     assert_eq!(args.len(), 3, "expected exactly two arguments");
 
     // Read wasm files.
-    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
-        .unwrap();
+    let codes = build_rust_codes();
 
     // Owner gets DG token and USDC; all others get USDC.
     let users = btree_map! {
