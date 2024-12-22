@@ -3,8 +3,6 @@ use {
     hyperlane_types::Addr32,
 };
 
-pub const OWNER: Item<Addr> = Item::new("owner");
-
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");
 
 // (denom, destination_domain) => recipient

@@ -74,8 +74,6 @@ impl TokenMessage {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    /// An account that can set routes.
-    pub owner: Addr,
     /// Address of the mailbox contract.
     pub mailbox: Addr,
 }
