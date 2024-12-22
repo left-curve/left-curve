@@ -3298,6 +3298,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyperlane-ism"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hyperlane-types",
+]
+
+[[package]]
 name = "hyperlane-mailbox"
 version = "0.0.0"
 dependencies = [
