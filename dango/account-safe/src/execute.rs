@@ -252,8 +252,8 @@ mod tests {
             config::{AppAddresses, AppConfig},
         },
         grug::{
-            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Hash,
-            Json, JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
+            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json,
+            JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
             MOCK_BLOCK,
         },
         std::{collections::BTreeMap, str::FromStr},
@@ -308,6 +308,7 @@ mod tests {
         let member2 = Username::from_str("member2").unwrap();
         let member3 = Username::from_str("member3").unwrap();
         let non_member = Username::from_str("jake").unwrap();
+        let chain_id = String::from("test");
 
         // Create a Safe with 3 signers.
         let querier = MockQuerier::new()
@@ -343,11 +344,12 @@ mod tests {
                 msgs: NonEmpty::new_unchecked(vec![]),
                 data: Metadata {
                     username: non_member.clone(),
-                    // The things below (key hash, sequence, credential) don't
+                    // The things below (nonce, chain_id, expiry) don't
                     // matter, because authentication should fail before we even
                     // reach the signature verification step.
-                    key_hash: Hash::ZERO,
-                    sequence: 0,
+                    nonce: 0,
+                    chain_id: chain_id.clone(),
+                    expiry: None,
                 }
                 .to_json_value()
                 .unwrap(),
@@ -372,8 +374,9 @@ mod tests {
                 .unwrap()]),
                 data: Metadata {
                     username: member1,
-                    key_hash: Hash::ZERO,
-                    sequence: 0,
+                    chain_id,
+                    nonce: 0,
+                    expiry: None,
                 }
                 .to_json_value()
                 .unwrap(),
@@ -404,8 +407,9 @@ mod tests {
                 .unwrap()]),
                 data: Metadata {
                     username: member3,
-                    key_hash: Hash::ZERO,
-                    sequence: 0,
+                    chain_id: "".to_string(),
+                    nonce: 0,
+                    expiry: None,
                 }
                 .to_json_value()
                 .unwrap(),
