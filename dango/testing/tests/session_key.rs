@@ -14,6 +14,7 @@ mod session_account {
         dango_testing::{create_signature, generate_random_key, TestAccount},
         dango_types::auth::{
             Credential, Metadata, SessionCredential, SessionInfo, SignDoc, Signature,
+            StandardCredential,
         },
         grug::{
             Addr, Addressable, ByteArray, Defined, JsonSerExt, NonEmpty, Signer, StdResult,
@@ -90,13 +91,13 @@ mod session_account {
                 expire_at,
             };
 
-            let session_credential = self
+            let credential = self
                 .account
                 .create_standard_credential(&session_info.to_json_vec()?)?;
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
-                sign_info_signature: session_credential,
+                sign_info_signature: credential.signature,
             };
 
             Ok(SessionAccount {
@@ -135,11 +136,23 @@ mod session_account {
             chain_id: &str,
             gas_limit: u64,
         ) -> StdResult<grug::Tx> {
-            let sign_doc = SignDoc {
-                sender: self.address(),
-                messages: msgs.clone(),
+            let data = Metadata {
+                username: self.username.clone(),
                 chain_id: chain_id.to_string(),
-                sequence: self.sequence,
+                nonce: self.nonce,
+                expiry: None,
+            };
+
+            let sign_doc = SignDoc {
+                gas_limit,
+                sender: self.address(),
+                messages: NonEmpty::new(msgs.clone())?,
+                data: data.clone(),
+            };
+
+            let standard_credential = StandardCredential {
+                key_hash: self.sign_with(),
+                signature: self.session_buffer.inner().sign_info_signature.clone(),
             };
 
             let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?)?;
@@ -147,16 +160,10 @@ mod session_account {
             let credential = Credential::Session(SessionCredential {
                 session_info: self.session_buffer.inner().session_info.clone(),
                 session_signature,
-                session_info_signature: self.session_buffer.inner().sign_info_signature.clone(),
+                authorization: standard_credential,
             });
 
-            let data = Metadata {
-                username: self.username.clone(),
-                key_hash: self.sign_with(),
-                sequence: self.sequence,
-            };
-
-            self.sequence += 1;
+            self.nonce += 1;
 
             Ok(Tx {
                 sender: self.address(),
@@ -200,7 +207,7 @@ fn session_key() {
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
-        owner.sequence -= 1;
+        owner.nonce -= 1;
 
         suite.block_time = Duration::from_seconds(10);
     }

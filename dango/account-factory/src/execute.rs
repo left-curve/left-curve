@@ -8,10 +8,10 @@ use {
             Username,
         },
         auth::Key,
-        config::AppConfig,
+        DangoQuerier,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash160, Inner, JsonDeExt, Message,
+        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
         MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
@@ -107,10 +107,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-
     ensure!(
-        ctx.sender == app_cfg.addresses.ibc_transfer,
+        ctx.sender == ctx.querier.query_ibc_transfer()?,
         "only IBC transfer contract can make deposits"
     );
 
@@ -135,7 +133,7 @@ fn register_user(
     ctx: MutableCtx,
     username: Username,
     key: Key,
-    key_hash: Hash160,
+    key_hash: Hash256,
 ) -> anyhow::Result<Response> {
     // The username must not already exist.
     // We ensure this by asserting there isn't any key already associated with
@@ -170,7 +168,7 @@ fn onboard_new_user(
     factory: Addr,
     username: Username,
     key: Key,
-    key_hash: Hash160,
+    key_hash: Hash256,
     must_have_deposit: bool,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
@@ -272,7 +270,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_key(ctx: MutableCtx, key_hash: Hash160, key: Op<Key>) -> anyhow::Result<Response> {
+fn configure_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
     let username = get_username_by_address(ctx.storage, ctx.sender)?;
 
     match key {

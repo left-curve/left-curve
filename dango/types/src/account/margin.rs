@@ -27,9 +27,9 @@ pub struct HealthResponse {
 /// Query messages for the margin account
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the account's current sequence number.
+    /// Query the account's current nonce number.
     #[returns(u32)]
-    Sequence {},
+    Nonce {},
     /// Queries the health of the margin account.
     #[returns(HealthResponse)]
     Health {},

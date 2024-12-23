@@ -8,8 +8,7 @@ use {
         auth::Key,
     },
     grug::{
-        Addr, Bound, Coins, Hash160, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        Storage,
+        Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -111,7 +110,7 @@ fn query_deposits(
         .collect()
 }
 
-fn query_key(storage: &dyn Storage, hash: Hash160, username: Username) -> StdResult<Key> {
+fn query_key(storage: &dyn Storage, hash: Hash256, username: Username) -> StdResult<Key> {
     KEYS.load(storage, (&username, hash))
 }
 
@@ -141,7 +140,7 @@ fn query_keys(
 fn query_keys_by_user(
     storage: &dyn Storage,
     username: &Username,
-) -> StdResult<BTreeMap<Hash160, Key>> {
+) -> StdResult<BTreeMap<Hash256, Key>> {
     KEYS.prefix(username)
         .range(storage, None, None, Order::Ascending)
         .collect()

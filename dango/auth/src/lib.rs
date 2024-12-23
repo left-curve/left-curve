@@ -5,20 +5,23 @@ use {
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
-        auth::{ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature},
-        config::AppConfig,
+        auth::{
+            ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature,
+            StandardCredential,
+        },
+        DangoQuerier,
     },
     grug::{
         json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt,
-        Query, StdResult, Tx,
+        StdResult, Tx,
     },
 };
 
-/// Expected sequence number of the next transaction this account sends.
+/// Expected nonce number of the next transaction this account sends.
 ///
-/// All three account types (spot, margin, Safe) stores their sequences in this
+/// All three account types (spot, margin, Safe) stores their nonces in this
 /// same storage slot.
-pub const NEXT_SEQUENCE: Counter<u32> = Counter::new("sequence", 0, 1);
+pub const NEXT_NONCE: Counter<u32> = Counter::new("nonce", 0, 1);
 
 /// Authenticate a transaction.
 ///
@@ -35,8 +38,7 @@ pub fn authenticate_tx(
     let factory = if let Some(factory) = maybe_factory {
         factory
     } else {
-        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-        app_cfg.addresses.account_factory
+        ctx.querier.query_account_factory()?
     };
 
     // Deserialize the transaction metadata, if it's not already done.
@@ -46,81 +48,87 @@ pub fn authenticate_tx(
         tx.data.deserialize_json()?
     };
 
-    // Increment the sequence.
-    let (sequence, _) = NEXT_SEQUENCE.increment(ctx.storage)?;
+    // Increment the nonce.
+    let (nonce, _) = NEXT_NONCE.increment(ctx.storage)?;
 
-    // Query the account factory. We need to do three things:
-    // - ensure the `tx.sender` is associated with the username;
-    // - query the key by key hash and username.
-    // - query the account info.
-    //
-    // We use Wasm raw queries instead of smart queries to optimize on gas.
-    // We also user the multi query to reduce the number of FFI calls.
-    let key = {
-        let [res1, res2] = ctx.querier.query_multi([
-            Query::wasm_raw(
+    // If the sender account is associated with the username, then an entry
+    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
+    // empty because we Borsh for encoding.
+    ensure!(
+        ctx.querier
+            .query_wasm_raw(
                 factory,
                 ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-            ),
-            Query::wasm_raw(factory, KEYS.path((&metadata.username, metadata.key_hash))),
-        ])?;
+            )?
+            .is_some_and(|bytes| bytes.is_empty()),
+        "account {} isn't associated with user `{}`",
+        tx.sender,
+        metadata.username,
+    );
 
-        // If the sender account is associated with the username, then an entry
-        // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-        // empty because we Borsh for encoding.
-        ensure!(
-            res1.as_wasm_raw().is_some_and(|bytes| bytes.is_empty()),
-            "account {} isn't associated with user `{}`",
-            tx.sender,
-            metadata.username,
-        );
-
-        res2.as_wasm_raw()
-            .ok_or_else(|| anyhow!("key hash {} not found", metadata.key_hash))?
-            .deserialize_borsh()?
-    };
-
-    // Verify sequence.
+    // Verify nonce.
     match ctx.mode {
-        // For `CheckTx`, we only make sure the tx's sequence is no smaller than
-        // the stored sequence. This allows the account to broadcast multiple
+        // For `CheckTx`, we only make sure the tx's nonce is no smaller than
+        // the stored nonce. This allows the account to broadcast multiple
         // txs for the same block.
         AuthMode::Check => {
             ensure!(
-                metadata.sequence >= sequence,
-                "sequence is too old: expecting at least {}, found {}",
-                sequence,
-                metadata.sequence
+                metadata.nonce >= nonce,
+                "nonce is too old: expecting at least {}, found {}",
+                nonce,
+                metadata.nonce
             );
+
+            if let Some(expiry) = metadata.expiry {
+                ensure!(
+                    expiry > ctx.block.timestamp,
+                    "transaction expired at {:?}",
+                    expiry
+                );
+            }
         },
-        // For `FinalizeBlock`, we make sure the tx's sequence matches exactly
-        // the stored sequence.
+        // For `FinalizeBlock`, we make sure the tx's nonce matches exactly
+        // the stored nonce.
         AuthMode::Finalize => {
             ensure!(
-                metadata.sequence == sequence,
-                "incorrect sequence: expecting {}, got {}",
-                sequence,
-                metadata.sequence
+                metadata.nonce == nonce,
+                "incorrect nonce: expecting {}, got {}",
+                nonce,
+                metadata.nonce
             );
         },
-        // No need to verify sequence in simulation mode.
+        // No need to verify nonce in simulation mode.
         AuthMode::Simulate => (),
     }
 
     let sign_doc = SignDoc {
+        gas_limit: tx.gas_limit,
         sender: ctx.contract,
-        messages: tx.msgs.into_inner(),
-        chain_id: ctx.chain_id,
-        sequence,
+        messages: tx.msgs,
+        data: metadata.clone(),
     };
 
     match ctx.mode {
-        AuthMode::Check | AuthMode::Finalize => match tx.credential.deserialize_json()? {
-            Credential::Standard(signature) => {
-                // Verify the `SignDoc` signatures.
-                verify_signature(ctx.api, key, signature, &VerifyData::SignDoc(&sign_doc))?;
-            },
-            Credential::Session(session) => {
+        AuthMode::Check | AuthMode::Finalize => {
+            let (
+                StandardCredential {
+                    key_hash,
+                    signature,
+                },
+                session_credential,
+            ) = match tx.credential.deserialize_json::<Credential>()? {
+                Credential::Session(c) => (c.authorization.clone(), Some(c)),
+                Credential::Standard(c) => (c, None),
+            };
+
+            // Query the key by key hash and username.
+            let key = ctx
+                .querier
+                .query_wasm_raw(factory, KEYS.path((&metadata.username, key_hash)))?
+                .ok_or_else(|| anyhow!("key hash {} not found", key_hash))?
+                .deserialize_borsh()?;
+
+            if let Some(session) = session_credential {
                 ensure!(
                     session.session_info.expire_at > ctx.block.timestamp,
                     "session expired at {:?}.",
@@ -131,8 +139,8 @@ pub fn authenticate_tx(
                 verify_signature(
                     ctx.api,
                     key,
-                    session.session_info_signature,
-                    &VerifyData::SessionInfo(&session.session_info),
+                    signature,
+                    &VerifyData::Session(&session.session_info),
                 )?;
 
                 // Verify the `SignDoc` signature.
@@ -140,9 +148,20 @@ pub fn authenticate_tx(
                     ctx.api,
                     Key::Secp256k1(session.session_info.session_key),
                     Signature::Secp256k1(session.session_signature),
-                    &VerifyData::SignDoc(&sign_doc),
+                    &VerifyData::Standard {
+                        chain_id: ctx.chain_id,
+                        sign_doc,
+                        nonce,
+                    },
                 )?;
-            },
+            } else {
+                // Verify the `SignDoc` signatures.
+                verify_signature(ctx.api, key, signature, &VerifyData::Standard {
+                    chain_id: ctx.chain_id,
+                    sign_doc,
+                    nonce,
+                })?;
+            }
         },
         AuthMode::Simulate => (),
     };
@@ -166,16 +185,24 @@ fn verify_signature(
             // Verify that the critical values in the transaction such as
             // the message and the verifying contract (sender).
             let (verifying_contract, message) = match data {
-                VerifyData::SignDoc(sign_doc) => (
+                VerifyData::Standard {
+                    sign_doc,
+                    chain_id,
+                    nonce,
+                } => (
                     Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into()),
                     json!({
-                        "chainId": sign_doc.chain_id,
-                        "sequence": sign_doc.sequence,
+                        "gas_limit": sign_doc.gas_limit,
+                        "metadata": {
+                            "username": sign_doc.data.username,
+                            "chain_id": chain_id,
+                            "nonce": nonce,
+                            "expiry": sign_doc.data.expiry,
+                        },
                         "messages": sign_doc.messages,
                     }),
                 ),
-
-                VerifyData::SessionInfo(session_info) => (
+                VerifyData::Session(session_info) => (
                     None,
                     json!({
                         "session_key": session_info.session_key,
@@ -184,7 +211,8 @@ fn verify_signature(
                 ),
             };
 
-            let typed_data = TypedData {
+            // EIP-712 hash used in the signature.
+            let sign_bytes = TypedData {
                 resolver,
                 domain: Eip712Domain {
                     name: domain.name,
@@ -193,10 +221,8 @@ fn verify_signature(
                 },
                 primary_type: "Message".to_string(),
                 message: message.into_inner(),
-            };
-
-            // EIP-712 hash used in the signature.
-            let sign_bytes = typed_data.eip712_signing_hash()?;
+            }
+            .eip712_signing_hash()?;
 
             api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
         },
@@ -242,15 +268,19 @@ fn verify_signature(
 }
 
 enum VerifyData<'a> {
-    SessionInfo(&'a SessionInfo),
-    SignDoc(&'a SignDoc),
+    Session(&'a SessionInfo),
+    Standard {
+        sign_doc: SignDoc,
+        chain_id: String,
+        nonce: u32,
+    },
 }
 
 impl VerifyData<'_> {
     fn as_sign_bytes(&self) -> StdResult<Vec<u8>> {
         match self {
-            VerifyData::SessionInfo(session_info) => session_info.to_json_vec(),
-            VerifyData::SignDoc(sign_doc) => sign_doc.to_json_vec(),
+            VerifyData::Session(session_info) => session_info.to_json_vec(),
+            VerifyData::Standard { sign_doc, .. } => sign_doc.to_json_vec(),
         }
     }
 }
@@ -263,9 +293,9 @@ mod tests {
         super::*,
         dango_types::{
             account_factory::Username,
-            config::{AppAddresses, DANGO_DENOM},
+            config::{AppAddresses, AppConfig},
         },
-        grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
+        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier},
         std::str::FromStr,
     };
 
@@ -276,7 +306,9 @@ mod tests {
     fn passkey_authentication() {
         let user_address = Addr::from_str("0x4857ff85aa9d69c73bc86eb45949455b45cca580").unwrap();
         let user_username = Username::from_str("passkey").unwrap();
-        let user_keyhash = Hash160::from_str("52396FDE2F222D21B62DDE0CE93BC6E109823552").unwrap();
+        let user_keyhash =
+            Hash256::from_str("F060857303FA03DA27F41C8EBEA9A7E891CE05E840321CB302EE515E84B9D82B")
+                .unwrap();
         let user_key = Key::Secp256r1(
             [
                 3, 199, 78, 155, 236, 166, 144, 61, 14, 162, 252, 123, 39, 173, 138, 43, 78, 85,
@@ -289,17 +321,20 @@ mod tests {
           "sender": "0x4857ff85aa9d69c73bc86eb45949455b45cca580",
           "credential": {
             "standard": {
-              "passkey": {
-                "sig": "32jN7YGtag/NHt8FOXEEGNS7ExANwPwHi7FGel67+dBSWbLid0ZT5ew9LIuU9cFNXqJ/0xgaXuWbNhyVbCrL5g==",
-                "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicUMxYXdaNFpzS1lGMnhyYURMYlUza01VYWRGTzVMNmJvaDc0ck5zVTd5OCIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-                "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
-              }
+              "signature": {
+                "passkey": {
+                  "sig": "NmW5+jQ5lGlj4FyisBq6kA6sQ4gW2usbthLE6kl8sQPHXQVNdoHk+ZjP4YHg0p7Fl6Z+O79tHqPnm7vX1IkOsA==",
+                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWXd0dkNHdld3Q052UnhhNUxtdFE0OTZ4WV9lM1NtVkMwUnJ2SGF1TktuZyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                  "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
+                }
+              },
+              "key_hash": "F060857303FA03DA27F41C8EBEA9A7E891CE05E840321CB302EE515E84B9D82B"
             }
           },
           "data": {
-            "key_hash": "52396FDE2F222D21B62DDE0CE93BC6E109823552",
             "username": "passkey",
-            "sequence": 0
+            "nonce": 0,
+            "chain_id": "dev-3"
           },
           "msgs": [
             {
@@ -311,12 +346,11 @@ mod tests {
               }
             }
           ],
-          "gas_limit": 2602525
+          "gas_limit": 2566613
         }"#;
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -348,7 +382,9 @@ mod tests {
     fn eip712_authentication() {
         let user_address = Addr::from_str("0x227e7e3d56ffd984ba6e3ead892f5676fa722a16").unwrap();
         let user_username = Username::from_str("javier_1").unwrap();
-        let user_keyhash = Hash160::from_str("904EF73D090935DB7DB7AE7162DB546268225D66").unwrap();
+        let user_keyhash =
+            Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
+                .unwrap();
         let user_key = Key::Secp256k1(
             [
                 3, 115, 37, 57, 128, 37, 222, 189, 9, 42, 142, 196, 85, 27, 226, 112, 136, 195,
@@ -359,7 +395,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -388,16 +423,19 @@ mod tests {
           "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
           "credential": {
             "standard": {
-              "eip712": {
-                "sig": "3QfufLebIDnA/FlT3yV65yCivI4s5tCF1Rluq5Q+cYQwTqH9HDyXU/XcwtX5/4H0GFZ26CkfvPFYlx6m3lRKcw==",
-                "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJjaGFpbklkIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InNlcXVlbmNlIiwidHlwZSI6InVpbnQzMiJ9LHsibmFtZSI6Im1lc3NhZ2VzIiwidHlwZSI6IlR4TWVzc2FnZVtdIn1dLCJUeE1lc3NhZ2UiOlt7Im5hbWUiOiJ0cmFuc2ZlciIsInR5cGUiOiJUcmFuc2ZlciJ9XSwiVHJhbnNmZXIiOlt7Im5hbWUiOiJ0byIsInR5cGUiOiJhZGRyZXNzIn0seyJuYW1lIjoiY29pbnMiLCJ0eXBlIjoiQ29pbnMifV0sIkNvaW5zIjpbeyJuYW1lIjoidXVzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjI3ZTdlM2Q1NmZmZDk4NGJhNmUzZWFkODkyZjU2NzZmYTcyMmExNiJ9LCJtZXNzYWdlIjp7ImNoYWluSWQiOiJkZXYtMyIsInNlcXVlbmNlIjowLCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsidG8iOiIweDA2NGM1ZTIwYjQyMmI1ZDgxN2ZlODAwMTE5ZGFjMGFiNDNiMTdhODAiLCJjb2lucyI6eyJ1dXNkYyI6IjEwMDAwMDAifX19XX19"
-              }
+              "signature": {
+                "eip712": {
+                  "sig": "ygSIjqH++C55ksLXKF/9hPxBpcLECtGlsX/fxB5eTqNbXV9CUjp1PtBBu/36SYxrkY4SVYvqrsZFxcr2CBzKFQ==",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6InRvIiwidHlwZSI6ImFkZHJlc3MifSx7Im5hbWUiOiJjb2lucyIsInR5cGUiOiJDb2lucyJ9XSwiQ29pbnMiOlt7Im5hbWUiOiJ1dXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImxvY2FsaG9zdCIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgyMjdlN2UzZDU2ZmZkOTg0YmE2ZTNlYWQ4OTJmNTY3NmZhNzIyYTE2In0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsidXNlcm5hbWUiOiJqYXZpZXJfMSIsIm5vbmNlIjowLCJjaGFpbl9pZCI6ImRldi0zIn0sImdhc19saW1pdCI6MjU2NjU1OCwibWVzc2FnZXMiOlt7InRyYW5zZmVyIjp7InRvIjoiMHgwNjRjNWUyMGI0MjJiNWQ4MTdmZTgwMDExOWRhYzBhYjQzYjE3YTgwIiwiY29pbnMiOnsidXVzZGMiOiIxMDAwMDAwIn19fV19fQ=="
+                }
+              },
+              "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B"
             }
           },
           "data": {
-            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
             "username": "javier_1",
-            "sequence": 0
+            "nonce": 0,
+            "chain_id": "dev-3"
           },
           "msgs": [
             {
@@ -409,7 +447,7 @@ mod tests {
               }
             }
           ],
-          "gas_limit": 2647711
+          "gas_limit": 2566558
         }"#;
 
         authenticate_tx(
@@ -425,7 +463,9 @@ mod tests {
     fn secp256k1_authentication() {
         let user_address = Addr::from_str("0xb86b2d96971c32f68241df04691479edb6a9cd3b").unwrap();
         let user_username = Username::from_str("owner").unwrap();
-        let user_keyhash = Hash160::from_str("57D9205BFB0ED62C0667462E07EAF1AA31228DD4").unwrap();
+        let user_keyhash =
+            Hash256::from_str("06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2")
+                .unwrap();
         let user_key = Key::Secp256k1(
             [
                 2, 120, 247, 183, 217, 61, 169, 181, 166, 46, 40, 67, 65, 132, 209, 195, 55, 194,
@@ -438,14 +478,17 @@ mod tests {
           "sender": "0xb86b2d96971c32f68241df04691479edb6a9cd3b",
           "credential": {
             "standard": {
-              "secp256k1": "6fViCRV4+NEs7AiiF2o7yWBar3IKu4S1tnxDCtB71J8XnaR69IRyvURLIH4HAc0APK3DA8Vy8vEtpaEzlllqKg=="
+              "signature": {
+                "secp256k1": "YDh0d3Fu38vVRarTXssImRkORCDiyKkVYj22h8mOSAtohM3alOJkO+q/PLSo/+7WlFytT3CKJp04mSluCW0dOQ=="
+              },
+              "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2"
             }
           },
           "data": {
-            "key_hash": "57D9205BFB0ED62C0667462E07EAF1AA31228DD4",
             "username": "owner",
-            "sequence": 0
-          },
+            "nonce": 0,
+            "chain_id": "dev-3"
+        },
           "msgs": [
             {
               "transfer": {
@@ -456,12 +499,11 @@ mod tests {
               }
             }
           ],
-          "gas_limit": 2647275
+          "gas_limit": 2566278
         }"#;
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -493,7 +535,9 @@ mod tests {
     fn session_key_authentication() {
         let user_address = Addr::from_str("0x1128323d3502087eab68007e0717ccf36d9e96fd").unwrap();
         let user_username = Username::from_str("javier_1").unwrap();
-        let user_keyhash = Hash160::from_str("904EF73D090935DB7DB7AE7162DB546268225D66").unwrap();
+        let user_keyhash =
+            Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
+                .unwrap();
         let user_key = Key::Secp256k1(
             [
                 3, 115, 37, 57, 128, 37, 222, 189, 9, 42, 142, 196, 85, 27, 226, 112, 136, 195,
@@ -504,7 +548,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -534,30 +577,37 @@ mod tests {
           "credential": {
             "session": {
               "session_info": {
-                "session_key": "AlCL9wKMrkfM82iuuJecwLMVJV4HHwviUURGGIcuQOxY",
-                "expire_at": "86701651407250"
+                "session_key": "A2W3zyOByPqqPDeX2iGVX3S+/Kg3dDxuQPPASRdRsxIR",
+                "expire_at": "149886405843120000000"
               },
-              "session_info_signature": {
-                "eip712": {
-                  "sig": "GnzbpM+jPRhwdEJX+ESEmbHBemeaCAbtTVNAk13B2cFK7opE/r88XG8t9MTW19CnSWp859XkrzywXSB1usRh5g==",
-                  "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQWxDTDl3S01ya2ZNODJpdXVKZWN3TE1WSlY0SEh3dmlVVVJHR0ljdVFPeFkiLCJleHBpcmVfYXQiOiI4NjcwMTY1MTQwNzI1MCJ9LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9XSwiTWVzc2FnZSI6W3sibmFtZSI6InNlc3Npb25fa2V5IiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6ImV4cGlyZV9hdCIsInR5cGUiOiJzdHJpbmcifV19fQ=="
+              "authorization": {
+                "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+                "signature": {
+                  "eip712": {
+                    "sig": "Iv/yinJ7jCpT9dYi5bVmz0GDsXjkPA6h8+jnbkYGSFBTEwShLBpHrpONM2qP9ZcolY/5jxhpcqHZEamfelf2yQ==",
+                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQTJXM3p5T0J5UHFxUERlWDJpR1ZYM1MrL0tnM2REeHVRUFBBU1JkUnN4SVIiLCJleHBpcmVfYXQiOiIxNDk4ODY0MDU4NDMxMjAwMDAwMDAifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZXNzaW9uX2tleSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJleHBpcmVfYXQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
+                  }
                 }
               },
-              "session_signature": "ykFMSUWlOLeq5dsjIJH/CWzycCThOactouPHn6ZLdchS1cnABiLJRiEs41EwysuVG6XhC8SKpk2Xd8t0SXcDIA=="
+              "session_signature": "yQQ45KtHDGo8itCmY59MBo9JPfA2/A+vEvNFiFnvLM1kilmxmGe0oFpeCSYlwS5uDxa7AZNp+620BlJ6dA0XcQ=="
             }
           },
           "data": {
-            "key_hash": "904EF73D090935DB7DB7AE7162DB546268225D66",
             "username": "javier_1",
-            "sequence": 0
+            "nonce": 0,
+            "chain_id": "dev-3"
           },
-          "msgs": [{
-            "transfer": {
-              "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-              "coins": { "uusdc": "1000000" }
+          "msgs": [
+            {
+              "transfer": {
+                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
+                "coins": {
+                  "uusdc": "1000000"
+                }
+              }
             }
-          }],
-          "gas_limit": 2729225
+          ],
+          "gas_limit": 2566260
         }"#;
 
         authenticate_tx(

@@ -5,9 +5,9 @@ use {
     dango_types::{
         account_factory::Username,
         bank::{self, Metadata},
-        config::AppConfig,
         taxman,
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
+        DangoQuerier,
     },
     grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
 };
@@ -39,10 +39,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     ensure!(
-        ctx.sender == cfg.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "only the chain owner can update denom creation fee"
     );
 
@@ -62,12 +60,12 @@ fn create(
     // the sender is associated with the username.
     // Otherwise, use the sender's address as the sub-namespace.
     let subnamespace = if let Some(username) = username {
-        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        let account_factory = ctx.querier.query_account_factory()?;
 
         if ctx
             .querier
             .query_wasm_raw(
-                app_cfg.addresses.account_factory,
+                account_factory,
                 ACCOUNTS_BY_USER.path((&username, ctx.sender)),
             )?
             .is_none()
@@ -99,10 +97,10 @@ fn create(
                 "incorrect denom creation fee! expecting {expect}, got {actual}"
             );
 
-            let cfg = ctx.querier.query_config()?;
+            let taxman = ctx.querier.query_taxman()?;
 
             Some(Message::execute(
-                cfg.taxman,
+                taxman,
                 &taxman::ExecuteMsg::Pay { payer: ctx.sender },
                 actual,
             )?)
@@ -128,10 +126,9 @@ fn create(
 
     // Optionally set the token's metadata.
     let metadata_msg = if let Some(metadata) = metadata {
-        let cfg = ctx.querier.query_config()?;
-
+        let bank = ctx.querier.query_bank()?;
         Some(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::SetMetadata { denom, metadata },
             Coins::new(),
         )?)
@@ -150,10 +147,10 @@ fn mint(ctx: MutableCtx, denom: Denom, to: Addr, amount: Uint128) -> anyhow::Res
         "sender isn't the admin of denom `{denom}`"
     );
 
-    let cfg = ctx.querier.query_config()?;
+    let bank = ctx.querier.query_bank()?;
 
     Ok(Response::new().add_message(Message::execute(
-        cfg.bank,
+        bank,
         &bank::ExecuteMsg::Mint { to, denom, amount },
         Coins::new(),
     )?))
@@ -165,10 +162,10 @@ fn burn(ctx: MutableCtx, denom: Denom, from: Addr, amount: Uint128) -> anyhow::R
         "sender isn't the admin of denom `{denom}`"
     );
 
-    let cfg = ctx.querier.query_config()?;
+    let bank = ctx.querier.query_bank()?;
 
     Ok(Response::new().add_message(Message::execute(
-        cfg.bank,
+        bank,
         &bank::ExecuteMsg::Burn {
             from,
             denom,

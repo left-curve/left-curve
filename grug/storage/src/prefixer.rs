@@ -1,7 +1,12 @@
 use {
     crate::PrimaryKey,
-    grug_math::{Bytable, Dec, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64},
-    grug_types::{nested_namespaces_with_key, Addr, CodeStatus, Denom, Duration, Hash, Part},
+    grug_math::{
+        Bytable, Dec, Inner, Int128, Int256, Int512, Int64, Uint128, Uint256, Uint512, Uint64,
+    },
+    grug_types::{
+        nested_namespaces_with_key, Addr, Bounded, Bounds, CodeStatus, Denom, Duration, Hash,
+        LengthBounded, Lengthy, Part,
+    },
     std::{borrow::Cow, str, vec},
 };
 
@@ -138,4 +143,23 @@ impl_integer_prefixer! {
     i8, i16, i32, i64, i128,
     Uint64, Uint128, Uint256, Uint512,
     Int64, Int128, Int256, Int512,
+}
+
+impl<T, B> Prefixer for Bounded<T, B>
+where
+    T: Prefixer + PartialOrd + ToString,
+    B: Bounds<T>,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        self.inner().raw_prefixes()
+    }
+}
+
+impl<T, const MIN: usize, const MAX: usize> Prefixer for LengthBounded<T, MIN, MAX>
+where
+    T: Prefixer + Lengthy,
+{
+    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
+        self.inner().raw_prefixes()
+    }
 }

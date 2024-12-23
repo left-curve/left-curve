@@ -41,6 +41,18 @@ impl<'a> QuerierWrapper<'a> {
             .map(|res| res.as_config())
     }
 
+    pub fn query_owner(&self) -> StdResult<Addr> {
+        self.query_config().map(|res| res.owner)
+    }
+
+    pub fn query_bank(&self) -> StdResult<Addr> {
+        self.query_config().map(|res| res.bank)
+    }
+
+    pub fn query_taxman(&self) -> StdResult<Addr> {
+        self.query_config().map(|res| res.taxman)
+    }
+
     pub fn query_app_config<T>(&self) -> StdResult<T>
     where
         T: DeserializeOwned,

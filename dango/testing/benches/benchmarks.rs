@@ -94,7 +94,13 @@ where
 
             let (data, credential) = accounts
                 .owner
-                .sign_transaction_with_sequence(sender, vec![msg.clone()], &suite.chain_id, 0)
+                .sign_transaction_with_nonce(
+                    sender,
+                    vec![msg.clone()],
+                    &suite.chain_id,
+                    2_000_000,
+                    0,
+                )
                 .unwrap();
 
             Tx {

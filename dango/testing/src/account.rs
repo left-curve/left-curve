@@ -6,10 +6,10 @@ use {
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
             QueryNextAccountIndexRequest, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc, Signature},
+        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash160, Hash256, HashExt, Json,
+        btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash256, HashExt, Json,
         JsonSerExt, MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
     },
     grug_app::{AppError, ProposalPreparer},
@@ -30,25 +30,13 @@ pub struct Accounts {
 #[derive(Debug)]
 pub struct TestAccount<
     T: MaybeDefined<Addr> = Defined<Addr>,
-    K = BTreeMap<Hash160, (SigningKey, Key)>,
+    K = BTreeMap<Hash256, (SigningKey, Key)>,
 > {
     pub username: Username,
-    pub sequence: u32,
-    pub opt: Option<(SigningKey, ByteArray<33>)>,
-    pub use_otp: bool,
+    pub nonce: u32,
     keys: K,
-    sign_with: Hash160,
+    sign_with: Hash256,
     address: T,
-}
-
-impl<T, K> TestAccount<T, K>
-where
-    T: MaybeDefined<Addr>,
-{
-    pub fn with_random_otp(&mut self) {
-        self.opt = Some(generate_random_key());
-        self.use_otp = true;
-    }
 }
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
@@ -56,16 +44,14 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         let (sk, pk) = generate_random_key();
         let username = Username::from_str(username).unwrap();
         let key = Key::Secp256k1(pk);
-        let key_hash = pk.hash160();
+        let key_hash = pk.hash256();
 
         Self {
             username,
-            sequence: 0,
+            nonce: 0,
             address: Undefined::new(),
             keys: (sk, key),
             sign_with: key_hash,
-            opt: None,
-            use_otp: false,
         }
     }
 
@@ -90,12 +76,10 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
 
         TestAccount {
             username: self.username,
-            sequence: self.sequence,
+            nonce: self.nonce,
             address: Defined::new(address),
             keys: btree_map!(self.sign_with => self.keys),
             sign_with: self.sign_with,
-            opt: self.opt,
-            use_otp: self.use_otp,
         }
     }
 
@@ -104,12 +88,10 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
 
         TestAccount {
             username: self.username,
-            sequence: self.sequence,
+            nonce: self.nonce,
             address: Defined::new(address),
             keys: btree_map!(self.sign_with => self.keys),
             sign_with: self.sign_with,
-            opt: self.opt,
-            use_otp: self.use_otp,
         }
     }
 }
@@ -118,36 +100,43 @@ impl<T> TestAccount<T>
 where
     T: MaybeDefined<Addr>,
 {
-    pub fn sign_transaction_with_sequence(
+    pub fn sign_transaction_with_nonce(
         &self,
         sender: Addr,
         msgs: Vec<Message>,
         chain_id: &str,
-        sequence: u32,
+        gas_limit: u64,
+        nonce: u32,
     ) -> StdResult<(Metadata, Credential)> {
+        let data = Metadata {
+            username: self.username.clone(),
+            chain_id: chain_id.to_string(),
+            expiry: None,
+            nonce,
+        };
+
         let sign_bytes = SignDoc {
             sender,
-            messages: msgs.clone(),
-            chain_id: chain_id.to_string(),
-            sequence,
+            gas_limit,
+            messages: NonEmpty::new(msgs.clone())?,
+            data: data.clone(),
         }
         .to_json_vec()?;
 
         let standard_credential = self.create_standard_credential(&sign_bytes)?;
 
-        let data = Metadata {
-            username: self.username.clone(),
-            key_hash: self.sign_with,
-            sequence,
-        };
-
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<Signature> {
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<StandardCredential> {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
 
-        create_signature(sk, sign_bytes).map(Signature::Secp256k1)
+        let signature = create_signature(sk, sign_bytes)?;
+
+        Ok(StandardCredential {
+            key_hash: self.sign_with,
+            signature: Signature::Secp256k1(signature),
+        })
     }
 }
 
@@ -205,12 +194,10 @@ where
 
         Ok(TestAccount {
             username: self.username.clone(),
-            sequence: 0,
+            nonce: 0,
             address: Defined::new(address),
             keys: self.keys.clone(),
             sign_with: self.sign_with,
-            opt: self.opt.clone(),
-            use_otp: self.use_otp,
         })
     }
 }
@@ -223,7 +210,7 @@ where
         &self.keys.1
     }
 
-    pub fn key_hash(&self) -> Hash160 {
+    pub fn key_hash(&self) -> Hash256 {
         self.sign_with
     }
 }
@@ -236,15 +223,15 @@ where
         self.keys.iter().next().unwrap().1 .1
     }
 
-    pub fn first_key_hash(&self) -> Hash160 {
+    pub fn first_key_hash(&self) -> Hash256 {
         *self.keys.keys().next().unwrap()
     }
 
-    pub fn keys(&self) -> &BTreeMap<Hash160, (SigningKey, Key)> {
+    pub fn keys(&self) -> &BTreeMap<Hash256, (SigningKey, Key)> {
         &self.keys
     }
 
-    pub fn sign_with(&self) -> Hash160 {
+    pub fn sign_with(&self) -> Hash256 {
         self.sign_with
     }
 }
@@ -262,15 +249,16 @@ impl Signer for TestAccount {
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
-        let (data, credential) = self.sign_transaction_with_sequence(
+        let (data, credential) = self.sign_transaction_with_nonce(
             self.address(),
             msgs.clone(),
             chain_id,
-            self.sequence,
+            gas_limit,
+            self.nonce,
         )?;
 
-        // Increment the internally tracked sequence.
-        self.sequence += 1;
+        // Increment the internally tracked nonce.
+        self.nonce += 1;
 
         Ok(Tx {
             sender: self.address(),
@@ -341,7 +329,7 @@ impl Signer for Factory {
 pub struct Safe<'a> {
     address: Addr,
     signer: Option<&'a TestAccount>,
-    sequence: u32,
+    nonce: u32,
 }
 
 impl Safe<'_> {
@@ -349,7 +337,7 @@ impl Safe<'_> {
         Self {
             address,
             signer: None,
-            sequence: 0,
+            nonce: 0,
         }
     }
 }
@@ -360,8 +348,8 @@ impl<'a> Safe<'a> {
         self
     }
 
-    pub fn with_sequence(&mut self, sequence: u32) -> &mut Self {
-        self.sequence = sequence;
+    pub fn with_nonce(&mut self, nonce: u32) -> &mut Self {
+        self.nonce = nonce;
         self
     }
 }
@@ -382,15 +370,16 @@ impl Signer for Safe<'_> {
         let (data, credential) = self
             .signer
             .expect("[Safe]: signer not set")
-            .sign_transaction_with_sequence(
+            .sign_transaction_with_nonce(
                 self.address(),
                 msgs.clone(),
                 chain_id,
-                self.sequence,
+                gas_limit,
+                self.nonce,
             )?;
 
-        // Increment the internally tracked sequence.
-        self.sequence += 1;
+        // Increment the internally tracked nonce.
+        self.nonce += 1;
 
         Ok(Tx {
             sender: self.address,

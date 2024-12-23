@@ -85,11 +85,9 @@ pub fn force_transfer(
     denom: Denom,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     // Only the taxman can force transfer.
     ensure!(
-        ctx.sender == cfg.taxman,
+        ctx.sender == ctx.querier.query_taxman()?,
         "you don't have the right, O you don't have the right"
     );
 
