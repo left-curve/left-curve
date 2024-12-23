@@ -34,7 +34,6 @@ pub struct TestAccount<
 > {
     pub username: Username,
     pub nonce: u32,
-    pub opt: Option<(SigningKey, ByteArray<33>)>,
     keys: K,
     sign_with: Hash256,
     address: T,
@@ -53,7 +52,6 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             address: Undefined::new(),
             keys: (sk, key),
             sign_with: key_hash,
-            opt: None,
         }
     }
 
@@ -82,7 +80,6 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             address: Defined::new(address),
             keys: btree_map!(self.sign_with => self.keys),
             sign_with: self.sign_with,
-            opt: self.opt,
         }
     }
 
@@ -95,7 +92,6 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             address: Defined::new(address),
             keys: btree_map!(self.sign_with => self.keys),
             sign_with: self.sign_with,
-            opt: self.opt,
         }
     }
 }
@@ -202,7 +198,6 @@ where
             address: Defined::new(address),
             keys: self.keys.clone(),
             sign_with: self.sign_with,
-            opt: self.opt.clone(),
         })
     }
 }
