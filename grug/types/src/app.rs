@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Message, Timestamp, Tx},
+    crate::{Addr, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -109,6 +109,6 @@ pub struct Block {
 #[serde(deny_unknown_fields)]
 pub struct ContractInfo {
     pub code_hash: Hash256,
-    pub label: Option<String>,
+    pub label: Option<Label>,
     pub admin: Option<Addr>,
 }
