@@ -54,13 +54,13 @@ pub fn authenticate_tx(
     // If the sender account is associated with the username, then an entry
     // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
     // empty because we Borsh for encoding.
-    let response = ctx.querier.query_wasm_raw(
-        factory,
-        ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-    )?;
-
     ensure!(
-        response.is_some_and(|bytes| bytes.is_empty()),
+        ctx.querier
+            .query_wasm_raw(
+                factory,
+                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+            )?
+            .is_some_and(|bytes| bytes.is_empty()),
         "account {} isn't associated with user `{}`",
         tx.sender,
         metadata.username,
@@ -110,16 +110,16 @@ pub fn authenticate_tx(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
-            let (standard_credential, session_credential) =
-                match tx.credential.deserialize_json::<Credential>()? {
-                    Credential::Session(c) => (c.authorization.clone(), Some(c)),
-                    Credential::Standard(c) => (c, None),
-                };
-
-            let StandardCredential {
-                key_hash,
-                signature,
-            } = standard_credential;
+            let (
+                StandardCredential {
+                    key_hash,
+                    signature,
+                },
+                session_credential,
+            ) = match tx.credential.deserialize_json::<Credential>()? {
+                Credential::Session(c) => (c.authorization.clone(), Some(c)),
+                Credential::Standard(c) => (c, None),
+            };
 
             // Query the key by key hash and username.
             let key = ctx
@@ -202,7 +202,6 @@ fn verify_signature(
                         "messages": sign_doc.messages,
                     }),
                 ),
-
                 VerifyData::Session(session_info) => (
                     None,
                     json!({
@@ -212,7 +211,8 @@ fn verify_signature(
                 ),
             };
 
-            let typed_data = TypedData {
+            // EIP-712 hash used in the signature.
+            let sign_bytes = TypedData {
                 resolver,
                 domain: Eip712Domain {
                     name: domain.name,
@@ -221,10 +221,8 @@ fn verify_signature(
                 },
                 primary_type: "Message".to_string(),
                 message: message.into_inner(),
-            };
-
-            // EIP-712 hash used in the signature.
-            let sign_bytes = typed_data.eip712_signing_hash()?;
+            }
+            .eip712_signing_hash()?;
 
             api.secp256k1_verify(&sign_bytes.0, &cred.sig, &pk)?;
         },
