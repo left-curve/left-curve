@@ -1,6 +1,6 @@
 import { encodeUtf8 } from "@left-curve/encoding";
 import { decode } from "cbor-x";
-import { ripemd160 } from "../ripemd.js";
+import { sha256 } from "../sha.js";
 
 export type CredentialAttestion = {
   id: string;
@@ -177,7 +177,7 @@ export function getCredentialCreationOptions(
       ],
       rp,
       user: {
-        id: user.id ?? ripemd160(encodeUtf8(user.name)),
+        id: user.id ?? sha256(encodeUtf8(user.name)),
         name: user.name,
         displayName: user.displayName ?? user.name,
       },

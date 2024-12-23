@@ -49,3 +49,22 @@ export function mayTransform<T, U>(
 ): U | undefined {
   return value === undefined || value === null ? undefined : transform(value);
 }
+
+/**
+ * Given an object, sort the keys and return a new object.
+ * @param obj The object to sort.
+ * @returns The sorted object.
+ */
+export function sortObject<T extends Json | JsonValue>(obj: T): T {
+  if (typeof obj !== "object" || obj === null) {
+    return obj;
+  }
+
+  const sorted = Object.create({});
+
+  for (const key of Object.keys(obj).sort()) {
+    sorted[key] = (obj as Json)[key];
+  }
+
+  return sorted;
+}

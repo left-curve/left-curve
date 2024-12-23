@@ -1,4 +1,4 @@
-import { ripemd160, secp256k1CompressPubKey } from "@left-curve/crypto";
+import { secp256k1CompressPubKey, sha256 } from "@left-curve/crypto";
 import { encodeHex, encodeUtf8 } from "@left-curve/encoding";
 import {
   KeyAlgo,
@@ -30,7 +30,7 @@ export function createKeyHash(parameters: CreateKeyHashParameters): KeyHash {
   const { pubKey, credentialId, keyAlgo } = parameters;
 
   if (credentialId) {
-    return encodeHex(ripemd160(encodeUtf8(credentialId))).toUpperCase();
+    return encodeHex(sha256(encodeUtf8(credentialId))).toUpperCase();
   }
 
   if (!pubKey) throw new Error("no public key or credential ID provided");
@@ -46,5 +46,5 @@ export function createKeyHash(parameters: CreateKeyHashParameters): KeyHash {
     throw new Error(`unsupported key algorithm: ${keyAlgo}`);
   })();
 
-  return encodeHex(ripemd160(compressedKey)).toUpperCase();
+  return encodeHex(sha256(compressedKey)).toUpperCase();
 }
