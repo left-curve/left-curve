@@ -3,10 +3,9 @@ use {
     grug::{
         Addressable, Coins, Denom, HashExt, HexBinary, NumberConst, ResultExt, StdError, Uint128,
     },
-    hyperlane_mailbox::MAILBOX_VERSION,
     hyperlane_types::{
         addr32,
-        mailbox::{self, Message},
+        mailbox::{self, Message, MAILBOX_VERSION},
         merkle,
         merkle_tree::MerkleTree,
         warp::{self, TokenMessage},

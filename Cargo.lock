@@ -1820,7 +1820,6 @@ dependencies = [
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
- "hyperlane-mailbox",
  "hyperlane-types",
  "hyperlane-warp",
  "k256",

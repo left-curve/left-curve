@@ -1,11 +1,14 @@
 use {
-    crate::{CONFIG, DELIVERIES, MAILBOX_VERSION, NONCE},
+    crate::{CONFIG, DELIVERIES, NONCE},
     anyhow::{anyhow, ensure},
     grug::{Addr, Coins, Hash, HexBinary, MutableCtx, Response, StdResult},
     hyperlane_types::{
         hook::{self, QueryQuoteDispatchRequest},
         ism::QueryVerifyRequest,
-        mailbox::{Dispatch, DispatchId, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId},
+        mailbox::{
+            Dispatch, DispatchId, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId,
+            MAILBOX_VERSION,
+        },
         recipient::{self, QueryInterchainSecurityModuleRequest},
         Addr32,
     },

@@ -3,6 +3,8 @@ use {
     grug::{Addr, Hash256, HexBinary, Inner},
 };
 
+pub const MAILBOX_VERSION: u8 = 3;
+
 // ----------------------------------- types -----------------------------------
 
 #[grug::derive(Serde)]
