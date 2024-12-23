@@ -10,8 +10,6 @@ pub static DANGO_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(
 /// Application-specific configurations of the Dango chain.
 #[grug::derive(Serde)]
 pub struct AppConfig {
-    /// Denom of the Dango token.
-    pub dango: Denom,
     /// Addresses of relevant Dango contracts.
     pub addresses: AppAddresses,
     /// The powers of all collateral tokens. This is the adjustment factor for

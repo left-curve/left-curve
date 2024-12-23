@@ -32,10 +32,9 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // attacker from spamming txs into the mempool when he doesn't have enough
     // coins.
     let withhold_msg = if withhold_amount.is_non_zero() {
-        let cfg = ctx.querier.query_config()?;
-
+        let bank = ctx.querier.query_bank()?;
         Some(Message::execute(
-            cfg.bank,
+            bank,
             &grug_mock_bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
@@ -72,10 +71,9 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> anyhow::Result<
     let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
     let refund_msg = if refund_amount.is_non_zero() {
-        let cfg = ctx.querier.query_config()?;
-
+        let bank = ctx.querier.query_bank()?;
         Some(Message::execute(
-            cfg.bank,
+            bank,
             &grug_mock_bank::ExecuteMsg::ForceTransfer {
                 from: ctx.contract,
                 to: tx.sender,

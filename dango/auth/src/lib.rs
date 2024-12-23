@@ -6,7 +6,7 @@ use {
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         auth::{ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature},
-        config::AppConfig,
+        DangoQuerier,
     },
     grug::{
         json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt,
@@ -35,8 +35,7 @@ pub fn authenticate_tx(
     let factory = if let Some(factory) = maybe_factory {
         factory
     } else {
-        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-        app_cfg.addresses.account_factory
+        ctx.querier.query_account_factory()?
     };
 
     // Deserialize the transaction metadata, if it's not already done.
@@ -263,7 +262,7 @@ mod tests {
         super::*,
         dango_types::{
             account_factory::Username,
-            config::{AppAddresses, DANGO_DENOM},
+            config::{AppAddresses, AppConfig},
         },
         grug::{btree_map, Addr, AuthMode, Hash160, MockContext, MockQuerier},
         std::str::FromStr,
@@ -316,7 +315,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -359,7 +357,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -461,7 +458,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -504,7 +500,6 @@ mod tests {
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
