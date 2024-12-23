@@ -15,11 +15,10 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
-        Denom, Duration, Empty, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt,
-        Message, NonZero, Permission, Permissions, ResultExt, StdResult, Udec128, Uint128,
-        GENESIS_SENDER,
+        Denom, Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message,
+        NonZero, Permission, Permissions, ResultExt, StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
-    hyperlane_types::{fee, mailbox, merkle, warp},
+    hyperlane_types::{fee, ism, mailbox, merkle, warp},
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
@@ -339,9 +338,11 @@ where
     let ism = instantiate(
         &mut msgs,
         hyperlane_ism_code_hash,
-        &Empty {},
-        "hyperlane/ism/message_id_multisig",
-        "hyperlane/ism/message_id_multisig",
+        &ism::InstantiateMsg {
+            validator_sets: btree_map! {},
+        },
+        "hyperlane/ism/multisig",
+        "hyperlane/ism/multisig",
     )?;
 
     // Instantiate Hyperlane Warp contract.
