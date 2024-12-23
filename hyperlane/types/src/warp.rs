@@ -133,6 +133,9 @@ pub enum QueryMsg {
         start_after: Option<QueryRoutesPageParam>,
         limit: Option<u32>,
     },
+    // Required Hyperlane recipient interface.
+    #[returns(Option<Addr>)]
+    InterchainSecurityModule {},
 }
 
 #[grug::derive(Serde)]

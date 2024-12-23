@@ -1,10 +1,12 @@
 use {
     dango_testing::setup_test,
-    grug::{Coins, Denom, HashExt, HexBinary, NumberConst, ResultExt, StdError, Uint128},
+    grug::{
+        Addressable, Coins, Denom, HashExt, HexBinary, NumberConst, ResultExt, StdError, Uint128,
+    },
     hyperlane_mailbox::MAILBOX_VERSION,
     hyperlane_types::{
         addr32,
-        mailbox::Message,
+        mailbox::{self, Message},
         merkle,
         merkle_tree::MerkleTree,
         warp::{self, TokenMessage},
@@ -178,7 +180,89 @@ fn send_burning_synth() {
 }
 
 #[test]
-fn receive_release_collateral() {}
+fn receive_release_collateral() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    let denom = Denom::from_str("udng").unwrap();
+    let origin_domain = 123;
+
+    // Set the route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.hyperlane.warp,
+            &warp::ExecuteMsg::SetRoute {
+                denom: denom.clone(),
+                destination_domain: origin_domain,
+                route: MOCK_ROUTE,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Send some tokens so that we have something to release.
+    suite
+        .execute(
+            &mut accounts.relayer,
+            contracts.hyperlane.warp,
+            &warp::ExecuteMsg::TransferRemote {
+                destination_domain: origin_domain,
+                recipient: MOCK_RECIPIENT,
+                metadata: None,
+            },
+            Coins::one(denom.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Now, receive a message from the origin domain.
+    let raw_message = Message {
+        version: MAILBOX_VERSION,
+        nonce: 0,
+        origin_domain,
+        sender: MOCK_ROUTE,
+        destination_domain: 12345678, // this should be our local domain
+        recipient: contracts.hyperlane.warp.into(),
+        body: TokenMessage {
+            recipient: accounts.relayer.address().into(),
+            amount: Uint128::new(88),
+            metadata: HexBinary::default(),
+        }
+        .encode(),
+    }
+    .encode();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.hyperlane.mailbox,
+            &mailbox::ExecuteMsg::Process {
+                raw_message: raw_message.clone(),
+                metadata: HexBinary::default(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // The message should have been recorded as received.
+    suite
+        .query_wasm_smart(
+            contracts.hyperlane.mailbox,
+            mailbox::QueryDeliveredRequest {
+                message_id: raw_message.keccak256(),
+            },
+        )
+        .should_succeed_and_equal(true);
+
+    // The recipient should have received the tokens.
+    suite
+        .query_balance(&accounts.relayer, denom.clone())
+        .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 100 + 88));
+
+    // Warp contract should have been deducted tokens.
+    suite
+        .query_balance(&contracts.hyperlane.warp, denom)
+        .should_succeed_and_equal(Uint128::new(100 - 88));
+}
 
 #[test]
 fn receive_minting_synth() {}

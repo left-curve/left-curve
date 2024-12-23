@@ -27,6 +27,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_routes(ctx, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::InterchainSecurityModule {} => {
+            let res = query_interchain_security_module(ctx);
+            res.to_json_value()
+        },
     }
 }
 
@@ -63,4 +67,10 @@ fn query_routes(
             })
         })
         .collect()
+}
+
+#[inline]
+fn query_interchain_security_module(_ctx: ImmutableCtx) -> Option<Addr> {
+    // Currently we just use the default ISM.
+    None
 }

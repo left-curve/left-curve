@@ -127,11 +127,9 @@ fn handle(
     sender: Addr32,
     body: HexBinary,
 ) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     ensure!(
-        ctx.sender == cfg.owner,
-        "only chain owner can call `handle`"
+        ctx.sender == MAILBOX.load(ctx.storage)?,
+        "only mailbox can call `handle`"
     );
 
     // Deserialize the message.
@@ -142,6 +140,7 @@ fn handle(
         // If the denom is synthetic, then mint the token.
         // Otherwise, if it's a collateral, then release the collateral.
         .add_message(if denom.namespace() == Some(&NAMESPACE) {
+            let cfg = ctx.querier.query_config()?;
             Message::execute(
                 cfg.bank,
                 &bank::ExecuteMsg::Mint {
