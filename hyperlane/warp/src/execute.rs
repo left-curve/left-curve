@@ -45,10 +45,8 @@ fn set_route(
     destination_domain: u32,
     route: Addr32,
 ) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     ensure!(
-        ctx.sender == cfg.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "only chain owner can call `set_route`"
     );
 
@@ -77,9 +75,9 @@ fn transfer_remote(
         // We determine whether it's synthetic by checking whether its denom is
         // under the `hpl` namespace.
         .may_add_message(if token.denom.namespace() == Some(&NAMESPACE) {
-            let cfg = ctx.querier.query_config()?;
+            let bank = ctx.querier.query_bank()?;
             Some(Message::execute(
-                cfg.bank,
+                bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
                     denom: token.denom.clone(),
@@ -140,9 +138,9 @@ fn handle(
         // If the denom is synthetic, then mint the token.
         // Otherwise, if it's a collateral, then release the collateral.
         .add_message(if denom.namespace() == Some(&NAMESPACE) {
-            let cfg = ctx.querier.query_config()?;
+            let bank = ctx.querier.query_bank()?;
             Message::execute(
-                cfg.bank,
+                bank,
                 &bank::ExecuteMsg::Mint {
                     to: body.recipient.try_into()?,
                     denom: denom.clone(),
