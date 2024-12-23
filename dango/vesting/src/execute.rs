@@ -2,7 +2,7 @@ use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
     dango_types::{
-        config::AppConfig,
+        config::DANGO_DENOM,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
     grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, Response, Uint128},
@@ -37,8 +37,7 @@ fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Res
         "you don't have the right, O you don't have the right"
     );
 
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-    let coin = ctx.funds.into_one_coin_of_denom(&app_cfg.dango)?;
+    let coin = ctx.funds.into_one_coin_of_denom(&DANGO_DENOM)?;
 
     POSITIONS.save(ctx.storage, user, &Position {
         vesting_status: VestingStatus::Active(schedule),
@@ -57,7 +56,6 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
         "you don't have the right, O you don't have the right"
     );
 
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
     let mut position = POSITIONS.load(ctx.storage, user)?;
 
     let vested = if let VestingStatus::Active(schedule) = &position.vesting_status {
@@ -71,7 +69,10 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // Any unvested tokens is clawed back.
     let refund = position.total.checked_sub(vested)?;
     let refund_msg = if refund.is_non_zero() {
-        Some(Message::transfer(owner, Coin::new(app_cfg.dango, refund)?)?)
+        Some(Message::transfer(
+            owner,
+            Coin::new(DANGO_DENOM.clone(), refund)?,
+        )?)
     } else {
         None
     };
@@ -82,8 +83,6 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 }
 
 fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let cfg: AppConfig = ctx.querier.query_app_config()?;
-
     let unlocking_schedule = UNLOCKING_SCHEDULE.load(ctx.storage)?;
     let mut position = POSITIONS.load(ctx.storage, ctx.sender)?;
 
@@ -97,6 +96,6 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     Ok(Response::new().add_message(Message::transfer(
         ctx.sender,
-        Coin::new(cfg.dango, claimable)?,
+        Coin::new(DANGO_DENOM.clone(), claimable)?,
     )?))
 }
