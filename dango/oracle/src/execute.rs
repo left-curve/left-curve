@@ -73,11 +73,9 @@ fn register_price_sources(
     ctx: MutableCtx,
     price_sources: BTreeMap<Denom, PriceSource>,
 ) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     // Only chain owner can register a denom.
     ensure!(
-        ctx.sender == cfg.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 

@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
-        nested_namespaces_with_key, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Part,
-        StdError, StdResult,
+        nested_namespaces_with_key, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes,
+        Encoder, LengthBounded, Lengthy, Part, StdError, StdResult,
     },
     std::{borrow::Cow, mem, str, vec},
 };
@@ -613,6 +613,45 @@ macro_rules! impl_bnum_signed_integer_key {
 impl_bnum_signed_integer_key! {
     I256 => U256,
     I512 => U512,
+}
+
+impl<T, B> PrimaryKey for Bounded<T, B>
+where
+    T: PrimaryKey<Output = T> + PartialOrd + ToString,
+    B: Bounds<T>,
+{
+    type Output = Bounded<T, B>;
+    type Prefix = T::Prefix;
+    type Suffix = T::Suffix;
+
+    const KEY_ELEMS: u8 = T::KEY_ELEMS;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        self.inner().raw_keys()
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        T::from_slice(bytes).and_then(Bounded::new)
+    }
+}
+
+impl<T, const MIN: usize, const MAX: usize> PrimaryKey for LengthBounded<T, MIN, MAX>
+where
+    T: PrimaryKey<Output = T> + Lengthy,
+{
+    type Output = LengthBounded<T, MIN, MAX>;
+    type Prefix = T::Prefix;
+    type Suffix = T::Suffix;
+
+    const KEY_ELEMS: u8 = T::KEY_ELEMS;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        self.inner().raw_keys()
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        T::from_slice(bytes).and_then(LengthBounded::new)
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

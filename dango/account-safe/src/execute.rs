@@ -9,7 +9,7 @@ use {
         },
         account_factory::{QueryAccountRequest, Username},
         auth::Metadata,
-        config::AppConfig,
+        DangoQuerier,
     },
     grug::{
         AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
@@ -19,11 +19,9 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-
     // Only the account factory can create new accounts.
     ensure!(
-        ctx.sender == app_cfg.addresses.account_factory,
+        ctx.sender == ctx.querier.query_account_factory()?,
         "you don't have the right, O you don't have the right"
     );
 
@@ -86,7 +84,7 @@ fn propose(
     description: Option<String>,
     messages: Vec<Message>,
 ) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+    let account_factory = ctx.querier.query_account_factory()?;
 
     // Query the Safe's parameters from the account factory.
     //
@@ -98,7 +96,7 @@ fn propose(
     // proposal's creation has no effect on it.
     let params = ctx
         .querier
-        .query_wasm_smart(app_cfg.addresses.account_factory, QueryAccountRequest {
+        .query_wasm_smart(account_factory, QueryAccountRequest {
             address: ctx.contract,
         })?
         .params
@@ -251,7 +249,7 @@ mod tests {
         dango_types::{
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
-            config::{AppAddresses, DANGO_DENOM},
+            config::{AppAddresses, AppConfig},
         },
         grug::{
             btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json,
@@ -272,7 +270,6 @@ mod tests {
     fn only_factory_can_instantiate() {
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -316,7 +313,6 @@ mod tests {
         // Create a Safe with 3 signers.
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.
@@ -448,7 +444,6 @@ mod tests {
         let params_clone = params.clone();
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
-                dango: DANGO_DENOM.clone(),
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
                     // Address below don't matter for this test.

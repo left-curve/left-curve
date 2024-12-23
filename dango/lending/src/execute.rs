@@ -5,8 +5,8 @@ use {
     dango_types::{
         account_factory::Account,
         bank,
-        config::AppConfig,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
+        DangoQuerier,
     },
     grug::{BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, Response},
     std::collections::BTreeMap,
@@ -38,7 +38,7 @@ fn update_markets(
 ) -> anyhow::Result<Response> {
     // Ensure only chain owner can update markets denoms.
     ensure!(
-        ctx.sender == ctx.querier.query_config()?.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "Only the owner can whitelist denoms"
     );
 
@@ -50,8 +50,7 @@ fn update_markets(
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
+    let bank = ctx.querier.query_bank()?;
     let mut msgs = vec![];
 
     for coin in ctx.funds {
@@ -65,7 +64,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         let amount = coin.amount;
 
         msgs.push(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
                 denom,
@@ -79,8 +78,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
+    let bank = ctx.querier.query_bank()?;
     let mut msgs = vec![];
     let mut withdrawn = Coins::new();
 
@@ -96,7 +94,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Burn the LP tokens
         msgs.push(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
                 denom: coin.denom,
@@ -114,13 +112,13 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 }
 
 fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+    let account_factory = ctx.querier.query_account_factory()?;
 
     // Ensure sender is a margin account.
     // An an optimization, use raw instead of smart query.
     ensure!(
         ctx.querier
-            .query_wasm_raw(app_cfg.addresses.account_factory, ACCOUNTS.path(ctx.sender))?
+            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
             .ok_or_else(|| anyhow!(
                 "borrower {} is not registered in account factory",
                 ctx.sender

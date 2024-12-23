@@ -151,10 +151,9 @@ fn swap(
 
     // Transfer the protocol fee, if non-zero, to taxman.
     let fee_msg = if outcome.protocol_fee.is_non_zero() {
-        let cfg = ctx.querier.query_config()?;
-
+        let taxman = ctx.querier.query_taxman()?;
         Some(Message::execute(
-            cfg.taxman,
+            taxman,
             &taxman::ExecuteMsg::Pay { payer: ctx.sender },
             outcome.protocol_fee,
         )?)
@@ -195,11 +194,11 @@ fn provide_liquidity(
         );
     }
 
-    let cfg = ctx.querier.query_config()?;
+    let bank = ctx.querier.query_bank()?;
     let denom = denom_of(pool_id)?;
 
     Ok(Response::new().add_message(Message::execute(
-        cfg.bank,
+        bank,
         &bank::ExecuteMsg::Mint {
             to: ctx.sender,
             denom,
@@ -230,11 +229,11 @@ fn withdraw_liquidity(ctx: MutableCtx, pool_id: PoolId) -> anyhow::Result<Respon
 
     POOLS.save(ctx.storage, pool_id, &pool)?;
 
-    let cfg = ctx.querier.query_config()?;
+    let bank = ctx.querier.query_bank()?;
 
     Ok(Response::new()
         .add_message(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
                 denom,

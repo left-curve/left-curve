@@ -8,7 +8,7 @@ use {
             Username,
         },
         auth::Key,
-        config::AppConfig,
+        DangoQuerier,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
@@ -107,10 +107,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-
     ensure!(
-        ctx.sender == app_cfg.addresses.ibc_transfer,
+        ctx.sender == ctx.querier.query_ibc_transfer()?,
         "only IBC transfer contract can make deposits"
     );
 

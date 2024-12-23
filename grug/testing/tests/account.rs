@@ -133,10 +133,10 @@ mod backrunner {
     // Accounts can do any action while backrunning. In this test, the account
     // attempts to mint itself a token.
     pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-        let cfg = ctx.querier.query_config().unwrap();
+        let bank = ctx.querier.query_bank().unwrap();
 
         Ok(Response::new().add_message(Message::execute(
-            cfg.bank,
+            bank,
             &grug_mock_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: Denom::from_str("nft/badkids/1").unwrap(),
