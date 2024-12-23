@@ -3,8 +3,8 @@ use {
     anyhow::ensure,
     dango_types::{
         bank,
-        config::AppConfig,
         taxman::{Config, ExecuteMsg, InstantiateMsg},
+        DangoQuerier,
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number,
@@ -63,7 +63,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // 3. Sender is the oracle contract. Validators supply Pyth price feeds by
     //    using the oracle contract as sender during `PrepareProposal`.
     let withhold_amount = if ctx.mode == AuthMode::Simulate || {
-        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        let app_cfg = ctx.querier.query_dango_config()?;
         tx.sender == app_cfg.addresses.account_factory || tx.sender == app_cfg.addresses.oracle
     } {
         Uint128::ZERO
@@ -109,7 +109,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     // Again, during simulation, or any tx sent by the account factory, is
     // exempt from gas fees.
     let charge_amount = if ctx.mode == AuthMode::Simulate || {
-        let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+        let app_cfg = ctx.querier.query_dango_config()?;
         tx.sender == app_cfg.addresses.account_factory || tx.sender == app_cfg.addresses.oracle
     } {
         Uint128::ZERO
