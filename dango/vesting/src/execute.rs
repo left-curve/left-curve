@@ -32,14 +32,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
-
     ensure!(
-        cfg.owner == ctx.sender,
+        ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
     let coin = ctx.funds.into_one_coin_of_denom(&app_cfg.dango)?;
 
     POSITIONS.save(ctx.storage, user, &Position {
@@ -52,14 +50,14 @@ fn create(ctx: MutableCtx, user: Addr, schedule: Schedule) -> anyhow::Result<Res
 }
 
 fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
+    let owner = ctx.querier.query_owner()?;
 
     ensure!(
-        cfg.owner == ctx.sender,
+        ctx.sender == owner,
         "you don't have the right, O you don't have the right"
     );
 
+    let app_cfg: AppConfig = ctx.querier.query_app_config()?;
     let mut position = POSITIONS.load(ctx.storage, user)?;
 
     let vested = if let VestingStatus::Active(schedule) = &position.vesting_status {
@@ -73,10 +71,7 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
     // Any unvested tokens is clawed back.
     let refund = position.total.checked_sub(vested)?;
     let refund_msg = if refund.is_non_zero() {
-        Some(Message::transfer(
-            cfg.owner,
-            Coin::new(app_cfg.dango, refund)?,
-        )?)
+        Some(Message::transfer(owner, Coin::new(app_cfg.dango, refund)?)?)
     } else {
         None
     };

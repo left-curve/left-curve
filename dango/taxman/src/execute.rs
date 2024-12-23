@@ -28,11 +28,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     // Only the chain's owner can update fee config.
     ensure!(
-        ctx.sender == cfg.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
@@ -80,12 +78,9 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     // the tx may incur, this submessage fails, causing the tx to be rejected
     // from entering the mempool.
     let withhold_msg = if withhold_amount.is_non_zero() {
-        // TODO: for production, we can hardcode the bank contract address
-        // instead of having to make the query.
-        let cfg = ctx.querier.query_config()?;
-
+        let bank = ctx.querier.query_bank()?;
         Some(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
@@ -129,10 +124,9 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
     // Use ForceTransfer instead of Transfer so that we don't need to invoke the
     // sender's `receive` method (unnecessary).
     let refund_msg = if refund_amount.is_non_zero() {
-        let cfg = ctx.querier.query_config()?;
-
+        let bank = ctx.querier.query_bank()?;
         Some(Message::execute(
-            cfg.bank,
+            bank,
             &bank::ExecuteMsg::ForceTransfer {
                 from: ctx.contract,
                 to: tx.sender,
