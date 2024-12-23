@@ -265,4 +265,67 @@ fn receive_release_collateral() {
 }
 
 #[test]
-fn receive_minting_synth() {}
+fn receive_minting_synth() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    let denom = Denom::from_str("hpl/solana/fartcoin").unwrap();
+    let origin_domain = 123;
+
+    // Set the route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.hyperlane.warp,
+            &warp::ExecuteMsg::SetRoute {
+                denom: denom.clone(),
+                destination_domain: origin_domain,
+                route: MOCK_ROUTE,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Now, receive a message from the origin domain.
+    let raw_message = Message {
+        version: MAILBOX_VERSION,
+        nonce: 0,
+        origin_domain,
+        sender: MOCK_ROUTE,
+        destination_domain: 12345678, // this should be our local domain
+        recipient: contracts.hyperlane.warp.into(),
+        body: TokenMessage {
+            recipient: accounts.relayer.address().into(),
+            amount: Uint128::new(88),
+            metadata: HexBinary::default(),
+        }
+        .encode(),
+    }
+    .encode();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.hyperlane.mailbox,
+            &mailbox::ExecuteMsg::Process {
+                raw_message: raw_message.clone(),
+                metadata: HexBinary::default(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // The message should have been recorded as received.
+    suite
+        .query_wasm_smart(
+            contracts.hyperlane.mailbox,
+            mailbox::QueryDeliveredRequest {
+                message_id: raw_message.keccak256(),
+            },
+        )
+        .should_succeed_and_equal(true);
+
+    // Synthetic tokens should have been minted to the receiver.
+    suite
+        .query_balance(&accounts.relayer, denom.clone())
+        .should_succeed_and_equal(Uint128::new(88));
+}
