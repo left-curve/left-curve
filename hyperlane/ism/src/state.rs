@@ -1,3 +1,6 @@
-use {grug::Map, hyperlane_types::ism::ValidatorSet};
+use {
+    grug::Map,
+    hyperlane_types::{ism::ValidatorSet, mailbox::Domain},
+};
 
-pub const VALIDATOR_SETS: Map<u32, ValidatorSet> = Map::new("validator_set");
+pub const VALIDATOR_SETS: Map<Domain, ValidatorSet> = Map::new("validator_set");

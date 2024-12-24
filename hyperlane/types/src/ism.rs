@@ -1,4 +1,5 @@
 use {
+    crate::mailbox::Domain,
     grug::{HexBinary, HexByteArray},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -11,14 +12,14 @@ pub struct ValidatorSet {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub validator_sets: BTreeMap<u32, ValidatorSet>,
+    pub validator_sets: BTreeMap<Domain, ValidatorSet>,
 }
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Set validators for a domain.
     SetValidators {
-        domain: u32,
+        domain: Domain,
         threshold: u8,
         validators: BTreeSet<HexByteArray<20>>,
     },
@@ -28,11 +29,11 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Query the validator set for a domain.
     #[returns(ValidatorSet)]
-    ValidatorSet { domain: u32 },
+    ValidatorSet { domain: Domain },
     /// Enumerate validator sets of all domains.
-    #[returns(BTreeMap<u32, ValidatorSet>)]
+    #[returns(BTreeMap<Domain, ValidatorSet>)]
     ValidatorSets {
-        start_after: Option<u32>,
+        start_after: Option<Domain>,
         limit: Option<u32>,
     },
     /// Verify a message.

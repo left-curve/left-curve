@@ -5,15 +5,17 @@ use {
 
 pub const MAILBOX_VERSION: u8 = 3;
 
+pub type Domain = u32;
+
 // ----------------------------------- types -----------------------------------
 
 #[grug::derive(Serde)]
 pub struct Message {
     pub version: u8,
     pub nonce: u32,
-    pub origin_domain: u32,
+    pub origin_domain: Domain,
     pub sender: Addr32,
-    pub destination_domain: u32,
+    pub destination_domain: Domain,
     pub recipient: Addr32,
     pub body: HexBinary,
 }
@@ -36,9 +38,9 @@ impl Message {
         Self {
             version: buf[0],
             nonce: u32::from_be_bytes(buf[1..5].try_into().unwrap()),
-            origin_domain: u32::from_be_bytes(buf[5..9].try_into().unwrap()),
+            origin_domain: Domain::from_be_bytes(buf[5..9].try_into().unwrap()),
             sender: Addr32::from_inner(buf[9..41].try_into().unwrap()),
-            destination_domain: u32::from_be_bytes(buf[41..45].try_into().unwrap()),
+            destination_domain: Domain::from_be_bytes(buf[41..45].try_into().unwrap()),
             recipient: Addr32::from_inner(buf[45..77].try_into().unwrap()),
             body: buf[77..].to_vec().into(),
         }
@@ -48,7 +50,7 @@ impl Message {
 #[grug::derive(Serde, Borsh)]
 pub struct Config {
     // Domain registry: https://github.com/hyperlane-xyz/hyperlane-registry
-    pub local_domain: u32,
+    pub local_domain: Domain,
     // Note: this is typically set to the message ID multisig ISM.
     pub default_ism: Addr,
     // Note: this is typically set to the IGP (interchain gas paymaster) hook.
@@ -72,7 +74,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Send a message.
     Dispatch {
-        destination_domain: u32,
+        destination_domain: Domain,
         recipient: Addr32,
         body: HexBinary,
         metadata: Option<HexBinary>,
@@ -103,7 +105,7 @@ pub enum QueryMsg {
 #[grug::derive(Serde)]
 pub struct Dispatch {
     pub sender: Addr32,
-    pub destination: u32,
+    pub destination: Domain,
     pub recipient: Addr32,
     pub message: HexBinary,
 }
@@ -115,7 +117,7 @@ pub struct DispatchId {
 
 #[grug::derive(Serde)]
 pub struct Process {
-    pub origin: u32,
+    pub origin: Domain,
     pub sender: Addr32,
     pub recipient: Addr32,
 }

@@ -1,7 +1,10 @@
 use {
     crate::VALIDATOR_SETS,
     grug::{Bound, HexBinary, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
-    hyperlane_types::ism::{QueryMsg, ValidatorSet},
+    hyperlane_types::{
+        ism::{QueryMsg, ValidatorSet},
+        mailbox::Domain,
+    },
     std::collections::BTreeMap,
 };
 
@@ -29,16 +32,16 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 #[inline]
-fn query_validaor_set(ctx: ImmutableCtx, domain: u32) -> StdResult<ValidatorSet> {
+fn query_validaor_set(ctx: ImmutableCtx, domain: Domain) -> StdResult<ValidatorSet> {
     VALIDATOR_SETS.load(ctx.storage, domain)
 }
 
 #[inline]
 fn query_validator_sets(
     ctx: ImmutableCtx,
-    start_after: Option<u32>,
+    start_after: Option<Domain>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<u32, ValidatorSet>> {
+) -> StdResult<BTreeMap<Domain, ValidatorSet>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 

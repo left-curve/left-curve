@@ -2,6 +2,7 @@ use {
     crate::{MAILBOX, ROUTES},
     grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     hyperlane_types::{
+        mailbox::Domain,
         warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem},
         Addr32,
     },
@@ -40,7 +41,7 @@ fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
 }
 
 #[inline]
-fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: u32) -> StdResult<Addr32> {
+fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: Domain) -> StdResult<Addr32> {
     ROUTES.load(ctx.storage, (&denom, destination_domain))
 }
 

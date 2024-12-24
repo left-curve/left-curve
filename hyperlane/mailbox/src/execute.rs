@@ -6,7 +6,7 @@ use {
         hook::{self, QueryQuoteDispatchRequest},
         ism::QueryVerifyRequest,
         mailbox::{
-            Dispatch, DispatchId, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId,
+            Dispatch, DispatchId, Domain, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId,
             MAILBOX_VERSION,
         },
         recipient::{self, QueryInterchainSecurityModuleRequest},
@@ -48,7 +48,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 #[inline]
 fn dispatch(
     mut ctx: MutableCtx,
-    destination_domain: u32,
+    destination_domain: Domain,
     recipient: Addr32,
     body: HexBinary,
     metadata: HexBinary,

@@ -4,7 +4,7 @@ use {
     dango_types::bank,
     grug::{Coin, Coins, Denom, HexBinary, Message, MutableCtx, Response, StdResult},
     hyperlane_types::{
-        mailbox,
+        mailbox::{self, Domain},
         warp::{ExecuteMsg, Handle, InstantiateMsg, TokenMessage, TransferRemote, NAMESPACE},
         Addr32,
     },
@@ -42,7 +42,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn set_route(
     ctx: MutableCtx,
     denom: Denom,
-    destination_domain: u32,
+    destination_domain: Domain,
     route: Addr32,
 ) -> anyhow::Result<Response> {
     ensure!(
@@ -59,7 +59,7 @@ fn set_route(
 #[inline]
 fn transfer_remote(
     ctx: MutableCtx,
-    destination_domain: u32,
+    destination_domain: Domain,
     recipient: Addr32,
     metadata: Option<HexBinary>,
 ) -> anyhow::Result<Response> {
@@ -121,7 +121,7 @@ fn transfer_remote(
 #[inline]
 fn handle(
     ctx: MutableCtx,
-    origin_domain: u32,
+    origin_domain: Domain,
     sender: Addr32,
     body: HexBinary,
 ) -> anyhow::Result<Response> {

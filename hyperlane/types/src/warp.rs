@@ -1,5 +1,5 @@
 use {
-    crate::Addr32,
+    crate::{mailbox::Domain, Addr32},
     anyhow::ensure,
     grug::{
         Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
@@ -93,7 +93,7 @@ pub enum ExecuteMsg {
     /// These should be trivial to implement, but we just don't see a use for
     /// them for now.
     TransferRemote {
-        destination_domain: u32,
+        destination_domain: Domain,
         // Note: This means the account the tokens are being sent to, NOT the
         // Hyperlane Warp contract, which is called "route" here and set by the
         // contract owner.
@@ -105,12 +105,12 @@ pub enum ExecuteMsg {
     /// Define the recipient contract for a token on a destination domain.
     SetRoute {
         denom: Denom,
-        destination_domain: u32,
+        destination_domain: Domain,
         route: Addr32,
     },
     // Required Hyperlane recipient interface.
     Handle {
-        origin: u32,
+        origin: Domain,
         sender: Addr32,
         body: HexBinary,
     },
@@ -125,7 +125,7 @@ pub enum QueryMsg {
     #[returns(Addr32)]
     Route {
         denom: Denom,
-        destination_domain: u32,
+        destination_domain: Domain,
     },
     /// Enumerate all routes.
     #[returns(Vec<QueryRoutesResponseItem>)]
@@ -141,13 +141,13 @@ pub enum QueryMsg {
 #[grug::derive(Serde)]
 pub struct QueryRoutesPageParam {
     pub denom: Denom,
-    pub destination_domain: u32,
+    pub destination_domain: Domain,
 }
 
 #[grug::derive(Serde)]
 pub struct QueryRoutesResponseItem {
     pub denom: Denom,
-    pub destination_domain: u32,
+    pub destination_domain: Domain,
     pub route: Addr32,
 }
 
@@ -156,7 +156,7 @@ pub struct QueryRoutesResponseItem {
 #[grug::derive(Serde)]
 pub struct TransferRemote {
     pub sender: Addr,
-    pub destination_domain: u32,
+    pub destination_domain: Domain,
     pub recipient: Addr32,
     pub token: Denom,
     pub amount: Uint128,

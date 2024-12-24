@@ -1,12 +1,12 @@
 use {
-    crate::Addr32,
+    crate::{mailbox::Domain, Addr32},
     grug::{Addr, HexBinary},
 };
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     Handle {
-        origin: u32,
+        origin: Domain,
         sender: Addr32,
         body: HexBinary,
     },

@@ -2,7 +2,10 @@ use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
     grug::{HexByteArray, MutableCtx, Response, StdResult},
-    hyperlane_types::ism::{ExecuteMsg, InstantiateMsg, ValidatorSet},
+    hyperlane_types::{
+        ism::{ExecuteMsg, InstantiateMsg, ValidatorSet},
+        mailbox::Domain,
+    },
     std::collections::BTreeSet,
 };
 
@@ -29,7 +32,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 #[inline]
 fn set_validators(
     ctx: MutableCtx,
-    domain: u32,
+    domain: Domain,
     threshold: u8,
     validators: BTreeSet<HexByteArray<20>>,
 ) -> anyhow::Result<Response> {
