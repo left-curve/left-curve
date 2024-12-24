@@ -135,7 +135,7 @@ mod tests {
 
             for leaf in case.leaves {
                 let leaf_hash = eip191_hash(leaf);
-                tree.insert(leaf_hash.into()).unwrap();
+                tree.insert(leaf_hash).unwrap();
             }
 
             let root = tree.root();
