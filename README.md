@@ -22,6 +22,7 @@ Prerequisites:
 - [Docker](https://docs.docker.com/engine/install/)
 - [Node.js](https://nodejs.org/en/download/) [version 18+](https://github.com/left-curve/left-curve/blob/main/sdk/README.md?plain=1#L62)
 - [pnpm](https://pnpm.io/)
+- [Forge](https://book.getfoundry.sh/getting-started/installation)
 
 We use [VS Code](https://code.visualstudio.com/) as text editor with the following plugins:
 
@@ -34,6 +35,7 @@ We use [VS Code](https://code.visualstudio.com/) as text editor with the followi
 - [Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)
 - [markdownlint](https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint)
 - [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- [solidity](https://marketplace.visualstudio.com/items?itemName=JuanBlanco.solidity)
 - [Todo Tree](https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree)
 - [Trailing Spaces](https://marketplace.visualstudio.com/items?itemName=shardulm94.trailing-spaces)
 
@@ -119,11 +121,45 @@ Storybook:
 pnpm storybook
 ```
 
-Book:
+## Solidity
+
+Install dependencies:
+
+```shell
+forge soldeer install
+```
+
+Install dependencies of dependencies (this isn't done automatically in the previous step):
+
+```shell
+cd dependencies/hyperlane-monorepo-0.0.0
+yarn install
+```
+
+Compile contracts:
+
+```shell
+forge build
+```
+
+Run tests:
+
+```shell
+forge test
+```
+
+## Docs
+
+Install dependencies:
 
 ```shell
 cargo install mdbook
 cargo install mdbook-katex
+```
+
+Generate docs:
+
+```shell
 mdbook build
 ```
 
