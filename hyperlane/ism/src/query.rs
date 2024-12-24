@@ -141,7 +141,7 @@ mod tests {
         validators: BTreeSet<HexByteArray<20>>,
     ) {
         let mut ctx = MockContext::new();
-        let message = Message::decode(&raw_message).unwrap();
+        let mut message = Message::decode(&raw_message).unwrap();
 
         VALIDATOR_SETS
             .save(&mut ctx.storage, message.origin_domain, &ValidatorSet {
@@ -151,10 +151,15 @@ mod tests {
             .unwrap();
 
         verify(ctx.as_immutable(), &raw_message, &raw_metadata).should_succeed();
+
+        // Try forging a false message. Verification should fail.
+        message.body = b"larry".to_vec().into();
+
+        verify(ctx.as_immutable(), &message.encode(), &raw_metadata).should_fail();
     }
 
     #[test]
-    fn preventing_reuse_of_signature() {
+    fn rejecting_reuse_of_signature() {
         let validators = btree_set! {
             HexByteArray::from_inner(hex!("ebc301013b6cd2548e347c28d2dc43ec20c068f2")),
             HexByteArray::from_inner(hex!("315db9868fc8813b221b1694f8760ece39f45447")),
