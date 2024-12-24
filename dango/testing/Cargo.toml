@@ -26,6 +26,7 @@ k256           = { workspace = true }
 anyhow          = { workspace = true }
 criterion       = { workspace = true }
 dango-types     = { workspace = true }
+grug-crypto     = { workspace = true }
 hyperlane-types = { workspace = true }
 hyperlane-warp  = { workspace = true, features = ["library"] }
 pyth-sdk        = { workspace = true }

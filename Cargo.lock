@@ -1815,6 +1815,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-crypto",
  "grug-db-disk",
  "grug-db-memory",
  "grug-vm-hybrid",

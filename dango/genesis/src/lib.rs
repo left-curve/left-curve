@@ -119,7 +119,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .build();
 
     let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
-        // .with_execute(Box::new(hyperlane_ism::execute))
+        .with_execute(Box::new(hyperlane_ism::execute))
         .with_query(Box::new(hyperlane_ism::query))
         .build();
 

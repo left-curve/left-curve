@@ -76,7 +76,7 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], metadata: &[u8]) -> anyhow::Res
                 &multisig_hash,
                 &signature[..64],
                 signature[64] - 27, // Ethereum uses recovery IDs 27, 28 instead of 0, 1.
-                false,
+                false,              // We need the _uncompressed_ public key for deriving address!
             )?;
             let pk_hash = ctx.api.keccak256(&pk[1..]);
             let address = &pk_hash[12..];
@@ -110,7 +110,7 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], metadata: &[u8]) -> anyhow::Res
 mod tests {
     use {
         super::*,
-        grug::{btree_set, MockContext, ResultExt},
+        grug::{btree_set, hash, MockContext, ResultExt},
         hex_literal::hex,
         hyperlane_types::{addr32, mailbox::MAILBOX_VERSION},
         test_case::test_case,
@@ -180,9 +180,7 @@ mod tests {
             origin_merkle_tree: addr32!(
                 "0000000000000000000000009af85731edd41e2e50f81ef8a0a69d2fb836edf9"
             ),
-            merkle_root: HexByteArray::from_inner(hex!(
-                "a84430f822e0e9b5942faace72bd5b97f0b59a58a9b8281231d9e5c393b5859c"
-            )),
+            merkle_root: hash!("a84430f822e0e9b5942faace72bd5b97f0b59a58a9b8281231d9e5c393b5859c"),
             merkle_index: 36,
             signatures: btree_set! {
                 // Valid signature but used twice.

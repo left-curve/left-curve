@@ -1,7 +1,7 @@
 use {
     crate::{mailbox::Domain, Addr32},
     anyhow::ensure,
-    grug::{HexBinary, HexByteArray, Inner},
+    grug::{Hash256, HexBinary, HexByteArray, Inner},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -17,7 +17,7 @@ pub struct ValidatorSet {
 #[grug::derive(Serde)]
 pub struct Metadata {
     pub origin_merkle_tree: Addr32,
-    pub merkle_root: HexByteArray<32>,
+    pub merkle_root: Hash256,
     pub merkle_index: u32,
     pub signatures: BTreeSet<HexByteArray<65>>,
 }
@@ -48,7 +48,7 @@ impl Metadata {
 
         Ok(Self {
             origin_merkle_tree: Addr32::from_inner(buf[0..32].try_into().unwrap()),
-            merkle_root: HexByteArray::from_inner(buf[32..64].try_into().unwrap()),
+            merkle_root: Hash256::from_inner(buf[32..64].try_into().unwrap()),
             merkle_index: u32::from_be_bytes(buf[64..68].try_into().unwrap()),
             signatures,
         })

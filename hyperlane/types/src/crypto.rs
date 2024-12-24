@@ -1,6 +1,6 @@
 use {
     crate::{mailbox::Domain, Addr32},
-    grug::{Hash256, HashExt, HexByteArray, Inner},
+    grug::{Hash256, HashExt, Inner},
 };
 
 pub fn domain_hash(domain: Domain, address: Addr32) -> Hash256 {
@@ -17,7 +17,7 @@ pub fn domain_hash(domain: Domain, address: Addr32) -> Hash256 {
 
 pub fn multisig_hash(
     domain_hash: Hash256,
-    merkle_root: HexByteArray<32>,
+    merkle_root: Hash256,
     merkle_index: u32,
     message_id: Hash256,
 ) -> Hash256 {
