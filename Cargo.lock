@@ -3311,7 +3311,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
+ "hex-literal",
  "hyperlane-types",
+ "test-case",
 ]
 
 [[package]]

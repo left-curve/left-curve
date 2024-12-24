@@ -19,8 +19,7 @@ pub struct Metadata {
     pub origin_merkle_tree: Addr32,
     pub merkle_root: HexByteArray<32>,
     pub merkle_index: u32,
-    // The signatures aren't necessarily sorted, so use Vec instead of BTreeSet.
-    pub signatures: Vec<HexByteArray<65>>,
+    pub signatures: BTreeSet<HexByteArray<65>>,
 }
 
 impl Metadata {

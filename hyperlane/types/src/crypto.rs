@@ -7,8 +7,8 @@ pub fn domain_hash(domain: Domain, address: Addr32) -> Hash256 {
     // domain: 4
     // address: 32
     // "HYPERLANE": 9
-    // 4 + 32 + 9 = 49
-    let mut preimage = [0u8; 49];
+    // 4 + 32 + 9 = 45
+    let mut preimage = [0u8; 45];
     preimage[..4].copy_from_slice(&domain.to_be_bytes());
     preimage[4..36].copy_from_slice(address.inner());
     preimage[36..].copy_from_slice(b"HYPERLANE");
