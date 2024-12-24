@@ -1,4 +1,5 @@
 mod address;
+mod crypto;
 pub mod fee;
 pub mod hook;
 pub mod ism;
@@ -8,4 +9,4 @@ pub mod merkle_tree;
 pub mod recipient;
 pub mod warp;
 
-pub use address::*;
+pub use {address::*, crypto::*};

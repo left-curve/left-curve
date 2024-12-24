@@ -115,7 +115,7 @@ where
 // https://github.com/hyperlane-xyz/hyperlane-monorepo/blob/main/solidity/test/merkle.test.ts
 #[cfg(test)]
 mod tests {
-    use {super::*, serde::Deserialize};
+    use {super::*, crate::eip191_hash, serde::Deserialize};
 
     #[derive(Deserialize)]
     #[serde(rename_all = "camelCase")]
@@ -123,18 +123,6 @@ mod tests {
         pub test_name: String,
         pub expected_root: String,
         pub leaves: Vec<String>,
-    }
-
-    // https://docs.rs/web3/latest/src/web3/signing.rs.html#226-236
-    fn eip191_hash<T>(message: T) -> [u8; 32]
-    where
-        T: AsRef<[u8]>,
-    {
-        let mut hasher = Keccak256::new();
-        hasher.update(b"\x19Ethereum Signed Message:\n");
-        hasher.update(message.as_ref().len().to_string());
-        hasher.update(message);
-        hasher.finalize().into()
     }
 
     #[test]
