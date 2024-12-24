@@ -119,7 +119,7 @@ fn process(
     let cfg = CONFIG.load(ctx.storage)?;
 
     // Decode the Hyperlane message.
-    let message = Message::decode(&raw_message);
+    let message = Message::decode(&raw_message)?;
     let message_id = Hash::from_inner(ctx.api.keccak256(&raw_message));
     let recipient = message.recipient.try_into()?;
 

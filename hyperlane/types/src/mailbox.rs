@@ -1,5 +1,6 @@
 use {
     crate::Addr32,
+    anyhow::ensure,
     grug::{Addr, Hash256, HexBinary, Inner},
 };
 
@@ -33,9 +34,14 @@ impl Message {
         buf.into()
     }
 
-    // TODO: this panics if buffer is less than 77 bytes. handle this gracefully
-    pub fn decode(buf: &[u8]) -> Self {
-        Self {
+    pub fn decode(buf: &[u8]) -> anyhow::Result<Self> {
+        ensure!(
+            buf.len() >= 77,
+            "mailbox message should be at least 77 bytes, got: {}",
+            buf.len()
+        );
+
+        Ok(Self {
             version: buf[0],
             nonce: u32::from_be_bytes(buf[1..5].try_into().unwrap()),
             origin_domain: Domain::from_be_bytes(buf[5..9].try_into().unwrap()),
@@ -43,7 +49,7 @@ impl Message {
             destination_domain: Domain::from_be_bytes(buf[41..45].try_into().unwrap()),
             recipient: Addr32::from_inner(buf[45..77].try_into().unwrap()),
             body: buf[77..].to_vec().into(),
-        }
+        })
     }
 }
 
