@@ -33,12 +33,19 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn set_validators(
     ctx: MutableCtx,
     domain: Domain,
-    threshold: u8,
+    threshold: u32,
     validators: BTreeSet<HexByteArray<20>>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only the chain owner can call `set_validators`"
+    );
+
+    ensure!(
+        validators.len() >= threshold as usize,
+        "not enough validators! threshold: {}, validators: {}",
+        threshold,
+        validators.len()
     );
 
     VALIDATOR_SETS.save(ctx.storage, domain, &ValidatorSet {

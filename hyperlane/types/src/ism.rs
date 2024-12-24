@@ -7,7 +7,7 @@ use {
 
 #[grug::derive(Serde, Borsh)]
 pub struct ValidatorSet {
-    pub threshold: u8,
+    pub threshold: u32,
     // A validator is identified by an Ethereum address. However we avoid using
     // the `Addr` type here (although we use the same address format as Ethereum)
     // to avoid confusion, as it's not a Grug/Dango address.
@@ -68,7 +68,7 @@ pub enum ExecuteMsg {
     /// Set validators for a domain.
     SetValidators {
         domain: Domain,
-        threshold: u8,
+        threshold: u32,
         validators: BTreeSet<HexByteArray<20>>,
     },
 }
