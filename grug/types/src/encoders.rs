@@ -8,12 +8,22 @@ pub trait Encoder {
 }
 
 /// Binary encoder for raw bytes using the base64 scheme.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Base64Encoder;
 
 impl Encoder for Base64Encoder {
     const ENCODING: Encoding = BASE64;
     const NAME: &str = "Base64";
+    const PREFIX: &str = "";
+}
+
+/// Binary encoder for raw bytes using the hex scheme.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HexEncoder;
+
+impl Encoder for HexEncoder {
+    const ENCODING: Encoding = HEXLOWER;
+    const NAME: &str = "Addr32";
     const PREFIX: &str = "";
 }
 
