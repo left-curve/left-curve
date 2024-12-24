@@ -5,7 +5,7 @@ pragma solidity >=0.8.0;
 import {TokenMessage} from "../../dependencies/hyperlane-monorepo-0.0.0/solidity/contracts/token/libs/TokenMessage.sol";
 import {HypNative} from "../../dependencies/hyperlane-monorepo-0.0.0/solidity/contracts/token/HypNative.sol";
 
-contract HypERC20Metadata is HypNative {
+contract HypNativeMetadata is HypNative {
     constructor(address _mailbox) HypNative(_mailbox) {}
 
     /**
