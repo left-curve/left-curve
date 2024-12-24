@@ -40,8 +40,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ),
         ExecuteMsg::Process {
             raw_message,
-            metadata,
-        } => process(ctx, raw_message, metadata),
+            raw_metadata,
+        } => process(ctx, raw_message, raw_metadata),
     }
 }
 
@@ -76,7 +76,7 @@ fn dispatch(
         .querier
         .query_wasm_smart(cfg.required_hook, QueryQuoteDispatchRequest {
             raw_message: raw_message.clone(),
-            metadata: metadata.clone(),
+            raw_metadata: metadata.clone(),
         })?;
 
     // Deduct the fee from the received funds.
@@ -89,7 +89,7 @@ fn dispatch(
             cfg.required_hook,
             &hook::ExecuteMsg::PostDispatch {
                 raw_message: raw_message.clone(),
-                metadata: metadata.clone(),
+                raw_metadata: metadata.clone(),
             },
             fees,
         )?)
@@ -97,13 +97,13 @@ fn dispatch(
             hook.unwrap_or(cfg.default_hook),
             &hook::ExecuteMsg::PostDispatch {
                 raw_message,
-                metadata,
+                raw_metadata: metadata,
             },
             ctx.funds,
         )?)
         .add_event("mailbox_dispatch", &Dispatch {
             sender: message.sender,
-            destination: message.destination_domain,
+            destination_domain: message.destination_domain,
             recipient: message.recipient,
             message: message.body,
         })?
@@ -114,7 +114,7 @@ fn dispatch(
 fn process(
     ctx: MutableCtx,
     raw_message: HexBinary,
-    metadata: HexBinary,
+    raw_metadata: HexBinary,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
@@ -154,7 +154,7 @@ fn process(
     ctx.querier
         .query_wasm_smart(ism, QueryVerifyRequest {
             raw_message,
-            metadata,
+            raw_metadata,
         })
         .map_err(|err| anyhow!("ISM verification failed: {err}"))?;
 
@@ -165,14 +165,14 @@ fn process(
         .add_message(grug::Message::execute(
             recipient,
             &recipient::ExecuteMsg::Handle {
-                origin: message.origin_domain,
+                origin_domain: message.origin_domain,
                 sender: message.sender,
                 body: message.body,
             },
             Coins::new(),
         )?)
         .add_event("mailbox_process", &Process {
-            origin: message.origin_domain,
+            origin_domain: message.origin_domain,
             sender: message.sender,
             recipient: message.recipient,
         })?

@@ -6,7 +6,7 @@ use {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     Handle {
-        origin: Domain,
+        origin_domain: Domain,
         sender: Addr32,
         body: HexBinary,
     },

@@ -89,7 +89,7 @@ pub enum ExecuteMsg {
     /// Receive a message.
     Process {
         raw_message: HexBinary,
-        metadata: HexBinary,
+        raw_metadata: HexBinary,
     },
 }
 
@@ -111,7 +111,7 @@ pub enum QueryMsg {
 #[grug::derive(Serde)]
 pub struct Dispatch {
     pub sender: Addr32,
-    pub destination: Domain,
+    pub destination_domain: Domain,
     pub recipient: Addr32,
     pub message: HexBinary,
 }
@@ -123,7 +123,7 @@ pub struct DispatchId {
 
 #[grug::derive(Serde)]
 pub struct Process {
-    pub origin: Domain,
+    pub origin_domain: Domain,
     pub sender: Addr32,
     pub recipient: Addr32,
 }

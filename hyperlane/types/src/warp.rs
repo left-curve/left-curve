@@ -110,7 +110,7 @@ pub enum ExecuteMsg {
     },
     // Required Hyperlane recipient interface.
     Handle {
-        origin: Domain,
+        origin_domain: Domain,
         sender: Addr32,
         body: HexBinary,
     },

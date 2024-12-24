@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     // Required Hyperlane hook interface.
     PostDispatch {
         raw_message: HexBinary,
-        metadata: HexBinary,
+        raw_metadata: HexBinary,
     },
 }
 
@@ -32,7 +32,7 @@ pub enum QueryMsg {
     #[returns(Coins)]
     QuoteDispatch {
         raw_message: HexBinary,
-        metadata: HexBinary,
+        raw_metadata: HexBinary,
     },
 }
 

@@ -31,10 +31,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             route,
         } => set_route(ctx, denom, destination_domain, route),
         ExecuteMsg::Handle {
-            origin,
+            origin_domain,
             sender,
             body,
-        } => handle(ctx, origin, sender, body),
+        } => handle(ctx, origin_domain, sender, body),
     }
 }
 

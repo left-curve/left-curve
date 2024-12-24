@@ -317,7 +317,7 @@ fn receive_release_collateral() {
     .encode();
 
     let message_id = raw_message.keccak256();
-    let metadata = mock_validator_set.sign(message_id).encode();
+    let raw_metadata = mock_validator_set.sign(message_id).encode();
 
     suite
         .execute(
@@ -325,7 +325,7 @@ fn receive_release_collateral() {
             contracts.hyperlane.mailbox,
             &mailbox::ExecuteMsg::Process {
                 raw_message: raw_message.clone(),
-                metadata,
+                raw_metadata,
             },
             Coins::new(),
         )
@@ -404,7 +404,7 @@ fn receive_minting_synth() {
     .encode();
 
     let message_id = raw_message.keccak256();
-    let metadata = mock_validator_set.sign(message_id).encode();
+    let raw_metadata = mock_validator_set.sign(message_id).encode();
 
     suite
         .execute(
@@ -412,7 +412,7 @@ fn receive_minting_synth() {
             contracts.hyperlane.mailbox,
             &mailbox::ExecuteMsg::Process {
                 raw_message: raw_message.clone(),
-                metadata,
+                raw_metadata,
             },
             Coins::new(),
         )

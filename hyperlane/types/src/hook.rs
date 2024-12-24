@@ -4,7 +4,7 @@ use grug::{Coins, HexBinary};
 pub enum ExecuteMsg {
     PostDispatch {
         raw_message: HexBinary,
-        metadata: HexBinary,
+        raw_metadata: HexBinary,
     },
 }
 
@@ -13,6 +13,6 @@ pub enum QueryMsg {
     #[returns(Coins)]
     QuoteDispatch {
         raw_message: HexBinary,
-        metadata: HexBinary,
+        raw_metadata: HexBinary,
     },
 }

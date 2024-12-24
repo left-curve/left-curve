@@ -26,9 +26,9 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Verify {
             raw_message,
-            metadata,
+            raw_metadata,
         } => {
-            verify(ctx, &raw_message, &metadata)?;
+            verify(ctx, &raw_message, &raw_metadata)?;
             ().to_json_value()
         },
     }
@@ -55,9 +55,9 @@ fn query_validator_sets(
         .collect()
 }
 
-fn verify(ctx: ImmutableCtx, raw_message: &[u8], metadata: &[u8]) -> anyhow::Result<()> {
+fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow::Result<()> {
     let message = Message::decode(raw_message)?;
-    let metadata = Metadata::decode(metadata)?;
+    let metadata = Metadata::decode(raw_metadata)?;
 
     // This is the hash that validators are supposed to sign.
     let multisig_hash = eip191_hash(multisig_hash(
