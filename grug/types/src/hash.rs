@@ -2,7 +2,7 @@ use crate::{EncodedBytes, HashEncoder};
 
 /// A shorthand for constructing a constant hash from a hex string.
 ///
-/// This equivalent to:
+/// This is equivalent to:
 ///
 /// ```ignore
 /// Hash::from_inner(hex_literal::hex!("..."))
