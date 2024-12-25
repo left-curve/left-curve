@@ -54,6 +54,7 @@ enum Command {
     Start(StartCmd),
 
     /// Send transactions
+    #[command(next_display_order = None)]
     Tx(TxCmd),
 }
 

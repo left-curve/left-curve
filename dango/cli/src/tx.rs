@@ -48,7 +48,7 @@ pub struct TxCmd {
     #[arg(long, global = true)]
     simulate: bool,
 
-    #[command(subcommand, next_display_order = None)]
+    #[command(subcommand)]
     subcmd: SubCmd,
 }
 
