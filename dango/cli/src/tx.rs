@@ -16,11 +16,11 @@ pub struct TxCmd {
     #[arg(long, global = true, default_value = "http://127.0.0.1:26657")]
     node: String,
 
-    /// Transaction sender username
+    /// Transaction sender's username
     #[arg(long, global = true)]
     username: String,
 
-    /// Transaction sender address
+    /// Transaction sender's address
     #[arg(long, global = true)]
     address: Addr,
 
