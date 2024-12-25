@@ -151,7 +151,7 @@ where
                     "uosmo" => 100_000_000_000_000,
                     // In reality, it's not possible that anyone has Hyperlane
                     // syn tokens in genesis. We add this just for testing purpose.
-                    "hpl/ethereum/ether" => 100_000_000_000_000,
+                    "hyp/ethereum/ether" => 100_000_000_000_000,
                 }
                 .try_into()
                 .unwrap(),

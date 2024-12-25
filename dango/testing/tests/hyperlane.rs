@@ -31,6 +31,8 @@ const MOCK_REMOTE_MERKLE_TREE: Addr32 =
 
 const MOCK_REMOTE_DOMAIN: Domain = 123;
 
+const MOCK_LOCAL_DOMAIN: Domain = 88888888;
+
 struct MockValidatorSet {
     secrets: Vec<SigningKey>,
     addresses: BTreeSet<HexByteArray<20>>,
@@ -167,7 +169,7 @@ fn send_escrowing_collateral() {
             let msg = Message {
                 version: MAILBOX_VERSION,
                 nonce: 0,
-                origin_domain: 12345678,
+                origin_domain: MOCK_LOCAL_DOMAIN,
                 sender: contracts.hyperlane.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_ROUTE,
@@ -184,7 +186,7 @@ fn send_escrowing_collateral() {
 fn send_burning_synth() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let denom = Denom::from_str("hpl/ethereum/ether").unwrap();
+    let denom = Denom::from_str("hyp/ethereum/ether").unwrap();
     let metadata = HexBinary::from_inner(b"foo".to_vec());
 
     // Set the route for the synth token.
@@ -227,7 +229,7 @@ fn send_burning_synth() {
             let msg = Message {
                 version: MAILBOX_VERSION,
                 nonce: 0,
-                origin_domain: 12345678,
+                origin_domain: MOCK_LOCAL_DOMAIN,
                 sender: contracts.hyperlane.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_ROUTE,
@@ -305,7 +307,7 @@ fn receive_release_collateral() {
         nonce: 0,
         origin_domain: MOCK_REMOTE_DOMAIN,
         sender: MOCK_ROUTE,
-        destination_domain: 12345678, // this should be our local domain
+        destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {
             recipient: accounts.relayer.address().into(),
@@ -355,7 +357,7 @@ fn receive_minting_synth() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
     let mut mock_validator_set = MockValidatorSet::new_random(3);
 
-    let denom = Denom::from_str("hpl/solana/fartcoin").unwrap();
+    let denom = Denom::from_str("hyp/solana/fartcoin").unwrap();
     let origin_domain = 123;
 
     // Set validators at the ISM.
@@ -392,7 +394,7 @@ fn receive_minting_synth() {
         nonce: 0,
         origin_domain,
         sender: MOCK_ROUTE,
-        destination_domain: 12345678, // this should be our local domain
+        destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {
             recipient: accounts.relayer.address().into(),

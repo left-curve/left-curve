@@ -73,7 +73,7 @@ fn transfer_remote(
         // If the token is collateral, then escrow it (no need to do anything).
         // If it's synthetic, burn it.
         // We determine whether it's synthetic by checking whether its denom is
-        // under the `hpl` namespace.
+        // under the `hyp` namespace.
         .may_add_message(if token.denom.namespace() == Some(&NAMESPACE) {
             let bank = ctx.querier.query_bank()?;
             Some(Message::execute(
