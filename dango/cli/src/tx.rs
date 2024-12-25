@@ -201,7 +201,7 @@ impl TxCmd {
             };
 
             let sign_opt = SigningOption {
-                signing_key: &mut signer,
+                signer: &mut signer,
                 chain_id: self.chain_id,
             };
 

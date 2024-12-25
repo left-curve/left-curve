@@ -409,7 +409,7 @@ impl Client {
                 scale,
             } => {
                 let unsigned_tx = UnsignedTx {
-                    sender: sign_opt.signing_key.address(),
+                    sender: sign_opt.signer.address(),
                     msgs: msgs.clone(),
                     // TODO: allow user to specify this
                     data: Json::null(),
@@ -430,7 +430,7 @@ impl Client {
         };
 
         let tx = sign_opt
-            .signing_key
+            .signer
             .sign_transaction(msgs, &sign_opt.chain_id, gas_limit)?;
 
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
@@ -506,7 +506,7 @@ impl Client {
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::derive(sign_opt.signing_key.address(), code_hash, &salt);
+        let address = Addr::derive(sign_opt.signer.address(), code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, label, admin, funds)?;
@@ -541,7 +541,7 @@ impl Client {
         let code = code.into();
         let code_hash = code.hash256();
         let salt = salt.into();
-        let address = Addr::derive(sign_opt.signing_key.address(), code_hash, &salt);
+        let address = Addr::derive(sign_opt.signer.address(), code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msgs = NonEmpty::new_unchecked(vec![

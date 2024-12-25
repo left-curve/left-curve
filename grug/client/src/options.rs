@@ -6,7 +6,7 @@ pub struct SigningOption<'a, S>
 where
     S: Signer,
 {
-    pub signing_key: &'a mut S,
+    pub signer: &'a mut S,
     pub chain_id: String,
 }
 
