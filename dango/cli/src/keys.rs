@@ -49,6 +49,12 @@ pub enum KeysCmd {
 
 impl KeysCmd {
     pub fn run(self, dir: PathBuf) -> anyhow::Result<()> {
+        if dir.exists() {
+            ensure!(dir.is_dir(), "path {dir:?} exists but is not a directory");
+        } else {
+            fs::create_dir_all(&dir)?;
+        }
+
         match self {
             KeysCmd::Add {
                 name,
