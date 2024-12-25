@@ -5,7 +5,7 @@ use {
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
-    grug_client::{Client, GasOption, SigningOption},
+    grug_client::{GasOption, SigningClient},
     grug_types::{json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer},
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
@@ -168,7 +168,7 @@ impl TxCmd {
             },
         };
 
-        let client = Client::connect(&self.node)?;
+        let client = SigningClient::connect(self.chain_id.clone(), self.node.as_str())?;
 
         let mut signer = {
             let key_path = key_dir.join(format!("{}.json", self.key));
@@ -200,13 +200,8 @@ impl TxCmd {
                 }
             };
 
-            let sign_opt = SigningOption {
-                signer: &mut signer,
-                chain_id: self.chain_id,
-            };
-
             let maybe_res = client
-                .send_message_with_confirmation(msg, gas_opt, sign_opt, |tx| {
+                .send_message_with_confirmation(&mut signer, msg, gas_opt, |tx| {
                     print_json_pretty(tx)?;
                     Ok(confirm("🤔 Broadcast transaction?".bold())?)
                 })

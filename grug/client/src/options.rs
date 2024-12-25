@@ -1,14 +1,4 @@
-use grug_types::{Addr, Signer};
-
-/// Configurations necessary for signing a transaction, including the signing
-/// key, sender address, and so on.
-pub struct SigningOption<'a, S>
-where
-    S: Signer,
-{
-    pub signer: &'a mut S,
-    pub chain_id: String,
-}
+use grug_types::Addr;
 
 /// Options on how to set a gas limit on the transaction.
 #[derive(Clone, Copy)]

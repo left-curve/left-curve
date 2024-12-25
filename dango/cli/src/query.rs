@@ -135,7 +135,7 @@ enum SubCmd {
 
 impl QueryCmd {
     pub async fn run(self) -> anyhow::Result<()> {
-        let client = Client::connect(&self.node)?;
+        let client = Client::connect(self.node.as_str())?;
 
         let req = match self.subcmd {
             SubCmd::Status {} => {
