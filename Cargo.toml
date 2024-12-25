@@ -58,6 +58,7 @@ quote              = "1"
 rand               = "0.8"
 reqwest            = "0.12"
 ripemd             = "0.1"
+rocksdb            = "0.23"
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"
@@ -134,14 +135,6 @@ version  = "1"
 [workspace.dependencies.sea-orm-migration]
 features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"]
 version  = "1"
-
-# Use the latest `master` branch of rust-rocksdb, which includes support for
-# the user-defined timestamp feature:
-# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-# TODO: Update to v0.23.0 once released.
-[workspace.dependencies.rocksdb]
-git = "https://github.com/rust-rocksdb/rust-rocksdb"
-rev = "1710120"
 
 # The Pyth attester SDK is not published to crates.io.
 # Import from GitHub, using the latest commit at this time.
