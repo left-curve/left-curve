@@ -360,7 +360,7 @@ where
         hyperlane_mailbox_code_hash,
         &mailbox::InstantiateMsg {
             config: mailbox::Config {
-                local_domain: 12345678, // TODO
+                local_domain: 88888888, // TODO
                 default_ism: ism,
                 default_hook: fee,
                 required_hook: merkle,
