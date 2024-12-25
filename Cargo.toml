@@ -112,6 +112,7 @@ dango-amm             = { path = "dango/amm" }
 dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
+dango-client          = { path = "dango/client" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }

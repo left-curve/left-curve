@@ -1734,6 +1734,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-client"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "bip32",
+ "dango-account-factory",
+ "dango-auth",
+ "dango-types",
+ "grug",
+ "grug-crypto",
+ "k256",
+ "rand",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [

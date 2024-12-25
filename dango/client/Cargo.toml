@@ -1,0 +1,23 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-client"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow      = { workspace = true }
+bip32       = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
+grug-crypto = { workspace = true }
+k256        = { workspace = true }
+rand        = { workspace = true }
+
+[dev-dependencies]
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-auth            = { workspace = true }
