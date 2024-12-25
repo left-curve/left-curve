@@ -16,6 +16,7 @@ rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
+aes-gcm            = "0.10"
 alloy-dyn-abi      = { version = "0.8", features = ["eip712"] }
 alloy-primitives   = "0.8"
 anyhow             = "1"
@@ -49,6 +50,7 @@ k256               = "0.13"
 lzma-rs            = "0.3"
 p256               = "0.13"
 paste              = "1"
+pbkdf2             = "0.12"
 proc-macro2        = "1"
 proptest           = "1"
 prost              = "0.13"
@@ -112,6 +114,7 @@ dango-amm             = { path = "dango/amm" }
 dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
+dango-client          = { path = "dango/client" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }

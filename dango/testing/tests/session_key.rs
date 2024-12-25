@@ -17,8 +17,8 @@ mod session_account {
             StandardCredential,
         },
         grug::{
-            Addr, Addressable, ByteArray, Defined, JsonSerExt, NonEmpty, Signer, StdResult,
-            Timestamp, Tx, Undefined,
+            Addr, Addressable, ByteArray, Defined, JsonSerExt, Message, NonEmpty, Signer,
+            StdResult, Timestamp, Tx, Undefined, UnsignedTx,
         },
         k256::ecdsa::SigningKey,
         std::ops::{Deref, DerefMut},
@@ -130,12 +130,20 @@ mod session_account {
     }
 
     impl Signer for SessionAccount<Defined<SessionInfoBuffer>> {
+        fn unsigned_transaction(
+            &self,
+            _msgs: NonEmpty<Vec<Message>>,
+            _chain_id: &str,
+        ) -> StdResult<UnsignedTx> {
+            unimplemented!("not used in this particular test");
+        }
+
         fn sign_transaction(
             &mut self,
-            msgs: Vec<grug::Message>,
+            msgs: NonEmpty<Vec<Message>>,
             chain_id: &str,
             gas_limit: u64,
-        ) -> StdResult<grug::Tx> {
+        ) -> StdResult<Tx> {
             let data = Metadata {
                 username: self.username.clone(),
                 chain_id: chain_id.to_string(),
@@ -146,7 +154,7 @@ mod session_account {
             let sign_doc = SignDoc {
                 gas_limit,
                 sender: self.address(),
-                messages: NonEmpty::new(msgs.clone())?,
+                messages: msgs.clone(),
                 data: data.clone(),
             };
 
@@ -168,7 +176,7 @@ mod session_account {
             Ok(Tx {
                 sender: self.address(),
                 gas_limit,
-                msgs: NonEmpty::new(msgs)?,
+                msgs,
                 data: data.to_json_value()?,
                 credential: credential.to_json_value()?,
             })

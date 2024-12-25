@@ -1,7 +1,7 @@
 use {
     grug_math::{NumberConst, Uint128},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, ResultExt},
+    grug_types::{Coins, Denom, Message, NonEmpty, ResultExt},
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -27,12 +27,15 @@ fn transfers() {
 
     // Sender sends 70 ugrug to the receiver across multiple messages
     suite
-        .send_messages(&mut accounts["sender"], vec![
-            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
-        ])
+        .send_messages(
+            &mut accounts["sender"],
+            NonEmpty::new_unchecked(vec![
+                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+            ]),
+        )
         .should_succeed();
 
     // Check balances again

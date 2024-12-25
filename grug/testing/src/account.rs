@@ -3,7 +3,7 @@ use {
     grug_mock_account::{Credential, PublicKey},
     grug_types::{
         Addr, Addressable, ByteArray, Hash256, Json, JsonSerExt, Message, NonEmpty, Signer,
-        StdResult, Tx, GENESIS_SENDER,
+        StdResult, Tx, UnsignedTx, GENESIS_SENDER,
     },
     k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
     rand::rngs::OsRng,
@@ -53,7 +53,7 @@ impl TestAccount {
     /// updating the internally tracked sequence.
     pub fn sign_transaction_with_sequence(
         &self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
         sequence: u32,
         gas_limit: u64,
@@ -77,7 +77,7 @@ impl TestAccount {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs: NonEmpty::new(msgs)?,
+            msgs,
             data: Json::null(),
             credential,
         })
@@ -91,9 +91,21 @@ impl Addressable for TestAccount {
 }
 
 impl Signer for TestAccount {
+    fn unsigned_transaction(
+        &self,
+        msgs: NonEmpty<Vec<Message>>,
+        _chain_id: &str,
+    ) -> StdResult<UnsignedTx> {
+        Ok(UnsignedTx {
+            sender: self.address,
+            msgs,
+            data: Json::null(),
+        })
+    }
+
     fn sign_transaction(
         &mut self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
