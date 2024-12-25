@@ -1,7 +1,7 @@
 use {
     grug_math::{MultiplyFraction, NumberConst, Udec128, Uint128},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, ResultExt},
+    grug_types::{Coins, Denom, Message, NonEmpty, ResultExt},
     grug_vm_wasm::WasmVm,
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock, vec},
 };
@@ -35,12 +35,16 @@ fn transfers() {
         .should_succeed_and_equal(Uint128::ZERO);
 
     // Sender sends 70 ugrug to the receiver across multiple messages
-    let outcome = suite.send_messages_with_gas(&mut accounts["sender"], 2_500_000, vec![
-        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-        Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-        Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-        Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
-    ]);
+    let outcome = suite.send_messages_with_gas(
+        &mut accounts["sender"],
+        2_500_000,
+        NonEmpty::new_unchecked(vec![
+            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+        ]),
+    );
 
     outcome.clone().should_succeed();
 

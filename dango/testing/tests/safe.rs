@@ -12,7 +12,7 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
-        Message, NonZero, ResultExt, Signer, Timestamp, Uint128,
+        Message, NonEmpty, NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
@@ -446,7 +446,7 @@ fn safe() {
             .with_signer(&attacker)
             .with_nonce(12) // TODO: nonce isn't incremented if auth fails... should we make sure it increments?
             .sign_transaction(
-                vec![Message::execute(
+                NonEmpty::new_unchecked(vec![Message::execute(
                     safe_address,
                     &multi::ExecuteMsg::Vote {
                         proposal_id: 4,
@@ -456,7 +456,7 @@ fn safe() {
                     },
                     Coins::new(),
                 )
-                .unwrap()],
+                .unwrap()]),
                 &suite.chain_id,
                 suite.default_gas_limit,
             )

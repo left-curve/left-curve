@@ -9,8 +9,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins,
         Config, ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt,
-        Message, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
-        TxSuccess, UnsignedTx,
+        Message, NonEmpty, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError,
+        TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -338,7 +338,7 @@ where
     }
 
     /// Sign a transaction with the default gas limit.
-    pub fn sign_transaction(&self, signer: &mut dyn Signer, msgs: Vec<Message>) -> Tx {
+    pub fn sign_transaction(&self, signer: &mut dyn Signer, msgs: NonEmpty<Vec<Message>>) -> Tx {
         self.sign_transaction_with_gas(signer, self.default_gas_limit, msgs)
     }
 
@@ -347,7 +347,7 @@ where
         &self,
         signer: &mut dyn Signer,
         gas_limit: u64,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
     ) -> Tx {
         signer
             .sign_transaction(msgs, &self.chain_id, gas_limit)
@@ -368,11 +368,15 @@ where
         gas_limit: u64,
         msg: Message,
     ) -> TxOutcome {
-        self.send_messages_with_gas(signer, gas_limit, vec![msg])
+        self.send_messages_with_gas(signer, gas_limit, NonEmpty::new_unchecked(vec![msg]))
     }
 
     /// Execute one or more messages.
-    pub fn send_messages(&mut self, signer: &mut dyn Signer, msgs: Vec<Message>) -> TxOutcome {
+    pub fn send_messages(
+        &mut self,
+        signer: &mut dyn Signer,
+        msgs: NonEmpty<Vec<Message>>,
+    ) -> TxOutcome {
         self.send_messages_with_gas(signer, self.default_gas_limit, msgs)
     }
 
@@ -381,7 +385,7 @@ where
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
     ) -> TxOutcome {
         self.send_transaction(self.sign_transaction_with_gas(signer, gas_limit, msgs))
     }
@@ -585,10 +589,14 @@ where
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
-        let outcome = self.send_messages_with_gas(signer, gas_limit, vec![
-            Message::upload(code),
-            Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
-        ]);
+        let outcome = self.send_messages_with_gas(
+            signer,
+            gas_limit,
+            NonEmpty::new_unchecked(vec![
+                Message::upload(code),
+                Message::instantiate(code_hash, msg, salt, label, admin, funds).unwrap(),
+            ]),
+        );
 
         UploadAndInstantiateOutcome {
             address,

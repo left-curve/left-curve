@@ -1,10 +1,16 @@
 mod db;
 mod home_directory;
+mod keys;
+mod prompt;
 mod query;
 mod start;
+mod tx;
 
 use {
-    crate::{db::DbCmd, home_directory::HomeDirectory, query::QueryCmd, start::StartCmd},
+    crate::{
+        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
+        tx::TxCmd,
+    },
     anyhow::anyhow,
     clap::Parser,
     home::home_dir,
@@ -36,12 +42,19 @@ enum Command {
     #[command(subcommand, next_display_order = None)]
     Db(DbCmd),
 
+    /// Manage keys
+    #[command(subcommand, next_display_order = None)]
+    Keys(KeysCmd),
+
     /// Make a query [alias: q]
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
 
     /// Start the node
     Start(StartCmd),
+
+    /// Send transactions
+    Tx(TxCmd),
 }
 
 #[tokio::main]
@@ -64,7 +77,9 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
+        Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run().await,
         Command::Start(cmd) => cmd.run(app_dir).await,
+        Command::Tx(cmd) => cmd.run(app_dir.keys_dir()).await,
     }
 }

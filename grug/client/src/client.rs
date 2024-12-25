@@ -343,7 +343,8 @@ impl Client {
     where
         S: AsyncSigner,
     {
-        self.send_messages(vec![msg], gas_opt, sign_opt).await
+        self.send_messages(NonEmpty::new_unchecked(vec![msg]), gas_opt, sign_opt)
+            .await
     }
 
     /// Create, sign, and broadcast a transaction with a single message, with
@@ -360,8 +361,13 @@ impl Client {
     where
         S: AsyncSigner,
     {
-        self.send_messages_with_confirmation(vec![msg], gas_opt, sign_opt, confirm_fn)
-            .await
+        self.send_messages_with_confirmation(
+            NonEmpty::new_unchecked(vec![msg]),
+            gas_opt,
+            sign_opt,
+            confirm_fn,
+        )
+        .await
     }
 
     /// Create, sign, and broadcast a transaction with the given messages,
@@ -370,7 +376,7 @@ impl Client {
     /// If you need the prompt confirmation, use `send_messages_with_confirmation`.
     pub async fn send_messages<S>(
         &self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_, S>,
     ) -> anyhow::Result<tx_sync::Response>
@@ -388,7 +394,7 @@ impl Client {
     /// Returns `None` if the prompt is denied.
     pub async fn send_messages_with_confirmation<S>(
         &self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
         sign_opt: SigningOption<'_, S>,
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
@@ -404,7 +410,7 @@ impl Client {
             } => {
                 let unsigned_tx = UnsignedTx {
                     sender: sign_opt.sender,
-                    msgs: NonEmpty::new(msgs.clone())?,
+                    msgs: msgs.clone(),
                     // TODO: allow user to specify this
                     data: Json::null(),
                 };
@@ -539,10 +545,10 @@ impl Client {
         let address = Addr::derive(sign_opt.sender, code_hash, &salt);
         let admin = admin_opt.decide(address);
 
-        let msgs = vec![
+        let msgs = NonEmpty::new_unchecked(vec![
             Message::upload(code),
             Message::instantiate(code_hash, msg, salt, label, admin, funds)?,
-        ];
+        ]);
         let res = self.send_messages(msgs, gas_opt, sign_opt).await?;
 
         Ok((code_hash, address, res))
