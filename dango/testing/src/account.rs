@@ -11,6 +11,7 @@ use {
     grug::{
         btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash256, HashExt, Json,
         JsonSerExt, MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
+        UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{
@@ -100,25 +101,28 @@ impl<T> TestAccount<T>
 where
     T: MaybeDefined<Addr>,
 {
-    pub fn sign_transaction_with_nonce(
-        &self,
-        sender: Addr,
-        msgs: Vec<Message>,
-        chain_id: &str,
-        gas_limit: u64,
-        nonce: u32,
-    ) -> StdResult<(Metadata, Credential)> {
-        let data = Metadata {
+    pub fn metadata(&self, chain_id: &str, nonce: u32) -> Metadata {
+        Metadata {
             username: self.username.clone(),
             chain_id: chain_id.to_string(),
             expiry: None,
             nonce,
-        };
+        }
+    }
 
+    pub fn sign_transaction_with_nonce(
+        &self,
+        sender: Addr,
+        msgs: NonEmpty<Vec<Message>>,
+        chain_id: &str,
+        gas_limit: u64,
+        nonce: u32,
+    ) -> StdResult<(Metadata, Credential)> {
+        let data = self.metadata(chain_id, nonce);
         let sign_bytes = SignDoc {
             sender,
             gas_limit,
-            messages: NonEmpty::new(msgs.clone())?,
+            messages: msgs.clone(),
             data: data.clone(),
         }
         .to_json_vec()?;
@@ -243,9 +247,21 @@ impl Addressable for TestAccount {
 }
 
 impl Signer for TestAccount {
+    fn unsigned_transaction(
+        &self,
+        msgs: NonEmpty<Vec<Message>>,
+        chain_id: &str,
+    ) -> StdResult<UnsignedTx> {
+        Ok(UnsignedTx {
+            sender: self.address(),
+            msgs,
+            data: self.metadata(chain_id, self.nonce).to_json_value()?,
+        })
+    }
+
     fn sign_transaction(
         &mut self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
@@ -263,7 +279,7 @@ impl Signer for TestAccount {
         Ok(Tx {
             sender: self.address(),
             gas_limit,
-            msgs: NonEmpty::new(msgs)?,
+            msgs,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })
@@ -308,16 +324,28 @@ impl Addressable for Factory {
 }
 
 impl Signer for Factory {
+    fn unsigned_transaction(
+        &self,
+        msgs: NonEmpty<Vec<Message>>,
+        _chain_id: &str,
+    ) -> StdResult<UnsignedTx> {
+        Ok(UnsignedTx {
+            sender: self.address(),
+            msgs,
+            data: Json::null(),
+        })
+    }
+
     fn sign_transaction(
         &mut self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         _chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs: NonEmpty::new(msgs)?,
+            msgs,
             data: Json::null(),
             credential: Json::null(),
         })
@@ -361,9 +389,19 @@ impl Addressable for Safe<'_> {
 }
 
 impl Signer for Safe<'_> {
+    fn unsigned_transaction(
+        &self,
+        msgs: NonEmpty<Vec<Message>>,
+        chain_id: &str,
+    ) -> StdResult<UnsignedTx> {
+        self.signer
+            .expect("[Safe]: signer not set")
+            .unsigned_transaction(msgs, chain_id)
+    }
+
     fn sign_transaction(
         &mut self,
-        msgs: Vec<Message>,
+        msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
         gas_limit: u64,
     ) -> StdResult<Tx> {
@@ -384,7 +422,7 @@ impl Signer for Safe<'_> {
         Ok(Tx {
             sender: self.address,
             gas_limit,
-            msgs: NonEmpty::new(msgs)?,
+            msgs,
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })

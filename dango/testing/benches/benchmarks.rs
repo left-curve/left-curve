@@ -66,7 +66,11 @@ where
 
     // In experience, this costs ~34M gas.
     suite
-        .send_messages_with_gas(&mut accounts.relayer, 50_000_000, msgs)
+        .send_messages_with_gas(
+            &mut accounts.relayer,
+            50_000_000,
+            NonEmpty::new_unchecked(msgs),
+        )
         .should_succeed();
 
     // Make a block that contains 100 transactions.
@@ -96,7 +100,7 @@ where
                 .owner
                 .sign_transaction_with_nonce(
                     sender,
-                    vec![msg.clone()],
+                    NonEmpty::new_unchecked(vec![msg.clone()]),
                     &suite.chain_id,
                     2_000_000,
                     0,
@@ -206,7 +210,7 @@ where
             accounts
                 .relayer
                 .sign_transaction(
-                    vec![Message::execute(
+                    NonEmpty::new_unchecked(vec![Message::execute(
                         contracts.amm,
                         &amm::ExecuteMsg::Swap {
                             route: UniqueVec::new_unchecked(vec![1]),
@@ -214,7 +218,7 @@ where
                         },
                         Coins::one("uusdc", 100).unwrap(),
                     )
-                    .unwrap()],
+                    .unwrap()]),
                     &suite.chain_id,
                     50_000_000,
                 )

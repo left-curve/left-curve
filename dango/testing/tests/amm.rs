@@ -8,7 +8,8 @@ use {
         config::DANGO_DENOM,
     },
     grug::{
-        btree_map, Coin, CoinPair, Coins, Denom, Message, ResultExt, Udec128, Uint128, UniqueVec,
+        btree_map, Coin, CoinPair, Coins, Denom, Message, NonEmpty, ResultExt, Udec128, Uint128,
+        UniqueVec,
     },
     std::{str::FromStr, sync::LazyLock},
 };
@@ -30,35 +31,38 @@ fn amm() {
 
     // Create two pools with ATOM-OSMO and ATOM-USDC liquidity, respectively.
     suite
-        .send_messages(&mut accounts.relayer, vec![
-            // pool 1: ATOM-OSMO
-            Message::execute(
-                contracts.amm,
-                &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
-                })),
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(657_761_324_779),
-                    OSMO.clone() => Uint128::new(5_886_161_498_040),
-                    // pool creation fee
-                    USDC.clone() => Uint128::new(10_000_000),
-                }),
-            )
-            .unwrap(),
-            // pool 2: ATOM-USDC
-            Message::execute(
-                contracts.amm,
-                &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
-                })),
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(224_078_907_873),
-                    // liquidity + pool creation fee
-                    USDC.clone() => Uint128::new(173_573_581_955),
-                }),
-            )
-            .unwrap(),
-        ])
+        .send_messages(
+            &mut accounts.relayer,
+            NonEmpty::new_unchecked(vec![
+                // pool 1: ATOM-OSMO
+                Message::execute(
+                    contracts.amm,
+                    &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                        liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
+                    })),
+                    Coins::new_unchecked(btree_map! {
+                        ATOM.clone() => Uint128::new(657_761_324_779),
+                        OSMO.clone() => Uint128::new(5_886_161_498_040),
+                        // pool creation fee
+                        USDC.clone() => Uint128::new(10_000_000),
+                    }),
+                )
+                .unwrap(),
+                // pool 2: ATOM-USDC
+                Message::execute(
+                    contracts.amm,
+                    &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                        liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
+                    })),
+                    Coins::new_unchecked(btree_map! {
+                        ATOM.clone() => Uint128::new(224_078_907_873),
+                        // liquidity + pool creation fee
+                        USDC.clone() => Uint128::new(173_573_581_955),
+                    }),
+                )
+                .unwrap(),
+            ]),
+        )
         .should_succeed();
 
     // Check the pools.
@@ -192,31 +196,34 @@ fn amm() {
     // = 197,254,389,682 - 197,210,389,916
     // = 44,999,766
     suite
-        .send_messages(&mut accounts.relayer, vec![
-            Message::execute(
-                contracts.amm,
-                &ExecuteMsg::ProvideLiquidity {
-                    pool_id: 1,
-                    minimum_output: None,
-                },
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(6_577_613),
-                    OSMO.clone() => Uint128::new(58_861_614),
-                }),
-            )
-            .unwrap(),
-            Message::execute(
-                contracts.amm,
-                &ExecuteMsg::ProvideLiquidity {
-                    pool_id: 2,
-                    minimum_output: None,
-                },
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(100_000_000),
-                }),
-            )
-            .unwrap(),
-        ])
+        .send_messages(
+            &mut accounts.relayer,
+            NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.amm,
+                    &ExecuteMsg::ProvideLiquidity {
+                        pool_id: 1,
+                        minimum_output: None,
+                    },
+                    Coins::new_unchecked(btree_map! {
+                        ATOM.clone() => Uint128::new(6_577_613),
+                        OSMO.clone() => Uint128::new(58_861_614),
+                    }),
+                )
+                .unwrap(),
+                Message::execute(
+                    contracts.amm,
+                    &ExecuteMsg::ProvideLiquidity {
+                        pool_id: 2,
+                        minimum_output: None,
+                    },
+                    Coins::new_unchecked(btree_map! {
+                        ATOM.clone() => Uint128::new(100_000_000),
+                    }),
+                )
+                .unwrap(),
+            ]),
+        )
         .should_succeed();
 
     // Check pool states should have been updated.
