@@ -1,16 +1,13 @@
-use grug_types::{Addr, AsyncSigner};
+use grug_types::{Addr, Signer};
 
 /// Configurations necessary for signing a transaction, including the signing
 /// key, sender address, and so on.
 pub struct SigningOption<'a, S>
 where
-    S: AsyncSigner,
+    S: Signer,
 {
     pub signing_key: &'a mut S,
-    pub sender: Addr,
     pub chain_id: String,
-    // If sequence number isn't provided, the client will query the node for it.
-    pub sequence: Option<u32>,
 }
 
 /// Options on how to set a gas limit on the transaction.

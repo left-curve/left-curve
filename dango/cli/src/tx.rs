@@ -3,13 +3,10 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     dango_client::{SigningKey, SingleSigner},
-    dango_types::{auth::Metadata, config::AppConfig},
+    dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
     grug_client::{Client, GasOption, SigningOption},
-    grug_types::{
-        json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        UnsignedTx,
-    },
+    grug_types::{json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer},
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
 
@@ -119,7 +116,6 @@ enum SubCmd {
 
 impl TxCmd {
     pub async fn run(self, key_dir: PathBuf) -> anyhow::Result<()> {
-        // Compose the message
         let msg = match self.subcmd {
             SubCmd::Configure {
                 new_cfg,
@@ -187,17 +183,8 @@ impl TxCmd {
         };
 
         if self.simulate {
-            let unsigned_tx = UnsignedTx {
-                sender: self.address,
-                msgs: NonEmpty::new_unchecked(vec![msg]),
-                data: Metadata {
-                    username: signer.username.clone(),
-                    chain_id: self.chain_id,
-                    nonce: signer.nonce.into_inner(),
-                    expiry: None, // TODO
-                }
-                .to_json_value()?,
-            };
+            let msgs = NonEmpty::new_unchecked(vec![msg]);
+            let unsigned_tx = signer.unsigned_transaction(msgs, &self.chain_id)?;
             let outcome = client.simulate(&unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
@@ -213,22 +200,16 @@ impl TxCmd {
                 }
             };
 
+            let sign_opt = SigningOption {
+                signing_key: &mut signer,
+                chain_id: self.chain_id,
+            };
+
             let maybe_res = client
-                .send_message_with_confirmation(
-                    msg,
-                    gas_opt,
-                    SigningOption {
-                        signing_key: &mut signer,
-                        chain_id: self.chain_id,
-                        // TODO: remove sender and sequence; they aren't actually used.
-                        sender: self.address,
-                        sequence: self.nonce,
-                    },
-                    |tx| {
-                        print_json_pretty(tx)?;
-                        Ok(confirm("🤔 Broadcast transaction?".bold())?)
-                    },
-                )
+                .send_message_with_confirmation(msg, gas_opt, sign_opt, |tx| {
+                    print_json_pretty(tx)?;
+                    Ok(confirm("🤔 Broadcast transaction?".bold())?)
+                })
                 .await?;
 
             if let Some(res) = maybe_res {

@@ -4,8 +4,8 @@ use {
     grug_jmt::Proof,
     grug_math::Inner,
     grug_types::{
-        Addr, AsyncSigner, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
-        Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse,
+        Addr, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult, Hash256,
+        HashExt, Json, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse, Signer,
         StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -341,7 +341,7 @@ impl Client {
         sign_opt: SigningOption<'_, S>,
     ) -> anyhow::Result<tx_sync::Response>
     where
-        S: AsyncSigner,
+        S: Signer,
     {
         self.send_messages(NonEmpty::new_unchecked(vec![msg]), gas_opt, sign_opt)
             .await
@@ -359,7 +359,7 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>>
     where
-        S: AsyncSigner,
+        S: Signer,
     {
         self.send_messages_with_confirmation(
             NonEmpty::new_unchecked(vec![msg]),
@@ -381,7 +381,7 @@ impl Client {
         sign_opt: SigningOption<'_, S>,
     ) -> anyhow::Result<tx_sync::Response>
     where
-        S: AsyncSigner,
+        S: Signer,
     {
         self.send_messages_with_confirmation(msgs, gas_opt, sign_opt, no_confirmation)
             .await
@@ -400,7 +400,7 @@ impl Client {
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
     ) -> anyhow::Result<Option<tx_sync::Response>>
     where
-        S: AsyncSigner,
+        S: Signer,
     {
         // If gas limit is not provided, simulate
         let gas_limit = match gas_opt {
@@ -409,7 +409,7 @@ impl Client {
                 scale,
             } => {
                 let unsigned_tx = UnsignedTx {
-                    sender: sign_opt.sender,
+                    sender: sign_opt.signing_key.address(),
                     msgs: msgs.clone(),
                     // TODO: allow user to specify this
                     data: Json::null(),
@@ -431,8 +431,7 @@ impl Client {
 
         let tx = sign_opt
             .signing_key
-            .sign_transaction(msgs, &sign_opt.chain_id, gas_limit)
-            .await?;
+            .sign_transaction(msgs, &sign_opt.chain_id, gas_limit)?;
 
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
@@ -447,7 +446,7 @@ impl Client {
     ) -> anyhow::Result<tx_sync::Response>
     where
         T: Serialize,
-        S: AsyncSigner,
+        S: Signer,
     {
         let msg = Message::configure(new_cfg, new_app_cfg)?;
         self.send_message(msg, gas_opt, sign_opt).await
@@ -463,7 +462,7 @@ impl Client {
     ) -> anyhow::Result<tx_sync::Response>
     where
         C: TryInto<Coins>,
-        S: AsyncSigner,
+        S: Signer,
         StdError: From<C::Error>,
     {
         let msg = Message::transfer(to, coins)?;
@@ -479,7 +478,7 @@ impl Client {
     ) -> anyhow::Result<tx_sync::Response>
     where
         B: Into<Binary>,
-        S: AsyncSigner,
+        S: Signer,
     {
         let msg = Message::upload(code);
         self.send_message(msg, gas_opt, sign_opt).await
@@ -503,11 +502,11 @@ impl Client {
         M: Serialize,
         S: Into<Binary>,
         C: TryInto<Coins>,
-        T: AsyncSigner,
+        T: Signer,
         StdError: From<C::Error>,
     {
         let salt = salt.into();
-        let address = Addr::derive(sign_opt.sender, code_hash, &salt);
+        let address = Addr::derive(sign_opt.signing_key.address(), code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msg = Message::instantiate(code_hash, msg, salt, label, admin, funds)?;
@@ -536,13 +535,13 @@ impl Client {
         B: Into<Binary>,
         S: Into<Binary>,
         C: TryInto<Coins>,
-        T: AsyncSigner,
+        T: Signer,
         StdError: From<C::Error>,
     {
         let code = code.into();
         let code_hash = code.hash256();
         let salt = salt.into();
-        let address = Addr::derive(sign_opt.sender, code_hash, &salt);
+        let address = Addr::derive(sign_opt.signing_key.address(), code_hash, &salt);
         let admin = admin_opt.decide(address);
 
         let msgs = NonEmpty::new_unchecked(vec![
@@ -566,7 +565,7 @@ impl Client {
     where
         M: Serialize,
         C: TryInto<Coins>,
-        S: AsyncSigner,
+        S: Signer,
         StdError: From<C::Error>,
     {
         let msg = Message::execute(contract, msg, funds)?;
@@ -584,7 +583,7 @@ impl Client {
     ) -> anyhow::Result<tx_sync::Response>
     where
         M: Serialize,
-        S: AsyncSigner,
+        S: Signer,
     {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
         self.send_message(msg, gas_opt, sign_opt).await
