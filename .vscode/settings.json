@@ -45,6 +45,13 @@
     "timelocked",
     "uusdc"
   ],
+  "files.associations": {
+    ".env*": "dotenv"
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "dotenv": false
+  },
   "markdown.extension.toc.updateOnSave": false,
   "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
 }
