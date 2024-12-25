@@ -26,6 +26,7 @@ use {
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hpl"));
 
 /// The message to be sent via Hyperlane mailbox.
+#[derive(Debug)]
 pub struct TokenMessage {
     pub recipient: Addr32,
     // Note: In Grug we use `Uint128` to represent token amounts, but the Warp
