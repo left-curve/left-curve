@@ -13,17 +13,17 @@ use {
 /// Synthetic tokens will be given denoms with the format:
 ///
 /// ```plain
-/// hpl/{chain_symbol}/{token_symbol}
+/// hyp/{chain_symbol}/{token_symbol}
 /// ```
 ///
 /// For examples,
 ///
-/// - `hpl/btc/btc`
-/// - `hpl/eth/eth`
-/// - `hpl/sol/bonk`
+/// - `hyp/btc/btc`
+/// - `hyp/eth/eth`
+/// - `hyp/sol/bonk`
 ///
 /// TODO: The exception to this is alloyed tokens (unimplemented yet).
-pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hpl"));
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hyp"));
 
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]
