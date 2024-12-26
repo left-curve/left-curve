@@ -34,6 +34,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Persistence(#[from] indexer_disk_saver::error::Error),
+
+    #[error("hooks error: {0}")]
+    Hooks(String),
 }
 
 impl From<IndexerError> for AppError {

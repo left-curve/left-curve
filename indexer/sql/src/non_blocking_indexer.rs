@@ -1,6 +1,11 @@
 use {
     crate::{
-        bail, block_to_index::BlockToIndex, entity, error, indexer_path::IndexerPath, Context,
+        bail,
+        block_to_index::BlockToIndex,
+        entity, error,
+        hooks::{Hooks, NullHooks},
+        indexer_path::IndexerPath,
+        Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
@@ -19,11 +24,12 @@ use {
 
 // ------------------------------- IndexerBuilder ------------------------------
 
-pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
+pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H = NullHooks> {
     handle: RuntimeHandler,
     db_url: DB,
     indexer_path: P,
     keep_blocks: bool,
+    hooks: H,
 }
 
 impl Default for IndexerBuilder {
@@ -33,6 +39,7 @@ impl Default for IndexerBuilder {
             db_url: Undefined::default(),
             indexer_path: Undefined::default(),
             keep_blocks: false,
+            hooks: NullHooks,
         }
     }
 }
@@ -47,6 +54,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
             keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
         }
     }
 
@@ -62,6 +70,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             indexer_path: Defined::new(IndexerPath::default()),
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
         }
     }
 
@@ -71,14 +80,31 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             indexer_path: Defined::new(IndexerPath::Dir(dir)),
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
         }
     }
 }
 
-impl<DB, P> IndexerBuilder<DB, P>
+impl<DB, P, H> IndexerBuilder<DB, P, H> {
+    pub fn with_hooks<I>(self, hooks: I) -> IndexerBuilder<DB, P, I>
+    where
+        I: Hooks + Clone + Send + 'static,
+    {
+        IndexerBuilder {
+            handle: self.handle,
+            db_url: self.db_url,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            hooks,
+        }
+    }
+}
+
+impl<DB, P, H> IndexerBuilder<DB, P, H>
 where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
+    H: Hooks + Clone + Send + 'static,
 {
     /// If true, the block/block_outcome used by the indexer will be kept on disk after being
     /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
@@ -89,10 +115,11 @@ where
             db_url: self.db_url,
             indexer_path: self.indexer_path,
             keep_blocks,
+            hooks: self.hooks,
         }
     }
 
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+    pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
                 .handle
@@ -107,9 +134,10 @@ where
             indexer_path,
             context: Context { db },
             handle: self.handle,
-            blocks: Default::default(), // Arc::new(Mutex::new(HashMap::new())),
+            blocks: Default::default(),
             indexing: false,
             keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
         })
     }
 }
@@ -127,7 +155,10 @@ where
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
 #[derive(Debug)]
-pub struct NonBlockingIndexer {
+pub struct NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
@@ -137,9 +168,13 @@ pub struct NonBlockingIndexer {
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     keep_blocks: bool,
+    hooks: H,
 }
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
@@ -214,7 +249,10 @@ impl NonBlockingIndexer {
 
 // ------------------------------- DB Related ----------------------------------
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     /// Delete a block and its related content from the database
     pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
         self.handle.block_on(async move {
@@ -228,7 +266,10 @@ impl NonBlockingIndexer {
     }
 }
 
-impl NonBlockingIndexer {
+impl<H> NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     /// Where will this block be temporarily saved on disk
     pub fn block_filename(&self, block_height: u64) -> PathBuf {
         let directory = self.indexer_path.block_path();
@@ -287,7 +328,10 @@ impl NonBlockingIndexer {
     }
 }
 
-impl Indexer for NonBlockingIndexer {
+impl<H> Indexer for NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     type Error = crate::error::IndexerError;
 
     fn start<S>(&mut self, storage: &S) -> error::Result<()>
@@ -394,6 +438,9 @@ impl Indexer for NonBlockingIndexer {
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
         // the shutdown method could be called and see no current block being indexed, and quit.
         // The block would then not be indexed.
+
+        let hooks = self.hooks.clone();
+
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block_height, "post_indexing started");
@@ -402,6 +449,14 @@ impl Indexer for NonBlockingIndexer {
             let block_height = block_to_index.block.info.height;
             block_to_index.save(&db).await?;
             db.commit().await?;
+
+            hooks.post_indexing(context, block_height).map_err(|e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
+
+                // NOTE: any way to get a from Hooks::Error to IndexerError without using IndexerError<X>?
+                error::IndexerError::Hooks(e.to_string())
+            })?;
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
@@ -430,7 +485,10 @@ impl Indexer for NonBlockingIndexer {
     }
 }
 
-impl Drop for NonBlockingIndexer {
+impl<H> Drop for NonBlockingIndexer<H>
+where
+    H: Hooks + Clone + Send + 'static,
+{
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
@@ -499,17 +557,65 @@ impl RuntimeHandler {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::MockStorage};
+    use {super::*, crate::hooks::NullHooks, grug_types::MockStorage, std::convert::Infallible};
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer = IndexerBuilder::default()
+        let mut indexer: NonBlockingIndexer<NullHooks> = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;
+        let storage = MockStorage::new();
+
+        assert!(!indexer.indexing);
+        indexer.start(&storage).expect("Can't start Indexer");
+        assert!(indexer.indexing);
+
+        indexer.shutdown().expect("Can't shutdown Indexer");
+        assert!(!indexer.indexing);
+
+        Ok(())
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn build_without_hooks() -> anyhow::Result<()> {
+        let mut indexer: NonBlockingIndexer<NullHooks> = IndexerBuilder::default()
+            .with_memory_database()
+            .with_tmpdir()
+            .build()?;
+        let storage = MockStorage::new();
+
+        assert!(!indexer.indexing);
+        indexer.start(&storage).expect("Can't start Indexer");
+        assert!(indexer.indexing);
+
+        indexer.shutdown().expect("Can't shutdown Indexer");
+        assert!(!indexer.indexing);
+
+        Ok(())
+    }
+
+    #[derive(Debug, Clone, Default)]
+    struct MyHooks;
+    impl Hooks for MyHooks {
+        type Error = Infallible;
+
+        fn post_indexing(&self, _context: Context, _block_height: u64) -> Result<(), Self::Error> {
+            Ok(())
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn build_with_hooks() -> anyhow::Result<()> {
+        let mut indexer = IndexerBuilder::default()
+            .with_memory_database()
+            .with_tmpdir()
+            .with_hooks(MyHooks)
+            .build()?;
+
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
