@@ -1,24 +1,16 @@
-import { useAccountInfo } from "@left-curve/react";
+import { lazy } from "react";
 
-import { Spinner } from "@dango/shared";
-import { ManageMargin } from "./ManageMargin";
-import { ManageSafe } from "./ManageSafe";
-import { ManageSpot } from "./ManageSpot";
+import { type Account, AccountType } from "@left-curve/types";
 
-import { AccountType, type Address } from "@left-curve/types";
-import { Navigate } from "react-router-dom";
+const ManageSpot = lazy(() => import("./ManageSpot"));
+const ManageSafe = lazy(() => import("./ManageSafe"));
+const ManageMargin = lazy(() => import("./ManageMargin"));
 
 interface Props {
-  address: Address;
+  account: Account;
 }
 
-export const AccountRouter: React.FC<Props> = ({ address }) => {
-  const { isLoading, data: account } = useAccountInfo({ address, query: { retry: 0 } });
-
-  if (isLoading) return <Spinner />;
-
-  if (!account) return <Navigate to="/404" />;
-
+export const AccountRouter: React.FC<Props> = ({ account }) => {
   switch (account.type) {
     case AccountType.Spot:
       return <ManageSpot account={account} />;

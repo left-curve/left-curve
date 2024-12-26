@@ -1,20 +1,18 @@
 import { useAccount, useBalances, usePrices } from "@left-curve/react";
-import { useQueryState } from "nuqs";
 import type React from "react";
 import { Button, Emoji, Input } from "../";
 import { twMerge } from "../../utils";
 
 interface Props {
+  poolId: number;
+  action: string;
   onRequestPoolSelection?: () => void;
 }
 
-export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection }) => {
+export const PoolManagment: React.FC<Props> = ({ onRequestPoolSelection, action, poolId }) => {
   const { account } = useAccount();
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
-
-  const [action] = useQueryState("action");
-  const [poolId] = useQueryState("pool");
 
   const totalBalance = calculateBalance(balances, { format: true });
 

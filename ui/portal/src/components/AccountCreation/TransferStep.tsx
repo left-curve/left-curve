@@ -7,7 +7,7 @@ import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
 import type { SignerClient } from "@left-curve/sdk/clients";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 
 export const TransferStep: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ export const TransferStep: React.FC = () => {
     );
     await wait(1000);
     await refreshAccounts?.();
-    navigate("/?showAccounts=true");
+    navigate({ to: "/?showAccounts=true" });
   });
 
   return (
@@ -88,7 +88,7 @@ export const TransferStep: React.FC = () => {
               startText="right"
               placeholder="0"
               disabled={isSubmitting}
-              error={errors.amount?.message?.toString()}
+              errorMessage={errors.amount?.message?.toString()}
               startContent={
                 <div className="flex flex-row items-center gap-2">
                   <img

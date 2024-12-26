@@ -83,7 +83,7 @@ export const SendContainer: React.FC = () => {
                 isDisabled={isSubmitting}
                 placeholder="0"
                 classNames={{ input: "text-3xl", inputWrapper: "py-4 pl-6 pr-4" }}
-                error={errors.amount?.message}
+                errorMessage={errors.amount?.message}
                 bottomComponent={
                   <div className="w-full items-center justify-between px-6 text-typography-rose-600 text-xs flex font-bold uppercase tracking-widest my-2">
                     <p>Balance:</p>
@@ -110,7 +110,7 @@ export const SendContainer: React.FC = () => {
               <AccountSearchInput
                 name="address"
                 disabled={isSubmitting}
-                error={errors.address?.message}
+                errorMessage={errors.address?.message}
                 value={watch("address", "")}
                 onChange={(v) => setValue("address", v)}
               />
