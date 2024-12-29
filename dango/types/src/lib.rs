@@ -7,6 +7,7 @@ pub mod config;
 pub mod ibc;
 pub mod lending;
 pub mod oracle;
+pub mod orderbook;
 mod querier;
 pub mod taxman;
 pub mod token_factory;
