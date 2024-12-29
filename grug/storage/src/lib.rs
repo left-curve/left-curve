@@ -8,9 +8,11 @@ mod path;
 mod prefix;
 mod prefixer;
 mod primary_key;
+mod raw_key;
 mod set;
+mod utils;
 
 pub use {
     bound::*, codec::*, counter::*, index::*, item::*, map::*, path::*, prefix::*, prefixer::*,
-    primary_key::*, set::*,
+    primary_key::*, raw_key::*, set::*, utils::*,
 };

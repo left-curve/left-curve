@@ -1,18 +1,16 @@
 use {
-    crate::Prefixer,
+    crate::{nested_namespaces_with_key, Prefixer, RawKey},
     bnum::{
         cast::CastFrom,
         types::{I256, I512, U256, U512},
     },
     grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
-        nested_namespaces_with_key, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes,
-        Encoder, LengthBounded, Lengthy, Part, StdError, StdResult,
+        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, LengthBounded,
+        Lengthy, Part, StdError, StdResult,
     },
-    std::{borrow::Cow, mem, str, vec},
+    std::{mem, str, vec},
 };
-
-// ------------------------------------ key ------------------------------------
 
 /// Describes a key used in mapping data structures, i.e. [`Map`](crate::Map)
 /// and [`IndexedMap`](crate::IndexedMap).
@@ -76,9 +74,8 @@ pub trait PrimaryKey {
     /// E.g. when `&str` is used as the key, it deserializes into `String`.
     type Output;
 
-    /// Convert the key into one or more _raw keys_. Each raw key is a byte slice,
-    /// either owned or a reference, represented as a `Cow<[u8]>`.
-    fn raw_keys(&self) -> Vec<Cow<[u8]>>;
+    /// Convert the key into one or more _raw keys_.
+    fn raw_keys(&self) -> Vec<RawKey>;
 
     /// Serialize the raw keys into bytes.
     ///
@@ -98,7 +95,7 @@ pub trait PrimaryKey {
     fn joined_key(&self) -> Vec<u8> {
         let mut raw_keys = self.raw_keys();
         let last_raw_key = raw_keys.pop();
-        nested_namespaces_with_key(None, &raw_keys, last_raw_key.as_ref())
+        nested_namespaces_with_key(None, &raw_keys, last_raw_key)
     }
 
     /// Deserialize the raw bytes into the output.
@@ -112,7 +109,7 @@ impl PrimaryKey for () {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         vec![]
     }
 
@@ -135,8 +132,8 @@ impl PrimaryKey for &[u8] {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self)]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self)]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -151,8 +148,8 @@ impl PrimaryKey for Vec<u8> {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self)]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self)]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -167,8 +164,8 @@ impl PrimaryKey for &str {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -184,8 +181,8 @@ impl PrimaryKey for String {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -204,8 +201,8 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_ref())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.as_ref())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -221,8 +218,8 @@ impl PrimaryKey for Part {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.as_bytes())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -239,8 +236,8 @@ impl PrimaryKey for Denom {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Owned(self.to_string().into_bytes())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Owned(self.to_string().into_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -257,8 +254,8 @@ impl PrimaryKey for Duration {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Owned(self.into_nanos().to_be_bytes().to_vec())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Fixed128(self.into_nanos().to_be_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -274,18 +271,18 @@ impl PrimaryKey for CodeStatus {
 
     const KEY_ELEMS: u8 = 2;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         match self {
             CodeStatus::Orphaned { since } => {
                 vec![
-                    Cow::Borrowed(&[0]),
-                    Cow::Owned(since.into_nanos().to_be_bytes().to_vec()),
+                    RawKey::Fixed8([0]),
+                    RawKey::Owned(since.into_nanos().to_be_bytes().to_vec()),
                 ]
             },
             CodeStatus::InUse { usage } => {
                 vec![
-                    Cow::Borrowed(&[1]),
-                    Cow::Owned(usage.to_be_bytes().to_vec()),
+                    RawKey::Fixed8([1]),
+                    RawKey::Owned(usage.to_be_bytes().to_vec()),
                 ]
             },
         }
@@ -319,7 +316,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         (*self).raw_keys()
     }
 
@@ -339,7 +336,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys
@@ -377,7 +374,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys.extend(self.2.raw_keys());
@@ -406,7 +403,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         self.inner().raw_keys()
     }
 
@@ -426,7 +423,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         self.inner().raw_keys()
     }
 
@@ -489,7 +486,7 @@ pub(crate) fn split_first_key(key_elems: u8, value: &[u8]) -> (Vec<u8>, &[u8]) {
 }
 
 macro_rules! impl_unsigned_integer_key {
-    ($t:ty) => {
+    ($t:ty => $variant:ident) => {
         impl PrimaryKey for $t {
             type Output = $t;
             type Prefix = ();
@@ -497,8 +494,8 @@ macro_rules! impl_unsigned_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-                vec![Cow::Owned(self.to_be_bytes().to_vec())]
+            fn raw_keys(&self) -> Vec<RawKey> {
+                vec![RawKey::$variant(self.to_be_bytes())]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -517,17 +514,25 @@ macro_rules! impl_unsigned_integer_key {
             }
         }
     };
-    ($($t:ty),+) => {
+    ($($t:ty => $variant:ident),+ $(,)?) => {
         $(
-            impl_unsigned_integer_key!($t);
+            impl_unsigned_integer_key!($t => $variant);
         )*
     };
 }
 
-impl_unsigned_integer_key!(u8, u16, u32, u64, u128, U256, U512);
+impl_unsigned_integer_key! {
+    u8   => Fixed8,
+    u16  => Fixed16,
+    u32  => Fixed32,
+    u64  => Fixed64,
+    u128 => Fixed128,
+    U256 => Fixed256,
+    U512 => Fixed512,
+}
 
 macro_rules! impl_signed_integer_key {
-    ($s:ty => $u:ty) => {
+    ($s:ty => $u:ty => $variant:ident) => {
         impl PrimaryKey for $s {
             type Output = $s;
             type Prefix = ();
@@ -535,9 +540,9 @@ macro_rules! impl_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-                let bytes = ((*self as $u) ^ (<$s>::MIN as $u)).to_be_bytes().to_vec();
-                vec![Cow::Owned(bytes)]
+            fn raw_keys(&self) -> Vec<RawKey> {
+                let bytes = ((*self as $u) ^ (<$s>::MIN as $u)).to_be_bytes();
+                vec![RawKey::$variant(bytes)]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -556,23 +561,23 @@ macro_rules! impl_signed_integer_key {
             }
         }
     };
-    ($($s:ty => $u:ty),+ $(,)?) => {
+    ($($s:ty => $u:ty => $variant:ident),+ $(,)?) => {
         $(
-            impl_signed_integer_key!($s => $u);
+            impl_signed_integer_key!($s => $u => $variant);
         )*
     };
 }
 
 impl_signed_integer_key! {
-    i8   => u8,
-    i16  => u16,
-    i32  => u32,
-    i64  => u64,
-    i128 => u128,
+    i8   => u8   => Fixed8,
+    i16  => u16  => Fixed16,
+    i32  => u32  => Fixed32,
+    i64  => u64  => Fixed64,
+    i128 => u128 => Fixed128,
 }
 
 macro_rules! impl_bnum_signed_integer_key {
-    ($s:ty => $u:ty) => {
+    ($s:ty => $u:ty => $variant:ident) => {
         impl PrimaryKey for $s {
             type Output = $s;
             type Prefix = ();
@@ -580,9 +585,9 @@ macro_rules! impl_bnum_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-                let bytes = (<$u>::cast_from(self.clone()) ^ <$u>::cast_from(Self::MIN)).to_be_bytes().to_vec();
-                vec![Cow::Owned(bytes)]
+            fn raw_keys(&self) -> Vec<RawKey> {
+                let bytes = (<$u>::cast_from(self.clone()) ^ <$u>::cast_from(Self::MIN)).to_be_bytes();
+                vec![RawKey::$variant(bytes)]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -603,16 +608,16 @@ macro_rules! impl_bnum_signed_integer_key {
             }
         }
     };
-    ($($s:ty => $u:ty),+ $(,)?) => {
+    ($($s:ty => $u:ty => $variant:ident),+ $(,)?) => {
         $(
-            impl_bnum_signed_integer_key!($s => $u);
+            impl_bnum_signed_integer_key!($s => $u => $variant);
         )*
     };
 }
 
 impl_bnum_signed_integer_key! {
-    I256 => U256,
-    I512 => U512,
+    I256 => U256 => Fixed256,
+    I512 => U512 => Fixed512,
 }
 
 impl<T, B> PrimaryKey for Bounded<T, B>
@@ -626,7 +631,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         self.inner().raw_keys()
     }
 
@@ -645,7 +650,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         self.inner().raw_keys()
     }
 

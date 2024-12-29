@@ -1,7 +1,7 @@
 use {
-    crate::{Borsh, Codec, Path, Prefix, PrefixBound, Prefixer, PrimaryKey},
+    crate::{Borsh, Codec, Path, Prefix, PrefixBound, Prefixer, PrimaryKey, RawKey},
     grug_types::{Bound, Empty, Order, StdResult, Storage},
-    std::{borrow::Cow, marker::PhantomData},
+    std::marker::PhantomData,
 };
 
 /// Mimic the behavior of HashSet or BTreeSet.
@@ -39,14 +39,14 @@ where
 {
     #[doc(hidden)]
     pub fn path_raw(&self, key_raw: &[u8]) -> Path<Empty, Borsh> {
-        Path::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
+        Path::new(self.namespace, &[], Some(RawKey::Borrowed(key_raw)))
     }
 
     #[doc(hidden)]
     pub fn path(&self, item: T) -> Path<Empty, Borsh> {
         let mut raw_keys = item.raw_keys();
         let last_raw_key = raw_keys.pop();
-        Path::new(self.namespace, &raw_keys, last_raw_key.as_ref())
+        Path::new(self.namespace, &raw_keys, last_raw_key)
     }
 
     #[doc(hidden)]

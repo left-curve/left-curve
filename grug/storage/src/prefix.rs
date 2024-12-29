@@ -1,10 +1,12 @@
 use {
-    crate::{Codec, PrefixBound, Prefixer, PrimaryKey, RawBound},
-    grug_types::{
-        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
-        trim, Bound, Order, Record, StdResult, Storage,
+    crate::{
+        nested_namespaces_with_key, Codec, PrefixBound, Prefixer, PrimaryKey, RawBound, RawKey,
     },
-    std::{borrow::Cow, marker::PhantomData},
+    grug_types::{
+        concat, encode_length, extend_one_byte, increment_last_byte, trim, Bound, Order, Record,
+        StdResult, Storage,
+    },
+    std::marker::PhantomData,
 };
 
 pub struct Prefix<K, T, C>
@@ -21,13 +23,9 @@ impl<K, T, C> Prefix<K, T, C>
 where
     C: Codec<T>,
 {
-    pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>]) -> Self {
+    pub fn new(namespace: &[u8], prefixes: &[RawKey]) -> Self {
         Self {
-            namespace: nested_namespaces_with_key(
-                Some(namespace),
-                prefixes,
-                <Option<&Cow<[u8]>>>::None,
-            ),
+            namespace: nested_namespaces_with_key(Some(namespace), prefixes, None),
             suffix: PhantomData,
             data: PhantomData,
             codec: PhantomData,
