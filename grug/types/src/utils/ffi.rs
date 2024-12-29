@@ -5,7 +5,6 @@ use {
 
 /// Safely converts input of type T to u32.
 /// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
-#[doc(hidden)]
 pub fn to_u32<T>(input: T) -> MathResult<u32>
 where
     T: TryInto<u32> + ToString + Copy,
@@ -26,7 +25,6 @@ where
 ///
 /// 1. `k1`
 /// 2. `len(k2) | k2 ... len(k{N-1}) | k{N-1} | k{N}`
-#[doc(hidden)]
 pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
     // Note: This panics if bytes.len() < 2
     let (len_bytes, bytes) = bytes.split_at(2);
@@ -47,7 +45,6 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
 /// ```plain
 /// section1 | section1_len | section2 | section2_len | section3 | section3_len | …
 /// ```
-#[doc(hidden)]
 pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
     let mut out_len: usize = sections.iter().map(|section| section.len()).sum();
     out_len += 4 * sections.len();
@@ -67,7 +64,6 @@ pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
 /// Each encoded section is suffixed by a section length, encoded as big endian uint32.
 ///
 /// See also: `encode_section`.
-#[doc(hidden)]
 pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {
     let mut result: Vec<&[u8]> = vec![];
     let mut remaining_len = data.len();
