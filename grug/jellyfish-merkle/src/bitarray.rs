@@ -1,8 +1,8 @@
 use {
     grug_math::Inner,
-    grug_storage::PrimaryKey,
+    grug_storage::{PrimaryKey, RawKey},
     grug_types::{split_one_key, Hash256, Order, StdResult},
-    std::{borrow::Cow, fmt},
+    std::fmt,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -172,11 +172,11 @@ impl<'a> PrimaryKey for &'a BitArray {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let num_bytes = self.num_bits.div_ceil(8);
         vec![
-            Cow::Owned((self.num_bits as u16).to_be_bytes().to_vec()),
-            Cow::Borrowed(&self.bytes[..num_bytes]),
+            RawKey::Fixed16((self.num_bits as u16).to_be_bytes()),
+            RawKey::Borrowed(&self.bytes[..num_bytes]),
         ]
     }
 

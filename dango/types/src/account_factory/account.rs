@@ -1,11 +1,8 @@
 use {
     crate::account::{multi, single},
-    grug::{PrimaryKey, StdError, StdResult},
+    grug::{PrimaryKey, RawKey, StdError, StdResult},
     paste::paste,
-    std::{
-        borrow::Cow,
-        fmt::{self, Display},
-    },
+    std::fmt::{self, Display},
 };
 
 // ----------------------------------- index -----------------------------------
@@ -107,13 +104,13 @@ impl PrimaryKey for AccountType {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let index = match self {
             AccountType::Spot => 0,
             AccountType::Margin => 1,
             AccountType::Safe => 2,
         };
-        vec![Cow::Owned(vec![index])]
+        vec![RawKey::Fixed8([index])]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
