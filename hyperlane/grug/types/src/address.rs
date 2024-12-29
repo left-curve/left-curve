@@ -1,10 +1,7 @@
 use {
     anyhow::ensure,
-    grug::{Addr, EncodedBytes, HexEncoder, Inner, Prefixer, PrimaryKey, StdResult},
-    std::{
-        borrow::Cow,
-        fmt::{self, Display},
-    },
+    grug::{Addr, EncodedBytes, HexEncoder, Inner, PrimaryKey, RawKey, StdResult},
+    std::fmt::{self, Display},
 };
 
 #[macro_export]
@@ -69,19 +66,13 @@ impl PrimaryKey for Addr32 {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(&self.0)]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(&self.0)]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         // TODO: more informative error message
         bytes.try_into().map(Self::from_inner).map_err(Into::into)
-    }
-}
-
-impl Prefixer for Addr32 {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(&self.0)]
     }
 }
 
