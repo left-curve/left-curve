@@ -1846,6 +1846,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-orderbook"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "test-case",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [

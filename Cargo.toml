@@ -120,6 +120,7 @@ dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }
 dango-oracle          = { path = "dango/oracle" }
+dango-orderbook       = { path = "dango/orderbook" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-token-factory   = { path = "dango/token-factory" }
