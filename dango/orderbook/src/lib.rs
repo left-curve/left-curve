@@ -1,9 +1,6 @@
-use {
-    grug::{
-        Addr, Inner, Map, Number, NumberConst, Order as IterationOrder, Prefixer, PrimaryKey,
-        StdError, StdResult, Storage, Udec128, Uint128,
-    },
-    std::borrow::Cow,
+use grug::{
+    Addr, Map, Number, NumberConst, Order as IterationOrder, PrimaryKey, RawKey, StdError,
+    StdResult, Storage, Udec128, Uint128,
 };
 
 pub type OrderId = u64;
@@ -26,10 +23,10 @@ impl PrimaryKey for Direction {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         match self {
-            Direction::Bid => vec![Cow::Borrowed(&[0])],
-            Direction::Ask => vec![Cow::Borrowed(&[1])],
+            Direction::Bid => vec![RawKey::Fixed8([0])],
+            Direction::Ask => vec![RawKey::Fixed8([1])],
         }
     }
 
@@ -42,12 +39,6 @@ impl PrimaryKey for Direction {
                 format!("invalid order direction! must be 0|1"),
             )),
         }
-    }
-}
-
-impl Prefixer for Direction {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        self.raw_keys()
     }
 }
 
@@ -65,9 +56,9 @@ impl PrimaryKey for OrderKey {
 
     const KEY_ELEMS: u8 = 3;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let mut keys = self.direction.raw_keys();
-        keys.push(Cow::Owned(self.price.inner().to_be_bytes().to_vec()));
+        keys.extend(self.price.raw_keys());
         // For BUY orders, we use the bitwise reverse of `order_id` (which equals
         // `u64::MAX - order_id` numerically) such that older orders are filled.
         // first. This follows the _price-time priority_ rule.
@@ -77,13 +68,12 @@ impl PrimaryKey for OrderKey {
         // it would take 5.4e+24 years to reach `u64::MAX / 2` which is about
         // 400 trillion times the age of the universe. The Sun will become a red
         // giant and devour Earth in 5 billion years so by then we're all gone.
-        keys.push(Cow::Owned(
+        keys.push(RawKey::Fixed64(
             match self.direction {
                 Direction::Bid => !self.order_id,
                 Direction::Ask => self.order_id,
             }
-            .to_be_bytes()
-            .to_vec(),
+            .to_be_bytes(),
         ));
         keys
     }
