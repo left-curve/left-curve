@@ -1,6 +1,6 @@
 use {
-    crate::{nested_namespaces_with_key, Codec, RawKey},
-    grug_types::{Binary, StdError, StdResult, Storage},
+    crate::{Codec, RawKey},
+    grug_types::{nested_namespaces_with_key, Binary, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
 

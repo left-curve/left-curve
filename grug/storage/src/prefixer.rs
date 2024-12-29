@@ -1,4 +1,7 @@
-use crate::{nested_namespaces_with_key, PrimaryKey, RawKey};
+use {
+    crate::{PrimaryKey, RawKey},
+    grug_types::nested_namespaces_with_key,
+};
 
 /// Describes a prefix in a composite key.
 ///
@@ -13,7 +16,7 @@ pub trait Prefixer {
 
     fn joined_prefix(&self) -> Vec<u8> {
         let raw_prefixes = self.raw_prefixes();
-        nested_namespaces_with_key(None, &raw_prefixes, None)
+        nested_namespaces_with_key(None, &raw_prefixes, Option::<RawKey>::None)
     }
 }
 
