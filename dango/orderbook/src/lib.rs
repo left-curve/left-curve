@@ -1,17 +1,17 @@
 use {
     grug::{
-        Addr, Map, Number, NumberConst, Order as IterationOrder, Prefixer, PrimaryKey, StdError,
-        StdResult, Storage, Udec128, Uint128,
+        Addr, Inner, Map, Number, NumberConst, Order as IterationOrder, Prefixer, PrimaryKey,
+        StdError, StdResult, Storage, Udec128, Uint128,
     },
     std::borrow::Cow,
 };
 
 pub type OrderId = u64;
 
-// (direction, price) -> order
-pub const ORDERS: Map<(Direction, Udec128, OrderId), Order> = Map::new("order");
+pub const ORDERS: Map<OrderKey, Order> = Map::new("order");
 
 #[grug::derive(Serde, Borsh)]
+#[derive(Copy)]
 pub enum Direction {
     /// Give away the quote asset, get the base asset; a.k.a. a BUY order.
     Bid,
@@ -48,6 +48,52 @@ impl PrimaryKey for Direction {
 impl Prefixer for Direction {
     fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
         self.raw_keys()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OrderKey {
+    pub direction: Direction,
+    pub price: Udec128,
+    pub order_id: OrderId,
+}
+
+impl PrimaryKey for OrderKey {
+    type Output = (Direction, Udec128, OrderId);
+    type Prefix = Direction;
+    type Suffix = (Udec128, OrderId);
+
+    const KEY_ELEMS: u8 = 3;
+
+    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+        let mut keys = self.direction.raw_keys();
+        keys.push(Cow::Owned(self.price.inner().to_be_bytes().to_vec()));
+        // For BUY orders, we use the bitwise reverse of `order_id` (which equals
+        // `u64::MAX - order_id` numerically) such that older orders are filled.
+        // first. This follows the _price-time priority_ rule.
+        //
+        // Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which
+        // is a safe assumption. Even if we accept 1 million orders per second,
+        // it would take 5.4e+24 years to reach `u64::MAX / 2` which is about
+        // 400 trillion times the age of the universe. The Sun will become a red
+        // giant and devour Earth in 5 billion years so by then we're all gone.
+        keys.push(Cow::Owned(
+            match self.direction {
+                Direction::Bid => !self.order_id,
+                Direction::Ask => self.order_id,
+            }
+            .to_be_bytes()
+            .to_vec(),
+        ));
+        keys
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (direction, price, order_id) = <(Direction, Udec128, OrderId)>::from_slice(bytes)?;
+        match direction {
+            Direction::Bid => Ok((direction, price, !order_id)),
+            Direction::Ask => Ok((direction, price, order_id)),
+        }
     }
 }
 
@@ -226,11 +272,11 @@ mod tests {
             ORDERS
                 .save(
                     &mut storage,
-                    (
+                    OrderKey {
                         direction,
-                        price.checked_into_dec().unwrap(),
-                        order_id as u64,
-                    ),
+                        price: price.checked_into_dec().unwrap(),
+                        order_id: order_id as OrderId,
+                    },
                     &Order {
                         trader: Addr::mock(0),
                         amount,
