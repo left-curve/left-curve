@@ -49,51 +49,6 @@ impl PrimaryKey for Direction {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct OrderKey {
-    pub direction: Direction,
-    pub price: Udec128,
-    pub order_id: OrderId,
-}
-
-impl PrimaryKey for OrderKey {
-    type Output = (Direction, Udec128, OrderId);
-    type Prefix = Direction;
-    type Suffix = (Udec128, OrderId);
-
-    const KEY_ELEMS: u8 = 3;
-
-    fn raw_keys(&self) -> Vec<RawKey> {
-        let mut keys = self.direction.raw_keys();
-        keys.extend(self.price.raw_keys());
-        // For BUY orders, we use the bitwise reverse of `order_id` (which equals
-        // `u64::MAX - order_id` numerically) such that older orders are filled.
-        // first. This follows the _price-time priority_ rule.
-        //
-        // Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which
-        // is a safe assumption. Even if we accept 1 million orders per second,
-        // it would take 5.4e+24 years to reach `u64::MAX / 2` which is about
-        // 400 trillion times the age of the universe. The Sun will become a red
-        // giant and devour Earth in 5 billion years so by then we're all gone.
-        keys.push(RawKey::Fixed64(
-            match self.direction {
-                Direction::Bid => !self.order_id,
-                Direction::Ask => self.order_id,
-            }
-            .to_be_bytes(),
-        ));
-        keys
-    }
-
-    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let (direction, price, order_id) = <(Direction, Udec128, OrderId)>::from_slice(bytes)?;
-        match direction {
-            Direction::Bid => Ok((direction, price, !order_id)),
-            Direction::Ask => Ok((direction, price, order_id)),
-        }
-    }
-}
-
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub struct Order {

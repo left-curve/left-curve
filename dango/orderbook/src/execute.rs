@@ -1,7 +1,7 @@
 use {
     crate::{ORDERS, ORDER_ID, PAIR},
     anyhow::ensure,
-    dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, Order, OrderId, OrderKey},
+    dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, Order, OrderId},
     grug::{
         Addr, Coin, Coins, IsZero, Message, MsgTransfer, MultiplyFraction, MutableCtx, Number,
         NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
@@ -9,7 +9,8 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
-const HALF: Udec128 = Udec128::new(500_000_000_000_000_000);
+// equals 0.5
+const HALF: Udec128 = Udec128::raw(Uint128::new(500_000_000_000_000_000));
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
@@ -75,21 +76,24 @@ fn submit_order(
         },
     }
 
-    let (order_id, _) = ORDER_ID.increment(ctx.storage)?;
+    let (mut order_id, _) = ORDER_ID.increment(ctx.storage)?;
 
-    ORDERS.save(
-        ctx.storage,
-        OrderKey {
-            direction,
-            price,
-            order_id,
-        },
-        &Order {
-            trader: ctx.sender,
-            amount,
-            remaining: amount,
-        },
-    )?;
+    // For BUY orders, bitwise reverse the `order_id` (which numerically is
+    // equivalent to `OrderId::MAX - order_id`). This ensures that when matching
+    // orders, the older orders are matched first.
+    //
+    // Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which is
+    // a safe assumption. If we accept 1 million orders per second, it would
+    // take ~300,000 years to reach `u64::MAX / 2`.
+    if direction == Direction::Bid {
+        order_id = !order_id;
+    }
+
+    ORDERS.save(ctx.storage, (direction, price, order_id), &Order {
+        trader: ctx.sender,
+        amount,
+        remaining: amount,
+    })?;
 
     Ok(Response::new())
 }
@@ -123,11 +127,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             },
         };
 
-        ORDERS.remove(ctx.storage, OrderKey {
-            direction,
-            price,
-            order_id,
-        })?;
+        ORDERS.remove(ctx.storage, (direction, price, order_id))?;
     }
 
     Ok(Response::new().add_message(Message::transfer(ctx.sender, refund)?))
@@ -241,12 +241,12 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
         debug_assert!(
             clearing_price <= *bid_price,
-            "bid price should be smaller than clearing price, but got clearing price: {clearing_price}, bid price: {bid_price}"
+            "expecting clearing price <= bid price, but got clearing price ({clearing_price}) > bid price ({bid_price})"
         );
 
         debug_assert!(
             clearing_price >= *ask_price,
-            "ask price should be greater than clearing price, but got clearing price: {clearing_price}, ask price: {ask_price}"
+            "expecting clearing price >= ask price, but got clearing price ({clearing_price}) < ask price ({ask_price})"
         );
 
         let filled = bid_order.remaining.min(ask_order.remaining);
@@ -260,33 +260,33 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             ask_volume -= filled;
         }
 
-        sends.entry(bid_order.trader).or_default().insert(Coin {
-            denom: pair.base_denom.clone(),
-            amount: filled,
-        })?;
-
-        sends.entry(ask_order.trader).or_default().insert(Coin {
-            denom: pair.quote_denom.clone(),
-            amount: filled.checked_mul_dec_floor(clearing_price)?,
-        })?;
-
-        if bid_order.remaining.is_zero() {
-            ORDERS.remove(ctx.storage, OrderKey {
-                direction: Direction::Bid,
-                price: *bid_price,
-                order_id: *bid_order_id,
+        sends
+            .entry(bid_order.trader)
+            .or_insert_with(Coins::new)
+            .insert(Coin {
+                denom: pair.base_denom.clone(),
+                amount: filled,
+            })?
+            .insert(Coin {
+                denom: pair.quote_denom.clone(),
+                amount: filled.checked_mul_dec_floor(*bid_price - clearing_price)?,
             })?;
 
+        sends
+            .entry(ask_order.trader)
+            .or_insert_with(Coins::new)
+            .insert(Coin {
+                denom: pair.quote_denom.clone(),
+                amount: filled.checked_mul_dec_floor(clearing_price)?,
+            })?;
+
+        if bid_order.remaining.is_zero() {
+            ORDERS.remove(ctx.storage, (Direction::Bid, *bid_price, *bid_order_id))?;
             bid = bid_iter.next();
         }
 
         if ask_order.remaining.is_zero() {
-            ORDERS.remove(ctx.storage, OrderKey {
-                direction: Direction::Ask,
-                price: *ask_price,
-                order_id: *ask_order_id,
-            })?;
-
+            ORDERS.remove(ctx.storage, (Direction::Ask, *ask_price, *ask_order_id))?;
             ask = ask_iter.next();
         }
     }
@@ -295,11 +295,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         if bid_order.remaining.is_non_zero() {
             ORDERS.save(
                 ctx.storage,
-                OrderKey {
-                    direction: Direction::Bid,
-                    price: bid_price,
-                    order_id: bid_order_id,
-                },
+                (Direction::Bid, bid_price, bid_order_id),
                 &bid_order,
             )?;
         }
@@ -309,11 +305,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         if ask_order.remaining.is_non_zero() {
             ORDERS.save(
                 ctx.storage,
-                OrderKey {
-                    direction: Direction::Ask,
-                    price: ask_price,
-                    order_id: ask_order_id,
-                },
+                (Direction::Ask, ask_price, ask_order_id),
                 &ask_order,
             )?;
         }
@@ -334,110 +326,189 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
 // ----------------------------------- tests -----------------------------------
 
+// Test cases from:
+// https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::MockStorage, test_case::test_case};
+    use {
+        super::*,
+        dango_types::orderbook::Pair,
+        grug::{btree_map, Denom, MockContext},
+        std::{str::FromStr, sync::LazyLock},
+        test_case::test_case,
+    };
 
-    // Test cases from:
-    // https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better
+    static BASE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("base").unwrap());
+    static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("quote").unwrap());
+
+    // ------------------------------- example 1 -------------------------------
     #[test_case(
-        [
-            (Direction::Bid, Uint128::new(30), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(20), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(10), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(10), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(20), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(30), Uint128::new(10)),
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(30),
+                    !0,
+                ),
+                Order {
+                    trader: Addr::mock(0),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(10),
+                    3,
+                ),
+                Order {
+                    trader: Addr::mock(3),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(20),
+                    4,
+                ),
+                Order {
+                    trader: Addr::mock(4),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(30),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
         ],
-        ClearOrderOutcome {
-            range: Some((
-                Uint128::new(20).checked_into_dec().unwrap(),
-                Uint128::new(20).checked_into_dec().unwrap()
-            )),
-            volume: Uint128::new(20),
-        };
-        "example_one"
-    )]
-    #[test_case(
-        [
-            (Direction::Bid, Uint128::new(30), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(20), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(10), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(5), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(15), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(25), Uint128::new(10)),
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(30),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
         ],
-        ClearOrderOutcome {
-            range: Some((
-                Uint128::new(15).checked_into_dec().unwrap(),
-                Uint128::new(20).checked_into_dec().unwrap()
-            )),
-            volume: Uint128::new(20),
-        };
-        "example_two"
+        vec![
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(0),
+                coins: Coins::new_unchecked(btree_map! {
+                    // Trader created a BUY order of 10 BASE at 30 QUOTE per base
+                    // with a deposit of 10 * 30 = 300 QUOTE.
+                    // The order executed at at 20 QUOTE per base, so trader gets
+                    // 10 BASE + refund of 10 * (30 - 20) = 100 QUOTE.
+                    BASE_DENOM.clone() => Uint128::new(10),
+                    QUOTE_DENOM.clone() => Uint128::new(100),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(1),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(10),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(3),
+                // Trader created a SELL order of 10 BASE at 10 QUOTE per base
+                // with a deposit of 10 BASE.
+                // The order executed at 20 QUOTE per base, so trader gets
+                // 10 * 20 = 200 QUOTE.
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(200),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(4),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(200),
+                }),
+            }),
+        ];
+        "example 1"
     )]
-    #[test_case(
-        [
-            (Direction::Bid, Uint128::new(30), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(30), Uint128::new(5)),
-            (Direction::Bid, Uint128::new(20), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(10), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(5), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(15), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(25), Uint128::new(10)),
-        ],
-        ClearOrderOutcome {
-            range: Some((
-                Uint128::new(15).checked_into_dec().unwrap(),
-                Uint128::new(20).checked_into_dec().unwrap()
-            )),
-            volume: Uint128::new(20),
-        };
-        "example_three"
-    )]
-    #[test_case(
-        [
-            (Direction::Bid, Uint128::new(30), Uint128::new(20)),
-            (Direction::Bid, Uint128::new(20), Uint128::new(10)),
-            (Direction::Bid, Uint128::new(10), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(5), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(15), Uint128::new(10)),
-            (Direction::Ask, Uint128::new(25), Uint128::new(10)),
-        ],
-        ClearOrderOutcome {
-            range: Some((
-                Uint128::new(15).checked_into_dec().unwrap(),
-                Uint128::new(30).checked_into_dec().unwrap()
-            )),
-            volume: Uint128::new(20),
-        };
-        "example_four"
-    )]
-    fn clear_orders_works<const N: usize>(
-        orders: [(Direction, Uint128, Uint128); N],
-        expected: ClearOrderOutcome,
+    fn clear_orders_works(
+        before_orders: Vec<((Direction, Udec128, OrderId), Order)>,
+        after_orders: Vec<((Direction, Udec128, OrderId), Order)>,
+        refunds: Vec<Message>,
     ) {
-        let mut storage = MockStorage::new();
+        let mut ctx = MockContext::new();
 
-        for (order_id, (direction, price, amount)) in orders.into_iter().enumerate() {
-            ORDERS
-                .save(
-                    &mut storage,
-                    OrderKey {
-                        direction,
-                        price: price.checked_into_dec().unwrap(),
-                        order_id: order_id as OrderId,
-                    },
-                    &Order {
-                        trader: Addr::mock(0),
-                        amount,
-                        remaining: amount,
-                    },
-                )
-                .unwrap();
+        PAIR.save(&mut ctx.storage, &Pair {
+            base_denom: BASE_DENOM.clone(),
+            quote_denom: QUOTE_DENOM.clone(),
+        })
+        .unwrap();
+
+        for (key, order) in before_orders {
+            ORDERS.save(&mut ctx.storage, key, &order).unwrap();
         }
 
-        let outcome = clear_orders(&storage).unwrap();
-        assert_eq!(outcome, expected);
+        let messages = cron_execute(ctx.as_sudo())
+            .unwrap()
+            .submsgs
+            .into_iter()
+            .map(|submsg| submsg.msg)
+            .collect::<Vec<_>>();
+        assert_eq!(messages, refunds);
+
+        let orders = ORDERS
+            .range(&ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()
+            .unwrap();
+        assert_eq!(orders, after_orders);
     }
 }
