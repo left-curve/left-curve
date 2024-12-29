@@ -1,5 +1,5 @@
 use {
-    crate::Codec,
+    crate::{Codec, RawKey},
     grug_types::{nested_namespaces_with_key, Binary, StdError, StdResult, Storage},
     std::{borrow::Cow, marker::PhantomData},
 };
@@ -15,7 +15,7 @@ impl<'a, T, C> Path<'a, T, C>
 where
     C: Codec<T>,
 {
-    pub fn new(namespace: &[u8], prefixes: &[Cow<[u8]>], maybe_key: Option<&Cow<[u8]>>) -> Self {
+    pub fn new(namespace: &[u8], prefixes: &[RawKey], maybe_key: Option<RawKey>) -> Self {
         Self {
             storage_key: Cow::Owned(nested_namespaces_with_key(
                 Some(namespace),

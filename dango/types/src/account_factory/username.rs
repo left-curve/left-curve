@@ -1,8 +1,8 @@
 use {
     core::str,
-    grug::{Inner, Prefixer, PrimaryKey, StdError, StdResult},
+    grug::{Inner, PrimaryKey, RawKey, StdError, StdResult},
     serde::{de, Serialize},
-    std::{borrow::Cow, fmt, str::FromStr},
+    std::{fmt, str::FromStr},
 };
 
 /// A name that uniquely identifies a user.
@@ -62,8 +62,8 @@ impl PrimaryKey for Username {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.0.as_bytes())]
+    fn raw_keys(&self) -> Vec<RawKey> {
+        vec![RawKey::Borrowed(self.0.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
@@ -73,12 +73,6 @@ impl PrimaryKey for Username {
         str::from_utf8(bytes)
             .map_err(|err| StdError::deserialize::<&str, _>("utf8", err))
             .and_then(Self::from_str)
-    }
-}
-
-impl Prefixer for Username {
-    fn raw_prefixes(&self) -> Vec<Cow<[u8]>> {
-        vec![Cow::Borrowed(self.0.as_bytes())]
     }
 }
 
