@@ -239,10 +239,26 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             break;
         };
 
+        debug_assert!(
+            clearing_price <= *bid_price,
+            "bid price should be smaller than clearing price, but got clearing price: {clearing_price}, bid price: {bid_price}"
+        );
+
+        debug_assert!(
+            clearing_price >= *ask_price,
+            "ask price should be greater than clearing price, but got clearing price: {clearing_price}, ask price: {ask_price}"
+        );
+
         let filled = bid_order.remaining.min(ask_order.remaining);
 
         bid_order.remaining -= filled;
         ask_order.remaining -= filled;
+
+        #[cfg(debug_assertions)]
+        {
+            bid_volume -= filled;
+            ask_volume -= filled;
+        }
 
         sends.entry(bid_order.trader).or_default().insert(Coin {
             denom: pair.base_denom.clone(),
@@ -302,6 +318,11 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             )?;
         }
     }
+
+    debug_assert!(
+        bid_volume.is_zero() || ask_volume.is_zero(),
+        "one of bid or ask volume should have been reduced to zero, but got bid volume: {bid_volume}, ask volume: {ask_volume}"
+    );
 
     // TODO: create a batch send method at bank contract
     let messages = sends
