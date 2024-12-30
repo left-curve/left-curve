@@ -30,7 +30,7 @@ fn user_onboarding() {
     // account doesn't exist yet.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.ibc_transfer,
             &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
@@ -76,9 +76,9 @@ fn user_onboarding() {
         )
         .should_succeed_and_equal(btree_map! {
             user.address() => Account {
-                // We have 2 genesis accounts (0 owner, 1 relayer) so this one should have
-                // the index of 2.
-                index: 2,
+                // We have 5 genesis accounts (owner + users 1-4), indexed from
+                // zero, so this one should have the index of 5.
+                index: 5,
                 params: AccountParams::Spot(single::Params::new(user.username.clone() )),
             },
         });
@@ -107,7 +107,7 @@ fn onboarding_existing_user() {
         // Make the initial deposit.
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 contracts.ibc_transfer,
                 &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                     recipient: user.address(),
