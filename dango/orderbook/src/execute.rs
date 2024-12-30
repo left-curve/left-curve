@@ -3,11 +3,15 @@ use {
     anyhow::ensure,
     dango_types::{
         bank,
-        orderbook::{Direction, ExecuteMsg, InstantiateMsg, OrderId},
+        orderbook::{
+            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
+            OrderSubmitted, OrdersMatched,
+        },
     },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
+        Addr, Coin, Coins, ContractEvent, Denom, IsZero, Message, MultiplyFraction, MutableCtx,
+        Number, NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -97,7 +101,12 @@ fn submit_order(
 
     ORDERS.save(
         ctx.storage,
-        ((base_denom, quote_denom), direction, price, order_id),
+        (
+            (base_denom.clone(), quote_denom.clone()),
+            direction,
+            price,
+            order_id,
+        ),
         &Order {
             trader: ctx.sender,
             amount,
@@ -105,12 +114,24 @@ fn submit_order(
         },
     )?;
 
-    Ok(Response::new())
+    Response::new()
+        .add_event("order_submitted", OrderSubmitted {
+            order_id,
+            trader: ctx.sender,
+            base_denom,
+            quote_denom,
+            direction,
+            price,
+            amount,
+            deposit,
+        })
+        .map_err(Into::into)
 }
 
 #[inline]
 fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Result<Response> {
-    let mut refund = Coins::new();
+    let mut refunds = Coins::new();
+    let mut events = Vec::new();
 
     for order_id in order_ids {
         let (((base_denom, quote_denom), direction, price, _), order) =
@@ -121,20 +142,24 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             "only the trader can cancel the order"
         );
 
-        match direction {
-            Direction::Bid => {
-                refund.insert(Coin {
-                    denom: quote_denom.clone(),
-                    amount: order.remaining.checked_mul_dec_floor(price)?,
-                })?;
+        let refund = match direction {
+            Direction::Bid => Coin {
+                denom: quote_denom.clone(),
+                amount: order.remaining.checked_mul_dec_floor(price)?,
             },
-            Direction::Ask => {
-                refund.insert(Coin {
-                    denom: base_denom.clone(),
-                    amount: order.remaining,
-                })?;
+            Direction::Ask => Coin {
+                denom: base_denom.clone(),
+                amount: order.remaining,
             },
         };
+
+        events.push(ContractEvent::new("order_canceled", OrderCanceled {
+            order_id,
+            remaining: order.remaining,
+            refund: refund.clone(),
+        })?);
+
+        refunds.insert(refund)?;
 
         ORDERS.remove(
             ctx.storage,
@@ -142,7 +167,9 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         )?;
     }
 
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, refund)?))
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, refunds)?)
+        .add_subevents(events))
 }
 
 /// Match and fill orders using the uniform price auction strategy.
@@ -151,8 +178,8 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    // Tracks how much fund should be transferred from this contract to traders.
-    let mut transfers = BTreeMap::<Addr, Coins>::new();
+    let mut refunds = BTreeMap::<Addr, Coins>::new();
+    let mut events = Vec::new();
 
     // Find all pairs that have received new orders during the block.
     let pairs = NEW_ORDER_COUNTS
@@ -252,98 +279,131 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
         // The volume of this auction is the smaller between bid and ask volumes.
-        let mut bid_volume = bid_volume.min(ask_volume);
-        let mut ask_volume = bid_volume;
+        let volume = bid_volume.min(ask_volume);
+
+        events.push(ContractEvent::new("orders_matched", OrdersMatched {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            clearing_price,
+            volume,
+        })?);
 
         // Clear the BUY orders.
         //
         // Note: if the clearing price is better than the bid price, we need to
         // refund the trader the unused quote asset.
-        for ((bid_price, order_id), mut bid_order) in bids {
-            let volume = bid_order.remaining.min(bid_volume);
+        let mut remaining_volume = volume;
+        for ((price, order_id), mut order) in bids {
+            let filled = order.remaining.min(remaining_volume);
 
-            bid_order.remaining -= volume;
-            bid_volume -= volume;
+            order.remaining -= filled;
+            remaining_volume -= filled;
 
-            transfers
-                .entry(bid_order.trader)
-                .or_default()
+            let cleared = order.remaining.is_zero();
+            let mut refund = Coins::new();
+
+            refund
                 .insert(Coin {
                     denom: base_denom.clone(),
-                    amount: volume,
+                    amount: filled,
                 })?
                 .insert(Coin {
                     denom: quote_denom.clone(),
-                    amount: volume.checked_mul_dec_floor(bid_price - clearing_price)?,
+                    amount: filled.checked_mul_dec_floor(price - clearing_price)?, // this can be zero
                 })?;
 
-            if bid_order.remaining.is_non_zero() {
-                ORDERS.save(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        Direction::Bid,
-                        bid_price,
-                        order_id,
-                    ),
-                    &bid_order,
-                )?;
-            } else {
+            events.push(ContractEvent::new("order_filled", OrderFilled {
+                order_id,
+                clearing_price,
+                filled,
+                refund: refund.clone(),
+                fee: None,
+                cleared,
+            })?);
+
+            refunds
+                .entry(order.trader)
+                .or_default()
+                .insert_many(refund)?;
+
+            if cleared {
                 ORDERS.remove(
                     ctx.storage,
                     (
                         (base_denom.clone(), quote_denom.clone()),
                         Direction::Bid,
-                        bid_price,
+                        price,
                         order_id,
                     ),
                 )?;
+            } else {
+                ORDERS.save(
+                    ctx.storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        Direction::Bid,
+                        price,
+                        order_id,
+                    ),
+                    &order,
+                )?;
             }
 
-            if bid_volume.is_zero() {
+            if remaining_volume.is_zero() {
                 break;
             }
         }
 
         // Clear the SELL orders.
-        for ((ask_price, order_id), mut ask_order) in asks {
-            let volume = ask_order.remaining.min(ask_volume);
+        let mut remaining_volume = volume;
+        for ((price, order_id), mut order) in asks {
+            let filled = order.remaining.min(remaining_volume);
 
-            ask_order.remaining -= volume;
-            ask_volume -= volume;
+            order.remaining -= filled;
+            remaining_volume -= filled;
 
-            transfers
-                .entry(ask_order.trader)
-                .or_default()
-                .insert(Coin {
-                    denom: quote_denom.clone(),
-                    amount: volume.checked_mul_dec_floor(clearing_price)?,
-                })?;
+            let cleared = order.remaining.is_zero();
 
-            if ask_order.remaining.is_non_zero() {
-                ORDERS.save(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        Direction::Ask,
-                        ask_price,
-                        order_id,
-                    ),
-                    &ask_order,
-                )?;
-            } else {
+            let refund = Coin {
+                denom: quote_denom.clone(),
+                amount: filled.checked_mul_dec_floor(clearing_price)?,
+            };
+
+            events.push(ContractEvent::new("order_filled", OrderFilled {
+                order_id,
+                clearing_price,
+                filled,
+                refund: refund.clone().into(),
+                fee: None,
+                cleared,
+            })?);
+
+            refunds.entry(order.trader).or_default().insert(refund)?;
+
+            if cleared {
                 ORDERS.remove(
                     ctx.storage,
                     (
                         (base_denom.clone(), quote_denom.clone()),
                         Direction::Ask,
-                        ask_price,
+                        price,
                         order_id,
                     ),
                 )?;
+            } else {
+                ORDERS.save(
+                    ctx.storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        Direction::Ask,
+                        price,
+                        order_id,
+                    ),
+                    &order,
+                )?;
             }
 
-            if ask_volume.is_zero() {
+            if remaining_volume.is_zero() {
                 break;
             }
         }
@@ -352,12 +412,14 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // Reset the order counters for the next block.
     NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
-    Ok(Response::new().add_message({
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
-            bank,
-            &bank::ExecuteMsg::BatchTransfer(transfers),
-            Coins::new(),
-        )?
-    }))
+    Ok(Response::new()
+        .add_message({
+            let bank = ctx.querier.query_bank()?;
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::BatchTransfer(refunds),
+                Coins::new(),
+            )?
+        })
+        .add_subevents(events))
 }

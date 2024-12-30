@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128},
+    grug::{Addr, Coin, Coins, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -144,4 +144,44 @@ pub enum QueryMsg {
 
 // ---------------------------------- events -----------------------------------
 
-// TODO: add events
+#[grug::derive(Serde)]
+pub struct OrderSubmitted {
+    pub order_id: OrderId,
+    pub trader: Addr,
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub price: Udec128,
+    pub amount: Uint128,
+    pub deposit: Coin,
+}
+
+#[grug::derive(Serde)]
+pub struct OrderCanceled {
+    pub order_id: OrderId,
+    pub remaining: Uint128,
+    pub refund: Coin,
+}
+
+#[grug::derive(Serde)]
+pub struct OrdersMatched {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub clearing_price: Udec128,
+    pub volume: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct OrderFilled {
+    pub order_id: OrderId,
+    /// The price at which the order was executed.
+    pub clearing_price: Udec128,
+    /// The amount (measured in base asset) that was filled.
+    pub filled: Uint128,
+    /// The amount of coins returned to the user.
+    pub refund: Coins,
+    /// The amount of protocol fee collected.
+    pub fee: Option<Coin>,
+    /// Whether the order was _completed_ filled and cleared from the book.
+    pub cleared: bool,
+}
