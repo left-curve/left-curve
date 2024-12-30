@@ -51,7 +51,7 @@ where
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
                     params: AccountParams::Spot(single::Params::new(
-                        accounts.relayer.username.clone(),
+                        accounts.user1.username.clone(),
                     )),
                 },
                 if i < 100 {
@@ -67,7 +67,7 @@ where
     // In experience, this costs ~34M gas.
     suite
         .send_messages_with_gas(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             50_000_000,
             NonEmpty::new_unchecked(msgs),
         )
@@ -190,7 +190,7 @@ where
     // Create an ATOM-USDC pool.
     suite
         .execute_with_gas(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             5_000_000,
             contracts.amm,
             &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
@@ -208,7 +208,7 @@ where
     (0..100)
         .map(|_| {
             accounts
-                .relayer
+                .user1
                 .sign_transaction(
                     NonEmpty::new_unchecked(vec![Message::execute(
                         contracts.amm,

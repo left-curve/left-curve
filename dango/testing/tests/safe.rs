@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test, Factory, Safe, TestAccount},
+    dango_testing::{setup_test, Safe},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
@@ -8,7 +8,6 @@ use {
         account_factory::{
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
         },
-        ibc,
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
@@ -20,57 +19,14 @@ use {
 fn safe() {
     let (mut suite, mut accounts, codes, contracts) = setup_test();
 
-    // --------------------------------- Setup ---------------------------------
-
-    // Onboard 4 users. Three will be the members of the Safe. The other will
-    // play the role of an attacker.
-    let [mut member1, member2, member3, attacker] = ["member1", "member2", "member3", "attacker"]
-        .into_iter()
-        .map(|username| {
-            let user = TestAccount::new_random(username).predict_address(
-                contracts.account_factory,
-                codes.account_spot.to_bytes().hash256(),
-                true,
-            );
-
-            suite
-                .execute(
-                    &mut accounts.relayer,
-                    contracts.ibc_transfer,
-                    &ibc::transfer::ExecuteMsg::ReceiveTransfer {
-                        recipient: user.address(),
-                    },
-                    Coins::one("uusdc", 100_000_000).unwrap(),
-                )
-                .should_succeed();
-
-            suite
-                .execute(
-                    &mut Factory::new(contracts.account_factory),
-                    contracts.account_factory,
-                    &account_factory::ExecuteMsg::RegisterUser {
-                        username: user.username.clone(),
-                        key: user.first_key(),
-                        key_hash: user.first_key_hash(),
-                    },
-                    Coins::new(),
-                )
-                .should_succeed();
-
-            user
-        })
-        .collect::<Vec<_>>()
-        .try_into()
-        .unwrap();
-
     // ----------------------------- Safe creation -----------------------------
 
-    // Create a Safe with members 1-3 and the following parameters.
+    // Create a Safe with users 1-3 as members and the following parameters.
     let mut params = multi::Params {
         members: btree_map! {
-            member1.username.clone() => NonZero::new(1).unwrap(),
-            member2.username.clone() => NonZero::new(1).unwrap(),
-            member3.username.clone() => NonZero::new(1).unwrap(),
+            accounts.user1.username.clone() => NonZero::new(1).unwrap(),
+            accounts.user2.username.clone() => NonZero::new(1).unwrap(),
+            accounts.user3.username.clone() => NonZero::new(1).unwrap(),
         },
         voting_period: NonZero::new(Timestamp::from_seconds(30)).unwrap(),
         threshold: NonZero::new(2).unwrap(),
@@ -81,7 +37,7 @@ fn safe() {
     // Member 1 sends a transaction to create the Safe.
     suite
         .execute(
-            &mut member1,
+            &mut accounts.user1,
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterAccount {
                 params: AccountParams::Safe(params.clone()),
@@ -93,11 +49,11 @@ fn safe() {
         .should_succeed();
 
     // Derive the Safe's address.
-    // We have 3 genesis users + 3 members, so the Safe's index should be 6.
+    // We have 5 genesis users, indexed from 0, so the Safe's index should be 5.
     let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 6 }.into_bytes().as_slice(),
+        Salt { index: 5 }.into_bytes().as_slice(),
     );
     let mut safe = Safe::new(safe_address);
 
@@ -107,12 +63,16 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 6,
+            index: 5,
             params: AccountParams::Safe(params.clone()),
         });
 
     // The account should be been registered under each member's username.
-    for (member, index) in [(&member1, 2), (&member2, 3), (&member3, 4)] {
+    for (member, index) in [
+        (&accounts.user1, 1),
+        (&accounts.user2, 2),
+        (&accounts.user3, 3),
+    ] {
         suite
             .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
                 username: member.username.clone(),
@@ -127,7 +87,7 @@ fn safe() {
                     )),
                 },
                 safe.address() => Account {
-                    index: 6,
+                    index: 5,
                     params: AccountParams::Safe(params.clone()),
                 },
             });
@@ -143,7 +103,7 @@ fn safe() {
     // Member 1 makes a proposal to transfer some tokens.
     suite
         .execute(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Propose {
                 title: "send 123 uusdc to owner".to_string(),
@@ -161,11 +121,11 @@ fn safe() {
     // Member 2 votes YES.
     suite
         .execute(
-            safe.with_signer(&member2),
+            safe.with_signer(&accounts.user2),
             safe_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: member2.username.clone(),
+                voter: accounts.user2.username.clone(),
                 vote: Vote::Yes,
                 execute: false,
             },
@@ -173,15 +133,15 @@ fn safe() {
         )
         .should_succeed();
 
-    // Member 3 votes YES with auto-execute.
+    // User 3 votes YES with auto-execute.
     // The proposal should pass and execute.
     suite
         .execute(
-            safe.with_signer(&member3),
+            safe.with_signer(&accounts.user3),
             safe_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
-                voter: member3.username.clone(),
+                voter: accounts.user3.username.clone(),
                 vote: Vote::Yes,
                 execute: true,
             },
@@ -203,14 +163,14 @@ fn safe() {
     // --------------------- Proposal with manual execute ----------------------
 
     // Member 1 makes another proposal. This time to amend the members set,
-    // adding a new member and removing one.
+    // adding a new member (using `owner`) and removing one (using `user3`).
     let updates = ParamUpdates {
         members: ChangeSet::new(
             btree_map! {
                 accounts.owner.username.clone() => NonZero::new(1).unwrap(),
             },
             btree_set! {
-                member3.username.clone(),
+                accounts.user3.username.clone(),
             },
         )
         .unwrap(),
@@ -220,7 +180,7 @@ fn safe() {
 
     suite
         .execute(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Propose {
                 title: "add owner as member".to_string(),
@@ -238,8 +198,8 @@ fn safe() {
         )
         .should_succeed();
 
-    // Member 2 and 3 votes on the proposal (without auto-execute).
-    for member in [&member2, &member3] {
+    // Members 2 and 3 votes on the proposal (without auto-execute).
+    for member in [&accounts.user2, &accounts.user3] {
         suite
             .execute(
                 safe.with_signer(member),
@@ -263,7 +223,7 @@ fn safe() {
     // Member 1 executes the proposal.
     suite
         .execute(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Execute { proposal_id: 2 },
             Coins::new(),
@@ -283,7 +243,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 6,
+            index: 5,
             params: AccountParams::Safe(params),
         });
 
@@ -297,7 +257,7 @@ fn safe() {
     // The removed member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            username: member3.username.clone(),
+            username: accounts.user3.username.clone(),
         })
         .should_succeed_and(|accounts| !accounts.contains_key(&safe.address()));
 
@@ -306,7 +266,7 @@ fn safe() {
     // Member 1 makes a proposal.
     suite
         .execute(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
@@ -317,8 +277,8 @@ fn safe() {
         )
         .should_succeed();
 
-    // Members 2 and owner vote against it.
-    for member in [&member2, &accounts.owner] {
+    // Member 2 and owner vote against it.
+    for member in [&accounts.user2, &accounts.owner] {
         suite
             .execute(
                 safe.with_signer(member),
@@ -342,7 +302,7 @@ fn safe() {
     // Attempting to execute the proposal should fail.
     suite
         .send_message(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             Message::execute(
                 safe_address,
                 &multi::ExecuteMsg::Execute { proposal_id: 3 },
@@ -357,7 +317,7 @@ fn safe() {
     // Member 1 makes a proposal. This should be proposal 4.
     suite
         .execute(
-            safe.with_signer(&member1),
+            safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
@@ -368,9 +328,9 @@ fn safe() {
         )
         .should_succeed();
 
-    // Attacker attempts to vote, impersonating member 2.
-    // Since attacker doesn't actual know member 2's private key, the tx will be
-    // signed by attacker's private key.
+    // accounts.user4 attempts to vote, impersonating member 2.
+    // Since accounts.user4 doesn't actual know member 2's private key, the tx will be
+    // signed by accounts.user4's private key.
     // There are a few variables to consider:
     // - the `voter` field in `ExecuteMsg::Vote`
     // - the `username` field in the metadata
@@ -381,69 +341,69 @@ fn safe() {
         // voter in the execute message matches the username in the metadata.
         // If not the same, the tx already fails here.
         (
-            attacker.username.clone(),
-            member2.username.clone(),
-            attacker.first_key_hash(),
+            accounts.user4.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user4.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
-            attacker.username.clone(),
-            member2.username.clone(),
-            member2.first_key_hash(),
+            accounts.user4.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
-            member2.username.clone(),
-            attacker.username.clone(),
-            attacker.first_key_hash(),
+            accounts.user2.username.clone(),
+            accounts.user4.username.clone(),
+            accounts.user4.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
-            member2.username.clone(),
-            attacker.username.clone(),
-            member2.first_key_hash(),
+            accounts.user2.username.clone(),
+            accounts.user4.username.clone(),
+            accounts.user2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
         // checks the Safe is associated with the voter's username. That is, the
         // voter is a member of the Safe.
         (
-            attacker.username.clone(),
-            attacker.username.clone(),
-            attacker.first_key_hash(),
+            accounts.user4.username.clone(),
+            accounts.user4.username.clone(),
+            accounts.user4.first_key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
-                attacker.username
+                accounts.user4.username
             ),
         ),
         (
-            attacker.username.clone(),
-            attacker.username.clone(),
-            member2.first_key_hash(),
+            accounts.user4.username.clone(),
+            accounts.user4.username.clone(),
+            accounts.user2.first_key_hash(),
             format!(
                 "account {} isn't associated with user `{}`",
                 safe.address(),
-                attacker.username
+                accounts.user4.username
             ),
         ),
         // Now we know the voter and username must both be that of a member.
         (
-            member2.username.clone(),
-            member2.username.clone(),
-            attacker.first_key_hash(),
-            format!("key hash {} not found", attacker.first_key_hash()),
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user4.first_key_hash(),
+            format!("key hash {} not found", accounts.user4.first_key_hash()),
         ),
         (
-            member2.username.clone(),
-            member2.username.clone(),
-            member2.first_key_hash(),
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
             "signature is unauthentic".to_string(),
         ),
     ] {
-        // Sign the tx with attackers's private key.
+        // Sign the tx with accounts.user4s's private key.
         let mut tx = safe
-            .with_signer(&attacker)
+            .with_signer(&accounts.user4)
             .with_nonce(12) // TODO: nonce isn't incremented if auth fails... should we make sure it increments?
             .sign_transaction(
                 NonEmpty::new_unchecked(vec![Message::execute(

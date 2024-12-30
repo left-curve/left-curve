@@ -100,7 +100,7 @@ fn cant_transfer_to_lending() {
 
     suite
         .send_message(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             Message::Transfer(MsgTransfer {
                 to: contracts.lending,
                 coins: Coins::one(USDC.clone(), 123).unwrap(),
@@ -124,7 +124,7 @@ fn update_markets_works() {
     // Try to update markets from non-owner, should fail.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {}),
             Coins::new(),
@@ -198,14 +198,11 @@ fn deposit_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test_naive();
 
     let lp_denom = USDC.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
-
-    let balance_before = suite
-        .query_balance(&accounts.relayer, USDC.clone())
-        .unwrap();
+    let balance_before = suite.query_balance(&accounts.user1, USDC.clone()).unwrap();
 
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 123).unwrap(),
@@ -214,12 +211,12 @@ fn deposit_works() {
 
     // Ensure balance was deducted from depositor.
     suite
-        .query_balance(&accounts.relayer, USDC.clone())
+        .query_balance(&accounts.user1, USDC.clone())
         .should_succeed_and_equal(balance_before - Uint128::new(123));
 
     // Ensure LP token was minted to recipient.
     suite
-        .query_balance(&accounts.relayer, lp_denom)
+        .query_balance(&accounts.user1, lp_denom)
         .should_succeed_and_equal(Uint128::new(123));
 }
 
@@ -232,7 +229,7 @@ fn withdraw_works() {
     // First deposit
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 123).unwrap(),
@@ -240,17 +237,15 @@ fn withdraw_works() {
         .should_succeed();
 
     suite
-        .query_balance(&accounts.relayer.address(), lp_denom.clone())
+        .query_balance(&accounts.user1.address(), lp_denom.clone())
         .should_succeed_and_equal(Uint128::new(123));
 
-    let balance_before = suite
-        .query_balance(&accounts.relayer, USDC.clone())
-        .unwrap();
+    let balance_before = suite.query_balance(&accounts.user1, USDC.clone()).unwrap();
 
     // Now withdraw
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Withdraw {},
             Coins::one(lp_denom.clone(), 123).unwrap(),
@@ -259,12 +254,12 @@ fn withdraw_works() {
 
     // Ensure LP token was burned from withdrawer.
     suite
-        .query_balance(&accounts.relayer.address(), lp_denom)
+        .query_balance(&accounts.user1.address(), lp_denom)
         .should_succeed_and_equal(Uint128::new(0));
 
     // Ensure balance was added to recipient.
     suite
-        .query_balance(&accounts.relayer, USDC.clone())
+        .query_balance(&accounts.user1, USDC.clone())
         .should_succeed_and_equal(balance_before + Uint128::new(123));
 }
 
@@ -274,7 +269,7 @@ fn non_margin_accounts_cant_borrow() {
 
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Borrow(Coins::new()),
             Coins::new(),
@@ -290,11 +285,11 @@ fn cant_borrow_if_no_collateral() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -302,7 +297,7 @@ fn cant_borrow_if_no_collateral() {
     // Deposit some USDC into the lending pool
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
@@ -328,11 +323,11 @@ fn cant_borrow_if_undercollateralized() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -340,7 +335,7 @@ fn cant_borrow_if_undercollateralized() {
     // Deposit some USDC into the lending pool
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
@@ -374,11 +369,11 @@ fn borrowing_works() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -396,7 +391,7 @@ fn borrowing_works() {
     // Deposit some USDC
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
@@ -476,7 +471,7 @@ fn composite_denom() {
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
                 denom.clone() => MarketUpdates {},
             }),
-            Coins::default(),
+            Coins::new(),
         )
         .should_succeed();
 
@@ -490,7 +485,7 @@ fn composite_denom() {
                 to: owner_addr,
                 amount,
             },
-            Coins::default(),
+            Coins::new(),
         )
         .should_succeed();
 
@@ -540,11 +535,11 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -552,7 +547,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
     // Send some USDC to the margin account
     suite
         .transfer(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             Coins::one(USDC.clone(), 100).unwrap(),
         )
@@ -590,11 +585,11 @@ fn excess_refunded_when_repaying_more_than_debts() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -602,7 +597,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
     // Send some USDC to the margin account
     suite
         .transfer(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             Coins::one(USDC.clone(), 100).unwrap(),
         )
@@ -619,7 +614,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
     // Deposit some USDC
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
@@ -660,11 +655,11 @@ fn repay_works() {
 
     // Create a margin account.
     let mut margin_account = accounts
-        .relayer
+        .user1
         .register_new_account(
             &mut suite,
             contracts.account_factory,
-            AccountParams::Margin(single::Params::new(accounts.relayer.username.clone())),
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
             Coins::new(),
         )
         .unwrap();
@@ -672,7 +667,7 @@ fn repay_works() {
     // Send some USDC to the margin account
     suite
         .transfer(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             margin_account.address(),
             Coins::one(USDC.clone(), 100).unwrap(),
         )
@@ -689,7 +684,7 @@ fn repay_works() {
     // Deposit some USDC
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
             Coins::one(USDC.clone(), 100).unwrap(),
