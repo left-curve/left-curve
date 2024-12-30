@@ -38,12 +38,14 @@ impl Models {
 
         let mut next_id = 1;
         let mut events = vec![];
+        let mut transactions = vec![];
+        let mut messages = vec![];
 
         // 1. Storing cron events
         {
             for cron_outcome in block_outcome.cron_outcomes.iter() {
                 let (mut tx_events, new_next_id) = flatten_events(
-                    &block,
+                    block,
                     IndexCategory::Cron,
                     1,
                     next_id,
@@ -56,9 +58,6 @@ impl Models {
                 events.append(&mut tx_events);
             }
         }
-
-        let mut transactions = vec![];
-        let mut messages = vec![];
 
         // 2. Storing transactions, messages and events
         {
@@ -233,10 +232,10 @@ fn build_event_active_model(
     tx_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
 ) -> crate::error::Result<entity::events::ActiveModel> {
+    // I'm serializing `FlattenEvent` to `serde_json::Value` and then manually removing the top hash which is serialized to.
+    // I could also use #[serde(flatten)] on `FlattenEvent`
     let data = serde_json::to_value(&index_event.event)?;
-
-    // NOTE: I'm manually removing the top hash since it contains the same as `type`, I could also
-    // use #[serde(flatten)] on `IndexEvent`
+    // Removing the top hash
     let data = match data {
         Json::Object(map) => map
             .keys()
