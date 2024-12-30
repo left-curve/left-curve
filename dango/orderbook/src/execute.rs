@@ -227,8 +227,9 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             }
         }
 
-        // Drop the iterators, which hold immutable references to `ctx.storage`,
-        // so that we can write to storage now.
+        // Drop the iterators.
+        // Next we need to make state changes, which requires `&mut ctx.storage`.
+        // The iterators hold immutable references `&ctx.storage`, so must be dropped.
         drop(bid_iter);
         drop(ask_iter);
 
@@ -239,11 +240,16 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         };
 
         // Choose the clearing price. Any price within `range` gives the same
-        // volume (measured in the base asset). We can either take the lower end,
-        // the higher end, or the midpoint of the range. Here we choose the midpoint.
+        // volume (measured in the base asset). We can either take
+        //
+        // - the lower end,
+        // - the higher end, or
+        // - the midpoint of the range.
+        //
+        // Here we choose the midpoint.
         let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
-        // The volume of this auction is the smaller between bid volume and ask volume.
+        // The volume of this auction is the smaller between bid and ask volumes.
         let mut bid_volume = bid_volume.min(ask_volume);
         let mut ask_volume = bid_volume;
 
