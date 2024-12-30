@@ -13,6 +13,10 @@ use {
 /// As such, given our contract storage layout, between two orders of the same
 /// price, the older one is matched first. This follows the principle of
 /// **price-time priority**.
+///
+/// Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which is a
+/// safe assumption. If we accept 1 million orders per second, it would take
+/// ~300,000 years to reach `u64::MAX / 2`.
 pub type OrderId = u64;
 
 #[grug::derive(Serde, Borsh)]

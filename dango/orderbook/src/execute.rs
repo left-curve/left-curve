@@ -86,13 +86,8 @@ fn submit_order(
 
     let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
 
-    // For BUY orders, we bitwise reverse the `order_id` (which is numerically
-    // equivalent to `OrderId::MAX - order_id`). This ensures that when matching
-    // orders, the older orders are matched first.
-    //
-    // Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which is
-    // a safe assumption. If we accept 1 million orders per second, it would
-    // take ~300,000 years to reach `u64::MAX / 2`.
+    // For BUY orders, invert the order ID. This is necessary for enforcing
+    // price-time priority. See the docs on `OrderId` for details.
     if direction == Direction::Bid {
         order_id = !order_id;
     }
