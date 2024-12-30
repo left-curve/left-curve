@@ -1,4 +1,5 @@
 mod account;
+mod crypto;
 mod setup;
 
-pub use {account::*, setup::*};
+pub use {account::*, crypto::*, setup::*};

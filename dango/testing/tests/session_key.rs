@@ -93,7 +93,7 @@ mod session_account {
 
             let credential = self
                 .account
-                .create_standard_credential(&session_info.to_json_vec()?)?;
+                .create_standard_credential(&session_info.to_json_vec()?);
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
@@ -163,7 +163,7 @@ mod session_account {
                 signature: self.session_buffer.inner().sign_info_signature.clone(),
             };
 
-            let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?)?;
+            let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?);
 
             let credential = Credential::Session(SessionCredential {
                 session_info: self.session_buffer.inner().session_info.clone(),
@@ -199,7 +199,7 @@ fn session_key() {
         suite
             .transfer(
                 &mut owner,
-                accounts.relayer.address(),
+                accounts.user1.address(),
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_succeed();
@@ -211,7 +211,7 @@ fn session_key() {
         suite
             .transfer(
                 &mut owner,
-                accounts.relayer.address(),
+                accounts.user1.address(),
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_fail_with_error("session expired at Duration(Dec(Int(31536100000000000))");
@@ -229,7 +229,7 @@ fn session_key() {
         suite
             .transfer(
                 &mut owner,
-                accounts.relayer.address(),
+                accounts.user1.address(),
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_succeed();
@@ -271,7 +271,7 @@ fn session_key() {
         suite
             .transfer(
                 &mut owner2,
-                accounts.relayer.address(),
+                accounts.user1.address(),
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_succeed();
@@ -289,7 +289,7 @@ fn session_key() {
         suite
             .transfer(
                 &mut owner,
-                accounts.relayer.address(),
+                accounts.user1.address(),
                 Coin::new("uusdc", 100).unwrap(),
             )
             .should_succeed();

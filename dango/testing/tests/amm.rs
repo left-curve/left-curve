@@ -29,7 +29,7 @@ fn amm() {
     // Create two pools with ATOM-OSMO and ATOM-USDC liquidity, respectively.
     suite
         .send_messages(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             NonEmpty::new_unchecked(vec![
                 // pool 1: ATOM-OSMO
                 Message::execute(
@@ -120,7 +120,7 @@ fn amm() {
 
     // Check the pool creator's LP token balances.
     suite
-        .query_balances(&accounts.relayer)
+        .query_balances(&accounts.user1)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 100,000,000,000,000 - 657,761,324,779 - 224,078,907,873
@@ -193,7 +193,7 @@ fn amm() {
     // = 44,999,766
     suite
         .send_messages(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             NonEmpty::new_unchecked(vec![
                 Message::execute(
                     contracts.amm,
@@ -266,7 +266,7 @@ fn amm() {
 
     // Check the pool creator's token balances.
     suite
-        .query_balances(&accounts.relayer)
+        .query_balances(&accounts.user1)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99_118_159_767_348 - 6_577_613 - 100_000_000
@@ -382,7 +382,7 @@ fn amm() {
     // The liquidity provider withdraws around 1/3 of their ATOM-OSMO liquidity.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.amm,
             &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
             Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
@@ -399,7 +399,7 @@ fn amm() {
     // = 5,885,070,020,602 * 655,886,963,574 / 1,967,680,568,330
     // = 1,961,670,389,167
     suite
-        .query_balances(&accounts.relayer)
+        .query_balances(&accounts.user1)
         .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99,118,053,189,735 + 219,296,717,672

@@ -6,7 +6,7 @@ Dango mainnet, testnets, and devnets.
 
 Devnets are used internally for development and testing purposes. You can spin up our own testnet using the Dockerfile found in [docker/devnet](../../docker/devnet/).
 
-Each devnet comes with 4 genesis users. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
+Each devnet comes with 5 genesis users. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
 
 **Do NOT use these keys in production!!!**
 
@@ -43,3 +43,12 @@ Each devnet comes with 4 genesis users. They use Secp256k1 public keys derived f
 | **Private**  | `cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141`                                                                                           |
 | **Public**   | `024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0`                                                                                         |
 | **Mnemonic** | alley honey observe various success garbage area include demise age cash foster model royal kingdom section place lend frozen loyal layer pony october blush |
+
+<br>
+
+|              |                                                                                                                                               |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `user4`                                                                                                                                       |
+| **Private**  | `126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6`                                                                            |
+| **Public**   | `024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2`                                                                          |
+| **Mnemonic** | foot loyal damp alien better first glue supply claw author jar know holiday slam main siren paper transfer cram breeze glow forest word giant |

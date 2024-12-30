@@ -10,7 +10,15 @@ use {
     },
 };
 
-// something = something.checked_add
+/// Build a [`Coins`](crate::Coins) with the given denoms and amounts.
+///
+/// Panic if input is invalid, e.g. invalid denom or zero amount(s).
+#[macro_export]
+macro_rules! coins {
+    ($($denom:expr => $amount:expr),* $(,)?) => {{
+        Coins::try_from($crate::btree_map! { $($denom => $amount),+ }).unwrap()
+    }};
+}
 
 /// A sorted list of coins or tokens.
 #[derive(
