@@ -50,8 +50,10 @@ pub enum Event {
     #[sea_orm(iden = "events")]
     Table,
     Id,
+    ParentId,
     TransactionId,
     Type,
+    #[allow(clippy::enum_variant_names)]
     EventStatus,
     CommitmentStatus,
     Method,

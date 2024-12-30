@@ -121,7 +121,7 @@ impl Models {
                 // 4. Storing events
                 {
                     let (mut tx_events, new_next_id) = flatten_events(
-                        &block,
+                        block,
                         IndexCategory::Tx,
                         1,
                         next_id,
@@ -134,7 +134,7 @@ impl Models {
                     events.append(&mut tx_events);
 
                     let (mut tx_events, new_next_id) = flatten_events(
-                        &block,
+                        block,
                         IndexCategory::Tx,
                         1,
                         next_id,
@@ -147,7 +147,7 @@ impl Models {
                     events.append(&mut tx_events);
 
                     let (mut tx_events, new_next_id) = flatten_events(
-                        &block,
+                        block,
                         IndexCategory::Tx,
                         1,
                         next_id,
@@ -160,7 +160,7 @@ impl Models {
                     events.append(&mut tx_events);
 
                     let (mut tx_events, new_next_id) = flatten_events(
-                        &block,
+                        block,
                         IndexCategory::Tx,
                         1,
                         next_id,
@@ -190,7 +190,6 @@ impl Models {
             events,
             transactions,
             messages,
-            ..Default::default()
         })
     }
 }
@@ -217,10 +216,10 @@ where
 
     let mut events = vec![];
     for event in flatten_events {
-        events.push(build_active_model(
+        events.push(build_event_active_model(
             &event,
-            &block,
-            transaction_id.clone(),
+            block,
+            transaction_id,
             created_at,
         )?);
     }
@@ -228,7 +227,7 @@ where
     Ok((events, next_id))
 }
 
-fn build_active_model(
+fn build_event_active_model(
     index_event: &IndexEvent,
     block: &Block,
     tx_id: Option<uuid::Uuid>,
@@ -236,7 +235,8 @@ fn build_active_model(
 ) -> crate::error::Result<entity::events::ActiveModel> {
     let data = serde_json::to_value(&index_event.event)?;
 
-    // NOTE: I'm manually removing the top hash, I could also use #[serde(flatten)] on `IndexEvent`
+    // NOTE: I'm manually removing the top hash since it contains the same as `type`, I could also
+    // use #[serde(flatten)] on `IndexEvent`
     let data = match data {
         Json::Object(map) => map
             .keys()
@@ -263,6 +263,7 @@ fn build_active_model(
 
     Ok(entity::events::ActiveModel {
         id: Set(uuid::Uuid::new_v4()),
+        parent_id: Set(None),
         transaction_id: Set(tx_id),
         created_at: Set(created_at),
         r#type: Set(index_event.event.to_string()),
@@ -273,4 +274,20 @@ fn build_active_model(
         order_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
+}
+
+macro_rules! flatten_and_append {
+    ($block:expr, $category:expr, $category_id:expr, $next_id:expr, $commitment:expr, $tx_id:expr, $created_at:expr, $events:expr) => {{
+        let (mut tx_events, new_next_id) = flatten_events(
+            $block,
+            $category,
+            $category_id,
+            $next_id,
+            $commitment,
+            $tx_id,
+            $created_at,
+        )?;
+        $next_id = new_next_id;
+        $events.append(&mut tx_events);
+    }};
 }
