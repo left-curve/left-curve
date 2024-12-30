@@ -42,8 +42,26 @@ pub struct TestAccount<
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn new_random(username: &str) -> Self {
-        let (sk, pk) = generate_random_key();
+        let sk = SigningKey::random(&mut OsRng);
+
+        Self::new(username, sk)
+    }
+
+    pub fn new_from_private_key(username: &str, sk_bytes: [u8; 32]) -> Self {
+        let sk = SigningKey::from_bytes(&sk_bytes.into()).unwrap();
+
+        Self::new(username, sk)
+    }
+
+    fn new(username: &str, sk: SigningKey) -> Self {
         let username = Username::from_str(username).unwrap();
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .to_vec()
+            .try_into()
+            .unwrap();
         let key = Key::Secp256k1(pk);
         let key_hash = pk.hash256();
 
@@ -284,18 +302,6 @@ impl Signer for TestAccount {
             credential: credential.to_json_value()?,
         })
     }
-}
-
-pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
-    let sk = SigningKey::random(&mut OsRng);
-    let pk = sk
-        .verifying_key()
-        .to_encoded_point(true)
-        .to_bytes()
-        .to_vec()
-        .try_into()
-        .unwrap();
-    (sk, pk)
 }
 
 pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> StdResult<ByteArray<64>> {
