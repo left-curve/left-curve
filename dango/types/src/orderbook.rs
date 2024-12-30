@@ -43,7 +43,7 @@ impl PrimaryKey for Direction {
             [1] => Ok(Direction::Ask),
             _ => Err(StdError::deserialize::<Self::Output, _>(
                 "key",
-                format!("invalid order direction! must be 0|1"),
+                "invalid order direction! must be 0|1",
             )),
         }
     }
