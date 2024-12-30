@@ -439,7 +439,8 @@ where
         owner: addresses.get(owner).cloned().unwrap(),
         bank,
         taxman,
-        cronjobs: BTreeMap::new(),
+        // Important: orderbook cronjob is to be invoked at end of every block.
+        cronjobs: btree_map! { orderbook => Duration::ZERO },
         permissions,
         max_orphan_age,
     };
