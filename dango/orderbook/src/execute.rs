@@ -1,11 +1,13 @@
 use {
     crate::{Order, NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS},
     anyhow::ensure,
-    dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, OrderId},
+    dango_types::{
+        bank,
+        orderbook::{Direction, ExecuteMsg, InstantiateMsg, OrderId},
+    },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, Message, MsgTransfer, MultiplyFraction, MutableCtx,
-        Number, NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128,
-        Uint128,
+        Addr, Coin, Coins, Denom, IsZero, Message, MultiplyFraction, MutableCtx, Number,
+        NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -350,10 +352,12 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // Reset the order counters for the next block.
     NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
-    // TODO: create a batch send method at bank contract
-    let messages = transfers
-        .into_iter()
-        .map(|(to, coins)| MsgTransfer { to, coins });
-
-    Ok(Response::new().add_messages(messages))
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::BatchTransfer(transfers),
+            Coins::new(),
+        )?
+    }))
 }
