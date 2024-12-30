@@ -3,8 +3,8 @@ use {
     anyhow::ensure,
     dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, Order, OrderId},
     grug::{
-        Addr, Coin, Coins, IsZero, Message, MsgTransfer, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
+        Addr, Coin, Coins, Message, MsgTransfer, MultiplyFraction, MutableCtx, Number, NumberConst,
+        Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -78,7 +78,7 @@ fn submit_order(
 
     let (mut order_id, _) = ORDER_ID.increment(ctx.storage)?;
 
-    // For BUY orders, bitwise reverse the `order_id` (which numerically is
+    // For BUY orders, we bitwise reverse the `order_id` (which is numerically
     // equivalent to `OrderId::MAX - order_id`). This ensures that when matching
     // orders, the older orders are matched first.
     //
@@ -159,11 +159,11 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // - the price range that maximizes the volume of trades;
     // - the orders that can be cleared in this price range.
     let mut bid = bid_iter.next().transpose()?;
-    let mut bids = BTreeMap::new();
+    let mut bids = Vec::new();
     let mut bid_is_new = true;
     let mut bid_volume = Uint128::ZERO;
     let mut ask = ask_iter.next().transpose()?;
-    let mut asks = BTreeMap::new();
+    let mut asks = Vec::new();
     let mut ask_is_new = true;
     let mut ask_volume = Uint128::ZERO;
     let mut range = None;
@@ -184,12 +184,12 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         range = Some((ask_price, bid_price));
 
         if bid_is_new {
-            bids.insert((bid_price, bid_order_id), bid_order);
+            bids.push(((bid_price, bid_order_id), bid_order));
             bid_volume.checked_add_assign(bid_order.remaining)?;
         }
 
         if ask_is_new {
-            asks.insert((ask_price, ask_order_id), ask_order);
+            asks.push(((ask_price, ask_order_id), ask_order));
             ask_volume.checked_add_assign(ask_order.remaining)?;
         }
 
@@ -223,101 +223,96 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     // end, or the midpoint of the range. Here we choose the midpoint.
     let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
-    // Loop through the orders again and clear them.
-    let mut bid_iter = bids.into_iter();
-    let mut bid = bid_iter.next();
-    let mut ask_iter = asks.into_iter();
-    let mut ask = ask_iter.next();
-    let mut sends = BTreeMap::<Addr, Coins>::new();
+    // The volume of this auction is the smaller between bid volume and ask volume.
+    let mut bid_volume = bid_volume.min(ask_volume);
+    let mut ask_volume = bid_volume;
 
-    loop {
-        let Some(((bid_price, bid_order_id), bid_order)) = &mut bid else {
-            break;
-        };
+    // Loop through BUY and SELL orders respectively and clear them.
+    // Track how much coins should be refunded to each trader, respectively.
+    let mut refunds = BTreeMap::<Addr, Coins>::new();
 
-        let Some(((ask_price, ask_order_id), ask_order)) = &mut ask else {
-            break;
-        };
+    // Clear the BUY orders.
+    for ((bid_price, order_id), mut bid_order) in bids {
+        // Note: if the clearing price is better than the bid price, we need to
+        // refund the trader the unused quote asset.
+        let price_diff = bid_price - clearing_price;
 
-        debug_assert!(
-            clearing_price <= *bid_price,
-            "expecting clearing price <= bid price, but got clearing price ({clearing_price}) > bid price ({bid_price})"
-        );
+        if bid_order.remaining <= bid_volume {
+            // This order can be fully filled.
+            bid_volume -= bid_order.remaining;
 
-        debug_assert!(
-            clearing_price >= *ask_price,
-            "expecting clearing price >= ask price, but got clearing price ({clearing_price}) < ask price ({ask_price})"
-        );
+            refunds
+                .entry(bid_order.trader)
+                .or_default()
+                .insert(Coin {
+                    denom: pair.base_denom.clone(),
+                    amount: bid_order.remaining,
+                })?
+                .insert(Coin {
+                    denom: pair.quote_denom.clone(),
+                    amount: bid_order.remaining.checked_mul_dec_floor(price_diff)?,
+                })?;
 
-        let filled = bid_order.remaining.min(ask_order.remaining);
+            ORDERS.remove(ctx.storage, (Direction::Bid, bid_price, order_id))?;
+        } else {
+            // This order can only be partially filled.
+            bid_order.remaining -= bid_volume;
 
-        bid_order.remaining -= filled;
-        ask_order.remaining -= filled;
+            refunds
+                .entry(bid_order.trader)
+                .or_default()
+                .insert(Coin {
+                    denom: pair.base_denom.clone(),
+                    amount: bid_volume,
+                })?
+                .insert(Coin {
+                    denom: pair.quote_denom.clone(),
+                    amount: bid_order.remaining.checked_mul_dec_floor(price_diff)?,
+                })?;
 
-        #[cfg(debug_assertions)]
-        {
-            bid_volume -= filled;
-            ask_volume -= filled;
-        }
-
-        sends
-            .entry(bid_order.trader)
-            .or_insert_with(Coins::new)
-            .insert(Coin {
-                denom: pair.base_denom.clone(),
-                amount: filled,
-            })?
-            .insert(Coin {
-                denom: pair.quote_denom.clone(),
-                amount: filled.checked_mul_dec_floor(*bid_price - clearing_price)?,
-            })?;
-
-        sends
-            .entry(ask_order.trader)
-            .or_insert_with(Coins::new)
-            .insert(Coin {
-                denom: pair.quote_denom.clone(),
-                amount: filled.checked_mul_dec_floor(clearing_price)?,
-            })?;
-
-        if bid_order.remaining.is_zero() {
-            ORDERS.remove(ctx.storage, (Direction::Bid, *bid_price, *bid_order_id))?;
-            bid = bid_iter.next();
-        }
-
-        if ask_order.remaining.is_zero() {
-            ORDERS.remove(ctx.storage, (Direction::Ask, *ask_price, *ask_order_id))?;
-            ask = ask_iter.next();
-        }
-    }
-
-    if let Some(((bid_price, bid_order_id), bid_order)) = bid {
-        if bid_order.remaining.is_non_zero() {
             ORDERS.save(
                 ctx.storage,
-                (Direction::Bid, bid_price, bid_order_id),
+                (Direction::Bid, bid_price, order_id),
                 &bid_order,
             )?;
+
+            break;
         }
     }
 
-    if let Some(((ask_price, ask_order_id), ask_order)) = ask {
-        if ask_order.remaining.is_non_zero() {
+    // Clear the SELL orders.
+    for ((ask_price, order_id), mut ask_order) in asks {
+        if ask_order.remaining <= ask_volume {
+            // This order can be fully filled.
+            ask_volume -= ask_order.remaining;
+
+            refunds.entry(ask_order.trader).or_default().insert(Coin {
+                denom: pair.quote_denom.clone(),
+                amount: ask_order.remaining.checked_mul_dec_floor(clearing_price)?,
+            })?;
+
+            ORDERS.remove(ctx.storage, (Direction::Ask, ask_price, order_id))?;
+        } else {
+            // This order can only be partially filled.
+            ask_order.remaining -= ask_volume;
+
+            refunds.entry(ask_order.trader).or_default().insert(Coin {
+                denom: pair.quote_denom.clone(),
+                amount: ask_volume.checked_mul_dec_floor(clearing_price)?,
+            })?;
+
             ORDERS.save(
                 ctx.storage,
-                (Direction::Ask, ask_price, ask_order_id),
+                (Direction::Ask, ask_price, order_id),
                 &ask_order,
             )?;
+
+            break;
         }
     }
 
-    debug_assert!(
-        bid_volume.is_zero() || ask_volume.is_zero(),
-        "one of bid or ask volume should have been reduced to zero, but got bid volume: {bid_volume}, ask volume: {ask_volume}"
-    );
-
     // TODO: create a batch send method at bank contract
-    let messages = sends
+    let messages = refunds
         .into_iter()
         .map(|(to, coins)| MsgTransfer { to, coins });
 
@@ -519,6 +514,9 @@ mod tests {
                     remaining: Uint128::new(10),
                 },
             ),
+            // Compared to the last example, this time each seller quotes their
+            // price 5 QUOTE lower. As a result, the clearing price is lowered
+            // from 20 to 17.5 QUOTE per BASE.
             (
                 (
                     Direction::Ask,
@@ -622,6 +620,180 @@ mod tests {
             }),
         ];
         "example 2"
+    )]
+    // ------------------------------- example 3 -------------------------------
+    #[test_case(
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(30),
+                    !0,
+                ),
+                Order {
+                    trader: Addr::mock(0),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(5),
+                    3,
+                ),
+                Order {
+                    trader: Addr::mock(3),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(15),
+                    4,
+                ),
+                Order {
+                    trader: Addr::mock(4),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            // Compare to the last example, this time we have this additional
+            // BUY order. It has a better price than order `!2`, so `!2` only
+            // gets partially filled this time.
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(30),
+                    !6,
+                ),
+                Order {
+                    trader: Addr::mock(6),
+                    amount: Uint128::new(5),
+                    remaining: Uint128::new(5),
+                },
+            ),
+        ],
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            // This time, this order is only half filled, so it stays in the book.
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(5),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+        ],
+        vec![
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(0),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(10),
+                    QUOTE_DENOM.clone() => Uint128::new(125),
+                }),
+            }),
+            // Only 5 BASE is filled, so refund: 5 * (20 - 17.5) = 12, rounded
+            // down to 12 QUOTE.
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(1),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(5),
+                    QUOTE_DENOM.clone() => Uint128::new(12),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(3),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(175),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(4),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(175),
+                }),
+            }),
+            // Trader created a BUY order of 5 BASE at 30 QUOTE per base with a
+            // deposit of 5 * 30 = 150 QUOTE.
+            // The order executed at at 17.5 QUOTE per base, so trader gets:
+            // 5 BASE + refund of 5 * (30 - 17.5) = 62.5 QUOTE, rounded down to
+            // 62 QUOTE.
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(6),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(5),
+                    QUOTE_DENOM.clone() => Uint128::new(62),
+                }),
+            }),
+        ];
+        "example 3"
     )]
     fn clear_orders_works(
         before_orders: Vec<((Direction, Udec128, OrderId), Order)>,
