@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::oracle::{
         ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
         ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID,
@@ -25,7 +25,7 @@ pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
 fn setup_oracle_test(
     denoms: BTreeMap<Denom, PriceSource>,
-) -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
+) -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     suite

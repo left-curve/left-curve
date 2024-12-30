@@ -76,9 +76,9 @@ fn user_onboarding() {
         )
         .should_succeed_and_equal(btree_map! {
             user.address() => Account {
-                // We have 5 genesis accounts (owner + users 1-4), indexed from
-                // zero, so this one should have the index of 5.
-                index: 5,
+                // We have 10 genesis accounts (owner + users 1-9), indexed from
+                // zero, so this one should have the index of 10.
+                index: 10,
                 params: AccountParams::Spot(single::Params::new(user.username.clone() )),
             },
         });

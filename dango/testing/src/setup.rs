@@ -1,5 +1,5 @@
 use {
-    crate::{Accounts, TestAccount},
+    crate::{TestAccount, TestAccounts},
     dango_app::ProposalPreparer,
     dango_genesis::{
         build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisUser,
@@ -31,6 +31,16 @@ pub const USER3_PRIVATE_KEY: [u8; 32] =
     hex!("cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141");
 pub const USER4_PRIVATE_KEY: [u8; 32] =
     hex!("126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6");
+pub const USER5_PRIVATE_KEY: [u8; 32] =
+    hex!("fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7");
+pub const USER6_PRIVATE_KEY: [u8; 32] =
+    hex!("4d3658519dd8a8227764f64c6724b840ffe29f1ca456f5dfdd67f834e10aae34");
+pub const USER7_PRIVATE_KEY: [u8; 32] =
+    hex!("82de24ba8e1bc4511ae10ce3fbe84b4bb8d7d8abc9ba221d7d3cf7cd0a85131f");
+pub const USER8_PRIVATE_KEY: [u8; 32] =
+    hex!("ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9");
+pub const USER9_PRIVATE_KEY: [u8; 32] =
+    hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
 
 pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
     LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
@@ -42,7 +52,7 @@ pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullInde
 /// `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
-pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) {
+pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contracts) {
     let codes = build_rust_codes();
 
     setup_suite_with_db_and_vm(
@@ -61,7 +71,7 @@ pub fn setup_test() -> (TestSuite, Accounts, Codes<ContractWrapper>, Contracts) 
 /// avoid adding the proposal preparer that will pull price feeds from Pyth API.
 pub fn setup_test_naive() -> (
     TestSuite<NaiveProposalPreparer>,
-    Accounts,
+    TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
 ) {
@@ -85,7 +95,7 @@ pub fn setup_benchmark_hybrid(
     wasm_cache_size: usize,
 ) -> (
     TestSuite<NaiveProposalPreparer, DiskDb, HybridVm, NullIndexer>,
-    Accounts,
+    TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
 ) {
@@ -118,7 +128,7 @@ pub fn setup_benchmark_wasm(
     wasm_cache_size: usize,
 ) -> (
     TestSuite<NaiveProposalPreparer, DiskDb, WasmVm, NullIndexer>,
-    Accounts,
+    TestAccounts,
     Codes<Vec<u8>>,
     Contracts,
 ) {
@@ -136,7 +146,7 @@ fn setup_suite_with_db_and_vm<DB, VM, T, PP, ID>(
     codes: Codes<T>,
     pp: PP,
     indexer: ID,
-) -> (TestSuite<PP, DB, VM, ID>, Accounts, Codes<T>, Contracts)
+) -> (TestSuite<PP, DB, VM, ID>, TestAccounts, Codes<T>, Contracts)
 where
     T: Clone + Into<Binary>,
     DB: Db,
@@ -149,7 +159,12 @@ where
     let user1 = TestAccount::new_from_private_key("user1", USER1_PRIVATE_KEY);
     let user2 = TestAccount::new_from_private_key("user2", USER2_PRIVATE_KEY);
     let user3 = TestAccount::new_from_private_key("user3", USER3_PRIVATE_KEY);
-    let user4 = TestAccount::new_from_private_key("user4", USER3_PRIVATE_KEY);
+    let user4 = TestAccount::new_from_private_key("user4", USER4_PRIVATE_KEY);
+    let user5 = TestAccount::new_from_private_key("user5", USER5_PRIVATE_KEY);
+    let user6 = TestAccount::new_from_private_key("user6", USER6_PRIVATE_KEY);
+    let user7 = TestAccount::new_from_private_key("user7", USER7_PRIVATE_KEY);
+    let user8 = TestAccount::new_from_private_key("user8", USER8_PRIVATE_KEY);
+    let user9 = TestAccount::new_from_private_key("user9", USER9_PRIVATE_KEY);
 
     let (genesis_state, contracts, addresses) = build_genesis(
         codes.clone(),
@@ -198,6 +213,46 @@ where
                     "uusdc" => 100_000_000_000_000,
                 },
             },
+            user5.username.clone() => GenesisUser {
+                key: user5.key(),
+                key_hash: user5.key_hash(),
+                balances: coins! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
+                },
+            },
+            user6.username.clone() => GenesisUser {
+                key: user6.key(),
+                key_hash: user6.key_hash(),
+                balances: coins! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
+                },
+            },
+            user7.username.clone() => GenesisUser {
+                key: user7.key(),
+                key_hash: user7.key_hash(),
+                balances: coins! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
+                },
+            },
+            user8.username.clone() => GenesisUser {
+                key: user8.key(),
+                key_hash: user8.key_hash(),
+                balances: coins! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
+                },
+            },
+            user9.username.clone() => GenesisUser {
+                key: user9.key(),
+                key_hash: user9.key_hash(),
+                balances: coins! {
+                    "udng"  => 100_000_000_000_000,
+                    "uusdc" => 100_000_000_000_000,
+                },
+            },
         },
         &owner.username,
         TOKEN_FACTORY_CREATION_FEE.denom.to_string(),
@@ -223,12 +278,17 @@ where
         genesis_state,
     );
 
-    let accounts = Accounts {
+    let accounts = TestAccounts {
         owner: owner.set_address(&addresses),
         user1: user1.set_address(&addresses),
         user2: user2.set_address(&addresses),
         user3: user3.set_address(&addresses),
         user4: user4.set_address(&addresses),
+        user5: user5.set_address(&addresses),
+        user6: user6.set_address(&addresses),
+        user7: user7.set_address(&addresses),
+        user8: user8.set_address(&addresses),
+        user9: user9.set_address(&addresses),
     };
 
     (suite, accounts, codes, contracts)
