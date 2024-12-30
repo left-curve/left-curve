@@ -933,6 +933,152 @@ mod tests {
         ];
         "example 4"
     )]
+    // ------------------------------- example 5 -------------------------------
+    #[test_case(
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(30),
+                    !0,
+                ),
+                Order {
+                    trader: Addr::mock(0),
+                    amount: Uint128::new(25),
+                    remaining: Uint128::new(25),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(5),
+                    3,
+                ),
+                Order {
+                    trader: Addr::mock(3),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(15),
+                    4,
+                ),
+                Order {
+                    trader: Addr::mock(4),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+        ],
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            // This one is partially filled
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(5),
+                },
+            ),
+        ],
+        vec![
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(0),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(25),
+                    // floor(25 * (30 - 27.5)) = 150
+                    QUOTE_DENOM.clone() => Uint128::new(62),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(3),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(275),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(4),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(275),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(5),
+                coins: Coins::new_unchecked(btree_map! {
+                    // floor(5 * 27.5) = 137
+                    QUOTE_DENOM.clone() => Uint128::new(137),
+                }),
+            }),
+        ];
+        "example 5"
+    )]
     fn clear_orders_works(
         before_orders: Vec<((Direction, Udec128, OrderId), Order)>,
         after_orders: Vec<((Direction, Udec128, OrderId), Order)>,
