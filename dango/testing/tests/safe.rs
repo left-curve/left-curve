@@ -49,11 +49,11 @@ fn safe() {
         .should_succeed();
 
     // Derive the Safe's address.
-    // We have 5 genesis users, indexed from 0, so the Safe's index should be 5.
+    // We have 10 genesis users, indexed from 0, so the Safe's index should be 10.
     let safe_address = Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 5 }.into_bytes().as_slice(),
+        Salt { index: 10 }.into_bytes().as_slice(),
     );
     let mut safe = Safe::new(safe_address);
 
@@ -63,7 +63,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 10,
             params: AccountParams::Safe(params.clone()),
         });
 
@@ -87,7 +87,7 @@ fn safe() {
                     )),
                 },
                 safe.address() => Account {
-                    index: 5,
+                    index: 10,
                     params: AccountParams::Safe(params.clone()),
                 },
             });
@@ -243,7 +243,7 @@ fn safe() {
             address: safe.address(),
         })
         .should_succeed_and_equal(Account {
-            index: 5,
+            index: 10,
             params: AccountParams::Safe(params),
         });
 

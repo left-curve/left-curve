@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{setup_test_naive, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         account::{margin::CollateralPower, single},
         account_factory::AccountParams,
@@ -39,7 +39,7 @@ const USDC_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQOoMTxJ5BWLUCMy94ZlQ6qBjQEzA/+ZpDKw
 /// Feeds the oracle contract a price for USDC
 fn feed_oracle_usdc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
     let id = PythId::from_str(USDC_USD_ID).unwrap();
@@ -154,7 +154,7 @@ fn update_markets_works() {
 
 fn set_collateral_power(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut Accounts,
+    accounts: &mut TestAccounts,
     denom: Denom,
     power: CollateralPower,
 ) {

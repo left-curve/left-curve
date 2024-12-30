@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         config::DANGO_DENOM,
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
@@ -17,7 +17,7 @@ static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new(DANGO_DENOM.clon
 const ONE_MONTH: Duration = Duration::from_weeks(4);
 const ONE_DAY: Duration = Duration::from_days(1);
 
-fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
+fn setup_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     let (suite, accounts, _codes, contracts) = setup_test_naive();
 
     (suite, accounts, contracts.vesting)

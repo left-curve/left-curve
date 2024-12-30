@@ -6,7 +6,7 @@ Dango mainnet, testnets, and devnets.
 
 Devnets are used internally for development and testing purposes. You can spin up our own testnet using the Dockerfile found in [docker/devnet](../../docker/devnet/).
 
-Each devnet comes with 5 genesis users. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
+Each devnet comes with 10 genesis users: `owner` and `user{1-9}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
 
 **Do NOT use these keys in production!!!**
 
@@ -52,3 +52,48 @@ Each devnet comes with 5 genesis users. They use Secp256k1 public keys derived f
 | **Private**  | `126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6`                                                                            |
 | **Public**   | `024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2`                                                                          |
 | **Mnemonic** | foot loyal damp alien better first glue supply claw author jar know holiday slam main siren paper transfer cram breeze glow forest word giant |
+
+<br>
+
+|              |                                                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `user5`                                                                                                                                           |
+| **Private**  | `fe55076e4b2c9ffea813951406e8142fefc85183ebda6222500572b0a92032a7`                                                                                |
+| **Public**   | `03da86b1cd6fd20350a0b525118eef939477c0fe3f5052197cd6314ed72f9970ad`                                                                              |
+| **Mnemonic** | cliff ramp foot thrive scheme almost notice wreck base naive warfare horse plug limb keep steel tone over season basic answer post exchange wreck |
+
+<br>
+
+|              |                                                                                                                                                          |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `user6`                                                                                                                                                  |
+| **Private**  | `4d3658519dd8a8227764f64c6724b840ffe29f1ca456f5dfdd67f834e10aae34`                                                                                       |
+| **Public**   | `03428b179a075ff2142453c805a71a63b232400cc33c8e8437211e13e2bd1dec4c`                                                                                     |
+| **Mnemonic** | spring repeat dog spider dismiss bring media orphan process cycle soft divorce pencil parade hill plate message bamboo kid fun dose celery table unknown |
+
+<br>
+
+|              |                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `user7`                                                                                                                                                 |
+| **Private**  | `82de24ba8e1bc4511ae10ce3fbe84b4bb8d7d8abc9ba221d7d3cf7cd0a85131f`                                                                                      |
+| **Public**   | `028d4d7265d5838190842ada2573ef9edfc978dec97ca59ce48cf1dd19352a4407`                                                                                    |
+| **Mnemonic** | indoor welcome kite echo gloom glance gossip finger cake entire laundry citizen employ total aim inmate parade grace end foot truly park autumn pelican |
+
+<br>
+
+|              |                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Username** | `user8`                                                                                                                                                |
+| **Private**  | `ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9`                                                                                     |
+| **Public**   | `02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd`                                                                                   |
+| **Mnemonic** | moon inmate unique oil cupboard tube cigar subway index survey anger night know piece laptop labor capable term ivory bright nice during pattern floor |
+
+<br>
+
+|              |                                                                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Username** | `user9`                                                                                                                                                         |
+| **Private**  | `c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3`                                                                                              |
+| **Public**   | `0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52`                                                                                            |
+| **Mnemonic** | bird okay punch bridge peanut tonight solar stereo then oil clever flock thought example equip juice twenty unfold reform dragon various gossip design artefact |

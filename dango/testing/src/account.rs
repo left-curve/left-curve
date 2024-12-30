@@ -18,12 +18,17 @@ use {
 };
 
 /// Accounts available for testing purposes.
-pub struct Accounts {
+pub struct TestAccounts {
     pub owner: TestAccount,
     pub user1: TestAccount,
     pub user2: TestAccount,
     pub user3: TestAccount,
     pub user4: TestAccount,
+    pub user5: TestAccount,
+    pub user6: TestAccount,
+    pub user7: TestAccount,
+    pub user8: TestAccount,
+    pub user9: TestAccount,
 }
 
 // ------------------------------- test account --------------------------------

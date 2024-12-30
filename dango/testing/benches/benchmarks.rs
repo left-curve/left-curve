@@ -3,7 +3,7 @@ use {
         criterion_group, criterion_main, AxisScale, BatchSize, Criterion, PlotConfiguration,
     },
     dango_genesis::{Codes, Contracts},
-    dango_testing::{setup_benchmark_hybrid, setup_benchmark_wasm, Accounts, TestSuite},
+    dango_testing::{setup_benchmark_hybrid, setup_benchmark_wasm, TestAccounts, TestSuite},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
@@ -31,7 +31,7 @@ fn random_string(len: usize) -> String {
 
 fn do_send<T, PP, DB, VM>(
     suite: &mut TestSuite<PP, DB, VM>,
-    mut accounts: Accounts,
+    mut accounts: TestAccounts,
     codes: Codes<T>,
     contracts: Contracts,
 ) -> Vec<Tx>
@@ -178,7 +178,7 @@ fn sends(c: &mut Criterion) {
 
 fn do_swap<PP, DB, VM>(
     suite: &mut TestSuite<PP, DB, VM>,
-    mut accounts: Accounts,
+    mut accounts: TestAccounts,
     contracts: Contracts,
 ) -> Vec<Tx>
 where
