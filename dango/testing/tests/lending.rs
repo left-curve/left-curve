@@ -471,7 +471,7 @@ fn composite_denom() {
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
                 denom.clone() => MarketUpdates {},
             }),
-            Coins::default(),
+            Coins::new(),
         )
         .should_succeed();
 
@@ -485,7 +485,7 @@ fn composite_denom() {
                 to: owner_addr,
                 amount,
             },
-            Coins::default(),
+            Coins::new(),
         )
         .should_succeed();
 
