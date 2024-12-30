@@ -370,10 +370,6 @@ fn orderbook_works(
 
     // Check the traders' balances should have changed correctly.
     for (order_id, changes) in balance_changes {
-        println!(
-            "order_id: {}, trader: {}",
-            order_id, traders_by_order_id[&order_id]
-        );
         tracker.assert(&suite, traders_by_order_id[&order_id], changes);
     }
 

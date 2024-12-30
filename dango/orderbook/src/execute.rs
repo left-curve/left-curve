@@ -3,8 +3,9 @@ use {
     anyhow::ensure,
     dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, OrderId},
     grug::{
-        Addr, Coin, Coins, Denom, Message, MsgTransfer, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
+        Addr, Coin, Coins, Denom, IsZero, Message, MsgTransfer, MultiplyFraction, MutableCtx,
+        Number, NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -247,52 +248,28 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         let mut ask_volume = bid_volume;
 
         // Clear the BUY orders.
+        //
+        // Note: if the clearing price is better than the bid price, we need to
+        // refund the trader the unused quote asset.
         for ((bid_price, order_id), mut bid_order) in bids {
-            // If the clearing price is better than the bid price, we need to
-            // refund the trader the unused quote asset.
-            let price_diff = bid_price - clearing_price;
+            let volume = bid_order.remaining.min(bid_volume);
 
-            if bid_order.remaining <= bid_volume {
-                // This order can be fully filled.
-                bid_volume -= bid_order.remaining;
+            bid_order.remaining -= volume;
+            bid_volume -= volume;
 
-                transfers
-                    .entry(bid_order.trader)
-                    .or_default()
-                    .insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: bid_order.remaining,
-                    })?
-                    .insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: bid_order.remaining.checked_mul_dec_floor(price_diff)?,
-                    })?;
+            transfers
+                .entry(bid_order.trader)
+                .or_default()
+                .insert(Coin {
+                    denom: base_denom.clone(),
+                    amount: volume,
+                })?
+                .insert(Coin {
+                    denom: quote_denom.clone(),
+                    amount: volume.checked_mul_dec_floor(bid_price - clearing_price)?,
+                })?;
 
-                ORDERS.remove(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        Direction::Bid,
-                        bid_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                // This order can only be partially filled.
-                bid_order.remaining -= bid_volume;
-
-                transfers
-                    .entry(bid_order.trader)
-                    .or_default()
-                    .insert(Coin {
-                        denom: base_denom.clone(),
-                        amount: bid_volume,
-                    })?
-                    .insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: bid_order.remaining.checked_mul_dec_floor(price_diff)?,
-                    })?;
-
+            if bid_order.remaining.is_non_zero() {
                 ORDERS.save(
                     ctx.storage,
                     (
@@ -303,46 +280,39 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                     ),
                     &bid_order,
                 )?;
+            } else {
+                ORDERS.remove(
+                    ctx.storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        Direction::Bid,
+                        bid_price,
+                        order_id,
+                    ),
+                )?;
+            }
 
+            if bid_volume.is_zero() {
                 break;
             }
         }
 
         // Clear the SELL orders.
         for ((ask_price, order_id), mut ask_order) in asks {
-            if ask_order.remaining <= ask_volume {
-                // This order can be fully filled.
-                ask_volume -= ask_order.remaining;
+            let volume = ask_order.remaining.min(ask_volume);
 
-                transfers
-                    .entry(ask_order.trader)
-                    .or_default()
-                    .insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: ask_order.remaining.checked_mul_dec_floor(clearing_price)?,
-                    })?;
+            ask_order.remaining -= volume;
+            ask_volume -= volume;
 
-                ORDERS.remove(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        Direction::Ask,
-                        ask_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                // This order can only be partially filled.
-                ask_order.remaining -= ask_volume;
+            transfers
+                .entry(ask_order.trader)
+                .or_default()
+                .insert(Coin {
+                    denom: quote_denom.clone(),
+                    amount: volume.checked_mul_dec_floor(clearing_price)?,
+                })?;
 
-                transfers
-                    .entry(ask_order.trader)
-                    .or_default()
-                    .insert(Coin {
-                        denom: quote_denom.clone(),
-                        amount: ask_volume.checked_mul_dec_floor(clearing_price)?,
-                    })?;
-
+            if ask_order.remaining.is_non_zero() {
                 ORDERS.save(
                     ctx.storage,
                     (
@@ -353,7 +323,19 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                     ),
                     &ask_order,
                 )?;
+            } else {
+                ORDERS.remove(
+                    ctx.storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        Direction::Ask,
+                        ask_price,
+                        order_id,
+                    ),
+                )?;
+            }
 
+            if ask_volume.is_zero() {
                 break;
             }
         }
