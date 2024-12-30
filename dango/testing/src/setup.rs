@@ -18,29 +18,17 @@ use {
     std::{path::PathBuf, sync::LazyLock},
 };
 
-/// Chain ID used for testing purposes.
 pub const MOCK_CHAIN_ID: &str = "mock-1";
-
-/// The chain's genesis timestamp.
 pub const MOCK_GENESIS_TIMESTAMP: Timestamp = Timestamp::from_days(365);
 
-/// Private key to use for the `owner` account.
 pub const OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
-
-/// Private key to use for the `user1` account.
 pub const USER1_PRIVATE_KEY: [u8; 32] =
     hex!("a5122c0729c1fae8587e3cc07ae952cb77dfccc049efd5be1d2168cbe946ca18");
-
-/// Private key to use for the `user2` account.
 pub const USER2_PRIVATE_KEY: [u8; 32] =
     hex!("cac7b4ced59cf0bfb14c373272dfb3d4447c7cd5aea732ea6ff69e19f85d34c4");
-
-/// Private key to use for the `user3` account.
 pub const USER3_PRIVATE_KEY: [u8; 32] =
     hex!("cf6bb15648a3a24976e2eeffaae6201bc3e945335286d273bb491873ac7c3141");
-
-/// Private key to use for the `user4` account.
 pub const USER4_PRIVATE_KEY: [u8; 32] =
     hex!("126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6");
 
@@ -167,7 +155,7 @@ where
         codes.clone(),
         btree_map! {
             owner.username.clone() => GenesisUser {
-                key: *owner.key(),
+                key: owner.key(),
                 key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
@@ -177,7 +165,7 @@ where
                 },
             },
             user1.username.clone() => GenesisUser {
-                key: *user1.key(),
+                key: user1.key(),
                 key_hash: user1.key_hash(),
                 balances: coins! {
                     "udng"  => 100_000_000_000_000,
@@ -187,7 +175,7 @@ where
                 },
             },
             user2.username.clone() => GenesisUser {
-                key: *user2.key(),
+                key: user2.key(),
                 key_hash: user2.key_hash(),
                 balances: coins! {
                     "udng"  => 100_000_000_000_000,
@@ -195,7 +183,7 @@ where
                 },
             },
             user3.username.clone() => GenesisUser {
-                key: *user3.key(),
+                key: user3.key(),
                 key_hash: user3.key_hash(),
                 balances: coins! {
                     "udng"  => 100_000_000_000_000,
@@ -203,7 +191,7 @@ where
                 },
             },
             user4.username.clone() => GenesisUser {
-                key: *user4.key(),
+                key: user4.key(),
                 key_hash: user4.key_hash(),
                 balances: coins! {
                     "udng"  => 100_000_000_000_000,

@@ -223,8 +223,8 @@ impl<T> TestAccount<T, (SigningKey, Key)>
 where
     T: MaybeDefined<Addr>,
 {
-    pub fn key(&self) -> &Key {
-        &self.keys.1
+    pub fn key(&self) -> Key {
+        self.keys.1
     }
 
     pub fn key_hash(&self) -> Hash256 {
