@@ -311,14 +311,14 @@ fn orderbook_works(
     orders_to_submit: Vec<(Direction, u128, u128)>,
     // Orders that should remain unfilled: order_id => remaining amount.
     remaining_orders: BTreeMap<OrderId, u128>,
-    // Changes that should happen to the traders' balances: order_id => denom => change.
+    // Changes that should happen to the users' balances: order_id => denom => change.
     balance_changes: BTreeMap<OrderId, BTreeMap<Denom, BalanceChange>>,
 ) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
     let mut tracker = BalanceTracker::default();
 
     // Find which accounts will submit the orders, so we can track their balances.
-    let traders_by_order_id = orders_to_submit
+    let users_by_order_id = orders_to_submit
         .iter()
         .zip(accounts.users())
         .enumerate()
@@ -331,8 +331,8 @@ fn orderbook_works(
         })
         .collect::<BTreeMap<_, _>>();
 
-    // Track the traders' balances.
-    tracker.record_balances(&suite, traders_by_order_id.values().copied());
+    // Track the users' balances.
+    tracker.record_balances(&suite, users_by_order_id.values().copied());
 
     // Submit the orders in a single block.
     let txs = orders_to_submit
@@ -368,9 +368,9 @@ fn orderbook_works(
         .unwrap();
     suite.make_block(txs);
 
-    // Check the traders' balances should have changed correctly.
+    // Check the users' balances should have changed correctly.
     for (order_id, changes) in balance_changes {
-        tracker.assert(&suite, traders_by_order_id[&order_id], changes);
+        tracker.assert(&suite, users_by_order_id[&order_id], changes);
     }
 
     // Check the remaining unfilled orders.

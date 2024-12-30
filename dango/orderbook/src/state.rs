@@ -30,7 +30,7 @@ pub type OrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
 #[grug::derive(Borsh)]
 #[derive(Copy)]
 pub struct Order {
-    pub trader: Addr,
+    pub user: Addr,
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
@@ -40,5 +40,5 @@ pub struct Order {
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndex<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
-    // TODO: also index orders by pair and trader
+    // TODO: also index orders by pair and user
 }

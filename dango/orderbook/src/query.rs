@@ -1,7 +1,7 @@
 use {
     crate::ORDERS,
     dango_types::orderbook::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByTraderResponse, QueryMsg,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, QueryMsg,
     },
     grug::{
         Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
@@ -31,12 +31,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_orders_by_pair(ctx, base_denom, quote_denom, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::OrdersByTrader {
-            trader,
+        QueryMsg::OrdersByUser {
+            user,
             start_after,
             limit,
         } => {
-            let res = query_orders_by_trader(ctx, trader, start_after, limit)?;
+            let res = query_orders_by_user(ctx, user, start_after, limit)?;
             res.to_json_value()
         },
     }
@@ -52,7 +52,7 @@ fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse>
         quote_denom,
         direction,
         price,
-        trader: order.trader,
+        user: order.user,
         amount: order.amount,
         remaining: order.remaining,
     })
@@ -79,7 +79,7 @@ fn query_orders(
                 quote_denom,
                 direction,
                 price,
-                trader: order.trader,
+                user: order.user,
                 amount: order.amount,
                 remaining: order.remaining,
             }))
@@ -99,11 +99,11 @@ fn query_orders_by_pair(
 }
 
 #[inline]
-fn query_orders_by_trader(
+fn query_orders_by_user(
     _ctx: ImmutableCtx,
-    _trader: Addr,
+    _user: Addr,
     _start_after: Option<OrderId>,
     _limit: Option<u32>,
-) -> StdResult<BTreeMap<OrderId, OrdersByTraderResponse>> {
+) -> StdResult<BTreeMap<OrderId, OrdersByUserResponse>> {
     todo!();
 }

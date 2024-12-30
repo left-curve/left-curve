@@ -58,9 +58,6 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     /// Transfer coins to multiple recipients at once.
-    ///
-    /// This is used by the orderbook contract to send traders the funds from
-    /// filled orders.
     BatchTransfer(BTreeMap<Addr, Coins>),
 }
 

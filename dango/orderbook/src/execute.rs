@@ -108,24 +108,24 @@ fn submit_order(
             order_id,
         ),
         &Order {
-            trader: ctx.sender,
+            user: ctx.sender,
             amount,
             remaining: amount,
         },
     )?;
 
-    Response::new()
-        .add_event("order_submitted", OrderSubmitted {
+    Ok(
+        Response::new().add_event("order_submitted", OrderSubmitted {
             order_id,
-            trader: ctx.sender,
+            user: ctx.sender,
             base_denom,
             quote_denom,
             direction,
             price,
             amount,
             deposit,
-        })
-        .map_err(Into::into)
+        })?,
+    )
 }
 
 #[inline]
@@ -138,8 +138,8 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
         ensure!(
-            ctx.sender == order.trader,
-            "only the trader can cancel the order"
+            ctx.sender == order.user,
+            "only the user can cancel the order"
         );
 
         let refund = match direction {
@@ -291,7 +291,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         // Clear the BUY orders.
         //
         // Note: if the clearing price is better than the bid price, we need to
-        // refund the trader the unused quote asset.
+        // refund the user the unused quote asset.
         let mut remaining_volume = volume;
         for ((price, order_id), mut order) in bids {
             let filled = order.remaining.min(remaining_volume);
@@ -300,6 +300,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             remaining_volume -= filled;
 
             let cleared = order.remaining.is_zero();
+
             let mut refund = Coins::new();
 
             refund
@@ -321,10 +322,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 cleared,
             })?);
 
-            refunds
-                .entry(order.trader)
-                .or_default()
-                .insert_many(refund)?;
+            refunds.entry(order.user).or_default().insert_many(refund)?;
 
             if cleared {
                 ORDERS.remove(
@@ -378,7 +376,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 cleared,
             })?);
 
-            refunds.entry(order.trader).or_default().insert(refund)?;
+            refunds.entry(order.user).or_default().insert(refund)?;
 
             if cleared {
                 ORDERS.remove(

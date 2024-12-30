@@ -58,7 +58,7 @@ pub struct Pair {
 
 #[grug::derive(Serde)]
 pub struct OrderResponse {
-    pub trader: Addr,
+    pub user: Addr,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
@@ -69,7 +69,7 @@ pub struct OrderResponse {
 
 #[grug::derive(Serde)]
 pub struct OrdersByPairResponse {
-    pub trader: Addr,
+    pub user: Addr,
     pub direction: Direction,
     pub price: Udec128,
     pub amount: Uint128,
@@ -77,7 +77,7 @@ pub struct OrdersByPairResponse {
 }
 
 #[grug::derive(Serde)]
-pub struct OrdersByTraderResponse {
+pub struct OrdersByUserResponse {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
@@ -119,13 +119,13 @@ pub enum QueryMsg {
     /// Query a single active order by ID.
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
-    /// Enumerate active orders across all pairs and from traders.
+    /// Enumerate active orders across all pairs and from users.
     #[returns(BTreeMap<OrderId, OrderResponse>)]
     Orders {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
-    /// Enumerate active orders in a single pair from all traders.
+    /// Enumerate active orders in a single pair from all users.
     #[returns(BTreeMap<OrderId, OrdersByPairResponse>)]
     OrdersByPair {
         base_denom: Denom,
@@ -133,10 +133,10 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
-    /// Enumerate active orders from a single trader across all pairs.
-    #[returns(BTreeMap<OrderId, OrdersByTraderResponse>)]
-    OrdersByTrader {
-        trader: Addr,
+    /// Enumerate active orders from a single user across all pairs.
+    #[returns(BTreeMap<OrderId, OrdersByUserResponse>)]
+    OrdersByUser {
+        user: Addr,
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
@@ -147,7 +147,7 @@ pub enum QueryMsg {
 #[grug::derive(Serde)]
 pub struct OrderSubmitted {
     pub order_id: OrderId,
-    pub trader: Addr,
+    pub user: Addr,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
