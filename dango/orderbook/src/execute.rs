@@ -444,13 +444,13 @@ mod tests {
             ),
         ],
         vec![
+            // Trader created a BUY order of 10 BASE at 30 QUOTE per base with a
+            // a deposit of 10 * 30 = 300 QUOTE.
+            // The order executed at at 20 QUOTE per base, so trader gets:
+            // 10 BASE + refund of 10 * (30 - 20) = 100 QUOTE.
             Message::Transfer(MsgTransfer {
                 to: Addr::mock(0),
                 coins: Coins::new_unchecked(btree_map! {
-                    // Trader created a BUY order of 10 BASE at 30 QUOTE per base
-                    // with a deposit of 10 * 30 = 300 QUOTE.
-                    // The order executed at at 20 QUOTE per base, so trader gets
-                    // 10 BASE + refund of 10 * (30 - 20) = 100 QUOTE.
                     BASE_DENOM.clone() => Uint128::new(10),
                     QUOTE_DENOM.clone() => Uint128::new(100),
                 }),
@@ -461,12 +461,12 @@ mod tests {
                     BASE_DENOM.clone() => Uint128::new(10),
                 }),
             }),
+            // Trader created a SELL order of 10 BASE at 10 QUOTE per base with
+            // a deposit of 10 BASE.
+            // The order executed at 20 QUOTE per base, so trader gets:
+            // 10 * 20 = 200 QUOTE.
             Message::Transfer(MsgTransfer {
                 to: Addr::mock(3),
-                // Trader created a SELL order of 10 BASE at 10 QUOTE per base
-                // with a deposit of 10 BASE.
-                // The order executed at 20 QUOTE per base, so trader gets
-                // 10 * 20 = 200 QUOTE.
                 coins: Coins::new_unchecked(btree_map! {
                     QUOTE_DENOM.clone() => Uint128::new(200),
                 }),
@@ -479,6 +479,149 @@ mod tests {
             }),
         ];
         "example 1"
+    )]
+    // ------------------------------- example 2 -------------------------------
+    #[test_case(
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(30),
+                    !0,
+                ),
+                Order {
+                    trader: Addr::mock(0),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(20),
+                    !1,
+                ),
+                Order {
+                    trader: Addr::mock(1),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(5),
+                    3,
+                ),
+                Order {
+                    trader: Addr::mock(3),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(15),
+                    4,
+                ),
+                Order {
+                    trader: Addr::mock(4),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+        ],
+        vec![
+            (
+                (
+                    Direction::Bid,
+                    Udec128::new(10),
+                    !2,
+                ),
+                Order {
+                    trader: Addr::mock(2),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+            (
+                (
+                    Direction::Ask,
+                    Udec128::new(25),
+                    5,
+                ),
+                Order {
+                    trader: Addr::mock(5),
+                    amount: Uint128::new(10),
+                    remaining: Uint128::new(10),
+                },
+            ),
+        ],
+        vec![
+            // Trader created a BUY order of 10 BASE at 30 QUOTE per base with a
+            // Trader created a BUY order of 10 BASE at 30 QUOTE per base
+            // with a deposit of 10 * 30 = 300 QUOTE.
+            // The order executed at at 17.5 QUOTE per base, so trader gets
+            // 10 BASE + refund of 10 * (30 - 17.5) = 125 QUOTE.
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(0),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(10),
+                    QUOTE_DENOM.clone() => Uint128::new(125),
+                }),
+            }),
+            // Trader created a BUY order of 10 BASE at 30 QUOTE per base with a
+            // deposit of 10 * 20 = 200 QUOTE.
+            // The order executed at at 17.5 QUOTE per base, so trader gets
+            // 10 BASE + refund of 10 * (20 - 17.5) = 125 QUOTE.
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(1),
+                coins: Coins::new_unchecked(btree_map! {
+                    BASE_DENOM.clone() => Uint128::new(10),
+                    QUOTE_DENOM.clone() => Uint128::new(25),
+                }),
+            }),
+            // Traders 3 and 4 both gets their SELL orders completely filled at
+            // 17.5 QUOTE per BASE, so they each get 10 * 17.5 = 175 QUOTE.
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(3),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(175),
+                }),
+            }),
+            Message::Transfer(MsgTransfer {
+                to: Addr::mock(4),
+                coins: Coins::new_unchecked(btree_map! {
+                    QUOTE_DENOM.clone() => Uint128::new(175),
+                }),
+            }),
+        ];
+        "example 2"
     )]
     fn clear_orders_works(
         before_orders: Vec<((Direction, Udec128, OrderId), Order)>,
