@@ -8,13 +8,6 @@ use {
 pub type OrderId = u64;
 
 #[grug::derive(Serde, Borsh)]
-pub struct Pair {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-    // TODO: add protocol fee rate
-}
-
-#[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub enum Direction {
     /// Give away the quote asset, get the base asset; a.k.a. a BUY order.
@@ -77,13 +70,13 @@ pub struct OrdersByTraderResponseItem {
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub pair: Pair,
-}
+pub struct InstantiateMsg {}
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     SubmitOrder {
+        base_denom: Denom,
+        quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
         price: Udec128,
@@ -95,8 +88,6 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    #[returns(Pair)]
-    Pair {},
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
     #[returns(BTreeMap<OrderId, OrderResponse>)]

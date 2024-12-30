@@ -1,6 +1,6 @@
 use {
-    crate::{ORDERS, PAIR},
-    dango_types::orderbook::{OrderId, OrderResponse, Pair, QueryMsg},
+    crate::ORDERS,
+    dango_types::orderbook::{OrderId, OrderResponse, QueryMsg},
     grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult},
     std::collections::BTreeMap,
 };
@@ -10,10 +10,6 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Pair {} => {
-            let res = query_pair(ctx)?;
-            res.to_json_value()
-        },
         QueryMsg::Order { order_id } => {
             let res = query_order(ctx, order_id)?;
             res.to_json_value()
@@ -34,13 +30,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 #[inline]
-fn query_pair(ctx: ImmutableCtx) -> StdResult<Pair> {
-    PAIR.load(ctx.storage)
-}
-
-#[inline]
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
-    let ((direction, price, _), order) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+    let ((_, direction, price, _), order) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
     Ok(OrderResponse {
         direction,
@@ -66,7 +57,7 @@ fn query_orders(
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
         .map(|res| {
-            let (order_id, (direction, price, _), order) = res?;
+            let (order_id, (_, direction, price, _), order) = res?;
             Ok((order_id, OrderResponse {
                 direction,
                 price,

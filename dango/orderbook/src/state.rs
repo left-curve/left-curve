@@ -1,22 +1,33 @@
 use {
-    dango_types::orderbook::{Direction, Order, OrderId, Pair},
-    grug::{Counter, IndexedMap, Item, Udec128, UniqueIndex},
+    dango_types::orderbook::{Direction, Order, OrderId},
+    grug::{Counter, Counters, Denom, IndexedMap, Udec128, UniqueIndex},
 };
 
-pub const PAIR: Item<Pair> = Item::new("pair");
+/// The number of new orders that each trading pair has received during the
+/// current block.
+///
+/// At the end of the block, we perform order matching for all pairs that have
+/// received new orders.
+pub const NEW_ORDER_COUNTS: Counters<(&Denom, &Denom), u32> = Counters::new("order_count", 0, 1);
 
-pub const ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
+pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
 
-// (direction, price, order_id) => order
-//
-// Important: the `order_id` bitwise reversed for BUY orders, such that when
-// matching orders, the older orders are matched first.
-pub const ORDERS: IndexedMap<(Direction, Udec128, OrderId), Order, OrdersIndex> =
-    IndexedMap::new("order", OrdersIndex {
-        order_id: UniqueIndex::new(|(_, _, order_id), _| *order_id, "order", "order__id"),
-    });
+pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("order", OrderIndex {
+    order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
+});
 
-#[grug::index_list((Direction, Udec128, OrderId), Order)]
-pub struct OrdersIndex<'a> {
-    pub order_id: UniqueIndex<'a, (Direction, Udec128, OrderId), OrderId, Order>,
+/// Type of the keys under which orders are stored in the contract storage.
+///
+/// This is nested tuple consisting of:
+///
+/// ```plain
+/// ((base_denom, quote_denom), direction, price, order_id)
+/// ```
+///
+/// TODO: ideally we use `&'a Denom` here, but handling lifetime is tricky.
+pub type OrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
+
+#[grug::index_list(OrderKey, Order)]
+pub struct OrderIndex<'a> {
+    pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
 }
