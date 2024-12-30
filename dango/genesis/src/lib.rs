@@ -11,7 +11,7 @@ use {
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
         },
-        taxman, token_factory, vesting,
+        orderbook, taxman, token_factory, vesting,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
@@ -34,6 +34,7 @@ pub struct Contracts {
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
+    pub orderbook: Addr,
     pub taxman: Addr,
     pub token_factory: Addr,
     pub vesting: Addr,
@@ -50,6 +51,7 @@ pub struct Codes<T> {
     pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
+    pub orderbook: T,
     pub taxman: T,
     pub token_factory: T,
     pub vesting: T,
@@ -110,6 +112,12 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_oracle::query))
         .build();
 
+    let orderbook = ContractBuilder::new(Box::new(dango_orderbook::instantiate))
+        .with_execute(Box::new(dango_orderbook::execute))
+        .with_cron_execute(Box::new(dango_orderbook::cron_execute))
+        .with_query(Box::new(dango_orderbook::query))
+        .build();
+
     let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
         .with_execute(Box::new(dango_lending::execute))
         .with_query(Box::new(dango_lending::query))
@@ -142,6 +150,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         ibc_transfer,
         lending,
         oracle,
+        orderbook,
         taxman,
         token_factory,
         vesting,
@@ -158,6 +167,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
+    let orderbook = fs::read(artifacts_dir.join("dango_orderbook.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
@@ -172,6 +182,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         ibc_transfer,
         lending,
         oracle,
+        orderbook,
         taxman,
         token_factory,
         vesting,
@@ -206,6 +217,7 @@ where
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
+    let orderbook_code_hash = upload(&mut msgs, codes.orderbook);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
@@ -285,6 +297,15 @@ where
         },
         "dango/amm",
         "dango/amm",
+    )?;
+
+    // Instantiate the orderbook contract.
+    let orderbook = instantiate(
+        &mut msgs,
+        orderbook_code_hash,
+        &orderbook::InstantiateMsg {},
+        "dango/orderbook",
+        "dango/orderbook",
     )?;
 
     // Instantiate the lending pool contract.
@@ -403,6 +424,7 @@ where
         ibc_transfer,
         lending,
         oracle,
+        orderbook,
         taxman,
         token_factory,
         vesting,

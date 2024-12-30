@@ -1804,6 +1804,7 @@ dependencies = [
  "dango-ibc-transfer",
  "dango-lending",
  "dango-oracle",
+ "dango-orderbook",
  "dango-taxman",
  "dango-token-factory",
  "dango-types",
