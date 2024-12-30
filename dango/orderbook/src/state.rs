@@ -1,6 +1,6 @@
 use {
-    dango_types::orderbook::{Direction, Order, OrderId},
-    grug::{Counter, Counters, Denom, IndexedMap, Udec128, UniqueIndex},
+    dango_types::orderbook::{Direction, OrderId},
+    grug::{Addr, Counter, Counters, Denom, IndexedMap, Udec128, Uint128, UniqueIndex},
 };
 
 /// The number of new orders that each trading pair has received during the
@@ -27,7 +27,18 @@ pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("ord
 /// TODO: ideally we use `&'a Denom` here, but handling lifetime is tricky.
 pub type OrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
 
+#[grug::derive(Borsh)]
+#[derive(Copy)]
+pub struct Order {
+    pub trader: Addr,
+    /// The order's total size, measured in the _base asset_.
+    pub amount: Uint128,
+    /// Portion of the order that remains unfilled, measured in the _base asset_.
+    pub remaining: Uint128,
+}
+
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndex<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
+    // TODO: also index orders by pair and trader
 }

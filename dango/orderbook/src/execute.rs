@@ -1,7 +1,7 @@
 use {
-    crate::{NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS},
+    crate::{Order, NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS},
     anyhow::ensure,
-    dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, Order, OrderId},
+    dango_types::orderbook::{Direction, ExecuteMsg, InstantiateMsg, OrderId},
     grug::{
         Addr, Coin, Coins, Denom, Message, MsgTransfer, MultiplyFraction, MutableCtx, Number,
         NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
@@ -148,7 +148,8 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    let mut refunds = BTreeMap::<Addr, Coins>::new();
+    // Tracks how much fund should be transferred from this contract to traders.
+    let mut transfers = BTreeMap::<Addr, Coins>::new();
 
     // Find all pairs that have received new orders during the block.
     let pairs = NEW_ORDER_COUNTS
@@ -255,7 +256,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 // This order can be fully filled.
                 bid_volume -= bid_order.remaining;
 
-                refunds
+                transfers
                     .entry(bid_order.trader)
                     .or_default()
                     .insert(Coin {
@@ -280,7 +281,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 // This order can only be partially filled.
                 bid_order.remaining -= bid_volume;
 
-                refunds
+                transfers
                     .entry(bid_order.trader)
                     .or_default()
                     .insert(Coin {
@@ -313,10 +314,13 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 // This order can be fully filled.
                 ask_volume -= ask_order.remaining;
 
-                refunds.entry(ask_order.trader).or_default().insert(Coin {
-                    denom: quote_denom.clone(),
-                    amount: ask_order.remaining.checked_mul_dec_floor(clearing_price)?,
-                })?;
+                transfers
+                    .entry(ask_order.trader)
+                    .or_default()
+                    .insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: ask_order.remaining.checked_mul_dec_floor(clearing_price)?,
+                    })?;
 
                 ORDERS.remove(
                     ctx.storage,
@@ -331,10 +335,13 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 // This order can only be partially filled.
                 ask_order.remaining -= ask_volume;
 
-                refunds.entry(ask_order.trader).or_default().insert(Coin {
-                    denom: quote_denom.clone(),
-                    amount: ask_volume.checked_mul_dec_floor(clearing_price)?,
-                })?;
+                transfers
+                    .entry(ask_order.trader)
+                    .or_default()
+                    .insert(Coin {
+                        denom: quote_denom.clone(),
+                        amount: ask_volume.checked_mul_dec_floor(clearing_price)?,
+                    })?;
 
                 ORDERS.save(
                     ctx.storage,
@@ -356,7 +363,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
     // TODO: create a batch send method at bank contract
-    let messages = refunds
+    let messages = transfers
         .into_iter()
         .map(|(to, coins)| MsgTransfer { to, coins });
 

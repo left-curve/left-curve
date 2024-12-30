@@ -1,7 +1,11 @@
 use {
     crate::ORDERS,
-    dango_types::orderbook::{OrderId, OrderResponse, QueryMsg},
-    grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult},
+    dango_types::orderbook::{
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByTraderResponse, QueryMsg,
+    },
+    grug::{
+        Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
+    },
     std::collections::BTreeMap,
 };
 
@@ -18,6 +22,15 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_orders(ctx, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::OrdersByPair {
+            base_denom,
+            quote_denom,
+            start_after,
+            limit,
+        } => {
+            let res = query_orders_by_pair(ctx, base_denom, quote_denom, start_after, limit)?;
+            res.to_json_value()
+        },
         QueryMsg::OrdersByTrader {
             trader,
             start_after,
@@ -31,9 +44,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 
 #[inline]
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
-    let ((_, direction, price, _), order) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+    let (((base_denom, quote_denom), direction, price, _), order) =
+        ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
     Ok(OrderResponse {
+        base_denom,
+        quote_denom,
         direction,
         price,
         trader: order.trader,
@@ -57,8 +73,10 @@ fn query_orders(
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
         .map(|res| {
-            let (order_id, (_, direction, price, _), order) = res?;
+            let (order_id, ((base_denom, quote_denom), direction, price, _), order) = res?;
             Ok((order_id, OrderResponse {
+                base_denom,
+                quote_denom,
                 direction,
                 price,
                 trader: order.trader,
@@ -70,11 +88,22 @@ fn query_orders(
 }
 
 #[inline]
+fn query_orders_by_pair(
+    _ctx: ImmutableCtx,
+    _base_denom: Denom,
+    _quote_denom: Denom,
+    _start_after: Option<OrderId>,
+    _limit: Option<u32>,
+) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
+    todo!();
+}
+
+#[inline]
 fn query_orders_by_trader(
     _ctx: ImmutableCtx,
     _trader: Addr,
     _start_after: Option<OrderId>,
     _limit: Option<u32>,
-) -> StdResult<BTreeMap<OrderId, OrderResponse>> {
-    todo!("we need a `.prefix` method in `UniqueIndex` in order to implement this");
+) -> StdResult<BTreeMap<OrderId, OrdersByTraderResponse>> {
+    todo!();
 }
