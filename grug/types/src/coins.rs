@@ -327,7 +327,7 @@ impl Coins {
 
             if amount.is_zero() {
                 return Err(StdError::invalid_coins(format!(
-                    "denom `{denom}` as zero amount",
+                    "denom `{denom}` has zero amount",
                 )));
             }
 
