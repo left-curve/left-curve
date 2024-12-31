@@ -1,5 +1,5 @@
 use {
-    dango_testing::setup_test,
+    dango_testing::setup_test_naive,
     dango_types::{
         amm::{
             self, ExecuteMsg, FeeRate, Pool, PoolParams, QueryPoolRequest, QueryPoolsRequest,
@@ -22,7 +22,7 @@ static LP_2: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("amm/pool/2").un
 
 #[test]
 fn amm() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     // ----------------------------- Pool creation -----------------------------
 

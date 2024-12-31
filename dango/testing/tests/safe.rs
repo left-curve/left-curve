@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test, Safe},
+    dango_testing::{setup_test_naive, Safe},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
@@ -17,7 +17,7 @@ use {
 
 #[test]
 fn safe() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
     // ----------------------------- Safe creation -----------------------------
 
