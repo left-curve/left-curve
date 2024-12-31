@@ -200,7 +200,6 @@ where
     // 5. indexer `index_block`
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
-        let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         let mut cron_outcomes = vec![];
@@ -232,6 +231,8 @@ where
 
             tx_outcomes.push(tx_outcome);
         }
+
+        let cfg = CONFIG.load(&buffer)?;
 
         // Find all cronjobs that should be performed. That is, ones that the
         // scheduled time is earlier or equal to the current block time.
