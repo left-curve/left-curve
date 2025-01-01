@@ -108,7 +108,7 @@ fn send_escrowing_collateral() {
     // Should fail with route not found error.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -146,7 +146,7 @@ fn send_escrowing_collateral() {
     // Try sending again, should work.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -206,7 +206,7 @@ fn send_burning_synth() {
     // Send the tokens.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -243,7 +243,7 @@ fn send_burning_synth() {
 
     // Sender should have been deducted balance.
     suite
-        .query_balance(&accounts.relayer, denom.clone())
+        .query_balance(&accounts.user1, denom.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 12345));
 
     // Warp contract should not hold any of the synth token (should be burned).
@@ -290,7 +290,7 @@ fn receive_release_collateral() {
     // Send some tokens so that we have something to release.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -310,7 +310,7 @@ fn receive_release_collateral() {
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {
-            recipient: accounts.relayer.address().into(),
+            recipient: accounts.user1.address().into(),
             amount: Uint128::new(88),
             metadata: HexBinary::default(),
         }
@@ -343,7 +343,7 @@ fn receive_release_collateral() {
 
     // The recipient should have received the tokens.
     suite
-        .query_balance(&accounts.relayer, denom.clone())
+        .query_balance(&accounts.user1, denom.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 100 + 88));
 
     // Warp contract should have been deducted tokens.
@@ -397,7 +397,7 @@ fn receive_minting_synth() {
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {
-            recipient: accounts.relayer.address().into(),
+            recipient: accounts.user1.address().into(),
             amount: Uint128::new(88),
             metadata: HexBinary::default(),
         }
@@ -432,6 +432,6 @@ fn receive_minting_synth() {
 
     // Synthetic tokens should have been minted to the receiver.
     suite
-        .query_balance(&accounts.relayer, denom.clone())
+        .query_balance(&accounts.user1, denom.clone())
         .should_succeed_and_equal(Uint128::new(88));
 }

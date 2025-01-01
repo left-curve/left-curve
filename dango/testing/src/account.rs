@@ -1,5 +1,5 @@
 use {
-    crate::TestSuite,
+    crate::{create_signature, TestSuite},
     dango_types::{
         account::single,
         account_factory::{
@@ -9,21 +9,26 @@ use {
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        btree_map, Addr, Addressable, ByteArray, Coins, Defined, Hash256, HashExt, Json,
-        JsonSerExt, MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined,
-        UnsignedTx,
+        btree_map, Addr, Addressable, Coins, Defined, Hash256, HashExt, Json, JsonSerExt,
+        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},
-    k256::{
-        ecdsa::{signature::Signer as SignerTrait, Signature as EcdsaSignature, SigningKey},
-        elliptic_curve::rand_core::OsRng,
-    },
+    k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
     std::{collections::BTreeMap, str::FromStr},
 };
 
-pub struct Accounts {
+/// Accounts available for testing purposes.
+pub struct TestAccounts {
     pub owner: TestAccount,
-    pub relayer: TestAccount,
+    pub user1: TestAccount,
+    pub user2: TestAccount,
+    pub user3: TestAccount,
+    pub user4: TestAccount,
+    pub user5: TestAccount,
+    pub user6: TestAccount,
+    pub user7: TestAccount,
+    pub user8: TestAccount,
+    pub user9: TestAccount,
 }
 
 // ------------------------------- test account --------------------------------
@@ -42,8 +47,26 @@ pub struct TestAccount<
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn new_random(username: &str) -> Self {
-        let (sk, pk) = generate_random_key();
+        let sk = SigningKey::random(&mut OsRng);
+
+        Self::new(username, sk)
+    }
+
+    pub fn new_from_private_key(username: &str, sk_bytes: [u8; 32]) -> Self {
+        let sk = SigningKey::from_bytes(&sk_bytes.into()).unwrap();
+
+        Self::new(username, sk)
+    }
+
+    fn new(username: &str, sk: SigningKey) -> Self {
         let username = Username::from_str(username).unwrap();
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .to_vec()
+            .try_into()
+            .unwrap();
         let key = Key::Secp256k1(pk);
         let key_hash = pk.hash256();
 
@@ -85,13 +108,11 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     }
 
     pub fn set_address(self, addresses: &BTreeMap<Username, Addr>) -> TestAccount {
-        let address = addresses[&self.username];
-
         TestAccount {
+            address: Defined::new(addresses[&self.username]),
             username: self.username,
             nonce: self.nonce,
-            address: Defined::new(address),
-            keys: btree_map!(self.sign_with => self.keys),
+            keys: btree_map! { self.sign_with => self.keys },
             sign_with: self.sign_with,
         }
     }
@@ -119,28 +140,25 @@ where
         nonce: u32,
     ) -> StdResult<(Metadata, Credential)> {
         let data = self.metadata(chain_id, nonce);
-        let sign_bytes = SignDoc {
+        let sign_doc = SignDoc {
             sender,
             gas_limit,
             messages: msgs.clone(),
             data: data.clone(),
-        }
-        .to_json_vec()?;
-
-        let standard_credential = self.create_standard_credential(&sign_bytes)?;
+        };
+        let standard_credential = self.create_standard_credential(&sign_doc.to_json_vec()?);
 
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StdResult<StandardCredential> {
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StandardCredential {
         let sk = &self.keys.get(&self.sign_with).unwrap().0;
+        let signature = create_signature(sk, sign_bytes);
 
-        let signature = create_signature(sk, sign_bytes)?;
-
-        Ok(StandardCredential {
+        StandardCredential {
             key_hash: self.sign_with,
             signature: Signature::Secp256k1(signature),
-        })
+        }
     }
 }
 
@@ -210,8 +228,8 @@ impl<T> TestAccount<T, (SigningKey, Key)>
 where
     T: MaybeDefined<Addr>,
 {
-    pub fn key(&self) -> &Key {
-        &self.keys.1
+    pub fn key(&self) -> Key {
+        self.keys.1
     }
 
     pub fn key_hash(&self) -> Hash256 {
@@ -284,25 +302,6 @@ impl Signer for TestAccount {
             credential: credential.to_json_value()?,
         })
     }
-}
-
-pub fn generate_random_key() -> (SigningKey, ByteArray<33>) {
-    let sk = SigningKey::random(&mut OsRng);
-    let pk = sk
-        .verifying_key()
-        .to_encoded_point(true)
-        .to_bytes()
-        .to_vec()
-        .try_into()
-        .unwrap();
-    (sk, pk)
-}
-
-pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> StdResult<ByteArray<64>> {
-    // This hashes `sign_doc_raw` with SHA2-256. If we eventually choose to
-    // use another hash, it's necessary to update this.
-    let signature: EcdsaSignature = sk.sign(sign_bytes);
-    signature.to_bytes().to_vec().try_into()
 }
 
 // ---------------------------------- factory ----------------------------------

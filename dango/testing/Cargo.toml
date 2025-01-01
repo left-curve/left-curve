@@ -20,6 +20,7 @@ grug-db-memory = { workspace = true }
 grug-vm-hybrid = { workspace = true }
 grug-vm-rust   = { workspace = true }
 grug-vm-wasm   = { workspace = true }
+hex-literal    = { workspace = true }
 k256           = { workspace = true }
 
 [dev-dependencies]

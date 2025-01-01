@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, Accounts, TestSuite},
+    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         config::DANGO_DENOM,
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
@@ -17,7 +17,7 @@ static TEST_AMOUNT: LazyLock<Coin> = LazyLock::new(|| Coin::new(DANGO_DENOM.clon
 const ONE_MONTH: Duration = Duration::from_weeks(4);
 const ONE_DAY: Duration = Duration::from_days(1);
 
-fn setup_test() -> (TestSuite<NaiveProposalPreparer>, Accounts, Addr) {
+fn setup_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     let (suite, accounts, _codes, contracts) = setup_test_naive();
 
     (suite, accounts, contracts.vesting)
@@ -32,7 +32,7 @@ fn missing_funds() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: Duration::from_seconds(0),
                     cliff: Duration::from_seconds(0),
@@ -50,7 +50,7 @@ fn non_owner_creating_position() {
 
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
                 user: accounts.owner.address(),
@@ -74,7 +74,7 @@ fn not_dango_token() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: Duration::from_seconds(0),
                     cliff: Duration::from_seconds(0),
@@ -95,7 +95,7 @@ fn before_unlocking_starting_time() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
@@ -107,7 +107,7 @@ fn before_unlocking_starting_time() {
         .should_succeed();
 
     let initial_balance = suite
-        .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+        .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
         .should_succeed();
 
     // Go 1 day before cliff ends
@@ -116,7 +116,7 @@ fn before_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -130,7 +130,7 @@ fn before_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -138,7 +138,7 @@ fn before_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(
                 initial_balance
                     + TEST_AMOUNT
@@ -154,7 +154,7 @@ fn before_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -162,7 +162,7 @@ fn before_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(
                 initial_balance
                     + TEST_AMOUNT
@@ -178,7 +178,7 @@ fn before_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -186,13 +186,13 @@ fn before_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
         // Check if the position is updated
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| res.position.claimed == res.position.total);
     }
@@ -207,7 +207,7 @@ fn after_unlocking_starting_time() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
                     cliff: ONE_MONTH * 9,
@@ -219,7 +219,7 @@ fn after_unlocking_starting_time() {
         .should_succeed();
 
     let initial_balance = suite
-        .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+        .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
         .should_succeed();
 
     // Go 1 day before cliff ends
@@ -228,7 +228,7 @@ fn after_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -242,7 +242,7 @@ fn after_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -257,7 +257,7 @@ fn after_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -265,7 +265,7 @@ fn after_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(
                 initial_balance
                     + TEST_AMOUNT
@@ -281,7 +281,7 @@ fn after_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -289,7 +289,7 @@ fn after_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(
                 initial_balance
                     + TEST_AMOUNT
@@ -305,7 +305,7 @@ fn after_unlocking_starting_time() {
 
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -313,13 +313,13 @@ fn after_unlocking_starting_time() {
             .should_succeed();
 
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + TEST_AMOUNT.amount);
 
         // Check if the position is updated
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| res.position.claimed == res.position.total);
     }
@@ -334,7 +334,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
@@ -348,7 +348,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
     let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
 
     let initial_balance = suite
-        .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+        .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
         .should_succeed();
 
     // Go 1 month after unlocking cliff finish.
@@ -365,7 +365,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
                 &mut accounts.owner,
                 vesting_addr,
                 &vesting::ExecuteMsg::Terminate {
-                    user: accounts.relayer.address(),
+                    user: accounts.user1.address(),
                 },
                 Coins::default(),
             )
@@ -374,7 +374,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         // Check the status of the position after terminate
         suite
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
@@ -386,7 +386,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         // Claim
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -395,7 +395,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
 
         // Check the balance of the user
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(37));
 
         // Go forward 3 epoch to claim all tokens
@@ -404,7 +404,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         // Claim
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -414,7 +414,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
         // Check if the position is removed
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(40))
@@ -423,7 +423,7 @@ fn terminate_before_unlocking_starting_time_never_claimed() {
 
         // Check the balance of the user
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(40));
     }
 }
@@ -437,7 +437,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp - ONE_MONTH,
                     cliff: ONE_MONTH * 9,
@@ -451,7 +451,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
     let epoch = epoch(ONE_MONTH * 27, TEST_AMOUNT.amount);
 
     let initial_balance = suite
-        .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+        .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
         .should_succeed();
 
     // Go 1 month after unlocking cliff finish.
@@ -466,7 +466,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         // Claim
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -475,7 +475,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
 
         // Check the balance of the user
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(37));
     }
 
@@ -493,7 +493,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
                 &mut accounts.owner,
                 vesting_addr,
                 &vesting::ExecuteMsg::Terminate {
-                    user: accounts.relayer.address(),
+                    user: accounts.user1.address(),
                 },
                 Coins::default(),
             )
@@ -502,7 +502,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         // Check the status of the position after terminate
         suite
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
@@ -517,7 +517,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         // Claim
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -527,7 +527,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
         // Check if the position is removed
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(44))
@@ -536,7 +536,7 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
 
         // Check the balance of the user
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(44));
     }
 }
@@ -550,7 +550,7 @@ fn terminate_after_unlocking_starting_time() {
             &mut accounts.owner,
             vesting_addr,
             &vesting::ExecuteMsg::Create {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
                 schedule: Schedule {
                     start_time: suite.block.timestamp + ONE_MONTH,
                     cliff: ONE_MONTH * 9,
@@ -562,7 +562,7 @@ fn terminate_after_unlocking_starting_time() {
         .should_succeed();
 
     let initial_balance = suite
-        .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+        .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
         .should_succeed();
 
     // Go 2 month after unlocking cliff finish.
@@ -579,7 +579,7 @@ fn terminate_after_unlocking_starting_time() {
                 &mut accounts.owner,
                 vesting_addr,
                 &vesting::ExecuteMsg::Terminate {
-                    user: accounts.relayer.address(),
+                    user: accounts.user1.address(),
                 },
                 Coins::default(),
             )
@@ -588,7 +588,7 @@ fn terminate_after_unlocking_starting_time() {
         // Check the status of the position after terminate
         suite
             .query_wasm_smart(vesting_addr, QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
@@ -600,7 +600,7 @@ fn terminate_after_unlocking_starting_time() {
         // Claim
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 vesting_addr,
                 &vesting::ExecuteMsg::Claim {},
                 Coins::default(),
@@ -610,7 +610,7 @@ fn terminate_after_unlocking_starting_time() {
         // Check if the position is removed
         suite
             .query_wasm_smart(vesting_addr, vesting::QueryPositionRequest {
-                user: accounts.relayer.address(),
+                user: accounts.user1.address(),
             })
             .should_succeed_and(|res| {
                 res.position.vesting_status == VestingStatus::Terminated(Uint128::new(37))
@@ -619,7 +619,7 @@ fn terminate_after_unlocking_starting_time() {
 
         // Check the balance of the user
         suite
-            .query_balance(&accounts.relayer, TEST_AMOUNT.denom.clone())
+            .query_balance(&accounts.user1, TEST_AMOUNT.denom.clone())
             .should_succeed_and_equal(initial_balance + Uint128::new(37));
     }
 }
