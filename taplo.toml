@@ -7,7 +7,7 @@
 align_comments        = true
 align_entries         = true
 allowed_blank_lines   = 1
-array_auto_expand     = false
+array_auto_expand     = true
 column_width          = 100
 inline_table_expand   = false
 reorder_arrays        = true
