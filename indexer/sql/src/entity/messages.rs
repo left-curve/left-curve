@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
     pub transaction_id: Uuid,
+    pub order_idx: i32,
     pub created_at: DateTime,
     #[sea_orm(column_type = "JsonBinary")]
     pub data: Json,

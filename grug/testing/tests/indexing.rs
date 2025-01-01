@@ -59,11 +59,13 @@ fn index_block_with_nonblocking_indexer() {
             .expect("Can't fetch messages");
         assert_that!(messages).is_not_empty();
 
-        // let events = entity::events::Entity::find()
-        //     .all(&suite.app.indexer.context.db)
-        //     .await
-        //     .expect("Can't fetch events");
-        // assert_that!(events).is_not_empty();
+        let events = entity::events::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch events");
+        assert_that!(events).is_not_empty();
+
+        dbg!(events);
     });
 }
 
