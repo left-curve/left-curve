@@ -13,12 +13,14 @@ export {
 export {
   recursiveTransform,
   mayTransform,
+  sortObject,
 } from "./mappers.js";
 
 export {
   getCoinsTypedData,
   getMembersTypedData,
-  composeTypedData,
+  composeTxTypedData,
+  composeArbitraryTypedData,
   hashTypedData,
 } from "./typedData.js";
 
