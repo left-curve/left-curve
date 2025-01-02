@@ -232,7 +232,8 @@ fn build_event_active_model(
     tx_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
 ) -> crate::error::Result<entity::events::ActiveModel> {
-    // I'm serializing `FlattenEvent` to `serde_json::Value` and then manually removing the top hash which is serialized to.
+    // I'm serializing `FlattenEvent` to `serde_json::Value` and then manually
+    // removing the top hash which is serialized to.
     // I could also use #[serde(flatten)] on `FlattenEvent`
     let data = serde_json::to_value(&index_event.event)?;
     // Removing the top hash
