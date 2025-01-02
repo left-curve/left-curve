@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, catch_and_update_event, catch_event, AppError, Buffer,
-        EventResult, GasTracker, Shared, Vm, CHAIN_ID, CONTRACTS,
+        call_in_0_out_1_handle_response, catch_and_update_event, catch_event, AppError,
+        EventResult, GasTracker, Vm, CHAIN_ID, CONTRACTS,
     },
     grug_types::{Addr, BlockInfo, Context, EvtCron, Storage, Timestamp},
 };
@@ -19,14 +19,7 @@ where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let buffer = Shared::new(Buffer::new(storage, None));
-    let storage = Box::new(buffer.clone());
-
     let evt = _do_cron_execute(vm, storage, gas_tracker, block, contract, time, next);
-
-    if evt.is_ok() {
-        buffer.disassemble().consume();
-    }
 
     #[cfg(feature = "tracing")]
     evt.debug(
