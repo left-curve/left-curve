@@ -831,3 +831,25 @@ fn vote_edge_cases() {
         })
         .should_succeed_and_equal(None);
 }
+
+#[test]
+fn non_member_cannot_create_proposal() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user4), // not a member
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "account {} isn't associated with user `{}`",
+            safe_address, accounts.user4.username
+        ));
+}

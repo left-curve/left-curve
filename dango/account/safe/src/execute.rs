@@ -1,7 +1,7 @@
 use {
     crate::{NEXT_PROPOSAL_ID, PROPOSALS, VOTES},
     anyhow::{bail, ensure},
-    dango_auth::verify_nonce_and_signature,
+    dango_auth::{authenticate_tx, verify_nonce_and_signature},
     dango_types::{
         account::{
             multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
@@ -31,6 +31,7 @@ pub fn instantiate(ctx: MutableCtx, _msg: InstantiateMsg) -> anyhow::Result<Resp
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let metadata: Metadata = tx.data.clone().deserialize_json()?;
+    let mut has_non_voting = false;
 
     // The only type of transaction a Safe account is allowed to emit is to
     // execute itself. Everything else needs to be done through proposals.
@@ -39,41 +40,51 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     for msg in tx.msgs.iter() {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
-                if let ExecuteMsg::Vote {
-                    proposal_id, voter, ..
-                } = msg.clone().deserialize_json()?
-                {
-                    // If the action is to vote for a proposal:
-                    //
-                    // 1. The voter username in `ExecuteMsg::Vote` must batch
-                    //    the signer username in `Metadata`.
-                    //
-                    // 2. The voter/signer must be a member _at the time the
-                    //    proposal was created_. It doesn't matter whether they
-                    //    are a member _now_.
-                    ensure!(
-                        voter == metadata.username,
-                        "can't vote with a different username"
-                    );
+                // If the action is to vote for a proposal:
+                //
+                // 1. The voter username in `ExecuteMsg::Vote` must batch
+                //    the signer username in `Metadata`.
+                //
+                // 2. The voter/signer must be a member _at the time the
+                //    proposal was created_. It doesn't matter whether they
+                //    are a member _now_.
+                match msg.clone().deserialize_json::<ExecuteMsg>()? {
+                    ExecuteMsg::Vote {
+                        proposal_id, voter, ..
+                    } => {
+                        ensure!(
+                            voter == metadata.username,
+                            "can't vote with a different username"
+                        );
 
-                    let proposal = PROPOSALS.load(ctx.storage, proposal_id)?;
+                        let proposal = PROPOSALS.load(ctx.storage, proposal_id)?;
 
-                    match proposal.status {
-                        Status::Voting { params, .. } => {
-                            ensure!(
-                                params.members.contains_key(&voter),
-                                "voter `{voter}` is not eligible to vote in this proposal"
-                            );
-                        },
-                        _ => bail!("proposal is not in voting period"),
-                    }
+                        match proposal.status {
+                            Status::Voting { params, .. } => {
+                                ensure!(
+                                    params.members.contains_key(&voter),
+                                    "voter `{voter}` is not eligible to vote in this proposal"
+                                );
+                            },
+                            _ => bail!("proposal is not in voting period"),
+                        }
+                    },
+                    _ => {
+                        has_non_voting = true;
+                    },
                 }
             },
             _ => bail!("the only action a Safe account can do is to execute itself"),
         }
     }
 
-    verify_nonce_and_signature(ctx, tx, None, Some(metadata))?;
+    // If the transaction contains any message that's not voting (i.e. create or
+    // execute a proposal), then the signer must be a _current_ member.
+    if has_non_voting {
+        authenticate_tx(ctx, tx, Some(metadata))?;
+    } else {
+        verify_nonce_and_signature(ctx, tx, None, Some(metadata))?;
+    }
 
     Ok(AuthResponse::new().request_backrun(false))
 }
