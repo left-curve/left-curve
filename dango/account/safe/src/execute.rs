@@ -46,7 +46,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                     );
                 }
             },
-            _ => bail!("a Safe account can only execute itself"),
+            _ => bail!("the only action a Safe account can do is to execute itself"),
         }
     }
 
