@@ -17,7 +17,6 @@ use {
 /// The specific job it's going to do, is to send a predefined amount of coin to
 /// a predefined receiver address.
 mod tester {
-
     use super::*;
 
     const JOB: Item<Job> = Item::new("job");
@@ -41,14 +40,14 @@ mod tester {
     }
 }
 
-/// A contract that implements the `cron_execute` export function. Used for
+/// A cronjob contract that intentionally fails during `cron_execute`. Used for
 /// testing whether the app can correctly handle revert failing cronjobs state changes.
 mod failing_tester {
-
     use super::*;
 
     pub fn instantiate(ctx: MutableCtx, _: Empty) -> anyhow::Result<Response> {
         ctx.storage.write(b"foo", b"init");
+
         Ok(Response::new())
     }
 
