@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test, Safe},
+    dango_testing::{setup_test_naive, Safe},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
@@ -10,14 +10,14 @@ use {
         },
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
-        Message, NonEmpty, NonZero, ResultExt, Signer, Timestamp, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, HashExt, Inner,
+        JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Timestamp, Uint128,
     },
 };
 
 #[test]
 fn safe() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
     // ----------------------------- Safe creation -----------------------------
 
@@ -440,4 +440,56 @@ fn safe() {
 
         suite.send_transaction(tx).should_fail_with_error(error);
     }
+}
+
+#[test]
+fn sending_message_without_proposal() {
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+
+    // Register a new Safe. For simplicity, this would be a 1-of-1 multisig.
+    let params = AccountParams::Safe(multi::Params {
+        members: btree_map! {
+            accounts.user1.username.clone() => NonZero::new_unchecked(1),
+        },
+        voting_period: NonZero::new_unchecked(Duration::from_seconds(30)),
+        threshold: NonZero::new_unchecked(1),
+        timelock: None,
+    });
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount { params },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Find the address of the Safe just registered.
+    let mut safe = Safe::new(Addr::derive(
+        contracts.account_factory,
+        codes.account_safe.to_bytes().hash256(),
+        Salt { index: 10 }.into_bytes().as_slice(),
+    ));
+
+    // Attempt to send a `MsgTransfer` from the Safe without a proposal.
+    // Should fail.
+    suite
+        .transfer(
+            safe.with_signer(&accounts.user1),
+            accounts.user1.address(),
+            Coins::one("uusdc", 123).unwrap(),
+        )
+        .should_fail_with_error("the only action a Safe account can do is to execute itself");
+
+    // Attempt to send a `MsgExecute` from the Safe where the contract being
+    // executed is not the Safe itself. Should fail with the same error.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            contracts.lending,
+            &Empty {}, // the message doesn't matter
+            Coins::new(),
+        )
+        .should_fail_with_error("the only action a Safe account can do is to execute itself");
 }
