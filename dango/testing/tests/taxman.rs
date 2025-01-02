@@ -1,5 +1,5 @@
 use {
-    dango_testing::setup_test,
+    dango_testing::setup_test_naive,
     dango_types::taxman,
     grug::{Addressable, Coins, Denom, MultiplyFraction, Number, ResultExt, Udec128, Uint128},
     std::{str::FromStr, sync::LazyLock},
@@ -12,7 +12,7 @@ static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap(
 
 #[test]
 fn fee_rate_update_works() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     // Starting balances of the two accounts
     let owner_usdc_balance = Uint128::new(100_000_000_000);

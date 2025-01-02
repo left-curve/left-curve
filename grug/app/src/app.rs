@@ -190,9 +190,16 @@ where
             .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
     }
 
+    // Finalize a block by performing the following actions in order:
+    //
+    // 1. indexer `pre_indexing`
+    // 2. execute transactions one by one
+    // 3. perform cronjobs
+    // 4. remove orphaned nodes
+    // 5. flush (but not commit) state changes to DB
+    // 5. indexer `index_block`
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
-        let cfg = CONFIG.load(&buffer)?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         let mut cron_outcomes = vec![];
@@ -209,31 +216,23 @@ where
             });
         }
 
-        // Remove orphaned codes (those that are not used by any contract) that
-        // have been orphaned longer than the maximum age.
-        if let Some(since) = block
-            .info
-            .timestamp
-            .into_nanos()
-            .checked_sub(cfg.max_orphan_age.into_nanos())
-        {
-            for hash in CODES
-                .idx
-                .status
-                .prefix_keys(
-                    &buffer,
-                    None,
-                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
-                        since: Duration::from_nanos(since),
-                    })),
-                    Order::Ascending,
-                )
-                .map(|res| res.map(|(_status, hash)| hash))
-                .collect::<StdResult<Vec<_>>>()?
-            {
-                CODES.remove(&mut buffer, hash)?;
-            }
+        // Process transactions one-by-one.
+        for (_idx, tx) in block.txs.clone().into_iter().enumerate() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(idx = _idx, "Processing transaction");
+
+            let tx_outcome = process_tx(
+                self.vm.clone(),
+                buffer.clone(),
+                block.info,
+                tx.clone(),
+                AuthMode::Finalize,
+            );
+
+            tx_outcomes.push(tx_outcome);
         }
+
+        let cfg = CONFIG.load(&buffer)?;
 
         // Find all cronjobs that should be performed. That is, ones that the
         // scheduled time is earlier or equal to the current block time.
@@ -260,7 +259,7 @@ where
                 idx = _idx,
                 time = into_utc_string(time),
                 contract = contract.to_string(),
-                "Attempting to perform cronjob"
+                "Performing cronjob"
             );
 
             let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None));
@@ -293,20 +292,33 @@ where
             ));
         }
 
-        // Process transactions one-by-one.
-        for (_idx, tx) in block.txs.clone().into_iter().enumerate() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(idx = _idx, "Processing transaction");
+        // Remove orphaned codes (those that are not used by any contract) that
+        // have been orphaned longer than the maximum age.
+        if let Some(since) = block
+            .info
+            .timestamp
+            .into_nanos()
+            .checked_sub(cfg.max_orphan_age.into_nanos())
+        {
+            for hash in CODES
+                .idx
+                .status
+                .prefix_keys(
+                    &buffer,
+                    None,
+                    Some(PrefixBound::Inclusive(CodeStatus::Orphaned {
+                        since: Duration::from_nanos(since),
+                    })),
+                    Order::Ascending,
+                )
+                .map(|res| res.map(|(_status, hash)| hash))
+                .collect::<StdResult<Vec<_>>>()?
+            {
+                #[cfg(feature = "tracing")]
+                tracing::info!(hash = ?hash, "Orphaned code purged");
 
-            let tx_outcome = process_tx(
-                self.vm.clone(),
-                buffer.clone(),
-                block.info,
-                tx.clone(),
-                AuthMode::Finalize,
-            );
-
-            tx_outcomes.push(tx_outcome);
+                CODES.remove(&mut buffer, hash)?;
+            }
         }
 
         // Save the last committed block.
