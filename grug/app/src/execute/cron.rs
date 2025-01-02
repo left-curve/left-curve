@@ -24,10 +24,13 @@ where
 
     let evt = _do_cron_execute(vm, storage, gas_tracker, block, contract, time, next);
 
+    if evt.is_ok() {
+        buffer.disassemble().consume();
+    }
+
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            buffer.write_access().commit();
             tracing::info!(contract = contract.to_string(), "Performed cronjob");
         },
         "Failed to perform cronjob",
