@@ -1,6 +1,6 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{setup_test_naive, Safe, TestAccounts, TestSuite},
+    dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
@@ -8,11 +8,12 @@ use {
         },
         account_factory::{
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
+            Username,
         },
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, HashExt, Inner,
-        JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
+        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Uint128,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -339,12 +340,20 @@ fn proposal_failing() {
         .should_fail_with_error("proposal isn't passed or timelock hasn't elapsed");
 }
 
+/// There are 3 cases of unauthorized voting:
+///
+/// 1. A non-member attempts to vote, impersonating a member.
+/// 2. A member attempts to vote, imperonating another member.
+/// 3. A user who is currently a member attempts to vote in a proposal that was
+///    created at a time when this user wasn't a member.
+///
+/// This test tests #1.
 #[test]
-fn unauthorized_voting() {
+fn unauthorized_voting_via_impersonation_by_a_non_member() {
     let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
     let safe_address = safe.address();
 
-    // Member 1 makes a proposal.
+    // A member creates a proposal.
     suite
         .execute(
             safe.with_signer(&accounts.user1),
@@ -358,13 +367,17 @@ fn unauthorized_voting() {
         )
         .should_succeed();
 
-    // accounts.user4 attempts to vote, impersonating member 2.
-    // Since accounts.user4 doesn't actual know member 2's private key, the tx will be
-    // signed by accounts.user4's private key.
+    // `user4`, who is not a member, attempts to vote by impersonating `user1`.
+    //
+    // Since attacker doesn't actual know the member's private key, the tx will
+    // be signed by accounts.user4's private key.
+    //
     // There are a few variables to consider:
+    //
     // - the `voter` field in `ExecuteMsg::Vote`
     // - the `username` field in the metadata
     // - the `key_hash` field in the metadata
+    //
     // We test all 2**3 = 8 combinations.
     for (voter, username, key_hash, error) in [
         // First, in `dango_account_safe::authenticate`, the contract checks the
@@ -431,45 +444,183 @@ fn unauthorized_voting() {
             "signature is unauthentic".to_string(),
         ),
     ] {
-        // Sign the tx with accounts.user4s's private key.
-        let mut tx = safe
-            .with_signer(&accounts.user4)
-            .with_nonce(1) // TODO: nonce isn't incremented if auth fails... should we make sure it increments?
-            .sign_transaction(
-                NonEmpty::new_unchecked(vec![Message::execute(
-                    safe_address,
-                    &multi::ExecuteMsg::Vote {
-                        proposal_id: 1,
-                        voter,
-                        vote: Vote::Yes,
-                        execute: false,
-                    },
-                    Coins::new(),
-                )
-                .unwrap()]),
-                &suite.chain_id,
-                suite.default_gas_limit,
-            )
-            .unwrap();
-
-        tx.data.as_object_mut().unwrap().insert(
-            "username".to_string(),
-            username.to_json_value().unwrap().into_inner(),
+        unauthorized_voting_via_impersonation(
+            &mut suite,
+            safe.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            &accounts.user4,
+            voter,
+            username,
+            key_hash,
+            error,
         );
-
-        tx.credential
-            .as_object_mut()
-            .and_then(|obj| obj.get_mut("standard"))
-            .and_then(|val| val.as_object_mut())
-            .map(|standard| {
-                standard.insert(
-                    "key_hash".to_string(),
-                    key_hash.to_json_value().unwrap().into_inner(),
-                )
-            });
-
-        suite.send_transaction(tx).should_fail_with_error(error);
     }
+}
+
+/// This tests the scenario #2 in authorized voting.
+#[test]
+fn unauthorized_voting_via_impersonation_by_a_member() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    // A member creates a proposal.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // The attacker (`user3`) votes first.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user3),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user3.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // `user3`, who is a member but already voted, attempts to vote again by
+    // impersonating `user1`.
+    for (voter, username, key_hash, nonce, error) in [
+        (
+            accounts.user3.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user3.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user2.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user3.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            format!(
+                "user `{}` has already voted in this proposal",
+                accounts.user3.username
+            ),
+        ),
+        // The previous test passes `authenticate`, but fails in `execute`, so
+        // the nonce should be incremented.
+        (
+            accounts.user3.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user2.first_key_hash(),
+            3,
+            format!("key hash {} not found", accounts.user2.first_key_hash()),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user3.first_key_hash(),
+            3,
+            format!("key hash {} not found", accounts.user3.first_key_hash()),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
+            3,
+            "signature is unauthentic".to_string(),
+        ),
+    ] {
+        unauthorized_voting_via_impersonation(
+            &mut suite,
+            safe.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            &accounts.user3,
+            voter,
+            username,
+            key_hash,
+            error,
+        );
+    }
+}
+
+fn unauthorized_voting_via_impersonation<'a>(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    safe: &mut Safe<'a>,
+    // An attacker who attempts to illegally vote by impersonating a member.
+    attacker: &'a TestAccount,
+    // The voter usrname that the attacker will put in the `ExecuteMsg::Vote`.
+    voter: Username,
+    // The username that the attacker will put in the metadata.
+    username: Username,
+    // The key hash that the attacker will put in the metadata.
+    key_hash: Hash256,
+    // The expected error
+    error: String,
+) {
+    let safe_address = safe.address();
+
+    // Sign the tx with attacker's private key.
+    let mut tx = safe
+        .with_signer(attacker)
+        .sign_transaction(
+            NonEmpty::new_unchecked(vec![Message::execute(
+                safe_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 1,
+                    voter,
+                    vote: Vote::Yes,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .unwrap()]),
+            &suite.chain_id,
+            suite.default_gas_limit,
+        )
+        .unwrap();
+
+    tx.data.as_object_mut().unwrap().insert(
+        "username".to_string(),
+        username.to_json_value().unwrap().into_inner(),
+    );
+
+    tx.credential
+        .as_object_mut()
+        .and_then(|obj| obj.get_mut("standard"))
+        .and_then(|val| val.as_object_mut())
+        .map(|standard| {
+            standard.insert(
+                "key_hash".to_string(),
+                key_hash.to_json_value().unwrap().into_inner(),
+            )
+        });
+
+    suite.send_transaction(tx).should_fail_with_error(error);
 }
 
 /// Any action a Safe account does must be though a passed proposal. Attempting
