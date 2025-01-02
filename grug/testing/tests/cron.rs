@@ -1,7 +1,14 @@
 use {
+    anyhow::bail,
+    borsh::{BorshDeserialize, BorshSerialize},
+    grug_storage::Item,
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, Duration, Json, ResultExt, Timestamp},
+    grug_types::{
+        btree_map, Addr, Binary, Coin, Coins, Duration, Empty, Json, Message, MutableCtx, Response,
+        ResultExt, SudoCtx, Timestamp,
+    },
     grug_vm_rust::ContractBuilder,
+    serde::{Deserialize, Serialize},
 };
 
 /// A contract that implements the `cron_execute` export function. Used for
@@ -10,12 +17,8 @@ use {
 /// The specific job it's going to do, is to send a predefined amount of coin to
 /// a predefined receiver address.
 mod tester {
-    use {
-        borsh::{BorshDeserialize, BorshSerialize},
-        grug_storage::Item,
-        grug_types::{Addr, Coin, Message, MutableCtx, Response, StdResult, SudoCtx},
-        serde::{Deserialize, Serialize},
-    };
+
+    use super::*;
 
     const JOB: Item<Job> = Item::new("job");
 
@@ -25,16 +28,34 @@ mod tester {
         pub coin: Coin,
     }
 
-    pub fn instantiate(ctx: MutableCtx, job: Job) -> StdResult<Response> {
+    pub fn instantiate(ctx: MutableCtx, job: Job) -> anyhow::Result<Response> {
         JOB.save(ctx.storage, &job).unwrap();
 
         Ok(Response::new())
     }
 
-    pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+    pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         let job = JOB.load(ctx.storage).unwrap();
 
         Ok(Response::new().add_message(Message::transfer(job.receiver, job.coin).unwrap()))
+    }
+}
+
+/// A contract that implements the `cron_execute` export function. Used for
+/// testing whether the app can correctly handle revert failing cronjobs state changes.
+mod failing_tester {
+
+    use super::*;
+
+    pub fn instantiate(ctx: MutableCtx, _: Empty) -> anyhow::Result<Response> {
+        ctx.storage.write(b"foo", b"init");
+        Ok(Response::new())
+    }
+
+    pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+        ctx.storage.write(b"foo", b"cron_execute");
+
+        bail!("this cronjob is supposed to fail");
     }
 }
 
@@ -241,4 +262,60 @@ fn cronjob_works() {
             .query_balances(&accounts["jake"])
             .should_succeed_and_equal(expect);
     }
+}
+
+#[test]
+fn cronjob_fails() {
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .add_account("larry", Coins::new())
+        .set_genesis_time(Timestamp::from_nanos(0))
+        .set_block_time(Duration::from_seconds(1))
+        .set_owner("larry")
+        .build();
+
+    let tester_code = ContractBuilder::new(Box::new(failing_tester::instantiate))
+        .with_cron_execute(Box::new(failing_tester::cron_execute))
+        .build();
+
+    let tester_code_hash = suite
+        .upload(&mut accounts["larry"], tester_code)
+        .should_succeed()
+        .code_hash;
+
+    let cron = suite
+        .instantiate(
+            &mut accounts["larry"],
+            tester_code_hash,
+            &Empty {},
+            "cron1",
+            Some("cron1"),
+            None,
+            Coins::default(),
+        )
+        .should_succeed()
+        .address;
+
+    let mut new_cfg = suite.query_config().unwrap();
+    new_cfg.cronjobs = btree_map! {
+        // cron1 has interval of 0, meaning it's to be called every block.
+        cron => Duration::from_seconds(0),
+    };
+
+    suite
+        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .should_succeed();
+
+    // Before the block SHOULD_BE_EMPTY should be non-existent
+    suite
+        .query_wasm_raw(cron, *b"foo")
+        .should_succeed_and_equal(Some(Binary::from(*b"init")));
+
+    // Advance block and trigger the cronjob
+    let res = suite.make_empty_block();
+    assert_eq!(res.cron_outcomes.len(), 1);
+
+    // The cron execution fails, so SHOULD_BE_EMPTY should be None (storage changes not committed)
+    suite
+        .query_wasm_raw(cron, *b"foo")
+        .should_succeed_and_equal(Some(Binary::from(*b"init")));
 }
