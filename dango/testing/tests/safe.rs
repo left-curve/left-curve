@@ -1,5 +1,6 @@
 use {
-    dango_testing::{setup_test_naive, Safe},
+    dango_genesis::Contracts,
+    dango_testing::{setup_test_naive, Safe, TestAccounts, TestSuite},
     dango_types::{
         account::{
             multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
@@ -11,30 +12,33 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, HashExt, Inner,
-        JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Timestamp, Uint128,
+        JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Uint128,
     },
+    grug_app::NaiveProposalPreparer,
 };
 
-#[test]
-fn safe() {
+// Create a Safe account with users 1-3 as members.
+fn setup_safe_test<'a>() -> (
+    TestSuite<NaiveProposalPreparer>,
+    TestAccounts,
+    Contracts,
+    Safe<'a>,
+    multi::Params,
+) {
     let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
-    // ----------------------------- Safe creation -----------------------------
-
-    // Create a Safe with users 1-3 as members and the following parameters.
-    let mut params = multi::Params {
+    let params = multi::Params {
         members: btree_map! {
             accounts.user1.username.clone() => NonZero::new(1).unwrap(),
             accounts.user2.username.clone() => NonZero::new(1).unwrap(),
             accounts.user3.username.clone() => NonZero::new(1).unwrap(),
         },
-        voting_period: NonZero::new(Timestamp::from_seconds(30)).unwrap(),
+        voting_period: NonZero::new(Duration::from_seconds(30)).unwrap(),
         threshold: NonZero::new(2).unwrap(),
         // For the purpose of this test, the Safe doesn't have a timelock.
         timelock: None,
     };
 
-    // Member 1 sends a transaction to create the Safe.
     suite
         .execute(
             &mut accounts.user1,
@@ -48,14 +52,27 @@ fn safe() {
         )
         .should_succeed();
 
-    // Derive the Safe's address.
-    // We have 10 genesis users, indexed from 0, so the Safe's index should be 10.
-    let safe_address = Addr::derive(
+    let safe = Safe::new(Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 10 }.into_bytes().as_slice(),
-    );
-    let mut safe = Safe::new(safe_address);
+        Salt {
+            // We have 10 genesis users, indexed from 0, so the Safe's index
+            // should be 10.
+            index: 10,
+        }
+        .into_bytes()
+        .as_slice(),
+    ));
+
+    (suite, accounts, contracts, safe, params)
+}
+
+#[test]
+fn safe() {
+    let (mut suite, accounts, contracts, mut safe, mut params) = setup_safe_test();
+    let safe_address = safe.address();
+
+    // ----------------------------- Safe creation -----------------------------
 
     // Query the account params.
     suite
@@ -444,33 +461,7 @@ fn safe() {
 
 #[test]
 fn sending_message_without_proposal() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
-
-    // Register a new Safe. For simplicity, this would be a 1-of-1 multisig.
-    let params = AccountParams::Safe(multi::Params {
-        members: btree_map! {
-            accounts.user1.username.clone() => NonZero::new_unchecked(1),
-        },
-        voting_period: NonZero::new_unchecked(Duration::from_seconds(30)),
-        threshold: NonZero::new_unchecked(1),
-        timelock: None,
-    });
-
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterAccount { params },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Find the address of the Safe just registered.
-    let mut safe = Safe::new(Addr::derive(
-        contracts.account_factory,
-        codes.account_safe.to_bytes().hash256(),
-        Salt { index: 10 }.into_bytes().as_slice(),
-    ));
+    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
 
     // Attempt to send a `MsgTransfer` from the Safe without a proposal.
     // Should fail.
