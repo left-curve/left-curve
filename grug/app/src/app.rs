@@ -263,25 +263,32 @@ where
                 "Attempting to perform cronjob"
             );
 
-            let gas_tracker = GasTracker::new_limitless();
+            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None));
+            let cron_gas_tracker = GasTracker::new_limitless();
             let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
-                Box::new(buffer.clone()),
-                gas_tracker.clone(),
+                Box::new(cron_buffer.clone()),
+                cron_gas_tracker.clone(),
                 block.info,
                 contract,
                 time,
                 next_time,
             );
 
+            // Commit state changes if the cronjob was successful.
+            // Ignore if unsuccessful.
+            if cron_event.is_ok() {
+                cron_buffer.disassemble().commit();
+            }
+
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(&mut buffer, contract, next_time)?;
 
             cron_outcomes.push(CronOutcome::new(
-                gas_tracker.limit(),
-                gas_tracker.used(),
+                cron_gas_tracker.limit(),
+                cron_gas_tracker.used(),
                 cron_event.as_committment(),
             ));
         }
