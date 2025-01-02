@@ -1,7 +1,7 @@
 use {
     crate::{NEXT_PROPOSAL_ID, PROPOSALS, VOTES},
     anyhow::{bail, ensure},
-    dango_auth::authenticate_tx,
+    dango_auth::verify_nonce_and_signature,
     dango_types::{
         account::{
             multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
@@ -39,18 +39,41 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     for msg in tx.msgs.iter() {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
-                if let ExecuteMsg::Vote { voter, .. } = msg.clone().deserialize_json()? {
+                if let ExecuteMsg::Vote {
+                    proposal_id, voter, ..
+                } = msg.clone().deserialize_json()?
+                {
+                    // If the action is to vote for a proposal:
+                    //
+                    // 1. The voter username in `ExecuteMsg::Vote` must batch
+                    //    the signer username in `Metadata`.
+                    //
+                    // 2. The voter/signer must be a member _at the time the
+                    //    proposal was created_. It doesn't matter whether they
+                    //    are a member _now_.
                     ensure!(
                         voter == metadata.username,
                         "can't vote with a different username"
                     );
+
+                    let proposal = PROPOSALS.load(ctx.storage, proposal_id)?;
+
+                    match proposal.status {
+                        Status::Voting { params, .. } => {
+                            ensure!(
+                                params.members.contains_key(&voter),
+                                "voter `{voter}` is not eligible to vote in this proposal"
+                            );
+                        },
+                        _ => bail!("proposal is not in voting period"),
+                    }
                 }
             },
             _ => bail!("the only action a Safe account can do is to execute itself"),
         }
     }
 
-    authenticate_tx(ctx, tx, None, Some(metadata))?;
+    verify_nonce_and_signature(ctx, tx, None, Some(metadata))?;
 
     Ok(AuthResponse::new().request_backrun(false))
 }
@@ -312,7 +335,6 @@ mod tests {
         let member1 = Username::from_str("member1").unwrap();
         let member2 = Username::from_str("member2").unwrap();
         let member3 = Username::from_str("member3").unwrap();
-        let non_member = Username::from_str("jake").unwrap();
         let chain_id = String::from("test");
 
         // Create a Safe with 3 signers.
@@ -339,33 +361,6 @@ mod tests {
             .with_contract(SAFE)
             .with_mode(AuthMode::Finalize);
 
-        // Someone who is not a member attempts to sender a tx with the Safe.
-        // Should fail.
-        {
-            let res = authenticate(ctx.as_auth(), Tx {
-                sender: SAFE,
-                gas_limit: 1_000_000,
-                // For this test the messages don't matter.
-                msgs: NonEmpty::new_unchecked(vec![]),
-                data: Metadata {
-                    username: non_member.clone(),
-                    // The things below (nonce, chain_id, expiry) don't
-                    // matter, because authentication should fail before we even
-                    // reach the signature verification step.
-                    nonce: 0,
-                    chain_id: chain_id.clone(),
-                    expiry: None,
-                }
-                .to_json_value()
-                .unwrap(),
-                credential: Json::null(),
-            });
-
-            assert!(res.is_err_and(|err| err.to_string().contains(&format!(
-                "account {SAFE} isn't associated with user `{non_member}`"
-            ))));
-        }
-
         // A member sends a tx, but it's doing something other than executing
         // the Safe itself. Should fail.
         {
@@ -390,7 +385,7 @@ mod tests {
 
             assert!(res.is_err_and(|err| err
                 .to_string()
-                .contains("a Safe account can only execute itself")));
+                .contains("the only action a Safe account can do is to execute itself")));
         }
 
         // A member sends a tx, it's executing the Safe itself to vote in a

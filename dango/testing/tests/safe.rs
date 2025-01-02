@@ -3,7 +3,7 @@ use {
     dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
-            multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
+            multi::{self, ParamUpdates, QueryProposalRequest, QueryVoteRequest, Status, Vote},
             single,
         },
         account_factory::{
@@ -188,15 +188,14 @@ fn proposal_passing_with_manual_execution() {
     // Member 1 makes a proposal to amend the members set,
     // adding a new member (`user4`) and removing one (`user3`).
     let updates = ParamUpdates {
-        members: ChangeSet::new(
+        members: ChangeSet::new_unchecked(
             btree_map! {
                 accounts.user4.username.clone() => NonZero::new(1).unwrap(),
             },
             btree_set! {
                 accounts.user3.username.clone(),
             },
-        )
-        .unwrap(),
+        ),
         voting_period: None,
         threshold: None,
     };
@@ -415,8 +414,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             accounts.user4.username.clone(),
             accounts.user4.first_key_hash(),
             format!(
-                "account {} isn't associated with user `{}`",
-                safe.address(),
+                "voter `{}` is not eligible to vote in this proposal",
                 accounts.user4.username
             ),
         ),
@@ -425,8 +423,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             accounts.user4.username.clone(),
             accounts.user2.first_key_hash(),
             format!(
-                "account {} isn't associated with user `{}`",
-                safe.address(),
+                "voter `{}` is not eligible to vote in this proposal",
                 accounts.user4.username
             ),
         ),
@@ -669,4 +666,168 @@ fn unauthorized_execute() {
             Coins::new(),
         )
         .should_fail_with_error("only the Safe account itself can execute itself");
+}
+
+/// Whether someone can vote in a proposal is determined by whether they were a
+/// member _at the time the proposal was created_. This leads to two edge cases:
+///
+/// ## Edge case 1
+///
+/// - A proposal is created when the user is a member.
+/// - Another proposal passes to remove the user's membership.
+/// - The user attempts to vote.
+///
+/// This transaction should be ACCEPTED, despite the user is NOT a a current
+/// member.
+///
+/// ## Edge case 2
+///
+/// - A proposal is created when the user is NOT a member.
+/// - Another proposal passes to add the user as a member.
+/// - The user attempts to vote.
+///
+/// This transaction should be REJECT, despite the user IS a current member.
+#[test]
+fn vote_edge_cases() {
+    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    // Member 1:
+    // - makes a proposal;
+    // - makes another proposal to remove `user3` and add `user4`;
+    // - vote in the second proposal.
+    //
+    // Member 2:
+    // - vote in the second proposal with auto-execute.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "remove user3".to_string(),
+                description: None,
+                messages: vec![Message::execute(
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::ConfigureSafe {
+                        updates: ParamUpdates {
+                            members: ChangeSet::new_unchecked(
+                                btree_map! {
+                                    accounts.user4.username.clone() => NonZero::new_unchecked(1),
+                                },
+                                btree_set! {
+                                    accounts.user3.username.clone(),
+                                },
+                            ),
+                            threshold: None,
+                            voting_period: None,
+                        },
+                    },
+                    Coins::new(),
+                )
+                .unwrap()],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 2,
+                voter: accounts.user1.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user2),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 2,
+                voter: accounts.user2.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Now, `user3` should no longer be a member, while `user4` should be one.
+    suite
+        .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
+            address: safe_address,
+        })
+        .should_succeed_and(|account| {
+            let members = account.params.clone().as_safe().members;
+            !members.contains_key(&accounts.user3.username)
+                && members.contains_key(&accounts.user4.username)
+        });
+
+    // `user3` attempts to vote in first proposal. Should be accepted!
+    suite
+        .execute(
+            safe.with_signer(&accounts.user3),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user3.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // `user3`'s vote should have been recorded.
+    suite
+        .query_wasm_smart(safe_address, QueryVoteRequest {
+            proposal_id: 1,
+            member: accounts.user3.username.clone(),
+        })
+        .should_succeed_and_equal(Some(Vote::Yes));
+
+    // `user4` attempts to vote in the first proposal. Should be rejected!
+    suite
+        .execute(
+            safe.with_signer(&accounts.user4),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user4.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "voter `{}` is not eligible to vote in this proposal",
+            accounts.user4.username
+        ));
+
+    // `user4`'s vote should NOT have been recorded.
+    suite
+        .query_wasm_smart(safe_address, QueryVoteRequest {
+            proposal_id: 1,
+            member: accounts.user4.username.clone(),
+        })
+        .should_succeed_and_equal(None);
 }
