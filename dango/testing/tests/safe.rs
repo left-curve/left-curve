@@ -650,3 +650,23 @@ fn unauthorized_messages() {
         )
         .should_fail_with_error("the only action a Safe account can do is to execute itself");
 }
+
+/// When creating, voting for, or executing a proposal, the member must use the
+/// Safe account has the transaction's `sender`.
+#[test]
+fn unauthorized_execute() {
+    let (mut suite, mut accounts, _, safe, _) = setup_safe_test();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            safe.address(),
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("only the Safe account itself can execute itself");
+}

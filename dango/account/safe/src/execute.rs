@@ -62,6 +62,11 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.contract,
+        "only the Safe account itself can execute itself"
+    );
+
     match msg {
         ExecuteMsg::Propose {
             title,
