@@ -146,7 +146,7 @@ impl TxCmd {
                 admin,
             } => {
                 let msg = msg.deserialize_json::<Json>()?;
-                let funds = Coins::from_str(&funds.unwrap_or_default())?;
+                let funds = funds.map_or_else(|| Ok(Coins::new()), |s| Coins::from_str(&s))?;
                 Message::instantiate(code_hash, &msg, salt, label, admin, funds)?
             },
             SubCmd::Execute {
@@ -155,7 +155,7 @@ impl TxCmd {
                 funds,
             } => {
                 let msg = msg.deserialize_json::<Json>()?;
-                let funds = Coins::from_str(&funds.unwrap_or_default())?;
+                let funds = funds.map_or_else(|| Ok(Coins::new()), |s| Coins::from_str(&s))?;
                 Message::execute(contract, &msg, funds)?
             },
             SubCmd::Migrate {
