@@ -84,9 +84,10 @@ impl MigrationTrait for Migration {
                     .table(Event::Table)
                     .if_not_exists()
                     .col(pk_uuid(Event::Id))
-                    .col(pk_uuid(Event::ParentId))
+                    .col(uuid_null(Event::ParentId))
                     // TODO: add foreign key to transactions
                     .col(uuid_null(Event::TransactionId))
+                    .col(uuid_null(Event::MessageId))
                     .col(date_time(Event::CreatedAt))
                     .col(string(Event::Type))
                     .col(string_null(Event::Method))

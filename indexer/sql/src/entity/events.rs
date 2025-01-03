@@ -9,6 +9,7 @@ pub struct Model {
     pub id: Uuid,
     pub parent_id: Option<Uuid>,
     pub transaction_id: Option<Uuid>,
+    pub message_id: Option<Uuid>,
     pub created_at: DateTime,
     pub r#type: String,
     pub method: Option<String>,

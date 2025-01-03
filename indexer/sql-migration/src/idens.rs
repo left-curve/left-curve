@@ -52,6 +52,7 @@ pub enum Event {
     Id,
     ParentId,
     TransactionId,
+    MessageId,
     Type,
     #[allow(clippy::enum_variant_names)]
     EventStatus,

@@ -295,9 +295,9 @@ pub struct EvtGuest {
     /// The wasm export function that was being called when the event was emitted.
     pub method: String,
     /// Sub events emitted by the contract.
-    pub contract_events: Vec<ContractEvent>,
+    pub contract_events: Vec<ContractEvent>, /* events emitted by the contract (swap_amount, slipage, etc) */
     /// All events emitted by a submessage.
-    pub sub_events: Vec<EventStatus<SubEvent>>,
+    pub sub_events: Vec<EventStatus<SubEvent>>, /* all events emitted by a submessage, if len is 3 it means 3 submessages were executed */
 }
 
 impl EvtGuest {

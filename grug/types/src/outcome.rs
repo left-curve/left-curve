@@ -143,7 +143,7 @@ impl TxEvents {
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
-    pub msgs: Vec<EventStatus<Event>>,
+    pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
     pub backrun: EventStatus<EvtBackrun>,
 }
 

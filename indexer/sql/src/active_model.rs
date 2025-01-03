@@ -8,12 +8,13 @@ use {
         },
     },
     grug_math::Inner,
-    grug_types::{Block, BlockOutcome, CommitmentStatus, JsonSerExt, Tx, TxOutcome},
+    grug_types::{Block, BlockOutcome, CommitmentStatus, JsonSerExt, Op, Tx, TxOutcome},
     sea_orm::{
         prelude::*,
         sqlx::types::chrono::{NaiveDateTime, TimeZone},
         Set,
     },
+    std::collections::HashMap,
 };
 
 #[derive(Debug, Default)]
@@ -36,10 +37,11 @@ impl Models {
             .unwrap_or_default()
             .naive_utc();
 
-        let mut next_id = 1;
-        let mut events = vec![];
+        let mut event_next_id = 1;
+
         let mut transactions = vec![];
         let mut messages = vec![];
+        let mut events = vec![];
 
         // 1. Storing cron events
         {
@@ -48,13 +50,14 @@ impl Models {
                     block,
                     IndexCategory::Cron,
                     1,
-                    next_id,
+                    event_next_id,
                     cron_outcome.cron_event.clone(),
+                    None,
                     None,
                     created_at,
                 )?;
 
-                next_id = new_next_id;
+                event_next_id = new_next_id;
                 events.append(&mut tx_events);
             }
         }
@@ -84,10 +87,42 @@ impl Models {
 
                 transactions.push(new_transaction);
 
+                let (mut tx_events, new_next_id) = flatten_events(
+                    block,
+                    IndexCategory::Tx,
+                    1,
+                    event_next_id,
+                    tx_outcome.events.withhold.clone(),
+                    Some(transaction_id),
+                    None,
+                    created_at,
+                )?;
+
+                event_next_id = new_next_id;
+                events.append(&mut tx_events);
+
+                let (mut tx_events, new_next_id) = flatten_events(
+                    block,
+                    IndexCategory::Tx,
+                    1,
+                    event_next_id,
+                    tx_outcome.events.authenticate.clone(),
+                    Some(transaction_id),
+                    None,
+                    created_at,
+                )?;
+
+                event_next_id = new_next_id;
+                events.append(&mut tx_events);
+
                 // 3. Storing messages
                 {
                     let mut message_idx = 1;
-                    for message in tx.msgs.iter() {
+
+                    // TODO: should zip with events
+                    for message in tx.msgs.iter()
+                    // .zip(tx_outcome.events.msgs_and_backrun.msgs.iter())
+                    {
                         let serialized_message = message.to_json_value()?;
 
                         let contract_addr = serialized_message
@@ -119,56 +154,34 @@ impl Models {
 
                 // 4. Storing events
                 {
+                    // iterate over messages and backrun messages
                     let (mut tx_events, new_next_id) = flatten_events(
                         block,
                         IndexCategory::Tx,
                         1,
-                        next_id,
-                        tx_outcome.events.withhold.clone(),
-                        Some(transaction_id),
-                        created_at,
-                    )?;
-
-                    next_id = new_next_id;
-                    events.append(&mut tx_events);
-
-                    let (mut tx_events, new_next_id) = flatten_events(
-                        block,
-                        IndexCategory::Tx,
-                        1,
-                        next_id,
-                        tx_outcome.events.authenticate.clone(),
-                        Some(transaction_id),
-                        created_at,
-                    )?;
-
-                    next_id = new_next_id;
-                    events.append(&mut tx_events);
-
-                    let (mut tx_events, new_next_id) = flatten_events(
-                        block,
-                        IndexCategory::Tx,
-                        1,
-                        next_id,
+                        event_next_id,
+                        // loop here
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
+                        None,
                         created_at,
                     )?;
 
-                    next_id = new_next_id;
+                    event_next_id = new_next_id;
                     events.append(&mut tx_events);
 
                     let (mut tx_events, new_next_id) = flatten_events(
                         block,
                         IndexCategory::Tx,
                         1,
-                        next_id,
+                        event_next_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
+                        None,
                         created_at,
                     )?;
 
-                    next_id = new_next_id;
+                    event_next_id = new_next_id;
                     events.append(&mut tx_events);
                 }
 
@@ -200,6 +213,7 @@ fn flatten_events<T>(
     next_id: u32,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
+    message_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
 ) -> crate::error::Result<(Vec<entity::events::ActiveModel>, u32)>
 where
@@ -214,13 +228,24 @@ where
     );
 
     let mut events = vec![];
+    let mut events_ids = HashMap::new();
+
     for event in flatten_events {
-        events.push(build_event_active_model(
+        let event_id = uuid::Uuid::new_v4();
+
+        events_ids.insert(event.id.event_index, event_id);
+
+        let db_event = build_event_active_model(
             &event,
             block,
             transaction_id,
+            message_id,
+            event_id,
+            events_ids.get(&event.parent_id.event_index).cloned(),
             created_at,
-        )?);
+        )?;
+
+        events.push(db_event);
     }
 
     Ok((events, next_id))
@@ -230,6 +255,9 @@ fn build_event_active_model(
     index_event: &IndexEvent,
     block: &Block,
     tx_id: Option<uuid::Uuid>,
+    message_id: Option<uuid::Uuid>,
+    event_id: uuid::Uuid,
+    parent_event_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
 ) -> crate::error::Result<entity::events::ActiveModel> {
     // I'm serializing `FlattenEvent` to `serde_json::Value` and then manually
@@ -262,9 +290,10 @@ fn build_event_active_model(
     let commitment_status = index_event.commitment_status.to_string();
 
     Ok(entity::events::ActiveModel {
-        id: Set(uuid::Uuid::new_v4()),
-        parent_id: Set(None),
+        id: Set(event_id),
+        parent_id: Set(parent_event_id),
         transaction_id: Set(tx_id),
+        message_id: Set(message_id),
         created_at: Set(created_at),
         r#type: Set(index_event.event.to_string()),
         method: Set(method),
