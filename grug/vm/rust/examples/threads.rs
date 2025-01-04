@@ -12,6 +12,10 @@
 //! The contract's job is to sum up the values corresponding to all keys, for
 //! each prefix. It will do this either using a single thread, one prefix at a
 //! time, or using multiple threads, one thread per prefix.
+//!
+//! This example mimics order clearing in our order book contract, where the
+//! prefix is the trading pair ({base_denom, quote_denom}) and the KV pairs are
+//! the orders. We want to clear orders in multiple trading pairs in parallel.
 
 mod example {
     use {
