@@ -2965,6 +2965,7 @@ dependencies = [
  "grug-app",
  "grug-crypto",
  "grug-math",
+ "grug-storage",
  "grug-testing",
  "grug-types",
  "serde",

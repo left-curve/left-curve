@@ -19,5 +19,6 @@ thiserror   = { workspace = true }
 
 [dev-dependencies]
 grug-math    = { workspace = true }
+grug-storage = { workspace = true }
 grug-testing = { workspace = true }
 test-case    = { workspace = true }
