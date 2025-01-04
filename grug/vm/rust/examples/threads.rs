@@ -15,9 +15,10 @@
 
 mod example {
     use {
+        crossbeam::scope,
         grug_storage::{Item, Map},
-        grug_types::{MutableCtx, Order, Response, StdResult},
-        std::{collections::BTreeMap, thread},
+        grug_types::{MutableCtx, Order, Response, StdResult, Storage},
+        std::collections::BTreeMap,
     };
 
     pub const PREFIXES: [&str; 5] = ["alice", "bob", "charlie", "dave", "eve"];
@@ -71,19 +72,28 @@ mod example {
     }
 
     fn compute_multi_thread<'a>(ctx: MutableCtx<'a>) -> StdResult<Response> {
-        let sums = PREFIXES
-            .into_iter()
-            .map(|prefix| {
-                thread::spawn(move || {
-                    DATA.prefix(prefix)
-                        .values(ctx.storage, None, None, Order::Ascending)
-                        .try_fold(0, |sum, x| x.map(|x| sum + x))
-                        .map(|sum| (prefix.to_string(), sum))
+        // Note: must use a scoped thread such as `crossbeam::thread::scope` or
+        // `rayon::ThreadPool::scope`, to ensure the thread doesn't outlive
+        // `ctx.storage`.
+        let sums = scope(|s| {
+            PREFIXES
+                .into_iter()
+                .map(|prefix| {
+                    // Cast the storage to an _immutable_ reference so that it
+                    // can be shared among threads.
+                    let storage = ctx.storage as &dyn Storage;
+                    s.spawn(move |_| {
+                        DATA.prefix(prefix)
+                            .values(storage, None, None, Order::Ascending)
+                            .try_fold(0, |sum, x| x.map(|x| sum + x))
+                            .map(|sum| (prefix.to_string(), sum))
+                    })
+                    .join()
+                    .unwrap()
                 })
-                .join()
-                .unwrap_or_else(|err| panic!("thread panicked: {err:?}"))
-            })
-            .collect::<StdResult<BTreeMap<_, _>>>()?;
+                .collect::<StdResult<BTreeMap<_, _>>>()
+        })
+        .unwrap_or_else(|err| panic!("thread panicked: {err:?}"))?;
 
         MULTI_THREAD_RESULT.save(ctx.storage, &sums)?;
 

@@ -18,6 +18,7 @@ serde       = { workspace = true }
 thiserror   = { workspace = true }
 
 [dev-dependencies]
+crossbeam    = { workspace = true }
 grug-math    = { workspace = true }
 grug-storage = { workspace = true }
 grug-testing = { workspace = true }
