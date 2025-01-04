@@ -1,3 +1,9 @@
+#[cfg(all(feature = "abci", feature = "tracing"))]
+use data_encoding::BASE64;
+#[cfg(feature = "abci")]
+use grug_types::JsonDeExt;
+#[cfg(any(feature = "abci", feature = "tracing"))]
+use grug_types::JsonSerExt;
 use {
     crate::{
         catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
@@ -18,11 +24,6 @@ use {
         TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
-};
-#[cfg(feature = "abci")]
-use {
-    data_encoding::BASE64,
-    grug_types::{JsonDeExt, JsonSerExt},
 };
 
 /// The ABCI application.
