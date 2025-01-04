@@ -2722,7 +2722,6 @@ dependencies = [
  "grug-types",
  "ics23",
  "prost",
- "serde",
  "tendermint",
  "thiserror 2.0.9",
  "tower 0.5.2",

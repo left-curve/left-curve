@@ -10,7 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-abci    = ["data-encoding", "tower", "tower-abci"]
+abci    = ["data-encoding", "tendermint", "tower", "tower-abci"]
 ibc     = ["ics23"]
 tracing = ["chrono", "dep:tracing"]
 
@@ -23,8 +23,7 @@ grug-storage  = { workspace = true }
 grug-types    = { workspace = true }
 ics23         = { workspace = true, optional = true }
 prost         = { workspace = true }
-serde         = { workspace = true }
-tendermint    = { workspace = true }
+tendermint    = { workspace = true, optional = true }
 thiserror     = { workspace = true }
 tower         = { workspace = true, optional = true }
 tower-abci    = { workspace = true, optional = true }
