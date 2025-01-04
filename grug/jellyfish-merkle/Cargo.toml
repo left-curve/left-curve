@@ -11,11 +11,8 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-default = ["ics23"]
-# Include fuzzing test, which can take a long time to run.
-fuzzing = []
 # Include a method to generate ICS-23 compatible proofs.
-ics23 = ["dep:ics23"]
+ibc = ["ics23"]
 
 [dependencies]
 borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
@@ -29,5 +26,4 @@ thiserror    = { workspace = true }
 [dev-dependencies]
 hex-literal = { workspace = true }
 proptest    = { workspace = true }
-rand        = { workspace = true }
 test-case   = { workspace = true }

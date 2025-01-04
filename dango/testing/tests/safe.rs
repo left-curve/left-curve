@@ -1,40 +1,45 @@
 use {
-    dango_testing::{setup_test, Safe},
+    dango_genesis::Contracts,
+    dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
-            multi::{self, ParamUpdates, QueryProposalRequest, Status, Vote},
+            multi::{self, ParamUpdates, QueryProposalRequest, QueryVoteRequest, Status, Vote},
             single,
         },
         account_factory::{
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
+            Username,
         },
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, HashExt, Inner, JsonSerExt,
-        Message, NonEmpty, NonZero, ResultExt, Signer, Timestamp, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
+        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Uint128,
     },
+    grug_app::NaiveProposalPreparer,
 };
 
-#[test]
-fn safe() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+// Create a Safe account with users 1-3 as members.
+fn setup_safe_test<'a>() -> (
+    TestSuite<NaiveProposalPreparer>,
+    TestAccounts,
+    Contracts,
+    Safe<'a>,
+    multi::Params,
+) {
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
-    // ----------------------------- Safe creation -----------------------------
-
-    // Create a Safe with users 1-3 as members and the following parameters.
-    let mut params = multi::Params {
+    let params = multi::Params {
         members: btree_map! {
             accounts.user1.username.clone() => NonZero::new(1).unwrap(),
             accounts.user2.username.clone() => NonZero::new(1).unwrap(),
             accounts.user3.username.clone() => NonZero::new(1).unwrap(),
         },
-        voting_period: NonZero::new(Timestamp::from_seconds(30)).unwrap(),
+        voting_period: NonZero::new(Duration::from_seconds(30)).unwrap(),
         threshold: NonZero::new(2).unwrap(),
         // For the purpose of this test, the Safe doesn't have a timelock.
         timelock: None,
     };
 
-    // Member 1 sends a transaction to create the Safe.
     suite
         .execute(
             &mut accounts.user1,
@@ -48,14 +53,24 @@ fn safe() {
         )
         .should_succeed();
 
-    // Derive the Safe's address.
-    // We have 10 genesis users, indexed from 0, so the Safe's index should be 10.
-    let safe_address = Addr::derive(
+    let safe = Safe::new(Addr::derive(
         contracts.account_factory,
         codes.account_safe.to_bytes().hash256(),
-        Salt { index: 10 }.into_bytes().as_slice(),
-    );
-    let mut safe = Safe::new(safe_address);
+        Salt {
+            // We have 10 genesis users, indexed from 0, so the Safe's index
+            // should be 10.
+            index: 10,
+        }
+        .into_bytes()
+        .as_slice(),
+    ));
+
+    (suite, accounts, contracts, safe, params)
+}
+
+#[test]
+fn safe_creation() {
+    let (suite, accounts, contracts, safe, params) = setup_safe_test();
 
     // Query the account params.
     suite
@@ -97,8 +112,12 @@ fn safe() {
     suite
         .query_balance(&safe, "uusdc")
         .should_succeed_and_equal(Uint128::new(5_000_000));
+}
 
-    // ---------------------- Proposal with auto-execute -----------------------
+#[test]
+fn proposal_passing_with_auto_execution() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
 
     // Member 1 makes a proposal to transfer some tokens.
     suite
@@ -159,21 +178,24 @@ fn safe() {
     suite
         .query_balance(&accounts.owner, "uusdc")
         .should_succeed_and_equal(Uint128::new(100_000_888_888));
+}
 
-    // --------------------- Proposal with manual execute ----------------------
+#[test]
+fn proposal_passing_with_manual_execution() {
+    let (mut suite, accounts, contracts, mut safe, mut params) = setup_safe_test();
+    let safe_address = safe.address();
 
-    // Member 1 makes another proposal. This time to amend the members set,
-    // adding a new member (using `owner`) and removing one (using `user3`).
+    // Member 1 makes a proposal to amend the members set,
+    // adding a new member (`user4`) and removing one (`user3`).
     let updates = ParamUpdates {
-        members: ChangeSet::new(
+        members: ChangeSet::new_unchecked(
             btree_map! {
-                accounts.owner.username.clone() => NonZero::new(1).unwrap(),
+                accounts.user4.username.clone() => NonZero::new(1).unwrap(),
             },
             btree_set! {
                 accounts.user3.username.clone(),
             },
-        )
-        .unwrap(),
+        ),
         voting_period: None,
         threshold: None,
     };
@@ -183,7 +205,7 @@ fn safe() {
             safe.with_signer(&accounts.user1),
             safe_address,
             &multi::ExecuteMsg::Propose {
-                title: "add owner as member".to_string(),
+                title: "add user4 as member".to_string(),
                 description: None,
                 messages: vec![Message::execute(
                     contracts.account_factory,
@@ -205,7 +227,7 @@ fn safe() {
                 safe.with_signer(member),
                 safe_address,
                 &multi::ExecuteMsg::Vote {
-                    proposal_id: 2,
+                    proposal_id: 1,
                     voter: member.username.clone(),
                     vote: Vote::Yes,
                     execute: false,
@@ -217,7 +239,7 @@ fn safe() {
 
     // Proposal should be in the "passed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 2 })
+        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| matches!(prop.status, Status::Passed { .. }));
 
     // Member 1 executes the proposal.
@@ -225,14 +247,14 @@ fn safe() {
         .execute(
             safe.with_signer(&accounts.user1),
             safe_address,
-            &multi::ExecuteMsg::Execute { proposal_id: 2 },
+            &multi::ExecuteMsg::Execute { proposal_id: 1 },
             Coins::new(),
         )
         .should_succeed();
 
     // Proposal should now be in the "executed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 2 })
+        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| prop.status == Status::Executed);
 
     // Ensure the params have been amended.
@@ -250,7 +272,7 @@ fn safe() {
     // The new member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
-            username: accounts.owner.username.clone(),
+            username: accounts.user4.username.clone(),
         })
         .should_succeed_and(|accounts| accounts.contains_key(&safe.address()));
 
@@ -260,8 +282,12 @@ fn safe() {
             username: accounts.user3.username.clone(),
         })
         .should_succeed_and(|accounts| !accounts.contains_key(&safe.address()));
+}
 
-    // ---------------------------- Failed proposal ----------------------------
+#[test]
+fn proposal_failing() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
 
     // Member 1 makes a proposal.
     suite
@@ -277,14 +303,14 @@ fn safe() {
         )
         .should_succeed();
 
-    // Member 2 and owner vote against it.
-    for member in [&accounts.user2, &accounts.owner] {
+    // Member 2 and 3 vote against it.
+    for member in [&accounts.user2, &accounts.user3] {
         suite
             .execute(
                 safe.with_signer(member),
                 safe_address,
                 &multi::ExecuteMsg::Vote {
-                    proposal_id: 3,
+                    proposal_id: 1,
                     voter: member.username.clone(),
                     vote: Vote::No,
                     execute: false,
@@ -296,7 +322,7 @@ fn safe() {
 
     // The proposal should be in the "failed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 3 })
+        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| prop.status == Status::Failed);
 
     // Attempting to execute the proposal should fail.
@@ -305,16 +331,28 @@ fn safe() {
             safe.with_signer(&accounts.user1),
             Message::execute(
                 safe_address,
-                &multi::ExecuteMsg::Execute { proposal_id: 3 },
+                &multi::ExecuteMsg::Execute { proposal_id: 1 },
                 Coins::new(),
             )
             .unwrap(),
         )
         .should_fail_with_error("proposal isn't passed or timelock hasn't elapsed");
+}
 
-    // -------------------------- Unauthorized voting --------------------------
+/// There are 3 cases of unauthorized voting:
+///
+/// 1. A non-member attempts to vote, impersonating a member.
+/// 2. A member attempts to vote, imperonating another member.
+/// 3. A user who is currently a member attempts to vote in a proposal that was
+///    created at a time when this user wasn't a member.
+///
+/// This test tests #1.
+#[test]
+fn unauthorized_voting_via_impersonation_by_a_non_member() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
 
-    // Member 1 makes a proposal. This should be proposal 4.
+    // A member creates a proposal.
     suite
         .execute(
             safe.with_signer(&accounts.user1),
@@ -328,13 +366,17 @@ fn safe() {
         )
         .should_succeed();
 
-    // accounts.user4 attempts to vote, impersonating member 2.
-    // Since accounts.user4 doesn't actual know member 2's private key, the tx will be
-    // signed by accounts.user4's private key.
+    // `user4`, who is not a member, attempts to vote by impersonating `user1`.
+    //
+    // Since attacker doesn't actual know the member's private key, the tx will
+    // be signed by accounts.user4's private key.
+    //
     // There are a few variables to consider:
+    //
     // - the `voter` field in `ExecuteMsg::Vote`
     // - the `username` field in the metadata
     // - the `key_hash` field in the metadata
+    //
     // We test all 2**3 = 8 combinations.
     for (voter, username, key_hash, error) in [
         // First, in `dango_account_safe::authenticate`, the contract checks the
@@ -372,8 +414,7 @@ fn safe() {
             accounts.user4.username.clone(),
             accounts.user4.first_key_hash(),
             format!(
-                "account {} isn't associated with user `{}`",
-                safe.address(),
+                "voter `{}` is not eligible to vote in this proposal",
                 accounts.user4.username
             ),
         ),
@@ -382,8 +423,7 @@ fn safe() {
             accounts.user4.username.clone(),
             accounts.user2.first_key_hash(),
             format!(
-                "account {} isn't associated with user `{}`",
-                safe.address(),
+                "voter `{}` is not eligible to vote in this proposal",
                 accounts.user4.username
             ),
         ),
@@ -401,43 +441,415 @@ fn safe() {
             "signature is unauthentic".to_string(),
         ),
     ] {
-        // Sign the tx with accounts.user4s's private key.
-        let mut tx = safe
-            .with_signer(&accounts.user4)
-            .with_nonce(12) // TODO: nonce isn't incremented if auth fails... should we make sure it increments?
-            .sign_transaction(
-                NonEmpty::new_unchecked(vec![Message::execute(
-                    safe_address,
-                    &multi::ExecuteMsg::Vote {
-                        proposal_id: 4,
-                        voter,
-                        vote: Vote::Yes,
-                        execute: false,
+        unauthorized_voting_via_impersonation(
+            &mut suite,
+            safe.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            &accounts.user4,
+            voter,
+            username,
+            key_hash,
+            error,
+        );
+    }
+}
+
+/// This tests the scenario #2 in authorized voting.
+#[test]
+fn unauthorized_voting_via_impersonation_by_a_member() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    // A member creates a proposal.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // The attacker (`user3`) votes first.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user3),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user3.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // `user3`, who is a member but already voted, attempts to vote again by
+    // impersonating `user1`.
+    for (voter, username, key_hash, nonce, error) in [
+        (
+            accounts.user3.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user3.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user2.first_key_hash(),
+            2,
+            "can't vote with a different username".to_string(),
+        ),
+        (
+            accounts.user3.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user3.first_key_hash(),
+            2,
+            format!(
+                "user `{}` has already voted in this proposal",
+                accounts.user3.username
+            ),
+        ),
+        // The previous test passes `authenticate`, but fails in `execute`, so
+        // the nonce should be incremented.
+        (
+            accounts.user3.username.clone(),
+            accounts.user3.username.clone(),
+            accounts.user2.first_key_hash(),
+            3,
+            format!("key hash {} not found", accounts.user2.first_key_hash()),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user3.first_key_hash(),
+            3,
+            format!("key hash {} not found", accounts.user3.first_key_hash()),
+        ),
+        (
+            accounts.user2.username.clone(),
+            accounts.user2.username.clone(),
+            accounts.user2.first_key_hash(),
+            3,
+            "signature is unauthentic".to_string(),
+        ),
+    ] {
+        unauthorized_voting_via_impersonation(
+            &mut suite,
+            safe.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            &accounts.user3,
+            voter,
+            username,
+            key_hash,
+            error,
+        );
+    }
+}
+
+fn unauthorized_voting_via_impersonation<'a>(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    safe: &mut Safe<'a>,
+    // An attacker who attempts to illegally vote by impersonating a member.
+    attacker: &'a TestAccount,
+    // The voter usrname that the attacker will put in the `ExecuteMsg::Vote`.
+    voter: Username,
+    // The username that the attacker will put in the metadata.
+    username: Username,
+    // The key hash that the attacker will put in the metadata.
+    key_hash: Hash256,
+    // The expected error
+    error: String,
+) {
+    let safe_address = safe.address();
+
+    // Sign the tx with attacker's private key.
+    let mut tx = safe
+        .with_signer(attacker)
+        .sign_transaction(
+            NonEmpty::new_unchecked(vec![Message::execute(
+                safe_address,
+                &multi::ExecuteMsg::Vote {
+                    proposal_id: 1,
+                    voter,
+                    vote: Vote::Yes,
+                    execute: false,
+                },
+                Coins::new(),
+            )
+            .unwrap()]),
+            &suite.chain_id,
+            suite.default_gas_limit,
+        )
+        .unwrap();
+
+    tx.data.as_object_mut().unwrap().insert(
+        "username".to_string(),
+        username.to_json_value().unwrap().into_inner(),
+    );
+
+    tx.credential
+        .as_object_mut()
+        .and_then(|obj| obj.get_mut("standard"))
+        .and_then(|val| val.as_object_mut())
+        .map(|standard| {
+            standard.insert(
+                "key_hash".to_string(),
+                key_hash.to_json_value().unwrap().into_inner(),
+            )
+        });
+
+    suite.send_transaction(tx).should_fail_with_error(error);
+}
+
+/// Any action a Safe account does must be though a passed proposal. Attempting
+/// otherwise should be rejected.
+#[test]
+fn unauthorized_messages() {
+    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
+
+    // Attempt to send a `MsgTransfer` from the Safe without a proposal.
+    // Should fail.
+    suite
+        .transfer(
+            safe.with_signer(&accounts.user1),
+            accounts.user1.address(),
+            Coins::one("uusdc", 123).unwrap(),
+        )
+        .should_fail_with_error("the only action a Safe account can do is to execute itself");
+
+    // Attempt to send a `MsgExecute` from the Safe where the contract being
+    // executed is not the Safe itself. Should fail with the same error.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            contracts.lending,
+            &Empty {}, // the message doesn't matter
+            Coins::new(),
+        )
+        .should_fail_with_error("the only action a Safe account can do is to execute itself");
+}
+
+/// When creating, voting for, or executing a proposal, the member must use the
+/// Safe account has the transaction's `sender`.
+#[test]
+fn unauthorized_execute() {
+    let (mut suite, mut accounts, _, safe, _) = setup_safe_test();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            safe.address(),
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("only the Safe account itself can execute itself");
+}
+
+/// Whether someone can vote in a proposal is determined by whether they were a
+/// member _at the time the proposal was created_. This leads to two edge cases:
+///
+/// ## Edge case 1
+///
+/// - A proposal is created when the user is a member.
+/// - Another proposal passes to remove the user's membership.
+/// - The user attempts to vote.
+///
+/// This transaction should be ACCEPTED, despite the user is NOT a a current
+/// member.
+///
+/// ## Edge case 2
+///
+/// - A proposal is created when the user is NOT a member.
+/// - Another proposal passes to add the user as a member.
+/// - The user attempts to vote.
+///
+/// This transaction should be REJECT, despite the user IS a current member.
+#[test]
+fn vote_edge_cases() {
+    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    // Member 1:
+    // - makes a proposal;
+    // - makes another proposal to remove `user3` and add `user4`;
+    // - vote in the second proposal.
+    //
+    // Member 2:
+    // - vote in the second proposal with auto-execute.
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "remove user3".to_string(),
+                description: None,
+                messages: vec![Message::execute(
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::ConfigureSafe {
+                        updates: ParamUpdates {
+                            members: ChangeSet::new_unchecked(
+                                btree_map! {
+                                    accounts.user4.username.clone() => NonZero::new_unchecked(1),
+                                },
+                                btree_set! {
+                                    accounts.user3.username.clone(),
+                                },
+                            ),
+                            threshold: None,
+                            voting_period: None,
+                        },
                     },
                     Coins::new(),
                 )
-                .unwrap()]),
-                &suite.chain_id,
-                suite.default_gas_limit,
-            )
-            .unwrap();
+                .unwrap()],
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
-        tx.data.as_object_mut().unwrap().insert(
-            "username".to_string(),
-            username.to_json_value().unwrap().into_inner(),
-        );
+    suite
+        .execute(
+            safe.with_signer(&accounts.user1),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 2,
+                voter: accounts.user1.username.clone(),
+                vote: Vote::Yes,
+                execute: false,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
-        tx.credential
-            .as_object_mut()
-            .and_then(|obj| obj.get_mut("standard"))
-            .and_then(|val| val.as_object_mut())
-            .map(|standard| {
-                standard.insert(
-                    "key_hash".to_string(),
-                    key_hash.to_json_value().unwrap().into_inner(),
-                )
-            });
+    suite
+        .execute(
+            safe.with_signer(&accounts.user2),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 2,
+                voter: accounts.user2.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
 
-        suite.send_transaction(tx).should_fail_with_error(error);
-    }
+    // Now, `user3` should no longer be a member, while `user4` should be one.
+    suite
+        .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
+            address: safe_address,
+        })
+        .should_succeed_and(|account| {
+            let members = account.params.clone().as_safe().members;
+            !members.contains_key(&accounts.user3.username)
+                && members.contains_key(&accounts.user4.username)
+        });
+
+    // `user3` attempts to vote in first proposal. Should be accepted!
+    suite
+        .execute(
+            safe.with_signer(&accounts.user3),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user3.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // `user3`'s vote should have been recorded.
+    suite
+        .query_wasm_smart(safe_address, QueryVoteRequest {
+            proposal_id: 1,
+            member: accounts.user3.username.clone(),
+        })
+        .should_succeed_and_equal(Some(Vote::Yes));
+
+    // `user4` attempts to vote in the first proposal. Should be rejected!
+    suite
+        .execute(
+            safe.with_signer(&accounts.user4),
+            safe_address,
+            &multi::ExecuteMsg::Vote {
+                proposal_id: 1,
+                voter: accounts.user4.username.clone(),
+                vote: Vote::Yes,
+                execute: true,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "voter `{}` is not eligible to vote in this proposal",
+            accounts.user4.username
+        ));
+
+    // `user4`'s vote should NOT have been recorded.
+    suite
+        .query_wasm_smart(safe_address, QueryVoteRequest {
+            proposal_id: 1,
+            member: accounts.user4.username.clone(),
+        })
+        .should_succeed_and_equal(None);
+}
+
+#[test]
+fn non_member_cannot_create_proposal() {
+    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
+    let safe_address = safe.address();
+
+    suite
+        .execute(
+            safe.with_signer(&accounts.user4), // not a member
+            safe_address,
+            &multi::ExecuteMsg::Propose {
+                title: "nothing".to_string(),
+                description: None,
+                messages: vec![],
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "account {} isn't associated with user `{}`",
+            safe_address, accounts.user4.username
+        ));
 }

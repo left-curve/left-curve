@@ -3362,7 +3362,6 @@ dependencies = [
  "grug-types",
  "ics23",
  "prost",
- "serde",
  "tendermint",
  "thiserror 2.0.9",
  "tower 0.5.2",
@@ -3427,7 +3426,6 @@ dependencies = [
  "grug-app",
  "grug-jmt",
  "grug-types",
- "ics23",
  "thiserror 2.0.9",
 ]
 
@@ -3451,7 +3449,6 @@ dependencies = [
  "hex-literal",
  "ics23",
  "proptest",
- "rand",
  "serde",
  "test-case",
  "thiserror 2.0.9",

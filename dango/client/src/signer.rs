@@ -222,6 +222,6 @@ mod tests {
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(mock_ctx.as_auth(), tx, None, None).should_succeed();
+        authenticate_tx(mock_ctx.as_auth(), tx, None).should_succeed();
     }
 }
