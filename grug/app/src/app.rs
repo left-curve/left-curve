@@ -13,14 +13,17 @@ use {
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CommitmentStatus, CronOutcome, Duration, Event, GenericResult, GenericResultExt,
-        GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
+        GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order, Permission,
         QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
         TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
 #[cfg(feature = "abci")]
-use {data_encoding::BASE64, grug_types::JsonDeExt};
+use {
+    data_encoding::BASE64,
+    grug_types::{JsonDeExt, JsonSerExt},
+};
 
 /// The ABCI application.
 ///
@@ -105,6 +108,7 @@ where
         // It's expected that genesis messages should all successfully execute.
         // If anyone fails, it's considered fatal and genesis is aborted.
         // The developer should examine the error, fix it, and retry.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
@@ -119,10 +123,10 @@ where
                 msg,
             );
 
-            if let Err((event, err)) = output.as_result() {
+            if let Err((_event, err)) = output.as_result() {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
-                    result = event.to_json_string_pretty().unwrap(),
+                    result = _event.to_json_string_pretty().unwrap(),
                     "Error during genesis message processing"
                 );
 
@@ -156,6 +160,7 @@ where
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unnecessary_lazy_evaluations))]
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|_err| {
@@ -254,6 +259,7 @@ where
         );
 
         // Perform the cronjobs.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -294,6 +300,7 @@ where
         }
 
         // Process transactions one-by-one.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, tx) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
@@ -773,6 +780,7 @@ where
 {
     let mut evt = MsgsAndBackrunEvents::base();
 
+    #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
