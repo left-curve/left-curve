@@ -3,7 +3,6 @@ use {
     grug_app::{Buffer, Db},
     grug_jmt::{MerkleTree, Proof},
     grug_types::{Batch, Hash256, HashExt, Op, Order, Record, Storage},
-    ics23::CommitmentProof,
     std::{
         collections::HashMap,
         ops::Bound,
@@ -115,14 +114,6 @@ impl Db for MemDb {
     fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
         Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
-    }
-
-    fn ics23_prove(
-        &self,
-        _key: Vec<u8>,
-        _version: Option<u64>,
-    ) -> Result<CommitmentProof, Self::Error> {
-        unimplemented!("don't need this for testing")
     }
 
     // Note on implementing this function: We must make sure that we don't

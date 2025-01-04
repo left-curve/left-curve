@@ -23,14 +23,58 @@ use {
 /// same storage slot.
 pub const NEXT_NONCE: Counter<u32> = Counter::new("nonce", 0, 1);
 
-/// Authenticate a transaction.
+/// Authenticate a transaction by ensuring:
 ///
-/// This logic is shared across all three account types.
+/// - the username is associated with the sender account;
+/// - the nonce is acceptible;
+/// - the signature is authentic.
+///
+/// This logic is used by single-signature accounts (Spot and Margin).
 pub fn authenticate_tx(
     ctx: AuthCtx,
     tx: Tx,
-    // If the caller has already queried the factory address or deserialized the
-    // metadata, they can be provided here, so we don't redo the work.
+    // The deserialized metadata, if it's already done, so we don't have to redo
+    // the work here.
+    maybe_metadata: Option<Metadata>,
+) -> anyhow::Result<()> {
+    let factory = ctx.querier.query_account_factory()?;
+
+    // Deserialize the transaction metadata, if it's not already done.
+    let metadata = if let Some(metadata) = maybe_metadata {
+        metadata
+    } else {
+        tx.data.clone().deserialize_json()?
+    };
+
+    // If the sender account is associated with the username, then an entry
+    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
+    // empty because we Borsh for encoding.
+    ensure!(
+        ctx.querier
+            .query_wasm_raw(
+                factory,
+                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+            )?
+            .is_some_and(|bytes| bytes.is_empty()),
+        "account {} isn't associated with user `{}`",
+        tx.sender,
+        metadata.username,
+    );
+
+    verify_nonce_and_signature(ctx, tx, Some(factory), Some(metadata))
+}
+
+/// Ensure the nonce is acceptible and the signature is authentic.
+///
+/// Compared to [`authenticate_tx`](crate::authenticate_tx), this function skips
+/// the part of verifying the username.
+///
+/// This is intended for the multi-signature (Safe) account, where we ensure the
+/// username is associated with the Safe _at the time a proposal was created_,
+/// instead of _now_.
+pub fn verify_nonce_and_signature(
+    ctx: AuthCtx,
+    tx: Tx,
     maybe_factory: Option<Addr>,
     maybe_metadata: Option<Metadata>,
 ) -> anyhow::Result<()> {
@@ -50,21 +94,6 @@ pub fn authenticate_tx(
 
     // Increment the nonce.
     let (nonce, _) = NEXT_NONCE.increment(ctx.storage)?;
-
-    // If the sender account is associated with the username, then an entry
-    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-    // empty because we Borsh for encoding.
-    ensure!(
-        ctx.querier
-            .query_wasm_raw(
-                factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-            )?
-            .is_some_and(|bytes| bytes.is_empty()),
-        "account {} isn't associated with user `{}`",
-        tx.sender,
-        metadata.username,
-    );
 
     // Verify nonce.
     match ctx.mode {
@@ -375,7 +404,7 @@ mod tests {
             .with_chain_id("dev-3")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
     }
 
     #[test]
@@ -450,13 +479,7 @@ mod tests {
           "gas_limit": 2566558
         }"#;
 
-        authenticate_tx(
-            ctx.as_auth(),
-            tx.deserialize_json::<Tx>().unwrap(),
-            None,
-            None,
-        )
-        .unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
 
     #[test]
@@ -528,7 +551,7 @@ mod tests {
             .with_chain_id("dev-3")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None, None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
     }
 
     #[test]
@@ -610,12 +633,6 @@ mod tests {
           "gas_limit": 2566260
         }"#;
 
-        authenticate_tx(
-            ctx.as_auth(),
-            tx.deserialize_json::<Tx>().unwrap(),
-            None,
-            None,
-        )
-        .unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
 }
