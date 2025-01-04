@@ -2787,7 +2787,6 @@ dependencies = [
  "grug-app",
  "grug-jmt",
  "grug-types",
- "ics23",
  "thiserror 2.0.9",
 ]
 

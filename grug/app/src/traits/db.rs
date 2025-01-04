@@ -1,7 +1,8 @@
+#[cfg(feature = "ibc")]
+use ics23::CommitmentProof;
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Batch, Hash256, Storage},
-    ics23::CommitmentProof,
 };
 
 /// Represents a database that our blockchain operates over.
@@ -70,23 +71,6 @@ pub trait Db {
     /// _membership_ proof; otherwise, it should be a _non-membership_ proof.
     fn prove(&self, key: &[u8], version: Option<u64>) -> Result<Self::Proof, Self::Error>;
 
-    /// Generate ICS-23 compatible Merkle proof of the given key at the given
-    /// version.
-    ///
-    /// If version is unspecified, use the latest version.
-    ///
-    /// ## Note
-    ///
-    /// This needs to be implemented at the `Db` level, instead of in grug-jmt,
-    /// because ICS-23 requires proofs to contain the prehash key and value,
-    /// while grug-jmt only store hashed keys and values. Therefore we need the
-    /// state storage.
-    fn ics23_prove(
-        &self,
-        key: Vec<u8>,
-        version: Option<u64>,
-    ) -> Result<CommitmentProof, Self::Error>;
-
     /// Accept a batch ops (an op is either a DB insertion or a deletion), keep
     /// them in the memory, but do not persist to disk yet; also, increment the
     /// version.
@@ -124,4 +108,26 @@ pub trait PrunableDb: Db {
     /// That is, `up_to_version` will be thd oldest version available in the
     /// database post pruning.
     fn prune(&self, up_to_version: u64) -> Result<(), Self::Error>;
+}
+
+/// Represents a database that is capable of generating IBC compatible storage
+/// proofs.
+#[cfg(feature = "ibc")]
+pub trait IbcDb: Db {
+    /// Generate ICS-23 compatible Merkle proof of the given key at the given
+    /// version.
+    ///
+    /// If version is unspecified, use the latest version.
+    ///
+    /// ## Note
+    ///
+    /// This needs to be implemented at the `Db` level, instead of in grug-jmt,
+    /// because ICS-23 requires proofs to contain the prehash key and value,
+    /// while grug-jmt only store hashed keys and values. Therefore we need the
+    /// state storage.
+    fn ics23_prove(
+        &self,
+        key: Vec<u8>,
+        version: Option<u64>,
+    ) -> Result<CommitmentProof, Self::Error>;
 }
