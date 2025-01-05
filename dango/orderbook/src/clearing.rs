@@ -1,6 +1,6 @@
 use {
     crate::Order,
-    dango_types::orderbook::OrderId,
+    dango_types::orderbook::{Direction, OrderId},
     grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
@@ -93,7 +93,9 @@ where
     })
 }
 
+#[derive(Debug)]
 pub struct FillingOutcome {
+    pub order_direction: Direction,
     pub order_price: Udec128,
     pub order_id: OrderId,
     /// The order with the `filled` amount updated.
@@ -117,7 +119,7 @@ pub fn fill_orders(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len() + asks.len());
     outcome.extend(fill_bids(bids, clearing_price, volume)?);
-    outcome.extend(fill_asks(asks, volume)?);
+    outcome.extend(fill_asks(asks, clearing_price, volume)?);
     Ok(outcome)
 }
 
@@ -136,6 +138,7 @@ fn fill_bids(
         volume -= filled;
 
         outcome.push(FillingOutcome {
+            order_direction: Direction::Bid,
             order_price,
             order_id,
             order,
@@ -158,6 +161,7 @@ fn fill_bids(
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
     asks: Vec<((Udec128, OrderId), Order)>,
+    clearing_price: Udec128,
     mut volume: Uint128,
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
@@ -169,13 +173,14 @@ fn fill_asks(
         volume -= filled;
 
         outcome.push(FillingOutcome {
+            order_direction: Direction::Ask,
             order_price,
             order_id,
             order,
             filled,
             cleared: order.remaining.is_zero(),
             refund_base: Uint128::ZERO,
-            refund_quote: filled,
+            refund_quote: filled.checked_mul_dec_floor(clearing_price)?,
         });
 
         if volume.is_zero() {

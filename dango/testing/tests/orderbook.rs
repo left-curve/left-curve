@@ -309,7 +309,7 @@ impl BalanceTracker {
 fn orderbook_works(
     // A list of orders to submit: direction, price, amount.
     orders_to_submit: Vec<(Direction, u128, u128)>,
-    // Orders that should remain unfilled: order_id => remaining amount.
+    // Orders that should remain not fully filled: order_id => remaining amount.
     remaining_orders: BTreeMap<OrderId, u128>,
     // Changes that should happen to the users' balances: order_id => denom => change.
     balance_changes: BTreeMap<OrderId, BTreeMap<Denom, BalanceChange>>,

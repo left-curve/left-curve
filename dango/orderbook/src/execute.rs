@@ -235,6 +235,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
 
         // Clear the BUY orders.
         for FillingOutcome {
+            order_direction,
             order_price,
             order_id,
             order,
@@ -271,7 +272,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                     ctx.storage,
                     (
                         (base_denom.clone(), quote_denom.clone()),
-                        Direction::Bid,
+                        order_direction,
                         order_price,
                         order_id,
                     ),
@@ -281,7 +282,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                     ctx.storage,
                     (
                         (base_denom.clone(), quote_denom.clone()),
-                        Direction::Bid,
+                        order_direction,
                         order_price,
                         order_id,
                     ),
