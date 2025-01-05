@@ -1,5 +1,5 @@
 use {
-    crate::{Order, NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS},
+    crate::{match_orders, MatchingOutcome, Order, NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS},
     anyhow::ensure,
     dango_types::{
         bank,
@@ -10,8 +10,7 @@ use {
     },
     grug::{
         Addr, Coin, Coins, ContractEvent, Denom, IsZero, Message, MultiplyFraction, MutableCtx,
-        Number, NumberConst, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128,
-        Uint128,
+        Number, Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -189,73 +188,22 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     for (base_denom, quote_denom) in pairs {
         // Iterate BUY orders from the highest price to the lowest.
         // Iterate SELL orders from the lowest price to the highest.
-        let mut bid_iter = ORDERS
+        let bid_iter = ORDERS
             .prefix((base_denom.clone(), quote_denom.clone()))
             .append(Direction::Bid)
             .range(ctx.storage, None, None, IterationOrder::Descending);
-        let mut ask_iter = ORDERS
+        let ask_iter = ORDERS
             .prefix((base_denom.clone(), quote_denom.clone()))
             .append(Direction::Ask)
             .range(ctx.storage, None, None, IterationOrder::Ascending);
 
-        let mut bid = bid_iter.next().transpose()?;
-        let mut bids = Vec::new();
-        let mut bid_is_new = true;
-        let mut bid_volume = Uint128::ZERO;
-        let mut ask = ask_iter.next().transpose()?;
-        let mut asks = Vec::new();
-        let mut ask_is_new = true;
-        let mut ask_volume = Uint128::ZERO;
-        let mut range = None;
-
-        // Loop through the orders to find:
-        // 1. the price range that maximizes the volume of trades;
-        // 2. the orders that can be cleared in this price range.
-        loop {
-            let Some(((bid_price, bid_order_id), bid_order)) = bid else {
-                break;
-            };
-
-            let Some(((ask_price, ask_order_id), ask_order)) = ask else {
-                break;
-            };
-
-            if bid_price < ask_price {
-                break;
-            }
-
-            range = Some((ask_price, bid_price));
-
-            if bid_is_new {
-                bids.push(((bid_price, bid_order_id), bid_order));
-                bid_volume.checked_add_assign(bid_order.remaining)?;
-            }
-
-            if ask_is_new {
-                asks.push(((ask_price, ask_order_id), ask_order));
-                ask_volume.checked_add_assign(ask_order.remaining)?;
-            }
-
-            if bid_volume <= ask_volume {
-                bid = bid_iter.next().transpose()?;
-                bid_is_new = true;
-            } else {
-                bid_is_new = false;
-            }
-
-            if ask_volume <= bid_volume {
-                ask = ask_iter.next().transpose()?;
-                ask_is_new = true;
-            } else {
-                ask_is_new = false;
-            }
-        }
-
-        // Drop the iterators.
-        // Next we need to make state changes, which requires `&mut ctx.storage`.
-        // The iterators hold immutable references `&ctx.storage`, so must be dropped.
-        drop(bid_iter);
-        drop(ask_iter);
+        // Run the order matching algorithm.
+        let MatchingOutcome {
+            range,
+            volume,
+            bids,
+            asks,
+        } = match_orders(bid_iter, ask_iter)?;
 
         // If no matching orders were found, then we're done with this pair.
         // Continue to the next pair.
@@ -272,9 +220,6 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         //
         // Here we choose the midpoint.
         let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
-
-        // The volume of this auction is the smaller between bid and ask volumes.
-        let volume = bid_volume.min(ask_volume);
 
         events.push(ContractEvent::new("orders_matched", OrdersMatched {
             base_denom: base_denom.clone(),
