@@ -311,7 +311,7 @@ impl Coins {
     /// - `TryFrom<Vec<Coin>>`
     /// - `TryFrom<BTreeMap<String, Uint128>>`.
     ///
-    /// Check whether the iterator contains duplicates or zero amounts.
+    /// Ensure the iterator doesn't contain duplicates. Zero amounts are skipped.
     fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
         D: TryInto<Denom>,
@@ -326,9 +326,7 @@ impl Coins {
             let amount = amount.into();
 
             if amount.is_zero() {
-                return Err(StdError::invalid_coins(format!(
-                    "denom `{denom}` has zero amount",
-                )));
+                continue;
             }
 
             if map.insert(denom, amount).is_some() {

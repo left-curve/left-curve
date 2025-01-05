@@ -1,7 +1,7 @@
 use {
     crate::Order,
     dango_types::orderbook::OrderId,
-    grug::{Number, NumberConst, StdResult, Udec128, Uint128},
+    grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
 pub struct MatchingOutcome {
@@ -91,4 +91,84 @@ where
         bids,
         asks,
     })
+}
+
+pub struct ClearingOutcome {
+    pub order_price: Udec128,
+    pub order_id: OrderId,
+    /// The order with the `filled` amount updated.
+    pub order: Order,
+    /// The amount, measured in the base asset, that has been filled.
+    pub filled: Uint128,
+    /// Whether the order has been fully filled.
+    pub cleared: bool,
+    /// Amount of base asset that should be refunded to the trader.
+    pub refund_base: Uint128,
+    /// Amount of quote asset that should be refunded to the trader.
+    pub refund_quote: Uint128,
+}
+
+/// Clear the BUY orders given a clearing price and volume.
+pub fn clear_bids(
+    bids: Vec<((Udec128, OrderId), Order)>,
+    clearing_price: Udec128,
+    mut volume: Uint128,
+) -> StdResult<Vec<ClearingOutcome>> {
+    let mut outcome = Vec::with_capacity(bids.len());
+
+    for ((order_price, order_id), mut order) in bids {
+        let filled = order.remaining.min(volume);
+
+        order.remaining -= filled;
+        volume -= filled;
+
+        outcome.push(ClearingOutcome {
+            order_price,
+            order_id,
+            order,
+            filled,
+            cleared: order.remaining.is_zero(),
+            refund_base: filled,
+            // If the order is filled at a price better than the limit price,
+            // we need to refund the trader the unused quote asset.
+            refund_quote: filled.checked_mul_dec_floor(order_price - clearing_price)?,
+        });
+
+        if volume.is_zero() {
+            break;
+        }
+    }
+
+    Ok(outcome)
+}
+
+/// Clear the SELL orders given a clearing price and volume.
+pub fn clear_asks(
+    asks: Vec<((Udec128, OrderId), Order)>,
+    mut volume: Uint128,
+) -> StdResult<Vec<ClearingOutcome>> {
+    let mut outcome = Vec::with_capacity(asks.len());
+
+    for ((order_price, order_id), mut order) in asks {
+        let filled = order.remaining.min(volume);
+
+        order.remaining -= filled;
+        volume -= filled;
+
+        outcome.push(ClearingOutcome {
+            order_price,
+            order_id,
+            order,
+            filled,
+            cleared: order.remaining.is_zero(),
+            refund_base: Uint128::ZERO,
+            refund_quote: filled,
+        });
+
+        if volume.is_zero() {
+            break;
+        }
+    }
+
+    Ok(outcome)
 }
