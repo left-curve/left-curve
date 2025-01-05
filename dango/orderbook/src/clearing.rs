@@ -93,7 +93,7 @@ where
     })
 }
 
-pub struct ClearingOutcome {
+pub struct FillingOutcome {
     pub order_price: Udec128,
     pub order_id: OrderId,
     /// The order with the `filled` amount updated.
@@ -108,12 +108,25 @@ pub struct ClearingOutcome {
     pub refund_quote: Uint128,
 }
 
-/// Clear the BUY orders given a clearing price and volume.
-pub fn clear_bids(
+/// Clear the orders given a clearing price and volume.
+pub fn fill_orders(
+    bids: Vec<((Udec128, OrderId), Order)>,
+    asks: Vec<((Udec128, OrderId), Order)>,
+    clearing_price: Udec128,
+    volume: Uint128,
+) -> StdResult<Vec<FillingOutcome>> {
+    let mut outcome = Vec::with_capacity(bids.len() + asks.len());
+    outcome.extend(fill_bids(bids, clearing_price, volume)?);
+    outcome.extend(fill_asks(asks, volume)?);
+    Ok(outcome)
+}
+
+/// Fill the BUY orders given a clearing price and volume.
+fn fill_bids(
     bids: Vec<((Udec128, OrderId), Order)>,
     clearing_price: Udec128,
     mut volume: Uint128,
-) -> StdResult<Vec<ClearingOutcome>> {
+) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len());
 
     for ((order_price, order_id), mut order) in bids {
@@ -122,7 +135,7 @@ pub fn clear_bids(
         order.remaining -= filled;
         volume -= filled;
 
-        outcome.push(ClearingOutcome {
+        outcome.push(FillingOutcome {
             order_price,
             order_id,
             order,
@@ -142,11 +155,11 @@ pub fn clear_bids(
     Ok(outcome)
 }
 
-/// Clear the SELL orders given a clearing price and volume.
-pub fn clear_asks(
+/// Fill the SELL orders given a clearing price and volume.
+fn fill_asks(
     asks: Vec<((Udec128, OrderId), Order)>,
     mut volume: Uint128,
-) -> StdResult<Vec<ClearingOutcome>> {
+) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
     for ((order_price, order_id), mut order) in asks {
@@ -155,7 +168,7 @@ pub fn clear_asks(
         order.remaining -= filled;
         volume -= filled;
 
-        outcome.push(ClearingOutcome {
+        outcome.push(FillingOutcome {
             order_price,
             order_id,
             order,

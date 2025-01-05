@@ -1,7 +1,7 @@
 use {
     crate::{
-        clear_asks, clear_bids, match_orders, ClearingOutcome, MatchingOutcome, Order,
-        NEW_ORDER_COUNTS, NEXT_ORDER_ID, ORDERS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
+        NEXT_ORDER_ID, ORDERS,
     },
     anyhow::ensure,
     dango_types::{
@@ -234,7 +234,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         })?);
 
         // Clear the BUY orders.
-        for ClearingOutcome {
+        for FillingOutcome {
             order_price,
             order_id,
             order,
@@ -242,9 +242,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             cleared,
             refund_base,
             refund_quote,
-        } in clear_bids(bids, clearing_price, volume)?
-            .into_iter()
-            .chain(clear_asks(asks, volume)?)
+        } in fill_orders(bids, asks, clearing_price, volume)?
         {
             let refund = Coins::try_from([
                 Coin {
