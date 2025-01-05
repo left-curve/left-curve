@@ -21,4 +21,5 @@ thiserror   = { workspace = true }
 grug-math    = { workspace = true }
 grug-storage = { workspace = true }
 grug-testing = { workspace = true }
+rand         = { workspace = true }
 test-case    = { workspace = true }

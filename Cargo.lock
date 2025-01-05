@@ -2968,6 +2968,7 @@ dependencies = [
  "grug-storage",
  "grug-testing",
  "grug-types",
+ "rand",
  "serde",
  "test-case",
  "thiserror 2.0.9",
