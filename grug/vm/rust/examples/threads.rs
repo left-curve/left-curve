@@ -33,7 +33,7 @@ mod example {
         std::{collections::BTreeMap, thread},
     };
 
-    pub const PREFIXES: [&str; 5] = ["a", "b", "c", "d", "e"];
+    pub const PREFIXES: [&str; 8] = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
     pub const DATA: Map<(&str, u64), u64> = Map::new("data");
 
@@ -102,10 +102,14 @@ mod example {
                             .try_fold(0, |sum, x| x.map(|x| sum + x))
                             .map(|sum| (prefix.to_string(), sum))
                     })
-                    .join()
-                    .unwrap_or_else(|err| panic!("thread panicked: {err:?}"))
                 })
-                .collect::<StdResult<BTreeMap<_, _>>>()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|h| {
+                    h.join()
+                        .unwrap_or_else(|err| panic!("thread panicked: {err:?}"))
+                })
+                .collect::<StdResult<_>>()
         })?;
 
         MULTI_THREAD_RESULT.save(ctx.storage, &sums)?;
@@ -154,6 +158,9 @@ fn main() {
                         "c".to_string() => generate_random_data(),
                         "d".to_string() => generate_random_data(),
                         "e".to_string() => generate_random_data(),
+                        "f".to_string() => generate_random_data(),
+                        "g".to_string() => generate_random_data(),
+                        "h".to_string() => generate_random_data(),
                     },
                 },
                 "example",
