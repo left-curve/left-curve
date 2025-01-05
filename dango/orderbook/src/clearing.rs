@@ -4,6 +4,8 @@ use {
     grug::{IsZero, MultiplyFraction, Number, NumberConst, StdResult, Udec128, Uint128},
 };
 
+// --------------------------------- matching ----------------------------------
+
 pub struct MatchingOutcome {
     /// The range of prices that achieve the biggest trading volume.
     /// `None` if no match is found.
@@ -92,6 +94,8 @@ where
         asks,
     })
 }
+
+// ---------------------------------- filling ----------------------------------
 
 #[derive(Debug)]
 pub struct FillingOutcome {
