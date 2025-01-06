@@ -9,7 +9,7 @@ use {
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        btree_map, Addr, Addressable, Coins, Defined, Hash256, HashExt, Json, JsonSerExt,
+        btree_map, Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},
@@ -122,11 +122,11 @@ impl<T> TestAccount<T>
 where
     T: MaybeDefined<Addr>,
 {
-    pub fn metadata(&self, chain_id: &str, nonce: u32) -> Metadata {
+    pub fn metadata(&self, chain_id: &str, nonce: u32, expiry: Option<Duration>) -> Metadata {
         Metadata {
             username: self.username.clone(),
             chain_id: chain_id.to_string(),
-            expiry: None,
+            expiry,
             nonce,
         }
     }
@@ -138,8 +138,9 @@ where
         chain_id: &str,
         gas_limit: u64,
         nonce: u32,
+        expiry: Option<Duration>,
     ) -> StdResult<(Metadata, Credential)> {
-        let data = self.metadata(chain_id, nonce);
+        let data = self.metadata(chain_id, nonce, expiry);
         let sign_doc = SignDoc {
             sender,
             gas_limit,
@@ -273,7 +274,7 @@ impl Signer for TestAccount {
         Ok(UnsignedTx {
             sender: self.address(),
             msgs,
-            data: self.metadata(chain_id, self.nonce).to_json_value()?,
+            data: self.metadata(chain_id, self.nonce, None).to_json_value()?,
         })
     }
 
@@ -289,6 +290,7 @@ impl Signer for TestAccount {
             chain_id,
             gas_limit,
             self.nonce,
+            None,
         )?;
 
         // Increment the internally tracked nonce.
@@ -413,6 +415,7 @@ impl Signer for Safe<'_> {
                 chain_id,
                 gas_limit,
                 self.nonce,
+                None,
             )?;
 
         // Increment the internally tracked nonce.
