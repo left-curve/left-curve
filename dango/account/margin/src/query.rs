@@ -22,5 +22,5 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 
 fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
     let nonces = SEEN_NONCES.load(storage).unwrap_or_default();
-    Ok(*nonces.last().unwrap_or(&0))
+    Ok(nonces.last().map(|&nonce| nonce + 1).unwrap_or(0))
 }

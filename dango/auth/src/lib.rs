@@ -108,21 +108,25 @@ pub fn verify_nonce_and_signature(
             // Verify nonce
             let mut nonces = SEEN_NONCES.load(ctx.storage).unwrap_or_default();
 
-            if let Some(first) = nonces.first() {
-                // and it is bigger than the oldest nonce.
-                // If there are nonces, we verify the nonce is not yet included as seen nonce
-                ensure!(
-                    !nonces.contains(&metadata.nonce) && &metadata.nonce > first,
-                    "nonce is not in a valid range"
-                );
+            match nonces.first() {
+                Some(&first) => {
+                    // If there are nonces, we verify the nonce is not
+                    // yet included as seen nonce and it is bigger
+                    // than the oldest nonce.
+                    ensure!(
+                        !nonces.contains(&metadata.nonce) && metadata.nonce > first,
+                        "nonce is not in a valid range"
+                    );
 
-                // We delete the oldest seen nonce if we reach max seen nonces.
-                if nonces.len() as u8 == MAX_SEEN_NONCES {
-                    nonces.pop_first();
-                }
-            } else {
-                // If there are no nonces, we verify the first nonce is 0.
-                ensure!(metadata.nonce == 0, "first nonce must be 0");
+                    // Remove the oldest nonce if max capacity is reached
+                    if nonces.len() == MAX_SEEN_NONCES as usize {
+                        nonces.pop_first();
+                    }
+                },
+                None => {
+                    // Ensure the first nonce is zero
+                    ensure!(metadata.nonce == 0, "first nonce must be 0");
+                },
             }
 
             nonces.insert(metadata.nonce);
