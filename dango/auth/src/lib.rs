@@ -12,16 +12,20 @@ use {
         DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt,
+        json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Inner, Item, JsonDeExt, JsonSerExt,
         StdResult, Tx,
     },
+    std::collections::BTreeSet,
 };
 
-/// Expected nonce number of the next transaction this account sends.
+/// Tracked seen nonces for replay protection.
 ///
 /// All three account types (spot, margin, Safe) stores their nonces in this
 /// same storage slot.
-pub const NEXT_NONCE: Counter<u32> = Counter::new("nonce", 0, 1);
+pub const SEEN_NONCES: Item<BTreeSet<u32>> = Item::new("seen_nonces");
+
+/// Max number of tracked nonces.
+pub const MAX_SEEN_NONCES: u8 = 20;
 
 /// Authenticate a transaction by ensuring:
 ///
@@ -92,43 +96,20 @@ pub fn verify_nonce_and_signature(
         tx.data.deserialize_json()?
     };
 
-    // Increment the nonce.
-    let (nonce, _) = NEXT_NONCE.increment(ctx.storage)?;
-
-    // Verify nonce.
-    match ctx.mode {
-        // For `CheckTx`, we only make sure the tx's nonce is no smaller than
-        // the stored nonce. This allows the account to broadcast multiple
-        // txs for the same block.
-        AuthMode::Check => {
-            ensure!(
-                metadata.nonce >= nonce,
-                "nonce is too old: expecting at least {}, found {}",
-                nonce,
-                metadata.nonce
-            );
-
-            if let Some(expiry) = metadata.expiry {
-                ensure!(
-                    expiry > ctx.block.timestamp,
-                    "transaction expired at {:?}",
-                    expiry
-                );
-            }
-        },
-        // For `FinalizeBlock`, we make sure the tx's nonce matches exactly
-        // the stored nonce.
-        AuthMode::Finalize => {
-            ensure!(
-                metadata.nonce == nonce,
-                "incorrect nonce: expecting {}, got {}",
-                nonce,
-                metadata.nonce
-            );
-        },
-        // No need to verify nonce in simulation mode.
-        AuthMode::Simulate => (),
-    }
+    // If the sender account is associated with the username, then an entry
+    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
+    // empty because we Borsh for encoding.
+    ensure!(
+        ctx.querier
+            .query_wasm_raw(
+                factory,
+                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
+            )?
+            .is_some_and(|bytes| bytes.is_empty()),
+        "account {} isn't associated with user `{}`",
+        tx.sender,
+        metadata.username,
+    );
 
     let sign_doc = SignDoc {
         gas_limit: tx.gas_limit,
@@ -139,6 +120,35 @@ pub fn verify_nonce_and_signature(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
+            // Verify nonce
+            let mut nonces = SEEN_NONCES.load(ctx.storage).unwrap_or_default();
+
+            if let Some(first) = nonces.first() {
+                // and it is bigger than the oldest nonce.
+                // If there are nonces, we verify the nonce is not yet included as seen nonce
+                ensure!(
+                    !nonces.contains(&metadata.nonce) && &metadata.nonce > first,
+                    "nonce is not in a valid range"
+                );
+
+                // We delete the oldest seen nonce if we reach max seen nonces.
+                if nonces.len() as u8 == MAX_SEEN_NONCES {
+                    nonces.pop_first();
+                }
+            }
+
+            nonces.insert(metadata.nonce);
+            SEEN_NONCES.save(ctx.storage, &nonces)?;
+
+            // Verify tx expiration.
+            if let Some(expiry) = metadata.expiry {
+                ensure!(
+                    expiry > ctx.block.timestamp,
+                    "transaction expired at {:?}",
+                    expiry
+                );
+            }
+
             let (
                 StandardCredential {
                     key_hash,
@@ -180,7 +190,7 @@ pub fn verify_nonce_and_signature(
                     &VerifyData::Standard {
                         chain_id: ctx.chain_id,
                         sign_doc,
-                        nonce,
+                        nonce: metadata.nonce,
                     },
                 )?;
             } else {
@@ -188,10 +198,11 @@ pub fn verify_nonce_and_signature(
                 verify_signature(ctx.api, key, signature, &VerifyData::Standard {
                     chain_id: ctx.chain_id,
                     sign_doc,
-                    nonce,
+                    nonce: metadata.nonce,
                 })?;
             }
         },
+        // No need to verify nonce neither signature in simulation mode.
         AuthMode::Simulate => (),
     };
 
