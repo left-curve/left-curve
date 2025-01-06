@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Addr, Coin, Coins, ContractEvent, Denom, Message, MultiplyFraction, MutableCtx, Number,
-        Order as IterationOrder, Response, StdResult, SudoCtx, Udec128, Uint128,
+        Order as IterationOrder, Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -176,7 +176,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut events = Vec::new();
-    let mut refunds = BTreeMap::<Addr, Coins>::new();
+    let mut refunds = BTreeMap::new();
 
     // Find all pairs that have received new orders during the block.
     let pairs = NEW_ORDER_COUNTS
@@ -188,108 +188,15 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         .collect::<StdResult<Vec<_>>>()?;
 
     // Loop through the pairs, match and clear the orders for each of them.
-    //
     // TODO: spawn a thread for each pair to process them in parallel.
     for (base_denom, quote_denom) in pairs {
-        // Iterate BUY orders from the highest price to the lowest.
-        // Iterate SELL orders from the lowest price to the highest.
-        let bid_iter = ORDERS
-            .prefix((base_denom.clone(), quote_denom.clone()))
-            .append(Direction::Bid)
-            .range(ctx.storage, None, None, IterationOrder::Descending);
-        let ask_iter = ORDERS
-            .prefix((base_denom.clone(), quote_denom.clone()))
-            .append(Direction::Ask)
-            .range(ctx.storage, None, None, IterationOrder::Ascending);
-
-        // Run the order matching algorithm.
-        let MatchingOutcome {
-            range,
-            volume,
-            bids,
-            asks,
-        } = match_orders(bid_iter, ask_iter)?;
-
-        // If no matching orders were found, then we're done with this pair.
-        // Continue to the next pair.
-        let Some((lower_price, higher_price)) = range else {
-            continue;
-        };
-
-        // Choose the clearing price. Any price within `range` gives the same
-        // volume (measured in the base asset). We can either take
-        //
-        // - the lower end,
-        // - the higher end, or
-        // - the midpoint of the range.
-        //
-        // Here we choose the midpoint.
-        let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
-
-        events.push(ContractEvent::new("orders_matched", OrdersMatched {
-            base_denom: base_denom.clone(),
-            quote_denom: quote_denom.clone(),
-            clearing_price,
-            volume,
-        })?);
-
-        // Clear the BUY orders.
-        for FillingOutcome {
-            order_direction,
-            order_price,
-            order_id,
-            order,
-            filled,
-            cleared,
-            refund_base,
-            refund_quote,
-        } in fill_orders(bids, asks, clearing_price, volume)?
-        {
-            let refund = Coins::try_from([
-                Coin {
-                    denom: base_denom.clone(),
-                    amount: refund_base,
-                },
-                Coin {
-                    denom: quote_denom.clone(),
-                    amount: refund_quote,
-                },
-            ])?;
-
-            events.push(ContractEvent::new("order_filled", OrderFilled {
-                order_id,
-                clearing_price,
-                filled,
-                refund: refund.clone(),
-                fee: None,
-                cleared,
-            })?);
-
-            refunds.entry(order.user).or_default().insert_many(refund)?;
-
-            if cleared {
-                ORDERS.remove(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                )?;
-            } else {
-                ORDERS.save(
-                    ctx.storage,
-                    (
-                        (base_denom.clone(), quote_denom.clone()),
-                        order_direction,
-                        order_price,
-                        order_id,
-                    ),
-                    &order,
-                )?;
-            }
-        }
+        clear_orders_of_pair(
+            ctx.storage,
+            base_denom,
+            quote_denom,
+            &mut events,
+            &mut refunds,
+        )?;
     }
 
     // Reset the order counters for the next block.
@@ -305,4 +212,115 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             )?
         })
         .add_subevents(events))
+}
+
+#[inline]
+fn clear_orders_of_pair(
+    storage: &mut dyn Storage,
+    base_denom: Denom,
+    quote_denom: Denom,
+    events: &mut Vec<ContractEvent>,
+    refunds: &mut BTreeMap<Addr, Coins>,
+) -> StdResult<()> {
+    // Iterate BUY orders from the highest price to the lowest.
+    // Iterate SELL orders from the lowest price to the highest.
+    let bid_iter = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .range(storage, None, None, IterationOrder::Descending);
+    let ask_iter = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .range(storage, None, None, IterationOrder::Ascending);
+
+    // Run the order matching algorithm.
+    let MatchingOutcome {
+        range,
+        volume,
+        bids,
+        asks,
+    } = match_orders(bid_iter, ask_iter)?;
+
+    // If no matching orders were found, then we're done with this pair.
+    // Continue to the next pair.
+    let Some((lower_price, higher_price)) = range else {
+        return Ok(());
+    };
+
+    // Choose the clearing price. Any price within `range` gives the same
+    // volume (measured in the base asset). We can either take
+    //
+    // - the lower end,
+    // - the higher end, or
+    // - the midpoint of the range.
+    //
+    // Here we choose the midpoint.
+    let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
+
+    events.push(ContractEvent::new("orders_matched", OrdersMatched {
+        base_denom: base_denom.clone(),
+        quote_denom: quote_denom.clone(),
+        clearing_price,
+        volume,
+    })?);
+
+    // Clear the BUY orders.
+    for FillingOutcome {
+        order_direction,
+        order_price,
+        order_id,
+        order,
+        filled,
+        cleared,
+        refund_base,
+        refund_quote,
+    } in fill_orders(bids, asks, clearing_price, volume)?
+    {
+        let refund = Coins::try_from([
+            Coin {
+                denom: base_denom.clone(),
+                amount: refund_base,
+            },
+            Coin {
+                denom: quote_denom.clone(),
+                amount: refund_quote,
+            },
+        ])?;
+
+        events.push(ContractEvent::new("order_filled", OrderFilled {
+            order_id,
+            clearing_price,
+            filled,
+            refund: refund.clone(),
+            fee: None,
+            cleared,
+        })?);
+
+        refunds.entry(order.user).or_default().insert_many(refund)?;
+
+        if cleared {
+            ORDERS.remove(
+                storage,
+                (
+                    (base_denom.clone(), quote_denom.clone()),
+                    order_direction,
+                    order_price,
+                    order_id,
+                ),
+            )?;
+        } else {
+            ORDERS.save(
+                storage,
+                (
+                    (base_denom.clone(), quote_denom.clone()),
+                    order_direction,
+                    order_price,
+                    order_id,
+                ),
+                &order,
+            )?;
+        }
+    }
+
+    Ok(())
 }
