@@ -88,7 +88,6 @@ fn tracked_nonces_works() {
     suite.send_transaction(tx).should_fail();
 
     // Same tx but without expire should be valid
-
     let tx = prepare_tx_with_nonce(&accounts, 45, None);
     suite.send_transaction(tx).should_succeed();
 }
