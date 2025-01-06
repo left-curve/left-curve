@@ -175,7 +175,7 @@ mod tests {
     fn sign_transaction_works() {
         let username = Username::from_str("alice").unwrap();
         let address = Addr::mock(0);
-        let nonce = 456;
+        let nonce = 0;
         let account_factory = Addr::mock(1);
 
         let mut signer = SingleSigner::new_random(username.as_ref(), address)

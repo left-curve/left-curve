@@ -120,6 +120,9 @@ pub fn verify_nonce_and_signature(
                 if nonces.len() as u8 == MAX_SEEN_NONCES {
                     nonces.pop_first();
                 }
+            } else {
+                // If there are no nonces, we verify the first nonce is 0.
+                ensure!(metadata.nonce == 0, "first nonce must be 0");
             }
 
             nonces.insert(metadata.nonce);
