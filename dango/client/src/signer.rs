@@ -166,9 +166,9 @@ mod tests {
     use {
         super::*,
         dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
-        dango_auth::{authenticate_tx, NEXT_NONCE},
+        dango_auth::authenticate_tx,
         dango_types::config::{AppAddresses, AppConfig},
-        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, Storage},
+        grug::{AuthMode, Coins, MockContext, MockQuerier, ResultExt},
     };
 
     #[test]
@@ -214,11 +214,6 @@ mod tests {
             .unwrap();
 
         let mut mock_ctx = MockContext::default()
-            .with_storage({
-                let mut storage = MockStorage::new();
-                storage.write(NEXT_NONCE.storage_key(), nonce.to_le_bytes().as_ref());
-                storage
-            })
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 

@@ -1,6 +1,6 @@
 use {
     crate::MarginQuerier,
-    dango_auth::NEXT_NONCE,
+    dango_auth::SEEN_NONCES,
     dango_types::account::margin::QueryMsg,
     grug::{ImmutableCtx, Json, JsonSerExt, StdResult, Storage},
 };
@@ -21,5 +21,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
-    NEXT_NONCE.current(storage)
+    let nonces = SEEN_NONCES.load(storage).unwrap_or_default();
+    Ok(*nonces.last().unwrap_or(&0))
 }

@@ -96,21 +96,6 @@ pub fn verify_nonce_and_signature(
         tx.data.deserialize_json()?
     };
 
-    // If the sender account is associated with the username, then an entry
-    // must exist in the `ACCOUNTS_BY_USER` set, and the value should be
-    // empty because we Borsh for encoding.
-    ensure!(
-        ctx.querier
-            .query_wasm_raw(
-                factory,
-                ACCOUNTS_BY_USER.path((&metadata.username, tx.sender)),
-            )?
-            .is_some_and(|bytes| bytes.is_empty()),
-        "account {} isn't associated with user `{}`",
-        tx.sender,
-        metadata.username,
-    );
-
     let sign_doc = SignDoc {
         gas_limit: tx.gas_limit,
         sender: ctx.contract,
