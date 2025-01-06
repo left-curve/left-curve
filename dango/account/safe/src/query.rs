@@ -1,6 +1,6 @@
 use {
     crate::{PROPOSALS, VOTES},
-    dango_auth::SEEN_NONCES,
+    dango_auth::query_nonce,
     dango_types::{
         account::multi::{Proposal, ProposalId, QueryMsg, Status, Vote},
         account_factory::Username,
@@ -38,11 +38,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
     }
-}
-
-fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
-    let nonces = SEEN_NONCES.load(storage).unwrap_or_default();
-    Ok(nonces.last().map(|&nonce| nonce + 1).unwrap_or(0))
 }
 
 fn query_proposal(ctx: ImmutableCtx, proposal_id: ProposalId) -> StdResult<Proposal> {

@@ -13,7 +13,7 @@ use {
     },
     grug::{
         json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Inner, Item, JsonDeExt, JsonSerExt,
-        StdResult, Tx,
+        StdResult, Storage, Tx,
     },
     std::collections::BTreeSet,
 };
@@ -26,6 +26,13 @@ pub const SEEN_NONCES: Item<BTreeSet<u32>> = Item::new("seen_nonces");
 
 /// Max number of tracked nonces.
 pub const MAX_SEEN_NONCES: u8 = 20;
+
+/// Query the nonce for the next transaction.
+/// If there are no nonces, the first nonce must be zero.
+pub fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
+    let nonces = SEEN_NONCES.load(storage).unwrap_or_default();
+    Ok(nonces.last().map(|&nonce| nonce + 1).unwrap_or(0))
+}
 
 /// Authenticate a transaction by ensuring:
 ///
@@ -638,4 +645,7 @@ mod tests {
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
+
+    #[test]
+    fn tracked_nonces_works() {}
 }
