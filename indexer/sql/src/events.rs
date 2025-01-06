@@ -1,11 +1,10 @@
 use {
-    crate::entity,
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, Block, Coins, CommitmentStatus, ContractEvent, Event, EventStatus, EvtAuthenticate,
+        Addr, Coins, CommitmentStatus, ContractEvent, Event, EventStatus, EvtAuthenticate,
         EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest, EvtInstantiate,
         EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold, Hash256, Json, Label,
-        MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, Tx, TxEvents,
+        MsgsAndBackrunEvents, ReplyOn, SubEvent, SubEventStatus, Timestamp, TxEvents,
     },
     serde::{Deserialize, Serialize},
     strum_macros::Display,
@@ -64,6 +63,7 @@ pub struct EventId {
     pub block: u64,
     pub category: IndexCategory,
     pub category_index: u32,
+    pub message_index: Option<u32>,
     pub event_index: u32,
 }
 
@@ -74,6 +74,7 @@ impl EventId {
             category,
             category_index,
             event_index: 0,
+            message_index: None,
         }
     }
 
@@ -83,6 +84,7 @@ impl EventId {
             category: self.category,
             category_index: self.category_index,
             event_index,
+            message_index: self.message_index,
         }
     }
 }
@@ -244,6 +246,7 @@ where
         category,
         category_index: category_id,
         event_index: 0,
+        message_index: None,
     };
 
     let events = match commitment {
