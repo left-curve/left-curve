@@ -10,7 +10,7 @@ import type {
   TxMessageType,
   TypedDataParameter,
 } from "@left-curve/types";
-import { getAccountNonce } from "../public/getAccountNonce.js";
+import { getAccountSeenNonces } from "../public/getAccountSeenNonces.js";
 import { getChainInfo } from "../public/getChainInfo.js";
 import { simulate } from "../public/simulate.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
@@ -43,7 +43,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     throw new Error("client must have a username");
   }
 
-  const nonce = await getAccountNonce(client, { address: sender });
+  const [nonce] = await getAccountSeenNonces(client, { address: sender });
 
   const data: Metadata = { username, nonce, chainId };
 
