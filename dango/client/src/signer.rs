@@ -4,13 +4,13 @@ use {
     dango_types::{
         account::spot,
         account_factory::Username,
-        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
     },
     grug::{
         Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, Inner, JsonSerExt,
         MaybeDefined, Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
-    std::str::FromStr,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
@@ -76,8 +76,15 @@ impl SingleSigner<Undefined<u32>> {
 
     pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
         let nonce = client
-            .query_wasm_smart(self.address, &spot::QueryMsg::Nonce {}, None)
-            .await?;
+            .query_wasm_smart::<_, BTreeSet<Nonce>>(
+                self.address,
+                &spot::QueryMsg::SeenNonces {},
+                None,
+            )
+            .await?
+            .last()
+            .map(|newest_nonce| newest_nonce + 1)
+            .unwrap_or(0);
 
         Ok(SingleSigner {
             username: self.username,

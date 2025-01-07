@@ -6,7 +6,7 @@ use {
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         auth::{
-            ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature,
+            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
         DangoQuerier,
@@ -18,20 +18,20 @@ use {
     std::collections::BTreeSet,
 };
 
-/// Tracked seen nonces for replay protection.
+/// Max number of tracked nonces.
+pub const MAX_SEEN_NONCES: usize = 20;
+
+/// The most recent nonces that have been used to send transactions.
 ///
 /// All three account types (spot, margin, Safe) stores their nonces in this
 /// same storage slot.
-pub const SEEN_NONCES: Item<BTreeSet<u32>> = Item::new("seen_nonces");
+pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 
-/// Max number of tracked nonces.
-pub const MAX_SEEN_NONCES: u8 = 20;
-
-/// Query the nonce for the next transaction.
-/// If there are no nonces, the first nonce must be zero.
-pub fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
-    let nonces = SEEN_NONCES.load(storage).unwrap_or_default();
-    Ok(nonces.last().map(|&nonce| nonce + 1).unwrap_or(0))
+/// Query the set of most recent nonce tracked.
+pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
+    SEEN_NONCES
+        .may_load(storage)
+        .map(|opt| opt.unwrap_or_default())
 }
 
 /// Authenticate a transaction by ensuring:
@@ -112,32 +112,43 @@ pub fn verify_nonce_and_signature(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
-            // Verify nonce
-            let mut nonces = SEEN_NONCES.load(ctx.storage).unwrap_or_default();
+            // Verify nonce.
+            SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
+                let mut nonces = maybe_nonces.unwrap_or_default();
 
-            match nonces.first() {
-                Some(&first) => {
-                    // If there are nonces, we verify the nonce is not
-                    // yet included as seen nonce and it is bigger
-                    // than the oldest nonce.
-                    ensure!(
-                        !nonces.contains(&metadata.nonce) && metadata.nonce > first,
-                        "nonce is not in a valid range"
-                    );
+                match nonces.first() {
+                    Some(&first) => {
+                        // If there are nonces, we verify the nonce is not yet
+                        // included as seen nonce and it is bigger than the
+                        // oldest nonce.
+                        ensure!(
+                            !nonces.contains(&metadata.nonce),
+                            "nonce is already seen: {}",
+                            metadata.nonce
+                        );
 
-                    // Remove the oldest nonce if max capacity is reached
-                    if nonces.len() == MAX_SEEN_NONCES as usize {
-                        nonces.pop_first();
-                    }
-                },
-                None => {
-                    // Ensure the first nonce is zero
-                    ensure!(metadata.nonce == 0, "first nonce must be 0");
-                },
-            }
+                        ensure!(
+                            metadata.nonce > first,
+                            "nonce is too old: {} < {}",
+                            metadata.nonce,
+                            first
+                        );
 
-            nonces.insert(metadata.nonce);
-            SEEN_NONCES.save(ctx.storage, &nonces)?;
+                        // Remove the oldest nonce if max capacity is reached.
+                        if nonces.len() == MAX_SEEN_NONCES {
+                            nonces.pop_first();
+                        }
+                    },
+                    None => {
+                        // Ensure the first nonce is zero.
+                        ensure!(metadata.nonce == 0, "first nonce must be 0");
+                    },
+                }
+
+                nonces.insert(metadata.nonce);
+
+                Ok(nonces)
+            })?;
 
             // Verify tx expiration.
             if let Some(expiry) = metadata.expiry {
@@ -311,7 +322,7 @@ enum VerifyData<'a> {
     Standard {
         sign_doc: SignDoc,
         chain_id: String,
-        nonce: u32,
+        nonce: Nonce,
     },
 }
 

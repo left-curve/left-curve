@@ -1,6 +1,6 @@
 use {
     dango_testing::{setup_test_naive, TestAccounts, MOCK_CHAIN_ID},
-    dango_types::account::spot::QueryNonceRequest,
+    dango_types::account::spot::QuerySeenNoncesRequest,
     grug::{Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
     std::vec,
 };
@@ -49,19 +49,16 @@ fn tracked_nonces_works() {
             .should_succeed();
     }
 
-    // Query should return the next nonce
-    let expected_nonce = 20;
+    // Query should return the next nonce.
     suite
-        .query_wasm_smart(accounts.owner.address(), QueryNonceRequest {})
-        .should_succeed_and_equal(expected_nonce);
+        .query_wasm_smart(accounts.owner.address(), QuerySeenNoncesRequest {})
+        .should_succeed_and(|seen_nonces| seen_nonces.last() == Some(&19));
 
-    let tx = prepare_tx_with_nonce(&accounts, expected_nonce, None);
-
+    let tx = prepare_tx_with_nonce(&accounts, 20, None);
     suite.send_transaction(tx).should_succeed();
 
-    // Transfer should fail because the nonce is already tracked
+    // Transfer should fail because the nonce is already tracked.
     let tx = prepare_tx_with_nonce(&accounts, 9, None);
-
     suite.send_transaction(tx).should_fail();
 
     for i in 21..44 {
@@ -71,23 +68,21 @@ fn tracked_nonces_works() {
         }
     }
 
-    // A nonce in range and not used should still be valid
+    // A nonce in range and not used should still be valid.
     for i in [25, 27, 29] {
         let tx = prepare_tx_with_nonce(&accounts, i, None);
         suite.send_transaction(tx).should_succeed();
     }
 
-    // A nonce not used but not in range shouldn't be valid
+    // A nonce not used but not in range shouldn't be valid.
     let tx = prepare_tx_with_nonce(&accounts, 23, None);
-
     suite.send_transaction(tx).should_fail();
 
-    // A transaction with a valid nonce but expired shouldn't be valid
+    // A transaction with a valid nonce but expired shouldn't be valid.
     let tx = prepare_tx_with_nonce(&accounts, 45, Some(Duration::from_days(0)));
-
     suite.send_transaction(tx).should_fail();
 
-    // Same tx but without expire should be valid
+    // Same tx but without expire should be valid.
     let tx = prepare_tx_with_nonce(&accounts, 45, None);
     suite.send_transaction(tx).should_succeed();
 }

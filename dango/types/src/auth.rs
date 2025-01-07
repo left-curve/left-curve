@@ -3,6 +3,10 @@ use {
     grug::{Addr, Binary, ByteArray, Hash256, Message, NonEmpty, Timestamp},
 };
 
+/// A number that included in each transaction's sign doc for the purpose of
+/// replay protection.
+pub type Nonce = u32;
+
 /// A public key that can be associated with a [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
@@ -78,7 +82,7 @@ pub struct Metadata {
     /// Identifies the chain this transaction is intended for.
     pub chain_id: String,
     /// The nonce this transaction was signed with.
-    pub nonce: u32,
+    pub nonce: Nonce,
     /// The expiration time of this transaction.
     pub expiry: Option<Timestamp>,
 }
