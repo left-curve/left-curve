@@ -9,7 +9,8 @@ pub struct Model {
     pub id: Uuid,
     pub created_at: DateTime,
     pub block_height: i64,
-    pub order_idx: i32,
+    pub transaction_type: i16,
+    pub transaction_idx: i32,
     pub sender: String,
     #[sea_orm(column_type = "JsonBinary")]
     pub data: Json,

@@ -50,11 +50,23 @@ pub enum IndexCommitmentStatus {
 }
 
 #[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Display,
 )]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum IndexCategory {
+    #[strum(serialize = "0")]
     Tx,
+    #[strum(serialize = "1")]
     Cron,
 }
 
@@ -93,9 +105,15 @@ impl EventId {
             message_index: self.message_index,
         }
     }
+
+    pub fn increment_idx(&mut self, items: &[IndexEvent]) {
+        if let Some(item) = items.last() {
+            self.event_index = item.id.event_index + 1;
+        }
+    }
 }
 
-fn get_next_event_index(events: &[IndexEvent]) -> Option<u32> {
+pub fn get_next_event_index(events: &[IndexEvent]) -> Option<u32> {
     events.last().map(|event| event.id.event_index + 1)
 }
 
@@ -222,7 +240,7 @@ pub trait Flatten {
     fn flat(
         self,
         parent_id: &EventId,
-        next: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent>;
@@ -232,30 +250,22 @@ pub trait FlattenStatus {
     fn flat_status(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent>;
 }
 
 pub fn flat_commitment_status<T>(
-    block_id: u64,
-    category: IndexCategory,
-    category_id: u32,
-    mut next_id: u32,
+    next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
-) -> (Vec<IndexEvent>, u32)
+) -> Vec<IndexEvent>
 where
     T: FlattenStatus,
 {
-    let parent_id = EventId {
-        block: block_id,
-        category,
-        category_index: category_id,
-        event_index: 0,
-        message_index: None,
-    };
+    // To void the need of `parent: Option<EventId>` we use event_index set to 0
+    let parent_id = next_id.clone_with_event_index(0);
 
-    let events = match commitment {
+    match commitment {
         CommitmentStatus::Committed(event) => {
             event.flat_status(&parent_id, next_id, IndexCommitmentStatus::Committed)
         },
@@ -266,56 +276,38 @@ where
             event.flat_status(&parent_id, next_id, IndexCommitmentStatus::Reverted)
         },
         CommitmentStatus::NotReached => vec![],
-    };
-
-    next_id = get_next_event_index(&events).unwrap_or(next_id);
-
-    (events, next_id)
+    }
 }
 
 pub fn flat_tx_events(tx_events: TxEvents, block_id: u64, tx_id: u32) -> Vec<IndexEvent> {
     let mut flat_events = vec![];
 
-    let (events, next_id) =
-        flat_commitment_status(block_id, IndexCategory::Tx, tx_id, 1, tx_events.withhold);
+    let mut next_id = EventId::new(block_id, IndexCategory::Tx, tx_id, 0);
+
+    let events = flat_commitment_status(&mut next_id, tx_events.withhold);
     flat_events.extend(events);
-    let (events, next_id) = flat_commitment_status(
-        block_id,
-        IndexCategory::Tx,
-        tx_id,
-        next_id,
-        tx_events.authenticate,
-    );
+
+    let events = flat_commitment_status(&mut next_id, tx_events.authenticate);
     flat_events.extend(events);
-    let (events, next_id) = flat_commitment_status(
-        block_id,
-        IndexCategory::Tx,
-        tx_id,
-        next_id,
-        tx_events.msgs_and_backrun,
-    );
+
+    let events = flat_commitment_status(&mut next_id, tx_events.msgs_and_backrun);
     flat_events.extend(events);
-    let (events, _) = flat_commitment_status(
-        block_id,
-        IndexCategory::Tx,
-        tx_id,
-        next_id,
-        tx_events.finalize,
-    );
+
+    let events = flat_commitment_status(&mut next_id, tx_events.finalize);
     flat_events.extend(events);
 
     flat_events
 }
 
-pub fn flat_cron(
-    cron: CommitmentStatus<EventStatus<EvtCron>>,
-    block_id: u64,
-    cron_id: u32,
-) -> Vec<IndexEvent> {
-    let (events, _) = flat_commitment_status(block_id, IndexCategory::Cron, cron_id, 1, cron);
+// pub fn flat_cron(
+//     cron: CommitmentStatus<EventStatus<EvtCron>>,
+//     block_id: u64,
+//     cron_id: u32,
+// ) -> Vec<IndexEvent> {
+//     let (events, _) = flat_commitment_status(block_id, IndexCategory::Cron, cron_id, 1, cron);
 
-    events
-}
+//     events
+// }
 
 // -------------------------- impl Flatten for Status --------------------------
 
@@ -326,7 +318,7 @@ where
     fn flat_status(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
         match self {
@@ -351,7 +343,7 @@ impl FlattenStatus for SubEventStatus {
     fn flat_status(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
         let (event, commitment, status) = match self {
@@ -378,17 +370,19 @@ impl FlattenStatus for MsgsAndBackrunEvents {
     fn flat_status(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
     ) -> Vec<IndexEvent> {
         let mut events = vec![];
 
         for (msg_idx, msgs) in self.msgs.into_iter().enumerate() {
-            // Add msg_idx
+            next_id.message_index = Some(msg_idx as u32);
+
             let i_events = msgs.flat_status(parent_id, next_id, commitment.clone());
 
             // +1 is not needed here because the next_id is already incremented
-            next_id = get_next_event_index(&i_events).unwrap_or(next_id);
+            // next_id.event_index = get_next_event_index(&i_events).unwrap_or(next_id.event_index);
+            // next_id.increment_idx(&i_events);
             events.extend(i_events);
         }
 
@@ -404,12 +398,12 @@ impl Flatten for EvtConfigure {
     fn flat(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
         vec![IndexEvent {
-            id: parent_id.clone_with_event_index(next_id),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment,
             event_status: status,
@@ -422,14 +416,12 @@ impl Flatten for EvtTransfer {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -440,19 +432,19 @@ impl Flatten for EvtTransfer {
             }),
         }];
 
-        next_id += 1;
+        next_id.event_index += 1;
 
         let bank_guest = self
             .bank_guest
-            .flat_status(&current_id, next_id, commitment.clone());
+            .flat_status(parent_id, next_id, commitment.clone());
 
-        next_id = get_next_event_index(&bank_guest).unwrap_or(next_id);
+        next_id.increment_idx(&bank_guest);
 
         events.extend(bank_guest);
 
         let receive_guest = self
             .receive_guest
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(parent_id, next_id, commitment);
 
         events.extend(receive_guest);
 
@@ -464,12 +456,12 @@ impl Flatten for EvtUpload {
     fn flat(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
         vec![IndexEvent {
-            id: parent_id.clone_with_event_index(next_id),
+            id: parent_id.clone_with_event_index(next_id.event_index),
             parent_id: parent_id.clone(),
             commitment_status: commitment,
             event_status: status,
@@ -482,14 +474,12 @@ impl Flatten for EvtInstantiate {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -503,19 +493,20 @@ impl Flatten for EvtInstantiate {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let transfer = self
             .transfer_event
-            .flat_status(&current_id, next_id, commitment.clone());
+            .flat_status(&parent_id, next_id, commitment.clone());
 
-        next_id = get_next_event_index(&transfer).unwrap_or(next_id);
+        next_id.increment_idx(&transfer);
 
         events.extend(transfer);
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -526,14 +517,12 @@ impl Flatten for EvtExecute {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -545,19 +534,20 @@ impl Flatten for EvtExecute {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let transfer = self
             .transfer_event
-            .flat_status(&current_id, next_id, commitment.clone());
+            .flat_status(&parent_id, next_id, commitment.clone());
 
-        next_id = get_next_event_index(&transfer).unwrap_or(next_id);
+        next_id.increment_idx(&transfer);
 
         events.extend(transfer);
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -568,14 +558,12 @@ impl Flatten for EvtMigrate {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -588,11 +576,12 @@ impl Flatten for EvtMigrate {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -603,14 +592,12 @@ impl Flatten for EvtBackrun {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -619,11 +606,12 @@ impl Flatten for EvtBackrun {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -634,14 +622,12 @@ impl Flatten for EvtWithhold {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -652,11 +638,12 @@ impl Flatten for EvtWithhold {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -667,14 +654,12 @@ impl Flatten for EvtFinalize {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -686,11 +671,12 @@ impl Flatten for EvtFinalize {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -701,14 +687,12 @@ impl Flatten for EvtCron {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -719,11 +703,12 @@ impl Flatten for EvtCron {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -734,7 +719,7 @@ impl Flatten for Event {
     fn flat(
         self,
         parent_id: &EventId,
-        next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
@@ -771,14 +756,12 @@ impl Flatten for EvtAuthenticate {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -788,11 +771,12 @@ impl Flatten for EvtAuthenticate {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events
@@ -803,14 +787,14 @@ impl Flatten for EvtGuest {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
+        let current_id = parent_id.clone_with_event_index(next_id.event_index);
 
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status.clone(),
@@ -820,25 +804,27 @@ impl Flatten for EvtGuest {
             }),
         }];
 
-        for contract_event in self.contract_events {
-            next_id += 1;
+        next_id.event_index += 1;
 
+        for contract_event in self.contract_events {
             events.push(IndexEvent {
-                id: parent_id.clone_with_event_index(next_id),
+                id: next_id.clone(),
                 parent_id: parent_id.clone(),
                 commitment_status: commitment.clone(),
                 event_status: status.clone(),
                 event: FlattenEvent::ContractEvent(contract_event),
             });
+
+            next_id.event_index += 1;
         }
 
         for sub_event in self.sub_events {
-            next_id += 1;
-
             let sub_events = sub_event.flat_status(&current_id, next_id, commitment.clone());
 
+            next_id.increment_idx(&sub_events);
             // -1 is needed here because the next_id is already incremented
-            next_id = get_next_event_index(&sub_events).unwrap_or(next_id - 1);
+            // next_id.event_index =
+            //     get_next_event_index(&sub_events).unwrap_or(next_id.event_index - 1);
             events.extend(sub_events);
         }
 
@@ -850,7 +836,7 @@ impl Flatten for SubEvent {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         _status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
@@ -861,8 +847,7 @@ impl Flatten for SubEvent {
             .flat_status(parent_id, next_id, commitment.clone());
 
         let reply_events = if let Some(reply) = self.reply {
-            next_id = get_next_event_index(&sub_event).unwrap_or(next_id);
-
+            next_id.increment_idx(&sub_event);
             reply.flat_status(parent_id, next_id, commitment)
         } else {
             vec![]
@@ -879,14 +864,12 @@ impl Flatten for EvtReply {
     fn flat(
         self,
         parent_id: &EventId,
-        mut next_id: u32,
+        next_id: &mut EventId,
         commitment: IndexCommitmentStatus,
         status: IndexEventStatus,
     ) -> Vec<IndexEvent> {
-        let current_id = parent_id.clone_with_event_index(next_id);
-
         let mut events = vec![IndexEvent {
-            id: current_id.clone(),
+            id: next_id.clone(),
             parent_id: parent_id.clone(),
             commitment_status: commitment.clone(),
             event_status: status,
@@ -896,11 +879,12 @@ impl Flatten for EvtReply {
             }),
         }];
 
-        next_id += 1;
+        let parent_id = next_id.clone();
+        next_id.event_index += 1;
 
         let guest = self
             .guest_event
-            .flat_status(&current_id, next_id, commitment);
+            .flat_status(&parent_id, next_id, commitment);
 
         events.extend(guest);
         events

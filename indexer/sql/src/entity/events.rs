@@ -15,7 +15,10 @@ pub struct Model {
     pub method: Option<String>,
     pub event_status: String,
     pub commitment_status: String,
-    pub order_idx: i32,
+    pub transaction_type: i16,
+    pub transaction_idx: i32,
+    pub message_idx: Option<i32>,
+    pub event_idx: i32,
     #[sea_orm(column_type = "JsonBinary")]
     pub attributes: Json,
     pub block_height: i64,

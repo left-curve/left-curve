@@ -17,7 +17,8 @@ pub enum Transaction {
     #[sea_orm(iden = "transactions")]
     Table,
     Id,
-    OrderIdx,
+    TransactionType,
+    TransactionIdx,
     Sender,
     Data,
     Credential,
@@ -58,7 +59,11 @@ pub enum Event {
     EventStatus,
     CommitmentStatus,
     Method,
-    OrderIdx,
+    TransactionType,
+    TransactionIdx,
+    MessageIdx,
+    #[allow(clippy::enum_variant_names)]
+    EventIdx,
     // ContractAddr,
     Attributes,
     BlockHeight,

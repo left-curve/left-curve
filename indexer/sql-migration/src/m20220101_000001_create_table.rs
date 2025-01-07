@@ -34,7 +34,8 @@ impl MigrationTrait for Migration {
                     .table(Transaction::Table)
                     .if_not_exists()
                     .col(pk_uuid(Transaction::Id))
-                    .col(integer(Transaction::OrderIdx))
+                    .col(integer(Transaction::TransactionType))
+                    .col(integer(Transaction::TransactionIdx))
                     .col(date_time(Transaction::CreatedAt))
                     // TODO: add foreign key to blocks
                     .col(
@@ -93,7 +94,10 @@ impl MigrationTrait for Migration {
                     .col(string_null(Event::Method))
                     .col(string(Event::EventStatus))
                     .col(string(Event::CommitmentStatus))
-                    .col(integer(Event::OrderIdx))
+                    .col(small_integer(Event::TransactionType))
+                    .col(integer(Event::TransactionIdx))
+                    .col(integer_null(Event::MessageIdx))
+                    .col(integer(Event::EventIdx))
                     .col(json_binary(Event::Attributes))
                     // TODO: add foreign key to blocks
                     .col(ColumnDef::new(Event::BlockHeight).big_unsigned().not_null())

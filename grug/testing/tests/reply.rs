@@ -463,10 +463,9 @@ fn reply_fail() {
     );
 
     println!(
-        "{}",
-        flat_tx_events(result.events.clone(), 123, 1)
-            .to_json_string_pretty()
-            .unwrap()
+        "{:#?}",
+        flat_tx_events(result.events.clone(), 123, 1) /* .to_json_string_pretty()
+                                                       * .unwrap() */
     );
 
     // println!("{}", result.events.to_json_string_pretty().unwrap());
