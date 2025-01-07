@@ -65,9 +65,9 @@ pub enum IndexCommitmentStatus {
 #[strum(serialize_all = "snake_case")]
 pub enum IndexCategory {
     #[strum(serialize = "0")]
-    Tx,
-    #[strum(serialize = "1")]
     Cron,
+    #[strum(serialize = "1")]
+    Tx,
 }
 
 /// Details about a specific Event
@@ -299,16 +299,6 @@ pub fn flat_tx_events(tx_events: TxEvents, block_id: u64, tx_id: u32) -> Vec<Ind
     flat_events
 }
 
-// pub fn flat_cron(
-//     cron: CommitmentStatus<EventStatus<EvtCron>>,
-//     block_id: u64,
-//     cron_id: u32,
-// ) -> Vec<IndexEvent> {
-//     let (events, _) = flat_commitment_status(block_id, IndexCategory::Cron, cron_id, 1, cron);
-
-//     events
-// }
-
 // -------------------------- impl Flatten for Status --------------------------
 
 impl<T> FlattenStatus for EventStatus<T>
@@ -380,9 +370,7 @@ impl FlattenStatus for MsgsAndBackrunEvents {
 
             let i_events = msgs.flat_status(parent_id, next_id, commitment.clone());
 
-            // +1 is not needed here because the next_id is already incremented
-            // next_id.event_index = get_next_event_index(&i_events).unwrap_or(next_id.event_index);
-            // next_id.increment_idx(&i_events);
+            next_id.increment_idx(&i_events);
             events.extend(i_events);
         }
 

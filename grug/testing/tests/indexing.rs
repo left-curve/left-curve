@@ -490,17 +490,21 @@ fn index_block_events() {
 
         dbg!(block);
 
-        // let transactions = entity::transactions::Entity::find()
-        //     .all(&suite.app.indexer.context.db)
-        //     .await
-        //     .expect("Can't fetch transactions");
-        // // assert_that!(transactions).is_not_empty();
+        let transactions = entity::transactions::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch transactions");
 
-        // let messages = entity::messages::Entity::find()
-        //     .all(&suite.app.indexer.context.db)
-        //     .await
-        //     .expect("Can't fetch messages");
-        // // assert_that!(messages).is_not_empty();
+        dbg!(transactions);
+        // assert_that!(transactions).is_not_empty();
+
+        let messages = entity::messages::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch messages");
+
+        dbg!(messages);
+        // assert_that!(messages).is_not_empty();
 
         let events = entity::events::Entity::find()
             .all(&suite.app.indexer.context.db)
