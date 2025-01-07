@@ -4,13 +4,13 @@ use {
     dango_types::{
         account::spot,
         account_factory::Username,
-        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
     },
     grug::{
         Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, Inner, JsonSerExt,
         MaybeDefined, Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
-    std::str::FromStr,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
@@ -76,8 +76,15 @@ impl SingleSigner<Undefined<u32>> {
 
     pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
         let nonce = client
-            .query_wasm_smart(self.address, &spot::QueryMsg::Nonce {}, None)
-            .await?;
+            .query_wasm_smart::<_, BTreeSet<Nonce>>(
+                self.address,
+                &spot::QueryMsg::SeenNonces {},
+                None,
+            )
+            .await?
+            .last()
+            .map(|newest_nonce| newest_nonce + 1)
+            .unwrap_or(0);
 
         Ok(SingleSigner {
             username: self.username,
@@ -166,16 +173,16 @@ mod tests {
     use {
         super::*,
         dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
-        dango_auth::{authenticate_tx, NEXT_NONCE},
+        dango_auth::authenticate_tx,
         dango_types::config::{AppAddresses, AppConfig},
-        grug::{AuthMode, Coins, MockContext, MockQuerier, MockStorage, ResultExt, Storage},
+        grug::{AuthMode, Coins, MockContext, MockQuerier, ResultExt},
     };
 
     #[test]
     fn sign_transaction_works() {
         let username = Username::from_str("alice").unwrap();
         let address = Addr::mock(0);
-        let nonce = 456;
+        let nonce = 0;
         let account_factory = Addr::mock(1);
 
         let mut signer = SingleSigner::new_random(username.as_ref(), address)
@@ -214,11 +221,6 @@ mod tests {
             .unwrap();
 
         let mut mock_ctx = MockContext::default()
-            .with_storage({
-                let mut storage = MockStorage::new();
-                storage.write(NEXT_NONCE.storage_key(), nonce.to_le_bytes().as_ref());
-                storage
-            })
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 

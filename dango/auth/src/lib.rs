@@ -6,22 +6,33 @@ use {
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
         auth::{
-            ClientData, Credential, Key, Metadata, SessionInfo, SignDoc, Signature,
+            ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
         DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Counter, Inner, JsonDeExt, JsonSerExt,
-        StdResult, Tx,
+        json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Inner, Item, JsonDeExt, JsonSerExt,
+        StdResult, Storage, Tx,
     },
+    std::collections::BTreeSet,
 };
 
-/// Expected nonce number of the next transaction this account sends.
+/// Max number of tracked nonces.
+pub const MAX_SEEN_NONCES: usize = 20;
+
+/// The most recent nonces that have been used to send transactions.
 ///
 /// All three account types (spot, margin, Safe) stores their nonces in this
 /// same storage slot.
-pub const NEXT_NONCE: Counter<u32> = Counter::new("nonce", 0, 1);
+pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
+
+/// Query the set of most recent nonce tracked.
+pub fn query_seen_nonces(storage: &dyn Storage) -> StdResult<BTreeSet<Nonce>> {
+    SEEN_NONCES
+        .may_load(storage)
+        .map(|opt| opt.unwrap_or_default())
+}
 
 /// Authenticate a transaction by ensuring:
 ///
@@ -92,44 +103,6 @@ pub fn verify_nonce_and_signature(
         tx.data.deserialize_json()?
     };
 
-    // Increment the nonce.
-    let (nonce, _) = NEXT_NONCE.increment(ctx.storage)?;
-
-    // Verify nonce.
-    match ctx.mode {
-        // For `CheckTx`, we only make sure the tx's nonce is no smaller than
-        // the stored nonce. This allows the account to broadcast multiple
-        // txs for the same block.
-        AuthMode::Check => {
-            ensure!(
-                metadata.nonce >= nonce,
-                "nonce is too old: expecting at least {}, found {}",
-                nonce,
-                metadata.nonce
-            );
-
-            if let Some(expiry) = metadata.expiry {
-                ensure!(
-                    expiry > ctx.block.timestamp,
-                    "transaction expired at {:?}",
-                    expiry
-                );
-            }
-        },
-        // For `FinalizeBlock`, we make sure the tx's nonce matches exactly
-        // the stored nonce.
-        AuthMode::Finalize => {
-            ensure!(
-                metadata.nonce == nonce,
-                "incorrect nonce: expecting {}, got {}",
-                nonce,
-                metadata.nonce
-            );
-        },
-        // No need to verify nonce in simulation mode.
-        AuthMode::Simulate => (),
-    }
-
     let sign_doc = SignDoc {
         gas_limit: tx.gas_limit,
         sender: ctx.contract,
@@ -139,6 +112,53 @@ pub fn verify_nonce_and_signature(
 
     match ctx.mode {
         AuthMode::Check | AuthMode::Finalize => {
+            // Verify nonce.
+            SEEN_NONCES.may_update(ctx.storage, |maybe_nonces| {
+                let mut nonces = maybe_nonces.unwrap_or_default();
+
+                match nonces.first() {
+                    Some(&first) => {
+                        // If there are nonces, we verify the nonce is not yet
+                        // included as seen nonce and it is bigger than the
+                        // oldest nonce.
+                        ensure!(
+                            !nonces.contains(&metadata.nonce),
+                            "nonce is already seen: {}",
+                            metadata.nonce
+                        );
+
+                        ensure!(
+                            metadata.nonce > first,
+                            "nonce is too old: {} < {}",
+                            metadata.nonce,
+                            first
+                        );
+
+                        // Remove the oldest nonce if max capacity is reached.
+                        if nonces.len() == MAX_SEEN_NONCES {
+                            nonces.pop_first();
+                        }
+                    },
+                    None => {
+                        // Ensure the first nonce is zero.
+                        ensure!(metadata.nonce == 0, "first nonce must be 0");
+                    },
+                }
+
+                nonces.insert(metadata.nonce);
+
+                Ok(nonces)
+            })?;
+
+            // Verify tx expiration.
+            if let Some(expiry) = metadata.expiry {
+                ensure!(
+                    expiry > ctx.block.timestamp,
+                    "transaction expired at {:?}",
+                    expiry
+                );
+            }
+
             let (
                 StandardCredential {
                     key_hash,
@@ -180,7 +200,7 @@ pub fn verify_nonce_and_signature(
                     &VerifyData::Standard {
                         chain_id: ctx.chain_id,
                         sign_doc,
-                        nonce,
+                        nonce: metadata.nonce,
                     },
                 )?;
             } else {
@@ -188,10 +208,11 @@ pub fn verify_nonce_and_signature(
                 verify_signature(ctx.api, key, signature, &VerifyData::Standard {
                     chain_id: ctx.chain_id,
                     sign_doc,
-                    nonce,
+                    nonce: metadata.nonce,
                 })?;
             }
         },
+        // No need to verify nonce neither signature in simulation mode.
         AuthMode::Simulate => (),
     };
 
@@ -301,7 +322,7 @@ enum VerifyData<'a> {
     Standard {
         sign_doc: SignDoc,
         chain_id: String,
-        nonce: u32,
+        nonce: Nonce,
     },
 }
 
@@ -635,4 +656,7 @@ mod tests {
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
+
+    #[test]
+    fn tracked_nonces_works() {}
 }

@@ -1,8 +1,8 @@
 use {
-    crate::account_factory::Username,
+    crate::{account_factory::Username, auth::Nonce},
     anyhow::anyhow,
     grug::{ChangeSet, Duration, Inner, Message, NonZero, Timestamp},
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 /// Identifier of a proposal.
@@ -155,9 +155,9 @@ pub enum ExecuteMsg {
 // account factory for this instead.
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the account's current nonce number.
-    #[returns(u32)]
-    Nonce {},
+    /// Query the most recent transaction nonces that have been recorded.
+    #[returns(BTreeSet<Nonce>)]
+    SeenNonces {},
     /// Query a proposal by ID.
     #[returns(Proposal)]
     Proposal { proposal_id: ProposalId },
