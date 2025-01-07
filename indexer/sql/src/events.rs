@@ -58,22 +58,28 @@ pub enum IndexCategory {
     Cron,
 }
 
+/// Details about a specific Event
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EventId {
+    /// Block height where the event was emitted.
     pub block: u64,
+    /// The category of the event.
     pub category: IndexCategory,
+    /// The index within the category, starts with 0.
     pub category_index: u32,
+    /// The index of the message if any.
     pub message_index: Option<u32>,
+    /// The index of the event within the block, starts with 0.
     pub event_index: u32,
 }
 
 impl EventId {
-    pub fn new(block: u64, category: IndexCategory, category_index: u32) -> Self {
+    pub fn new(block: u64, category: IndexCategory, category_index: u32, event_index: u32) -> Self {
         Self {
             block,
             category,
             category_index,
-            event_index: 0,
+            event_index,
             message_index: None,
         }
     }
@@ -377,8 +383,10 @@ impl FlattenStatus for MsgsAndBackrunEvents {
     ) -> Vec<IndexEvent> {
         let mut events = vec![];
 
-        for msgs in self.msgs {
+        for (msg_idx, msgs) in self.msgs.into_iter().enumerate() {
+            // Add msg_idx
             let i_events = msgs.flat_status(parent_id, next_id, commitment.clone());
+
             // +1 is not needed here because the next_id is already incremented
             next_id = get_next_event_index(&i_events).unwrap_or(next_id);
             events.extend(i_events);
