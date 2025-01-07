@@ -109,6 +109,11 @@ pub enum ExecuteMsg {
         destination_domain: Domain,
         route: Addr32,
     },
+    /// Define the flat withdrawal fee for a denom.
+    SetFee {
+        denom: Denom,
+        withdrawl_fee: Uint128,
+    },
     // Required Hyperlane recipient interface.
     Handle {
         origin_domain: Domain,

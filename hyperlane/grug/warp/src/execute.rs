@@ -1,8 +1,10 @@
 use {
-    crate::{MAILBOX, REVERSE_ROUTES, ROUTES},
-    anyhow::ensure,
+    crate::{FEES, MAILBOX, REVERSE_ROUTES, ROUTES},
+    anyhow::{anyhow, ensure},
     dango_types::bank,
-    grug::{Coin, Coins, Denom, HexBinary, Message, MutableCtx, Response, StdResult},
+    grug::{
+        Coin, Coins, Denom, HexBinary, Message, MutableCtx, Number, Response, StdResult, Uint128,
+    },
     hyperlane_types::{
         mailbox::{self, Domain},
         warp::{ExecuteMsg, Handle, InstantiateMsg, TokenMessage, TransferRemote, NAMESPACE},
@@ -30,6 +32,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             destination_domain,
             route,
         } => set_route(ctx, denom, destination_domain, route),
+        ExecuteMsg::SetFee {
+            denom,
+            withdrawl_fee,
+        } => set_fee(ctx, denom, withdrawl_fee),
         ExecuteMsg::Handle {
             origin_domain,
             sender,
@@ -57,6 +63,18 @@ fn set_route(
 }
 
 #[inline]
+fn set_fee(ctx: MutableCtx, denom: Denom, withdrawal_fee: Uint128) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only chain owner can call `set_fee`"
+    );
+
+    FEES.save(ctx.storage, &denom, &withdrawal_fee)?;
+
+    Ok(Response::new())
+}
+
+#[inline]
 fn transfer_remote(
     ctx: MutableCtx,
     destination_domain: Domain,
@@ -64,10 +82,19 @@ fn transfer_remote(
     metadata: Option<HexBinary>,
 ) -> anyhow::Result<Response> {
     // Sender must attach exactly one token.
-    let token = ctx.funds.into_one_coin()?;
+    let mut token = ctx.funds.into_one_coin()?;
 
-    // The token must have a route set.
+    // The token must have a route and withdrawal fee set.
     let route = ROUTES.load(ctx.storage, (&token.denom, destination_domain))?;
+    let fee = FEES.load(ctx.storage, &token.denom)?;
+
+    token.amount.checked_sub_assign(fee).map_err(|_| {
+        anyhow!(
+            "withdrawal amount not sufficient to cover fee: {} < {}",
+            token.amount,
+            fee
+        )
+    })?;
 
     Ok(Response::new()
         // If the token is collateral, then escrow it (no need to do anything).
@@ -104,7 +131,7 @@ fn transfer_remote(
                 metadata: None,
                 hook: None,
             },
-            Coins::new(),
+            Coins::one(token.denom.clone(), fee)?,
         )?)
         .add_event("transfer_remote", &TransferRemote {
             sender: ctx.sender,
