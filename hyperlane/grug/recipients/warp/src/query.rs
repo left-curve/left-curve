@@ -3,8 +3,10 @@ use {
     grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     hyperlane_types::{
         mailbox::Domain,
-        warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem},
-        Addr32,
+        recipients::{
+            warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
+            RecipientQuery, RecipientQueryResponse,
+        },
     },
 };
 
@@ -28,8 +30,9 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_routes(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::InterchainSecurityModule {} => {
-            let res = query_interchain_security_module(ctx);
+        QueryMsg::Recipient(RecipientQuery::InterchainSecurityModule {}) => {
+            let ism = query_interchain_security_module(ctx);
+            let res = RecipientQueryResponse::InterchainSecurityModule(ism);
             res.to_json_value()
         },
     }
@@ -41,7 +44,7 @@ fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
 }
 
 #[inline]
-fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: Domain) -> StdResult<Addr32> {
+fn query_route(ctx: ImmutableCtx, denom: Denom, destination_domain: Domain) -> StdResult<Route> {
     ROUTES.load(ctx.storage, (&denom, destination_domain))
 }
 

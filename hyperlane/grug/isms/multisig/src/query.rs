@@ -4,7 +4,10 @@ use {
     grug::{Bound, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     hyperlane_types::{
         domain_hash, eip191_hash,
-        ism::{Metadata, QueryMsg, ValidatorSet},
+        isms::{
+            multisig::{Metadata, QueryMsg, ValidatorSet},
+            IsmQuery, IsmQueryResponse,
+        },
         mailbox::{Domain, Message},
         multisig_hash,
     },
@@ -24,12 +27,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_validator_sets(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Verify {
+        QueryMsg::Ism(IsmQuery::Verify {
             raw_message,
             raw_metadata,
-        } => {
-            verify(ctx, &raw_message, &raw_metadata)?;
-            ().to_json_value()
+        }) => {
+            let res = IsmQueryResponse::Verify(verify(ctx, &raw_message, &raw_metadata)?);
+            res.to_json_value()
         },
     }
     .map_err(Into::into)

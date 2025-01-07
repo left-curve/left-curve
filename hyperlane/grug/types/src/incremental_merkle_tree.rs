@@ -43,13 +43,15 @@ pub const ZERO_HASHES: [Hash256; TREE_DEPTH] = [
     hash!("8448818bb4ae4562849e949e17ac16e0be16688e156b5cf15e098c627c0056a9"),
 ];
 
+/// Reference:
+/// <https://medium.com/@josephdelong/ethereum-2-0-deposit-merkle-tree-13ec8404ca4f>
 #[grug::derive(Serde, Borsh)]
-pub struct MerkleTree {
+pub struct IncrementalMerkleTree {
     pub branch: [Hash256; TREE_DEPTH],
     pub count: u128,
 }
 
-impl Default for MerkleTree {
+impl Default for IncrementalMerkleTree {
     fn default() -> Self {
         Self {
             branch: ZERO_HASHES,
@@ -58,7 +60,7 @@ impl Default for MerkleTree {
     }
 }
 
-impl MerkleTree {
+impl IncrementalMerkleTree {
     pub fn insert(&mut self, node: Hash256) -> anyhow::Result<()> {
         ensure!(self.count < MAX_LEAVES, "tree is full");
 
@@ -126,12 +128,12 @@ mod tests {
     }
 
     #[test]
-    fn merkle_tree_insertion_works() {
+    fn incremental_merkle_tree_insertion_works() {
         let cases = include_str!("../testdata/merkle.json");
         let cases: Vec<TestCase> = serde_json::from_str(cases).unwrap();
 
         for case in cases {
-            let mut tree = MerkleTree::default();
+            let mut tree = IncrementalMerkleTree::default();
 
             for leaf in case.leaves {
                 let leaf_hash = eip191_hash(leaf);

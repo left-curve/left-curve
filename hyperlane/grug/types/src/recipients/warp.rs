@@ -1,5 +1,9 @@
 use {
-    crate::{mailbox::Domain, Addr32},
+    crate::{
+        mailbox::Domain,
+        recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
+        Addr32,
+    },
     anyhow::ensure,
     grug::{
         Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
@@ -69,6 +73,12 @@ impl TokenMessage {
     }
 }
 
+#[grug::derive(Serde, Borsh)]
+pub struct Route {
+    pub address: Addr32,
+    pub fee: Uint128,
+}
+
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
@@ -103,23 +113,15 @@ pub enum ExecuteMsg {
         // NOT the metadata for the hooks.
         metadata: Option<HexBinary>,
     },
-    /// Define the recipient contract for a token on a destination domain.
+    /// Define the recipient contract and withdrawal fee rate for a token on a
+    /// destination domain.
     SetRoute {
         denom: Denom,
         destination_domain: Domain,
-        route: Addr32,
+        route: Route,
     },
-    /// Define the flat withdrawal fee for a denom.
-    SetFee {
-        denom: Denom,
-        withdrawl_fee: Uint128,
-    },
-    // Required Hyperlane recipient interface.
-    Handle {
-        origin_domain: Domain,
-        sender: Addr32,
-        body: HexBinary,
-    },
+    /// Required Hyperlane recipient interface.
+    Recipient(RecipientMsg),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -128,7 +130,7 @@ pub enum QueryMsg {
     #[returns(Addr)]
     Mailbox {},
     /// Query the recipient contract for a token on a destination domain.
-    #[returns(Addr32)]
+    #[returns(Route)]
     Route {
         denom: Denom,
         destination_domain: Domain,
@@ -139,9 +141,9 @@ pub enum QueryMsg {
         start_after: Option<QueryRoutesPageParam>,
         limit: Option<u32>,
     },
-    // Required Hyperlane recipient interface.
-    #[returns(Option<Addr>)]
-    InterchainSecurityModule {},
+    /// Required Hyperlane recipient interface.
+    #[returns(RecipientQueryResponse)]
+    Recipient(RecipientQuery),
 }
 
 #[grug::derive(Serde)]
@@ -154,7 +156,7 @@ pub struct QueryRoutesPageParam {
 pub struct QueryRoutesResponseItem {
     pub denom: Denom,
     pub destination_domain: Domain,
-    pub route: Addr32,
+    pub route: Route,
 }
 
 // ---------------------------------- events -----------------------------------

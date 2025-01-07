@@ -1,6 +1,9 @@
 use {
-    crate::merkle_tree::MerkleTree,
-    grug::{Addr, Coins, Hash256, HexBinary},
+    crate::{
+        hooks::{HookMsg, HookQuery, HookQueryResponse},
+        incremental_merkle_tree::IncrementalMerkleTree,
+    },
+    grug::{Addr, Hash256},
 };
 
 // --------------------------------- messages ----------------------------------
@@ -13,11 +16,8 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    // Required Hyperlane hook interface.
-    PostDispatch {
-        raw_message: HexBinary,
-        raw_metadata: HexBinary,
-    },
+    /// Required Hyperlane hook interface.
+    Hook(HookMsg),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -26,14 +26,11 @@ pub enum QueryMsg {
     #[returns(Addr)]
     Mailbox {},
     /// Query the Merkle tree.
-    #[returns(MerkleTree)]
+    #[returns(IncrementalMerkleTree)]
     Tree {},
-    // Required Hyperlane hook interface.
-    #[returns(Coins)]
-    QuoteDispatch {
-        raw_message: HexBinary,
-        raw_metadata: HexBinary,
-    },
+    /// Required Hyperlane hook interface.
+    #[returns(HookQueryResponse)]
+    Hook(HookQuery),
 }
 
 // ---------------------------------- events -----------------------------------

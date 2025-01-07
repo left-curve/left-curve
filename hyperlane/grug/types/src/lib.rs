@@ -1,12 +1,9 @@
 mod address;
 mod crypto;
-pub mod fee;
-pub mod hook;
-pub mod ism;
+pub mod hooks;
+mod incremental_merkle_tree;
+pub mod isms;
 pub mod mailbox;
-pub mod merkle;
-pub mod merkle_tree;
-pub mod recipient;
-pub mod warp;
+pub mod recipients;
 
-pub use {address::*, crypto::*};
+pub use {address::*, crypto::*, incremental_merkle_tree::*};

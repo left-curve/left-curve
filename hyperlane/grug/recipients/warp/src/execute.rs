@@ -1,13 +1,18 @@
 use {
-    crate::{FEES, MAILBOX, REVERSE_ROUTES, ROUTES},
+    crate::{MAILBOX, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::bank,
     grug::{
-        Coin, Coins, Denom, HexBinary, Message, MutableCtx, Number, Response, StdResult, Uint128,
+        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, Response, StdResult,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
-        warp::{ExecuteMsg, Handle, InstantiateMsg, TokenMessage, TransferRemote, NAMESPACE},
+        recipients::{
+            warp::{
+                ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote, NAMESPACE,
+            },
+            RecipientMsg,
+        },
         Addr32,
     },
 };
@@ -32,15 +37,11 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             destination_domain,
             route,
         } => set_route(ctx, denom, destination_domain, route),
-        ExecuteMsg::SetFee {
-            denom,
-            withdrawl_fee,
-        } => set_fee(ctx, denom, withdrawl_fee),
-        ExecuteMsg::Handle {
+        ExecuteMsg::Recipient(RecipientMsg::Handle {
             origin_domain,
             sender,
             body,
-        } => handle(ctx, origin_domain, sender, body),
+        }) => handle(ctx, origin_domain, sender, body),
     }
 }
 
@@ -49,7 +50,7 @@ fn set_route(
     ctx: MutableCtx,
     denom: Denom,
     destination_domain: Domain,
-    route: Addr32,
+    route: Route,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
@@ -57,19 +58,7 @@ fn set_route(
     );
 
     ROUTES.save(ctx.storage, (&denom, destination_domain), &route)?;
-    REVERSE_ROUTES.save(ctx.storage, (destination_domain, route), &denom)?;
-
-    Ok(Response::new())
-}
-
-#[inline]
-fn set_fee(ctx: MutableCtx, denom: Denom, withdrawal_fee: Uint128) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "only chain owner can call `set_fee`"
-    );
-
-    FEES.save(ctx.storage, &denom, &withdrawal_fee)?;
+    REVERSE_ROUTES.save(ctx.storage, (destination_domain, route.address), &denom)?;
 
     Ok(Response::new())
 }
@@ -84,15 +73,14 @@ fn transfer_remote(
     // Sender must attach exactly one token.
     let mut token = ctx.funds.into_one_coin()?;
 
-    // The token must have a route and withdrawal fee set.
+    // The token must have a route set.
     let route = ROUTES.load(ctx.storage, (&token.denom, destination_domain))?;
-    let fee = FEES.load(ctx.storage, &token.denom)?;
 
-    token.amount.checked_sub_assign(fee).map_err(|_| {
+    token.amount.checked_sub_assign(route.fee).map_err(|_| {
         anyhow!(
             "withdrawal amount not sufficient to cover fee: {} < {}",
             token.amount,
-            fee
+            route.fee
         )
     })?;
 
@@ -120,18 +108,27 @@ fn transfer_remote(
             &mailbox::ExecuteMsg::Dispatch {
                 destination_domain,
                 // Note, this is the message recipient, not the token recipient.
-                recipient: route,
+                recipient: route.address,
                 body: TokenMessage {
                     recipient,
                     amount: token.amount,
                     metadata: metadata.unwrap_or_default(),
                 }
                 .encode(),
-                // We currently don't support specifying custom hook and hook metadata.
+                // For sending tokens, we currently don't support metadata.
                 metadata: None,
+                // Always use the mailbox's default hook, which is set to the
+                // fee hook. This hook will get the withdrawal fee. We don't
+                // want the user to specify a different hook and steal the fee.
                 hook: None,
             },
-            Coins::one(token.denom.clone(), fee)?,
+            {
+                if route.fee.is_zero() {
+                    Coins::new()
+                } else {
+                    Coins::one(token.denom.clone(), route.fee)?
+                }
+            },
         )?)
         .add_event("transfer_remote", &TransferRemote {
             sender: ctx.sender,

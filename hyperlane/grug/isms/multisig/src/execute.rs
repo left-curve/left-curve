@@ -3,7 +3,7 @@ use {
     anyhow::ensure,
     grug::{HexByteArray, MutableCtx, Response, StdResult},
     hyperlane_types::{
-        ism::{ExecuteMsg, InstantiateMsg, ValidatorSet},
+        isms::multisig::{ExecuteMsg, InstantiateMsg, ValidatorSet},
         mailbox::Domain,
     },
     std::collections::BTreeSet,

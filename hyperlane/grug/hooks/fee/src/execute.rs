@@ -2,7 +2,10 @@ use {
     crate::MAILBOX,
     anyhow::ensure,
     grug::{HexBinary, MutableCtx, Response, StdResult},
-    hyperlane_types::fee::{ExecuteMsg, InstantiateMsg},
+    hyperlane_types::hooks::{
+        fee::{ExecuteMsg, InstantiateMsg},
+        HookMsg,
+    },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -15,7 +18,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::PostDispatch { raw_message, .. } => post_dispatch(ctx, raw_message),
+        ExecuteMsg::Hook(HookMsg::PostDispatch { raw_message, .. }) => {
+            post_dispatch(ctx, raw_message)
+        },
     }
 }
 

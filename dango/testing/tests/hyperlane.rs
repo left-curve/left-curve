@@ -7,23 +7,24 @@ use {
     grug_crypto::Identity256,
     hyperlane_types::{
         addr32, domain_hash, eip191_hash,
-        ism::{self, Metadata},
+        hooks::merkle,
+        isms::{self, multisig::Metadata},
         mailbox::{self, Domain, Message, MAILBOX_VERSION},
-        merkle,
-        merkle_tree::MerkleTree,
         multisig_hash,
-        warp::{self, TokenMessage},
-        Addr32,
+        recipients::warp::{self, Route, TokenMessage},
+        Addr32, IncrementalMerkleTree,
     },
     hyperlane_warp::ROUTES,
     k256::ecdsa::SigningKey,
     std::{collections::BTreeSet, str::FromStr},
 };
 
-const MOCK_RECIPIENT: Addr32 =
-    addr32!("0000000000000000000000000000000000000000000000000000000000000000");
+const MOCK_ROUTE: Route = Route {
+    address: addr32!("0000000000000000000000000000000000000000000000000000000000000000"),
+    fee: Uint128::new(25),
+};
 
-const MOCK_ROUTE: Addr32 =
+const MOCK_RECIPIENT: Addr32 =
     addr32!("0000000000000000000000000000000000000000000000000000000000000001");
 
 const MOCK_REMOTE_MERKLE_TREE: Addr32 =
@@ -36,7 +37,7 @@ const MOCK_LOCAL_DOMAIN: Domain = 88888888;
 struct MockValidatorSet {
     secrets: Vec<SigningKey>,
     addresses: BTreeSet<HexByteArray<20>>,
-    merkle_tree: MerkleTree,
+    merkle_tree: IncrementalMerkleTree,
 }
 
 impl MockValidatorSet {
@@ -56,7 +57,7 @@ impl MockValidatorSet {
         Self {
             secrets,
             addresses,
-            merkle_tree: MerkleTree::default(),
+            merkle_tree: IncrementalMerkleTree::default(),
         }
     }
 
@@ -117,8 +118,8 @@ fn send_escrowing_collateral() {
             },
             Coins::one("udng", 100).unwrap(),
         )
-        .should_fail_with_error(StdError::data_not_found::<Addr32>(
-            ROUTES.path((&denom, 123)).storage_key(),
+        .should_fail_with_error(StdError::data_not_found::<Route>(
+            ROUTES.path((&denom, MOCK_REMOTE_DOMAIN)).storage_key(),
         ));
 
     // Owner sets the route.
@@ -153,7 +154,7 @@ fn send_escrowing_collateral() {
                 recipient: MOCK_RECIPIENT,
                 metadata: Some(metadata.clone()),
             },
-            Coins::one(denom, 100).unwrap(),
+            Coins::one(denom.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -163,7 +164,7 @@ fn send_escrowing_collateral() {
         .should_succeed_and_equal({
             let token_msg = TokenMessage {
                 recipient: MOCK_RECIPIENT,
-                amount: Uint128::new(100),
+                amount: Uint128::new(100) - MOCK_ROUTE.fee,
                 metadata,
             };
             let msg = Message {
@@ -172,14 +173,19 @@ fn send_escrowing_collateral() {
                 origin_domain: MOCK_LOCAL_DOMAIN,
                 sender: contracts.hyperlane.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
-                recipient: MOCK_ROUTE,
+                recipient: MOCK_ROUTE.address,
                 body: token_msg.encode(),
             };
 
-            let mut tree = MerkleTree::default();
+            let mut tree = IncrementalMerkleTree::default();
             tree.insert(msg.encode().keccak256()).unwrap();
             tree
         });
+
+    // The fee hook should have received the fee.
+    suite
+        .query_balance(&contracts.hyperlane.fee, denom)
+        .should_succeed_and_equal(MOCK_ROUTE.fee);
 }
 
 #[test]
@@ -223,7 +229,7 @@ fn send_burning_synth() {
         .should_succeed_and_equal({
             let token_msg = TokenMessage {
                 recipient: MOCK_RECIPIENT,
-                amount: Uint128::new(12345),
+                amount: Uint128::new(12345) - MOCK_ROUTE.fee,
                 metadata,
             };
             let msg = Message {
@@ -232,11 +238,11 @@ fn send_burning_synth() {
                 origin_domain: MOCK_LOCAL_DOMAIN,
                 sender: contracts.hyperlane.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
-                recipient: MOCK_ROUTE,
+                recipient: MOCK_ROUTE.address,
                 body: token_msg.encode(),
             };
 
-            let mut tree = MerkleTree::default();
+            let mut tree = IncrementalMerkleTree::default();
             tree.insert(msg.encode().keccak256()).unwrap();
             tree
         });
@@ -248,8 +254,13 @@ fn send_burning_synth() {
 
     // Warp contract should not hold any of the synth token (should be burned).
     suite
-        .query_balance(&contracts.hyperlane.warp, denom)
+        .query_balance(&contracts.hyperlane.warp, denom.clone())
         .should_succeed_and_equal(Uint128::ZERO);
+
+    // Fee hook should have received the fee.
+    suite
+        .query_balance(&contracts.hyperlane.fee, denom)
+        .should_succeed_and_equal(MOCK_ROUTE.fee);
 }
 
 #[test]
@@ -264,7 +275,7 @@ fn receive_release_collateral() {
         .execute(
             &mut accounts.owner,
             contracts.hyperlane.ism,
-            &ism::ExecuteMsg::SetValidators {
+            &isms::multisig::ExecuteMsg::SetValidators {
                 domain: MOCK_REMOTE_DOMAIN,
                 threshold: 2,
                 validators: mock_validator_set.addresses.clone(),
@@ -297,7 +308,7 @@ fn receive_release_collateral() {
                 recipient: MOCK_RECIPIENT,
                 metadata: None,
             },
-            Coins::one(denom.clone(), 100).unwrap(),
+            Coins::one(denom.clone(), 125).unwrap(),
         )
         .should_succeed();
 
@@ -306,7 +317,7 @@ fn receive_release_collateral() {
         version: MAILBOX_VERSION,
         nonce: 0,
         origin_domain: MOCK_REMOTE_DOMAIN,
-        sender: MOCK_ROUTE,
+        sender: MOCK_ROUTE.address,
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {
@@ -344,7 +355,7 @@ fn receive_release_collateral() {
     // The recipient should have received the tokens.
     suite
         .query_balance(&accounts.user1, denom.clone())
-        .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 100 + 88));
+        .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 125 + 88));
 
     // Warp contract should have been deducted tokens.
     suite
@@ -365,7 +376,7 @@ fn receive_minting_synth() {
         .execute(
             &mut accounts.owner,
             contracts.hyperlane.ism,
-            &ism::ExecuteMsg::SetValidators {
+            &isms::multisig::ExecuteMsg::SetValidators {
                 domain: MOCK_REMOTE_DOMAIN,
                 threshold: 2,
                 validators: mock_validator_set.addresses.clone(),
@@ -393,7 +404,7 @@ fn receive_minting_synth() {
         version: MAILBOX_VERSION,
         nonce: 0,
         origin_domain,
-        sender: MOCK_ROUTE,
+        sender: MOCK_ROUTE.address,
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
         recipient: contracts.hyperlane.warp.into(),
         body: TokenMessage {

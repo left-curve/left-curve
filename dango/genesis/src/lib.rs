@@ -18,7 +18,7 @@ use {
         Denom, Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message,
         NonZero, Permission, Permissions, ResultExt, StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
-    hyperlane_types::{fee, ism, mailbox, merkle, warp},
+    hyperlane_types::{hooks, isms, mailbox, recipients::warp},
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
@@ -320,7 +320,7 @@ where
     let fee = instantiate(
         &mut msgs,
         hyperlane_fee_code_hash,
-        &fee::InstantiateMsg { mailbox },
+        &hooks::fee::InstantiateMsg { mailbox },
         "hyperlane/hook/fee",
         "hyperlane/hook/fee",
     )?;
@@ -329,7 +329,7 @@ where
     let merkle = instantiate(
         &mut msgs,
         hyperlane_merkle_code_hash,
-        &merkle::InstantiateMsg { mailbox },
+        &hooks::merkle::InstantiateMsg { mailbox },
         "hyperlane/hook/merkle",
         "hyperlane/hook/merkle",
     )?;
@@ -338,7 +338,7 @@ where
     let ism = instantiate(
         &mut msgs,
         hyperlane_ism_code_hash,
-        &ism::InstantiateMsg {
+        &isms::multisig::InstantiateMsg {
             validator_sets: btree_map! {},
         },
         "hyperlane/ism/multisig",

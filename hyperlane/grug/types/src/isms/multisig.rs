@@ -1,5 +1,6 @@
 use {
-    crate::{mailbox::Domain, Addr32},
+    super::IsmQueryResponse,
+    crate::{isms::IsmQuery, mailbox::Domain, Addr32},
     anyhow::ensure,
     grug::{Hash256, HexBinary, HexByteArray, Inner},
     std::collections::{BTreeMap, BTreeSet},
@@ -83,13 +84,7 @@ pub enum QueryMsg {
         start_after: Option<Domain>,
         limit: Option<u32>,
     },
-    /// Verify a message.
-    /// Return nothing is succeeds; throw error if fails.
-    #[returns(())]
-    Verify {
-        raw_message: HexBinary,
-        raw_metadata: HexBinary,
-    },
+    /// Required Hyperlane ISM interface.
+    #[returns(IsmQueryResponse)]
+    Ism(IsmQuery),
 }
-
-// ---------------------------------- events -----------------------------------

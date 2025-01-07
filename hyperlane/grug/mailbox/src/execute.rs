@@ -3,13 +3,13 @@ use {
     anyhow::{anyhow, ensure},
     grug::{Addr, Coins, Hash, HexBinary, MutableCtx, Response, StdResult},
     hyperlane_types::{
-        hook::{self, QueryQuoteDispatchRequest},
-        ism::QueryVerifyRequest,
+        hooks::{self, HookMsg, HookQuery, QueryHookRequest},
+        isms::{IsmQuery, QueryIsmRequest},
         mailbox::{
             Dispatch, DispatchId, Domain, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId,
             MAILBOX_VERSION,
         },
-        recipient::{self, QueryInterchainSecurityModuleRequest},
+        recipients::{self, QueryRecipientRequest, RecipientMsg, RecipientQuery},
         Addr32,
     },
 };
@@ -74,10 +74,14 @@ fn dispatch(
     // Query the required hook for fee amount.
     let fees = ctx
         .querier
-        .query_wasm_smart(cfg.required_hook, QueryQuoteDispatchRequest {
-            raw_message: raw_message.clone(),
-            raw_metadata: metadata.clone(),
-        })?;
+        .query_wasm_smart(
+            cfg.required_hook,
+            QueryHookRequest(HookQuery::QuoteDispatch {
+                raw_message: raw_message.clone(),
+                raw_metadata: metadata.clone(),
+            }),
+        )?
+        .as_quote_dispatch();
 
     // Deduct the fee from the received funds.
     // The fee will go to the required hook; the rest (if any) will go to the
@@ -87,18 +91,18 @@ fn dispatch(
     Ok(Response::new()
         .add_message(grug::Message::execute(
             cfg.required_hook,
-            &hook::ExecuteMsg::PostDispatch {
+            &hooks::ExecuteMsg::Hook(HookMsg::PostDispatch {
                 raw_message: raw_message.clone(),
                 raw_metadata: metadata.clone(),
-            },
+            }),
             fees,
         )?)
         .add_message(grug::Message::execute(
             hook.unwrap_or(cfg.default_hook),
-            &hook::ExecuteMsg::PostDispatch {
+            &hooks::ExecuteMsg::Hook(HookMsg::PostDispatch {
                 raw_message,
                 raw_metadata: metadata,
-            },
+            }),
             ctx.funds,
         )?)
         .add_event("mailbox_dispatch", &Dispatch {
@@ -147,15 +151,23 @@ fn process(
     // If the recipient doesn't specify an ISM, use the default.
     let ism = ctx
         .querier
-        .query_wasm_smart(recipient, QueryInterchainSecurityModuleRequest {})?
+        .query_wasm_smart(
+            recipient,
+            QueryRecipientRequest(RecipientQuery::InterchainSecurityModule {}),
+        )?
+        .as_interchain_security_module()
         .unwrap_or(cfg.default_ism);
 
     // Query the ISM to verify the message.
     ctx.querier
-        .query_wasm_smart(ism, QueryVerifyRequest {
-            raw_message,
-            raw_metadata,
-        })
+        .query_wasm_smart(
+            ism,
+            QueryIsmRequest(IsmQuery::Verify {
+                raw_message,
+                raw_metadata,
+            }),
+        )
+        .map(|res| res.as_verify())
         .map_err(|err| anyhow!("ISM verification failed: {err}"))?;
 
     // Mark the message as delivered.
@@ -164,11 +176,11 @@ fn process(
     Ok(Response::new()
         .add_message(grug::Message::execute(
             recipient,
-            &recipient::ExecuteMsg::Handle {
+            &recipients::ExecuteMsg::Recipient(RecipientMsg::Handle {
                 origin_domain: message.origin_domain,
                 sender: message.sender,
                 body: message.body,
-            },
+            }),
             Coins::new(),
         )?)
         .add_event("mailbox_process", &Process {

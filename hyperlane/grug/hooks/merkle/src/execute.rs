@@ -3,15 +3,18 @@ use {
     anyhow::ensure,
     grug::{Hash256, HexBinary, MutableCtx, Response, StdResult},
     hyperlane_types::{
-        merkle::{ExecuteMsg, InsertedIntoTree, InstantiateMsg, PostDispatch},
-        merkle_tree::MerkleTree,
+        hooks::{
+            merkle::{ExecuteMsg, InsertedIntoTree, InstantiateMsg, PostDispatch},
+            HookMsg,
+        },
+        IncrementalMerkleTree,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
-    MERKLE_TREE.save(ctx.storage, &MerkleTree::default())?;
+    MERKLE_TREE.save(ctx.storage, &IncrementalMerkleTree::default())?;
 
     Ok(Response::new())
 }
@@ -19,7 +22,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::PostDispatch { raw_message, .. } => post_dispatch(ctx, raw_message),
+        ExecuteMsg::Hook(HookMsg::PostDispatch { raw_message, .. }) => {
+            post_dispatch(ctx, raw_message)
+        },
     }
 }
 

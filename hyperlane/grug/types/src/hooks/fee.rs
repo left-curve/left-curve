@@ -1,4 +1,7 @@
-use grug::{Addr, Coins, HexBinary};
+use {
+    crate::hooks::{HookMsg, HookQuery, HookQueryResponse},
+    grug::Addr,
+};
 
 // --------------------------------- messages ----------------------------------
 
@@ -10,11 +13,8 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    // Required Hyperlane hook interface.
-    PostDispatch {
-        raw_message: HexBinary,
-        raw_metadata: HexBinary,
-    },
+    /// Required Hyperlane hook interface.
+    Hook(HookMsg),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -22,10 +22,7 @@ pub enum QueryMsg {
     /// Query the mailbox contract address.
     #[returns(Addr)]
     Mailbox {},
-    // Required Hyperlane hook interface.
-    #[returns(Coins)]
-    QuoteDispatch {
-        raw_message: HexBinary,
-        raw_metadata: HexBinary,
-    },
+    /// Required Hyperlane hook interface.
+    #[returns(HookQueryResponse)]
+    Hook(HookQuery),
 }
