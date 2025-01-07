@@ -1,6 +1,6 @@
 use {
     grug_testing::TestBuilder,
-    grug_types::{btree_map, Coin, Coins, Duration, Json, ResultExt, Timestamp},
+    grug_types::{btree_map, Binary, Coin, Coins, Duration, Empty, Json, ResultExt, Timestamp},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -35,6 +35,30 @@ mod tester {
         let job = JOB.load(ctx.storage).unwrap();
 
         Ok(Response::new().add_message(Message::transfer(job.receiver, job.coin).unwrap()))
+    }
+}
+
+/// A cronjob contract that intentionally fails during `cron_execute`. Used for
+/// testing whether the app can correctly handle revert failing cronjobs state changes.
+mod failing_tester {
+    use {
+        grug_math::{Number, NumberConst, Uint128},
+        grug_types::{Empty, MutableCtx, Response, StdResult, SudoCtx},
+    };
+
+    pub fn instantiate(ctx: MutableCtx, _: Empty) -> StdResult<Response> {
+        ctx.storage.write(b"foo", b"init");
+
+        Ok(Response::new())
+    }
+
+    pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+        ctx.storage.write(b"foo", b"cron_execute");
+
+        // This should fail.
+        let _ = Uint128::ONE.checked_div(Uint128::ZERO)?;
+
+        Ok(Response::new())
     }
 }
 
@@ -241,4 +265,61 @@ fn cronjob_works() {
             .query_balances(&accounts["jake"])
             .should_succeed_and_equal(expect);
     }
+}
+
+#[test]
+fn cronjob_fails() {
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .add_account("larry", Coins::new())
+        .set_genesis_time(Timestamp::from_nanos(0))
+        .set_block_time(Duration::from_seconds(1))
+        .set_owner("larry")
+        .build();
+
+    let tester_code = ContractBuilder::new(Box::new(failing_tester::instantiate))
+        .with_cron_execute(Box::new(failing_tester::cron_execute))
+        .build();
+
+    let tester_code_hash = suite
+        .upload(&mut accounts["larry"], tester_code)
+        .should_succeed()
+        .code_hash;
+
+    let cron = suite
+        .instantiate(
+            &mut accounts["larry"],
+            tester_code_hash,
+            &Empty {},
+            "cron1",
+            Some("cron1"),
+            None,
+            Coins::default(),
+        )
+        .should_succeed()
+        .address;
+
+    let mut new_cfg = suite.query_config().unwrap();
+    new_cfg.cronjobs = btree_map! {
+        // cron1 has interval of 0, meaning it's to be called every block.
+        cron => Duration::from_seconds(0),
+    };
+
+    suite
+        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
+        .should_succeed();
+
+    // Before the block, storage key `b"foo"` should have the value `b"init"`.
+    suite
+        .query_wasm_raw(cron, *b"foo")
+        .should_succeed_and_equal(Some(Binary::from(*b"init")));
+
+    // Advance block and trigger the cronjob
+    let res = suite.make_empty_block();
+    assert_eq!(res.cron_outcomes.len(), 1);
+
+    // The cronjob attempts to overwrite the value with `b"cron_execute"`.
+    // But it then fails before returning, so the change it discarded.
+    suite
+        .query_wasm_raw(cron, *b"foo")
+        .should_succeed_and_equal(Some(Binary::from(*b"init")));
 }

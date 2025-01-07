@@ -7,7 +7,7 @@ use {
         ibc,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coins, Hash160, HashExt, Json, Message, NonEmpty,
+        btree_map, Addressable, ByteArray, Coins, Hash256, HashExt, Json, Message, NonEmpty,
         ResultExt, Tx, Uint128,
     },
     std::str::FromStr,
@@ -30,7 +30,7 @@ fn user_onboarding() {
     // account doesn't exist yet.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.ibc_transfer,
             &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
@@ -76,9 +76,9 @@ fn user_onboarding() {
         )
         .should_succeed_and_equal(btree_map! {
             user.address() => Account {
-                // We have 2 genesis accounts (0 owner, 1 relayer) so this one should have
-                // the index of 2.
-                index: 2,
+                // We have 10 genesis accounts (owner + users 1-9), indexed from
+                // zero, so this one should have the index of 10.
+                index: 10,
                 params: AccountParams::Spot(single::Params::new(user.username.clone() )),
             },
         });
@@ -107,7 +107,7 @@ fn onboarding_existing_user() {
         // Make the initial deposit.
         suite
             .execute(
-                &mut accounts.relayer,
+                &mut accounts.user1,
                 contracts.ibc_transfer,
                 &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                     recipient: user.address(),
@@ -197,13 +197,13 @@ fn onboarding_without_deposit() {
 #[test_case(
     None,
     None,
-    Some(Hash160::from_inner([0; 20]));
+    Some(Hash256::from_inner([0; 32]));
     "false key hash"
 )]
 fn false_factory_tx(
     false_username: Option<Username>,
     false_key: Option<Key>,
-    false_key_hash: Option<Hash160>,
+    false_key_hash: Option<Hash256>,
 ) {
     let (mut suite, _, codes, contracts) = setup_test();
 

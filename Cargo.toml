@@ -1,10 +1,44 @@
 [workspace]
-exclude  = ["indexer/.data"]
-members  = ["dango/*", "grug/*", "indexer/*"]
+exclude = ["indexer/.data"]
+members = [
+  "dango/account/*",
+  "dango/amm",
+  "dango/app",
+  "dango/auth",
+  "dango/bank",
+  "dango/cli",
+  "dango/client",
+  "dango/genesis",
+  "dango/ibc-transfer",
+  "dango/lending",
+  "dango/oracle",
+  "dango/taxman",
+  "dango/testing",
+  "dango/token-factory",
+  "dango/types",
+  "dango/vesting",
+  "grug/app",
+  "grug/bob-the-builder",
+  "grug/client",
+  "grug/crypto",
+  "grug/db/*",
+  "grug/ffi",
+  "grug/jellyfish-merkle",
+  "grug/macros",
+  "grug/math",
+  "grug/mocks/*",
+  "grug/std",
+  "grug/storage",
+  "grug/tester",
+  "grug/testing",
+  "grug/types",
+  "grug/vm/*",
+  "indexer/*",
+]
 resolver = "2"
 
 [workspace.package]
-authors       = ["Left Curve Software Limited (https://leftcurve.software/)"]
+authors       = ["Left Curve Software Limited (https://grug.build/about.html)"]
 categories    = ["cryptography::cryptocurrencies"]
 documentation = "https://grug.build/whitepaper.html"
 edition       = "2021"
@@ -16,6 +50,7 @@ rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
+aes-gcm            = "0.10"
 alloy-dyn-abi      = { version = "0.8", features = ["eip712"] }
 alloy-primitives   = "0.8"
 anyhow             = "1"
@@ -49,6 +84,7 @@ k256               = "0.13"
 lzma-rs            = "0.3"
 p256               = "0.13"
 paste              = "1"
+pbkdf2             = "0.12"
 proc-macro2        = "1"
 proptest           = "1"
 prost              = "0.13"
@@ -58,6 +94,7 @@ quote              = "1"
 rand               = "0.8"
 reqwest            = "0.12"
 ripemd             = "0.1"
+rocksdb            = "0.23"
 serde              = "1"
 serde_json         = "1"
 serde_with         = "3"
@@ -88,32 +125,33 @@ grug-app          = { path = "grug/app" }
 grug-auth         = { path = "grug/auth" }
 grug-client       = { path = "grug/client" }
 grug-crypto       = { path = "grug/crypto" }
-grug-db-disk      = { path = "grug/db-disk" }
-grug-db-memory    = { path = "grug/db-memory" }
+grug-db-disk      = { path = "grug/db/disk" }
+grug-db-memory    = { path = "grug/db/memory" }
 grug-ffi          = { path = "grug/ffi" }
 grug-jmt          = { path = "grug/jellyfish-merkle" }
 grug-macros       = { path = "grug/macros" }
 grug-math         = { path = "grug/math" }
-grug-mock-account = { path = "grug/mock-account" }
-grug-mock-bank    = { path = "grug/mock-bank" }
-grug-mock-taxman  = { path = "grug/mock-taxman" }
+grug-mock-account = { path = "grug/mocks/account" }
+grug-mock-bank    = { path = "grug/mocks/bank" }
+grug-mock-taxman  = { path = "grug/mocks/taxman" }
 grug-storage      = { path = "grug/storage" }
 grug-tester       = { path = "grug/tester" }
 grug-testing      = { path = "grug/testing" }
 grug-types        = { path = "grug/types" }
-grug-vm-hybrid    = { path = "grug/vm-hybrid" }
-grug-vm-rust      = { path = "grug/vm-rust" }
-grug-vm-wasm      = { path = "grug/vm-wasm" }
+grug-vm-hybrid    = { path = "grug/vm/hybrid" }
+grug-vm-rust      = { path = "grug/vm/rust" }
+grug-vm-wasm      = { path = "grug/vm/wasm" }
 
 # Dango packages
-dango-account-factory = { path = "dango/account-factory" }
-dango-account-margin  = { path = "dango/account-margin" }
-dango-account-safe    = { path = "dango/account-safe" }
-dango-account-spot    = { path = "dango/account-spot" }
+dango-account-factory = { path = "dango/account/factory" }
+dango-account-margin  = { path = "dango/account/margin" }
+dango-account-safe    = { path = "dango/account/safe" }
+dango-account-spot    = { path = "dango/account/spot" }
 dango-amm             = { path = "dango/amm" }
 dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
+dango-client          = { path = "dango/client" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }
@@ -130,20 +168,26 @@ indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 
 [workspace.dependencies.sea-orm]
-features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"]
-version  = "1"
+features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+  "sqlx-sqlite",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+]
+version = "1"
 
 [workspace.dependencies.sea-orm-migration]
-features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"]
-version  = "1"
-
-# Use the latest `master` branch of rust-rocksdb, which includes support for
-# the user-defined timestamp feature:
-# https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-# TODO: Update to v0.23.0 once released.
-[workspace.dependencies.rocksdb]
-git = "https://github.com/rust-rocksdb/rust-rocksdb"
-rev = "1710120"
+features = [
+  "runtime-tokio-rustls",
+  "sqlx-postgres",
+  "sqlx-sqlite",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+]
+version = "1"
 
 # The Pyth attester SDK is not published to crates.io.
 # Import from GitHub, using the latest commit at this time.

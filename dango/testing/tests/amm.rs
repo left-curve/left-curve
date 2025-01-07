@@ -8,7 +8,8 @@ use {
         config::DANGO_DENOM,
     },
     grug::{
-        btree_map, Coin, CoinPair, Coins, Denom, Message, ResultExt, Udec128, Uint128, UniqueVec,
+        btree_map, coins, Coin, CoinPair, Coins, Denom, Message, NonEmpty, ResultExt, Udec128,
+        Uint128, UniqueVec,
     },
     std::{str::FromStr, sync::LazyLock},
 };
@@ -27,35 +28,38 @@ fn amm() {
 
     // Create two pools with ATOM-OSMO and ATOM-USDC liquidity, respectively.
     suite
-        .send_messages(&mut accounts.relayer, vec![
-            // pool 1: ATOM-OSMO
-            Message::execute(
-                contracts.amm,
-                &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
-                })),
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(657_761_324_779),
-                    OSMO.clone() => Uint128::new(5_886_161_498_040),
-                    // pool creation fee
-                    USDC.clone() => Uint128::new(10_000_000),
-                }),
-            )
-            .unwrap(),
-            // pool 2: ATOM-USDC
-            Message::execute(
-                contracts.amm,
-                &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                    liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
-                })),
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(224_078_907_873),
-                    // liquidity + pool creation fee
-                    USDC.clone() => Uint128::new(173_573_581_955),
-                }),
-            )
-            .unwrap(),
-        ])
+        .send_messages(
+            &mut accounts.user1,
+            NonEmpty::new_unchecked(vec![
+                // pool 1: ATOM-OSMO
+                Message::execute(
+                    contracts.amm,
+                    &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                        liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
+                    })),
+                    coins! {
+                        ATOM.clone() => Uint128::new(657_761_324_779),
+                        OSMO.clone() => Uint128::new(5_886_161_498_040),
+                        // pool creation fee
+                        USDC.clone() => Uint128::new(10_000_000),
+                    },
+                )
+                .unwrap(),
+                // pool 2: ATOM-USDC
+                Message::execute(
+                    contracts.amm,
+                    &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
+                        liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(20)),
+                    })),
+                    coins! {
+                        ATOM.clone() => Uint128::new(224_078_907_873),
+                        // liquidity + pool creation fee
+                        USDC.clone() => Uint128::new(173_573_581_955),
+                    },
+                )
+                .unwrap(),
+            ]),
+        )
         .should_succeed();
 
     // Check the pools.
@@ -105,19 +109,19 @@ fn amm() {
     // Check the AMM contract's balance.
     suite
         .query_balances(&contracts.amm)
-        .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+        .should_succeed_and_equal(coins! {
             // 657,761,324,779 + 224,078,907,873
             ATOM.clone() => Uint128::new(881_840_232_652),
             OSMO.clone() => Uint128::new(5_886_161_498_040),
             USDC.clone() => Uint128::new(173_563_581_955),
             LP_1.clone() => MINIMUM_LIQUIDITY,
             LP_2.clone() => MINIMUM_LIQUIDITY,
-        }));
+        });
 
     // Check the pool creator's LP token balances.
     suite
-        .query_balances(&accounts.relayer)
-        .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+        .query_balances(&accounts.user1)
+        .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 100,000,000,000,000 - 657,761,324,779 - 224,078,907,873
             ATOM.clone() => Uint128::new(99_118_159_767_348),
@@ -129,7 +133,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_967_660_890_722),
             // 197,210,389,916 - MINIMUM_LIQUIDITY
             LP_2.clone() => Uint128::new(197_210_388_916),
-        }));
+        });
 
     // Check the taxman has received the pool creation fees.
     suite
@@ -188,31 +192,34 @@ fn amm() {
     // = 197,254,389,682 - 197,210,389,916
     // = 44,999,766
     suite
-        .send_messages(&mut accounts.relayer, vec![
-            Message::execute(
-                contracts.amm,
-                &ExecuteMsg::ProvideLiquidity {
-                    pool_id: 1,
-                    minimum_output: None,
-                },
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(6_577_613),
-                    OSMO.clone() => Uint128::new(58_861_614),
-                }),
-            )
-            .unwrap(),
-            Message::execute(
-                contracts.amm,
-                &ExecuteMsg::ProvideLiquidity {
-                    pool_id: 2,
-                    minimum_output: None,
-                },
-                Coins::new_unchecked(btree_map! {
-                    ATOM.clone() => Uint128::new(100_000_000),
-                }),
-            )
-            .unwrap(),
-        ])
+        .send_messages(
+            &mut accounts.user1,
+            NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.amm,
+                    &ExecuteMsg::ProvideLiquidity {
+                        pool_id: 1,
+                        minimum_output: None,
+                    },
+                    coins! {
+                        ATOM.clone() => Uint128::new(6_577_613),
+                        OSMO.clone() => Uint128::new(58_861_614),
+                    },
+                )
+                .unwrap(),
+                Message::execute(
+                    contracts.amm,
+                    &ExecuteMsg::ProvideLiquidity {
+                        pool_id: 2,
+                        minimum_output: None,
+                    },
+                    coins! {
+                        ATOM.clone() => Uint128::new(100_000_000),
+                    },
+                )
+                .unwrap(),
+            ]),
+        )
         .should_succeed();
 
     // Check pool states should have been updated.
@@ -259,8 +266,8 @@ fn amm() {
 
     // Check the pool creator's token balances.
     suite
-        .query_balances(&accounts.relayer)
-        .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+        .query_balances(&accounts.user1)
+        .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99_118_159_767_348 - 6_577_613 - 100_000_000
             ATOM.clone() => Uint128::new(99_118_053_189_735),
@@ -272,7 +279,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_967_680_567_330),
             // 197,210,388,916 + 44,999,766 = 197,254,388,682
             LP_2.clone() => Uint128::new(197_254_388_682),
-        }));
+        });
 
     // --------------------------------- Swap ----------------------------------
 
@@ -375,7 +382,7 @@ fn amm() {
     // The liquidity provider withdraws around 1/3 of their ATOM-OSMO liquidity.
     suite
         .execute(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             contracts.amm,
             &ExecuteMsg::WithdrawLiquidity { pool_id: 1 },
             Coin::new(LP_1.clone(), Uint128::new(655_886_963_574)).unwrap(),
@@ -392,8 +399,8 @@ fn amm() {
     // = 5,885,070,020,602 * 655,886,963,574 / 1,967,680,568,330
     // = 1,961,670,389,167
     suite
-        .query_balances(&accounts.relayer)
-        .should_succeed_and_equal(Coins::new_unchecked(btree_map! {
+        .query_balances(&accounts.user1)
+        .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
             // 99,118,053,189,735 + 219,296,717,672
             ATOM.clone() => Uint128::new(99_337_349_907_407),
@@ -405,7 +412,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_311_793_603_756),
             // unchanged
             LP_2.clone() => Uint128::new(197_254_388_682),
-        }));
+        });
 
     // Check pool states.
     suite

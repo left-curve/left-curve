@@ -2,7 +2,7 @@ use {
     grug_math::{NumberConst, Uint128},
     grug_mock_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Duration, JsonDeExt, Message, ResultExt, Timestamp, Tx},
+    grug_types::{Coins, Duration, JsonDeExt, Message, NonEmpty, ResultExt, Timestamp, Tx},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -32,7 +32,7 @@ fn check_tx_and_finalize() {
             // Sign the tx
             let tx = accounts["rhaki"]
                 .sign_transaction_with_sequence(
-                    vec![transfer_msg.clone()],
+                    NonEmpty::new_unchecked(vec![transfer_msg.clone()]),
                     &suite.chain_id,
                     sequence,
                     0,
@@ -101,7 +101,12 @@ fn check_tx_and_finalize() {
 
     // Try create a block with a tx with sequence = 3
     let tx = accounts["rhaki"]
-        .sign_transaction_with_sequence(vec![transfer_msg], &suite.chain_id, 3, 0)
+        .sign_transaction_with_sequence(
+            NonEmpty::new_unchecked(vec![transfer_msg]),
+            &suite.chain_id,
+            3,
+            0,
+        )
         .unwrap();
 
     suite.make_block(vec![tx]).tx_outcomes[0]
@@ -133,10 +138,10 @@ mod backrunner {
     // Accounts can do any action while backrunning. In this test, the account
     // attempts to mint itself a token.
     pub fn backrun(ctx: AuthCtx, _tx: Tx) -> StdResult<Response> {
-        let cfg = ctx.querier.query_config().unwrap();
+        let bank = ctx.querier.query_bank().unwrap();
 
         Ok(Response::new().add_message(Message::execute(
-            cfg.bank,
+            bank,
             &grug_mock_bank::ExecuteMsg::Mint {
                 to: ctx.contract,
                 denom: Denom::from_str("nft/badkids/1").unwrap(),

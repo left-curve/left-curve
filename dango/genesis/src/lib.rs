@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{AppAddresses, AppConfig, DANGO_DENOM},
+        config::{AppAddresses, AppConfig},
         ibc,
         lending::{self, MarketUpdates},
         oracle::{
@@ -57,7 +57,7 @@ pub struct Codes<T> {
 
 pub struct GenesisUser {
     pub key: Key,
-    pub key_hash: Hash160,
+    pub key_hash: Hash256,
     pub balances: Coins,
 }
 
@@ -423,7 +423,6 @@ where
     };
 
     let app_config = AppConfig {
-        dango: DANGO_DENOM.clone(),
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,
