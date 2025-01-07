@@ -17,7 +17,9 @@ pub enum Transaction {
     #[sea_orm(iden = "transactions")]
     Table,
     Id,
+    #[allow(clippy::enum_variant_names)]
     TransactionType,
+    #[allow(clippy::enum_variant_names)]
     TransactionIdx,
     Sender,
     Data,

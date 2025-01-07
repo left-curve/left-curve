@@ -57,6 +57,7 @@ impl BlockToIndex {
                 .exec_without_returning(db)
                 .await?;
         }
+
         if !models.messages.is_empty() {
             entity::messages::Entity::insert_many(models.messages)
                 .exec_without_returning(db)
@@ -64,7 +65,6 @@ impl BlockToIndex {
         }
 
         if !models.events.is_empty() {
-            tracing::info!("Inserting events: {}", models.events.len());
             entity::events::Entity::insert_many(models.events)
                 .exec_without_returning(db)
                 .await?;

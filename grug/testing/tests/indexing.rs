@@ -1,21 +1,16 @@
 use {
     assertor::*,
     grug_app::{Db, Indexer},
-    grug_testing::{TestAccounts, TestBuilder, TestSuite},
+    grug_testing::TestBuilder,
     grug_types::{
-        Addr, Block, BlockInfo, BlockOutcome, Coin, Coins, Denom, Empty, Hash, JsonSerExt, Message,
-        ReplyOn, ResultExt,
+        Block, BlockInfo, BlockOutcome, Coin, Coins, Denom, Empty, Hash, Message, ReplyOn,
+        ResultExt,
     },
     grug_vm_rust::ContractBuilder,
-    indexer_sql::{
-        block_to_index::BlockToIndex,
-        entity,
-        events::{flat_tx_events, IndexCategory},
-    },
-    replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
+    indexer_sql::{block_to_index::BlockToIndex, entity},
+    replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{EntityTrait, QueryOrder},
     std::str::FromStr,
-    test_case::test_case,
 };
 
 #[test]
@@ -327,12 +322,12 @@ mod replier {
             Self::Ok { deep: deep.into() }
         }
 
-        pub fn fail<E>(err: E) -> Self
-        where
-            E: Into<String>,
-        {
-            Self::Fail { err: err.into() }
-        }
+        // pub fn fail<E>(err: E) -> Self
+        // where
+        //     E: Into<String>,
+        // {
+        //     Self::Fail { err: err.into() }
+        // }
 
         pub fn perform<T>(deep: T, next: ExecuteMsg, reply_on: ReplyOn) -> Self
         where
