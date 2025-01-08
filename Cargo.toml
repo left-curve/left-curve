@@ -33,6 +33,10 @@ members = [
   "grug/testing",
   "grug/types",
   "grug/vm/*",
+  "hyperlane/grug/hooks/*",
+  "hyperlane/grug/isms/*",
+  "hyperlane/grug/mailbox",
+  "hyperlane/grug/recipients/*",
   "indexer/*",
 ]
 resolver = "2"
@@ -51,8 +55,7 @@ version       = "0.0.0"
 
 [workspace.dependencies]
 aes-gcm            = "0.10"
-alloy-dyn-abi      = { version = "0.8", features = ["eip712"] }
-alloy-primitives   = "0.8"
+alloy              = "0.8"
 anyhow             = "1"
 assertor           = { version = "0.0", git = "https://github.com/google/assertor" }
 async-std          = { version = "1", features = ["attributes", "tokio1"] }
@@ -72,6 +75,7 @@ criterion          = "0.5"
 data-encoding      = "2"
 dialoguer          = "0.11"
 digest             = "0.10"
+dotenvy            = "0.15"
 dyn-clone          = "1"
 ed25519-dalek      = "2"
 elsa               = "1"
@@ -164,6 +168,14 @@ dango-vesting         = { path = "dango/vesting" }
 indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+
+# Hyperlane packages
+hyperlane-fee     = { path = "hyperlane/grug/hooks/fee" }
+hyperlane-ism     = { path = "hyperlane/grug/isms/multisig" }
+hyperlane-mailbox = { path = "hyperlane/grug/mailbox" }
+hyperlane-merkle  = { path = "hyperlane/grug/hooks/merkle" }
+hyperlane-types   = { path = "hyperlane/grug/types" }
+hyperlane-warp    = { path = "hyperlane/grug/recipients/warp" }
 
 [workspace.dependencies.sea-orm]
 features = [

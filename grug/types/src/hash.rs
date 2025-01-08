@@ -1,5 +1,19 @@
 use crate::{EncodedBytes, HashEncoder};
 
+/// A shorthand for constructing a constant hash from a hex string.
+///
+/// This is equivalent to:
+///
+/// ```ignore
+/// Hash::from_inner(hex_literal::hex!("..."))
+/// ```
+#[macro_export]
+macro_rules! hash {
+    ($hex:literal) => {
+        $crate::Hash::from_inner($crate::__private::hex_literal::hex!($hex))
+    };
+}
+
 /// A hash of a fixed length, in uppercase hex encoding.
 pub type Hash<const N: usize> = EncodedBytes<[u8; N], HashEncoder>;
 
