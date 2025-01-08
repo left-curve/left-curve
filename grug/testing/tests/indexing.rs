@@ -322,13 +322,6 @@ mod replier {
             Self::Ok { deep: deep.into() }
         }
 
-        // pub fn fail<E>(err: E) -> Self
-        // where
-        //     E: Into<String>,
-        // {
-        //     Self::Fail { err: err.into() }
-        // }
-
         pub fn perform<T>(deep: T, next: ExecuteMsg, reply_on: ReplyOn) -> Self
         where
             T: Into<String>,
