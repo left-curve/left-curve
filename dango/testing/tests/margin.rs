@@ -1,5 +1,6 @@
 use {
     dango_genesis::Contracts,
+    dango_oracle::OracleQuerier,
     dango_testing::{setup_test_naive, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
@@ -73,9 +74,9 @@ fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
 
 /// Asserts that two `Udec128` values are approximately equal within a specified
 /// relative difference
-fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
+fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) -> Result<(), TestCaseError> {
     let rel_diff = relative_difference(a, b);
-    assert!(
+    prop_assert!(
         rel_diff <= Udec128::from_str(max_rel_diff).unwrap(),
         "assertion failed: values are not approximately equal\n  left: {}\n right: {}\n  max_rel_diff: {}\n  actual_rel_diff: {}",
         a,
@@ -83,6 +84,7 @@ fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) {
         max_rel_diff,
         rel_diff
     );
+    Ok(())
 }
 
 fn register_price_feed(
@@ -605,14 +607,16 @@ fn liquidation_works_with_multiple_debt_denoms() {
         health.utilization_rate,
         *app_config.target_utilization_rate,
         "0.0001",
-    );
+    )
+    .unwrap();
 
     // Check that the debt after is correct (using manual calculation via equations)
     assert_approx_eq(
         health.total_debt_value,
         Udec128::from_str("41609.67023").unwrap(),
         "0.0001",
-    );
+    )
+    .unwrap();
     let debts_after = suite
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
@@ -625,7 +629,8 @@ fn liquidation_works_with_multiple_debt_denoms() {
         health.total_adjusted_collateral_value,
         Udec128::from_str("46232.96693").unwrap(),
         "0.0001",
-    );
+    )
+    .unwrap();
 }
 
 #[derive(Debug, Clone)]
@@ -701,7 +706,7 @@ fn collateral(denom: TestDenom) -> impl Strategy<Value = Collateral> {
 /// Represents a test scenario for a liquidation.
 /// The scenario contains the initial collaterals and debts for a margin account,
 /// along with a selected debt denom whose price will be changed to trigger liquidation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct LiquidationScenario {
     /// The denoms used for both collaterals and debts
     test_denoms: Vec<TestDenom>,
@@ -931,14 +936,13 @@ proptest! {
             )
             .should_succeed();
 
-        // Create margin account as liquidator (we use margin account instead of
-        // spot so we can easily check the liquidator's account worth via health query)
+        // Create spot account as liquidator
         let mut liquidator = accounts
             .user1
             .register_new_account(
                 &mut suite,
                 contracts.account_factory,
-                AccountParams::Margin(single::Params::new(username.clone())),
+                AccountParams::Spot(single::Params::new(username.clone())),
                 Coins::new(),
             )
             .should_succeed();
@@ -1045,11 +1049,12 @@ proptest! {
             .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
             .unwrap();
 
-
-        // Check liquidators account health before liquidation
-        let liquidator_health_before = suite
-            .query_wasm_smart(liquidator.address(), QueryHealthRequest {})
-            .unwrap();
+        // Get liquidators total account value before liquidation
+        let liquidator_balances_before = suite.query_balances(&liquidator).unwrap();
+        let liquidator_worth_before = liquidator_balances_before.clone().into_iter().map(|coin| {
+            let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+            price.value_of_unit_amount(coin.amount).unwrap()
+        }).reduce(|a, b| a + b).unwrap();
 
         // Attempt liquidation
         let res = suite
@@ -1063,7 +1068,20 @@ proptest! {
             )
             .should_succeed();
 
-        // Property: Liquidation bonus is within the bounds
+        // Get liquidators total account value after liquidation
+        let liquidator_balances_after = suite.query_balances(&liquidator).unwrap();
+        let liquidator_worth_after = liquidator_balances_after.into_iter().map(|coin| {
+            let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+            price.value_of_unit_amount(coin.amount).unwrap()
+        }).reduce(|a, b| a + b).unwrap();
+
+        // Property: Liquidation should always result in a profit for the liquidator
+        prop_assert!(
+            liquidator_worth_after > liquidator_worth_before,
+            "Liquidation should result in profit for liquidator"
+        );
+
+        // Check liquidation bonus
         let config = suite.query_app_config::<AppConfig>().unwrap();
         let liquidation_event: LiquidationEvent = res.events
             .search_event::<ContractEvent>()
@@ -1074,23 +1092,30 @@ proptest! {
             .data
             .deserialize_json()
             .unwrap();
+        let repaid_debt_value = liquidation_event.repaid_debt_value;
+        let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
+        let claimed_collateral_value = suite.query_price(contracts.oracle, &scenario.collaterals[0].denom.denom).unwrap().value_of_unit_amount(claimed_collateral_amount).unwrap();
+        let liquidation_bonus = (claimed_collateral_value - repaid_debt_value) / repaid_debt_value;
+        let liquidation_bonus_from_event: Udec128 = liquidation_event.liquidation_bonus;
 
-        let liquidation_bonus: Udec128 = liquidation_event.liquidation_bonus;
+        // Property: Liquidation bonus is within the bounds
         prop_assert!(
-            liquidation_bonus >= *config.min_liquidation_bonus && liquidation_bonus <= *config.max_liquidation_bonus,
+            liquidation_bonus_from_event >= *config.min_liquidation_bonus && liquidation_bonus_from_event <= *config.max_liquidation_bonus,
             "Liquidation bonus should be within the bounds"
         );
 
-        // Check liquidators account health after liquidation
-        let liquidator_health_after = suite
-            .query_wasm_smart(liquidator.address(), QueryHealthRequest {})
-            .unwrap();
-
-        // Property: Liquidation should always result in a profit for the liquidator
-        prop_assert!(
-            liquidator_health_after.total_collateral_value
-                > liquidator_health_before.total_collateral_value,
-            "Liquidation should result in profit for liquidator"
-        );
+        // Property: Actual liquidation bonus should be very close to the configured value
+        // We only run this check if the collateral amount is more than 1000 microunits,
+        // since otherwise the rounding will cause the actual bonus to be much larger
+        // than the configured value.
+        if scenario.collaterals[0].amount > Uint128::new(1000) {
+            assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.01")?;
+        }
+        else {
+            // If collateral amount is very small, rounding will occur so we just
+            // check that the liquidation bonus is larger than the configured value
+            // (so that liquidators don't lose out)
+            prop_assert!(liquidation_bonus >= liquidation_bonus_from_event);
+        }
     }
 }

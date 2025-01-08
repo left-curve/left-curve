@@ -190,18 +190,21 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     let collateral_price = ctx
         .querier
         .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
-    let claimed_collateral = collateral_price
+    let claimed_collateral_amount = collateral_price
         .unit_amount_from_value_ceil(repaid_debt_value * (Udec128::ONE + liq_bonus))?;
 
     // Ensure liquidator receives a non-zero amount of collateral
     ensure!(
-        claimed_collateral > Uint128::ZERO,
+        claimed_collateral_amount > Uint128::ZERO,
         "liquidation would result in zero collateral claimed"
     );
 
     // Send the claimed collateral and any debt refunds to the liquidator.
     let mut send_coins = refunds.clone();
-    send_coins.insert(Coin::new(liquidation_denom.clone(), claimed_collateral)?)?;
+    send_coins.insert(Coin::new(
+        liquidation_denom.clone(),
+        claimed_collateral_amount,
+    )?)?;
     let send_msg = Message::transfer(ctx.sender, send_coins)?;
 
     // Create message to repay debt
@@ -216,7 +219,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         repay_coins,
         refunds,
         repaid_debt_value,
-        claimed_collateral,
+        claimed_collateral_amount,
         liquidation_bonus: liq_bonus,
         target_health_factor,
     };
