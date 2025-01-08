@@ -1,5 +1,5 @@
 use {
-    grug::{Defined, MultiplyFraction, StdResult, Udec128, Uint128, Undefined},
+    grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
     pyth_sdk::PriceFeed,
 };
 
@@ -61,11 +61,12 @@ impl PrecisionedPrice {
     /// unit amount: 1*10^18
     /// value: 3000 * 1*10^18 / 10^18 = 3000
     pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> StdResult<Udec128> {
-        Ok(self.humanized_price
-            * Udec128::checked_from_ratio(
+        Ok(self
+            .humanized_price
+            .checked_mul(Udec128::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
-            )?)
+            )?)?)
     }
 
     /// Returns the unit amount of a given value. E.g. if this Price represents
@@ -79,13 +80,13 @@ impl PrecisionedPrice {
     /// unit amount: 1000 / 3000 * 10^18 = 1000*10^18 / 3000 = 3.33*10^17
     pub fn unit_amount_from_value(&self, value: Udec128) -> StdResult<Uint128> {
         Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec(value / self.humanized_price)?)
+            .checked_mul_dec(value.checked_div(self.humanized_price)?)?)
     }
 
     /// Returns the unit amount of a given value, rounded up.
     pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> StdResult<Uint128> {
         Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
-            .checked_mul_dec_ceil(value / self.humanized_price)?)
+            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)?)
     }
 }
 
