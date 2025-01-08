@@ -1,6 +1,8 @@
 use {
-    alloy_dyn_abi::{Eip712Domain, TypedData},
-    alloy_primitives::U160,
+    alloy::{
+        dyn_abi::{Eip712Domain, TypedData},
+        primitives::U160,
+    },
     anyhow::{anyhow, bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
