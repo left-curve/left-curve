@@ -51,7 +51,7 @@ pub struct LiquidationEvent {
     pub repay_coins: Coins,
     pub refunds: Coins,
     pub repaid_debt_value: Udec128,
-    pub claimed_collateral: Uint128,
+    pub claimed_collateral_amount: Uint128,
     pub liquidation_bonus: Udec128,
     pub target_health_factor: Udec128,
 }

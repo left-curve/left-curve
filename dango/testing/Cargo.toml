@@ -27,6 +27,7 @@ k256           = { workspace = true }
 alloy           = { workspace = true, features = ["full", "signer-mnemonic"] }
 anyhow          = { workspace = true }
 criterion       = { workspace = true }
+dango-oracle    = { workspace = true }
 dango-types     = { workspace = true }
 dotenvy         = { workspace = true }
 grug-crypto     = { workspace = true }
