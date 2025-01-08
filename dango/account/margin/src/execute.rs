@@ -98,8 +98,8 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Calculate liquidation bonus.
     let bonus_cap = (total_adjusted_collateral_value
-        / (total_debt_value * liquidation_collateral_power))
-        .saturating_sub(Udec128::ONE);
+        .checked_div(total_debt_value.checked_mul(liquidation_collateral_power)?))?
+    .saturating_sub(Udec128::ONE);
     let liq_bonus = max(
         *app_cfg.min_liquidation_bonus,
         min(
@@ -119,9 +119,11 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     {
         total_debt_value
     } else {
-        let numerator = total_debt_value * target_health_factor - total_adjusted_collateral_value;
-        let denominator =
-            target_health_factor - (Udec128::ONE + liq_bonus) * liquidation_collateral_power;
+        let numerator = total_debt_value
+            .checked_mul(target_health_factor)?
+            .checked_sub(total_adjusted_collateral_value)?;
+        let denominator = target_health_factor
+            .checked_sub((Udec128::ONE + liq_bonus).checked_mul(liquidation_collateral_power)?)?;
         numerator / denominator
     };
 
@@ -132,7 +134,8 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
     let liquidation_collateral_value =
         collateral_price.value_of_unit_amount(collaterals.amount_of(&liquidation_denom))?;
-    let mrd_from_chosen_collateral = liquidation_collateral_value / (Udec128::ONE + liq_bonus);
+    let mrd_from_chosen_collateral =
+        liquidation_collateral_value.checked_div(Udec128::ONE + liq_bonus)?;
 
     // Calculate the debt value to repay.
     let debt_repay_value = [
@@ -162,8 +165,8 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
             .query_price(app_cfg.addresses.oracle, &coin.denom)?;
         let debt_value = price.value_of_unit_amount(debt_amount)?;
 
-        let max_repay_for_denom = if repaid_debt_value + debt_value > debt_repay_value {
-            price.unit_amount_from_value(debt_repay_value - repaid_debt_value)?
+        let max_repay_for_denom = if repaid_debt_value.checked_add(debt_value)? > debt_repay_value {
+            price.unit_amount_from_value(debt_repay_value.checked_sub(repaid_debt_value)?)?
         } else {
             debt_amount
         };
@@ -179,7 +182,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         };
 
         repay_coins.insert(Coin::new(coin.denom.clone(), repay_amount)?)?;
-        repaid_debt_value += price.value_of_unit_amount(repay_amount)?;
+        repaid_debt_value.checked_add_assign(price.value_of_unit_amount(repay_amount)?)?;
     }
 
     // Ensure repaid debt value is not zero
@@ -191,7 +194,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         .querier
         .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
     let claimed_collateral_amount = collateral_price
-        .unit_amount_from_value_ceil(repaid_debt_value * (Udec128::ONE + liq_bonus))?;
+        .unit_amount_from_value_ceil(repaid_debt_value.checked_mul(Udec128::ONE + liq_bonus)?)?;
 
     // Ensure liquidator receives a non-zero amount of collateral
     ensure!(
