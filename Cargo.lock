@@ -2781,6 +2781,7 @@ dependencies = [
  "dango-ibc-transfer",
  "dango-lending",
  "dango-oracle",
+ "dango-orderbook",
  "dango-taxman",
  "dango-token-factory",
  "dango-types",
@@ -2826,6 +2827,16 @@ dependencies = [
  "dango-types",
  "grug",
  "pyth-sdk 0.8.0",
+]
+
+[[package]]
+name = "dango-orderbook"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "test-case",
 ]
 
 [[package]]

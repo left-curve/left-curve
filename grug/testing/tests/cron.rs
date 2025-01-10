@@ -167,7 +167,7 @@ fn cronjob_works() {
     // Make some blocks.
     // After each block, check that Jake has the correct balances.
     for balances in [
-        // Block time: 6
+        // Block time: 5
         //
         // cron1 sends 1 uatom, rescheduled to 6
         Balances {
@@ -175,18 +175,26 @@ fn cronjob_works() {
             uosmo: 0,
             umars: 0,
         },
-        // Block time: 7
+        // Block time: 6
         //
         // cron1 sends 1 uatom, rescheduled to 7
-        // cron2 sends 1 uosmo, rescheduled to 9
         Balances {
             uatom: 2,
+            uosmo: 0,
+            umars: 0,
+        },
+        // Block time: 7
+        //
+        // cron1 sends 1 uatom, rescheduled to 8 (it runs out of coins here)
+        // cron2 sends 1 uosmo, rescheduled to 9
+        Balances {
+            uatom: 3,
             uosmo: 1,
             umars: 0,
         },
         // Block time: 8
         //
-        // cron1 sends 1 uatom, rescheduled to 8 (it runs out of coins here)
+        // cron1 errors because it's out of coins
         // cron3 sends 1 umars, rescheduled to 11
         Balances {
             uatom: 3,
@@ -195,7 +203,6 @@ fn cronjob_works() {
         },
         // Block time: 9
         //
-        // cron1 errors because it's out of coins
         // cron2 sends 1 uosmo, rescheduled to 11
         Balances {
             uatom: 3,
@@ -229,8 +236,7 @@ fn cronjob_works() {
         },
         // Block time: 13
         //
-        // cron2 errors
-        // Otherwise nothing happens
+        // cron2 errors, otherwise nothing happens
         Balances {
             uatom: 3,
             uosmo: 3,
@@ -257,13 +263,13 @@ fn cronjob_works() {
             .insert(Coin::new("umars", balances.umars).unwrap())
             .unwrap();
 
-        // Advance block
-        suite.make_empty_block();
-
         // Check the balances are correct
         suite
             .query_balances(&accounts["jake"])
             .should_succeed_and_equal(expect);
+
+        // Advance block
+        suite.make_empty_block();
     }
 }
 

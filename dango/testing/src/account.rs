@@ -14,7 +14,7 @@ use {
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
-    std::{collections::BTreeMap, str::FromStr},
+    std::{array, collections::BTreeMap, str::FromStr},
 };
 
 /// Accounts available for testing purposes.
@@ -29,6 +29,40 @@ pub struct TestAccounts {
     pub user7: TestAccount,
     pub user8: TestAccount,
     pub user9: TestAccount,
+}
+
+impl TestAccounts {
+    /// Iterate over all user accounts (the owner excluded).
+    pub fn users(&self) -> array::IntoIter<&TestAccount, 9> {
+        [
+            &self.user1,
+            &self.user2,
+            &self.user3,
+            &self.user4,
+            &self.user5,
+            &self.user6,
+            &self.user7,
+            &self.user8,
+            &self.user9,
+        ]
+        .into_iter()
+    }
+
+    /// Iterate over all user accounts as mutable (the owner excluded).
+    pub fn users_mut(&mut self) -> array::IntoIter<&mut TestAccount, 9> {
+        [
+            &mut self.user1,
+            &mut self.user2,
+            &mut self.user3,
+            &mut self.user4,
+            &mut self.user5,
+            &mut self.user6,
+            &mut self.user7,
+            &mut self.user8,
+            &mut self.user9,
+        ]
+        .into_iter()
+    }
 }
 
 // ------------------------------- test account --------------------------------

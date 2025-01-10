@@ -3,10 +3,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
-        Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response, StdResult,
-        Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response,
+        StdResult, Storage, SudoCtx, Uint128,
     },
-    std::collections::HashMap,
+    std::collections::{BTreeMap, HashMap},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -45,6 +45,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
+    ensure!(ctx.funds.is_empty(), "don't send funds to bank contract");
+
     match msg {
         ExecuteMsg::GrantNamespace { namespace, owner } => grant_namespace(ctx, namespace, owner),
         ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
@@ -60,6 +62,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
+        ExecuteMsg::BatchTransfer(transfers) => batch_transfer(ctx, transfers),
     }
 }
 
@@ -147,6 +150,17 @@ fn force_transfer(
 
     decrease_balance(ctx.storage, &from, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    Ok(Response::new())
+}
+
+fn batch_transfer(ctx: MutableCtx, transfers: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
+    for (recipient, coins) in transfers {
+        for coin in coins {
+            decrease_balance(ctx.storage, &ctx.sender, &coin.denom, coin.amount)?;
+            increase_balance(ctx.storage, &recipient, &coin.denom, coin.amount)?;
+        }
+    }
 
     Ok(Response::new())
 }

@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test, Factory, TestAccount},
+    dango_testing::{setup_test_naive, Factory, TestAccount},
     dango_types::{
         account::single,
         account_factory::{self, Account, AccountParams, Username},
@@ -16,7 +16,7 @@ use {
 
 #[test]
 fn user_onboarding() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
     // Create a new key offchain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
@@ -93,7 +93,7 @@ fn user_onboarding() {
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_existing_user() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test();
+    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
 
     // First, we onboard a user normally.
     let tx = {
@@ -149,7 +149,7 @@ fn onboarding_existing_user() {
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_without_deposit() {
-    let (suite, _, codes, contracts) = setup_test();
+    let (suite, _, codes, contracts) = setup_test_naive();
 
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
@@ -205,7 +205,7 @@ fn false_factory_tx(
     false_key: Option<Key>,
     false_key_hash: Option<Hash256>,
 ) {
-    let (mut suite, _, codes, contracts) = setup_test();
+    let (mut suite, _, codes, contracts) = setup_test_naive();
 
     // User makes the deposit normally.
     let user = TestAccount::new_random("user").predict_address(

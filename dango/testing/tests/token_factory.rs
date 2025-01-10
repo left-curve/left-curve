@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test, TOKEN_FACTORY_CREATION_FEE},
+    dango_testing::{setup_test_naive, TOKEN_FACTORY_CREATION_FEE},
     dango_types::{
         bank::{self, Metadata, QueryMetadataRequest},
         token_factory::{Config, ExecuteMsg, NAMESPACE},
@@ -12,7 +12,7 @@ static SUBDENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("umars").unw
 
 #[test]
 fn token_factory() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     let owner_username = accounts.owner.username.clone();
 
@@ -251,7 +251,7 @@ fn token_factory() {
 
 #[test]
 fn metadata() {
-    let (mut suite, mut account, _, contracts) = setup_test();
+    let (mut suite, mut account, _, contracts) = setup_test_naive();
 
     let subdenom = Denom::new_unchecked(["foo"]);
     let denom = Denom::from_str(&format!(
