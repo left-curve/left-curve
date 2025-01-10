@@ -1084,7 +1084,10 @@ proptest! {
         // Check liquidation bonus
         let config = suite.query_app_config::<AppConfig>().unwrap();
         let liquidation_event: LiquidationEvent = res.events.msgs_and_backrun
-        .as_result().unwrap().msgs[0].clone().unwrap().as_execute().guest_event.unwrap().contract_events.into_iter().find(|e| e.ty == "margin/liquidation").unwrap().data.deserialize_json().unwrap();
+            .as_result().unwrap().msgs[0].clone().unwrap().as_execute()
+            .guest_event.unwrap().contract_events.into_iter()
+            .find(|e| e.ty == "margin/liquidation").unwrap().data
+            .deserialize_json().unwrap();
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
         let claimed_collateral_value = suite.query_price(contracts.oracle, &scenario.collaterals[0].denom.denom).unwrap().value_of_unit_amount(claimed_collateral_amount).unwrap();
