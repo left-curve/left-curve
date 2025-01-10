@@ -4,7 +4,7 @@ use {
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
     grug::{
         AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
-        MutableCtx, Response, Tx,
+        MutableCtx, QuerierCore, Response, Tx,
     },
     std::collections::BTreeMap,
 };

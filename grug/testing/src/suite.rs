@@ -9,8 +9,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins,
         Config, ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt,
-        Message, NonEmpty, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError,
-        TxOutcome, TxSuccess, UnsignedTx,
+        Message, NonEmpty, Querier, Query, QueryRequest, QueryResponse, ResultExt, Signer,
+        StdError, Tx, TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -774,5 +774,20 @@ where
         self.app
             .do_query_app(Query::wasm_smart(contract, &msg)?, 0, false)
             .map(|res| res.as_wasm_smart().deserialize_json().unwrap())
+    }
+}
+
+impl<DB, VM, PP, ID> Querier for TestSuite<DB, VM, PP, ID>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    type Err = AppError;
+
+    fn query_chain(&self, req: Query) -> AppResult<QueryResponse> {
+        self.app.do_query_app(req, 0, false)
     }
 }

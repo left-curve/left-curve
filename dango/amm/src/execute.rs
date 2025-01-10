@@ -9,8 +9,8 @@ use {
         bank, taxman,
     },
     grug::{
-        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Part, Response, StdResult,
-        Uint128, UniqueVec,
+        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Part, QuerierCore, Response,
+        StdResult, Uint128, UniqueVec,
     },
 };
 

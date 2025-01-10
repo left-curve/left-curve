@@ -5,7 +5,7 @@ use {
         ibc::transfer::{ExecuteMsg, InstantiateMsg},
         DangoQuerier,
     },
-    grug::{Addr, Message, MutableCtx, Response, StdResult},
+    grug::{Addr, Message, MutableCtx, QuerierCore, Response, StdResult},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]

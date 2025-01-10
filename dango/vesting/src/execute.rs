@@ -5,7 +5,10 @@ use {
         config::DANGO_DENOM,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
-    grug::{Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, Response, Uint128},
+    grug::{
+        Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, QuerierCore, Response,
+        Uint128,
+    },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]

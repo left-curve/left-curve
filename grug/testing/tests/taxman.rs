@@ -14,8 +14,8 @@ mod taxman {
     use {
         grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
         grug_types::{
-            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, Response, StdResult, Tx,
-            TxOutcome,
+            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, QuerierCore, Response,
+            StdResult, Tx, TxOutcome,
         },
         std::{str::FromStr, sync::LazyLock},
     };

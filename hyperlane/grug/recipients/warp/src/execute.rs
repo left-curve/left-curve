@@ -3,7 +3,8 @@ use {
     anyhow::{anyhow, ensure},
     dango_types::bank,
     grug::{
-        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, Response, StdResult,
+        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierCore, Response,
+        StdResult,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
