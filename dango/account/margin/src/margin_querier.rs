@@ -26,7 +26,7 @@ pub trait MarginQuerier {
     ) -> anyhow::Result<HealthResponse>;
 }
 
-impl<'a> MarginQuerier for QuerierWrapper<'a> {
+impl MarginQuerier for QuerierWrapper<'_> {
     fn query_health(
         &self,
         account: Addr,
