@@ -27,7 +27,7 @@
     "example:next": "pnpm -F example-nextjs",
     "example:node": "pnpm -F example-nodejs",
     "base": "pnpm -F config",
-    "kit": "pnpm -F connect-kit",
+    "kit": "pnpm -F dango-kit",
     "crypto": "pnpm -F crypto",
     "encoding": "pnpm -F encoding",
     "react": "pnpm -F react",

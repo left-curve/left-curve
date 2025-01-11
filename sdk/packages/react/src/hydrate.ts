@@ -1,6 +1,6 @@
 "use client";
 
-import { hydrate } from "@left-curve/connect-kit";
+import { hydrate } from "@left-curve/dango-kit";
 import type { Config, State } from "@left-curve/types";
 import { type ReactElement, useEffect, useRef } from "react";
 
@@ -23,7 +23,6 @@ export function Hydrate(parameters: React.PropsWithChildren<HydrateProps>) {
 
   // Hydrate for SSR
   const active = useRef(true);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `queryKey` not required
   useEffect(() => {
     if (!active.current) return;
     if (!config._internal.ssr) return;

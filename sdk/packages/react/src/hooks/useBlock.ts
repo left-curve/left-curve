@@ -9,7 +9,7 @@ import {
   type GetBlockQueryFnData,
   type GetBlockQueryKey,
   getBlockQueryOptions,
-} from "@left-curve/connect-kit/handlers";
+} from "@left-curve/dango-kit/handlers";
 
 export type UseBlockParameters<
   config extends Config = Config,

@@ -130,7 +130,6 @@ export type QueryResponse =
 
 export type ChainInfoResponse = {
   chainId: string;
-  config: ChainConfigResponse;
   lastFinalizedBlock: BlockInfo;
 };
 

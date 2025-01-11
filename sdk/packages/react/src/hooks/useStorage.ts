@@ -1,4 +1,4 @@
-import { createStorage } from "@left-curve/connect-kit";
+import { createStorage } from "@left-curve/dango-kit";
 
 import type { Storage } from "@left-curve/types";
 import type { Dispatch, SetStateAction } from "react";
