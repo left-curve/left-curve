@@ -8,14 +8,6 @@ import type {
 import type { Credential } from "./credential.js";
 import type { Metadata } from "./metadata.js";
 
-export type EthPersonalMessage = Hex | string | Uint8Array;
-
-export type RawSignature = {
-  r: Hex;
-  s: Hex;
-  v: number;
-};
-
 export type SignDoc = GrugSignDoc<Metadata>;
 
 export type SignatureOutcome = GrugSignatureOutcome<Metadata, Credential>;

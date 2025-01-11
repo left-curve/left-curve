@@ -5,13 +5,10 @@ import type {
   Hex,
   Json,
   Message,
-  Metadata,
-  Power,
   TxMessageType,
   TypedData,
   TypedDataParameter,
   TypedDataProperty,
-  Username,
 } from "@left-curve/types";
 import type { HashTypedDataParameters } from "viem";
 import { recursiveTransform } from "./mappers.js";
@@ -103,7 +100,7 @@ export function composeTxTypedData(
       metadata: recursiveTransform(
         { ...metadata, ...(expiry ? { expiry } : {}) },
         camelToSnake,
-      ) as Metadata,
+      ) as Json,
       gas_limit,
       messages: recursiveTransform(messages, camelToSnake) as Message[],
     },
@@ -127,7 +124,7 @@ export function getCoinsTypedData(coins?: Coins): TypedDataProperty[] {
  * @param members The members to get the typed data for.
  * @returns The typed data properties.
  */
-export function getMembersTypedData(members?: Record<Username, Power>): TypedDataProperty[] {
+export function getMembersTypedData(members?: Record<string, number>): TypedDataProperty[] {
   if (!members) return [];
   return Object.keys(members).map((member) => ({ name: member, type: "uint32" }));
 }

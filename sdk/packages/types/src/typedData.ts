@@ -1,5 +1,6 @@
-import type { Address, Message } from "@left-curve/types";
-import type { Metadata } from "./metadata.js";
+import type { Address } from "./address.js";
+import type { Json } from "./encoding.js";
+import type { Message } from "./tx.js";
 
 // biome-ignore format: no formatting
 type MBytes =
@@ -73,7 +74,7 @@ export type EIP712Types<TMessage extends TxMessageType | unknown = TxMessageType
     Record<"EIP712Domain", DomainType>;
 
 export type EIP712Message = {
-  metadata: Metadata;
+  metadata: Json;
   gas_limit: number;
   messages: Message[];
 };

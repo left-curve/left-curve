@@ -1,17 +1,7 @@
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { queryWasmSmart } from "../../public/queryWasmSmart.js";
+import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
 
-import type {
-  AmmQueryMsg,
-  Chain,
-  Client,
-  Coin,
-  PoolId,
-  Signer,
-  SwapOutcome,
-  Transport,
-} from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { Chain, Client, Coin, Signer, Transport } from "@left-curve/types";
+import type { AmmQueryMsg, AppConfig, PoolId, SwapOutcome } from "../../../types/index.js";
 
 export type SimulateSwapParameters = {
   height?: number;
@@ -38,7 +28,7 @@ export async function simulateSwap<
   const { input, route, height = 0 } = parameters;
   const msg: AmmQueryMsg = { simulate: { input, route: [...new Set(route)] } };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await queryWasmSmart(client, { contract: addresses.amm, msg, height });
 }

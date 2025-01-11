@@ -182,5 +182,20 @@ export {
 export {
   ArbitrarySignatureOutcome,
   SignatureOutcome,
+  RawSignature,
   SignDoc,
 } from "./signature.js";
+
+export type {
+  DomainType,
+  EIP712Domain,
+  EIP712Message,
+  EIP712Types,
+  MessageType,
+  MetadataType,
+  SolidityTypes,
+  TxMessageType,
+  TypedData,
+  TypedDataParameter,
+  TypedDataProperty,
+} from "./typedData.js";

@@ -102,9 +102,7 @@ export type {
 export type {
   ArbitrarySignatureOutcome,
   Eip712Signature,
-  EthPersonalMessage,
   PasskeySignature,
-  RawSignature,
   Secp256k1Signature,
   SignDoc,
   Signature,
@@ -131,20 +129,6 @@ export type {
   TokenFactoryExecuteMsg,
   TokenFactoryQueryMsg,
 } from "./token-factory.js";
-
-export type {
-  DomainType,
-  EIP712Domain,
-  EIP712Message,
-  EIP712Types,
-  MessageType,
-  MetadataType,
-  SolidityTypes,
-  TxMessageType,
-  TypedData,
-  TypedDataParameter,
-  TypedDataProperty,
-} from "./typedData.js";
 
 export { AccountType } from "./account.js";
 
