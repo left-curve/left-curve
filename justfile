@@ -37,7 +37,7 @@ fmt:
 
 # Update wasm artifacts used in tests
 testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm-wasm/testdata/
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
 
 # Build the Left Curve Book
 book:

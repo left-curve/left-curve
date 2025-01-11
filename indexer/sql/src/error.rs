@@ -34,6 +34,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Persistence(#[from] indexer_disk_saver::error::Error),
+
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl From<IndexerError> for AppError {

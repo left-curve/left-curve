@@ -32,16 +32,7 @@ impl BlockToIndex {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block.info.height, "Indexing block");
 
-        let mut models = Models::build(&self.block, &self.block_outcome)?;
-
-        for (tx, tx_outcome) in self
-            .block
-            .txs
-            .iter()
-            .zip(self.block_outcome.tx_outcomes.iter())
-        {
-            models.push(tx, tx_outcome)?;
-        }
+        let models = Models::build(&self.block, &self.block_outcome)?;
 
         // I check if the block already exists, if so it means we can skip the
         // whole block, transactions, messages and events since those are created
@@ -66,11 +57,13 @@ impl BlockToIndex {
                 .exec_without_returning(db)
                 .await?;
         }
+
         if !models.messages.is_empty() {
             entity::messages::Entity::insert_many(models.messages)
                 .exec_without_returning(db)
                 .await?;
         }
+
         if !models.events.is_empty() {
             entity::events::Entity::insert_many(models.events)
                 .exec_without_returning(db)

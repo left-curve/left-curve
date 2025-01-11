@@ -26,12 +26,12 @@ macro_rules! catch_and_update_event {
                     error: error.to_string(),
                 };
 
-                return EventResult::SubErr { event: $evt, error };
+                return EventResult::NestedErr { event: $evt, error };
             },
-            EventResult::SubErr { event, error } => {
+            EventResult::NestedErr { event, error } => {
                 $evt.$field = grug_types::EventStatus::NestedFailed(event);
 
-                return EventResult::SubErr { event: $evt, error };
+                return EventResult::NestedErr { event: $evt, error };
             },
         }
     };
@@ -50,12 +50,12 @@ macro_rules! catch_and_append_event {
                     error: error.to_string(),
                 });
 
-                return EventResult::SubErr { event: $evt, error };
+                return EventResult::NestedErr { event: $evt, error };
             },
-            EventResult::SubErr { event, error } => {
+            EventResult::NestedErr { event, error } => {
                 $evt.msgs.push(grug_types::EventStatus::NestedFailed(event));
 
-                return EventResult::SubErr { event: $evt, error };
+                return EventResult::NestedErr { event: $evt, error };
             },
         }
     };

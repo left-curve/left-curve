@@ -101,7 +101,7 @@ pub struct BlockInfo {
 #[serde(deny_unknown_fields)]
 pub struct Block {
     pub info: BlockInfo,
-    pub txs: Vec<Tx>,
+    pub txs: Vec<(Tx, Hash256)>,
 }
 
 #[skip_serializing_none]
