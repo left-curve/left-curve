@@ -1,19 +1,19 @@
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/execute.js";
+
+import type { AmmExecuteMsg, AppConfig, PoolParams } from "../../../types/index.js";
 
 import type {
   Address,
-  AmmExecuteMsg,
   Chain,
   Client,
-  PoolParams,
   Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
   TypedDataProperty,
 } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+
+import { getAppConfig } from "@left-curve/sdk/actions";
 
 export type CreatePoolParameters = {
   sender: Address;
@@ -72,7 +72,7 @@ export async function createPool<chain extends Chain | undefined, signer extends
     },
   };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await execute(client, {
     sender,

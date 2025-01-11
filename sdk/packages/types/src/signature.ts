@@ -1,5 +1,5 @@
 import type { Address } from "./address.js";
-import type { Json, JsonValue } from "./encoding.js";
+import type { Hex, Json, JsonValue } from "./encoding.js";
 import type { Message } from "./tx.js";
 
 export type SignDoc<Metadata = Json> = {
@@ -17,4 +17,10 @@ export type SignatureOutcome<Metadata = Json, Credential = Json> = {
 export type ArbitrarySignatureOutcome<Credential = Json> = {
   credential: Credential;
   payload: JsonValue;
+};
+
+export type RawSignature = {
+  r: Hex;
+  s: Hex;
+  v: number;
 };

@@ -1,5 +1,5 @@
 import { simulate } from "../../../../core/src/actions/simulate.js";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../signer/broadcastTxSync.js";
+import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../app/broadcastTxSync.js";
 import { getAppConfig } from "./getAppConfig.js";
 
 import type {

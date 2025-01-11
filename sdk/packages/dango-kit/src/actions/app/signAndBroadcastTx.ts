@@ -1,9 +1,9 @@
+import { getChainInfo, simulate } from "@left-curve/sdk";
 import type {
   Address,
   Chain,
   Client,
   Message,
-  Metadata,
   Signer,
   Transport,
   Tx,
@@ -11,8 +11,6 @@ import type {
   TypedDataParameter,
 } from "@left-curve/types";
 import { getAccountSeenNonces } from "../public/getAccountSeenNonces.js";
-import { getChainInfo } from "../public/getChainInfo.js";
-import { simulate } from "../public/simulate.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 export type SignAndBroadcastTxParameters = {
@@ -33,7 +31,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
 
   const chainId = await (async () => {
     if (client.chain?.id) return client.chain.id;
-    const { chainId } = await getChainInfo(client, {});
+    const { chainId } = await getChainInfo(client);
     return chainId;
   })();
 
@@ -45,7 +43,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
 
   const [nonce] = await getAccountSeenNonces(client, { address: sender });
 
-  const data: Metadata = { username, nonce, chainId };
+  const data = { username, nonce, chainId };
 
   const { gasUsed } = gas
     ? { gasUsed: gas }

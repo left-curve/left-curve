@@ -1,18 +1,17 @@
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/execute.js";
 
+import type { AmmExecuteMsg, AppConfig, PoolId } from "../../../types/index.js";
+
+import { getAppConfig } from "@left-curve/sdk";
 import type {
   Address,
-  AmmExecuteMsg,
   Chain,
   Client,
-  PoolId,
   Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type ProvideLiquidityParameters = {
   sender: Address;
@@ -53,7 +52,7 @@ export async function provideLiquidity<chain extends Chain | undefined, signer e
     },
   };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await execute(client, {
     sender,

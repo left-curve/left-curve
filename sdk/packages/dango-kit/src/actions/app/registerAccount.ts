@@ -1,8 +1,8 @@
+import { getAppConfig } from "@left-curve/sdk";
 import { getMembersTypedData } from "@left-curve/utils";
-import { type ExecuteReturnType, execute, getAppConfig } from "../index.js";
+import { type ExecuteReturnType, execute } from "./execute.js";
 
 import type {
-  AccountConfig,
   Address,
   Chain,
   Client,
@@ -11,7 +11,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { AccountConfig, AppConfig } from "../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -28,7 +28,7 @@ export async function registerAccount<chain extends Chain | undefined, signer ex
   const { sender, config } = parameters;
   const msg = { registerAccount: { params: config } };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   const typedData: TypedDataParameter = {
     type: [{ name: "register_account", type: "RegisterAccount" }],

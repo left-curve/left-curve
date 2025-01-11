@@ -1,5 +1,5 @@
+import { type ExecuteReturnType, execute } from "../../app/execute.js";
 import { getAppConfig } from "../../public/getAppConfig.js";
-import { type ExecuteReturnType, execute } from "../../signer/execute.js";
 
 import type {
   Address,
