@@ -1,16 +1,15 @@
-import type { Chain, ChainId } from "./chain.js";
-import type { Client } from "./client.js";
-import type { AnyCoin, Denom } from "./coin.js";
+import type { Chain, ChainId } from "../../../types/src/chain.js";
+import type { Client } from "../../../types/src/client.js";
+import type { AnyCoin, Denom } from "../../../types/src/coin.js";
 import type {
   Connection,
   Connector,
-  ConnectorEvents,
   ConnectorUId,
   CreateConnectorFn,
-} from "./connector.js";
+} from "../../../types/src/connector.js";
+import type { Transport } from "../../../types/src/transports.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
-import type { Transport } from "./transports.js";
 
 export const ConnectionStatus = {
   Connected: "connected",

@@ -1,6 +1,6 @@
-import type { Address } from "../address.js";
+import type { Address } from "@left-curve/types";
 
-export type DangoAppConfigResponse = {
+export type AppConfigResponse = {
   addresses: {
     accountFactory: Address;
     ibcTransfer: Address;

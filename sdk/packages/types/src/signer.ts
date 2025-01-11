@@ -1,9 +1,10 @@
-import type { JsonValue } from "./encoding.js";
-import type { KeyHash } from "./key.js";
+import type { Json, JsonValue } from "./encoding.js";
 import type { ArbitrarySignatureOutcome, SignDoc, SignatureOutcome } from "./signature.js";
 
-export type Signer = {
-  getKeyHash: () => Promise<KeyHash>;
-  signArbitrary: (payload: JsonValue) => Promise<ArbitrarySignatureOutcome>;
-  signTx: (signDoc: SignDoc, extra: unknown) => Promise<SignatureOutcome>;
+export type Signer<Metadata = Json, Credential = Json> = {
+  signArbitrary: (payload: JsonValue) => Promise<ArbitrarySignatureOutcome<Credential>>;
+  signTx: (
+    signDoc: SignDoc<Metadata>,
+    extra: unknown,
+  ) => Promise<SignatureOutcome<Metadata, Credential>>;
 };

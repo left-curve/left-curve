@@ -1,4 +1,3 @@
-import type { Username } from "./account.js";
 import type { Chain } from "./chain.js";
 import type { Signer } from "./signer.js";
 import type { Transport } from "./transports.js";
@@ -13,8 +12,6 @@ export type ClientConfig<
 > = {
   /** The signer used for sign the txs. */
   signer?: signer;
-  /** The username of the signer. */
-  username?: Username;
   /** The chain to connect to. */
   chain?: chain;
   /** The name of the client. */
@@ -32,7 +29,6 @@ export type Client<
   extended extends ClientExtend | undefined = ClientExtend | undefined,
 > = {
   signer: signer;
-  username?: Username;
   chain?: chain;
   name: string;
   request: ReturnType<transport>["request"];

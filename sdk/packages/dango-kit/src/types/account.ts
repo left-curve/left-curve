@@ -1,7 +1,6 @@
-import type { Address } from "./address.js";
+import type { Address, Prettify } from "@left-curve/types";
 import type { Key, KeyHash } from "./key.js";
 import type { Safe } from "./safe.js";
-import type { Prettify } from "./utils.js";
 
 export type User = {
   keys: Record<KeyHash, Key>;

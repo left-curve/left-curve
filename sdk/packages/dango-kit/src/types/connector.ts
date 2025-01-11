@@ -1,11 +1,10 @@
+import type { Chain, ChainId } from "../../../types/src/chain.js";
+import type { Client } from "../../../types/src/client.js";
+import type { Signer } from "../../../types/src/signer.js";
+import type { Transport } from "../../../types/src/transports.js";
+import type { Prettify } from "../../../types/src/utils.js";
 import type { Account, Username } from "./account.js";
-import type { Chain, ChainId } from "./chain.js";
-import type { Client } from "./client.js";
-
 import type { Emitter, EventData } from "./emitter.js";
-import type { Signer } from "./signer.js";
-import type { Transport } from "./transports.js";
-import type { Prettify } from "./utils.js";
 
 export type ConnectorUId = string;
 

@@ -1,44 +1,8 @@
 import type { Address } from "./address.js";
+import type { BlockInfo, ContractInfo } from "./app.js";
 import type { Code } from "./code.js";
 import type { Coin, Coins, Denom } from "./coin.js";
-import type { Duration, Permission } from "./common.js";
-import type { Metadata } from "./credential.js";
 import type { Base64, Hex, Json, JsonValue } from "./encoding.js";
-import type { Message } from "./tx.js";
-
-export type BlockInfo = {
-  height: string;
-  timestamp: string;
-  hash: string;
-};
-
-export type ContractInfo = {
-  codeHash: Hex;
-  label?: string;
-  admin?: Address;
-};
-
-export type ChainConfigResponse = {
-  owner: string;
-  bank: Address;
-  taxman: Address;
-  cronjobs: Record<Address, Duration>;
-  permissions: {
-    upload: Permission;
-    instantiate: Permission;
-  };
-};
-
-export type SimulateRequest = {
-  sender: string;
-  msgs: Message[];
-  data: Metadata | null;
-};
-
-export type SimulateResponse = {
-  gasLimit: number;
-  gasUsed: number;
-};
 
 export type QueryRequest =
   | { config: QueryConfigRequest }
@@ -137,13 +101,9 @@ export type CodeResponse = Code;
 
 export type CodesResponse = Record<Hex, Code>;
 
-export type AppConfigResponse = Json;
+export type ChainConfigResponse<R = Json> = R;
 
-export type AccountResponse = {
-  address: Address;
-  codeHash: string;
-  admin?: string;
-};
+export type AppConfigResponse<R = Json> = R;
 
 export type WasmRawResponse = Base64 | undefined;
 
