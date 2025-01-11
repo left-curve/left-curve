@@ -147,10 +147,10 @@ where
     }
 }
 
-impl<K> QuerierExt for K
+impl<Q> QuerierExt for Q
 where
-    K: Querier,
-    K::Error: From<StdError>,
+    Q: Querier,
+    Q::Error: From<StdError>,
 {
 }
 
