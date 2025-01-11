@@ -18,8 +18,7 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
-// equals 0.5
-const HALF: Udec128 = Udec128::raw(Uint128::new(500_000_000_000_000_000));
+const HALF: Udec128 = Udec128::new_percent(50);
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response> {
