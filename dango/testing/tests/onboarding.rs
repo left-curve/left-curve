@@ -8,7 +8,7 @@ use {
     },
     grug::{
         btree_map, Addressable, ByteArray, Coins, Hash256, HashExt, Json, Message, NonEmpty,
-        ResultExt, Tx, Uint128,
+        QuerierCore, ResultExt, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,

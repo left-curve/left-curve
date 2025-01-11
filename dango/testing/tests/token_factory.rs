@@ -4,7 +4,7 @@ use {
         bank::{self, Metadata, QueryMetadataRequest},
         token_factory::{Config, ExecuteMsg, NAMESPACE},
     },
-    grug::{Addressable, Coins, Denom, LengthBounded, Message, ResultExt, Uint128},
+    grug::{Addressable, Coins, Denom, LengthBounded, Message, QuerierCore, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
 

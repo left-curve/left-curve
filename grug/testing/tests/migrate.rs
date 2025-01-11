@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestBuilder, UploadAndInstantiateOutcomeSuccess},
-    grug_types::{Coins, Empty, ResultExt},
+    grug_types::{Coins, Empty, QuerierCore, ResultExt},
     grug_vm_rust::ContractBuilder,
     tester::{MigrateMsg, QueryV1, QueryV2RequestV1, QueryV2RequestV2},
 };
@@ -148,7 +148,7 @@ fn migrate() {
 
         // Check the code_hash is still the old one
         suite
-            .query_contract(&contract)
+            .query_contract(contract)
             .should_succeed_and(|info| info.code_hash == v1_code_hash);
     }
 
@@ -165,7 +165,7 @@ fn migrate() {
 
         // Check the code_hash is still the old one
         suite
-            .query_contract(&contract)
+            .query_contract(contract)
             .should_succeed_and(|info| info.code_hash == v2_code_hash);
 
         suite

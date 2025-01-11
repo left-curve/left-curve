@@ -5,7 +5,7 @@ use {
         PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID, USDC_USD_ID,
         WBTC_USD_ID,
     },
-    grug::{btree_map, setup_tracing_subscriber, Denom, ResultExt},
+    grug::{btree_map, setup_tracing_subscriber, Denom, QuerierCore, ResultExt},
     std::{
         str::FromStr,
         thread::{self, sleep},
@@ -41,7 +41,7 @@ fn proposal_pyth() {
 
     // Give time to the thread to write the price into
     // Shared latest_vaas variable.
-    thread::sleep(time::Duration::from_secs(2));
+    thread::sleep(time::Duration::from_secs(3));
 
     // Trigger the prepare proposal to upload the prices to oracle.
     suite.make_empty_block();

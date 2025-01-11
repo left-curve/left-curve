@@ -14,7 +14,7 @@ use {
     },
     grug::{
         btree_map, Addressable, Binary, Coin, Coins, Denom, JsonSerExt, Message, MsgConfigure,
-        MsgTransfer, NonEmpty, NumberConst, ResultExt, Udec128, Uint128,
+        MsgTransfer, NonEmpty, NumberConst, QuerierCore, ResultExt, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,

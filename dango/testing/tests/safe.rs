@@ -13,7 +13,8 @@ use {
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
-        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, ResultExt, Signer, Uint128,
+        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, QuerierCore, ResultExt, Signer,
+        Uint128,
     },
     grug_app::NaiveProposalPreparer,
 };

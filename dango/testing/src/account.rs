@@ -10,7 +10,8 @@ use {
     },
     grug::{
         btree_map, Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, ResultExt, Signer, StdResult, Tx, Undefined, UnsignedTx,
+        MaybeDefined, Message, NonEmpty, QuerierCore, ResultExt, Signer, StdResult, Tx, Undefined,
+        UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
