@@ -10,6 +10,7 @@ use {
 
 pub trait Querier {
     type Err;
+
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
     fn query_chain(&self, req: Query) -> Result<QueryResponse, Self::Err>;
