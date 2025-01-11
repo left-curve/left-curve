@@ -154,11 +154,11 @@ where
 {
 }
 
-/// Wraps around a `Querier` to provide some convenience methods.
+/// Wraps around a `QuerierExt` to provide some convenience methods.
 ///
 /// This is necessary because the `query_wasm_smart` method involves generics,
 /// and a traits with generic methods isn't object-safe (i.e. we won't be able
-/// to do `&dyn Querier`).
+/// to do `&dyn QuerierExt`).
 ///
 /// The reason we use dyn Querier instead of taking a generic type is because
 /// we want to avoid having a generic in Context which would also mean
