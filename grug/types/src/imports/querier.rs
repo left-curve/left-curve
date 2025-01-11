@@ -18,10 +18,11 @@ pub trait Querier {
 
 /// Core querying functionality that builds on top of the base `Querier` trait.
 ///
-/// This trait exists separately from `Querier` because it contains generic methods
-/// (e.g. `query_wasm_smart`), which would make the trait non-object-safe. By keeping
-/// these methods in a separate trait, we can still use `dyn Querier`. This trait
-/// is automatically implemented for any type that implements `Querier`.
+/// This trait exists separately from `Querier` because it contains generic
+/// methods (e.g. `query_wasm_smart`), which would make the trait
+/// non-object-safe. By keeping these methods in a separate trait, we can still
+/// use `dyn Querier`. This trait is automatically implemented for any type that
+/// implements `Querier`.
 pub trait QuerierExt: Querier
 where
     Self::Error: From<StdError>,
@@ -154,16 +155,10 @@ where
 {
 }
 
-/// Wraps around a `QuerierExt` to provide some convenience methods.
+/// Wraps around a `Querier` to provide some convenience methods.
 ///
-/// This is necessary because the `query_wasm_smart` method involves generics,
-/// and a traits with generic methods isn't object-safe (i.e. we won't be able
-/// to do `&dyn QuerierExt`).
-///
-/// The reason we use dyn Querier instead of taking a generic type is because
-/// we want to avoid having a generic in Context which would also mean
-/// we need to compile separate versions of contracts for the WasmVM and the
-/// RustVM.
+/// We have to do this because `&dyn Querier` itself doesn't implement `Querier`,
+/// so given a `&dyn Querier` you aren't able to access the `QuerierExt` methods.
 pub struct QuerierWrapper<'a> {
     inner: &'a dyn Querier<Error = StdError>,
 }
