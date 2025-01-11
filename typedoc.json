@@ -1,7 +1,7 @@
 {
   "name": "Left Curve Software - Grug SDK",
   "entryPoints": [
-    "./sdk/packages/connect-kit",
+    "./sdk/packages/dango-kit",
     "./sdk/packages/core",
     "./sdk/packages/crypto",
     "./sdk/packages/encoding",

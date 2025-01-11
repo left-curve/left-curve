@@ -1,4 +1,4 @@
-export * from "@left-curve/connect-kit";
+export * from "@left-curve/dango-kit";
 
 export {
   type GrunnectProviderProps,

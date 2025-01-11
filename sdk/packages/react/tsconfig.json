@@ -21,7 +21,7 @@
       "path": "../encoding"
     },
     {
-      "path": "../connect-kit"
+      "path": "../dango-kit"
     }
   ]
 }

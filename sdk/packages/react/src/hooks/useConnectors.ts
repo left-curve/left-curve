@@ -1,6 +1,6 @@
 "use client";
 
-import { type GetConnectorsReturnType, getConnectors } from "@left-curve/connect-kit";
+import { type GetConnectorsReturnType, getConnectors } from "@left-curve/dango-kit";
 import type { ConfigParameter } from "@left-curve/types";
 
 import { useConfig } from "./useConfig.js";

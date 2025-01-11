@@ -48,7 +48,7 @@
     }
   },
   "dependencies": {
-    "@left-curve/connect-kit": "workspace:^",
+    "@left-curve/dango-kit": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/utils": "workspace:^",

@@ -15,7 +15,7 @@
       "path": "../../../sdk/packages/types"
     },
     {
-      "path": "../../../sdk/packages/connect-kit"
+      "path": "../../../sdk/packages/dango-kit"
     },
     {
       "path": "../../../sdk/packages/crypto"

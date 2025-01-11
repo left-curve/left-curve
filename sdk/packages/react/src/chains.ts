@@ -1,1 +1,1 @@
-export * from "@left-curve/connect-kit/chains";
+export * from "@left-curve/dango-kit/chains";
