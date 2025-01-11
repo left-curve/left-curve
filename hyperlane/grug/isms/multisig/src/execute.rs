@@ -1,7 +1,7 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug::{HexByteArray, MutableCtx, Response, StdResult},
+    grug::{HexByteArray, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
         isms::multisig::{ExecuteMsg, InstantiateMsg, ValidatorSet},
         mailbox::Domain,
