@@ -1,5 +1,5 @@
+import type { Timestamp } from "../../../types/src/app.js";
 import type { Username } from "./account.js";
-import type { Timestamp } from "./common.js";
 import type { KeyHash } from "./key.js";
 import type { SessionCredential } from "./session.js";
 import type { Signature } from "./signature.js";

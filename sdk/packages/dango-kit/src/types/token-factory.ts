@@ -1,6 +1,6 @@
+import type { Address } from "../../../types/src/address.js";
+import type { Coin, Denom } from "../../../types/src/coin.js";
 import type { Username } from "./account.js";
-import type { Address } from "./address.js";
-import type { Coin, Denom } from "./coin.js";
 
 export type TokenFactoryConfig = {
   /** The amount of fee that must be paid in order to create a denom. */

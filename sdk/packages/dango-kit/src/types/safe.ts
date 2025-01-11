@@ -1,6 +1,6 @@
+import type { Duration, Timestamp } from "../../../types/src/app.js";
+import type { Message } from "../../../types/src/tx.js";
 import type { Username } from "./account.js";
-import type { Duration, Timestamp } from "./common.js";
-import type { Message } from "./tx.js";
 
 /**
  * The number of votes a member has.

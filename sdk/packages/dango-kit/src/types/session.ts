@@ -1,5 +1,5 @@
+import type { Base64 } from "../../../types/src/encoding.js";
 import type { StandardCredential } from "./credential.js";
-import type { Base64 } from "./encoding.js";
 
 export type SessionCredential = {
   /** The `SigningSessionInfo` that contains data to be signed with user key and otp key. */

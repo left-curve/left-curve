@@ -1,4 +1,4 @@
-import type { Base64, Hex } from "./encoding.js";
+import type { Base64, Hex } from "@left-curve/types";
 
 export const KeyAlgo = {
   Secp256r1: "secp256r1",

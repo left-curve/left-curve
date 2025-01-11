@@ -1,4 +1,4 @@
-import type { Coin } from "./coin.js";
+import type { Coin } from "../../../types/src/coin.js";
 import type { FeeRate, Pool, PoolId, PoolParams } from "./pool.js";
 
 export type AmmConfig = {

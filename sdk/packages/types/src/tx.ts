@@ -1,7 +1,6 @@
 import type { Address } from "./address.js";
+import type { ChainConfig } from "./app.js";
 import type { Coins, Funds } from "./coin.js";
-import type { Duration, Permission } from "./common.js";
-import type { Credential, Metadata } from "./credential.js";
 import type { Base64, Hex, Json } from "./encoding.js";
 
 export type TxParameters = {
@@ -9,7 +8,7 @@ export type TxParameters = {
   gasLimit?: number;
 };
 
-export type Tx = {
+export type Tx<Credential = Json, Metadata = Json> = {
   sender: Address;
   msgs: Message[];
   gasLimit: number;
@@ -27,9 +26,9 @@ export type Message =
   | { execute: MsgExecute }
   | { migrate: MsgMigrate };
 
-export type MsgConfigure = {
-  updates: ConfigUpdate;
-  appUpdates: Record<string, Json>;
+export type MsgConfigure<AppConfig = Json> = {
+  newCfg: Partial<ChainConfig>;
+  newAppCfg: Partial<AppConfig>;
 };
 
 export type MsgTransfer = {
@@ -59,15 +58,4 @@ export type MsgMigrate = {
   contract: Address;
   newCodeHash: Hex;
   msg: Json;
-};
-
-export type ConfigUpdate = {
-  owner?: Address;
-  bank?: Address;
-  taxman?: Address;
-  cronjobs?: Record<Address, Duration>;
-  permissions?: {
-    upload: Permission;
-    instantiate: Permission;
-  };
 };
