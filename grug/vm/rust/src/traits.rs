@@ -15,7 +15,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -24,7 +24,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -33,7 +33,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
@@ -42,7 +42,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
     ) -> VmResult<GenericResult<Response>>;
 
     fn reply(
@@ -50,7 +50,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: &[u8],
         result: SubMsgResult,
     ) -> VmResult<GenericResult<Response>>;
@@ -60,7 +60,7 @@ pub trait Contract {
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: &[u8],
     ) -> VmResult<GenericResult<Json>>;
 
@@ -69,7 +69,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         tx: Tx,
     ) -> VmResult<GenericResult<AuthResponse>>;
 
@@ -78,7 +78,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -87,7 +87,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: BankMsg,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -96,7 +96,7 @@ pub trait Contract {
         ctx: Context,
         storage: &dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         msg: BankQuery,
     ) -> VmResult<GenericResult<BankQueryResponse>>;
 
@@ -105,7 +105,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         tx: Tx,
     ) -> VmResult<GenericResult<Response>>;
 
@@ -114,7 +114,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
         tx: Tx,
         outcome: TxOutcome,
     ) -> VmResult<GenericResult<Response>>;
@@ -124,7 +124,7 @@ pub trait Contract {
         ctx: Context,
         storage: &mut dyn Storage,
         api: &dyn Api,
-        querier: &dyn Querier<Err = StdError>,
+        querier: &dyn Querier<Error = StdError>,
     ) -> VmResult<GenericResult<Response>>;
 }
 

@@ -9,11 +9,11 @@ use {
 };
 
 pub trait Querier {
-    type Err;
+    type Error;
 
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
-    fn query_chain(&self, req: Query) -> Result<QueryResponse, Self::Err>;
+    fn query_chain(&self, req: Query) -> Result<QueryResponse, Self::Error>;
 }
 
 /// Core querying functionality that builds on top of the base `Querier` trait.
@@ -24,25 +24,25 @@ pub trait Querier {
 /// is automatically implemented for any type that implements `Querier`.
 pub trait QuerierExt: Querier
 where
-    Self::Err: From<StdError>,
+    Self::Error: From<StdError>,
 {
-    fn query_config(&self) -> Result<Config, Self::Err> {
+    fn query_config(&self) -> Result<Config, Self::Error> {
         self.query_chain(Query::config()).map(|res| res.as_config())
     }
 
-    fn query_owner(&self) -> Result<Addr, Self::Err> {
+    fn query_owner(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.owner)
     }
 
-    fn query_bank(&self) -> Result<Addr, Self::Err> {
+    fn query_bank(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.bank)
     }
 
-    fn query_taxman(&self) -> Result<Addr, Self::Err> {
+    fn query_taxman(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.taxman)
     }
 
-    fn query_app_config<T>(&self) -> Result<T, Self::Err>
+    fn query_app_config<T>(&self) -> Result<T, Self::Error>
     where
         T: DeserializeOwned,
     {
@@ -50,7 +50,7 @@ where
             .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
     }
 
-    fn query_balance(&self, address: Addr, denom: Denom) -> Result<Uint128, Self::Err> {
+    fn query_balance(&self, address: Addr, denom: Denom) -> Result<Uint128, Self::Error> {
         self.query_chain(Query::balance(address, denom))
             .map(|res| res.as_balance().amount)
     }
@@ -60,12 +60,12 @@ where
         address: Addr,
         start_after: Option<Denom>,
         limit: Option<u32>,
-    ) -> Result<Coins, Self::Err> {
+    ) -> Result<Coins, Self::Error> {
         self.query_chain(Query::balances(address, start_after, limit))
             .map(|res| res.as_balances())
     }
 
-    fn query_supply(&self, denom: Denom) -> Result<Uint128, Self::Err> {
+    fn query_supply(&self, denom: Denom) -> Result<Uint128, Self::Error> {
         self.query_chain(Query::supply(denom))
             .map(|res| res.as_supply().amount)
     }
@@ -74,12 +74,12 @@ where
         &self,
         start_after: Option<Denom>,
         limit: Option<u32>,
-    ) -> Result<Coins, Self::Err> {
+    ) -> Result<Coins, Self::Error> {
         self.query_chain(Query::supplies(start_after, limit))
             .map(|res| res.as_supplies())
     }
 
-    fn query_code(&self, hash: Hash256) -> Result<Code, Self::Err> {
+    fn query_code(&self, hash: Hash256) -> Result<Code, Self::Error> {
         self.query_chain(Query::code(hash)).map(|res| res.as_code())
     }
 
@@ -87,12 +87,12 @@ where
         &self,
         start_after: Option<Hash256>,
         limit: Option<u32>,
-    ) -> Result<BTreeMap<Hash256, Code>, Self::Err> {
+    ) -> Result<BTreeMap<Hash256, Code>, Self::Error> {
         self.query_chain(Query::codes(start_after, limit))
             .map(|res| res.as_codes())
     }
 
-    fn query_contract(&self, address: Addr) -> Result<ContractInfo, Self::Err> {
+    fn query_contract(&self, address: Addr) -> Result<ContractInfo, Self::Error> {
         self.query_chain(Query::contract(address))
             .map(|res| res.as_contract())
     }
@@ -101,12 +101,12 @@ where
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
-    ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Err> {
+    ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Error> {
         self.query_chain(Query::contracts(start_after, limit))
             .map(|res| res.as_contracts())
     }
 
-    fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Err>
+    fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary>,
     {
@@ -114,7 +114,7 @@ where
             .map(|res| res.as_wasm_raw())
     }
 
-    fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> Result<R::Response, Self::Err>
+    fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> Result<R::Response, Self::Error>
     where
         R: QueryRequest,
         R::Message: Serialize,
@@ -129,7 +129,7 @@ where
     fn query_multi<const N: usize>(
         &self,
         requests: [Query; N],
-    ) -> Result<[QueryResponse; N], Self::Err> {
+    ) -> Result<[QueryResponse; N], Self::Error> {
         self.query_chain(Query::Multi(requests.into())).map(|res| {
             // We trust that the host has properly implemented the multi
             // query method, meaning the number of responses should always
@@ -150,7 +150,7 @@ where
 impl<K> QuerierExt for K
 where
     K: Querier,
-    K::Err: From<StdError>,
+    K::Error: From<StdError>,
 {
 }
 
@@ -165,11 +165,11 @@ where
 /// we need to compile separate versions of contracts for the WasmVM and the
 /// RustVM.
 pub struct QuerierWrapper<'a> {
-    inner: &'a dyn Querier<Err = StdError>,
+    inner: &'a dyn Querier<Error = StdError>,
 }
 
 impl Querier for QuerierWrapper<'_> {
-    type Err = StdError;
+    type Error = StdError;
 
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.inner.query_chain(req)
@@ -177,7 +177,7 @@ impl Querier for QuerierWrapper<'_> {
 }
 
 impl<'a> QuerierWrapper<'a> {
-    pub fn new(inner: &'a dyn Querier<Err = StdError>) -> Self {
+    pub fn new(inner: &'a dyn Querier<Error = StdError>) -> Self {
         Self { inner }
     }
 }

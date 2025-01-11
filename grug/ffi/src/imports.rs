@@ -444,7 +444,7 @@ impl Api for ExternalApi {
 pub struct ExternalQuerier;
 
 impl Querier for ExternalQuerier {
-    type Err = StdError;
+    type Error = StdError;
 
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         let req_bytes = req.to_borsh_vec()?;

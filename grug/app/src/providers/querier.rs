@@ -24,7 +24,7 @@ pub trait QuerierProvider {
 }
 
 impl Querier for Box<dyn QuerierProvider> {
-    type Err = StdError;
+    type Error = StdError;
 
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         // TODO: ignoring query depth for now

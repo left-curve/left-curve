@@ -683,7 +683,7 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    type Err = AppError;
+    type Error = AppError;
 
     fn query_chain(&self, req: Query) -> AppResult<QueryResponse> {
         self.app.do_query_app(req, 0, false)
@@ -703,7 +703,7 @@ where
         &self,
         address: &dyn Addressable,
         denom: D,
-    ) -> Result<Uint128, <Self as Querier>::Err>
+    ) -> Result<Uint128, <Self as Querier>::Error>
     where
         D: TryInto<Denom>,
         <D as TryInto<Denom>>::Error: std::fmt::Debug,

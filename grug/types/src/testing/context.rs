@@ -216,7 +216,7 @@ impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Undefined<
 where
     S: Storage,
     A: Api,
-    Q: Querier<Err = StdError>,
+    Q: Querier<Error = StdError>,
 {
     pub fn as_immutable(&self) -> ImmutableCtx {
         ImmutableCtx {
@@ -245,7 +245,7 @@ impl<S, A, Q> MockContext<S, A, Q, Defined<Addr>, Defined<Coins>, Undefined<Auth
 where
     S: Storage,
     A: Api,
-    Q: Querier<Err = StdError>,
+    Q: Querier<Error = StdError>,
 {
     pub fn as_mutable(&mut self) -> MutableCtx {
         MutableCtx {
@@ -265,7 +265,7 @@ impl<S, A, Q> MockContext<S, A, Q, Undefined<Addr>, Undefined<Coins>, Defined<Au
 where
     S: Storage,
     A: Api,
-    Q: Querier<Err = StdError>,
+    Q: Querier<Error = StdError>,
 {
     pub fn as_auth(&mut self) -> AuthCtx {
         AuthCtx {

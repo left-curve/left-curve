@@ -14,8 +14,8 @@ pub trait OracleQuerier: Querier {
 impl<Q> OracleQuerier for Q
 where
     Q: Querier,
-    Q::Err: From<StdError>,
-    anyhow::Error: From<Q::Err>,
+    Q::Error: From<StdError>,
+    anyhow::Error: From<Q::Error>,
 {
     fn query_price(&self, oracle: Addr, denom: &Denom) -> anyhow::Result<PrecisionedPrice> {
         let price_source = self
