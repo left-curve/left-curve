@@ -1,6 +1,6 @@
 use {
     crate::config::AppConfig,
-    grug::{Addr, QuerierCore, QuerierWrapper, StdResult},
+    grug::{Addr, QuerierExt, QuerierWrapper, StdResult},
 };
 
 /// An extension trait that adds some useful, Dango-specific methods to

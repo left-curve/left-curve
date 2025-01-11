@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestBuilder, UploadAndInstantiateOutcomeSuccess},
-    grug_types::{Coins, Empty, QuerierCore, ResultExt},
+    grug_types::{Coins, Empty, QuerierExt, ResultExt},
     grug_vm_rust::ContractBuilder,
     tester::{MigrateMsg, QueryV1, QueryV2RequestV1, QueryV2RequestV2},
 };

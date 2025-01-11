@@ -8,7 +8,7 @@ use {
         config::DANGO_DENOM,
     },
     grug::{
-        btree_map, coins, Coin, CoinPair, Coins, Denom, Message, NonEmpty, QuerierCore, ResultExt,
+        btree_map, coins, Coin, CoinPair, Coins, Denom, Message, NonEmpty, QuerierExt, ResultExt,
         Udec128, Uint128, UniqueVec,
     },
     std::{str::FromStr, sync::LazyLock},

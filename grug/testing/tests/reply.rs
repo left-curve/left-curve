@@ -1,6 +1,6 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coin, Coins, Empty, QuerierCore, ReplyOn, ResultExt},
+    grug_types::{Addr, Coin, Coins, Empty, QuerierExt, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,

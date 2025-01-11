@@ -1,7 +1,7 @@
 use {
     crate::{CONFIG, DELIVERIES, NONCE},
     anyhow::{anyhow, ensure},
-    grug::{Addr, Coins, Hash, HexBinary, MutableCtx, QuerierCore, Response, StdResult},
+    grug::{Addr, Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
         hooks::{self, HookMsg, HookQuery, QueryHookRequest},
         isms::{IsmQuery, QueryIsmRequest},

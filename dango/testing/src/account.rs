@@ -10,7 +10,7 @@ use {
     },
     grug::{
         btree_map, Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierCore, ResultExt, Signer, StdResult, Tx, Undefined,
+        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Tx, Undefined,
         UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},

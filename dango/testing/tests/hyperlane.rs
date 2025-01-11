@@ -2,7 +2,7 @@ use {
     dango_testing::{generate_random_key, setup_test},
     grug::{
         Addressable, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
-        QuerierCore, ResultExt, StdError, Uint128,
+        QuerierExt, ResultExt, StdError, Uint128,
     },
     grug_crypto::Identity256,
     hyperlane_types::{

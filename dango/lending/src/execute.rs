@@ -8,7 +8,7 @@ use {
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
         DangoQuerier,
     },
-    grug::{BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, QuerierCore, Response},
+    grug::{BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, QuerierExt, Response},
     std::collections::BTreeMap,
 };
 

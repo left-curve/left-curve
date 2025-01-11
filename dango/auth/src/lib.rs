@@ -15,7 +15,7 @@ use {
     },
     grug::{
         json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Inner, Item, JsonDeExt, JsonSerExt,
-        QuerierCore, StdResult, Storage, Tx,
+        QuerierExt, StdResult, Storage, Tx,
     },
     std::collections::BTreeSet,
 };

@@ -1,7 +1,7 @@
 use {
     grug_math::{MultiplyFraction, NumberConst, Udec128, Uint128},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Denom, Message, NonEmpty, QuerierCore, ResultExt},
+    grug_types::{Coins, Denom, Message, NonEmpty, QuerierExt, ResultExt},
     grug_vm_wasm::WasmVm,
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock, vec},
 };

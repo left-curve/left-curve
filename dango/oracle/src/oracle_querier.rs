@@ -2,7 +2,7 @@ use {
     crate::PRICE_SOURCES,
     anyhow::anyhow,
     dango_types::oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource, PRICES},
-    grug::{Addr, BorshDeExt, Denom, Querier, QuerierCore, StdError},
+    grug::{Addr, BorshDeExt, Denom, Querier, QuerierExt, StdError},
 };
 
 /// A trait for querying prices from the oracle.

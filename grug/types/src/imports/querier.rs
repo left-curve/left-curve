@@ -22,7 +22,7 @@ pub trait Querier {
 /// (e.g. `query_wasm_smart`), which would make the trait non-object-safe. By keeping
 /// these methods in a separate trait, we can still use `dyn Querier`. This trait
 /// is automatically implemented for any type that implements `Querier`.
-pub trait QuerierCore: Querier
+pub trait QuerierExt: Querier
 where
     Self::Err: From<StdError>,
 {
@@ -147,7 +147,7 @@ where
     }
 }
 
-impl<K> QuerierCore for K
+impl<K> QuerierExt for K
 where
     K: Querier,
     K::Err: From<StdError>,

@@ -4,7 +4,7 @@ use {
         oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
     },
     grug::{
-        Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierCore, QuerierWrapper, StdError,
+        Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
         Tx,
     },
     grug_app::{AppError, Shared},

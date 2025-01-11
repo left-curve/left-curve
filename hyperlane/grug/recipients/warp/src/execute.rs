@@ -3,7 +3,7 @@ use {
     anyhow::{anyhow, ensure},
     dango_types::bank,
     grug::{
-        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierCore, Response,
+        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierExt, Response,
         StdResult,
     },
     hyperlane_types::{

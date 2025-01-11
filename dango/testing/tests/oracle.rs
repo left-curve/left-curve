@@ -6,7 +6,7 @@ use {
         USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
     },
     grug::{
-        btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, QuerierCore, ResultExt,
+        btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, QuerierExt, ResultExt,
         Udec128,
     },
     grug_app::NaiveProposalPreparer,

@@ -9,7 +9,7 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, Message, QuerierCore, QueryRequest, ResultExt,
+        Addr, Binary, Coins, Denom, GenericResult, Message, QuerierExt, QueryRequest, ResultExt,
         VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},

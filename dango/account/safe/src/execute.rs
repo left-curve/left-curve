@@ -12,7 +12,7 @@ use {
         DangoQuerier,
     },
     grug::{
-        AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierCore,
+        AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierExt,
         Response, StdResult, Tx,
     },
 };

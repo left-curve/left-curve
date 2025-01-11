@@ -2,7 +2,7 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierCore, QuerierWrapper,
+        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper,
         ResultExt, StdError, Tx,
     },
     grug_vm_rust::ContractBuilder,

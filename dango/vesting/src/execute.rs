@@ -6,8 +6,7 @@ use {
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
     grug::{
-        Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, QuerierCore, Response,
-        Uint128,
+        Addr, Coin, IsZero, Message, MutableCtx, Number, NumberConst, QuerierExt, Response, Uint128,
     },
 };
 

@@ -1,7 +1,7 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{
-        btree_map, Binary, Coin, Coins, Duration, Empty, Json, QuerierCore, ResultExt, Timestamp,
+        btree_map, Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, Timestamp,
     },
     grug_vm_rust::ContractBuilder,
 };

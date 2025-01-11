@@ -5,7 +5,7 @@ use {
         PriceSource, QueryPriceSourcesRequest, QueryPricesRequest, ETH_USD_ID, USDC_USD_ID,
         WBTC_USD_ID,
     },
-    grug::{btree_map, setup_tracing_subscriber, Denom, QuerierCore, ResultExt},
+    grug::{btree_map, setup_tracing_subscriber, Denom, QuerierExt, ResultExt},
     std::{
         str::FromStr,
         thread::{self, sleep},

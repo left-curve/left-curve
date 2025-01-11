@@ -9,7 +9,7 @@ use {
         bank, taxman,
     },
     grug::{
-        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Part, QuerierCore, Response,
+        Coins, Denom, Inner, IsZero, Message, MutableCtx, Number, Part, QuerierExt, Response,
         StdResult, Uint128, UniqueVec,
     },
 };

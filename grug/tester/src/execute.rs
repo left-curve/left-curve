@@ -1,7 +1,7 @@
 use {
     crate::{ExecuteMsg, QueryForceWriteRequest},
     grug::{
-        Coins, Integer, Message, MutableCtx, NumberConst, QuerierCore, Response, StdResult, Uint128,
+        Coins, Integer, Message, MutableCtx, NumberConst, QuerierExt, Response, StdResult, Uint128,
     },
 };
 
