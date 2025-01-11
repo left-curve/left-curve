@@ -19,8 +19,8 @@ use {
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
-        GenericResultExt, GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order,
-        Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        GenericResultExt, GenesisState, Hash256, HashExt, Json, Message, MsgsAndBackrunEvents,
+        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
         TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
@@ -310,7 +310,7 @@ where
                 self.vm.clone(),
                 buffer.clone(),
                 block.info,
-                tx.clone(),
+                tx.0.clone(),
                 AuthMode::Finalize,
             );
 
@@ -563,7 +563,7 @@ where
             .iter()
             .filter_map(|raw_tx| {
                 if let Ok(tx) = raw_tx.deserialize_json() {
-                    Some(tx)
+                    Some((tx, raw_tx.hash256()))
                 } else {
                     // The transaction failed to deserialize.
                     //

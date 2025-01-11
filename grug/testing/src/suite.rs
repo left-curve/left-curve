@@ -8,9 +8,9 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins,
-        Config, ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt,
-        Message, NonEmpty, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError,
-        TxOutcome, TxSuccess, UnsignedTx,
+        Config, ContractInfo, Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt,
+        JsonSerExt, Message, NonEmpty, Query, QueryRequest, ResultExt, Signer, StdError, Tx,
+        TxError, TxOutcome, TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -309,7 +309,7 @@ where
             .app
             .do_prepare_proposal(raw_txs, usize::MAX)
             .into_iter()
-            .map(|raw_tx| raw_tx.deserialize_json().unwrap())
+            .map(|raw_tx| (raw_tx.deserialize_json().unwrap(), raw_tx.hash256()))
             .collect();
 
         let block = Block {

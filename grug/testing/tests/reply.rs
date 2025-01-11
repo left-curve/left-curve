@@ -1,8 +1,7 @@
 use {
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{Addr, Coin, Coins, Empty, JsonSerExt, ReplyOn, ResultExt},
+    grug_types::{Addr, Coin, Coins, Empty, ReplyOn, ResultExt},
     grug_vm_rust::ContractBuilder,
-    indexer_sql::events::{flat_tx_events, IndexCategory},
     replier::{ExecuteMsg, QueryDataRequest, ReplyMsg},
     test_case::test_case,
 };

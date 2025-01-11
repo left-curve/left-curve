@@ -62,7 +62,7 @@ impl Models {
         {
             event_id.category = IndexCategory::Tx;
 
-            for (transaction_idx, (tx, tx_outcome)) in block
+            for (transaction_idx, ((tx, tx_hash), tx_outcome)) in block
                 .txs
                 .iter()
                 .zip(block_outcome.tx_outcomes.iter())
@@ -81,7 +81,7 @@ impl Models {
                     gas_used: Set(tx_outcome.gas_used.try_into()?),
                     created_at: Set(created_at),
                     block_height: Set(block.info.height.try_into()?),
-                    hash: Set("".to_string()),
+                    hash: Set(tx_hash.to_string()),
                     data: Set(tx.data.clone().into_inner()),
                     sender: Set(sender.clone()),
                     credential: Set(tx.credential.clone().into_inner()),
