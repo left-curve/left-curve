@@ -1,5 +1,4 @@
-import type { Address } from "../../../types/src/address.js";
-import type { Coin, Denom } from "../../../types/src/coin.js";
+import type { Address, Coin, Denom } from "@left-curve/types";
 import type { Username } from "./account.js";
 
 export type TokenFactoryConfig = {

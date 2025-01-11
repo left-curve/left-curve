@@ -1,6 +1,5 @@
-import type { Address } from "../../../types/src/address.js";
-import type { Message } from "../../../types/src/tx.js";
-import type { Metadata } from "./credential.js";
+import type { Address, Message } from "@left-curve/types";
+import type { Metadata } from "./metadata.js";
 
 // biome-ignore format: no formatting
 type MBytes =

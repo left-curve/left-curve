@@ -1,6 +1,6 @@
 import type { Address } from "@left-curve/types";
 
-export type AppConfigResponse = {
+export type AppConfig = {
   addresses: {
     accountFactory: Address;
     ibcTransfer: Address;

@@ -1,8 +1,13 @@
 // This file type is partially forked from viem types in the following repository: https://github.com/wevm/viem/tree/main/src/types
-import type { Address } from "../../../types/src/address.js";
-import type { Hex } from "../../../types/src/encoding.js";
-import type { RequestFn } from "../../../types/src/rpc.js";
-import type { ExactPartial, OneOf, Prettify, RequiredBy } from "../../../types/src/utils.js";
+import type {
+  Address,
+  ExactPartial,
+  Hex,
+  OneOf,
+  Prettify,
+  RequestFn,
+  RequiredBy,
+} from "@left-curve/types";
 
 type Index = `0x${string}`;
 type Quantity = `0x${string}`;

@@ -1,4 +1,4 @@
-import type { Coin } from "../../../types/src/coin.js";
+import type { Coin } from "@left-curve/types";
 
 export type PoolId = number;
 
