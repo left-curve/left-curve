@@ -373,6 +373,7 @@ impl FlattenStatus for MsgsAndBackrunEvents {
             next_id.increment_idx(&i_events);
             events.extend(i_events);
         }
+        next_id.message_index = None;
 
         events.extend(self.backrun.flat_status(parent_id, next_id, commitment));
 

@@ -9,7 +9,7 @@ use {
     grug_vm_rust::ContractBuilder,
     indexer_sql::{block_to_index::BlockToIndex, entity},
     replier::{ExecuteMsg, ReplyMsg},
-    sea_orm::{EntityTrait, QueryOrder},
+    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::str::FromStr,
 };
 
@@ -473,33 +473,42 @@ fn index_block_events() {
             .one(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
-        // assert_that!(block).is_some();
-        // assert_that!(block.unwrap().block_height).is_equal_to(1);
-
-        dbg!(block);
+        assert_that!(block).is_some();
+        assert_that!(block.unwrap().block_height).is_equal_to(1);
 
         let transactions = entity::transactions::Entity::find()
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch transactions");
 
-        dbg!(transactions);
-        // assert_that!(transactions).is_not_empty();
+        assert_that!(transactions).is_not_empty();
 
         let messages = entity::messages::Entity::find()
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch messages");
 
-        dbg!(messages);
-        // assert_that!(messages).is_not_empty();
+        assert_that!(messages).is_not_empty();
 
         let events = entity::events::Entity::find()
+            .filter(entity::events::Column::BlockHeight.eq(2))
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch events");
-        // assert_that!(events).is_not_empty();
+        assert_that!(events).is_not_empty();
 
-        dbg!(events);
+        // Check for gaps
+        let event_idxs = events.iter().map(|e| e.event_idx).collect::<Vec<_>>();
+        let min_idx = event_idxs[0];
+        let max_idx = event_idxs[event_idxs.len() - 1];
+        assert_that!(event_idxs.len() as i32).is_equal_to(max_idx - min_idx + 1);
+
+        // check for parent events
+        let events = entity::events::Entity::find()
+            .filter(entity::events::Column::ParentId.is_not_null())
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch events");
+        assert_that!(events).is_not_empty();
     });
 }

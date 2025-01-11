@@ -107,7 +107,7 @@ where
             indexer_path,
             context: Context { db },
             handle: self.handle,
-            blocks: Default::default(), // Arc::new(Mutex::new(HashMap::new())),
+            blocks: Default::default(),
             indexing: false,
             keep_blocks: self.keep_blocks,
         })

@@ -446,29 +446,3 @@ fn reply<const S: usize>(msg: ExecuteMsg, mut data: [&str; S], should_tx_fail: b
         .query_wasm_smart(replier_addr, QueryDataRequest {})
         .should_succeed_and_equal(data);
 }
-
-#[test]
-fn reply_fail() {
-    let (mut suite, mut accounts, replier_addr) = setup();
-
-    let result = suite.execute(
-        &mut accounts["owner"],
-        replier_addr,
-        &ExecuteMsg::perform(
-            "1",
-            ExecuteMsg::ok("2"),
-            ReplyOn::success(&ReplyMsg::Ok(ExecuteMsg::fail("reply deep 1 fail"))).unwrap(),
-        ),
-        Coins::default(),
-    );
-
-    println!(
-        "{:#?}",
-        flat_tx_events(result.events.clone(), 123, 1) /* .to_json_string_pretty()
-                                                       * .unwrap() */
-    );
-
-    // println!("{}", result.events.to_json_string_pretty().unwrap());
-
-    println!("{}", IndexCategory::Tx.to_json_string().unwrap())
-}

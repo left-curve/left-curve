@@ -45,7 +45,7 @@ impl Models {
             for (cron_idx, cron_outcome) in block_outcome.cron_outcomes.iter().enumerate() {
                 event_id.category_index = cron_idx as u32;
 
-                let mut active_models = flatten_events(
+                let active_models = flatten_events(
                     block,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
@@ -54,7 +54,7 @@ impl Models {
                     created_at,
                 )?;
 
-                events.append(&mut active_models);
+                events.extend(active_models);
             }
         }
 
@@ -91,7 +91,7 @@ impl Models {
 
                 event_id.category_index = transaction_idx as u32;
 
-                let mut active_models = flatten_events(
+                let active_models = flatten_events(
                     block,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
@@ -100,9 +100,9 @@ impl Models {
                     created_at,
                 )?;
 
-                events.append(&mut active_models);
+                events.extend(active_models);
 
-                let mut active_models = flatten_events(
+                let active_models = flatten_events(
                     block,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
@@ -111,7 +111,7 @@ impl Models {
                     created_at,
                 )?;
 
-                events.append(&mut active_models);
+                events.extend(active_models);
 
                 // 3. Storing messages
                 {
@@ -146,20 +146,18 @@ impl Models {
 
                 // 4. Storing events
                 {
-                    // iterate over messages and backrun messages
-                    let mut active_models = flatten_events(
+                    let active_models = flatten_events(
                         block,
                         &mut event_id,
-                        // loop here
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
                         None,
                         created_at,
                     )?;
 
-                    events.append(&mut active_models);
+                    events.extend(active_models);
 
-                    let mut active_models = flatten_events(
+                    let active_models = flatten_events(
                         block,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
@@ -168,7 +166,7 @@ impl Models {
                         created_at,
                     )?;
 
-                    events.append(&mut active_models);
+                    events.extend(active_models);
                 }
             }
         }
