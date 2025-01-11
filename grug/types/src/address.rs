@@ -5,9 +5,10 @@ use {
 
 /// An account address.
 ///
-/// In Grug, addresses are of 20-byte length, in Hex encoding and the `0x` prefix.
-/// In comparison, in the "vanilla" CosmWasm, addresses are either 20- or 32-byte,
-/// in Bech32 encoding. The last 6 ASCII characters are the checksum.
+/// In Grug, addresses are of 20-byte length, in Hex encoding and the `0x`
+/// prefix. In comparison, in the "vanilla" CosmWasm, addresses are either 20-
+/// or 32-byte, in Bech32 encoding. The last 6 ASCII characters are the
+/// checksum.
 ///
 /// In CosmWasm, when addresses are deserialized from JSON, no validation is
 /// performed. An attacker can put a string that is not a valid address in a

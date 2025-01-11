@@ -9,7 +9,8 @@ pub type PublicKey = ByteArray<33>;
 /// An Secp256k1 signature.
 pub type Signature = ByteArray<64>;
 
-/// Schema for the account credentials expected in [`Tx::credential`](grug_types::Tx::credential).
+/// Schema for the account credentials expected in
+/// [`Tx::credential`](grug_types::Tx::credential).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Credential {
     pub sequence: u32,

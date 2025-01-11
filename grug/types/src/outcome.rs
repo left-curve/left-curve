@@ -60,9 +60,10 @@ impl CronOutcome {
 /// - `finalize_fee` succeeds
 ///
 /// In this case, state changes from fee handling (e.g. deducting the fee from
-/// the sender account) and authentication (e.g. incrementing the sender account's
-/// sequence number) will be committed, and relevant events emitted to reflect
-/// this. However, state changes and events from the messages are discarded.
+/// the sender account) and authentication (e.g. incrementing the sender
+/// account's sequence number) will be committed, and relevant events emitted to
+/// reflect this. However, state changes and events from the messages are
+/// discarded.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 #[must_use = "`TxOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]

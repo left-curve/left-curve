@@ -56,10 +56,10 @@ macro_rules! try_add_subevent {
 ///
 /// ## Notes
 ///
-/// - The `sender` in this function signature is the contract, i.e. the
-///   account that emitted the submessages, not the transaction's sender.
-/// - The context for this function requires a boxed storage (`Box<dyn Storage>`)
-///   instead of using a generic (`AppCtx<VM, S> where S: Storage`).
+/// - The `sender` in this function signature is the contract, i.e. the account
+///   that emitted the submessages, not the transaction's sender.
+/// - The context for this function requires a boxed storage (`Box<dyn
+///   Storage>`) instead of using a generic (`AppCtx<VM, S> where S: Storage`).
 ///   This is necessary because the function is
 pub fn handle_submessages<VM>(
     vm: VM,

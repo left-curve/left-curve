@@ -5,7 +5,8 @@ use {
 
 #[derive(Debug, Clone)]
 pub enum IndexerPath {
-    /// Tempdir is used for test, and will be automatically deleted once out of scope
+    /// Tempdir is used for test, and will be automatically deleted once out of
+    /// scope
     TempDir(Arc<tempfile::TempDir>),
     /// Directory to store the next block to be indexed
     Dir(PathBuf),
@@ -26,7 +27,8 @@ impl IndexerPath {
         }
     }
 
-    /// Create all the needed subdirectories to avoid error when saving files into those
+    /// Create all the needed subdirectories to avoid error when saving files
+    /// into those
     pub fn create_dirs_if_needed(&self) -> error::Result<()> {
         let block_path = self.block_path();
         if !block_path.exists() {

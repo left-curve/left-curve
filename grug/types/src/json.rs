@@ -22,7 +22,8 @@ const TAG_NON_INT: u8 = 2;
 
 /// Construct a [`Json`](crate::Json) from a JSON literal.
 ///
-/// This is simply a wrapper over the [`serde_json::json`](serde_json::json) macro.
+/// This is simply a wrapper over the [`serde_json::json`](serde_json::json)
+/// macro.
 #[macro_export]
 macro_rules! json {
     ($($json:tt)+) => {

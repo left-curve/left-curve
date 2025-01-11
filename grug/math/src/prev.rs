@@ -6,11 +6,13 @@ use {
     bnum::BTryFrom,
 };
 
-/// Describes a number type can be cast into another type of a smaller word size.
+/// Describes a number type can be cast into another type of a smaller word
+/// size.
 ///
-/// For example, [`Uint256`](crate::Uint256) can be cast to [`Uint128`](crate::Uint128).
-/// In this case, [`PrevNumber`] trait should be implemented for [`Uint256`](crate::Uint256)
-/// with `Prev` being [`Uint128`](crate::Uint128).
+/// For example, [`Uint256`](crate::Uint256) can be cast to
+/// [`Uint128`](crate::Uint128). In this case, [`PrevNumber`] trait should be
+/// implemented for [`Uint256`](crate::Uint256) with `Prev` being
+/// [`Uint128`](crate::Uint128).
 pub trait PrevNumber {
     type Prev;
 

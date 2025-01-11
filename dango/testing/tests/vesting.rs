@@ -511,7 +511,8 @@ fn terminate_before_unlocking_starting_time_with_claimed() {
             });
 
         // 4 epoch is needed to claim all tokens
-        // Instead wait for 8 epoch to check if there are any problems waiting more than needed
+        // Instead wait for 8 epoch to check if there are any problems waiting more than
+        // needed
         suite.block_time = epoch * 8;
 
         // Claim

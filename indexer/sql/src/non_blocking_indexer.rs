@@ -80,9 +80,10 @@ where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
 {
-    /// If true, the block/block_outcome used by the indexer will be kept on disk after being
-    /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
-    /// we'll want to run at least one node with this enabled and sync those on S3.
+    /// If true, the block/block_outcome used by the indexer will be kept on
+    /// disk after being indexed. This is useful for reruning the indexer
+    /// since genesis if code is changing, and we'll want to run at least
+    /// one node with this enabled and sync those on S3.
     pub fn with_keep_blocks(self, keep_blocks: bool) -> Self {
         Self {
             handle: self.handle,
@@ -116,16 +117,17 @@ where
 
 // ----------------------------- NonBlockingIndexer ----------------------------
 
-/// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
-/// data to live as long as the spawned task.
+/// Because I'm using `.spawn` in this implementation, I ran into lifetime
+/// issues where I need the data to live as long as the spawned task.
 ///
-/// I also have potential issues where the task spawned in `pre_indexing` to create a DB
-/// transaction (in the sync implentation of this trait) could be theorically executed after the
-/// task spawned in `index_block` and `index_transaction` meaning I'd have to check in these
-/// functions if the transaction exists or not.
+/// I also have potential issues where the task spawned in `pre_indexing` to
+/// create a DB transaction (in the sync implentation of this trait) could be
+/// theorically executed after the task spawned in `index_block` and
+/// `index_transaction` meaning I'd have to check in these functions if the
+/// transaction exists or not.
 ///
-/// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
-/// spawned task
+/// Decided to do different and prepare the data in memory in `blocks` to inject
+/// all data in a single Tokio spawned task
 #[derive(Debug)]
 pub struct NonBlockingIndexer {
     indexer_path: IndexerPath,
@@ -326,8 +328,9 @@ impl Indexer for NonBlockingIndexer {
 
         self.indexing = false;
 
-        // NOTE: This is to allow the indexer to commit all db transactions since this is done
-        // async. It just loops quickly making sure no indexing blocks are remaining.
+        // NOTE: This is to allow the indexer to commit all db transactions since this
+        // is done async. It just loops quickly making sure no indexing blocks
+        // are remaining.
         for _ in 0..10 {
             if self.blocks.lock().expect("Can't lock blocks").is_empty() {
                 break;
@@ -391,9 +394,9 @@ impl Indexer for NonBlockingIndexer {
         let keep_blocks = self.keep_blocks;
         let block_filename = self.block_filename(block_to_index.block.info.height);
 
-        // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
-        // the shutdown method could be called and see no current block being indexed, and quit.
-        // The block would then not be indexed.
+        // NOTE: I can't remove the block to index *before* indexing it with DB txn
+        // committed, or the shutdown method could be called and see no current
+        // block being indexed, and quit. The block would then not be indexed.
         self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block_height, "post_indexing started");
@@ -432,9 +435,9 @@ impl Indexer for NonBlockingIndexer {
 
 impl Drop for NonBlockingIndexer {
     fn drop(&mut self) {
-        // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
-        // expects a Tokio context. We must call `commit` manually on it within our Tokio
-        // context.
+        // If the DatabaseTransactions are left open (not committed) its `Drop`
+        // implementation expects a Tokio context. We must call `commit`
+        // manually on it within our Tokio context.
         self.shutdown().expect("Can't shutdown indexer");
     }
 }
@@ -472,13 +475,16 @@ impl Deref for RuntimeHandler {
 }
 
 impl RuntimeHandler {
-    /// Runs a future in the Tokio runtime, blocking the current thread until the future is resolved.
+    /// Runs a future in the Tokio runtime, blocking the current thread until
+    /// the future is resolved.
     ///
-    /// This function override [`Handle::block_on`] to allow running in a sync context,
-    /// because [`RuntimeHandler`] implements [`Deref`] to [`Handle`].
+    /// This function override [`Handle::block_on`] to allow running in a sync
+    /// context, because [`RuntimeHandler`] implements [`Deref`] to
+    /// [`Handle`].
     ///
-    /// Code in the indexer is running without async context (within Grug) and with an async
-    /// context (Dango). This is to ensure it works in both cases.
+    /// Code in the indexer is running without async context (within Grug) and
+    /// with an async context (Dango). This is to ensure it works in both
+    /// cases.
     ///
     /// NOTE: The Tokio runtime *must* be multi-threaded with either:
     /// - `#[tokio::main]`
@@ -501,9 +507,9 @@ impl RuntimeHandler {
 mod tests {
     use {super::*, grug_types::MockStorage};
 
-    /// This is when used from Dango, which is async. In such case the indexer does not have its
-    /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
-    /// context.
+    /// This is when used from Dango, which is async. In such case the indexer
+    /// does not have its own Tokio runtime and use the main handler. Making
+    /// sure `start` can be called in an async context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
         let mut indexer = IndexerBuilder::default()

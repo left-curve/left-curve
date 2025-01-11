@@ -179,9 +179,10 @@ fn onboarding_without_deposit() {
         .should_fail_with_error("data not found!");
 }
 
-/// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's username,
-/// key, or key hash. Should fail because the derived deposit address won't match.
+/// A malicious block builder detects a register user transaction, inserts a
+/// new, false transaction that substitutes the legitimate transaction's
+/// username, key, or key hash. Should fail because the derived deposit address
+/// won't match.
 #[test_case(
     Some(Username::from_str("bad").unwrap()),
     None,

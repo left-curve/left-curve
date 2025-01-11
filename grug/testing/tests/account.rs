@@ -42,10 +42,10 @@ fn check_tx_and_finalize() {
             // Check the tx and if the result is ok, return the tx.
             //
             // Note: there are two layers of results here:
-            // - `check_tx` must succeed, meaning the chain itself doesn't
-            //   run into any error, so we `unwrap`.
-            // - The `Outcome::result` returned by `checked_tx` may fail,
-            //   so we gracefully handle it with `?`.
+            // - `check_tx` must succeed, meaning the chain itself doesn't run into any
+            //   error, so we `unwrap`.
+            // - The `Outcome::result` returned by `checked_tx` may fail, so we gracefully
+            //   handle it with `?`.
             suite.check_tx(tx.clone()).result.ok()?;
 
             Some(tx)

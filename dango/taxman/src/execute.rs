@@ -55,13 +55,13 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
     //
     // Under three situations, we don't charge any gas:
     //
-    // 1. During simulation. At this time, the user doesn't know how much gas
-    //    gas limit to request. The node's query gas limit is used as `tx.gas_limit`
-    //    in this case.
+    // 1. During simulation. At this time, the user doesn't know how much gas gas
+    //    limit to request. The node's query gas limit is used as `tx.gas_limit` in
+    //    this case.
     // 2. Sender is the account factory contract. This happens during a new user
     //    onboarding. We don't charge gas fee this in case.
-    // 3. Sender is the oracle contract. Validators supply Pyth price feeds by
-    //    using the oracle contract as sender during `PrepareProposal`.
+    // 3. Sender is the oracle contract. Validators supply Pyth price feeds by using
+    //    the oracle contract as sender during `PrepareProposal`.
     let withhold_amount = if ctx.mode == AuthMode::Simulate || {
         let app_cfg = ctx.querier.query_dango_config()?;
         tx.sender == app_cfg.addresses.account_factory || tx.sender == app_cfg.addresses.oracle

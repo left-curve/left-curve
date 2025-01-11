@@ -14,11 +14,11 @@ use {
 ///   `QuerierProvider` is intended to be used in the host, and takes an
 ///   additional parameter `query_depth` to prevent the call stack from getting
 ///   too deep.
-/// - Compared to `StorageProvider`, we use this as a box (`Box<dyn QuerierProvider>`)
-///   because performing queries involves calling a VM (while read or write
-///   storage doesn't). The VM has to be added as a generic. We need to hide
-///   this generic, otherwise we run into infinite recursive types with the
-///   hybrid VM. (When using a single VM, this isn't a problem.)
+/// - Compared to `StorageProvider`, we use this as a box (`Box<dyn
+///   QuerierProvider>`) because performing queries involves calling a VM (while
+///   read or write storage doesn't). The VM has to be added as a generic. We
+///   need to hide this generic, otherwise we run into infinite recursive types
+///   with the hybrid VM. (When using a single VM, this isn't a problem.)
 pub trait QuerierProvider {
     fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
 }

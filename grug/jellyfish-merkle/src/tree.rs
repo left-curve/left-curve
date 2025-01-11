@@ -30,16 +30,12 @@ enum Outcome {
 /// Jellyfish Merkle tree (JMT).
 ///
 /// Adapted from Diem's work:
-/// - Whitepaper:
-///   <https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/>
-/// - Rust implementation:
-///   <https://github.com/diem/diem/tree/latest/storage/jellyfish-merkle>
+/// - Whitepaper: <https://developers.diem.com/docs/technical-papers/jellyfish-merkle-tree-paper/>
+/// - Rust implementation: <https://github.com/diem/diem/tree/latest/storage/jellyfish-merkle>
 ///
 /// Also worth looking into:
-/// - Penumbra's adaptation:
-///   <https://github.com/penumbra-zone/jmt>
-/// - Sovereign Lab's article on optimizations:
-///   <https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8>
+/// - Penumbra's adaptation: <https://github.com/penumbra-zone/jmt>
+/// - Sovereign Lab's article on optimizations: <https://mirror.xyz/sovlabs.eth/jfx_cJ_15saejG9ZuQWjnGnG-NfahbazQH98i1J3NN8>
 pub struct MerkleTree<'a> {
     // (version, bitarray) => Node
     pub(crate) nodes: Map<'a, (u64, &'a BitArray), Node>,
@@ -69,7 +65,8 @@ impl<'a> MerkleTree<'a> {
         Self::new(DEFAULT_NODE_NAMESPACE, DEFAULT_ORPHAN_NAMESPACE)
     }
 
-    /// Get the root hash at the given version. Use latest version if unspecified.
+    /// Get the root hash at the given version. Use latest version if
+    /// unspecified.
     ///
     /// If the root node is not found at the version, return None. There are two
     /// possible reasons that it's not found: either no data has ever been
@@ -86,9 +83,9 @@ impl<'a> MerkleTree<'a> {
     /// If the tree becomes empty after applying the ops, `None` is returned as
     /// the new root.
     ///
-    /// This function takes a batch where both the keys and values are prehashes.
-    /// If you already have them hashed and sorted ascendingly by the key hashes,
-    /// use `apply` instead.
+    /// This function takes a batch where both the keys and values are
+    /// prehashes. If you already have them hashed and sorted ascendingly by
+    /// the key hashes, use `apply` instead.
     pub fn apply_raw(
         &self,
         storage: &mut dyn Storage,
@@ -720,38 +717,54 @@ fn into_child(version: u64, outcome: Outcome) -> Option<Child> {
 //
 // hash of node 0110
 // = sha256(01 | sha256("m") | sha256("bar"))
-// = sha256(01 | 62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a | fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9)
+// = sha256(01 |
+// 62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a |
+// fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9)
 // = fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280
 //
 // hash of node 0111
 // = sha256(01 | sha256("L") | sha256("fuzz"))
-// = sha256(01 | 72dfcfb0c470ac255cde83fb8fe38de8a128188e03ea5ba5b2a93adbea1062fa | 93850b707585e404e4951a3ddc1f05a34b3d4f5fc081d616f46d8a2e8f1c8e68)
+// = sha256(01 |
+// 72dfcfb0c470ac255cde83fb8fe38de8a128188e03ea5ba5b2a93adbea1062fa |
+// 93850b707585e404e4951a3ddc1f05a34b3d4f5fc081d616f46d8a2e8f1c8e68)
 // = 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b
 //
 // hash of node 011
-// = sha256(00 | fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280 | 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b)
+// = sha256(00 |
+// fd34e3f8d9840e7f6d6f639435b6f9b67732fc5e3d5288e268021aeab873f280 |
+// 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b)
 // = e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744
 //
 // hash of node 010
 // = sha256(01 | sha256("r") | sha256("foo"))
-// = sha256(01 | 454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1 | 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae)
+// = sha256(01 |
+// 454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1 |
+// 2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae)
 // = c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684
 //
 // hash of node 01
-// = sha256(00 | c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684 | e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744)
+// = sha256(00 |
+// c8348e9a7a327e8b76e97096c362a1f87071ee4108b565d1f409529c189cb684 |
+// e104e2bcf24027af737c021033cb9d8cbd710a463f54ae6f2ff9eb06c784c744)
 // = 521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b
 //
 // hash of node 0
-// = sha256(00 | 0000000000000000000000000000000000000000000000000000000000000000 | 521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b)
+// = sha256(00 |
+// 0000000000000000000000000000000000000000000000000000000000000000 |
+// 521de0a3ef2b7791666435a872ca9ec402ce886aff07bb4401de28bfdde4a13b)
 // = b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042
 //
 // hash of node 1
 // = sha256(01 | sha256("a") | sha256("buzz"))
-// = sha256(01 | ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb | 9fff3bcb10ca5e87b8109ccde9e9452012d634a005942afc46cf2b7fa307526a)
+// = sha256(01 |
+// ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb |
+// 9fff3bcb10ca5e87b8109ccde9e9452012d634a005942afc46cf2b7fa307526a)
 // = cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222
 //
 // root hash
-// = sha256(00 | b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042 | cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
+// = sha256(00 |
+// b843a96765fc40641227234e9f9a2736c2e0cdf8fb2dc54e358bb4fa29a61042 |
+// cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
 // = ae08c246d53a8ff3572a68d5bba4d610aaaa765e3ef535320c5653969aaa031b
 
 #[cfg(test)]
@@ -839,7 +852,9 @@ mod tests {
     // (unchanged)
     //
     // root hash
-    // = sha256(00 | 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b | cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
+    // = sha256(00 |
+    // 412341380b1e171077dd9da9af936ae2126ede2dd91dc5acb0f77363d46eb76b |
+    // cb640e68682628445a3e0713fafe91b9cefe4f81c2337e9d3df201d81ae70222)
     // = b3e4002b2d95d57ab44bbf64c8cfb04904c02fb2df9c859a75d82b02fd087dbf
     #[test]
     fn collapsing_path() {

@@ -109,8 +109,8 @@ pub enum ExecuteMsg {
         // Hyperlane Warp contract, which is called "route" here and set by the
         // contract owner.
         recipient: Addr32,
-        // Note: This is the metadata be to included in the [`TokenMessage`](crate::warp::TokenMessage),
-        // NOT the metadata for the hooks.
+        // Note: This is the metadata be to included in the
+        // [`TokenMessage`](crate::warp::TokenMessage), NOT the metadata for the hooks.
         metadata: Option<HexBinary>,
     },
     /// Define the recipient contract and withdrawal fee rate for a token on a

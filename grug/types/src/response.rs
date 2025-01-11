@@ -96,9 +96,9 @@ impl Response {
 }
 
 /// A special response emitted by the account contract at the end of the
-/// `authenticate` method call. In addition to the usual [`Response`](crate::Response),
-/// this also includes a boolean specifying whether the account requests a
-/// backrun call.
+/// `authenticate` method call. In addition to the usual
+/// [`Response`](crate::Response), this also includes a boolean specifying
+/// whether the account requests a backrun call.
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
 )]

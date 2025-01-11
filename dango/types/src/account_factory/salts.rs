@@ -8,8 +8,8 @@ use {
 
 // ------------------------------- new user salt -------------------------------
 
-/// The salt that account factory uses to create a new user's first ever account,
-/// during the onboarding flow.
+/// The salt that account factory uses to create a new user's first ever
+/// account, during the onboarding flow.
 ///
 /// For any subsequent account, the salt is simply the account ID; that is, a
 /// string in the format: `{username}/account/{index}`.

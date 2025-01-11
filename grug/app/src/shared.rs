@@ -7,8 +7,8 @@ use {
     },
 };
 
-/// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
-/// methods.
+/// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some
+/// convenience methods.
 #[derive(Default)]
 pub struct Shared<S> {
     inner: Arc<RwLock<S>>,
@@ -66,7 +66,8 @@ impl<S> Clone for Shared<S> {
     }
 }
 
-// When the inner type is `Storage`, the outer `Shared` also implements `Storage`.
+// When the inner type is `Storage`, the outer `Shared` also implements
+// `Storage`.
 impl<S> Storage for Shared<S>
 where
     S: Storage,

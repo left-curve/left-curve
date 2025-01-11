@@ -6,7 +6,8 @@ use {
     bnum::types::{I256, I512, U256, U512},
 };
 
-/// Describes a number that can be convert to and from raw binary representations.
+/// Describes a number that can be convert to and from raw binary
+/// representations.
 pub trait Bytable<const S: usize>: Sized {
     const BYTE_LEN: usize = S;
 

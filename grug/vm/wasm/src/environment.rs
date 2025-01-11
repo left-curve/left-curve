@@ -255,7 +255,8 @@ impl Environment {
         match get_remaining_points(store, instance) {
             MeteringPoints::Remaining(remaining) => {
                 // gas_checkpoint can't be less than remaining
-                // compute consumed equals to the gas consumed since the last update + external gas
+                // compute consumed equals to the gas consumed since the last update + external
+                // gas
                 let consumed = self.gas_checkpoint - remaining + external;
                 self.gas_tracker.consume(consumed, comment)?;
 

@@ -162,8 +162,9 @@ fn amm() {
     // = 5,886,161,498,040 + 58,861,614
     // = 5,886,220,359,654
     //
-    // shares_after = sqrt((shares_before ^ 2) * atom_after * osmo_after / atom_before / osmo_before)
-    // = sqrt((1,967,660,891,722 ^ 2) * 657,767,902,392 * 5,886,220,359,654 / 657,761,324,779 / 5,886,161,498,040)
+    // shares_after = sqrt((shares_before ^ 2) * atom_after * osmo_after /
+    // atom_before / osmo_before) = sqrt((1,967,660,891,722 ^ 2) *
+    // 657,767,902,392 * 5,886,220,359,654 / 657,761,324,779 / 5,886,161,498,040)
     // = 1,967,680,568,330
     //
     // shares_to_mint = shares_after - shares_before
@@ -188,9 +189,9 @@ fn amm() {
     // = 173,563,581,955 + 0
     // = 173,563,581,955
     //
-    // shares_after = sqrt((shares_before ^ 2) * atom_after * usdc_after / atom_before / usdc_before)
-    // = sqrt((197,210,389,916 ^ 2) * 224,178,907,873 * 173,563,581,955 / 224,078,907,873 / 173,563,581,955)
-    // = 197,254,389,682
+    // shares_after = sqrt((shares_before ^ 2) * atom_after * usdc_after /
+    // atom_before / usdc_before) = sqrt((197,210,389,916 ^ 2) * 224,178,907,873
+    // * 173,563,581,955 / 224,078,907,873 / 173,563,581,955) = 197,254,389,682
     //
     // shares_to_mint = shares_after - shares_before
     // = 197,254,389,682 - 197,210,389,916
@@ -305,18 +306,18 @@ fn amm() {
     //
     // Pool 2: USDC --> ATOM
     // Pool balances: 224,178,907,873 uatom + 173,563,581,955 uusdc
-    // output_before_fee = pool_atom - pool_atom * pool_usdc / (pool_usdc + input_usdc)
-    // = 224,178,907,873 - 224,178,907,873 * 173,563,581,955 / (173,563,581,955 + 100,000,000)
-    // = 224,178,907,873 - 224,049,819,836
+    // output_before_fee = pool_atom - pool_atom * pool_usdc / (pool_usdc +
+    // input_usdc) = 224,178,907,873 - 224,178,907,873 * 173,563,581,955 /
+    // (173,563,581,955 + 100,000,000) = 224,178,907,873 - 224,049,819,836
     // = 129,088,037
     // liquidity_fee = 129,088,037 * 20 / 10,000 = 258,177 (Note: ceil)
     // output = 129,088,037 - 258,177 = 128,829,860
     //
     // Pool 1: ATOM --> OSMO
     // Pool balances: 657,767,902,392 uatom + 5,886,220,359,654 uosmo
-    // output_before_fee = pool_osmo - pool_osmo * pool_atom / (pool_atom + input_atom)
-    // = 5,886,220,359,654 - 5,886,220,359,654 * 657,767,902,392 / (657,767,902,392 + 128,829,860)
-    // = 5,886,220,359,654 - 5,885,067,715,313
+    // output_before_fee = pool_osmo - pool_osmo * pool_atom / (pool_atom +
+    // input_atom) = 5,886,220,359,654 - 5,886,220,359,654 * 657,767,902,392 /
+    // (657,767,902,392 + 128,829,860) = 5,886,220,359,654 - 5,885,067,715,313
     // = 1,152,644,341
     // liquidity_fee = 1,152,644,341 * 20 / 10,000 = 2,305,289
     // output = 1,152,644,341 - 2,305,289 = 1,150,339,052

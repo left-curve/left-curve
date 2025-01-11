@@ -27,7 +27,8 @@ pub fn validate_recover_secp256k1(
         secp256k1_pubkey_recover(message_hash, signature, params[0], compressed).unwrap();
     let recovered1 =
         secp256k1_pubkey_recover(message_hash, signature, params[1], compressed).unwrap();
-    // Got two different pubkeys. Without the recovery param, we don't know which one is the right one.
+    // Got two different pubkeys. Without the recovery param, we don't know which
+    // one is the right one.
     assert_ne!(recovered0, recovered1);
     assert!(recovered0 == public_key || recovered1 == public_key);
 }

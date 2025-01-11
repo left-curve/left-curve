@@ -41,13 +41,10 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
         match msg {
             Message::Execute(MsgExecute { contract, msg, .. }) if contract == ctx.contract => {
                 // If the action is to vote for a proposal:
-                //
-                // 1. The voter username in `ExecuteMsg::Vote` must batch
-                //    the signer username in `Metadata`.
-                //
-                // 2. The voter/signer must be a member _at the time the
-                //    proposal was created_. It doesn't matter whether they
-                //    are a member _now_.
+                // 1. The voter username in `ExecuteMsg::Vote` must batch the signer username in
+                //    `Metadata`.
+                // 2. The voter/signer must be a member _at the time the proposal was created_.
+                //    It doesn't matter whether they are a member _now_.
                 match msg.clone().deserialize_json::<ExecuteMsg>()? {
                     ExecuteMsg::Vote {
                         proposal_id, voter, ..

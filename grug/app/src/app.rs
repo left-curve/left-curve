@@ -43,8 +43,8 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// infinite loop), then makes a query request at a node. Without a gas
     /// limit, this can take down the node.
     ///
-    /// Note that this is not relevant for queries made as part of a transaction,
-    /// which is covered by the transaction's gas limit.
+    /// Note that this is not relevant for queries made as part of a
+    /// transaction, which is covered by the transaction's gas limit.
     ///
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
@@ -459,8 +459,10 @@ where
     /// Performs a raw query of the app's underlying key-value store.
     ///
     /// Returns:
-    /// - the value corresponding to the given key; `None` if the key doesn't exist;
-    /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
+    /// - the value corresponding to the given key; `None` if the key doesn't
+    ///   exist;
+    /// - the Merkle proof; `None` if a proof is not requested (`prove` is
+    ///   false).
     pub fn do_query_store(
         &self,
         key: &[u8],
@@ -674,8 +676,8 @@ where
     //
     // Note that we use `msg_buffer` for this.
     //
-    // If succeeds, commit state changes in `msg_buffer` into `fee_buffer`, and record
-    // the events emitted.
+    // If succeeds, commit state changes in `msg_buffer` into `fee_buffer`, and
+    // record the events emitted.
     //
     // If fails, discard state changes in `msg_buffer` (but keeping those in
     // `fee_buffer`), discard the events, and jump to `finalize_fee`.
@@ -714,8 +716,8 @@ where
     // Loop through the messages and execute one by one. Then, call the sender
     // account's `backrun` method.
     //
-    // If everything succeeds, commit state changes in `msg_buffer` into `fee_buffer`,
-    // and record the events emitted.
+    // If everything succeeds, commit state changes in `msg_buffer` into
+    // `fee_buffer`, and record the events emitted.
     //
     // If anything fails, discard state changes in `msg_buffer` (but keeping those
     // in `fee_buffer`), discard the events, and jump to `finalize_fee`.

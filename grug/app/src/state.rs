@@ -32,7 +32,8 @@ pub const CODES: IndexedMap<Hash256, Code, CodeIndexes> = IndexedMap::new("codes
 pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 
 /// Each contract has its own storage space, which we term the "substore".
-/// A key in a contract's substore is prefixed by the word "wasm" + contract address.
+/// A key in a contract's substore is prefixed by the word "wasm" + contract
+/// address.
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
 
 pub struct CodeIndexes<'a> {

@@ -21,8 +21,9 @@ pub struct Params {
     pub members: BTreeMap<Username, NonZero<Power>>,
     /// The period of time since a proposal's creation when votes can be casted.
     pub voting_period: NonZero<Duration>,
-    /// The minimum number of YES votes a proposal must receive in order to pass.
-    /// Must be between 1 and the total power across all members (inclusive).
+    /// The minimum number of YES votes a proposal must receive in order to
+    /// pass. Must be between 1 and the total power across all members
+    /// (inclusive).
     pub threshold: NonZero<Power>,
     /// The minimum delay after a proposal is passed before it can be executed.
     pub timelock: Option<NonZero<Duration>>,

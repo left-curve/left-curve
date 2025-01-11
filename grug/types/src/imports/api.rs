@@ -8,8 +8,8 @@ use crate::{Addr, StdResult};
 // Also note that trait methods must include `&self` in order to be object-safe.
 pub trait Api {
     /// Send a message to the host, which will be printed to the host's logging.
-    /// Takes two arguments: the contract's address as raw bytes, and the message
-    /// as UTF-8 bytes.
+    /// Takes two arguments: the contract's address as raw bytes, and the
+    /// message as UTF-8 bytes.
     ///
     /// Note: unlike Rust's built-in `dbg!` macro, which is only included in
     /// debug builds, this `debug` method is also included in release builds,
@@ -29,7 +29,8 @@ pub trait Api {
     /// Note: this function takes the hash of the message, not the prehash.
     fn secp256k1_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
-    /// Recover the compressed byte of the `public key` from the `signature` and `message hash`.
+    /// Recover the compressed byte of the `public key` from the `signature` and
+    /// `message hash`.
     /// - **r**: the first `32 bytes` of the signature;
     /// - **s**: the last `32 bytes` of the signature;
     /// - **v**: the `recovery id`.
@@ -49,8 +50,8 @@ pub trait Api {
     /// NOTE: This function takes the hash of the message, not the prehash.
     fn ed25519_verify(&self, msg_hash: &[u8], sig: &[u8], pk: &[u8]) -> StdResult<()>;
 
-    /// Verify a batch of ED25519 signatures with the given hashed message and public
-    /// key.
+    /// Verify a batch of ED25519 signatures with the given hashed message and
+    /// public key.
     /// NOTE: This function takes the hash of the messages, not the prehash.
     fn ed25519_batch_verify(
         &self,

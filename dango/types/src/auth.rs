@@ -7,7 +7,8 @@ use {
 /// replay protection.
 pub type Nonce = u32;
 
-/// A public key that can be associated with a [`Username`](crate::auth::Username).
+/// A public key that can be associated with a
+/// [`Username`](crate::auth::Username).
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
 pub enum Key {
@@ -17,11 +18,12 @@ pub enum Key {
     Secp256k1(ByteArray<33>),
 }
 
-/// Data that the account expects for the transaction's [`credential`](grug::Tx::credential)
-/// field.
+/// Data that the account expects for the transaction's
+/// [`credential`](grug::Tx::credential) field.
 #[grug::derive(Serde)]
 pub enum Signature {
-    /// An Secp256r1 signature signed by a Passkey, along with necessary metadata.
+    /// An Secp256r1 signature signed by a Passkey, along with necessary
+    /// metadata.
     Passkey(PasskeySignature),
     /// An Secp256k1 signature.
     Secp256k1(ByteArray<64>),
@@ -45,7 +47,8 @@ pub struct StandardCredential {
 
 #[grug::derive(Serde)]
 pub struct SessionCredential {
-    /// The `SessionInfo` that contains data to be signed with user key and otp key.
+    /// The `SessionInfo` that contains data to be signed with user key and otp
+    /// key.
     pub session_info: SessionInfo,
     /// Signature of the `SignDoc` by the session key.
     pub session_signature: ByteArray<64>,

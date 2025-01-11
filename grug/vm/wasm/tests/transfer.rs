@@ -48,8 +48,8 @@ fn transfers() {
 
     outcome.clone().should_succeed();
 
-    // Sender remaining balance should be 300k - 70 - withhold + (withhold - charge).
-    // = 300k - 70 - charge
+    // Sender remaining balance should be 300k - 70 - withhold + (withhold -
+    // charge). = 300k - 70 - charge
     let fee = Uint128::new(outcome.gas_used as u128)
         .checked_mul_dec_ceil(FEE_RATE)
         .unwrap();
@@ -92,8 +92,8 @@ fn transfers_with_insufficient_gas_limit() {
     let to = accounts["receiver"].address;
 
     // Make a bank transfer with a small gas limit; should fail.
-    // For this test to work, the tx should request enough gas to pass `withhold_fee`,
-    // but not enough to cover the actual transfer.
+    // For this test to work, the tx should request enough gas to pass
+    // `withhold_fee`, but not enough to cover the actual transfer.
     // In experience, 200k gas works.
     let outcome = suite.send_message_with_gas(
         &mut accounts["sender"],

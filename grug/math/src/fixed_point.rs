@@ -9,7 +9,8 @@ use {
 /// Describes a [fixed-point decimal](https://en.wikipedia.org/wiki/Fixed-point_arithmetic)
 /// number.
 pub trait FixedPoint<U> {
-    /// Ratio between the inner integer value and the decimal value it represents.
+    /// Ratio between the inner integer value and the decimal value it
+    /// represents.
     ///
     /// This should always be `10 ^ DECIMAL_PLACES`.
     const PRECISION: Int<U>;

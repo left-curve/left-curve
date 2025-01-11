@@ -14,7 +14,8 @@ struct GatekeeperConfig {
     ///
     /// Note:
     /// There are float operations in the SIMD block as well and we do not yet
-    /// handle any combination of `allow_floats` and `allow_feature_simd` properly.
+    /// handle any combination of `allow_floats` and `allow_feature_simd`
+    /// properly.
     allow_floats: bool,
     /// True iff operations of the "Bulk memory operations" feature are allowed.
     ///
@@ -52,8 +53,9 @@ struct GatekeeperConfig {
     allow_feature_threads: bool,
 }
 
-/// A middleware that ensures only deterministic operations are used (i.e. no floats).
-/// It also disallows the use of Wasm features that are not explicitly enabled.
+/// A middleware that ensures only deterministic operations are used (i.e. no
+/// floats). It also disallows the use of Wasm features that are not explicitly
+/// enabled.
 #[derive(Debug)]
 pub struct Gatekeeper {
     config: GatekeeperConfig,

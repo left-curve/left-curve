@@ -941,7 +941,8 @@ mod cosmwasm_tests {
         assert_eq!(0, count);
 
         // In a MultiIndex, the index key is composed by the index and the primary key.
-        // Primary key may be empty (so that to iterate over all elements that match just the index)
+        // Primary key may be empty (so that to iterate over all elements that match
+        // just the index)
         let key = ("Maria".to_string(), "");
         // Iterate using an inclusive bound over the key
         let marias = DATA
@@ -1476,8 +1477,8 @@ mod cosmwasm_tests {
         let (pks, datas) = save_data(&mut storage);
 
         // Let's prefix and iterate.
-        // This is similar to calling range() directly, but added here for completeness / prefix
-        // type checks
+        // This is similar to calling range() directly, but added here for completeness
+        // / prefix type checks
 
         // Grug note:
         // we changed this. This test doesn't make sense now.
@@ -1947,7 +1948,8 @@ mod cosmwasm_tests {
             map.save(&mut storage, "three", &3).unwrap();
 
             // Exclusive bound (used for pagination)
-            // Range over the index specifying a primary key (multi-index key includes the pk)
+            // Range over the index specifying a primary key (multi-index key includes the
+            // pk)
             let items = map
                 .idx
                 .secondary

@@ -62,7 +62,8 @@ impl Event {
     }
 }
 
-/// An event indicating that the chain- or app-level configurations were updated.
+/// An event indicating that the chain- or app-level configurations were
+/// updated.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtConfigure {
     pub sender: Addr,
@@ -175,7 +176,8 @@ impl EvtMigrate {
     }
 }
 
-/// An event indicating that a contract was replied the outcome of its submessage.
+/// An event indicating that a contract was replied the outcome of its
+/// submessage.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtReply {
     pub contract: Addr,
@@ -295,7 +297,8 @@ impl EvtCron {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtGuest {
     pub contract: Addr,
-    /// The wasm export function that was being called when the event was emitted.
+    /// The wasm export function that was being called when the event was
+    /// emitted.
     pub method: String,
     /// Sub events emitted by the contract.
     pub contract_events: Vec<ContractEvent>,

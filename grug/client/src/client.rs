@@ -19,14 +19,15 @@ use {
 
 /// A client for interacting with a Grug chain via Tendermint RPC.
 ///
-/// Internally, this is a wrapper over [`tendermint_rpc::HttpClient`](tendermint_rpc::HttpClient).
+/// Internally, this is a wrapper over
+/// [`tendermint_rpc::HttpClient`](tendermint_rpc::HttpClient).
 pub struct Client {
     inner: HttpClient,
 }
 
 impl Client {
-    /// Creating a new [`QueryClient`](crate::QueryClient) by connecting to a Tendermint
-    /// RPC endpoint.
+    /// Creating a new [`QueryClient`](crate::QueryClient) by connecting to a
+    /// Tendermint RPC endpoint.
     pub fn connect<U>(endpoint: U) -> anyhow::Result<Self>
     where
         U: TryInto<HttpClientUrl, Error = tendermint_rpc::Error>,
@@ -109,9 +110,11 @@ impl Client {
     ///
     /// - `key`: The raw storage key.
     /// - `height`: The block height to perform the query. If unspecified, the
-    ///   latest height is used. Errors if the node has already pruned the height.
+    ///   latest height is used. Errors if the node has already pruned the
+    ///   height.
     /// - `proof`: Whether to request a Merkle proof. If the key exists, an
-    ///   memership proof is returned; otherwise, a non-membership proof is returned.
+    ///   memership proof is returned; otherwise, a non-membership proof is
+    ///   returned.
     pub async fn query_store(
         &self,
         key: Vec<u8>,
@@ -363,7 +366,8 @@ impl SigningClient {
     /// Create, sign, and broadcast a transaction with a single message, without
     /// terminal prompt for confirmation.
     ///
-    /// If you need the prompt confirmation, use `send_message_with_confirmation`.
+    /// If you need the prompt confirmation, use
+    /// `send_message_with_confirmation`.
     pub async fn send_message(
         &self,
         signer: &mut dyn Signer,
@@ -398,7 +402,8 @@ impl SigningClient {
     /// Create, sign, and broadcast a transaction with the given messages,
     /// without terminal prompt for confirmation.
     ///
-    /// If you need the prompt confirmation, use `send_messages_with_confirmation`.
+    /// If you need the prompt confirmation, use
+    /// `send_messages_with_confirmation`.
     pub async fn send_messages(
         &self,
         signer: &mut dyn Signer,
@@ -449,7 +454,8 @@ impl SigningClient {
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
     }
 
-    /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
+    /// Send a transaction with a single
+    /// [`Message::Configure`](grug_types::Message::Configure).
     pub async fn configure<T>(
         &self,
         signer: &mut dyn Signer,
@@ -464,7 +470,8 @@ impl SigningClient {
         self.send_message(signer, msg, gas_opt).await
     }
 
-    /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
+    /// Send a transaction with a single
+    /// [`Message::Transfer`](grug_types::Message::Transfer).
     pub async fn transfer<C>(
         &self,
         signer: &mut dyn Signer,
@@ -480,7 +487,8 @@ impl SigningClient {
         self.send_message(signer, msg, gas_opt).await
     }
 
-    /// Send a transaction with a single [`Message::Upload`](grug_types::Message::Upload).
+    /// Send a transaction with a single
+    /// [`Message::Upload`](grug_types::Message::Upload).
     pub async fn upload<B>(
         &self,
         signer: &mut dyn Signer,
@@ -494,7 +502,8 @@ impl SigningClient {
         self.send_message(signer, msg, gas_opt).await
     }
 
-    /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
+    /// Send a transaction with a single
+    /// [`Message::Instantiate`](grug_types::Message::Instantiate).
     ///
     /// Return the deployed contract's address.
     pub async fn instantiate<M, S, C, T>(
@@ -563,7 +572,8 @@ impl SigningClient {
         Ok((code_hash, address, res))
     }
 
-    /// Send a transaction with a single [`Message::Execute`](grug_types::Message::Execute).
+    /// Send a transaction with a single
+    /// [`Message::Execute`](grug_types::Message::Execute).
     pub async fn execute<M, C, S>(
         &self,
         signer: &mut dyn Signer,
@@ -582,7 +592,8 @@ impl SigningClient {
         self.send_message(signer, msg, gas_opt).await
     }
 
-    /// Send a transaction with a single [`Message::Migrate`](grug_types::Message::Migrate).
+    /// Send a transaction with a single
+    /// [`Message::Migrate`](grug_types::Message::Migrate).
     pub async fn migrate<M, S>(
         &self,
         signer: &mut dyn Signer,
@@ -600,7 +611,8 @@ impl SigningClient {
     }
 }
 
-/// Skip the CLI prompt confirmation, always consider it as if the user accepted.
+/// Skip the CLI prompt confirmation, always consider it as if the user
+/// accepted.
 fn no_confirmation(_tx: &Tx) -> anyhow::Result<bool> {
     Ok(true)
 }

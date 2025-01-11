@@ -48,7 +48,8 @@ impl ProposalPreparer for NaiveProposalPreparer {
 }
 
 /// A placeholder error type that is never constructed.
-/// Used in conjunction with [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
+/// Used in conjunction with
+/// [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
 #[derive(Debug, Clone, Copy)]
 pub struct NaiveError(Infallible);
 
@@ -65,7 +66,8 @@ impl From<NaiveError> for AppError {
 }
 
 /// A querier that doesn't actually perform any query.
-/// Used in conjunction with [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
+/// Used in conjunction with
+/// [`NaiveProposalPreparer`](crate::NaiveProposalPreparer).
 #[derive(Debug, Clone, Copy)]
 pub struct NaiveQuerier;
 

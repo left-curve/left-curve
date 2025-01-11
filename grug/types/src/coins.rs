@@ -29,12 +29,12 @@ pub struct Coins(BTreeMap<Denom, Uint128>);
 impl Coins {
     // There are two ways to stringify a Coins:
     //
-    // 1. Use `grug::{to_json,from_json}`
-    //    This is used in contract messages and responses.
+    // 1. Use `grug::{to_json,from_json}` This is used in contract messages and
+    //    responses.
     //    > [{"denom":"uatom","amount":"12345"},{"denom":"uosmo","amount":"67890"}]
     //
-    // 2. Use `Coins::{to_string,from_str}`
-    //    This is used in event logging and the CLI.
+    // 2. Use `Coins::{to_string,from_str}` This is used in event logging and the
+    //    CLI.
     //    > uatom:12345,uosmo:67890
     //
     // For method 2 specifically, an empty Coins stringifies to an empty string.
@@ -347,8 +347,8 @@ impl Coins {
 
 // cast a string of the following format to Coins:
 // denom1:amount1,denom2:amount2,...,denomN:amountN
-// allow the denoms to be out of order, but disallow duplicates and zero amounts.
-// this is mostly intended to use in CLIs.
+// allow the denoms to be out of order, but disallow duplicates and zero
+// amounts. this is mostly intended to use in CLIs.
 impl FromStr for Coins {
     type Err = StdError;
 

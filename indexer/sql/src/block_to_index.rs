@@ -27,7 +27,8 @@ impl BlockToIndex {
         }
     }
 
-    /// Takes care of inserting the data in the database in a single DB transaction
+    /// Takes care of inserting the data in the database in a single DB
+    /// transaction
     pub async fn save<C: ConnectionTrait>(&self, db: &C) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::info!(block_height = self.block.info.height, "Indexing block");

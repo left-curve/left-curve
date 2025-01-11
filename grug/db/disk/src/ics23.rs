@@ -164,8 +164,8 @@ mod tests {
     ///
     /// > "m" < "L" < "a"
     ///
-    /// At version 1, we expect the ICS-23 proof to contain a left neighbor ("m")
-    /// and no right neighbor.
+    /// At version 1, we expect the ICS-23 proof to contain a left neighbor
+    /// ("m") and no right neighbor.
     ///
     /// However, since we don't to delete the preimage of "a", the function
     /// incorrectly thinks "a" exists as the right neighbor.

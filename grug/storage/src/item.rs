@@ -26,8 +26,8 @@ where
 }
 
 // `Item` is effectively a wrapper over a `Path`, so instead of implementing
-// methods (`load`, `save`, ...) manually, we simply implement `Deref<Target = Path>`
-// so that users can access those methods on `Path`.
+// methods (`load`, `save`, ...) manually, we simply implement `Deref<Target =
+// Path>` so that users can access those methods on `Path`.
 impl<'a, T, C: Codec<T>> Deref for Item<'a, T, C> {
     type Target = Path<'a, T, C>;
 

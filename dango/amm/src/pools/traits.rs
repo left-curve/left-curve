@@ -3,7 +3,8 @@ use grug::{Coin, CoinPair, Uint128};
 // Note: this trait is not object-safe, because of:
 // - it has an associated type;
 // - it has `Sized` as a super-trait.
-// Therefore, we split it off from `PoolExt` which is intended as an object-safe trait.
+// Therefore, we split it off from `PoolExt` which is intended as an object-safe
+// trait.
 pub trait PoolInit: Sized {
     type Params;
 

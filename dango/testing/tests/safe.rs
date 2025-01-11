@@ -443,7 +443,8 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
     ] {
         unauthorized_voting_via_impersonation(
             &mut suite,
-            safe.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            safe.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make
+                                 * sure it increments? */
             &accounts.user4,
             voter,
             username,
@@ -555,7 +556,8 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
     ] {
         unauthorized_voting_via_impersonation(
             &mut suite,
-            safe.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            safe.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we
+                                     * make sure it increments? */
             &accounts.user3,
             voter,
             username,

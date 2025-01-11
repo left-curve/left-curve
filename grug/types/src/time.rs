@@ -23,7 +23,8 @@ const DAYS_PER_WEEK: u128 = 7;
 /// UNIX epoch timestamp, in nanosecond precision.
 ///
 /// A timestamp is simply a duration between a point of time and the UNIX epoch,
-/// so here we define timestamp simply as an alias to [`Duration`](crate::Duration).
+/// so here we define timestamp simply as an alias to
+/// [`Duration`](crate::Duration).
 pub type Timestamp = Duration;
 
 /// A span of time, in nanosecond precision.

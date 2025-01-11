@@ -168,8 +168,8 @@ where
     T: MaybeDefined<Addr>,
     Self: Signer,
 {
-    /// Register a new account with the username and key of this account and returns a new
-    /// `TestAccount` with the new account's address.
+    /// Register a new account with the username and key of this account and
+    /// returns a new `TestAccount` with the new account's address.
     pub fn register_new_account<PP>(
         &mut self,
         test_suite: &mut TestSuite<PP>,
@@ -181,7 +181,8 @@ where
         PP: ProposalPreparer,
         AppError: From<PP::Error>,
     {
-        // If registering a single account, ensure the supplied username matches this account's username.
+        // If registering a single account, ensure the supplied username matches this
+        // account's username.
         let account_type = match &params {
             AccountParams::Spot(single::Params { owner, .. }) => {
                 assert_eq!(owner, &self.username);

@@ -44,9 +44,10 @@ const SIGN_MSG_LEN: usize = 10;
 
 /// Batch sizes for benchmarking `ed25519_batch_verify`.
 ///
-/// The most common situation this function is called is in the ICS-07 Tendermint
-/// light client, where it verifies block headers. Cosmos chains usually have up
-/// to 150 validators, so we choose a number of batch sizes up to that.
+/// The most common situation this function is called is in the ICS-07
+/// Tendermint light client, where it verifies block headers. Cosmos chains
+/// usually have up to 150 validators, so we choose a number of batch sizes up
+/// to that.
 const ED25519_BATCH_SIZES: [usize; 6] = [25, 50, 75, 100, 125, 150];
 
 fn generate_random_msg(i: usize) -> Vec<u8> {

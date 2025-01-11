@@ -35,7 +35,8 @@ mod session_account {
         pub account: TestAccount,
         session_sk: SigningKey,
         session_pk: ByteArray<33>,
-        /// Contains both SessionInfo and the SessionInfo signed with the user keys.
+        /// Contains both SessionInfo and the SessionInfo signed with the user
+        /// keys.
         session_buffer: T,
     }
 
@@ -52,7 +53,8 @@ mod session_account {
         }
 
         /// Create a new account copying the session key from another account.
-        /// it's used to simulate 2 accounts under the same username sharing the same session key.
+        /// it's used to simulate 2 accounts under the same username sharing the
+        /// same session key.
         pub fn new_from_same_username(
             other: &SessionAccount<Defined<SessionInfoBuffer>>,
             account: TestAccount,

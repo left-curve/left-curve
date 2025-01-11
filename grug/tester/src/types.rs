@@ -40,9 +40,10 @@ pub enum QueryMsg {
     /// contract is given an `ImmutableCtx` in the `query` function, which
     /// doesn't come with state mutable methods.
     ///
-    /// However, a malicious contract can attempt to directly call the `db_write`,
-    /// `db_remove`, or `db_remove_range` FFI import methods directly. We need
-    /// to test whether the VM can properly reject this behavior.
+    /// However, a malicious contract can attempt to directly call the
+    /// `db_write`, `db_remove`, or `db_remove_range` FFI import methods
+    /// directly. We need to test whether the VM can properly reject this
+    /// behavior.
     #[returns(())]
     ForceWrite { key: String, value: String },
     /// The contract attempts to make queries in a loop.

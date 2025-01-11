@@ -29,11 +29,12 @@ pub type Hash512 = Hash<64>;
 impl<const N: usize> Hash<N> {
     /// The length (number of bytes) of hashes.
     ///
-    /// In Grug, we use SHA-256 hash everywhere, of which the length is 32 bytes.
+    /// In Grug, we use SHA-256 hash everywhere, of which the length is 32
+    /// bytes.
     ///
-    /// Do not confuse length in terms of bytes and in terms of ASCII characters.
-    /// We use Hex encoding, which uses 2 ASCII characters per byte, so the
-    /// ASCII length should be 64.
+    /// Do not confuse length in terms of bytes and in terms of ASCII
+    /// characters. We use Hex encoding, which uses 2 ASCII characters per
+    /// byte, so the ASCII length should be 64.
     pub const LENGTH: usize = N;
     /// A zeroed-out hash. Useful as mockups or placeholders.
     pub const ZERO: Self = Self::from_inner([0; N]);

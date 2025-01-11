@@ -37,8 +37,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
 // A new user who wishes to be onboarded must first make an initial deposit,
 // then send a transaction with the account factory as sender, that contains
-// exactly one message, to execute the factory itself with `Execute::RegisterUser`.
-// This transaction does not need to include any metadata or credential.
+// exactly one message, to execute the factory itself with
+// `Execute::RegisterUser`. This transaction does not need to include any
+// metadata or credential.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let mut msgs = tx.msgs.iter();
@@ -216,8 +217,8 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Basic validations of the account.
     // - For single signature accounts (spot and margin), one can only register
     //   accounts for themself. They cannot register account for another user.
-    // - For multisig accounts (Safe), ensure voting threshold isn't greater
-    //   than total voting power.
+    // - For multisig accounts (Safe), ensure voting threshold isn't greater than
+    //   total voting power.
     match &params {
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ensure!(

@@ -124,10 +124,11 @@ impl Signer for TestAccount {
 /// Why not just use a `HashMap`?
 ///
 /// The Rust `HashMap` doesn't implement `IndexMut`, so we can't index into it
-/// like `&mut accounts["name"]`. We have to do `accounts.get_mut("name").unwrap()`
-/// instead which is quite verbose.
+/// like `&mut accounts["name"]`. We have to do
+/// `accounts.get_mut("name").unwrap()` instead which is quite verbose.
 ///
-/// To fix this, we make a wrapper over `HashMap` and implement `IndexMut` ourselves.
+/// To fix this, we make a wrapper over `HashMap` and implement `IndexMut`
+/// ourselves.
 #[derive(Default, Debug)]
 pub struct TestAccounts(HashMap<&'static str, TestAccount>);
 

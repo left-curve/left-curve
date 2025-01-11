@@ -208,14 +208,15 @@ fn withholding_and_finalizing_fee_works(
         .should_succeed_and_equal(Uint128::new(receiver_balance_after));
 }
 
-// In this test, we see what happens if the tx fails at the `finalize_fee` stage.
+// In this test, we see what happens if the tx fails at the `finalize_fee`
+// stage.
 //
 // This can be considered an "undefined behavior", because the taxman contract
 // is supposed to be designed in a way such that `finalize_fee` never fails.
 //
-// If it does fail though, we simply discard all state changes and events emitted
-// by the transaction, as if it never happened. We also print a log to the CLI
-// at the ERROR tracing level to raise developer's awareness.
+// If it does fail though, we simply discard all state changes and events
+// emitted by the transaction, as if it never happened. We also print a log to
+// the CLI at the ERROR tracing level to raise developer's awareness.
 #[test]
 fn finalizing_fee_erroring() {
     let bugged_taxman_code = ContractBuilder::new(Box::new(taxman::instantiate))

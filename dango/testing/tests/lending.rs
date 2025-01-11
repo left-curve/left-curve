@@ -378,7 +378,8 @@ fn borrowing_works() {
         )
         .unwrap();
 
-    // Try to borrow from the margin account, should succeed fail as no coins are deposited
+    // Try to borrow from the margin account, should succeed fail as no coins are
+    // deposited
     suite
         .execute(
             &mut margin_account,

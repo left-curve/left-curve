@@ -19,7 +19,8 @@ impl Username {
 
     /// Return the username's length as a single byte.
     ///
-    /// Usernames cannot be longer than 15 characters, so a single byte suffices.
+    /// Usernames cannot be longer than 15 characters, so a single byte
+    /// suffices.
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> u8 {
         debug_assert!(

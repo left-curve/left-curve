@@ -4,7 +4,8 @@ use {
 };
 
 /// Safely converts input of type T to u32.
-/// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion cannot be done.
+/// Errors with a cosmwasm_vm::errors::VmError::ConversionErr if conversion
+/// cannot be done.
 pub fn to_u32<T>(input: T) -> MathResult<u32>
 where
     T: TryInto<u32> + ToString + Copy,
@@ -37,8 +38,8 @@ pub fn split_one_key(bytes: &[u8]) -> (&[u8], &[u8]) {
 ///
 /// Each section is suffixed by a section length encoded as big endian uint32.
 /// Using suffixes instead of prefixes allows reading sections in reverse order,
-/// such that the first element does not need to be re-allocated if the contract's
-/// data structure supports truncation (such as a Rust vector).
+/// such that the first element does not need to be re-allocated if the
+/// contract's data structure supports truncation (such as a Rust vector).
 ///
 /// The resulting data looks like this:
 ///
@@ -61,7 +62,8 @@ pub fn encode_sections(sections: &[&[u8]]) -> StdResult<Vec<u8>> {
 
 /// Decodes sections of data into multiple slices.
 ///
-/// Each encoded section is suffixed by a section length, encoded as big endian uint32.
+/// Each encoded section is suffixed by a section length, encoded as big endian
+/// uint32.
 ///
 /// See also: `encode_section`.
 pub fn decode_sections(data: &[u8]) -> Vec<&[u8]> {

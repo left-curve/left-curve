@@ -5,9 +5,10 @@ use crate::{
 
 /// Describes a number type can be cast into another type of a bigger word size.
 ///
-/// For example, [`Uint128`](crate::Uint128) can be safety cast to [`Uint256`](crate::Uint256).
-/// In this case, [`NextNumber`] trait should be implemented for [`Uint128`](crate::Uint128)
-/// with `Next` being [`Uint256`](crate::Uint256).
+/// For example, [`Uint128`](crate::Uint128) can be safety cast to
+/// [`Uint256`](crate::Uint256). In this case, [`NextNumber`] trait should be
+/// implemented for [`Uint128`](crate::Uint128) with `Next` being
+/// [`Uint256`](crate::Uint256).
 pub trait NextNumber {
     type Next;
 

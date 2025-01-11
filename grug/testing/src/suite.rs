@@ -117,8 +117,9 @@ where
     ID: Indexer,
 {
     pub app: App<DB, VM, PP, ID>,
-    /// The chain ID can be queries from the `app`, but we internally track it in
-    /// the test suite, so we don't need to query it every time we need it.
+    /// The chain ID can be queries from the `app`, but we internally track it
+    /// in the test suite, so we don't need to query it every time we need
+    /// it.
     pub chain_id: String,
     /// Interally track the last finalized block.
     pub block: BlockInfo,
@@ -132,8 +133,8 @@ where
 impl TestSuite {
     /// Create a new test suite.
     ///
-    /// It's not recommended to call this directly. Use [`TestBuilder`](crate::TestBuilder)
-    /// instead.
+    /// It's not recommended to call this directly. Use
+    /// [`TestBuilder`](crate::TestBuilder) instead.
     pub fn new(
         chain_id: String,
         block_time: Duration,

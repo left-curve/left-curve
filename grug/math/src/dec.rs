@@ -184,7 +184,8 @@ where
     /// Disallowed: "", ".23"
     ///
     /// This never performs any kind of rounding.
-    /// More than DECIMAL_PLACES fractional digits, even zeros, result in an error.
+    /// More than DECIMAL_PLACES fractional digits, even zeros, result in an
+    /// error.
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut parts_iter = input.split('.');
 

@@ -10,8 +10,9 @@ use {
     },
 };
 
-// Need to define these manually because we can't use the `grug::export` macro in
-// this workspace, due to a cyclic reference issue (see comments in `Cargo.toml`).
+// Need to define these manually because we can't use the `grug::export` macro
+// in this workspace, due to a cyclic reference issue (see comments in
+// `Cargo.toml`).
 #[cfg(all(target_arch = "wasm32", not(feature = "library")))]
 mod __wasm_exports {
     #[no_mangle]

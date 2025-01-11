@@ -52,7 +52,8 @@ pub fn combine_signature(sig: &Sig) -> Vec<u8> {
     let r_len = r.len().max(32);
     let s_len = s.len().max(32);
 
-    // the test data also contains values with less than 32 bytes, so we need to pad them with zeroes
+    // the test data also contains values with less than 32 bytes, so we need to pad
+    // them with zeroes
     let mut signature = vec![0; r_len + s_len];
     let (r_part, s_part) = signature.split_at_mut(r_len);
     r_part[r_len - r.len()..].copy_from_slice(r);

@@ -225,7 +225,8 @@ fn get_optional_region_ptr(maybe_region: Option<&Box<Region>>) -> usize {
 //
 // storage_key := len(namespace) | namespace | len(k1) | k1 | len(k2) | k2 | k3
 //
-// Here, when the host loads the next value into Wasm memory, we do it like this:
+// Here, when the host loads the next value into Wasm memory, we do it like
+// this:
 //
 // data := key | value | len(key)
 //

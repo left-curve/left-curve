@@ -9,7 +9,8 @@ pub enum GasOption {
     /// consumption by querying a node, and applying some adjustments.
     Simulate {
         /// Multiply the gas amount by this factor.
-        /// This is to account for the inaccuracies in gas simulation in general.
+        /// This is to account for the inaccuracies in gas simulation in
+        /// general.
         scale: f64,
         /// After the scaling, increase the simulated gas consumption by this
         /// amount.

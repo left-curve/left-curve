@@ -113,8 +113,8 @@ where
             })
     }
 
-    /// Iterate all {index, primary key, value} tuples within a bound of indexes,
-    /// without deserialization.
+    /// Iterate all {index, primary key, value} tuples within a bound of
+    /// indexes, without deserialization.
     pub fn range_raw<'b>(
         &'b self,
         storage: &'b dyn Storage,
@@ -136,7 +136,8 @@ where
         Box::new(iter)
     }
 
-    /// Iterate all {index, primary key, value} tuples within a bound of indexes.
+    /// Iterate all {index, primary key, value} tuples within a bound of
+    /// indexes.
     pub fn range<'b>(
         &'b self,
         storage: &'b dyn Storage,

@@ -20,7 +20,8 @@ impl HomeDirectory {
         self.home.join("keys")
     }
 
-    /// Used for the indexer, used to store blocks before they're saved to the DB.
+    /// Used for the indexer, used to store blocks before they're saved to the
+    /// DB.
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
     }

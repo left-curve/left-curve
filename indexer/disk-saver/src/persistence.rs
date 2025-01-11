@@ -11,16 +11,17 @@ use {
     tempfile::NamedTempFile,
 };
 
-/// Leaving `should_compress` option for future use. Compressing takes more CPU and
-/// might be annoying overtime. Maybe I'll store uncompressed first and compress
-/// in its own task once the block has been indexed.
+/// Leaving `should_compress` option for future use. Compressing takes more CPU
+/// and might be annoying overtime. Maybe I'll store uncompressed first and
+/// compress in its own task once the block has been indexed.
 pub struct DiskPersistence {
     pub file_path: PathBuf,
     pub compressed: bool,
 }
 
 impl DiskPersistence {
-    /// Will automatically set the file extension based on the serialization and compression
+    /// Will automatically set the file extension based on the serialization and
+    /// compression
     pub fn new(mut file_path: PathBuf, mut should_compress: bool) -> Self {
         // For if I'll support other serialization mechanism so we can figure
         // out the serialization format based on the file extension.

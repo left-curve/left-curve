@@ -30,8 +30,8 @@ pub enum BankQuery {
     Supplies(QuerySuppliesRequest),
 }
 
-/// The query response that the bank contract must return during the `bank_query`
-/// function call.
+/// The query response that the bank contract must return during the
+/// `bank_query` function call.
 ///
 /// The response MUST match the query. For example, if the host queries
 /// `BankQuery::Balance`, the contract must return `BankQueryResponse::Balance`.

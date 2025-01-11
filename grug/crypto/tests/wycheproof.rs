@@ -281,13 +281,14 @@ fn decode_unsigned_integer(mut data: &[u8], name: &str) -> Result<[u8; 32], Stri
         return Err(format!("{name} data missing leading zero"));
     }
 
-    // "Leading octets of all 0's (or all 1's) are not allowed. In other words, the leftmost
-    // nine bits of an encoded INTEGER value may not be all 0's or all 1's. This ensures that
-    // an INTEGER value is encoded in the smallest possible number of octets."
-    // https://www.oss.com/asn1/resources/asn1-made-simple/asn1-quick-reference/basic-encoding-rules.html
+    // "Leading octets of all 0's (or all 1's) are not allowed. In other words, the
+    // leftmost nine bits of an encoded INTEGER value may not be all 0's or all
+    // 1's. This ensures that an INTEGER value is encoded in the smallest
+    // possible number of octets." https://www.oss.com/asn1/resources/asn1-made-simple/asn1-quick-reference/basic-encoding-rules.html
 
     // If leading byte is 0 and there is more than 1 byte, trim it.
-    // If the high bit of the following byte is zero as well, the leading 0x00 was invalid.
+    // If the high bit of the following byte is zero as well, the leading 0x00 was
+    // invalid.
     if data.len() > 1 && data[0] == 0 {
         data = &data[1..];
         if (data[0] & 0x80) == 0 {

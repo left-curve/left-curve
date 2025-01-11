@@ -39,7 +39,8 @@ mod tester {
 }
 
 /// A cronjob contract that intentionally fails during `cron_execute`. Used for
-/// testing whether the app can correctly handle revert failing cronjobs state changes.
+/// testing whether the app can correctly handle revert failing cronjobs state
+/// changes.
 mod failing_tester {
     use {
         grug_math::{Number, NumberConst, Uint128},

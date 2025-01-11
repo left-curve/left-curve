@@ -22,9 +22,9 @@ const ERR_MAX_UNSET: &str = "maximum unset";
 pub struct LimitingTunables<T> {
     /// The base implementation we delegate all the logic to.
     base: T,
-    /// The maximum a linear memory is allowed to be (in Wasm pages, 65 KiB each).
-    /// Since Wasmer ensures there is only none or one memory, this is practically
-    /// an upper limit for the guest memory.
+    /// The maximum a linear memory is allowed to be (in Wasm pages, 65 KiB
+    /// each). Since Wasmer ensures there is only none or one memory, this
+    /// is practically an upper limit for the guest memory.
     limit: Pages,
 }
 
@@ -86,7 +86,8 @@ where
         self.base.table_style(table)
     }
 
-    /// Create a memory owned by the host given a [`MemoryType`] and a [`MemoryStyle`].
+    /// Create a memory owned by the host given a [`MemoryType`] and a
+    /// [`MemoryStyle`].
     ///
     /// The requested memory type is validated, adjusted to the limited and then
     /// passed to base.
@@ -100,7 +101,8 @@ where
         self.base.create_host_memory(&adjusted, style)
     }
 
-    /// Create a memory owned by the VM given a [`MemoryType`] and a [`MemoryStyle`].
+    /// Create a memory owned by the VM given a [`MemoryType`] and a
+    /// [`MemoryStyle`].
     ///
     /// Delegated to base.
     unsafe fn create_vm_memory(
@@ -115,14 +117,16 @@ where
             .create_vm_memory(&adjusted, style, vm_definition_location)
     }
 
-    /// Create a table owned by the host given a [`TableType`] and a [`TableStyle`].
+    /// Create a table owned by the host given a [`TableType`] and a
+    /// [`TableStyle`].
     ///
     /// Delegated to base.
     fn create_host_table(&self, ty: &TableType, style: &TableStyle) -> Result<VMTable, String> {
         self.base.create_host_table(ty, style)
     }
 
-    /// Create a table owned by the VM given a [`TableType`] and a [`TableStyle`].
+    /// Create a table owned by the VM given a [`TableType`] and a
+    /// [`TableStyle`].
     ///
     /// Delegated to base.
     unsafe fn create_vm_table(

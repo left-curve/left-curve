@@ -11,7 +11,8 @@ use {
 /// That is, it should contain two components:
 /// - **state commitment**, a _Merklized_ KV store that stores _hashed_ keys and
 ///   _hashed_ values;
-/// - **state storage**, a _flat_ KV store that stores _raw_ keys and _raw_ values.
+/// - **state storage**, a _flat_ KV store that stores _raw_ keys and _raw_
+///   values.
 ///
 /// The `state_commitment` and `state_storage` methods should return an _owned_
 /// instance of the storage object (see the required `'static` lifetime). This
@@ -21,8 +22,8 @@ use {
 /// methods to persist them.
 ///
 /// The two mutable methods `flush` and `commit` take an immutable reference
-/// of self (`&self`) instead of a mutable one. This is needed for multithreading.
-/// For this reason, the implementation should use the [interior mutability](https://doc.rust-lang.org/book/ch15-05-interior-mutability.html)
+/// of self (`&self`) instead of a mutable one. This is needed for
+/// multithreading. For this reason, the implementation should use the [interior mutability](https://doc.rust-lang.org/book/ch15-05-interior-mutability.html)
 /// pattern such as `Arc<RwLock<T>>`.
 ///
 /// We ship three implementations of `Db`:

@@ -17,7 +17,8 @@ pub struct QueryCmd {
     #[arg(long, default_value = "http://127.0.0.1:26657")]
     node: String,
 
-    /// The block height at which to perform queries [default: last finalized height]
+    /// The block height at which to perform queries [default: last finalized
+    /// height]
     #[arg(long)]
     height: Option<u64>,
 
@@ -127,7 +128,8 @@ enum SubCmd {
     Store {
         /// Key in hex encoding
         key: String,
-        /// Whether to request Merkle proof for raw store queries [default: false]
+        /// Whether to request Merkle proof for raw store queries [default:
+        /// false]
         #[arg(long, default_value_t = false)]
         prove: bool,
     },

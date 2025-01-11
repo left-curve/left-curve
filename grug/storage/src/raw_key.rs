@@ -2,11 +2,11 @@
 ///
 /// ## Note
 ///
-/// We choose not to use `Cow<[u8]>` because while it includes `Vec<u8>` and `&[u8]`,
-/// it doesn't include fixed length arrays `[u8; N]`. For these they need to be
-/// converted to vectors which is slow, being a heap allocation. (We can't take
-/// reference of them in which case we get the "cannot return reference to
-/// temporary value" error.)
+/// We choose not to use `Cow<[u8]>` because while it includes `Vec<u8>` and
+/// `&[u8]`, it doesn't include fixed length arrays `[u8; N]`. For these they
+/// need to be converted to vectors which is slow, being a heap allocation. (We
+/// can't take reference of them in which case we get the "cannot return
+/// reference to temporary value" error.)
 pub enum RawKey<'a> {
     Owned(Vec<u8>),
     Borrowed(&'a [u8]),

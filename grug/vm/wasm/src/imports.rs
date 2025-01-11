@@ -125,7 +125,8 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     //
     // This is the case for the `query`, `bank_query`, and `ibc_client_query`
     // calls. During these calls, the contract isn't allowed to call the imports
-    // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
+    // that mutates the state, namely: `db_write`, `db_remove`, and
+    // `db_remove_range`.
     if !env.state_mutable {
         return Err(VmError::ImmutableState);
     }
@@ -303,10 +304,10 @@ pub fn secp256k1_pubkey_recover(
     )?;
 
     // The return value for this function is an `u64`, of which:
-    // - The first 4 bytes are the error code.
-    //   If recovery is successful, these should be zero.
-    // - the second 4 bytes are the memory address of the recovered pk.
-    //   if recovery is unsuccessful, these should be zero.
+    // - The first 4 bytes are the error code. If recovery is successful, these
+    //   should be zero.
+    // - the second 4 bytes are the memory address of the recovered pk. if recovery
+    //   is unsuccessful, these should be zero.
     let (error_code, ptr) =
         match grug_crypto::secp256k1_pubkey_recover(&msg_hash, &sig, recovery_id, compressed) {
             Ok(pk) => (0, write_to_memory(env, &mut store, &pk)?),

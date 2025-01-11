@@ -67,9 +67,9 @@ fn index_block_with_nonblocking_indexer() {
     });
 }
 
-/// This test is to ensure the indexer will index previous block not yet indexed.
-/// This happens if the process crash after the block was saved on disk, and
-/// before it was indexed.
+/// This test is to ensure the indexer will index previous block not yet
+/// indexed. This happens if the process crash after the block was saved on
+/// disk, and before it was indexed.
 #[test]
 fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
@@ -162,9 +162,9 @@ fn parse_previous_block_after_restart() {
     });
 }
 
-/// This test is to ensure the indexer will reindex previous block already indexed.
-/// This happens if the process crash after the block was saved on disk,
-/// after it was indexed, and before the tmp file was deleted.
+/// This test is to ensure the indexer will reindex previous block already
+/// indexed. This happens if the process crash after the block was saved on
+/// disk, after it was indexed, and before the tmp file was deleted.
 #[test]
 fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();

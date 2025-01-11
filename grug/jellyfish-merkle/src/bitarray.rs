@@ -12,7 +12,8 @@ pub struct BitArray {
     /// In practice, the vast majority of node keys are not the full 256 bits,
     /// so this is a waste of memory space. Essentially, we trade memory usage
     /// for speed.
-    /// For blockchain nodes in general, memory is cheap, while time is expensive.
+    /// For blockchain nodes in general, memory is cheap, while time is
+    /// expensive.
     bytes: [u8; Self::MAX_BYTE_LENGTH],
 }
 
@@ -126,8 +127,8 @@ impl BitArray {
         self.num_bits += 1;
     }
 
-    /// Iterate the bits in the index range. `min` is inclusive, `max` exclusive.
-    /// If min >= max, an empty iterator is returned.
+    /// Iterate the bits in the index range. `min` is inclusive, `max`
+    /// exclusive. If min >= max, an empty iterator is returned.
     pub fn range(&self, min: Option<usize>, max: Option<usize>, order: Order) -> BitIterator {
         let min = min.unwrap_or(0);
         let max = max.unwrap_or(self.num_bits);

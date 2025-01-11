@@ -34,16 +34,16 @@ pub trait PrimaryKey {
     ///
     /// This value is necessary for deserializing _nested_ tuple keys.
     ///
-    /// For example, consider the following nested tuple key: `((A, B), (C, D))`.
-    /// This key is serialized into the following bytes:
+    /// For example, consider the following nested tuple key: `((A, B), (C,
+    /// D))`. This key is serialized into the following bytes:
     ///
     /// ```plain
     /// len(A) | A | len(B) | B | len(C) | C | D
     /// ```
     ///
     /// Without knowing the number of key elements, we don't know how to
-    /// deserialize this: whether it's `((A, B), (C, D))`, or `((A, B, C), (D))`,
-    /// or else?
+    /// deserialize this: whether it's `((A, B), (C, D))`, or `((A, B, C),
+    /// (D))`, or else?
     ///
     /// Only if we know each element in the tuple themselves each has two
     /// elements, can we deserialize this correctly.

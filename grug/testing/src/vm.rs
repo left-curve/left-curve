@@ -7,7 +7,8 @@ use {
 /// Describes a VM that can be used in the [`TestSuite`](crate::TestSuite).
 ///
 /// Other than implementing the `Vm` trait, the VM must come with default bank
-/// and account contract implementations for use by the [`TestBuilder`](crate::TestBuilder).
+/// and account contract implementations for use by the
+/// [`TestBuilder`](crate::TestBuilder).
 pub trait TestVm: Vm {
     fn default_account_code() -> Binary;
 

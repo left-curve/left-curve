@@ -86,7 +86,8 @@ enum SubCmd {
         /// Contract label
         #[arg(long)]
         label: Option<String>,
-        /// Coins to be sent to the contract, in the format: {denom1}:{amount},{denom2}:{amount},...
+        /// Coins to be sent to the contract, in the format:
+        /// {denom1}:{amount},{denom2}:{amount},...
         #[arg(long)]
         funds: Option<String>,
         /// Administrator address for the contract
@@ -99,7 +100,8 @@ enum SubCmd {
         contract: Addr,
         /// Execute message as a JSON string
         msg: String,
-        /// Coins to be sent to the contract, in the format: {denom1}:{amount},{denom2}:{amount},...
+        /// Coins to be sent to the contract, in the format:
+        /// {denom1}:{amount},{denom2}:{amount},...
         #[arg(long)]
         funds: Option<String>,
     },
