@@ -22,6 +22,7 @@ static LP_2: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("amm/pool/2").un
 
 // Irrelevant for this test, but we need to assert the balance...
 static SYNTH: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/ethereum/ether").unwrap());
+static BTC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("bridge/btc").unwrap());
 
 #[test]
 fn amm() {
@@ -137,6 +138,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_967_660_890_722),
             // 197,210,389,916 - MINIMUM_LIQUIDITY
             LP_2.clone() => Uint128::new(197_210_388_916),
+            BTC.clone() => Uint128::new(100_000_000_000_000),
         });
 
     // Check the taxman has received the pool creation fees.
@@ -284,6 +286,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_967_680_567_330),
             // 197,210,388,916 + 44,999,766 = 197,254,388,682
             LP_2.clone() => Uint128::new(197_254_388_682),
+            BTC.clone() => Uint128::new(100_000_000_000_000),
         });
 
     // --------------------------------- Swap ----------------------------------
@@ -418,6 +421,7 @@ fn amm() {
             LP_1.clone() => Uint128::new(1_311_793_603_756),
             // unchanged
             LP_2.clone() => Uint128::new(197_254_388_682),
+            BTC.clone() => Uint128::new(100_000_000_000_000),
         });
 
     // Check pool states.

@@ -1,5 +1,5 @@
 use {
-    grug::{Defined, StdResult, Udec128, Uint128, Undefined},
+    grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
     pyth_sdk::PriceFeed,
 };
 
@@ -23,6 +23,16 @@ pub struct Price<P = Defined<u8>> {
 }
 
 impl PrecisionlessPrice {
+    /// Creates a new PrecisionlessPrice with the given humanized price.
+    pub fn new(humanized_price: Udec128, humanized_ema: Udec128, timestamp: u64) -> Self {
+        Self {
+            humanized_price,
+            humanized_ema,
+            timestamp,
+            precision: Undefined::new(),
+        }
+    }
+
     pub fn with_precision(self, precision: u8) -> Price<Defined<u8>> {
         Price {
             humanized_price: self.humanized_price,
@@ -49,12 +59,34 @@ impl PrecisionedPrice {
     /// Humanized price: 3000
     /// precision: 18
     /// unit amount: 1*10^18
+    /// value: 3000 * 1*10^18 / 10^18 = 3000
     pub fn value_of_unit_amount(&self, unit_amount: Uint128) -> StdResult<Udec128> {
-        Ok(self.humanized_price
-            * Udec128::checked_from_ratio(
+        Ok(self
+            .humanized_price
+            .checked_mul(Udec128::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
-            )?)
+            )?)?)
+    }
+
+    /// Returns the unit amount of a given value. E.g. if this Price represents
+    /// the price in USD of one ATOM, then this function will return the amount
+    /// in uatom of the given USD value.
+    ///
+    /// e.g.
+    /// Humanized price: 3000
+    /// precision: 18
+    /// value: 1000
+    /// unit amount: 1000 / 3000 * 10^18 = 1000*10^18 / 3000 = 3.33*10^17
+    pub fn unit_amount_from_value(&self, value: Udec128) -> StdResult<Uint128> {
+        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec(value.checked_div(self.humanized_price)?)?)
+    }
+
+    /// Returns the unit amount of a given value, rounded up.
+    pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> StdResult<Uint128> {
+        Ok(Uint128::new(10u128.pow(self.precision.into_inner() as u32))
+            .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)?)
     }
 }
 
@@ -104,5 +136,22 @@ mod tests {
             .value_of_unit_amount(Uint128::new(100_000_000u128 * 10u128.pow(18)))
             .unwrap();
         assert_eq!(value, Udec128::new(10_000_000_000_000_000u128));
+    }
+
+    #[test]
+    fn unit_amount_from_value_does_not_overflow_with_large_precision() {
+        // $100M per ETH
+        let price = PrecisionedPrice {
+            humanized_price: Udec128::new(100_000_000u128),
+            humanized_ema: Udec128::ONE,
+            timestamp: 0,
+            precision: Defined::new(18),
+        };
+
+        // Value of 100M ETH at $100M = $100000T
+        let unit_amount = price
+            .unit_amount_from_value(Udec128::new(10_000_000_000_000_000u128))
+            .unwrap();
+        assert_eq!(unit_amount, Uint128::new(100_000_000u128 * 10u128.pow(18)));
     }
 }

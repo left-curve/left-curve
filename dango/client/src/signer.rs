@@ -217,6 +217,7 @@ mod tests {
                     oracle: Addr::mock(0),
                 },
                 collateral_powers: Default::default(),
+                ..Default::default()
             })
             .unwrap();
 
