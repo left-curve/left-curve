@@ -124,7 +124,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
             .checked_sub(total_adjusted_collateral_value)?;
         let denominator = target_health_factor
             .checked_sub((Udec128::ONE + liq_bonus).checked_mul(liquidation_collateral_power)?)?;
-        numerator / denominator
+        numerator.checked_div(denominator)?
     };
 
     // Calculate the maximum debt that can be repaid based on the balance of the
@@ -190,9 +190,6 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Calculate the amount of collateral to send to the liquidator. We round
     // up so that no dust is left in the account.
-    let collateral_price = ctx
-        .querier
-        .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
     let claimed_collateral_amount = collateral_price
         .unit_amount_from_value_ceil(repaid_debt_value.checked_mul(Udec128::ONE + liq_bonus)?)?;
 

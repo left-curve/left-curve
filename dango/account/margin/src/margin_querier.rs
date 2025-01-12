@@ -3,8 +3,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
     grug::{
-        Addr, BorshDeExt, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt,
-        QuerierWrapper, Udec128,
+        Addr, BorshDeExt, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
+        Udec128,
     },
 };
 
@@ -26,7 +26,12 @@ pub trait MarginQuerier {
     ) -> anyhow::Result<HealthResponse>;
 }
 
-impl MarginQuerier for QuerierWrapper<'_> {
+impl<Q> MarginQuerier for Q
+where
+    Q: QuerierExt,
+    Q::Error: From<StdError>,
+    anyhow::Error: From<Q::Error>,
+{
     fn query_health(
         &self,
         account: Addr,
