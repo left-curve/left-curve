@@ -12,8 +12,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, Response,
-        StdResult, Tx,
+        AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierExt,
+        Response, StdResult, Tx,
     },
 };
 

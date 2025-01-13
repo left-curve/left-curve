@@ -8,7 +8,7 @@ use {
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number,
-        NumberConst, Response, StdResult, Tx, TxOutcome, Uint128,
+        NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
     },
 };
 

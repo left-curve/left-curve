@@ -2,7 +2,7 @@
 use tracing::info;
 use {
     crate::{AppError, ProposalPreparer},
-    grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdResult},
+    grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdError, StdResult},
     prost::bytes::Bytes,
     std::{
         convert::Infallible,
@@ -70,6 +70,8 @@ impl From<NaiveError> for AppError {
 pub struct NaiveQuerier;
 
 impl Querier for NaiveQuerier {
+    type Error = StdError;
+
     fn query_chain(&self, _req: Query) -> StdResult<QueryResponse> {
         unreachable!("attempting to query a no-op querier");
     }

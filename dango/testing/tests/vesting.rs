@@ -5,8 +5,8 @@ use {
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
     grug::{
-        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, ResultExt, StdError,
-        Timestamp, Udec128, Uint128,
+        Addr, Addressable, Coin, Coins, Duration, Inner, MultiplyFraction, QuerierExt, ResultExt,
+        StdError, Timestamp, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     std::sync::LazyLock,

@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdResult,
+        QueryRequest, QueryResponse, StdError, StdResult,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -9,134 +9,113 @@ use {
 };
 
 pub trait Querier {
+    type Error;
+
     /// Make a query. This is the only method that the context needs to manually
     /// implement. The other methods will be implemented automatically.
-    fn query_chain(&self, req: Query) -> StdResult<QueryResponse>;
+    fn query_chain(&self, req: Query) -> Result<QueryResponse, Self::Error>;
 }
 
-/// Wraps around a `Querier` to provide some convenience methods.
+/// Core querying functionality that builds on top of the base `Querier` trait.
 ///
-/// This is necessary because the `query_wasm_smart` method involves generics,
-/// and a traits with generic methods isn't object-safe (i.e. we won't be able
-/// to do `&dyn Querier`).
-pub struct QuerierWrapper<'a> {
-    inner: &'a dyn Querier,
-}
-
-impl<'a> QuerierWrapper<'a> {
-    pub fn new(inner: &'a dyn Querier) -> Self {
-        Self { inner }
+/// This trait exists separately from `Querier` because it contains generic
+/// methods (e.g. `query_wasm_smart`), which would make the trait
+/// non-object-safe. By keeping these methods in a separate trait, we can still
+/// use `dyn Querier`. This trait is automatically implemented for any type that
+/// implements `Querier`.
+pub trait QuerierExt: Querier
+where
+    Self::Error: From<StdError>,
+{
+    fn query_config(&self) -> Result<Config, Self::Error> {
+        self.query_chain(Query::config()).map(|res| res.as_config())
     }
 
-    pub fn query<Q>(&self, req: Q) -> StdResult<QueryResponse>
-    where
-        Q: Into<Query>,
-    {
-        self.inner.query_chain(req.into())
-    }
-
-    pub fn query_config(&self) -> StdResult<Config> {
-        self.inner
-            .query_chain(Query::config())
-            .map(|res| res.as_config())
-    }
-
-    pub fn query_owner(&self) -> StdResult<Addr> {
+    fn query_owner(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.owner)
     }
 
-    pub fn query_bank(&self) -> StdResult<Addr> {
+    fn query_bank(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.bank)
     }
 
-    pub fn query_taxman(&self) -> StdResult<Addr> {
+    fn query_taxman(&self) -> Result<Addr, Self::Error> {
         self.query_config().map(|res| res.taxman)
     }
 
-    pub fn query_app_config<T>(&self) -> StdResult<T>
+    fn query_app_config<T>(&self) -> Result<T, Self::Error>
     where
         T: DeserializeOwned,
     {
-        self.inner
-            .query_chain(Query::app_config())
-            .and_then(|res| res.as_app_config().deserialize_json())
+        self.query_chain(Query::app_config())
+            .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
     }
 
-    pub fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
-        self.inner
-            .query_chain(Query::balance(address, denom))
+    fn query_balance(&self, address: Addr, denom: Denom) -> Result<Uint128, Self::Error> {
+        self.query_chain(Query::balance(address, denom))
             .map(|res| res.as_balance().amount)
     }
 
-    pub fn query_balances(
+    fn query_balances(
         &self,
         address: Addr,
         start_after: Option<Denom>,
         limit: Option<u32>,
-    ) -> StdResult<Coins> {
-        self.inner
-            .query_chain(Query::balances(address, start_after, limit))
+    ) -> Result<Coins, Self::Error> {
+        self.query_chain(Query::balances(address, start_after, limit))
             .map(|res| res.as_balances())
     }
 
-    pub fn query_supply(&self, denom: Denom) -> StdResult<Uint128> {
-        self.inner
-            .query_chain(Query::supply(denom))
+    fn query_supply(&self, denom: Denom) -> Result<Uint128, Self::Error> {
+        self.query_chain(Query::supply(denom))
             .map(|res| res.as_supply().amount)
     }
 
-    pub fn query_supplies(
+    fn query_supplies(
         &self,
         start_after: Option<Denom>,
         limit: Option<u32>,
-    ) -> StdResult<Coins> {
-        self.inner
-            .query_chain(Query::supplies(start_after, limit))
+    ) -> Result<Coins, Self::Error> {
+        self.query_chain(Query::supplies(start_after, limit))
             .map(|res| res.as_supplies())
     }
 
-    pub fn query_code(&self, hash: Hash256) -> StdResult<Code> {
-        self.inner
-            .query_chain(Query::code(hash))
-            .map(|res| res.as_code())
+    fn query_code(&self, hash: Hash256) -> Result<Code, Self::Error> {
+        self.query_chain(Query::code(hash)).map(|res| res.as_code())
     }
 
-    pub fn query_codes(
+    fn query_codes(
         &self,
         start_after: Option<Hash256>,
         limit: Option<u32>,
-    ) -> StdResult<BTreeMap<Hash256, Code>> {
-        self.inner
-            .query_chain(Query::codes(start_after, limit))
+    ) -> Result<BTreeMap<Hash256, Code>, Self::Error> {
+        self.query_chain(Query::codes(start_after, limit))
             .map(|res| res.as_codes())
     }
 
-    pub fn query_contract(&self, address: Addr) -> StdResult<ContractInfo> {
-        self.inner
-            .query_chain(Query::contract(address))
+    fn query_contract(&self, address: Addr) -> Result<ContractInfo, Self::Error> {
+        self.query_chain(Query::contract(address))
             .map(|res| res.as_contract())
     }
 
-    pub fn query_contracts(
+    fn query_contracts(
         &self,
         start_after: Option<Addr>,
         limit: Option<u32>,
-    ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
-        self.inner
-            .query_chain(Query::contracts(start_after, limit))
+    ) -> Result<BTreeMap<Addr, ContractInfo>, Self::Error> {
+        self.query_chain(Query::contracts(start_after, limit))
             .map(|res| res.as_contracts())
     }
 
-    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> StdResult<Option<Binary>>
+    fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary>,
     {
-        self.inner
-            .query_chain(Query::wasm_raw(contract, key))
+        self.query_chain(Query::wasm_raw(contract, key))
             .map(|res| res.as_wasm_raw())
     }
 
-    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> StdResult<R::Response>
+    fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> Result<R::Response, Self::Error>
     where
         R: QueryRequest,
         R::Message: Serialize,
@@ -144,30 +123,56 @@ impl<'a> QuerierWrapper<'a> {
     {
         let msg = R::Message::from(req);
 
-        self.inner
-            .query_chain(Query::wasm_smart(contract, &msg)?)
-            .and_then(|res| res.as_wasm_smart().deserialize_json())
+        self.query_chain(Query::wasm_smart(contract, &msg)?)
+            .and_then(|res| res.as_wasm_smart().deserialize_json().map_err(Into::into))
     }
 
-    pub fn query_multi<const N: usize>(
+    fn query_multi<const N: usize>(
         &self,
         requests: [Query; N],
-    ) -> StdResult<[QueryResponse; N]> {
-        self.inner
-            .query_chain(Query::Multi(requests.into()))
-            .map(|res| {
-                // We trust that the host has properly implemented the multi
-                // query method, meaning the number of responses should always
-                // match the number of requests.
-                let responses = res.as_multi();
-                debug_assert_eq!(
-                    responses.len(),
-                    N,
-                    "number of responses ({}) does not match that of requests ({})",
-                    responses.len(),
-                    N
-                );
-                responses.try_into().unwrap()
-            })
+    ) -> Result<[QueryResponse; N], Self::Error> {
+        self.query_chain(Query::Multi(requests.into())).map(|res| {
+            // We trust that the host has properly implemented the multi
+            // query method, meaning the number of responses should always
+            // match the number of requests.
+            let responses = res.as_multi();
+            debug_assert_eq!(
+                responses.len(),
+                N,
+                "number of responses ({}) does not match that of requests ({})",
+                responses.len(),
+                N
+            );
+            responses.try_into().unwrap()
+        })
+    }
+}
+
+impl<Q> QuerierExt for Q
+where
+    Q: Querier,
+    Q::Error: From<StdError>,
+{
+}
+
+/// Wraps around a `Querier` to provide some convenience methods.
+///
+/// We have to do this because `&dyn Querier` itself doesn't implement `Querier`,
+/// so given a `&dyn Querier` you aren't able to access the `QuerierExt` methods.
+pub struct QuerierWrapper<'a> {
+    inner: &'a dyn Querier<Error = StdError>,
+}
+
+impl Querier for QuerierWrapper<'_> {
+    type Error = StdError;
+
+    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+        self.inner.query_chain(req)
+    }
+}
+
+impl<'a> QuerierWrapper<'a> {
+    pub fn new(inner: &'a dyn Querier<Error = StdError>) -> Self {
+        Self { inner }
     }
 }

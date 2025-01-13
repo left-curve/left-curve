@@ -2,7 +2,10 @@ use {
     dango_lending::DEBTS,
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
-    grug::{Addr, BorshDeExt, Coins, Inner, IsZero, Number, NumberConst, QuerierWrapper, Udec128},
+    grug::{
+        Addr, BorshDeExt, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
+        Udec128,
+    },
 };
 
 /// Margin account query methods.
