@@ -1,11 +1,10 @@
 use {
-    crate::{
-        entity,
-        error::IndexerError,
-        events::{flat_commitment_status, EventId, FlattenStatus, IndexCategory, IndexEvent},
-    },
+    crate::{entity, error::IndexerError},
     grug_math::Inner,
-    grug_types::{Block, BlockOutcome, CommitmentStatus, JsonSerExt},
+    grug_types::{
+        flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
+        FlatEventInfo, FlattenStatus, JsonSerExt,
+    },
     sea_orm::{
         prelude::*,
         sqlx::types::chrono::{NaiveDateTime, TimeZone},
@@ -34,7 +33,7 @@ impl Models {
             .unwrap_or_default()
             .naive_utc();
 
-        let mut event_id = EventId::new(block.info.height, IndexCategory::Cron, 0, 0);
+        let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
 
         let mut transactions = vec![];
         let mut messages = vec![];
@@ -60,7 +59,7 @@ impl Models {
 
         // 2. Storing transactions, messages and events
         {
-            event_id.category = IndexCategory::Tx;
+            event_id.category = FlatCategory::Tx;
 
             for (transaction_idx, ((tx, tx_hash), tx_outcome)) in block
                 .txs
@@ -74,7 +73,7 @@ impl Models {
                 let new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
-                    transaction_type: Set(IndexCategory::Tx as i16),
+                    transaction_type: Set(FlatCategory::Tx as i16),
                     has_succeeded: Set(tx_outcome.result.is_ok()),
                     error_message: Set(tx_outcome.clone().result.err()),
                     gas_wanted: Set(tx.gas_limit.try_into()?),
@@ -199,7 +198,7 @@ fn flatten_events<T>(
 where
     T: FlattenStatus,
 {
-    let flatten_events = flat_commitment_status(next_id, commitment);
+    let flatten_events = flatten_commitment_status(next_id, commitment);
     next_id.increment_idx(&flatten_events);
 
     let mut active_models = vec![];
@@ -228,7 +227,7 @@ where
 }
 
 fn build_event_active_model(
-    index_event: &IndexEvent,
+    index_event: &FlatEventInfo,
     block: &Block,
     tx_id: Option<uuid::Uuid>,
     message_id: Option<uuid::Uuid>,
