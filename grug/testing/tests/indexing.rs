@@ -364,7 +364,7 @@ mod replier {
                 Err(StdError::host(err))
             },
             ExecuteMsg::Ok { deep } => {
-                DEPTH.insert(ctx.storage, deep)?;
+                DEPTHS.insert(ctx.storage, deep)?;
 
                 Ok(Response::new())
             },
@@ -373,7 +373,7 @@ mod replier {
                 next,
                 reply_on,
             } => {
-                DEPTH.insert(ctx.storage, deep)?;
+                DEPTHS.insert(ctx.storage, deep)?;
 
                 Ok(Response::new().add_submessage(SubMessage {
                     msg: Message::execute(ctx.contract, &*next, Coins::new())?,
@@ -386,7 +386,7 @@ mod replier {
     pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         match msg {
             QueryMsg::Data {} => {
-                let res = DEPTH
+                let res = DEPTHS
                     .range(ctx.storage, None, None, Order::Ascending)
                     .collect::<StdResult<Vec<_>>>()?;
                 res.to_json_value()
@@ -484,7 +484,6 @@ fn index_block_events() {
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch messages");
-
         assert_that!(messages).is_not_empty();
 
         let events = entity::events::Entity::find()
