@@ -13,6 +13,7 @@ export {
 export {
   recursiveTransform,
   mayTransform,
+  sortObject,
 } from "./mappers.js";
 
 export {

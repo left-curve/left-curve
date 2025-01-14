@@ -8,7 +8,7 @@ import type { SignerClient } from "@left-curve/sdk/clients";
 import { KeyAlgo } from "@left-curve/types";
 import { getRootDomain } from "@left-curve/utils";
 
-import type { AccountTypes, Address, Signature, Transport } from "@left-curve/types";
+import type { AccountTypes, Address, Transport } from "@left-curve/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;
@@ -115,18 +115,29 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
 
-        return { signature: { passkey }, keyHash };
+        return {
+          credential: { standard: { keyHash, signature: { passkey } } },
+          payload,
+        };
       },
       async signTx(signDoc) {
-        const { sender, messages, chainId, sequence } = signDoc;
-        const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
+        const { sender, messages, data, gasLimit } = signDoc;
+        const { username, chainId, nonce, expiry } = data;
+        const tx = sha256(
+          serialize({
+            sender,
+            gasLimit,
+            messages,
+            data: { username, chainId, nonce, expiry },
+          }),
+        );
 
         const {
           webauthn,
           credentialId,
           signature: asnSignature,
         } = await requestWebAuthnSignature({
-          challenge: bytes,
+          challenge: tx,
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
@@ -141,10 +152,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const credential = { standard: { passkey } };
         const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        const standard = { signature: { passkey }, keyHash };
 
-        return { credential, keyHash, signDoc };
+        return { credential: { standard }, signDoc };
       },
       onConnect({ chainId, username }) {
         _username = username;

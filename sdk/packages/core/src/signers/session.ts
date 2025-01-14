@@ -10,7 +10,7 @@ import type {
 } from "@left-curve/types";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
-  const { sessionInfo, sessionInfoSignature, privateKey, keyHash } = session;
+  const { sessionInfo, authorization, privateKey, keyHash } = session;
   const signer = new Secp256k1(privateKey);
 
   async function getKeyHash() {
@@ -18,26 +18,48 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   }
 
   async function signTx(signDoc: SignDoc) {
-    const { messages, chainId, sequence, sender } = signDoc;
-    const bytes = sha256(serialize({ sender, messages, chainId, sequence }));
-    const signature = signer.createSignature(bytes);
+    const { messages, sender, data, gasLimit } = signDoc;
+    const tx = sha256(
+      serialize({
+        sender,
+        gasLimit,
+        messages,
+        data: {
+          username: data.username,
+          chainId: data.chainId,
+          nonce: data.nonce,
+          expiry: data.expiry,
+        },
+      }),
+    );
+    const signature = signer.createSignature(tx);
 
     const session: SessionCredential = {
       sessionInfo,
-      sessionInfoSignature,
+      authorization,
       sessionSignature: encodeBase64(signature),
     };
 
-    const credential = { session };
-
-    return { credential, keyHash };
+    return {
+      credential: { session },
+      signDoc,
+    };
   }
 
   async function signArbitrary(payload: JsonValue) {
     const bytes = sha256(serialize(payload));
     const signature = signer.createSignature(bytes);
-    const secp256k1Signature = { secp256k1: encodeBase64(signature) };
-    return { signature: secp256k1Signature, keyHash };
+
+    const session: SessionCredential = {
+      sessionInfo,
+      authorization,
+      sessionSignature: encodeBase64(signature),
+    };
+
+    return {
+      credential: { session },
+      payload,
+    };
   }
 
   return {

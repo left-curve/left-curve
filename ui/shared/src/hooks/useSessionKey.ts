@@ -15,7 +15,7 @@ export function useSessionKey() {
   const config = useConfig();
   const { username } = useAccount();
   const { data: connectorClient } = useConnectorClient();
-  const [session, setSession] = useStorage<SigningSession>("session_key", {
+  const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     storage: createStorage({ storage: sessionStorage }),
     version: 1,
   });
@@ -57,22 +57,28 @@ export function useSessionKey() {
     };
 
     const payload = connectorClient.type === "eip1193" ? typedData : sessionInfo;
-    const { signature, keyHash } = await connectorClient.signer.signArbitrary(payload);
+    const { credential } = await connectorClient.signer.signArbitrary(payload);
 
-    const session: SigningSession = {
-      keyHash,
-      sessionInfo,
-      privateKey: keyPair.privateKey,
-      publicKey: keyPair.getPublicKey(),
-      sessionInfoSignature: signature,
-    };
+    if ("standard" in credential) {
+      const session: SigningSession = {
+        keyHash: credential.standard.keyHash,
+        sessionInfo,
+        privateKey: keyPair.privateKey,
+        publicKey: keyPair.getPublicKey(),
+        authorization: credential.standard,
+      };
+      setSession(session);
+    } else throw new Error("unsupported credential type");
+  }
 
-    setSession(session);
+  function deleteSessionkey() {
+    setSession(null);
   }
 
   return {
     client,
-    createSessionKey,
     session,
+    deleteSessionkey,
+    createSessionKey,
   };
 }
