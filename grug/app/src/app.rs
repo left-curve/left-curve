@@ -18,10 +18,10 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CommitmentStatus, CronOutcome, Duration, Event, GenericResult, GenericResultExt,
-        GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order, Permission,
-        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
-        TxOutcome, UnsignedTx, GENESIS_SENDER,
+        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
+        GenericResultExt, GenesisState, Hash256, HashExt, Json, Message, MsgsAndBackrunEvents,
+        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
@@ -296,7 +296,7 @@ where
             cron_outcomes.push(CronOutcome::new(
                 cron_gas_tracker.limit(),
                 cron_gas_tracker.used(),
-                cron_event.as_committment(),
+                cron_event.into_commitment_status(),
             ));
         }
 
@@ -310,7 +310,7 @@ where
                 self.vm.clone(),
                 buffer.clone(),
                 block.info,
-                tx.clone(),
+                tx.0.clone(),
                 AuthMode::Finalize,
             );
 
@@ -563,7 +563,7 @@ where
             .iter()
             .filter_map(|raw_tx| {
                 if let Ok(tx) = raw_tx.deserialize_json() {
-                    Some(tx)
+                    Some((tx, raw_tx.hash256()))
                 } else {
                     // The transaction failed to deserialize.
                     //
@@ -658,7 +658,7 @@ where
             &tx,
             mode,
         )
-        .as_committment(),
+        .into_commitment_status(),
     );
 
     if let Some(err) = events.withhold.maybe_error() {
@@ -688,7 +688,7 @@ where
         &tx,
         mode,
     )
-    .as_committment();
+    .into_commitment_status();
 
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
@@ -707,7 +707,11 @@ where
         },
         Ok(event) => {
             msg_buffer.write_access().commit();
-            event.backrun
+            if let EventStatus::Ok(e) = event {
+                e.backrun
+            } else {
+                unreachable!();
+            }
         },
     };
 
@@ -728,7 +732,7 @@ where
         mode,
         request_backrun,
     )
-    .as_committment();
+    .into_commitment();
 
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
@@ -843,7 +847,7 @@ where
         &outcome_so_far,
         mode,
     )
-    .as_committment();
+    .into_commitment_status();
 
     match &evt_finalize {
         CommitmentStatus::Committed(_) => {
@@ -858,7 +862,7 @@ where
             new_tx_outcome(gas_tracker, events, Err(err))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
-            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`")
+            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");
         },
     }
 }

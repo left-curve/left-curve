@@ -17,7 +17,7 @@ mod empty;
 mod encoded_bytes;
 mod encoders;
 mod error;
-mod event;
+mod events;
 mod ffi;
 mod hash;
 mod hashers;
@@ -42,7 +42,7 @@ mod utils;
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, builder::*, bytes::*, changeset::*, code::*,
     coin::*, coin_pair::*, coins::*, context::*, db::*, denom::*, empty::*, encoded_bytes::*,
-    encoders::*, error::*, event::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
+    encoders::*, error::*, events::*, ffi::*, hash::*, hashers::*, imports::*, json::*,
     length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
     serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };

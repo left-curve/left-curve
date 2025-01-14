@@ -3982,6 +3982,7 @@ dependencies = [
  "serde_with",
  "sha2 0.10.8",
  "sha3",
+ "strum_macros",
  "test-case",
  "thiserror 2.0.9",
 ]
@@ -4747,6 +4748,8 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+ "strum",
+ "strum_macros",
  "tempfile",
  "thiserror 2.0.9",
  "tokio",
