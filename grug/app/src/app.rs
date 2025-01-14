@@ -710,7 +710,7 @@ where
             if let EventStatus::Ok(e) = event {
                 e.backrun
             } else {
-                false
+                unreachable!()
             }
         },
     };
