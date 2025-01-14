@@ -11,8 +11,8 @@ use {
 /// An arbitrary binary data used for deriving address when instantiating a
 /// contract.
 ///
-/// Must be no more than 70 bytes.
-pub type Salt = MaxLength<Binary, 70>;
+/// Must be no more than 82 bytes.
+pub type Salt = MaxLength<Binary, 82>;
 
 /// A human-readable string describing a contract. Can be optionally provided
 /// during instantiation.

@@ -11,6 +11,8 @@ export type RawSignature = {
   v: number;
 };
 
+export type OtpSignature = Base64;
+
 export type SignDoc = {
   sender: Address;
   messages: Message[];

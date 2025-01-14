@@ -3,7 +3,7 @@ use {
         criterion_group, criterion_main, AxisScale, BatchSize, Criterion, PlotConfiguration,
     },
     dango_genesis::{Codes, Contracts},
-    dango_testing::{setup_benchmark_hybrid, setup_benchmark_wasm, Accounts, TestSuite},
+    dango_testing::{setup_benchmark_hybrid, setup_benchmark_wasm, TestAccounts, TestSuite},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
@@ -31,7 +31,7 @@ fn random_string(len: usize) -> String {
 
 fn do_send<T, PP, DB, VM>(
     suite: &mut TestSuite<PP, DB, VM>,
-    mut accounts: Accounts,
+    mut accounts: TestAccounts,
     codes: Codes<T>,
     contracts: Contracts,
 ) -> Vec<Tx>
@@ -51,7 +51,7 @@ where
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterAccount {
                     params: AccountParams::Spot(single::Params::new(
-                        accounts.relayer.username.clone(),
+                        accounts.user1.username.clone(),
                     )),
                 },
                 if i < 100 {
@@ -66,7 +66,11 @@ where
 
     // In experience, this costs ~34M gas.
     suite
-        .send_messages_with_gas(&mut accounts.relayer, 50_000_000, msgs)
+        .send_messages_with_gas(
+            &mut accounts.user1,
+            50_000_000,
+            NonEmpty::new_unchecked(msgs),
+        )
         .should_succeed();
 
     // Make a block that contains 100 transactions.
@@ -94,7 +98,14 @@ where
 
             let (data, credential) = accounts
                 .owner
-                .sign_transaction_with_sequence(sender, vec![msg.clone()], &suite.chain_id, 0)
+                .sign_transaction_with_nonce(
+                    sender,
+                    NonEmpty::new_unchecked(vec![msg.clone()]),
+                    &suite.chain_id,
+                    2_000_000,
+                    0,
+                    None,
+                )
                 .unwrap();
 
             Tx {
@@ -168,7 +179,7 @@ fn sends(c: &mut Criterion) {
 
 fn do_swap<PP, DB, VM>(
     suite: &mut TestSuite<PP, DB, VM>,
-    mut accounts: Accounts,
+    mut accounts: TestAccounts,
     contracts: Contracts,
 ) -> Vec<Tx>
 where
@@ -180,7 +191,7 @@ where
     // Create an ATOM-USDC pool.
     suite
         .execute_with_gas(
-            &mut accounts.relayer,
+            &mut accounts.user1,
             5_000_000,
             contracts.amm,
             &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
@@ -198,9 +209,9 @@ where
     (0..100)
         .map(|_| {
             accounts
-                .relayer
+                .user1
                 .sign_transaction(
-                    vec![Message::execute(
+                    NonEmpty::new_unchecked(vec![Message::execute(
                         contracts.amm,
                         &amm::ExecuteMsg::Swap {
                             route: UniqueVec::new_unchecked(vec![1]),
@@ -208,7 +219,7 @@ where
                         },
                         Coins::one("uusdc", 100).unwrap(),
                     )
-                    .unwrap()],
+                    .unwrap()]),
                     &suite.chain_id,
                     50_000_000,
                 )

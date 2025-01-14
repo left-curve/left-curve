@@ -4,7 +4,7 @@ use {
         bank::{self, Metadata, QueryMetadataRequest},
         token_factory::{Config, ExecuteMsg, NAMESPACE},
     },
-    grug::{Addressable, Coins, Denom, LengthBounded, Message, ResultExt, Uint128},
+    grug::{Addressable, Coins, Denom, LengthBounded, Message, QuerierExt, ResultExt, Uint128},
     std::{str::FromStr, sync::LazyLock},
 };
 
@@ -63,7 +63,7 @@ fn token_factory() {
                 contracts.token_factory,
                 &ExecuteMsg::Create {
                     subdenom: SUBDENOM.clone(),
-                    username: Some(accounts.relayer.username.clone()), // wrong!
+                    username: Some(accounts.user1.username.clone()), // wrong!
                     admin: None,
                     metadata: None,
                 },
@@ -124,7 +124,7 @@ fn token_factory() {
     // Attempt to mint another user's token. Should fail.
     suite
         .send_message(
-            &mut accounts.relayer, // wrong!
+            &mut accounts.user1, // wrong!
             Message::execute(
                 contracts.token_factory,
                 &ExecuteMsg::Mint {
@@ -151,7 +151,7 @@ fn token_factory() {
                         "uosmo".to_string(), // wrong!
                     ])
                     .unwrap(),
-                    to: accounts.relayer.address(),
+                    to: accounts.user1.address(),
                     amount: Uint128::new(12_345),
                 },
                 Coins::new(),
@@ -167,7 +167,7 @@ fn token_factory() {
             contracts.token_factory,
             &ExecuteMsg::Mint {
                 denom: denom.clone(),
-                to: accounts.relayer.address(),
+                to: accounts.user1.address(),
                 amount: Uint128::new(12_345),
             },
             Coins::new(),
@@ -176,7 +176,7 @@ fn token_factory() {
 
     // The recipient's balance should have been updated.
     suite
-        .query_balance(&accounts.relayer, denom.clone())
+        .query_balance(&accounts.user1, denom.clone())
         .should_succeed_and_equal(Uint128::new(12_345));
 
     // ----------------------------- Token burning -----------------------------
@@ -189,7 +189,7 @@ fn token_factory() {
                 contracts.token_factory,
                 &ExecuteMsg::Burn {
                     denom: denom.clone(),
-                    from: accounts.relayer.address(),
+                    from: accounts.user1.address(),
                     amount: Uint128::new(88_888),
                 },
                 Coins::new(),
@@ -205,7 +205,7 @@ fn token_factory() {
             contracts.token_factory,
             &ExecuteMsg::Burn {
                 denom: denom.clone(),
-                from: accounts.relayer.address(),
+                from: accounts.user1.address(),
                 amount: Uint128::new(2_345),
             },
             Coins::new(),
@@ -214,7 +214,7 @@ fn token_factory() {
 
     // The recipient's balance should have been updated.
     suite
-        .query_balance(&accounts.relayer, denom)
+        .query_balance(&accounts.user1, denom)
         .should_succeed_and_equal(Uint128::new(10_000));
 
     // ------------------------ Zero denom creation fee ------------------------
@@ -257,7 +257,7 @@ fn metadata() {
     let denom = Denom::from_str(&format!(
         "{}/{}/{}",
         NAMESPACE.as_ref(),
-        account.relayer.address(),
+        account.user1.address(),
         subdenom
     ))
     .unwrap();
@@ -271,7 +271,7 @@ fn metadata() {
     // Register a new denom
     suite
         .execute(
-            &mut account.relayer,
+            &mut account.user1,
             contracts.token_factory,
             &ExecuteMsg::Create {
                 subdenom: subdenom.clone(),

@@ -1,7 +1,7 @@
 use {
-    crate::{Borsh, Codec, Path, Prefix, PrefixBound, Prefixer, PrimaryKey},
+    crate::{Borsh, Codec, Path, Prefix, PrefixBound, Prefixer, PrimaryKey, RawKey},
     grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
-    std::{borrow::Cow, marker::PhantomData},
+    std::marker::PhantomData,
 };
 
 pub struct Map<'a, K, T, C = Borsh>
@@ -36,13 +36,13 @@ where
     C: Codec<T>,
 {
     pub fn path_raw(&self, key_raw: &[u8]) -> Path<T, C> {
-        Path::new(self.namespace, &[], Some(&Cow::Borrowed(key_raw)))
+        Path::new(self.namespace, &[], Some(RawKey::Borrowed(key_raw)))
     }
 
     pub fn path(&self, key: K) -> Path<T, C> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
-        Path::new(self.namespace, &raw_keys, last_raw_key.as_ref())
+        Path::new(self.namespace, &raw_keys, last_raw_key)
     }
 
     pub fn no_prefix(&self) -> Prefix<K, T, C> {

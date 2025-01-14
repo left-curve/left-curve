@@ -37,7 +37,6 @@ fn _do_cron_execute<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
-
     contract: Addr,
     time: Timestamp,
     next: Timestamp,

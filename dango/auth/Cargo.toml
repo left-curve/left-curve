@@ -10,8 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-alloy-dyn-abi         = { workspace = true }
-alloy-primitives      = { workspace = true }
+alloy                 = { workspace = true, features = ["dyn-abi", "eip712"] }
 anyhow                = { workspace = true }
 base64                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }

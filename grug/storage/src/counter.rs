@@ -29,6 +29,10 @@ where
         }
     }
 
+    pub fn storage_key(&self) -> &[u8] {
+        self.item.storage_key()
+    }
+
     /// Load the current counter value.
     pub fn current(&self, storage: &dyn Storage) -> StdResult<T> {
         self.item

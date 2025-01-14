@@ -1,3 +1,9 @@
+#[cfg(all(feature = "abci", feature = "tracing"))]
+use data_encoding::BASE64;
+#[cfg(feature = "abci")]
+use grug_types::JsonDeExt;
+#[cfg(any(feature = "abci", feature = "tracing"))]
+use grug_types::JsonSerExt;
 use {
     crate::{
         catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
@@ -12,15 +18,13 @@ use {
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CommitmentStatus, CronOutcome, Duration, Event, GenericResult, GenericResultExt,
-        GenesisState, Hash256, Json, JsonSerExt, Message, MsgsAndBackrunEvents, Order, Permission,
-        QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx, TxEvents,
-        TxOutcome, UnsignedTx, GENESIS_SENDER,
+        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
+        GenericResultExt, GenesisState, Hash256, HashExt, Json, Message, MsgsAndBackrunEvents,
+        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,
 };
-#[cfg(feature = "abci")]
-use {data_encoding::BASE64, grug_types::JsonDeExt};
 
 /// The ABCI application.
 ///
@@ -105,6 +109,7 @@ where
         // It's expected that genesis messages should all successfully execute.
         // If anyone fails, it's considered fatal and genesis is aborted.
         // The developer should examine the error, fix it, and retry.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::info!(idx = _idx, "Processing genesis message");
@@ -119,10 +124,10 @@ where
                 msg,
             );
 
-            if let Err((event, err)) = output.as_result() {
+            if let Err((_event, err)) = output.as_result() {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
-                    result = event.to_json_string_pretty().unwrap(),
+                    result = _event.to_json_string_pretty().unwrap(),
                     "Error during genesis message processing"
                 );
 
@@ -156,6 +161,7 @@ where
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unnecessary_lazy_evaluations))]
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|_err| {
@@ -254,6 +260,7 @@ where
         );
 
         // Perform the cronjobs.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -263,30 +270,38 @@ where
                 "Attempting to perform cronjob"
             );
 
-            let gas_tracker = GasTracker::new_limitless();
+            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None));
+            let cron_gas_tracker = GasTracker::new_limitless();
             let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
-                Box::new(buffer.clone()),
-                gas_tracker.clone(),
+                Box::new(cron_buffer.clone()),
+                cron_gas_tracker.clone(),
                 block.info,
                 contract,
                 time,
                 next_time,
             );
 
+            // Commit state changes if the cronjob was successful.
+            // Ignore if unsuccessful.
+            if cron_event.is_ok() {
+                cron_buffer.disassemble().commit();
+            }
+
             // Schedule the next time this cronjob is to be performed.
             schedule_cronjob(&mut buffer, contract, next_time)?;
 
             cron_outcomes.push(CronOutcome::new(
-                gas_tracker.limit(),
-                gas_tracker.used(),
-                cron_event.as_committment(),
+                cron_gas_tracker.limit(),
+                cron_gas_tracker.used(),
+                cron_event.into_commitment_status(),
             ));
         }
 
         // Process transactions one-by-one.
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, tx) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
@@ -295,7 +310,7 @@ where
                 self.vm.clone(),
                 buffer.clone(),
                 block.info,
-                tx.clone(),
+                tx.0.clone(),
                 AuthMode::Finalize,
             );
 
@@ -548,7 +563,7 @@ where
             .iter()
             .filter_map(|raw_tx| {
                 if let Ok(tx) = raw_tx.deserialize_json() {
-                    Some(tx)
+                    Some((tx, raw_tx.hash256()))
                 } else {
                     // The transaction failed to deserialize.
                     //
@@ -643,7 +658,7 @@ where
             &tx,
             mode,
         )
-        .as_committment(),
+        .into_commitment_status(),
     );
 
     if let Some(err) = events.withhold.maybe_error() {
@@ -673,7 +688,7 @@ where
         &tx,
         mode,
     )
-    .as_committment();
+    .into_commitment_status();
 
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
@@ -692,7 +707,11 @@ where
         },
         Ok(event) => {
             msg_buffer.write_access().commit();
-            event.backrun
+            if let EventStatus::Ok(e) = event {
+                e.backrun
+            } else {
+                unreachable!();
+            }
         },
     };
 
@@ -713,7 +732,7 @@ where
         mode,
         request_backrun,
     )
-    .as_committment();
+    .into_commitment();
 
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
@@ -766,6 +785,7 @@ where
 {
     let mut evt = MsgsAndBackrunEvents::base();
 
+    #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
@@ -827,7 +847,7 @@ where
         &outcome_so_far,
         mode,
     )
-    .as_committment();
+    .into_commitment_status();
 
     match &evt_finalize {
         CommitmentStatus::Committed(_) => {
@@ -842,7 +862,7 @@ where
             new_tx_outcome(gas_tracker, events, Err(err))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
-            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`")
+            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");
         },
     }
 }

@@ -14,8 +14,8 @@ mod taxman {
     use {
         grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
         grug_types::{
-            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, Response, StdResult, Tx,
-            TxOutcome,
+            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, QuerierExt, Response,
+            StdResult, Tx, TxOutcome,
         },
         std::{str::FromStr, sync::LazyLock},
     };
@@ -29,7 +29,7 @@ mod taxman {
     }
 
     pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
-        let cfg = ctx.querier.query_config()?;
+        let bank = ctx.querier.query_bank()?;
 
         // In simulation mode, don't do anything.
         if ctx.mode == AuthMode::Simulate {
@@ -40,7 +40,7 @@ mod taxman {
 
         let withhold_msg = if withhold_amount.is_non_zero() {
             Some(Message::execute(
-                cfg.bank,
+                bank,
                 &grug_mock_bank::ExecuteMsg::ForceTransfer {
                     from: tx.sender,
                     to: ctx.contract,
@@ -57,8 +57,6 @@ mod taxman {
     }
 
     pub fn finalize_fee(ctx: AuthCtx, tx: Tx, _outcome: TxOutcome) -> StdResult<Response> {
-        let cfg = ctx.querier.query_config()?;
-
         // In simulation mode, don't do anything.
         if ctx.mode == AuthMode::Simulate {
             return Ok(Response::new());
@@ -71,8 +69,9 @@ mod taxman {
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
         let charge_msg = if charge_amount.is_non_zero() {
+            let owner = ctx.querier.query_owner()?;
             Some(Message::transfer(
-                cfg.owner,
+                owner,
                 Coins::one(FEE_DENOM.clone(), charge_amount)?,
             )?)
         } else {
