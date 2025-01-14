@@ -251,7 +251,7 @@ fn build_event_active_model(
             .unwrap_or_default(),
         _ => {
             return Err(IndexerError::Anyhow(anyhow::anyhow!(
-                "Can't get the top hash, never supposed to happen",
+                "can't get the top hash, never supposed to happen",
             )))
         },
     };
