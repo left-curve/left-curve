@@ -1,4 +1,4 @@
-mod flattened;
+mod flat;
 mod nested;
 
-pub use {flattened::*, nested::*};
+pub use {flat::*, nested::*};
