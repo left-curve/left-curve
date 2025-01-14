@@ -23,7 +23,7 @@ export async function getAccountSeenNonces<
   parameters: GetAccountNonceParameters,
 ): GetAccountNonceReturnType {
   const { address, height = 0 } = parameters;
-  const msg = { sequence: {} };
+  const msg = { seenNonces: {} };
   const nonces = await queryWasmSmart<number[], chain, signer>(client, {
     contract: address,
     msg,
