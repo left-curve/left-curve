@@ -1,5 +1,8 @@
 use {
-    crate::{entity, error::IndexerError},
+    crate::{
+        entity,
+        error::{IndexerError, Result},
+    },
     grug_math::Inner,
     grug_types::{
         flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
@@ -22,7 +25,7 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self, IndexerError> {
+    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
         let epoch_millis = block.info.timestamp.into_millis();
         let seconds = (epoch_millis / 1_000) as i64;
         let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
@@ -194,7 +197,7 @@ fn flatten_events<T>(
     transaction_id: Option<uuid::Uuid>,
     message_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
-) -> crate::error::Result<Vec<entity::events::ActiveModel>>
+) -> Result<Vec<entity::events::ActiveModel>>
 where
     T: FlattenStatus,
 {
@@ -234,7 +237,7 @@ fn build_event_active_model(
     event_id: uuid::Uuid,
     parent_event_id: Option<uuid::Uuid>,
     created_at: NaiveDateTime,
-) -> crate::error::Result<entity::events::ActiveModel> {
+) -> Result<entity::events::ActiveModel> {
     // I'm serializing `FlattenEvent` to `serde_json::Value` and then manually
     // removing the top hash which is serialized to.
     // I could also use #[serde(flatten)] on `FlattenEvent`
@@ -251,8 +254,8 @@ fn build_event_active_model(
             .unwrap_or_default(),
         _ => {
             return Err(IndexerError::Anyhow(anyhow::anyhow!(
-                "can't get the top hash, never supposed to happen",
-            )))
+                "can't get the top hash! never supposed to happen",
+            )));
         },
     };
 

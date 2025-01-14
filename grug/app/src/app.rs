@@ -710,7 +710,7 @@ where
             if let EventStatus::Ok(e) = event {
                 e.backrun
             } else {
-                unreachable!()
+                unreachable!();
             }
         },
     };
@@ -862,7 +862,7 @@ where
             new_tx_outcome(gas_tracker, events, Err(err))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
-            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`")
+            unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");
         },
     }
 }
