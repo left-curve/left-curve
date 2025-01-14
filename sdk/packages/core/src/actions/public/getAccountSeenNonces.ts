@@ -6,16 +6,16 @@ export type GetAccountNonceParameters = {
   height?: number;
 };
 
-export type GetAccountNonceReturnType = Promise<number>;
+export type GetAccountNonceReturnType = Promise<[number, number[]]>;
 
 /**
- * Get the account state.
+ * Get the most recent nonces that have been used to send transactions.
  * @param parameters
  * @param parameters.address The address of the account.
  * @param parameters.height The height at which to query the account state.
- * @returns The account state.
+ * @returns An array of nonces.
  */
-export async function getAccountNonce<
+export async function getAccountSeenNonces<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(
@@ -24,9 +24,12 @@ export async function getAccountNonce<
 ): GetAccountNonceReturnType {
   const { address, height = 0 } = parameters;
   const msg = { sequence: {} };
-  return await queryWasmSmart<number, chain, signer>(client, {
+  const nonces = await queryWasmSmart<number[], chain, signer>(client, {
     contract: address,
     msg,
     height,
   });
+
+  const currentNonce = nonces.length ? nonces[nonces.length - 1] + 1 : 0;
+  return [currentNonce, nonces];
 }
