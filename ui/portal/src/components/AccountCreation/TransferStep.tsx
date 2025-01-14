@@ -1,4 +1,4 @@
-import { Button, Input, useWizard } from "@dango/shared";
+import { Button, Input, useSigningClient, useWizard } from "@dango/shared";
 import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 
@@ -6,13 +6,13 @@ import type { AccountTypes, NativeCoin } from "@left-curve/types";
 import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
-import type { SignerClient } from "@left-curve/sdk/clients";
 import { useNavigate } from "react-router-dom";
 
 export const TransferStep: React.FC = () => {
   const navigate = useNavigate();
   const { chains, coins } = useConfig();
-  const { account, connector, refreshAccounts } = useAccount();
+  const { account, refreshAccounts } = useAccount();
+  const { data: signingClient } = useSigningClient();
   const { data } = useWizard<{ accountType: AccountTypes }>();
   const { register, formState, setValue, handleSubmit, watch } = useForm<{ amount: string }>({
     mode: "onChange",
@@ -27,8 +27,8 @@ export const TransferStep: React.FC = () => {
   const humanBalance = formatUnits(balances[denom] || 0, decimals);
 
   const onSubmit = handleSubmit(async ({ amount }) => {
-    const client: SignerClient = await connector?.getClient();
-    await client.registerAccount(
+    if (!signingClient) throw new Error("error: no signing client");
+    await signingClient.registerAccount(
       {
         sender: account!.address,
         config: { [data.accountType as "spot"]: { owner: account!.username } },
@@ -88,7 +88,7 @@ export const TransferStep: React.FC = () => {
               startText="right"
               placeholder="0"
               disabled={isSubmitting}
-              error={errors.amount?.message?.toString()}
+              errorMessage={errors.amount?.message?.toString()}
               startContent={
                 <div className="flex flex-row items-center gap-2">
                   <img

@@ -81,10 +81,10 @@ export {
 } from "./hooks/useStorage.js";
 
 export {
-  type UseSigningClientParameters,
-  type UseSigningClientReturnType,
-  useSigningClient,
-} from "./hooks/useSigningClient.js";
+  type UseConnectorClientParameters,
+  type UseConnectorClientReturnType,
+  useConnectorClient,
+} from "./hooks/useConnectorClient.js";
 
 export {
   type UseAccountInfoParameters,

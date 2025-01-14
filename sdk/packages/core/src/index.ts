@@ -18,3 +18,7 @@ export {
   signerActions,
   publicActions,
 } from "./actions/index.js";
+
+export { createSessionSigner } from "./signers/session.js";
+export { PrivateKeySigner } from "./signers/privateKey.js";
+export { ConnectorSigner } from "./signers/connector.js";
