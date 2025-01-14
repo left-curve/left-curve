@@ -375,6 +375,9 @@ export function createConfig<
       get transports() {
         return rest.transports;
       },
+      get events() {
+        return { change, connect, disconnect };
+      },
       connectors: {
         setup,
         setState(value) {

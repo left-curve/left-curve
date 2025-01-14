@@ -6,7 +6,7 @@ import type { AccountTypes, NativeCoin } from "@left-curve/types";
 import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "@tanstack/react-router";
 
 export const TransferStep: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ export const TransferStep: React.FC = () => {
     );
     await wait(1000);
     await refreshAccounts?.();
-    navigate("/?showAccounts=true");
+    navigate({ to: "/?showAccounts=true" });
   });
 
   return (

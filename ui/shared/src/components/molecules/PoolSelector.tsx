@@ -1,15 +1,13 @@
-import { parseAsInteger, useQueryState } from "nuqs";
 import type React from "react";
 import { Button, Input, PoolCard, SearchIcon } from "../";
 
 import type { Pool, PoolId } from "@left-curve/types";
 
 interface Props {
-  onPoolSelected: () => void;
+  onPoolSelected: (id: number) => void;
 }
 
 export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
-  const { 1: setPoolId } = useQueryState("pool", parseAsInteger);
   const pools = {} as Record<PoolId, Pool>;
 
   return (
@@ -47,7 +45,7 @@ export const PoolSelector: React.FC<Props> = ({ onPoolSelected }) => {
               key={id}
               poolId={Number(id)}
               pool={pool}
-              onPoolSelected={(id) => [setPoolId(id), onPoolSelected()]}
+              onPoolSelected={(id) => onPoolSelected(id)}
             />
           ))}
         </div>

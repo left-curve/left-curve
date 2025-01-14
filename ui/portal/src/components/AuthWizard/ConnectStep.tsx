@@ -1,5 +1,5 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 
 import { Select, SelectItem, useWizard } from "@dango/shared";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
@@ -114,7 +114,7 @@ export const ConnectStep: React.FC = () => {
 
   useEffect(() => {
     if (status !== ConnectionStatus.Connected) return;
-    navigate("/");
+    navigate({ to: "/" });
   }, [navigate, status]);
 
   return (
