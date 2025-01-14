@@ -69,8 +69,6 @@ fn index_block_with_nonblocking_indexer() {
             .await
             .expect("Can't fetch events");
         assert_that!(events).is_not_empty();
-
-        dbg!(events);
     });
 }
 
@@ -352,7 +350,7 @@ mod replier {
         }
     }
 
-    pub const DEEPTHS: Set<String> = Set::new("s");
+    pub const DEPTHS: Set<String> = Set::new("s");
 
     pub fn instantiate(_ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
         Ok(Response::new())
@@ -366,7 +364,7 @@ mod replier {
                 Err(StdError::host(err))
             },
             ExecuteMsg::Ok { deep } => {
-                DEEPTHS.insert(ctx.storage, deep)?;
+                DEPTH.insert(ctx.storage, deep)?;
 
                 Ok(Response::new())
             },
@@ -375,7 +373,7 @@ mod replier {
                 next,
                 reply_on,
             } => {
-                DEEPTHS.insert(ctx.storage, deep)?;
+                DEPTH.insert(ctx.storage, deep)?;
 
                 Ok(Response::new().add_submessage(SubMessage {
                     msg: Message::execute(ctx.contract, &*next, Coins::new())?,
@@ -388,7 +386,7 @@ mod replier {
     pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         match msg {
             QueryMsg::Data {} => {
-                let res = DEEPTHS
+                let res = DEPTH
                     .range(ctx.storage, None, None, Order::Ascending)
                     .collect::<StdResult<Vec<_>>>()?;
                 res.to_json_value()
@@ -480,7 +478,6 @@ fn index_block_events() {
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch transactions");
-
         assert_that!(transactions).is_not_empty();
 
         let messages = entity::messages::Entity::find()
