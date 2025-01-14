@@ -148,7 +148,9 @@ pub enum FlatEvent {
     Finalize(FlatEvtFinalize),
     /// A cronjob was executed.
     Cron(FlatEvtCron),
+    /// A guest was called.
     Guest(FlatEvtGuest),
+    /// A contract event was emitted.
     ContractEvent(ContractEvent),
 }
 
