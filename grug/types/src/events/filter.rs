@@ -3,7 +3,7 @@ use {
         AsVariant, Defined, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
         FlatEventStatusDiscriminants, MaybeDefined, Undefined,
     },
-    std::marker::PhantomData,
+    std::{fmt::Debug, marker::PhantomData},
 };
 
 pub struct EventFilter<
@@ -170,7 +170,7 @@ impl<T> FilterResult<T> {
     /// Asserts the number of events and returns them as fixed-size array.
     pub fn exact<const N: usize>(self) -> [T; N]
     where
-        T: std::fmt::Debug,
+        T: Debug,
     {
         self.events.try_into().unwrap()
     }
