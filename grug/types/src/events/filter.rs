@@ -1,15 +1,10 @@
 use {
     crate::{
-        ContractEvent, Defined, EvtConfigure, EvtUpload, FlatCommitmentStatus, FlatEvent,
-        FlatEventInfo, FlatEventStatus, FlatEventStatusDiscriminants, FlatEvtAuthenticate,
-        FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest,
-        FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold,
-        MaybeDefined, Undefined,
+        AsVariant, Defined, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
+        FlatEventStatusDiscriminants, MaybeDefined, Undefined,
     },
     std::marker::PhantomData,
 };
-
-// -------------------------------- EventFilter --------------------------------
 
 pub struct EventFilter<
     F,
@@ -180,42 +175,3 @@ impl<T> FilterResult<T> {
         self.events.try_into().unwrap()
     }
 }
-
-// --------------------------------- AsVariant ---------------------------------
-
-/// Trait that allows to convert an Enum to inner value of a specific variant.
-pub trait AsVariant<V> {
-    fn maybe_variant(self) -> Option<V>;
-}
-
-macro_rules! impl_as_variant {
-    ( $enum:ident, $($variant:ident => $flat_variant:ident),*) => {
-        $(impl AsVariant<$flat_variant> for $enum {
-            fn maybe_variant(self) -> Option<$flat_variant> {
-                if let $enum::$variant(inner) = self {
-                    Some(inner)
-                } else {
-                    None
-                }
-            }
-        })*
-    };
-}
-
-impl_as_variant!(
-    FlatEvent,
-    Configure     => EvtConfigure,
-    Transfer      => FlatEvtTransfer,
-    Upload        => EvtUpload,
-    Instantiate   => FlatEvtInstantiate,
-    Execute       => FlatEvtExecute,
-    Migrate       => FlatEvtMigrate,
-    Reply         => FlatEvtReply,
-    Authenticate  => FlatEvtAuthenticate,
-    Backrun       => FlatEvtBackrun,
-    Withhold      => FlatEvtWithhold,
-    Finalize      => FlatEvtFinalize,
-    Cron          => FlatEvtCron,
-    Guest         => FlatEvtGuest,
-    ContractEvent => ContractEvent
-);
