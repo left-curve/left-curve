@@ -1,5 +1,6 @@
+import { getAppConfig } from "@left-curve/sdk";
+import type { AppConfig, TokenFactoryExecuteMsg, Username } from "../../../types/index.js";
 import { type ExecuteReturnType, execute } from "../../app/execute.js";
-import { getAppConfig } from "../../public/getAppConfig.js";
 
 import type {
   Address,
@@ -7,13 +8,10 @@ import type {
   Client,
   Denom,
   Signer,
-  TokenFactoryExecuteMsg,
   Transport,
   TxParameters,
   TypedDataParameter,
-  Username,
 } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type CreateTokenParameters = {
   sender: Address;
@@ -63,7 +61,7 @@ export async function createToken<chain extends Chain | undefined, signer extend
     },
   };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await execute(client, {
     sender,

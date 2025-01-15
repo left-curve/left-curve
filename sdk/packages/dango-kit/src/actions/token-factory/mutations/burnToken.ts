@@ -1,18 +1,17 @@
+import type { AppConfig, TokenFactoryExecuteMsg } from "../../../types/index.js";
 import { type ExecuteReturnType, execute } from "../../app/execute.js";
-import { getAppConfig } from "../../public/getAppConfig.js";
 
+import { getAppConfig } from "@left-curve/sdk";
 import type {
   Address,
   Chain,
   Client,
   Denom,
   Signer,
-  TokenFactoryExecuteMsg,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 export type BurnTokenParameters = {
   sender: Address;
@@ -56,7 +55,7 @@ export async function burnToken<chain extends Chain | undefined, signer extends 
     },
   };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await execute(client, {
     sender,

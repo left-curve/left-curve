@@ -1,15 +1,7 @@
-import { getAppConfig } from "../../public/getAppConfig.js";
-import { queryWasmSmart } from "../../public/queryWasmSmart.js";
+import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import type { AppConfig, TokenFactoryConfig, TokenFactoryQueryMsg } from "../../../types/index.js";
 
-import type {
-  Chain,
-  Client,
-  Signer,
-  TokenFactoryConfig,
-  TokenFactoryQueryMsg,
-  Transport,
-} from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { Chain, Client, Signer, Transport } from "@left-curve/types";
 
 export type GetTokenFactoryConfigParameters = {
   height?: number;
@@ -33,7 +25,7 @@ export async function getTokenFactoryConfig<
   const { height = 0 } = parameters;
   const msg: TokenFactoryQueryMsg = { config: {} };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await queryWasmSmart(client, { contract: addresses.tokenFactory, msg, height });
 }
