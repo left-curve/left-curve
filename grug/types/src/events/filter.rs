@@ -156,15 +156,21 @@ pub struct FilterResult<T> {
 }
 
 impl<T> FilterResult<T> {
-    /// Asserts that there is exactly one event and returns it.
-    pub fn one(self) -> T {
-        assert_eq!(self.events.len(), 1);
-        self.events.into_iter().next().unwrap()
-    }
-
     /// Returns the events as a vector.
     pub fn all(self) -> Vec<T> {
         self.events
+    }
+
+    /// Asserts that there is exactly one event and returns it.
+    pub fn one(self) -> T {
+        assert_eq!(
+            self.events.len(),
+            1,
+            "expecting exactly one event, got: {}",
+            self.events.len()
+        );
+
+        self.events.into_iter().next().unwrap()
     }
 
     /// Asserts the number of events and returns them as fixed-size array.
@@ -172,6 +178,14 @@ impl<T> FilterResult<T> {
     where
         T: Debug,
     {
+        assert_eq!(
+            self.events.len(),
+            N,
+            "expecting exactly {} events, got: {}",
+            N,
+            self.events.len()
+        );
+
         self.events.try_into().unwrap()
     }
 }
