@@ -14,4 +14,4 @@ refresh_dev_db:
 
 # Generate entity from the datatabase
 generate_entity:
-  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default, serde::Serialize, serde::Deserialize' -t swaps
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' -t swaps
