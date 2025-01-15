@@ -13,42 +13,6 @@ use {
     std::marker::PhantomData,
 };
 
-pub trait Search: Sized {
-    fn search<F>(self) -> EventFilter<F>
-    where
-        FlatEvent: IntoOption<F>,
-    {
-        EventFilter::new(self.flat())
-    }
-    fn flat(self) -> Vec<FlatEventInfo>;
-}
-
-impl Search for TxEvents {
-    fn flat(self) -> Vec<FlatEventInfo> {
-        flatten_tx_events(self, 0, 0)
-    }
-}
-
-impl<T> Search for CommitmentStatus<T>
-where
-    T: FlattenStatus,
-{
-    fn flat(self) -> Vec<FlatEventInfo> {
-        flatten_commitment_status(&mut EventId::new(0, FlatCategory::Tx, 0, 0), self)
-    }
-}
-
-impl Search for BlockOutcome {
-    fn flat(self) -> Vec<FlatEventInfo> {
-        self.tx_outcomes
-            .into_iter()
-            .fold(vec![], |mut acc, tx_outcome| {
-                acc.extend(tx_outcome.events.flat());
-                acc
-            })
-    }
-}
-
 // -------------------------------- EventFilter --------------------------------
 
 pub struct EventFilter<
@@ -57,7 +21,7 @@ pub struct EventFilter<
     CS = Undefined<FlatCommitmentStatus>,
     P = Undefined<Box<dyn Fn(&F) -> bool>>,
 > where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
 {
     _filter: PhantomData<F>,
     event_status: ES,
@@ -68,8 +32,9 @@ pub struct EventFilter<
 
 impl<F, CS, P> EventFilter<F, Undefined<FlatEventStatusDiscriminants>, CS, P>
 where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
 {
+    /// Filter events by event status via [`FlatEventStatusDiscriminants`].
     pub fn with_event_status(
         self,
         event_status: FlatEventStatusDiscriminants,
@@ -86,8 +51,9 @@ where
 
 impl<F, ES, P> EventFilter<F, ES, Undefined<FlatCommitmentStatus>, P>
 where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
 {
+    /// Filter events by commitment status via [`FlatCommitmentStatus`].
     pub fn with_commitment_status(
         self,
         commitment_status: FlatCommitmentStatus,
@@ -104,8 +70,9 @@ where
 
 impl<F, ES, CS> EventFilter<F, ES, CS, Undefined<Box<dyn Fn(&F) -> bool>>>
 where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
 {
+    /// Filter events by a predicate.
     pub fn with_predicate<P>(
         self,
         predicate: P,
@@ -125,7 +92,7 @@ where
 
 impl<F> EventFilter<F>
 where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
 {
     pub fn new(events: Vec<FlatEventInfo>) -> Self {
         Self {
@@ -140,12 +107,13 @@ where
 
 impl<F, ES, CS, P> EventFilter<F, ES, CS, P>
 where
-    FlatEvent: IntoOption<F>,
+    FlatEvent: AsVariant<F>,
     ES: MaybeDefined<FlatEventStatusDiscriminants>,
     CS: MaybeDefined<FlatCommitmentStatus>,
     P: MaybeDefined<Box<dyn Fn(&F) -> bool>>,
 {
-    pub fn finalize(self) -> FilterResult<FilteredEvent<F>> {
+    /// Takes the events that match the filter.
+    pub fn take(self) -> FilterResult<FilteredEvent<F>> {
         let events = self
             .events
             .into_iter()
@@ -164,7 +132,7 @@ where
                     }
                 }
 
-                let maybe_event = event.event.into_option();
+                let maybe_event = event.event.maybe_variant();
 
                 if let (Some(event), Some(predicate)) = (&maybe_event, self.predicate.maybe_inner())
                 {
@@ -197,15 +165,18 @@ pub struct FilterResult<T> {
 }
 
 impl<T> FilterResult<T> {
+    /// Asserts that there is exactly one event and returns it.
     pub fn one(self) -> T {
         assert_eq!(self.events.len(), 1);
         self.events.into_iter().next().unwrap()
     }
 
-    pub fn vec(self) -> Vec<T> {
+    /// Returns the events as a vector.
+    pub fn all(self) -> Vec<T> {
         self.events
     }
 
+    /// Asserts the number of events and returns them as fixed-size array.
     pub fn exact<const N: usize>(self) -> [T; N]
     where
         T: std::fmt::Debug,
@@ -214,16 +185,57 @@ impl<T> FilterResult<T> {
     }
 }
 
-// ------------------------------ IntoOption ------------------------------
+// -------------------------------- SearchEvent --------------------------------
 
-pub trait IntoOption<T> {
-    fn into_option(self) -> Option<T>;
+pub trait SearchEvent: Sized {
+    /// Create a [`EventFilter`] to search for specific events.
+    fn search_event<F>(self) -> EventFilter<F>
+    where
+        FlatEvent: AsVariant<F>,
+    {
+        EventFilter::new(self.flat())
+    }
+
+    fn flat(self) -> Vec<FlatEventInfo>;
 }
 
-macro_rules! impl_into_option {
+impl SearchEvent for TxEvents {
+    fn flat(self) -> Vec<FlatEventInfo> {
+        flatten_tx_events(self, 0, 0)
+    }
+}
+
+impl<T> SearchEvent for CommitmentStatus<T>
+where
+    T: FlattenStatus,
+{
+    fn flat(self) -> Vec<FlatEventInfo> {
+        flatten_commitment_status(&mut EventId::new(0, FlatCategory::Tx, 0, 0), self)
+    }
+}
+
+impl SearchEvent for BlockOutcome {
+    fn flat(self) -> Vec<FlatEventInfo> {
+        self.tx_outcomes
+            .into_iter()
+            .fold(vec![], |mut acc, tx_outcome| {
+                acc.extend(tx_outcome.events.flat());
+                acc
+            })
+    }
+}
+
+// --------------------------------- AsVariant ---------------------------------
+
+/// Trait that allows to convert an Enum to inner value of a specific variant.
+pub trait AsVariant<V> {
+    fn maybe_variant(self) -> Option<V>;
+}
+
+macro_rules! impl_as_variant {
     ( $enum:ident, $($variant:ident => $flat_variant:ident),*) => {
-        $(impl IntoOption<$flat_variant> for $enum {
-            fn into_option(self) -> Option<$flat_variant> {
+        $(impl AsVariant<$flat_variant> for $enum {
+            fn maybe_variant(self) -> Option<$flat_variant> {
                 if let $enum::$variant(inner) = self {
                     Some(inner)
                 } else {
@@ -234,7 +246,7 @@ macro_rules! impl_into_option {
     };
 }
 
-impl_into_option!(
+impl_as_variant!(
     FlatEvent,
     Configure     => EvtConfigure,
     Transfer      => FlatEvtTransfer,
