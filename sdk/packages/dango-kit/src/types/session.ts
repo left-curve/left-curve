@@ -1,4 +1,4 @@
-import type { Base64 } from "../../../types/src/encoding.js";
+import type { Base64 } from "@left-curve/types";
 import type { StandardCredential } from "./credential.js";
 
 export type SigningSessionInfo = {

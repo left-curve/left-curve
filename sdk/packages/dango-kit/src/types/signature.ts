@@ -3,7 +3,6 @@ import type {
   ArbitrarySignatureOutcome as GrugArbitrarySignatureOutcome,
   SignDoc as GrugSignDoc,
   SignatureOutcome as GrugSignatureOutcome,
-  Hex,
 } from "@left-curve/types";
 import type { Credential } from "./credential.js";
 import type { Metadata } from "./metadata.js";

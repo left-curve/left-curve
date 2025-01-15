@@ -1,5 +1,4 @@
-import type { Duration, Timestamp } from "../../../types/src/app.js";
-import type { Message } from "../../../types/src/tx.js";
+import type { Duration, Message, Timestamp } from "@left-curve/types";
 import type { Username } from "./account.js";
 
 /**

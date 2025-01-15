@@ -1,6 +1,8 @@
-import { type Config, ConnectionStatus, type State } from "@left-curve/types";
 import { reconnect } from "./actions/index.js";
 import { eip6963 } from "./connectors/eip6963.js";
+import { ConnectionStatus } from "./types/store.js";
+
+import type { Config, State } from "./types/store.js";
 
 type HydrateParameters = {
   initialState?: State;
