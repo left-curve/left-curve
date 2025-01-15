@@ -24,80 +24,80 @@ export { eip1193 } from "./connectors/eip1193.js";
 export {
   type GetChainIdReturnType,
   getChainId,
-} from "./actions/getChainId.js";
+} from "./actions/store/getChainId.js";
 
 export {
   type WatchChainIdParameters,
   type WatchChainIdReturnType,
   watchChainId,
-} from "./actions/watchChainId.js";
+} from "./actions/store/watchChainId.js";
 
 export {
   type ConnectParameters,
   type ConnectReturnType,
   type ConnectErrorType,
   connect,
-} from "./actions/connect.js";
+} from "./actions/store/connect.js";
 
 export {
   type DisconnectParameters,
   type DisconnectReturnType,
   type DisconnectErrorType,
   disconnect,
-} from "./actions/disconnect.js";
+} from "./actions/store/disconnect.js";
 
 export {
   type GetConnectorsReturnType,
   getConnectors,
-} from "./actions/getConnectors.js";
+} from "./actions/store/getConnectors.js";
 
 export {
   type GetAccountReturnType,
   getAccount,
-} from "./actions/getAccount.js";
+} from "./actions/store/getAccount.js";
 
 export {
   type WatchAccountParameters,
   type WatchAccountReturnType,
   watchAccount,
-} from "./actions/watchAccount.js";
+} from "./actions/store/watchAccount.js";
 
 export {
   type GetBlockExplorerParameters,
   type GetBlockExplorerReturnType,
   type GetBlockExplorerErrorType,
   getBlockExplorer,
-} from "./actions/getBlockExplorer.js";
+} from "./actions/store/getBlockExplorer.js";
 
 export {
   type GetBlockParameters,
   type GetBlockReturnType,
   type GetBlockErrorType,
   getBlock,
-} from "./actions/getBlock.js";
+} from "./actions/store/getBlock.js";
 
 export {
   type GetPublicClientParameters,
   type GetPublicClientReturnType,
   type GetPublicClientErrorType,
   getPublicClient,
-} from "./actions/getPublicClient.js";
+} from "./actions/store/getPublicClient.js";
 
 export {
   type WatchPublicClientParameters,
   type WatchPublicClientReturnType,
   watchPublicClient,
-} from "./actions/watchPublicClient.js";
+} from "./actions/store/watchPublicClient.js";
 
 export {
   type GetConnectorClientParameters,
   type GetConnectorClientReturnType,
   type GetConnectorClientErrorType,
   getConnectorClient,
-} from "./actions/getConnectorClient.js";
+} from "./actions/store/getConnectorClient.js";
 
 export {
   type ChangeAccountParameters,
   type ChangeAccountReturnType,
   changeAccount,
-} from "./actions/changeAccount.js";
+} from "./actions/store/changeAccount.js";

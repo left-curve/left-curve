@@ -1,4 +1,4 @@
-import type { Config } from "@left-curve/types";
+import type { Config } from "../../types/store.js";
 
 export type GetBlockExplorerParameters = {
   explorerName?: string;

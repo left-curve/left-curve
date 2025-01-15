@@ -9,7 +9,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import { type ExecuteReturnType, execute } from "../../app/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 export type SafeAccountProposeParameters = {
   sender: Address;

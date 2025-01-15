@@ -3,8 +3,8 @@ import {
   type ConnectParameters,
   type ConnectReturnType,
   connect,
-} from "../actions/connect.js";
-export { type ConnectErrorType } from "../actions/connect.js";
+} from "../actions/store/connect.js";
+export { type ConnectErrorType } from "../actions/store/connect.js";
 import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
 
 import type { Config } from "../types/store.js";

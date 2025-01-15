@@ -1,6 +1,6 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { getMembersTypedData } from "@left-curve/utils";
-import { type ExecuteReturnType, execute } from "./execute.js";
+import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 import type {
   Address,
@@ -11,7 +11,7 @@ import type {
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { AccountConfig, AppConfig } from "../../types/index.js";
+import type { AccountConfig, AppConfig } from "../../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;

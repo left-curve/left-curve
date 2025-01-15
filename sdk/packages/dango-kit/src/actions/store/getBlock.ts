@@ -1,7 +1,8 @@
 import { getChainInfo } from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { BlockInfo, ChainId, Config } from "@left-curve/types";
+import type { BlockInfo, ChainId } from "@left-curve/types";
+import type { Config } from "../../types/store.js";
 
 export type GetBlockParameters = {
   chainId?: ChainId;
@@ -17,6 +18,6 @@ export async function getBlock<config extends Config>(
   parameters: GetBlockParameters = {},
 ): Promise<GetBlockReturnType> {
   const client = getPublicClient(config, parameters);
-  const { lastFinalizedBlock } = await getChainInfo(client, parameters);
+  const { lastFinalizedBlock } = await getChainInfo(client);
   return lastFinalizedBlock;
 }

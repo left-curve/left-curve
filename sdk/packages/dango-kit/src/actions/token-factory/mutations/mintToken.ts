@@ -11,7 +11,7 @@ import type {
   TypedDataParameter,
 } from "@left-curve/types";
 import type { AppConfig, TokenFactoryExecuteMsg } from "../../../types/index.js";
-import { type ExecuteReturnType, execute } from "../../app/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 export type MintTokenParameters = {
   sender: Address;

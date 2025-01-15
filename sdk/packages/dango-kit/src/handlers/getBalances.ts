@@ -5,7 +5,7 @@ import {
   type GetBalancesErrorType,
   type GetBalancesReturnType,
   getBalances,
-} from "../actions/getBalances.js";
+} from "../actions/store/getBalances.js";
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 

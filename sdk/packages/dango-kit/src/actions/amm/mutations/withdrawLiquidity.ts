@@ -1,6 +1,6 @@
 import { getAppConfig } from "@left-curve/sdk";
 import type { AmmExecuteMsg, AppConfig, PoolId } from "../../../types/index.js";
-import { type ExecuteReturnType, execute } from "../../app/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 import type {
   Address,

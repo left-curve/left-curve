@@ -3,8 +3,8 @@ import {
   type DisconnectParameters,
   type DisconnectReturnType,
   disconnect,
-} from "../actions/disconnect.js";
-export { type DisconnectErrorType } from "../actions/disconnect.js";
+} from "../actions/store/disconnect.js";
+export { type DisconnectErrorType } from "../actions/store/disconnect.js";
 import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
 
 import type { Config } from "../types/store.js";

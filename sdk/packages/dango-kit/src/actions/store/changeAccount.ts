@@ -1,8 +1,9 @@
-import type { Account, Config, ConnectorUId } from "@left-curve/types";
+import type { UID } from "@left-curve/types";
+import type { Account, Config } from "../../types/index.js";
 
 export type ChangeAccountParameters = {
   account: Account;
-  connectorUId: ConnectorUId;
+  connectorUId: UID;
 };
 
 export type ChangeAccountReturnType = void;

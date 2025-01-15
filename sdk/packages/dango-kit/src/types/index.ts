@@ -138,4 +138,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export type { ConnectionStatus } from "./store.js";
+export { ConnectionStatus } from "./store.js";

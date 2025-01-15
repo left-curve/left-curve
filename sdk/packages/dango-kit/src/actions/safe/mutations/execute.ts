@@ -8,7 +8,7 @@ import type {
   TypedDataParameter,
 } from "@left-curve/types";
 import type { ProposalId } from "../../../types/safe.js";
-import { type ExecuteReturnType, execute } from "../../app/execute.js";
+import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
 export type SafeAccountExecuteParameters = {
   sender: Address;

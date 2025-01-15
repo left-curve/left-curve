@@ -5,7 +5,7 @@ import {
   type GetConnectorClientParameters,
   type GetConnectorClientReturnType,
   getConnectorClient,
-} from "../actions/getConnectorClient.js";
+} from "../actions/store/getConnectorClient.js";
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 

@@ -10,7 +10,7 @@ import type {
   TypedDataParameter,
 } from "@left-curve/types";
 
-import { getAccountSeenNonces } from "../account-factory/queries/getAccountSeenNonces.js";
+import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 export type SignAndBroadcastTxParameters = {

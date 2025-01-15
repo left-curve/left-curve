@@ -1,10 +1,11 @@
-import type { AccountTypes, Address, Config, ConnectorUId, Username } from "@left-curve/types";
+import type { Address, UID } from "@left-curve/types";
+import type { AccountTypes, Config, Username } from "../../types/index.js";
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
 
 export type RefreshAccountsParameters = {
   username?: Username;
-  connectorUId?: ConnectorUId;
+  connectorUId?: UID;
 };
 
 export type RefreshAccountsReturnType = void;

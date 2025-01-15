@@ -5,7 +5,7 @@ import {
   type GetAccountInfoParameters,
   type GetAccountInfoReturnType,
   getAccountInfo,
-} from "../actions/getAccountInfo.js";
+} from "../actions/store/getAccountInfo.js";
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 

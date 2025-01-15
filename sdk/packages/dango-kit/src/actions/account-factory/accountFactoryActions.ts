@@ -78,18 +78,19 @@ import {
 
 import { type GetUserParameters, type GetUserReturnType, getUser } from "./queries/getUser.js";
 
+import { type RegisterAccountParameters, registerAccount } from "./mutations/registerAccount.js";
+
 import {
   type GetUsersByKeyHashReturnType,
   type GetUsersByKeyhashParameters,
   getUsersByKeyHash,
 } from "./queries/getUsersByKeyHash.js";
 
-export type AccountFactoryActions<
+export type AccountFactoryQueryActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain,
   signer extends Signer | undefined = Signer,
 > = {
-  // queries
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) => GetAccountSeenNoncesReturnType;
@@ -109,42 +110,51 @@ export type AccountFactoryActions<
   getNextAccountIndex: (args: GetNextAccountIndexParameters) => GetNextAccountIndexReturnType;
   getUser: (args: GetUserParameters) => GetUserReturnType;
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
-  // mutations
-  registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
 };
 
-export function accountFactoryActions<
+export type AccountFactoryMutationActions<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain,
+  signer extends Signer | undefined = Signer,
+> = {
+  registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
+  registerAccount: (args: RegisterAccountParameters) => RegisterUserReturnType;
+};
+
+export function accountFactoryQueryActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain,
   signer extends Signer = Signer,
->(client: Client<transport, chain, signer>): AccountFactoryActions<transport, chain, signer> {
+>(client: Client<transport, chain, signer>): AccountFactoryQueryActions<transport, chain, signer> {
   return {
     // queries
-    getAccountInfo: (args: GetAccountInfoParameters) => getAccountInfo<chain, signer>(client, args),
-    getAccountsByUsername: (args: GetAccountsByUsernameParameters) =>
-      getAccountsByUsername<chain, signer>(client, args),
-    getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) =>
-      getAccountSeenNonces<chain, signer>(client, args),
-    getAccountTypeCodeHash: (args: GetAccountTypeCodeHashParameters) =>
-      getAccountTypeCodeHash<chain, signer>(client, args),
-    getAccountTypeCodeHashes: (args: GetAccountTypeCodeHashesParameters) =>
-      getAccountTypeCodeHashes<chain, signer>(client, args),
-    getAllAccountInfo: (args: GetAllAccountInfoParameters) =>
-      getAllAccountInfo<chain, signer>(client, args),
-    getDeposit: (args: GetDepositParameters) => getDeposit<chain, signer>(client, args),
-    getDeposits: (args: GetDepositsParameters) => getDeposits<chain, signer>(client, args),
-    getKey: (args: GetKeyParameters) => getKey<chain, signer>(client, args),
-    getKeys: (args: GetKeysParameters) => getKeys<chain, signer>(client, args),
-    getKeysByUsername: (args: GetKeysByUsernameParameters) =>
-      getKeysByUsername<chain, signer>(client, args),
-    getNextAccountAddress: (args: GetNextAccountAddressParameters) =>
-      getNextAccountAddress<chain, signer>(client, args),
-    getNextAccountIndex: (args: GetNextAccountIndexParameters) =>
-      getNextAccountIndex<chain, signer>(client, args),
-    getUser: (args: GetUserParameters) => getUser<chain, signer>(client, args),
-    getUsersByKeyHash: (args: GetUsersByKeyhashParameters) =>
-      getUsersByKeyHash<chain, signer>(client, args),
-    // mutations
-    registerUser: (args: RegisterUserParameters) => registerUser<chain, signer>(client, args),
+    getAccountInfo: (args) => getAccountInfo<chain, signer>(client, args),
+    getAccountsByUsername: (args) => getAccountsByUsername<chain, signer>(client, args),
+    getAccountSeenNonces: (args) => getAccountSeenNonces<chain, signer>(client, args),
+    getAccountTypeCodeHash: (args) => getAccountTypeCodeHash<chain, signer>(client, args),
+    getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes<chain, signer>(client, args),
+    getAllAccountInfo: (args) => getAllAccountInfo<chain, signer>(client, args),
+    getDeposit: (args) => getDeposit<chain, signer>(client, args),
+    getDeposits: (args) => getDeposits<chain, signer>(client, args),
+    getKey: (args) => getKey<chain, signer>(client, args),
+    getKeys: (args) => getKeys<chain, signer>(client, args),
+    getKeysByUsername: (args) => getKeysByUsername<chain, signer>(client, args),
+    getNextAccountAddress: (args) => getNextAccountAddress<chain, signer>(client, args),
+    getNextAccountIndex: (args) => getNextAccountIndex<chain, signer>(client, args),
+    getUser: (args) => getUser<chain, signer>(client, args),
+    getUsersByKeyHash: (args) => getUsersByKeyHash<chain, signer>(client, args),
+  };
+}
+
+export function accountFactoryMutationActions<
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain,
+  signer extends Signer = Signer,
+>(
+  client: Client<transport, chain, signer>,
+): AccountFactoryMutationActions<transport, chain, signer> {
+  return {
+    registerUser: (args) => registerUser<chain, signer>(client, args),
+    registerAccount: (args) => registerAccount<chain, signer>(client, args),
   };
 }

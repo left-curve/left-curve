@@ -1,9 +1,10 @@
-import type { SignerClient } from "@left-curve/sdk/clients";
-import type { Config, ConnectorUId } from "@left-curve/types";
+import type { UID } from "@left-curve/types";
+import type { SignerClient } from "../../clients/signerClient.js";
+import type { Config } from "../../types/index.js";
 import { getConnector } from "./getConnector.js";
 
 export type GetConnectorClientParameters = {
-  connectorUId?: ConnectorUId;
+  connectorUId?: UID;
 };
 
 export type GetConnectorClientReturnType = SignerClient;

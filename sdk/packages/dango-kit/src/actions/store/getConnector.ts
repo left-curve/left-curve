@@ -1,7 +1,8 @@
-import type { Config, Connector, ConnectorUId } from "@left-curve/types";
+import type { UID } from "@left-curve/types";
+import type { Config, Connector } from "../../types/index.js";
 
 export type GetConnectorParameters = {
-  connectorUId?: ConnectorUId;
+  connectorUId?: UID;
 };
 
 export type GetConnectorReturnType = Connector;

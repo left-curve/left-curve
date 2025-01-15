@@ -1,15 +1,10 @@
-import {
-  type ChainId,
-  type Config,
-  ConnectionStatus,
-  type Connector,
-  type ConnectorUId,
-  type OneRequired,
-} from "@left-curve/types";
+import type { ChainId, OneRequired, UID } from "@left-curve/types";
+import type { Config, Connector } from "../../types/index.js";
+import { ConnectionStatus } from "../../types/index.js";
 
 export type DisconnectParameters = OneRequired<
   {
-    connectorUId?: ConnectorUId;
+    connectorUId?: UID;
     chainId?: ChainId;
   },
   "connectorUId",

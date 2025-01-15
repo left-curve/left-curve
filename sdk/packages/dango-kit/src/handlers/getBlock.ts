@@ -5,7 +5,7 @@ import {
   type GetBlockParameters,
   type GetBlockReturnType,
   getBlock,
-} from "../actions/getBlock.js";
+} from "../actions/store/getBlock.js";
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 

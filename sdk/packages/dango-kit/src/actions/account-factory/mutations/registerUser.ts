@@ -1,9 +1,9 @@
 import { getAppConfig, simulate } from "@left-curve/sdk";
 import type { Chain, Client, Hex, Signer, Transport } from "@left-curve/types";
-import { broadcastTxSync } from "../../app/broadcastTxSync.js";
+import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
 import type { AppConfig, Key, KeyHash, Username } from "../../../types/index.js";
-import type { BroadcastTxSyncReturnType } from "../../app/broadcastTxSync.js";
+import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
   username: Username;

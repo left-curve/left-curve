@@ -4,7 +4,8 @@ import {
 } from "@left-curve/sdk/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { ChainId, Coins, Config, Prettify } from "@left-curve/types";
+import type { ChainId, Coins, Prettify } from "@left-curve/types";
+import type { Config } from "../../types/store.js";
 
 export type GetBalanceParameters = Prettify<
   _GetBalancesParameters_ & {
