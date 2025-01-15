@@ -135,14 +135,15 @@ dp = 1
 p = b / a - dp
 ps = []
 das = []
+cash = b
 
-while True:
+while p > 0:
     da = b * dp / (p * (p + dp))
-    if da <= a:
+    if da * p <= cash:
         ps.append(p)
         das.append(da)
-        a -= da
         p -= dp
+        cash -= da * p
     else:
         break
 
@@ -171,17 +172,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def compute_demand(a, b, dp):
+    cash = b
     p = b / a - dp
     ps = []
     das = []
 
     while p > 0:
         da = b * dp / (p * (p + dp))
-        if da <= a:
+        if da * p <= cash:
             ps.append(p)
             das.append(da)
-            a -= da
             p -= dp
+            cash -= da * p
         else:
             break
 
@@ -194,18 +196,18 @@ def compute_supply(a, b, dp, min_da):
 
     while True:
         da = b * dp / (p * (p + dp))
-        if min_da <= da and da * p <= b:
+        if min_da <= da <= a:
             ps.append(p)
             das.append(da)
-            b -= da * p
             p += dp
+            a -= da
         else:
             break
 
     return np.array(ps), np.cumsum(das)
 
 bid_ps, bid_cumsums = compute_demand(2, 200000, 1)
-ask_ps, ask_cumsums = compute_supply(2, 200000, 1, 0.001)
+ask_ps, ask_cumsums = compute_supply(2, 200000, 1, 0.000001)
 
 fig, ax = plt.subplots(1, 1, figsize=(6, 5))
 ax.plot(bid_ps, bid_cumsums, linewidth=2, color="green")
