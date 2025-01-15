@@ -28,10 +28,10 @@ $$
 p' = \frac{b'}{a'}
 $$
 
-With some arithmetic manipulations, we can find that:
+With a little calculations, we can find that:
 
 $$
-\Delta a = a' - a = \frac{p - p'}{p p'} B
+\Delta a = a' - a = B \left( \frac{1}{p'} - \frac{1}{p} \right)
 $$
 
 This means **between the prices $p$ and $p'$, the pool would place orders with a total size of $\Delta a$**.
@@ -75,3 +75,57 @@ Repeating this process, we can find the order sizes at all ticks (note: this com
 | 85,000               | 0.00002768       |
 | ...                  | ...              |
 | 80,000               | 0.00003124       |
+
+Plot these in a chart:
+
+![](./xyk-buy-side.png)
+
+As we can see, **only a small amount of liquidity is provided to the region near the current price** of 100,000 USDC per BTC. This is a well-known problem of the xyk pool: liquidity is not concentrated. This is why since this model was popularized by Uniswap V2, much of research has gone into new AMM designs that allow concentrating capital around a specific price point. However, in cases where an oracle isn't available (not knowing at which price to concentrated the liquidity), the xyk pool remains the only practical option.
+
+## Code
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Reserve of the base asset
+a = 2
+# Reserve of the quote asset
+b = 200000
+# Current price
+p = b / a
+# Tick size
+dp = 1
+
+# Start from one tick below the current price
+p -= dp
+ps = []
+das = []
+
+while p > 0:
+    da = b * dp / (p * (p + dp))
+    if da <= a:
+        ps.append(p)
+        das.append(da)
+        a -= da
+        p -= dp
+    else:
+        break
+
+ps = np.array(ps)
+das = np.array(das)
+cumsums = np.cumsum(das)
+
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 6))
+
+ax1.bar(ps, das, width=dp)
+ax1.set_xlabel("Price (USDC per BTC)")
+ax1.set_ylabel("Order Size (BTC)")
+
+ax2.plot(ps, cumsums, linewidth=2)
+ax2.set_xlabel("Price (USDC per BTC)")
+ax2.set_ylabel("Cumulative Demand (BTC)")
+
+plt.tight_layout()
+plt.show()
+```
