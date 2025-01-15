@@ -91,6 +91,8 @@ export type { Address } from "./address.js";
 
 export type { Signer } from "./signer.js";
 
+export type { UID } from "./common.js";
+
 export type {
   Json,
   Hex,

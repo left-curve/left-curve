@@ -1,19 +1,7 @@
-import type { Timestamp } from "../../../types/src/app.js";
-import type { Username } from "./account.js";
+import type { Base64 } from "@left-curve/types";
 import type { KeyHash } from "./key.js";
-import type { SessionCredential } from "./session.js";
+import type { SigningSessionInfo } from "./session.js";
 import type { Signature } from "./signature.js";
-
-export type Metadata = {
-  /** The username of the account that signed this transaction */
-  username: Username;
-  /** Identifies the chain this transaction is intended for. */
-  chainId: string;
-  /** The nonce this transaction was signed with. */
-  nonce: number;
-  /** The expiration time of this transaction. */
-  expiry?: Timestamp;
-};
 
 export type Credential =
   /**Signatures of the authorized key and optional OTP key. */
@@ -26,4 +14,13 @@ export type StandardCredential = {
   keyHash: KeyHash;
   /** Signature of the `SignDoc` or `SessionInfo` by the user private key. */
   signature: Signature;
+};
+
+export type SessionCredential = {
+  /** The `SigningSessionInfo` that contains data to be signed with user key and otp key. */
+  sessionInfo: SigningSessionInfo;
+  /** Signature of the `SignDoc` by the session key. */
+  sessionSignature: Base64;
+  /** Signatures of the `SigningSessionInfo` by the user key */
+  authorization: StandardCredential;
 };

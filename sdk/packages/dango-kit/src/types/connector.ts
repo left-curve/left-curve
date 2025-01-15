@@ -1,12 +1,6 @@
-import type { Chain, ChainId } from "../../../types/src/chain.js";
-import type { Client } from "../../../types/src/client.js";
-import type { Signer } from "../../../types/src/signer.js";
-import type { Transport } from "../../../types/src/transports.js";
-import type { Prettify } from "../../../types/src/utils.js";
+import type { Chain, ChainId, Client, Prettify, Signer, Transport, UID } from "@left-curve/types";
 import type { Account, Username } from "./account.js";
 import type { Emitter, EventData } from "./emitter.js";
-
-export type ConnectorUId = string;
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 
@@ -34,7 +28,7 @@ export type Connection = {
 
 export type Connector = ReturnType<CreateConnectorFn> & {
   emitter: Emitter<ConnectorEventMap>;
-  uid: ConnectorUId;
+  uid: UID;
 };
 
 export type ConnectorParameter = {

@@ -1,7 +1,12 @@
-import type { Address } from "../../../types/src/address.js";
-import type { Base64, Hex, JsonValue } from "../../../types/src/encoding.js";
-import type { Message } from "../../../types/src/tx.js";
-import type { Credential, Metadata } from "./credential.js";
+import type {
+  Base64,
+  ArbitrarySignatureOutcome as GrugArbitrarySignatureOutcome,
+  SignDoc as GrugSignDoc,
+  SignatureOutcome as GrugSignatureOutcome,
+  Hex,
+} from "@left-curve/types";
+import type { Credential } from "./credential.js";
+import type { Metadata } from "./metadata.js";
 
 export type EthPersonalMessage = Hex | string | Uint8Array;
 
@@ -11,22 +16,11 @@ export type RawSignature = {
   v: number;
 };
 
-export type SignDoc = {
-  sender: Address;
-  messages: Message[];
-  gasLimit: number;
-  data: Metadata;
-};
+export type SignDoc = GrugSignDoc<Metadata>;
 
-export type SignatureOutcome = {
-  credential: Credential;
-  signDoc: SignDoc;
-};
+export type SignatureOutcome = GrugSignatureOutcome<Metadata, Credential>;
 
-export type ArbitrarySignatureOutcome = {
-  credential: Credential;
-  payload: JsonValue;
-};
+export type ArbitrarySignatureOutcome = GrugArbitrarySignatureOutcome<Credential>;
 
 export type Signature =
   /** An Secp256k1 signature. */

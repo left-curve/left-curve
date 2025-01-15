@@ -1,13 +1,5 @@
-import type { Chain, ChainId } from "../../../types/src/chain.js";
-import type { Client } from "../../../types/src/client.js";
-import type { AnyCoin, Denom } from "../../../types/src/coin.js";
-import type {
-  Connection,
-  Connector,
-  ConnectorUId,
-  CreateConnectorFn,
-} from "../../../types/src/connector.js";
-import type { Transport } from "../../../types/src/transports.js";
+import type { AnyCoin, Chain, ChainId, Client, Denom, Transport, UID } from "@left-curve/types";
+import type { Connection, Connector, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 
@@ -23,8 +15,8 @@ export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof Connec
 export type State<chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]]> = {
   chainId: chains[number]["id"];
   isMipdLoaded: boolean;
-  connections: Map<ConnectorUId, Connection>;
-  connectors: Map<chains[number]["id"], ConnectorUId>;
+  connections: Map<UID, Connection>;
+  connectors: Map<chains[number]["id"], UID>;
   status: ConnectionStatusType;
 };
 

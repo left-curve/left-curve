@@ -1,5 +1,5 @@
-import type { Coin } from "../../../types/src/coin.js";
-import type { FeeRate, Pool, PoolId, PoolParams } from "./pool.js";
+import type { Coin } from "@left-curve/types";
+import type { FeeRate, PoolId, PoolParams } from "./pool.js";
 
 export type AmmConfig = {
   /**  The amount of fee that must be paid in order to create a pool. */
