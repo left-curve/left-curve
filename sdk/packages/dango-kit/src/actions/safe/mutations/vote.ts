@@ -2,13 +2,12 @@ import type {
   Address,
   Chain,
   Client,
-  ProposalId,
   Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
-  Vote,
 } from "@left-curve/types";
+import type { ProposalId, Vote } from "../../../types/safe.js";
 import { type ExecuteReturnType, execute } from "../../app/execute.js";
 
 export type SafeAccountVoteParameters = {

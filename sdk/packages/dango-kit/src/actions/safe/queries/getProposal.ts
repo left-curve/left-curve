@@ -1,13 +1,7 @@
-import type {
-  Address,
-  Chain,
-  Client,
-  Proposal,
-  ProposalId,
-  Signer,
-  Transport,
-} from "@left-curve/types";
-import { queryWasmSmart } from "../../public/queryWasmSmart.js";
+import { queryWasmSmart } from "@left-curve/sdk";
+
+import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Proposal, ProposalId } from "../../../types/safe.js";
 
 export type SafeAccountGetProposalParameters = {
   address: Address;

@@ -6,11 +6,11 @@ import type {
   Message,
   Signer,
   Transport,
-  Tx,
   TxMessageType,
   TypedDataParameter,
 } from "@left-curve/types";
-import { getAccountSeenNonces } from "../public/getAccountSeenNonces.js";
+
+import { getAccountSeenNonces } from "../account-factory/queries/getAccountSeenNonces.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
 export type SignAndBroadcastTxParameters = {
@@ -35,7 +35,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     return chainId;
   })();
 
-  const { username } = client;
+  const { username } = client as unknown as { username: string };
 
   if (!username) {
     throw new Error("client must have a username");
@@ -59,7 +59,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     { typedData },
   );
 
-  const tx: Tx = {
+  const tx = {
     sender,
     credential,
     data,

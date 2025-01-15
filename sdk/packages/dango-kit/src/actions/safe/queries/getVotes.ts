@@ -1,14 +1,7 @@
-import { queryWasmSmart } from "@left-curve/sdk/actions";
-import type {
-  Address,
-  Chain,
-  Client,
-  ProposalId,
-  Signer,
-  Transport,
-  Username,
-  Vote,
-} from "@left-curve/types";
+import { queryWasmSmart } from "@left-curve/sdk";
+
+import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { ProposalId, Username, Vote } from "../../../types/index.js";
 
 export type SafeAccountGetVotesParameters = {
   address: Address;
