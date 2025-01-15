@@ -1,4 +1,8 @@
-use {crate::context::Context, async_trait::async_trait, std::convert::Infallible};
+use {
+    crate::{block_to_index::BlockToIndex, context::Context},
+    async_trait::async_trait,
+    std::convert::Infallible,
+};
 
 #[async_trait]
 pub trait Hooks {
@@ -11,7 +15,7 @@ pub trait Hooks {
     async fn post_indexing(
         &self,
         _context: Context,
-        _block_height: u64,
+        _block: BlockToIndex,
     ) -> Result<(), Self::Error> {
         Ok(())
     }

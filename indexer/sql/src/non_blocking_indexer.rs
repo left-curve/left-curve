@@ -469,7 +469,7 @@ where
             }
             db.commit().await?;
 
-            hooks.post_indexing(context, block_height).await.map_err(|e| {
+            hooks.post_indexing(context, block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
 
@@ -630,7 +630,7 @@ mod tests {
         async fn post_indexing(
             &self,
             _context: Context,
-            _block_height: u64,
+            _block: BlockToIndex,
         ) -> Result<(), Self::Error> {
             Ok(())
         }

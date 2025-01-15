@@ -1,7 +1,7 @@
 use {
     async_trait::async_trait,
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
-    indexer_sql::{hooks::Hooks as HooksTrait, Context},
+    indexer_sql::{block_to_index::BlockToIndex, hooks::Hooks as HooksTrait, Context},
 };
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ impl HooksTrait for Hooks {
     async fn post_indexing(
         &self,
         _context: Context,
-        _block_height: u64,
+        _block: BlockToIndex,
     ) -> Result<(), Self::Error> {
         Ok(())
     }
