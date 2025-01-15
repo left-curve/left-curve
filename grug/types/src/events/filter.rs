@@ -14,11 +14,26 @@ pub struct EventFilter<
 > where
     FlatEvent: AsVariant<F>,
 {
-    _filter: PhantomData<F>,
+    events: Vec<FlatEventInfo>,
     event_status: ES,
     commitment_status: CS,
     predicate: P,
-    events: Vec<FlatEventInfo>,
+    _filter: PhantomData<F>,
+}
+
+impl<F> EventFilter<F>
+where
+    FlatEvent: AsVariant<F>,
+{
+    pub fn new(events: Vec<FlatEventInfo>) -> Self {
+        Self {
+            events,
+            event_status: Undefined::new(),
+            commitment_status: Undefined::new(),
+            predicate: Undefined::new(),
+            _filter: PhantomData,
+        }
+    }
 }
 
 impl<F, CS, P> EventFilter<F, Undefined<FlatEventStatusDiscriminants>, CS, P>
@@ -77,21 +92,6 @@ where
             commitment_status: self.commitment_status,
             predicate: Defined::new(Box::new(predicate)),
             events: self.events,
-        }
-    }
-}
-
-impl<F> EventFilter<F>
-where
-    FlatEvent: AsVariant<F>,
-{
-    pub fn new(events: Vec<FlatEventInfo>) -> Self {
-        Self {
-            _filter: PhantomData,
-            event_status: Undefined::new(),
-            commitment_status: Undefined::new(),
-            predicate: Undefined::new(),
-            events,
         }
     }
 }
