@@ -8,4 +8,4 @@ pub mod hooks;
 mod indexer_path;
 pub mod non_blocking_indexer;
 
-use context::Context;
+pub use context::Context;

@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name    = "indexer-sql-migration"
+name    = "dango-indexer-sql-migration"
 publish = false
 version = "0.1.0"
 

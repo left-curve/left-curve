@@ -1,0 +1,17 @@
+set positional-arguments
+
+# List available recipes
+default:
+  @just --list
+
+# Migrate the development database
+migrate_dev_db:
+  sea-orm-cli migrate up -d sql-migration
+
+# Reset the development database
+refresh_dev_db:
+  sea-orm-cli migrate refresh
+
+# Generate entity from the datatabase
+generate_entity:
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default, serde::Serialize, serde::Deserialize' -t swaps

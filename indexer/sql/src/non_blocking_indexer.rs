@@ -104,7 +104,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H>
 where
     DB: MaybeDefined<String>,
     P: MaybeDefined<IndexerPath>,
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     /// If true, the block/block_outcome used by the indexer will be kept on disk after being
     /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
@@ -157,7 +157,7 @@ where
 #[derive(Debug)]
 pub struct NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     indexer_path: IndexerPath,
     pub context: Context,
@@ -173,7 +173,7 @@ where
 
 impl<H> NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
@@ -251,7 +251,7 @@ where
 
 impl<H> NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     /// Delete a block and its related content from the database
     pub fn delete_block_from_db(&self, block_height: u64) -> error::Result<()> {
@@ -268,7 +268,7 @@ where
 
 impl<H> NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     /// Where will this block be temporarily saved on disk
     pub fn block_filename(&self, block_height: u64) -> PathBuf {
@@ -291,9 +291,9 @@ where
         for block_height in last_indexed_block_height..=latest_block_height {
             let block_filename = self.block_filename(block_height);
 
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|err| {
+            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %err, block_height, "can't load block from disk");
+                    tracing::error!(error = %_err, block_height, "can't load block from disk");
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
             });
 
@@ -330,7 +330,7 @@ where
 
 impl<H> Indexer for NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     type Error = crate::error::IndexerError;
 
@@ -338,8 +338,15 @@ where
     where
         S: Storage,
     {
-        self.handle
-            .block_on(async { self.context.migrate_db().await })?;
+        self.handle.block_on(async {
+            self.context.migrate_db().await?;
+            self.hooks
+                .start(self.context.clone())
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+
+            Ok::<(), error::IndexerError>(())
+        })?;
 
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
@@ -379,6 +386,15 @@ where
 
             sleep(Duration::from_millis(10));
         }
+
+        self.handle.block_on(async {
+            self.hooks
+                .shutdown()
+                .await
+                .map_err(|e| error::IndexerError::Hooks(e.to_string()))?;
+
+            Ok::<(), error::IndexerError>(())
+        })?;
 
         #[cfg(feature = "tracing")]
         {
@@ -453,7 +469,7 @@ where
             }
             db.commit().await?;
 
-            hooks.post_indexing(context, block_height).map_err(|e| {
+            hooks.post_indexing(context, block_height).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
 
@@ -490,7 +506,7 @@ where
 
 impl<H> Drop for NonBlockingIndexer<H>
 where
-    H: Hooks + Clone + Send + 'static,
+    H: Hooks + Clone + Send + Sync + 'static,
 {
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
@@ -560,7 +576,10 @@ impl RuntimeHandler {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::hooks::NullHooks, grug_types::MockStorage, std::convert::Infallible};
+    use {
+        super::*, crate::hooks::NullHooks, async_trait::async_trait, grug_types::MockStorage,
+        std::convert::Infallible,
+    };
 
     /// This is when used from Dango, which is async. In such case the indexer does not have its
     /// own Tokio runtime and use the main handler. Making sure `start` can be called in an async
@@ -603,10 +622,16 @@ mod tests {
 
     #[derive(Debug, Clone, Default)]
     struct MyHooks;
+
+    #[async_trait]
     impl Hooks for MyHooks {
         type Error = Infallible;
 
-        fn post_indexing(&self, _context: Context, _block_height: u64) -> Result<(), Self::Error> {
+        async fn post_indexing(
+            &self,
+            _context: Context,
+            _block_height: u64,
+        ) -> Result<(), Self::Error> {
             Ok(())
         }
     }
