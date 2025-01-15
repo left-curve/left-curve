@@ -10,8 +10,8 @@ pub trait AsVariant<V> {
 }
 
 macro_rules! impl_as_variant {
-    ( $enum:ident, $($variant:ident => $flat_variant:ident),*) => {
-        $(impl AsVariant<$flat_variant> for $enum {
+    ($enum:ident, $variant:ident => $flat_variant:ident) => {
+        impl AsVariant<$flat_variant> for $enum {
             fn maybe_variant(self) -> Option<$flat_variant> {
                 if let $enum::$variant(inner) = self {
                     Some(inner)
@@ -19,11 +19,16 @@ macro_rules! impl_as_variant {
                     None
                 }
             }
-        })*
+        }
+    };
+    ($enum:ident, $($variant:ident => $flat_variant:ident),+ $(,)?) => {
+        $(
+            impl_as_variant! { $enum, $variant => $flat_variant }
+        )*
     };
 }
 
-impl_as_variant!(
+impl_as_variant! {
     FlatEvent,
     Configure     => EvtConfigure,
     Transfer      => FlatEvtTransfer,
@@ -38,5 +43,5 @@ impl_as_variant!(
     Finalize      => FlatEvtFinalize,
     Cron          => FlatEvtCron,
     Guest         => FlatEvtGuest,
-    ContractEvent => ContractEvent
-);
+    ContractEvent => ContractEvent,
+}
