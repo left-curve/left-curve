@@ -82,7 +82,43 @@ Plot these in a chart:
 
 As we can see, **only a small amount of liquidity is provided to the region near the current price** of 100,000 USDC per BTC. This is a well-known problem of the xyk pool: liquidity is not concentrated. This is why since this model was popularized by Uniswap V2, much of research has gone into new AMM designs that allow concentrating capital around a specific price point. However, in cases where an oracle isn't available (not knowing at which price to concentrated the liquidity), the xyk pool remains the only practical option.
 
+## The supply side
+
+Above we have worked out how orders are to be placed on the demand (BUY) side. Now let's look at the supply (SELL) side.
+
+Similarly, considering two trades, offering amounts $b$ and $b'$ of asset $\mathtt{B}$ at prices $p$ and $p'$:
+
+$$
+A \cdot B = (A - a) (B + b)
+$$
+
+$$
+A \cdot B = (A - a') (B + b')
+$$
+
+$$
+p = \frac{b}{a}
+$$
+
+$$
+p' = \frac{b'}{a'}
+$$
+
+We can solve that:
+
+$$
+\Delta a = a' - a = B \left( \frac{1}{p} - \frac{1}{p'} \right)
+$$
+
+Basically the same equation as before, just different sign.
+
+Combining the two, the order depth chart is:
+
+![](./xyk-buy-and-sell-sides.png)
+
 ## Code
+
+Demand side only:
 
 ```python
 import numpy as np
@@ -92,17 +128,15 @@ import matplotlib.pyplot as plt
 a = 2
 # Reserve of the quote asset
 b = 200000
-# Current price
-p = b / a
 # Tick size
 dp = 1
 
 # Start from one tick below the current price
-p -= dp
+p = b / a - dp
 ps = []
 das = []
 
-while p > 0:
+while True:
     da = b * dp / (p * (p + dp))
     if da <= a:
         ps.append(p)
@@ -125,6 +159,59 @@ ax1.set_ylabel("Order Size (BTC)")
 ax2.plot(ps, cumsums, linewidth=2)
 ax2.set_xlabel("Price (USDC per BTC)")
 ax2.set_ylabel("Cumulative Demand (BTC)")
+
+plt.tight_layout()
+plt.show()
+```
+
+Both sides:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+def compute_demand(a, b, dp):
+    p = b / a - dp
+    ps = []
+    das = []
+
+    while p > 0:
+        da = b * dp / (p * (p + dp))
+        if da <= a:
+            ps.append(p)
+            das.append(da)
+            a -= da
+            p -= dp
+        else:
+            break
+
+    return np.array(ps), np.cumsum(das)
+
+def compute_supply(a, b, dp, min_da):
+    p = b / a + dp
+    ps = []
+    das = []
+
+    while True:
+        da = b * dp / (p * (p + dp))
+        if min_da <= da and da * p <= b:
+            ps.append(p)
+            das.append(da)
+            b -= da * p
+            p += dp
+        else:
+            break
+
+    return np.array(ps), np.cumsum(das)
+
+bid_ps, bid_cumsums = compute_demand(2, 200000, 1)
+ask_ps, ask_cumsums = compute_supply(2, 200000, 1, 0.001)
+
+fig, ax = plt.subplots(1, 1, figsize=(6, 5))
+ax.plot(bid_ps, bid_cumsums, linewidth=2, color="green")
+ax.plot(ask_ps, ask_cumsums, linewidth=2, color="red")
+ax.set_xlabel("Price (USDC per BTC)")
+ax.set_ylabel("Cumulative Demand or Supply (BTC)")
 
 plt.tight_layout()
 plt.show()
