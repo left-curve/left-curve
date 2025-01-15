@@ -6,7 +6,7 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    strum_macros::Display,
+    strum_macros::{Display, EnumDiscriminants},
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -19,7 +19,16 @@ pub struct FlatEventInfo {
 }
 
 #[derive(
-    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Display,
+    EnumDiscriminants,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
