@@ -71,11 +71,7 @@ fn fee_rate_update_works() {
 
     // Someone else sends a transaction.
     let success = suite
-        .transfer(
-            &mut accounts.relayer,
-            accounts.owner.address(),
-            Coins::new(),
-        )
+        .transfer(&mut accounts.user1, accounts.owner.address(), Coins::new())
         .should_succeed();
 
     // Gas fee should be calculated using the new rate.
@@ -83,6 +79,6 @@ fn fee_rate_update_works() {
         .checked_mul_dec_ceil(NEW_FEE_RATE)
         .unwrap();
     let _user_usdc_balance = suite
-        .query_balance(&accounts.relayer, USDC.clone())
+        .query_balance(&accounts.user1, USDC.clone())
         .should_succeed_and_equal(user_usdc_balance.checked_sub(fee).unwrap());
 }

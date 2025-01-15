@@ -1,13 +1,13 @@
 [package]
-name          = "grug-crypto"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-crypto"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
 blake2        = { workspace = true }
@@ -26,10 +26,10 @@ criterion   = { workspace = true }
 hex         = { workspace = true, features = ["serde"] }
 hex-literal = { workspace = true }
 rand        = { workspace = true }
-serde       = { workspace = true, features = ["derive", "alloc"] }
+serde       = { workspace = true, features = ["alloc", "derive"] }
 serde_json  = { workspace = true }
 sha2        = { workspace = true }
 
 [[bench]]
-name = "benchmarks"
 harness = false
+name    = "benchmarks"

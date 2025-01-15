@@ -1,0 +1,48 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-vm-wasm"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+# Implement `grug_testing::TestVm` trait for `WasmVm`, so that it can be used in
+# the test suite.
+testing = ["dep:grug-testing"]
+
+[dependencies]
+clru               = { workspace = true }
+data-encoding      = { workspace = true }
+grug-app           = { workspace = true }
+grug-crypto        = { workspace = true }
+grug-testing       = { workspace = true, optional = true }
+grug-types         = { workspace = true }
+serde              = { workspace = true }
+thiserror          = { workspace = true }
+tracing            = { workspace = true }
+wasmer             = { workspace = true, features = ["singlepass"] }
+wasmer-middlewares = { workspace = true }
+
+[dev-dependencies]
+criterion      = { workspace = true }
+ed25519-dalek  = { workspace = true, features = ["batch", "digest"] }
+grug-app       = { workspace = true, features = ["tracing"] }
+grug-crypto    = { workspace = true }
+grug-db-memory = { workspace = true }
+grug-math      = { workspace = true }
+grug-mock-bank = { workspace = true, features = ["library"] }
+grug-tester    = { workspace = true, features = ["library"] }
+grug-testing   = { workspace = true }
+grug-vm-wasm   = { workspace = true, features = ["testing"] }
+k256           = { workspace = true }
+p256           = { workspace = true }
+rand           = { workspace = true }
+test-case      = { workspace = true }
+
+[[bench]]
+harness = false
+name    = "benchmarks"

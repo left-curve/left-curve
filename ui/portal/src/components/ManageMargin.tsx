@@ -6,7 +6,7 @@ interface Props {
   account: Account;
 }
 
-export const ManageMargin: React.FC<Props> = ({ account }) => {
+const ManageMargin: React.FC<Props> = ({ account }) => {
   return (
     <div className="flex flex-1 flex-col w-full items-center gap-14 mt-14">
       <MarginAccountInfo avatarUrl="/images/avatars/margin.svg" account={account} />
@@ -17,3 +17,5 @@ export const ManageMargin: React.FC<Props> = ({ account }) => {
     </div>
   );
 };
+
+export default ManageMargin;

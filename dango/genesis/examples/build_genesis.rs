@@ -1,13 +1,13 @@
 use {
-    dango_genesis::{build_genesis, read_wasm_files, GenesisUser},
+    dango_genesis::{build_genesis, build_rust_codes, GenesisUser},
     dango_types::{account_factory::Username, auth::Key},
     grug::{
-        btree_map, Coin, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
+        btree_map, coins, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
         Uint128,
     },
     hex_literal::hex,
     home::home_dir,
-    std::{env, fs, path::PathBuf, str::FromStr},
+    std::{env, fs, str::FromStr},
 };
 
 // See docs for the seed phrases of these keys.
@@ -19,6 +19,18 @@ const PK_USER2: [u8; 33] =
     hex!("02d309ba716f271b1083e24a0b9d438ef7ae0505f63451bc1183992511b3b1d52d");
 const PK_USER3: [u8; 33] =
     hex!("024bd61d80a2a163e6deafc3676c734d29f1379cb2c416a32b57ceed24b922eba0");
+const PK_USER4: [u8; 33] =
+    hex!("024a23e7a6f85e942a4dbedb871c366a1fdad6d0b84e670125991996134c270df2");
+const PK_USER5: [u8; 33] =
+    hex!("03da86b1cd6fd20350a0b525118eef939477c0fe3f5052197cd6314ed72f9970ad");
+const PK_USER6: [u8; 33] =
+    hex!("03428b179a075ff2142453c805a71a63b232400cc33c8e8437211e13e2bd1dec4c");
+const PK_USER7: [u8; 33] =
+    hex!("028d4d7265d5838190842ada2573ef9edfc978dec97ca59ce48cf1dd19352a4407");
+const PK_USER8: [u8; 33] =
+    hex!("02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd");
+const PK_USER9: [u8; 33] =
+    hex!("0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52");
 
 fn main() {
     // Read CLI arguments.
@@ -27,35 +39,62 @@ fn main() {
     assert_eq!(args.len(), 3, "expected exactly two arguments");
 
     // Read wasm files.
-    let codes = read_wasm_files(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../artifacts"))
-        .unwrap();
+    let codes = build_rust_codes();
 
     // Owner gets DG token and USDC; all others get USDC.
     let users = btree_map! {
         Username::from_str("owner").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_OWNER.into()),
-            key_hash: PK_OWNER.hash160(),
-            balances: [
-                Coin::new("udng", 30_000_000_000).unwrap(),
-                Coin::new("uusdc", 100_000_000_000_000).unwrap(),
-            ]
-            .try_into()
-            .unwrap(),
+            key_hash: PK_OWNER.hash256(),
+            balances: coins! {
+                "udng" => 30_000_000_000,
+                "uusdc" => 100_000_000_000_000,
+            },
         },
         Username::from_str("user1").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER1.into()),
-            key_hash: PK_USER1.hash160(),
-            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+            key_hash: PK_USER1.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
         },
         Username::from_str("user2").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER2.into()),
-            key_hash: PK_USER2.hash160(),
-            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+            key_hash: PK_USER2.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
         },
         Username::from_str("user3").unwrap() => GenesisUser {
             key: Key::Secp256k1(PK_USER3.into()),
-            key_hash: PK_USER3.hash160(),
-            balances: Coins::one("uusdc", 100_000_000_000_000).unwrap(),
+            key_hash: PK_USER3.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user4").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER4.into()),
+            key_hash: PK_USER4.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user5").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER5.into()),
+            key_hash: PK_USER5.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user6").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER6.into()),
+            key_hash: PK_USER6.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user7").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER7.into()),
+            key_hash: PK_USER7.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user8").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER8.into()),
+            key_hash: PK_USER8.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        },
+        Username::from_str("user9").unwrap() => GenesisUser {
+            key: Key::Secp256k1(PK_USER9.into()),
+            key_hash: PK_USER9.hash256(),
+            balances: coins! { "uusdc" => 100_000_000_000_000 },
         },
     };
 

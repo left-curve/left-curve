@@ -1,14 +1,9 @@
 use {
     crate::account::{multi, single},
-    grug::{PrimaryKey, StdError, StdResult},
+    grug::{PrimaryKey, RawKey, StdError, StdResult},
     paste::paste,
-    std::{
-        borrow::Cow,
-        fmt::{self, Display},
-    },
+    std::fmt::{self, Display},
 };
-
-// ----------------------------------- index -----------------------------------
 
 /// Global index of an account.
 ///
@@ -16,25 +11,12 @@ use {
 /// account addresses.
 pub type AccountIndex = u32;
 
-// ----------------------------------- info ------------------------------------
-
 /// Information of an account.
 #[grug::derive(Serde, Borsh)]
 pub struct Account {
     pub index: AccountIndex,
     pub params: AccountParams,
 }
-
-impl Account {
-    pub fn is_otp_enabled(&self) -> bool {
-        match &self.params {
-            AccountParams::Spot(params) | AccountParams::Margin(params) => params.is_otp_active,
-            AccountParams::Safe(_) => false,
-        }
-    }
-}
-
-// ---------------------------------- params -----------------------------------
 
 /// Parameters of an account.
 #[grug::derive(Serde, Borsh)]
@@ -82,8 +64,6 @@ impl AccountParams {
     }
 }
 
-// ----------------------------------- type ------------------------------------
-
 /// Types of accounts the protocol supports.
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy, PartialOrd, Ord)]
@@ -107,13 +87,13 @@ impl PrimaryKey for AccountType {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<Cow<[u8]>> {
+    fn raw_keys(&self) -> Vec<RawKey> {
         let index = match self {
             AccountType::Spot => 0,
             AccountType::Margin => 1,
             AccountType::Safe => 2,
         };
-        vec![Cow::Owned(vec![index])]
+        vec![RawKey::Fixed8([index])]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {

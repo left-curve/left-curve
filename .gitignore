@@ -3,8 +3,8 @@
 .vscode/
 
 # Rust
-**/target/
-**/artifacts/
+artifacts/
+target/
 
 # Data used in testing
 **/testdata/
@@ -37,3 +37,8 @@ next-env.d.ts
 
 # Database
 indexer/.data
+
+# Solidity
+cache/
+dependencies/
+out/

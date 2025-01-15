@@ -1,11 +1,11 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "mock-ibc"
-main = "build/index.js"
-compatibility_date = "2024-10-04"
+compatibility_date  = "2024-10-04"
 compatibility_flags = ["nodejs_compat"]
+main                = "build/index.js"
+name                = "mock-ibc"
 
 [build]
-command = "pnpm build"
+command   = "pnpm build"
 watch_dir = "src"
 
 [observability]

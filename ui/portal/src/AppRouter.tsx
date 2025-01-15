@@ -1,47 +1,137 @@
+import {
+  Link,
+  Outlet,
+  RouterProvider,
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router";
+
+import { useAccount, useConfig, usePublicClient } from "@left-curve/react";
+
+import { AccountsRoute } from "./pages/accounts";
+import { AuthRoute } from "./pages/auth";
+
 import { Spinner } from "@dango/shared";
-import { Suspense, lazy } from "react";
-import { Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 
-import { NotFoundView } from "./views/NotFound";
+import type {
+  UseAccountReturnType,
+  UseConfigReturnType,
+  UsePublicClientReturnType,
+} from "@left-curve/react";
+import { useEffect } from "react";
 
-// Auth routes
-const AuthView = lazy(() => import(/* webpackPrefetch: true */ "./views/Auth"));
+export const AppRoute = createRoute({
+  id: "app-layout",
+  getParentRoute: () => RootRouter,
+  beforeLoad: async ({ context }) => {
+    const { account } = context;
+    if (!account?.isConnected) throw redirect({ to: "/auth/login" });
+  },
+  component: () => {
+    const { account, isConnected } = useAccount();
+    const navigate = useNavigate();
 
-// Portal routes
-const AccountView = lazy(() => import(/* webpackPrefetch: true */ "./views/Account"));
-const TransferView = lazy(() => import(/* webpackPrefetch: true */ "./views/Transfer"));
-const SwapView = lazy(() => import(/* webpackPrefetch: true */ "./views/Swap"));
-const PoolView = lazy(() => import(/* webpackPrefetch: true */ "./views/Pool"));
-const BlockExplorerView = lazy(() => import(/* webpackPrefetch: true */ "./views/BlockExplorer"));
-const AccountCreationView = lazy(
-  () => import(/* webpackPrefetch: true */ "./views/AccountCreation"),
-);
+    useEffect(() => {
+      if (!isConnected) {
+        navigate({ to: "/auth/login" });
+      }
+    }, [account]);
+
+    return (
+      <>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </>
+    );
+  },
+});
+
+export const AppRouteWithChildren = AppRoute.addChildren([
+  AccountsRoute,
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/",
+  }),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/transfer",
+  }).lazy(() => import("./pages/transfer").then((d) => d.TransferRoute)),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/swap",
+  }).lazy(() => import("./pages/swap").then((d) => d.SwapRoute)),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/block-explorer",
+  }).lazy(() => import("./pages/block-explorer").then((d) => d.BlockExplorerRoute)),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/amm",
+  }).lazy(() => import("./pages/amm").then((d) => d.AmmRoute)),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "/account-creation",
+  }).lazy(() => import("./pages/account-creation").then((d) => d.AccountCreationRoute)),
+
+  createRoute({
+    getParentRoute: () => AppRoute,
+    path: "$",
+    component: () => {
+      return (
+        <div className="w-full flex flex-1 justify-center items-center p-4">
+          <h3 className="text-center max-w-4xl typography-display-xs md:typography-display-xl">
+            Sorry, we couldn't find the page you were looking for.
+          </h3>
+        </div>
+      );
+    },
+  }),
+]);
+
+export interface RouterContext {
+  client?: UsePublicClientReturnType;
+  account?: UseAccountReturnType;
+  config?: UseConfigReturnType;
+}
+
+export const RootRouter = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ context }) => {
+    const { config } = context;
+    if (!config?.state.isMipdLoaded) {
+      await new Promise((resolve) => {
+        config?.subscribe(
+          (x) => x.isMipdLoaded,
+          (isMipdLoaded) => isMipdLoaded && resolve(null),
+        );
+      });
+    }
+  },
+});
+
+const router = createRouter({
+  routeTree: RootRouter.addChildren([AppRoute, AuthRoute]),
+  defaultPreload: "intent",
+  defaultPendingComponent: () => (
+    <div className="flex-1 w-full flex justify-center items-center">
+      <Spinner size="lg" color="pink" />
+    </div>
+  ),
+});
 
 export const AppRouter: React.FC = () => {
-  return (
-    <Suspense
-      fallback={
-        <div className="h-screen w-full flex justify-center items-center bg-surface-off-white-200">
-          <Spinner size="lg" color="pink" />
-        </div>
-      }
-    >
-      <Routes>
-        <Route path="/auth">
-          <Route path="login" element={<AuthView />} />
-          <Route path="signup" element={<AuthView />} />
-        </Route>
-        <Route path="/" element={<AppLayout />}>
-          <Route path="accounts" element={<AccountView />} />
-          <Route path="/account-creation" element={<AccountCreationView />} />
-          <Route path="/block-explorer" element={<BlockExplorerView />} />
-          <Route path="/transfer" element={<TransferView />} />
-          <Route path="/swap" element={<SwapView />} />
-          <Route path="/amm" element={<PoolView />} />
-          <Route path="*" element={<NotFoundView />} />
-        </Route>
-      </Routes>
-    </Suspense>
-  );
+  const account = useAccount();
+  const config = useConfig();
+  const client = usePublicClient();
+
+  return <RouterProvider router={router} context={{ account, config, client }} />;
 };

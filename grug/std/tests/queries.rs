@@ -1,4 +1,4 @@
-use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, ResultExt, TestBuilder};
+use grug::{Addr, Coins, ContractBuilder, Empty, Hash256, QuerierExt, ResultExt, TestBuilder};
 
 mod query_maker {
     use grug::{

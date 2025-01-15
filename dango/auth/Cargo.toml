@@ -1,21 +1,20 @@
 [package]
-name          = "dango-auth"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-auth"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
-alloy-dyn-abi         = { workspace = true }
-alloy-primitives      = { workspace = true }
+alloy                 = { workspace = true, features = ["dyn-abi", "eip712"] }
 anyhow                = { workspace = true }
 base64                = { workspace = true }
-grug                  = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
+grug                  = { workspace = true }
 
 [dev-dependencies]

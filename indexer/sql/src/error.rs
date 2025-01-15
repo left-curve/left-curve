@@ -37,6 +37,9 @@ pub enum IndexerError {
 
     #[error("hooks error: {0}")]
     Hooks(String),
+
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl From<IndexerError> for AppError {

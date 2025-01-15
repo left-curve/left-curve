@@ -1,11 +1,11 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "reverse-proxy-devnet"
-main = "src/index.ts"
-compatibility_date = "2024-10-04"
+compatibility_date  = "2024-10-04"
 compatibility_flags = ["nodejs_compat"]
+main                = "src/index.ts"
+name                = "reverse-proxy-devnet"
 
 [build]
-command = "pnpm build"
+command   = "pnpm build"
 watch_dir = "src"
 
 [observability]

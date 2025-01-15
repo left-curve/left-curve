@@ -3,7 +3,6 @@ use {
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event, has_permission,
         AppError, EventResult, GasTracker, Vm, _do_transfer, CHAIN_ID, CODES, CONFIG, CONTRACTS,
     },
-    grug_math::Inner,
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,
         MsgTransfer, StdResult, Storage,
@@ -80,7 +79,7 @@ where
 
                 Ok(ContractInfo {
                     code_hash: msg.code_hash,
-                    label: msg.label.clone().map(Inner::into_inner),
+                    label: msg.label,
                     admin: msg.admin,
                 })
             })?;

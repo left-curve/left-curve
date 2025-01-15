@@ -1,11 +1,11 @@
 import type { Account, Username } from "./account.js";
 import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
-import type { Emitter } from "./emitter.js";
-import type { KeyHash } from "./key.js";
-import type { SignDoc, SignedDoc } from "./signature.js";
+
+import type { Emitter, EventData } from "./emitter.js";
 import type { Signer } from "./signer.js";
 import type { Transport } from "./transports.js";
+import type { Prettify } from "./utils.js";
 
 export type ConnectorUId = string;
 
@@ -63,43 +63,49 @@ export type ConnectorEventMap = {
   };
 };
 
+export type ConnectorEvents = {
+  change: (event: EventData<ConnectorEventMap, "change">) => void;
+  connect: (event: EventData<ConnectorEventMap, "connect">) => void;
+  disconnect: (event: EventData<ConnectorEventMap, "disconnect">) => void;
+};
+
 export type CreateConnectorFn<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
   chain extends Chain = Chain,
   signer extends Signer = Signer,
-  signDoc extends SignDoc = SignDoc,
   transport extends Transport = Transport,
   properties extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
   chains: readonly [Chain, ...Chain[]];
   emitter: Emitter<ConnectorEventMap>;
   transports: Record<string, Transport>;
-}) => properties & {
-  readonly id: ConnectorId;
-  readonly name: string;
-  readonly type: ConnectorType;
-  readonly icon?: string;
-  readonly rdns?: string;
-  setup?(): Promise<void>;
-  connect(parameters: {
-    username: string;
-    chainId: Chain["id"];
-    challenge?: string;
-  }): Promise<void>;
-  disconnect(): Promise<void>;
-  getAccounts(): Promise<readonly Account[]>;
-  getClient(): Promise<Client<transport, chain, signer, any>>;
-  getKeyHash(): Promise<KeyHash>;
-  isAuthorized(): Promise<boolean>;
-  requestSignature(signDoc: signDoc): Promise<SignedDoc>;
-  switchChain?(parameters: { chainId: string }): Promise<Chain>;
-  onAccountsChanged?(accounts: string[]): void;
-  onChainChanged?(chainId: string): void;
-  onConnect(connectInfo: { chainId: string; username: Username }): void;
-  onDisconnect?(error?: Error | undefined): void;
-  onMessage?(message: { type: string; data?: unknown }): void;
-} & (provider extends undefined
-    ? object
-    : {
-        getProvider(parameters?: { chainId?: string | undefined } | undefined): Promise<provider>;
-      });
+}) => Prettify<
+  properties &
+    signer & {
+      readonly id: ConnectorId;
+      readonly name: string;
+      readonly type: ConnectorType;
+      readonly icon?: string;
+      readonly rdns?: string;
+      setup?(): Promise<void>;
+      connect(parameters: {
+        username: string;
+        chainId: Chain["id"];
+        challenge?: string;
+      }): Promise<void>;
+      disconnect(): Promise<void>;
+      getAccounts(): Promise<readonly Account[]>;
+      getClient(): Promise<Client<transport, chain, signer, any>>;
+      isAuthorized(): Promise<boolean>;
+      switchChain?(parameters: { chainId: string }): Promise<Chain>;
+      onAccountsChanged?(accounts: string[]): void;
+      onChainChanged?(chainId: string): void;
+      onConnect(connectInfo: { chainId: string; username: Username }): void;
+      onDisconnect?(error?: Error | undefined): void;
+      onMessage?(message: { type: string; data?: unknown }): void;
+    } & (provider extends undefined
+      ? object
+      : {
+          getProvider(parameters?: { chainId?: string | undefined } | undefined): Promise<provider>;
+        })
+>;

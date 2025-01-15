@@ -1,24 +1,21 @@
 [package]
-name          = "grug-jmt"
-description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
+description   = "A minimalist implementation of Jellyfish Merkle tree (JMT)"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-jmt"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [features]
-default = ["ics23"]
-# Include fuzzing test, which can take a long time to run.
-fuzzing = []
 # Include a method to generate ICS-23 compatible proofs.
-ics23 = ["dep:ics23"]
+ibc = ["ics23"]
 
 [dependencies]
-borsh        = { workspace = true, features = ["derive", "de_strict_order"] }
+borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-math    = { workspace = true }
 grug-storage = { workspace = true }
 grug-types   = { workspace = true }
@@ -29,5 +26,4 @@ thiserror    = { workspace = true }
 [dev-dependencies]
 hex-literal = { workspace = true }
 proptest    = { workspace = true }
-rand        = { workspace = true }
 test-case   = { workspace = true }

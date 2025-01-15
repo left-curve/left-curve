@@ -237,12 +237,12 @@ where
 
     /// Wait for all blocks to be indexed
     pub fn wait_for_finish(&self) {
-        for _ in 0..10 {
+        for _ in 0..100 {
             if self.blocks.lock().expect("Can't lock blocks").is_empty() {
                 break;
             }
 
-            sleep(Duration::from_millis(10));
+            sleep(Duration::from_millis(100));
         }
     }
 }
@@ -447,7 +447,10 @@ where
 
             let db = context.db.begin().await?;
             let block_height = block_to_index.block.info.height;
-            block_to_index.save(&db).await?;
+            if let Err(_err) = block_to_index.save(&db).await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(error = %_err, "can't save to db in post_indexing");
+            }
             db.commit().await?;
 
             hooks.post_indexing(context, block_height).map_err(|e| {

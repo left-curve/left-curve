@@ -1,9 +1,24 @@
 {
+  "[astro]": {
+    "editor.defaultFormatter": "astro-build.astro-vscode",
+    "editor.formatOnSave": true
+  },
   "[json]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
   "[jsonc]": {
     "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  "[solidity]": {
+    "editor.tabSize": 4
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
   },
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome",
@@ -11,18 +26,6 @@
   },
   "[typescriptreact]": {
     "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true
-  },
-  "[astro]": {
-    "editor.defaultFormatter": "astro-build.astro-vscode",
-    "editor.formatOnSave": true
-  },
-  "[toml]": {
-    "editor.defaultFormatter": "tamasfe.even-better-toml",
-    "editor.formatOnSave": false
-  },
-  "[rust]": {
-    "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true
   },
   "cSpell.ignorePaths": ["**/rustlib/**", "**/package.json"],
@@ -42,7 +45,13 @@
     "timelocked",
     "uusdc"
   ],
+  "files.associations": {
+    ".env*": "dotenv"
+  },
+  "github.copilot.enable": {
+    "*": true,
+    "dotenv": false
+  },
   "markdown.extension.toc.updateOnSave": false,
-  "rust-analyzer.check.command": "clippy",
   "rust-analyzer.rustfmt.extraArgs": ["+nightly"]
 }

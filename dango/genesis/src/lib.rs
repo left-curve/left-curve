@@ -4,7 +4,7 @@ use {
         amm::{self, FeeRate},
         auth::Key,
         bank,
-        config::{AppAddresses, AppConfig, DANGO_DENOM},
+        config::{AppAddresses, AppConfig},
         ibc,
         lending::{self, MarketUpdates},
         oracle::{
@@ -16,8 +16,9 @@ use {
     grug::{
         btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
         Denom, Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message,
-        NonZero, Permission, Permissions, StdResult, Udec128, Uint128, GENESIS_SENDER,
+        NonZero, Permission, Permissions, ResultExt, StdResult, Udec128, Uint128, GENESIS_SENDER,
     },
+    hyperlane_types::{hooks, isms, mailbox, recipients::warp},
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
@@ -31,6 +32,7 @@ pub struct Contracts {
     pub account_factory: Addr,
     pub amm: Addr,
     pub bank: Addr,
+    pub hyperlane: Hyperlane<Addr>,
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
@@ -47,6 +49,7 @@ pub struct Codes<T> {
     pub account_spot: T,
     pub amm: T,
     pub bank: T,
+    pub hyperlane: Hyperlane<T>,
     pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
@@ -55,9 +58,19 @@ pub struct Codes<T> {
     pub vesting: T,
 }
 
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub struct Hyperlane<T> {
+    pub fee: T,
+    pub ism: T,
+    pub mailbox: T,
+    pub merkle: T,
+    pub warp: T,
+}
+
 pub struct GenesisUser {
     pub key: Key,
-    pub key_hash: Hash160,
+    pub key_hash: Hash256,
     pub balances: Coins,
 }
 
@@ -100,6 +113,31 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_bank_query(Box::new(dango_bank::bank_query))
         .build();
 
+    let fee = ContractBuilder::new(Box::new(hyperlane_fee::instantiate))
+        .with_execute(Box::new(hyperlane_fee::execute))
+        .with_query(Box::new(hyperlane_fee::query))
+        .build();
+
+    let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
+        .with_execute(Box::new(hyperlane_ism::execute))
+        .with_query(Box::new(hyperlane_ism::query))
+        .build();
+
+    let mailbox = ContractBuilder::new(Box::new(hyperlane_mailbox::instantiate))
+        .with_execute(Box::new(hyperlane_mailbox::execute))
+        .with_query(Box::new(hyperlane_mailbox::query))
+        .build();
+
+    let merkle = ContractBuilder::new(Box::new(hyperlane_merkle::instantiate))
+        .with_execute(Box::new(hyperlane_merkle::execute))
+        .with_query(Box::new(hyperlane_merkle::query))
+        .build();
+
+    let warp = ContractBuilder::new(Box::new(hyperlane_warp::instantiate))
+        .with_execute(Box::new(hyperlane_warp::execute))
+        .with_query(Box::new(hyperlane_warp::query))
+        .build();
+
     let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
         .with_execute(Box::new(dango_ibc_transfer::execute))
         .build();
@@ -139,6 +177,13 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_spot,
         amm,
         bank,
+        hyperlane: Hyperlane {
+            fee,
+            ism,
+            mailbox,
+            merkle,
+            warp,
+        },
         ibc_transfer,
         lending,
         oracle,
@@ -155,6 +200,11 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
+    let fee = fs::read(artifacts_dir.join("hyperlane_fee.wasm"))?;
+    let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
+    let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
+    let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
+    let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
@@ -169,6 +219,13 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_spot,
         amm,
         bank,
+        hyperlane: Hyperlane {
+            fee,
+            ism,
+            mailbox,
+            merkle,
+            warp,
+        },
         ibc_transfer,
         lending,
         oracle,
@@ -203,6 +260,11 @@ where
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let hyperlane_fee_code_hash = upload(&mut msgs, codes.hyperlane.fee);
+    let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
+    let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
+    let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
+    let hyperlane_warp_code_hash = upload(&mut msgs, codes.hyperlane.warp);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
@@ -245,6 +307,69 @@ where
             Ok((username.clone(), address))
         })
         .collect::<StdResult<BTreeMap<_, _>>>()?;
+
+    // Derive the Hyperlane mailbox contract address.
+    // This is needed for the hook and recipient contracts.
+    let mailbox = Addr::derive(
+        GENESIS_SENDER,
+        hyperlane_mailbox_code_hash,
+        b"hyperlane/mailbox",
+    );
+
+    // Instantiate Hyperlane fee hook.
+    let fee = instantiate(
+        &mut msgs,
+        hyperlane_fee_code_hash,
+        &hooks::fee::InstantiateMsg { mailbox },
+        "hyperlane/hook/fee",
+        "hyperlane/hook/fee",
+    )?;
+
+    // Instantiate Hyperlane merkle hook.
+    let merkle = instantiate(
+        &mut msgs,
+        hyperlane_merkle_code_hash,
+        &hooks::merkle::InstantiateMsg { mailbox },
+        "hyperlane/hook/merkle",
+        "hyperlane/hook/merkle",
+    )?;
+
+    // Instantiate Hyperlane message ID multisig ISM.
+    let ism = instantiate(
+        &mut msgs,
+        hyperlane_ism_code_hash,
+        &isms::multisig::InstantiateMsg {
+            validator_sets: btree_map! {},
+        },
+        "hyperlane/ism/multisig",
+        "hyperlane/ism/multisig",
+    )?;
+
+    // Instantiate Hyperlane Warp contract.
+    let warp = instantiate(
+        &mut msgs,
+        hyperlane_warp_code_hash,
+        &warp::InstantiateMsg { mailbox },
+        "hyperlane/warp",
+        "hyperlane/warp",
+    )?;
+
+    // Instantiate Hyperlane mailbox. Ensure address is the same as the predicted.
+    instantiate(
+        &mut msgs,
+        hyperlane_mailbox_code_hash,
+        &mailbox::InstantiateMsg {
+            config: mailbox::Config {
+                local_domain: 88888888, // TODO
+                default_ism: ism,
+                default_hook: fee,
+                required_hook: merkle,
+            },
+        },
+        "hyperlane/mailbox",
+        "hyperlane/mailbox",
+    )
+    .should_succeed_and_equal(mailbox);
 
     // Instantiate the IBC transfer contract.
     let ibc_transfer = instantiate(
@@ -320,9 +445,10 @@ where
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
         amm::NAMESPACE.clone()           => amm,
-        ibc::transfer::NAMESPACE.clone()  => ibc_transfer,
+        ibc::transfer::NAMESPACE.clone() => ibc_transfer,
         lending::NAMESPACE.clone()       => lending,
         token_factory::NAMESPACE.clone() => token_factory,
+        warp::NAMESPACE.clone()          => warp,
     };
 
     // Instantiate the bank contract.
@@ -400,6 +526,13 @@ where
         account_factory,
         amm,
         bank,
+        hyperlane: Hyperlane {
+            fee,
+            ism,
+            mailbox,
+            merkle,
+            warp,
+        },
         ibc_transfer,
         lending,
         oracle,
@@ -423,7 +556,6 @@ where
     };
 
     let app_config = AppConfig {
-        dango: DANGO_DENOM.clone(),
         addresses: AppAddresses {
             account_factory,
             ibc_transfer,

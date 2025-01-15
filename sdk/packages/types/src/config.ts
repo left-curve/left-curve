@@ -1,7 +1,13 @@
 import type { Chain, ChainId } from "./chain.js";
 import type { Client } from "./client.js";
 import type { AnyCoin, Denom } from "./coin.js";
-import type { Connection, Connector, ConnectorUId, CreateConnectorFn } from "./connector.js";
+import type {
+  Connection,
+  Connector,
+  ConnectorEvents,
+  ConnectorUId,
+  CreateConnectorFn,
+} from "./connector.js";
 import type { MipdStore } from "./mipd.js";
 import type { Storage } from "./storage.js";
 import type { Transport } from "./transports.js";
@@ -51,7 +57,7 @@ export type Config<
   getClient<chainId extends chains[number]["id"]>(parameters?: {
     chainId?: chainId | chains[number]["id"] | undefined;
   }): Client<transports[chainId], chains[number]>;
-  _internal: Internal;
+  _internal: Internal<chains, transports>;
 };
 
 export type CreateConfigParameters<
@@ -87,10 +93,18 @@ export type StoreApi = {
   };
 };
 
-type Internal = {
+type Internal<
+  chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
+  transports extends Record<chains[number]["id"], Transport> = Record<
+    chains[number]["id"],
+    Transport
+  >,
+> = {
   readonly ssr: boolean;
   readonly mipd: MipdStore | undefined;
   readonly store: StoreApi;
+  readonly transports: transports;
+  readonly events: ConnectorEvents;
   connectors: {
     setup: (connectorFn: CreateConnectorFn) => Connector;
     setState(value: Connector[] | ((state: Connector[]) => Connector[])): void;

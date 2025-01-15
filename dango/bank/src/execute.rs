@@ -3,8 +3,8 @@ use {
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
-        Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response, StdResult,
-        Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Denom, IsZero, MutableCtx, Number, NumberConst, Part, QuerierExt, Response,
+        StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::HashMap,
 };
@@ -64,11 +64,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     // Only chain owner can grant namespace.
     ensure!(
-        ctx.sender == cfg.owner,
+        ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
 
@@ -124,11 +122,10 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
         // The denom is a top-level denom (i.e. doesn't have a namespace).
         // Only the chain owner can mint/burn.
         None => {
-            let cfg = ctx.querier.query_config()?;
             ensure!(
-                ctx.sender == cfg.owner,
+                ctx.sender == ctx.querier.query_owner()?,
                 "only chain owner can mint or burn top-level denoms"
-            )
+            );
         },
     }
 
@@ -142,11 +139,9 @@ fn force_transfer(
     denom: Denom,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
-    let cfg = ctx.querier.query_config()?;
-
     // Only taxman can force transfer.
     ensure!(
-        ctx.sender == cfg.taxman,
+        ctx.sender == ctx.querier.query_taxman()?,
         "you don't have the right, O you don't have the right"
     );
 
