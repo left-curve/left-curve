@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "../../../../core/src/actions/queryWasmSmart.js";
-import { getAppConfig } from "./getAppConfig.js";
+import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
 
-import type { Chain, Client, Signer, Transport, User, Username } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { AppConfig, User, Username } from "../../../types/index.js";
 
 export type GetUserParameters = {
   username: Username;
@@ -25,7 +24,7 @@ export async function getUser<chain extends Chain | undefined, signer extends Si
   const { username, height = 0 } = parameters;
   const msg = { user: { username } };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

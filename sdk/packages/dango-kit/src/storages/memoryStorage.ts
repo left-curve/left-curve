@@ -1,4 +1,4 @@
-import type { AbstractStorage } from "@left-curve/types";
+import type { AbstractStorage } from "../types/storage.js";
 
 export function createMemoryStorage(): AbstractStorage {
   const store = new Map<string, unknown>();

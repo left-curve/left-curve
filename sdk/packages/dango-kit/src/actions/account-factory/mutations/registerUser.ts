@@ -1,19 +1,9 @@
-import { simulate } from "../../../../core/src/actions/simulate.js";
-import { type BroadcastTxSyncReturnType, broadcastTxSync } from "../app/broadcastTxSync.js";
-import { getAppConfig } from "./getAppConfig.js";
+import { getAppConfig, simulate } from "@left-curve/sdk";
+import type { Chain, Client, Hex, Signer, Transport } from "@left-curve/types";
+import { broadcastTxSync } from "../../app/broadcastTxSync.js";
 
-import type {
-  Chain,
-  Client,
-  Credential,
-  Hex,
-  Key,
-  KeyHash,
-  Signer,
-  Transport,
-  Username,
-} from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { AppConfig, Key, KeyHash, Username } from "../../../types/index.js";
+import type { BroadcastTxSyncReturnType } from "../../app/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
   username: Username;
@@ -40,7 +30,7 @@ export async function registerUser<
 ): RegisterUserReturnType {
   const { username, keyHash, key } = parameters;
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   const registerMsg = {
     registerUser: {

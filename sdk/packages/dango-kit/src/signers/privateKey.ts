@@ -1,17 +1,14 @@
 import { Ed25519, sha256 } from "@left-curve/crypto";
 import { Secp256k1 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
-import { createKeyHash } from "../../../dango-kit/src/account/index.js";
+import { createKeyHash } from "../account/key.js";
+import { KeyAlgo } from "../types/key.js";
 
 import type { KeyPair } from "@left-curve/crypto";
-import {
-  type JsonValue,
-  KeyAlgo,
-  type KeyAlgoType,
-  type KeyHash,
-  type SignDoc,
-  type Signer,
-} from "@left-curve/types";
+import type { JsonValue } from "@left-curve/types";
+import type { KeyAlgoType, KeyHash } from "../types/key.js";
+import type { SignDoc } from "../types/signature.js";
+import type { Signer } from "../types/signer.js";
 
 export class PrivateKeySigner implements Signer {
   #keyPair: KeyPair;

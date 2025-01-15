@@ -1,8 +1,6 @@
-import { queryWasmSmart } from "../../../../core/src/actions/queryWasmSmart.js";
-import { getAppConfig } from "./getAppConfig.js";
-
-import type { AccountInfo, Address, Chain, Client, Signer, Transport } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { AccountInfo, AppConfig } from "../../../types/index.js";
 
 export type GetAllAccountInfoParameters = {
   startAfter?: Address;
@@ -30,7 +28,7 @@ export async function getAllAccountInfo<
   const { startAfter, limit, height = 0 } = parameters;
   const msg = { accounts: { startAfter, limit } };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

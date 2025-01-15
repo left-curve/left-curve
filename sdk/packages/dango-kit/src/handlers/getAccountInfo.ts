@@ -9,7 +9,8 @@ import {
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
-import type { Config, Prettify } from "@left-curve/types";
+import type { Prettify } from "@left-curve/types";
+import type { Config } from "../types/store.js";
 
 export type { GetAccountInfoErrorType };
 

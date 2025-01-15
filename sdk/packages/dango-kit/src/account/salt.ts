@@ -1,12 +1,8 @@
 import { decodeBase64, decodeHex, encodeUtf8 } from "@left-curve/encoding";
-import {
-  type AccountIndex,
-  type Key,
-  type KeyHash,
-  KeyTag,
-  type OneRequired,
-  type Username,
-} from "@left-curve/types";
+import type { OneRequired } from "@left-curve/types";
+import type { AccountIndex, Username } from "../types/account.js";
+import type { Key, KeyHash } from "../types/key.js";
+import { KeyTag } from "../types/key.js";
 
 type CreateAccountSaltParameters = {
   key: Key;

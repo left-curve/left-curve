@@ -1,12 +1,12 @@
+import { queryWasmSmart } from "@left-curve/sdk";
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
-import { queryWasmSmart } from "../../../../core/src/actions/queryWasmSmart.js";
 
-export type GetAccountNonceParameters = {
+export type GetAccountSeenNoncesParameters = {
   address: Address;
   height?: number;
 };
 
-export type GetAccountNonceReturnType = Promise<[number, number[]]>;
+export type GetAccountSeenNoncesReturnType = Promise<[number, number[]]>;
 
 /**
  * Get the most recent nonces that have been used to send transactions.
@@ -20,8 +20,8 @@ export async function getAccountSeenNonces<
   signer extends Signer | undefined,
 >(
   client: Client<Transport, chain, signer>,
-  parameters: GetAccountNonceParameters,
-): GetAccountNonceReturnType {
+  parameters: GetAccountSeenNoncesParameters,
+): GetAccountSeenNoncesReturnType {
   const { address, height = 0 } = parameters;
   const msg = { seenNonces: {} };
   const nonces = await queryWasmSmart<number[], chain, signer>(client, {

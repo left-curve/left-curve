@@ -1,8 +1,7 @@
-import { queryWasmSmart } from "../../../../core/src/actions/queryWasmSmart.js";
-import { getAppConfig } from "./getAppConfig.js";
+import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
+import type { AccountIndex, AppConfig, Username } from "../../../types/index.js";
 
-import type { AccountIndex, Chain, Client, Signer, Transport, Username } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import type { Chain, Client, Signer, Transport } from "@left-curve/types";
 
 export type GetNextAccountIndexParameters = {
   username: Username;
@@ -29,7 +28,7 @@ export async function getNextAccountIndex<
   const { username, height = 0 } = parameters;
   const msg = { nextAccountIndex: { username } };
 
-  const { addresses } = await getAppConfig<DangoAppConfigResponse>(client);
+  const { addresses } = await getAppConfig<AppConfig>(client);
 
   return await queryWasmSmart(client, { contract: addresses.accountFactory, msg, height });
 }

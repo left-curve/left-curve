@@ -1,13 +1,12 @@
 import { Secp256k1, sha256 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
 
-import type {
-  JsonValue,
-  SessionCredential,
-  SignDoc,
-  Signer,
-  SigningSession,
-} from "@left-curve/types";
+import type { JsonValue } from "@left-curve/types";
+
+import type { SessionCredential } from "../types/credential.js";
+import type { SigningSession } from "../types/session.js";
+import type { SignDoc } from "../types/signature.js";
+import type { Signer } from "../types/signer.js";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
   const { sessionInfo, authorization, privateKey, keyHash } = session;
