@@ -1,14 +1,10 @@
 use {
-    super::{
-        flatten_commitment_status, flatten_tx_events, EventId, EvtConfigure, FlatCategory,
-        FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
-        FlatEventStatusDiscriminants, FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron,
-        FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate,
-        FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold, FlattenStatus,
-    },
     crate::{
-        BlockOutcome, CommitmentStatus, ContractEvent, Defined, EvtUpload, MaybeDefined, TxEvents,
-        Undefined,
+        ContractEvent, Defined, EvtConfigure, EvtUpload, FlatCommitmentStatus, FlatEvent,
+        FlatEventInfo, FlatEventStatus, FlatEventStatusDiscriminants, FlatEvtAuthenticate,
+        FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest,
+        FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold,
+        MaybeDefined, Undefined,
     },
     std::marker::PhantomData,
 };
@@ -182,46 +178,6 @@ impl<T> FilterResult<T> {
         T: std::fmt::Debug,
     {
         self.events.try_into().unwrap()
-    }
-}
-
-// -------------------------------- SearchEvent --------------------------------
-
-pub trait SearchEvent: Sized {
-    /// Create a [`EventFilter`] to search for specific events.
-    fn search_event<F>(self) -> EventFilter<F>
-    where
-        FlatEvent: AsVariant<F>,
-    {
-        EventFilter::new(self.flat())
-    }
-
-    fn flat(self) -> Vec<FlatEventInfo>;
-}
-
-impl SearchEvent for TxEvents {
-    fn flat(self) -> Vec<FlatEventInfo> {
-        flatten_tx_events(self, 0, 0)
-    }
-}
-
-impl<T> SearchEvent for CommitmentStatus<T>
-where
-    T: FlattenStatus,
-{
-    fn flat(self) -> Vec<FlatEventInfo> {
-        flatten_commitment_status(&mut EventId::new(0, FlatCategory::Tx, 0, 0), self)
-    }
-}
-
-impl SearchEvent for BlockOutcome {
-    fn flat(self) -> Vec<FlatEventInfo> {
-        self.tx_outcomes
-            .into_iter()
-            .fold(vec![], |mut acc, tx_outcome| {
-                acc.extend(tx_outcome.events.flat());
-                acc
-            })
     }
 }
 
