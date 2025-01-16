@@ -1,4 +1,4 @@
-import { getAccountInfo as getAccountInfoSdkAction } from "../account-factory/queries/getAccountInfo.js";
+import { getAccountInfo as getAccountInfoSdkAction } from "../../actions/account-factory/queries/getAccountInfo.js";
 import { getPublicClient } from "./getPublicClient.js";
 
 import type { Address, ChainId } from "@left-curve/types";

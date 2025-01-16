@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Client, Transport } from "@left-curve/types";
 
 import {
   type RegisterUserParameters,
@@ -86,11 +86,9 @@ import {
   getUsersByKeyHash,
 } from "./queries/getUsersByKeyHash.js";
 
-export type AccountFactoryQueryActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = Signer,
-> = {
+import type { Chain, Signer } from "../../types/index.js";
+
+export type AccountFactoryQueryActions = {
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
   getAccountsByUsername: (args: GetAccountsByUsernameParameters) => GetAccountsByUsernameReturnType;
   getAccountSeenNonces: (args: GetAccountSeenNoncesParameters) => GetAccountSeenNoncesReturnType;
@@ -112,49 +110,38 @@ export type AccountFactoryQueryActions<
   getUsersByKeyHash: (args: GetUsersByKeyhashParameters) => GetUsersByKeyHashReturnType;
 };
 
-export type AccountFactoryMutationActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = Signer,
-> = {
+export type AccountFactoryMutationActions = {
   registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
   registerAccount: (args: RegisterAccountParameters) => RegisterUserReturnType;
 };
 
-export function accountFactoryQueryActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
->(client: Client<transport, chain, signer>): AccountFactoryQueryActions<transport, chain, signer> {
+export function accountFactoryQueryActions<transport extends Transport = Transport>(
+  client: Client<transport, Chain, undefined>,
+): AccountFactoryQueryActions {
   return {
-    // queries
-    getAccountInfo: (args) => getAccountInfo<chain, signer>(client, args),
-    getAccountsByUsername: (args) => getAccountsByUsername<chain, signer>(client, args),
-    getAccountSeenNonces: (args) => getAccountSeenNonces<chain, signer>(client, args),
-    getAccountTypeCodeHash: (args) => getAccountTypeCodeHash<chain, signer>(client, args),
-    getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes<chain, signer>(client, args),
-    getAllAccountInfo: (args) => getAllAccountInfo<chain, signer>(client, args),
-    getDeposit: (args) => getDeposit<chain, signer>(client, args),
-    getDeposits: (args) => getDeposits<chain, signer>(client, args),
-    getKey: (args) => getKey<chain, signer>(client, args),
-    getKeys: (args) => getKeys<chain, signer>(client, args),
-    getKeysByUsername: (args) => getKeysByUsername<chain, signer>(client, args),
-    getNextAccountAddress: (args) => getNextAccountAddress<chain, signer>(client, args),
-    getNextAccountIndex: (args) => getNextAccountIndex<chain, signer>(client, args),
-    getUser: (args) => getUser<chain, signer>(client, args),
-    getUsersByKeyHash: (args) => getUsersByKeyHash<chain, signer>(client, args),
+    getAccountInfo: (args) => getAccountInfo(client, args),
+    getAccountsByUsername: (args) => getAccountsByUsername(client, args),
+    getAccountSeenNonces: (args) => getAccountSeenNonces(client, args),
+    getAccountTypeCodeHash: (args) => getAccountTypeCodeHash(client, args),
+    getAccountTypeCodeHashes: (args) => getAccountTypeCodeHashes(client, args),
+    getAllAccountInfo: (args) => getAllAccountInfo(client, args),
+    getDeposit: (args) => getDeposit(client, args),
+    getDeposits: (args) => getDeposits(client, args),
+    getKey: (args) => getKey(client, args),
+    getKeys: (args) => getKeys(client, args),
+    getKeysByUsername: (args) => getKeysByUsername(client, args),
+    getNextAccountAddress: (args) => getNextAccountAddress(client, args),
+    getNextAccountIndex: (args) => getNextAccountIndex(client, args),
+    getUser: (args) => getUser(client, args),
+    getUsersByKeyHash: (args) => getUsersByKeyHash(client, args),
   };
 }
 
-export function accountFactoryMutationActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
->(
-  client: Client<transport, chain, signer>,
-): AccountFactoryMutationActions<transport, chain, signer> {
+export function accountFactoryMutationActions<transport extends Transport = Transport>(
+  client: Client<transport, Chain, Signer>,
+): AccountFactoryMutationActions {
   return {
-    registerUser: (args) => registerUser<chain, signer>(client, args),
-    registerAccount: (args) => registerAccount<chain, signer>(client, args),
+    registerUser: (args) => registerUser(client, args),
+    registerAccount: (args) => registerAccount(client, args),
   };
 }

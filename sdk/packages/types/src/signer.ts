@@ -6,8 +6,8 @@ export type Signer<
   Credential extends Json | undefined = Json | undefined,
 > = {
   signArbitrary: (payload: JsonValue) => Promise<ArbitrarySignatureOutcome<Credential>>;
-  signTx: (
-    signDoc: SignDoc<Metadata>,
+  signTx: <T extends Metadata>(
+    signDoc: SignDoc<T>,
     extra: unknown,
   ) => Promise<SignatureOutcome<Metadata, Credential>>;
 };

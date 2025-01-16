@@ -27,11 +27,6 @@
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
-    "./chains": {
-      "types": "./build/chains.d.ts",
-      "import": "./build/chains.js",
-      "default": "./build/chains.cjs"
-    },
     "./handlers": {
       "types": "./build/handlers/index.d.ts",
       "import": "./build/handlers/index.js",
@@ -40,9 +35,6 @@
   },
   "typesVersions": {
     "*": {
-      "chains": [
-        "./build/chains.d.ts"
-      ],
       "handlers": [
         "./build/handlers/index.d.ts"
       ]

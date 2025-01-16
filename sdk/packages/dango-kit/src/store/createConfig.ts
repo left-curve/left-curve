@@ -7,16 +7,16 @@ import { uid } from "@left-curve/utils";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
-import pkgJson from "../package.json" with { type: "json" };
+import pkgJson from "../../package.json" with { type: "json" };
 
 import type { AnyCoin, Chain, Client, Transport } from "@left-curve/types";
-import { eip6963 } from "./connectors/eip6963.js";
+import { eip6963 } from "../connectors/eip6963.js";
 import { createMipdStore } from "./mipd.js";
 
-import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
-import type { EIP6963ProviderDetail } from "./types/eip6963.js";
-import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
-import { ConnectionStatus } from "./types/store.js";
+import type { Connector, ConnectorEventMap, CreateConnectorFn } from "../types/connector.js";
+import type { EIP6963ProviderDetail } from "../types/eip6963.js";
+import type { Config, CreateConfigParameters, State, StoreApi } from "../types/store.js";
+import { ConnectionStatus } from "../types/store.js";
 
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],

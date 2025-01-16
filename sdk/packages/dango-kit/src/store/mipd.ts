@@ -3,8 +3,8 @@
 import { debounce } from "@left-curve/utils";
 
 import "@left-curve/types/window";
-import type { EIP6963AnnounceProviderEvent, EIP6963ProviderDetail } from "./types/eip6963.js";
-import type { MipdStore, MipdStoreListener } from "./types/mipd.js";
+import type { EIP6963AnnounceProviderEvent, EIP6963ProviderDetail } from "../types/eip6963.js";
+import type { MipdStore, MipdStoreListener } from "../types/mipd.js";
 
 export function requestProviders(
   listener: (providerDetail: EIP6963ProviderDetail) => void,

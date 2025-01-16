@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Client, Transport } from "@left-curve/types";
 import {
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -37,19 +37,13 @@ import {
   computeAddress,
 } from "./queries/computeAddress.js";
 
-export type AppQueryActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = Signer,
-> = {
+import type { Chain, Signer } from "../../types/index.js";
+
+export type AppQueryActions = {
   computeAddress(args: ComputeAddressParameters): ComputeAddressReturnType;
 };
 
-export type AppMutationActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
-> = {
+export type AppMutationActions = {
   broadcastTxSync(args: BroadcastTxSyncParameters): BroadcastTxSyncReturnType;
   execute(args: ExecuteParameters): ExecuteReturnType;
   instantiate(args: InstantiateParameters): InstantiateReturnType;
@@ -62,21 +56,17 @@ export type AppMutationActions<
   transfer(args: TransferParameters): TransferReturnType;
 };
 
-export function appQueryActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
->(_client: Client<transport, chain, signer>): AppQueryActions<transport, chain, signer> {
+export function appQueryActions<transport extends Transport = Transport>(
+  _client: Client<transport, Chain, undefined>,
+): AppQueryActions {
   return {
     computeAddress: (args: ComputeAddressParameters) => computeAddress(args),
   };
 }
 
-export function appMutationActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
->(client: Client<transport, chain, signer>): AppMutationActions<transport, chain, signer> {
+export function appMutationActions<transport extends Transport = Transport>(
+  client: Client<transport, Chain, Signer>,
+): AppMutationActions {
   return {
     broadcastTxSync: (args) => broadcastTxSync(client, args),
     execute: (args) => execute(client, args),

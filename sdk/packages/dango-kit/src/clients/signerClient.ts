@@ -1,40 +1,32 @@
-import type { Chain, Client, ClientConfig, RequiredBy, Signer, Transport } from "@left-curve/types";
+import type { Client, ClientConfig, RequiredBy, Transport } from "@left-curve/types";
 
-import { type PublicActions, publicActions } from "../../../core/src/actions/publicActions.js";
-import { createBaseClient } from "../../../core/src/clients/baseClient.js";
-import { type SignerActions, signerActions } from "../actions/signerActions.js";
+import { createBaseClient, grugActions } from "@left-curve/sdk";
+import type { Chain, Signer } from "../types/index.js";
 
-export type SignerClientConfig<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  signer extends Signer = Signer,
-> = RequiredBy<ClientConfig<transport, chain, signer>, "signer" | "username">;
-
-export type SignerClient<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  signer extends Signer = Signer,
-> = Client<
-  transport,
-  chain,
-  signer,
-  PublicActions<transport, chain> & SignerActions<transport, chain>
+export type SignerClientConfig<transport extends Transport = Transport> = RequiredBy<
+  ClientConfig<transport, Chain, Signer>,
+  "signer"
 >;
 
-export function createSignerClient<
-  transport extends Transport,
-  chain extends Chain | undefined = undefined,
-  signer extends Signer = Signer,
->(
-  parameters: SignerClientConfig<transport, chain, signer>,
-): SignerClient<transport, chain, signer> {
+export type SignerClient<transport extends Transport = Transport> = Client<
+  transport,
+  Chain,
+  Signer,
+  PublicActions<transport, Chain> & SignerActions<transport, Chain>
+>;
+
+export function createSignerClient<transport extends Transport = Transport>(
+  parameters: SignerClientConfig<transport>,
+): SignerClient<transport> {
   const { name = "Signer Client", type = "signer" } = parameters;
 
   const client = createBaseClient({
     ...parameters,
     name,
     type,
-  });
+  })
+    .extend(grugActions)
+    .extend({});
 
-  return client.extend(publicActions).extend(signerActions);
+  return client as SignerClient<transport>;
 }

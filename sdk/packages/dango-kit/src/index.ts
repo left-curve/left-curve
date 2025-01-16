@@ -1,13 +1,19 @@
 export { http } from "@left-curve/sdk";
-export { createConfig } from "./createConfig.js";
-export { hydrate } from "./hydrate.js";
+export { createConfig } from "./store/createConfig.js";
+export { hydrate } from "./store/hydrate.js";
+
+/* -------------------------------------------------------------------------- */
+/*                                   Chains                                   */
+/* -------------------------------------------------------------------------- */
+
+export { devnet } from "@left-curve/sdk/chains";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Storage                                  */
 /* -------------------------------------------------------------------------- */
 
-export { createMemoryStorage } from "./storages/memoryStorage.js";
-export { createStorage } from "./storages/createStorage.js";
+export { createMemoryStorage } from "./store/storages/memoryStorage.js";
+export { createStorage } from "./store/storages/createStorage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */
@@ -24,80 +30,80 @@ export { eip1193 } from "./connectors/eip1193.js";
 export {
   type GetChainIdReturnType,
   getChainId,
-} from "./actions/store/getChainId.js";
+} from "./store/actions/getChainId.js";
 
 export {
   type WatchChainIdParameters,
   type WatchChainIdReturnType,
   watchChainId,
-} from "./actions/store/watchChainId.js";
+} from "./store/actions/watchChainId.js";
 
 export {
   type ConnectParameters,
   type ConnectReturnType,
   type ConnectErrorType,
   connect,
-} from "./actions/store/connect.js";
+} from "./store/actions/connect.js";
 
 export {
   type DisconnectParameters,
   type DisconnectReturnType,
   type DisconnectErrorType,
   disconnect,
-} from "./actions/store/disconnect.js";
+} from "./store/actions/disconnect.js";
 
 export {
   type GetConnectorsReturnType,
   getConnectors,
-} from "./actions/store/getConnectors.js";
+} from "./store/actions/getConnectors.js";
 
 export {
   type GetAccountReturnType,
   getAccount,
-} from "./actions/store/getAccount.js";
+} from "./store/actions/getAccount.js";
 
 export {
   type WatchAccountParameters,
   type WatchAccountReturnType,
   watchAccount,
-} from "./actions/store/watchAccount.js";
+} from "./store/actions/watchAccount.js";
 
 export {
   type GetBlockExplorerParameters,
   type GetBlockExplorerReturnType,
   type GetBlockExplorerErrorType,
   getBlockExplorer,
-} from "./actions/store/getBlockExplorer.js";
+} from "./store/actions/getBlockExplorer.js";
 
 export {
   type GetBlockParameters,
   type GetBlockReturnType,
   type GetBlockErrorType,
   getBlock,
-} from "./actions/store/getBlock.js";
+} from "./store/actions/getBlock.js";
 
 export {
   type GetPublicClientParameters,
   type GetPublicClientReturnType,
   type GetPublicClientErrorType,
   getPublicClient,
-} from "./actions/store/getPublicClient.js";
+} from "./store/actions/getPublicClient.js";
 
 export {
   type WatchPublicClientParameters,
   type WatchPublicClientReturnType,
   watchPublicClient,
-} from "./actions/store/watchPublicClient.js";
+} from "./store/actions/watchPublicClient.js";
 
 export {
   type GetConnectorClientParameters,
   type GetConnectorClientReturnType,
   type GetConnectorClientErrorType,
   getConnectorClient,
-} from "./actions/store/getConnectorClient.js";
+} from "./store/actions/getConnectorClient.js";
 
 export {
   type ChangeAccountParameters,
   type ChangeAccountReturnType,
   changeAccount,
-} from "./actions/store/changeAccount.js";
+} from "./store/actions/changeAccount.js";

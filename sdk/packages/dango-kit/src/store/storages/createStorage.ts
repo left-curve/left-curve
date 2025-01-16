@@ -1,5 +1,5 @@
 import { deserializeJson, serializeJson } from "@left-curve/encoding";
-import type { CreateStorageParameters, Storage } from "../types/storage.js";
+import type { CreateStorageParameters, Storage } from "../../types/storage.js";
 import { createMemoryStorage } from "./memoryStorage.js";
 
 export function createStorage<inner extends Record<string, unknown> = Record<string, unknown>>(
