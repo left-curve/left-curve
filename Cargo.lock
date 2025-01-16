@@ -2899,6 +2899,7 @@ dependencies = [
  "pyth-sdk 0.8.0",
  "rand",
  "reqwest 0.12.12",
+ "sea-orm",
  "test-case",
  "tokio",
  "tracing",

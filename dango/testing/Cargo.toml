@@ -24,6 +24,7 @@ grug-vm-wasm      = { workspace = true }
 hex-literal       = { workspace = true }
 indexer-sql       = { workspace = true }
 k256              = { workspace = true }
+sea-orm           = { workspace = true }
 
 [dev-dependencies]
 alloy           = { workspace = true, features = ["full", "signer-mnemonic"] }
