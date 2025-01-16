@@ -1,6 +1,7 @@
 import type { AnyCoin, Chain, ChainId, Client, Denom, Transport, UID } from "@left-curve/types";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
+import type { Signer } from "./signer.js";
 import type { Storage } from "./storage.js";
 
 export const ConnectionStatus = {
@@ -47,7 +48,7 @@ export type Config<
 
   getClient<chainId extends chains[number]["id"]>(parameters?: {
     chainId?: chainId | chains[number]["id"] | undefined;
-  }): Client<transports[chainId], chains[number]>;
+  }): Client<transports[chainId], chains[number], Signer>;
   _internal: Internal<chains, transports>;
 };
 

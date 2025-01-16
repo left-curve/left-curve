@@ -1,5 +1,7 @@
-import type { Chain, ChainId, Client, Prettify, Transport, UID } from "@left-curve/types";
+import type { ChainId, Client, Prettify, Transport, UID } from "@left-curve/types";
+import type { SignerClient } from "../clients/signerClient.js";
 import type { Account, Username } from "./account.js";
+import type { Chain } from "./chain.js";
 import type { Emitter, EventData } from "./emitter.js";
 import type { Signer } from "./signer.js";
 
@@ -65,8 +67,6 @@ export type ConnectorEvents = {
 
 export type CreateConnectorFn<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
-  chain extends Chain = Chain,
-  signer extends Signer = Signer,
   transport extends Transport = Transport,
   properties extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
@@ -75,7 +75,7 @@ export type CreateConnectorFn<
   transports: Record<string, Transport>;
 }) => Prettify<
   properties &
-    signer & {
+    Signer & {
       readonly id: ConnectorId;
       readonly name: string;
       readonly type: ConnectorType;
@@ -89,7 +89,7 @@ export type CreateConnectorFn<
       }): Promise<void>;
       disconnect(): Promise<void>;
       getAccounts(): Promise<readonly Account[]>;
-      getClient(): Promise<Client<transport, chain, any, any>>;
+      getClient(): Promise<SignerClient<transport>>;
       isAuthorized(): Promise<boolean>;
       switchChain?(parameters: { chainId: string }): Promise<Chain>;
       onAccountsChanged?(accounts: string[]): void;

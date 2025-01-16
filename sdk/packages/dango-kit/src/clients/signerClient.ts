@@ -2,25 +2,25 @@ import type { Client, ClientConfig, RequiredBy, Transport } from "@left-curve/ty
 
 import { createBaseClient } from "@left-curve/sdk";
 import { type PublicActions, publicActions } from "../actions/index.js";
-import { signerActions } from "../actions/signerActions.js";
+import { type SignerActions, signerActions } from "../actions/signerActions.js";
 import type { Chain, Signer } from "../types/index.js";
 
 export type SignerClientConfig<transport extends Transport = Transport> = RequiredBy<
   ClientConfig<transport, Chain, Signer>,
   "signer"
->;
+> & { username: string };
 
 export type SignerClient<transport extends Transport = Transport> = Client<
   transport,
   Chain,
   Signer,
-  PublicActions<transport> & any
+  PublicActions<transport> & SignerActions & { username: string }
 >;
 
 export function createSignerClient<transport extends Transport = Transport>(
   parameters: SignerClientConfig<transport>,
 ): SignerClient<transport> {
-  const { name = "Dango Signer Client", type = "dango" } = parameters;
+  const { name = "Dango Signer Client", type = "dango", username } = parameters;
 
   const client = createBaseClient({
     ...parameters,
@@ -28,5 +28,8 @@ export function createSignerClient<transport extends Transport = Transport>(
     type,
   });
 
-  return client.extend(publicActions).extend(signerActions);
+  return client
+    .extend(publicActions)
+    .extend(signerActions)
+    .extend((_) => ({ username }));
 }

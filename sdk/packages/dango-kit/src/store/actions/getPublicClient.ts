@@ -1,3 +1,4 @@
+import { publicActions } from "../../actions/publicActions.js";
 import type { Config } from "../../types/store.js";
 
 export type GetPublicClientParameters = {
@@ -12,5 +13,5 @@ export function getPublicClient<config extends Config>(
   config: config,
   parameters: GetPublicClientParameters = {},
 ): GetPublicClientReturnType {
-  return {};
+  return config.getClient(parameters).extend(publicActions);
 }
