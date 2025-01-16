@@ -5,7 +5,7 @@ use {
         build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisUser,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Coin, Coins, ContractWrapper, Duration, HashExt,
+        btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Denom, Duration, HashExt,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
@@ -15,7 +15,7 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    std::{path::PathBuf, sync::LazyLock},
+    std::{path::PathBuf, str::FromStr},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -42,8 +42,8 @@ pub const USER8_PRIVATE_KEY: [u8; 32] =
 pub const USER9_PRIVATE_KEY: [u8; 32] =
     hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
 
-pub static TOKEN_FACTORY_CREATION_FEE: LazyLock<Coin> =
-    LazyLock::new(|| Coin::new("uusdc", 10_000_000).unwrap());
+pub const FEE_DENOM: &str = "uusdc";
+pub const FEE_RATE: Udec128 = Udec128::ZERO;
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
     grug::TestSuite<DB, VM, PP, ID>;
@@ -106,13 +106,11 @@ pub fn setup_benchmark_hybrid(
         codes.account_margin.to_bytes().hash256(),
         codes.account_safe.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
-        codes.amm.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
         codes.ibc_transfer.to_bytes().hash256(),
         codes.lending.to_bytes().hash256(),
         codes.oracle.to_bytes().hash256(),
         codes.taxman.to_bytes().hash256(),
-        codes.token_factory.to_bytes().hash256(),
         codes.vesting.to_bytes().hash256(),
     ]);
 
@@ -258,9 +256,8 @@ where
             },
         },
         &owner.username,
-        TOKEN_FACTORY_CREATION_FEE.denom.to_string(),
-        Udec128::ZERO,
-        Some(TOKEN_FACTORY_CREATION_FEE.amount),
+        Denom::from_str(FEE_DENOM).unwrap(),
+        FEE_RATE,
         Duration::from_seconds(7 * 24 * 60 * 60),
     )
     .unwrap();

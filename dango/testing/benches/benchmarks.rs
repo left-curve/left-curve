@@ -7,12 +7,8 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
-        amm::{self, FeeRate, PoolParams, XykParams},
     },
-    grug::{
-        btree_map, Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Signer,
-        Tx, Udec128, UniqueVec,
-    },
+    grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
     grug_db_disk::TempDataDir,
     rand::{distributions::Alphanumeric, Rng},
@@ -177,111 +173,6 @@ fn sends(c: &mut Criterion) {
     });
 }
 
-fn do_swap<PP, DB, VM>(
-    suite: &mut TestSuite<PP, DB, VM>,
-    mut accounts: TestAccounts,
-    contracts: Contracts,
-) -> Vec<Tx>
-where
-    PP: ProposalPreparer,
-    DB: Db,
-    VM: Vm + Clone + 'static,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
-{
-    // Create an ATOM-USDC pool.
-    suite
-        .execute_with_gas(
-            &mut accounts.user1,
-            5_000_000,
-            contracts.amm,
-            &amm::ExecuteMsg::CreatePool(PoolParams::Xyk(XykParams {
-                liquidity_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(30)),
-            })),
-            Coins::try_from(btree_map! {
-                "uatom" => 100_000_000,
-                "uusdc" => 400_000_000,
-            })
-            .unwrap(),
-        )
-        .should_succeed();
-
-    // Create and sign 100 transactions, each containing a swap.
-    (0..100)
-        .map(|_| {
-            accounts
-                .user1
-                .sign_transaction(
-                    NonEmpty::new_unchecked(vec![Message::execute(
-                        contracts.amm,
-                        &amm::ExecuteMsg::Swap {
-                            route: UniqueVec::new_unchecked(vec![1]),
-                            minimum_output: None,
-                        },
-                        Coins::one("uusdc", 100).unwrap(),
-                    )
-                    .unwrap()]),
-                    &suite.chain_id,
-                    50_000_000,
-                )
-                .unwrap()
-        })
-        .collect()
-}
-
-/// Measure how many AMM swaps can be processed in a second.
-///
-/// We do this by making a single block that contains 100 transactions, each tx
-/// containing one swap in the XYK AMM pool.
-fn swaps(c: &mut Criterion) {
-    let mut group = c.benchmark_group("swaps");
-    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
-    group.measurement_time(MEASUREMENT_TIME);
-
-    group.bench_function("swap-wasm", |b| {
-        b.iter_batched(
-            || {
-                // Create a random folder for this iteration.
-                let dir = TempDataDir::new(&format!("__dango_bench_swaps_{}", random_string(8)));
-                let (mut suite, accounts, _, contracts) = setup_benchmark_wasm(&dir, 100);
-
-                let txs = do_swap(&mut suite, accounts, contracts);
-
-                (dir, suite, txs)
-            },
-            |(_dir, mut suite, txs)| {
-                suite
-                    .make_block(txs)
-                    .tx_outcomes
-                    .into_iter()
-                    .all(|outcome| outcome.result.is_ok());
-            },
-            BatchSize::SmallInput,
-        );
-    });
-
-    group.bench_function("swap-hybrid", |b| {
-        b.iter_batched(
-            || {
-                // Create a random folder for this iteration.
-                let dir = TempDataDir::new(&format!("__dango_bench_swaps_{}", random_string(8)));
-                let (mut suite, accounts, _, contracts) = setup_benchmark_hybrid(&dir, 100);
-
-                let txs = do_swap(&mut suite, accounts, contracts);
-
-                (dir, suite, txs)
-            },
-            |(_dir, mut suite, txs)| {
-                suite
-                    .make_block(txs)
-                    .tx_outcomes
-                    .into_iter()
-                    .all(|outcome| outcome.result.is_ok());
-            },
-            BatchSize::SmallInput,
-        );
-    });
-}
-
-criterion_group!(benches, sends, swaps);
+criterion_group!(benches, sends);
 
 criterion_main!(benches);
