@@ -55,12 +55,6 @@ impl PrimaryKey for Direction {
 }
 
 #[grug::derive(Serde)]
-pub struct Pair {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-}
-
-#[grug::derive(Serde)]
 pub struct OrderResponse {
     pub user: Addr,
     pub base_denom: Denom,
