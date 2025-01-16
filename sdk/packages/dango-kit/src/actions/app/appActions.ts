@@ -57,7 +57,7 @@ export type AppMutationActions = {
 };
 
 export function appQueryActions<transport extends Transport = Transport>(
-  _client: Client<transport, Chain, undefined>,
+  _client: Client<transport, Chain, Signer>,
 ): AppQueryActions {
   return {
     computeAddress: (args: ComputeAddressParameters) => computeAddress(args),

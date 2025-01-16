@@ -16,7 +16,7 @@ export type PublicActions<transport extends Transport = Transport> = GrugActions
   AccountFactoryQueryActions;
 
 export function publicActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, undefined>,
+  client: Client<transport, Chain, Signer>,
 ): PublicActions<transport> {
   return {
     ...grugActions(client),

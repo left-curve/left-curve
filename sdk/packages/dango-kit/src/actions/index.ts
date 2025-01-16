@@ -7,6 +7,11 @@ export {
   publicActions,
 } from "./publicActions.js";
 
+export {
+  type SignerActions,
+  signerActions,
+} from "./signerActions.js";
+
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */
 /* -------------------------------------------------------------------------- */
