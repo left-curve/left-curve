@@ -199,7 +199,7 @@ impl Coins {
     }
 
     /// Insert a new coin to the `Coins`.
-    pub fn insert(&mut self, coin: Coin) -> StdResult<()> {
+    pub fn insert(&mut self, coin: Coin) -> StdResult<&mut Self> {
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             // If the denom doesn't exist, and we are increasing by a non-zero
             // amount: just create a new record, and we are done.
@@ -207,25 +207,25 @@ impl Coins {
                 self.0.insert(coin.denom, coin.amount);
             }
 
-            return Ok(());
+            return Ok(self);
         };
 
         amount.checked_add_assign(coin.amount)?;
 
-        Ok(())
+        Ok(self)
     }
 
     /// Insert all coins from another `Coins`.
-    pub fn insert_many(&mut self, coins: Self) -> StdResult<()> {
+    pub fn insert_many(&mut self, coins: Self) -> StdResult<&mut Self> {
         for coin in coins.into_iter() {
             self.insert(coin)?;
         }
 
-        Ok(())
+        Ok(self)
     }
 
     /// Deduct a coin from the `Coins`.
-    pub fn deduct(&mut self, coin: Coin) -> StdResult<()> {
+    pub fn deduct(&mut self, coin: Coin) -> StdResult<&mut Self> {
         let Some(amount) = self.0.get_mut(&coin.denom) else {
             return Err(StdError::DenomNotFound { denom: coin.denom });
         };
@@ -236,16 +236,16 @@ impl Coins {
             self.0.remove(&coin.denom);
         }
 
-        Ok(())
+        Ok(self)
     }
 
     /// Deduct all coins from another `Coins`.
-    pub fn deduct_many(&mut self, coins: Self) -> StdResult<()> {
+    pub fn deduct_many(&mut self, coins: Self) -> StdResult<&mut Self> {
         for coin in coins.into_iter() {
             self.deduct(coin)?;
         }
 
-        Ok(())
+        Ok(self)
     }
 
     /// Deduct a coin from the `Coins`, saturating at zero. Returns a coin of
@@ -311,7 +311,7 @@ impl Coins {
     /// - `TryFrom<Vec<Coin>>`
     /// - `TryFrom<BTreeMap<String, Uint128>>`.
     ///
-    /// Check whether the iterator contains duplicates or zero amounts.
+    /// Ensure the iterator doesn't contain duplicates. Zero amounts are skipped.
     fn try_from_iterator<D, A, I>(iter: I) -> StdResult<Self>
     where
         D: TryInto<Denom>,
@@ -326,9 +326,7 @@ impl Coins {
             let amount = amount.into();
 
             if amount.is_zero() {
-                return Err(StdError::invalid_coins(format!(
-                    "denom `{denom}` as zero amount",
-                )));
+                continue;
             }
 
             if map.insert(denom, amount).is_some() {

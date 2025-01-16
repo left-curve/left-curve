@@ -393,6 +393,41 @@ where
     }
 }
 
+impl<A, B, C, D> PrimaryKey for (A, B, C, D)
+where
+    A: PrimaryKey + Prefixer,
+    B: PrimaryKey,
+    C: PrimaryKey,
+    D: PrimaryKey,
+{
+    type Output = (A::Output, B::Output, C::Output, D::Output);
+    type Prefix = A;
+    type Suffix = (B, C, D);
+
+    const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS + D::KEY_ELEMS;
+
+    fn raw_keys(&self) -> Vec<RawKey> {
+        let mut keys = self.0.raw_keys();
+        keys.extend(self.1.raw_keys());
+        keys.extend(self.2.raw_keys());
+        keys.extend(self.3.raw_keys());
+        keys
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (a_raw, bcd_raw) = split_first_key(A::KEY_ELEMS, bytes);
+        let (b_raw, cd_raw) = split_first_key(B::KEY_ELEMS, bcd_raw);
+        let (c_raw, d_raw) = split_first_key(C::KEY_ELEMS, cd_raw);
+
+        let a = A::from_slice(&a_raw)?;
+        let b = B::from_slice(&b_raw)?;
+        let c = C::from_slice(&c_raw)?;
+        let d = D::from_slice(d_raw)?;
+
+        Ok((a, b, c, d))
+    }
+}
+
 impl<U, const S: u32> PrimaryKey for Dec<U, S>
 where
     U: PrimaryKey<Output = U>,
