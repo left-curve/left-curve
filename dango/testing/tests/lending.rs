@@ -10,11 +10,10 @@ use {
             NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
-        token_factory,
     },
     grug::{
-        btree_map, Addressable, Binary, Coin, Coins, Denom, JsonSerExt, Message, MsgConfigure,
-        MsgTransfer, NonEmpty, NumberConst, QuerierExt, ResultExt, Udec128, Uint128,
+        btree_map, Addressable, Binary, Coins, Denom, JsonSerExt, Message, MsgConfigure,
+        MsgTransfer, NonEmpty, QuerierExt, ResultExt, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -436,95 +435,6 @@ fn borrowing_works() {
         .should_succeed_and_equal(btree_map! {
             margin_account.address() => Coins::one(USDC.clone(), 100).unwrap(),
         });
-}
-
-#[test]
-fn composite_denom() {
-    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
-
-    let fee_token_creation = Coin::new("uusdc", 10_000_000_u128).unwrap();
-    let amount: Uint128 = 100_000.into();
-    let owner_addr = accounts.owner.address();
-
-    // Create a new token with token_factory
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.token_factory,
-            &token_factory::ExecuteMsg::Create {
-                subdenom: Denom::from_str("foo").unwrap(),
-                username: None,
-                admin: None,
-                metadata: None,
-            },
-            fee_token_creation,
-        )
-        .should_succeed();
-
-    let denom = Denom::from_str(&format!("factory/{}/foo", owner_addr)).unwrap();
-
-    // Register the denom in the lending
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                denom.clone() => MarketUpdates {},
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Mint some tokens
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.token_factory,
-            &token_factory::ExecuteMsg::Mint {
-                denom: denom.clone(),
-                to: owner_addr,
-                amount,
-            },
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Deposit some tokens
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::Deposit {},
-            Coins::one(denom.clone(), amount).unwrap(),
-        )
-        .should_succeed();
-
-    let lp_token = denom.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
-
-    // check if lp_token is minted
-    suite
-        .query_balance(&accounts.owner.address(), lp_token.clone())
-        .should_succeed_and_equal(amount);
-
-    // withdraw
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::Withdraw {},
-            Coins::one(lp_token.clone(), amount).unwrap(),
-        )
-        .should_succeed();
-
-    // check if lp_token is burned
-    suite
-        .query_balance(&accounts.owner.address(), lp_token)
-        .should_succeed_and_equal(Uint128::ZERO);
-
-    // check if lp_token is burned
-    suite
-        .query_balance(&accounts.owner.address(), denom)
-        .should_succeed_and_equal(amount);
 }
 
 #[test]

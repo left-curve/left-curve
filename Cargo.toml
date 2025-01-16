@@ -2,7 +2,6 @@
 exclude = ["indexer/.data"]
 members = [
   "dango/account/*",
-  "dango/amm",
   "dango/app",
   "dango/auth",
   "dango/bank",
@@ -12,9 +11,9 @@ members = [
   "dango/ibc-transfer",
   "dango/lending",
   "dango/oracle",
+  "dango/orderbook",
   "dango/taxman",
   "dango/testing",
-  "dango/token-factory",
   "dango/types",
   "dango/vesting",
   "grug/app",
@@ -151,7 +150,6 @@ dango-account-factory = { path = "dango/account/factory" }
 dango-account-margin  = { path = "dango/account/margin" }
 dango-account-safe    = { path = "dango/account/safe" }
 dango-account-spot    = { path = "dango/account/spot" }
-dango-amm             = { path = "dango/amm" }
 dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
@@ -163,7 +161,6 @@ dango-oracle          = { path = "dango/oracle" }
 dango-orderbook       = { path = "dango/orderbook" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
-dango-token-factory   = { path = "dango/token-factory" }
 dango-types           = { path = "dango/types" }
 dango-vesting         = { path = "dango/vesting" }
 
