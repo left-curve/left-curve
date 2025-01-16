@@ -5,15 +5,11 @@ use {
     std::fmt::{self, Display},
 };
 
-// ----------------------------------- index -----------------------------------
-
 /// Global index of an account.
 ///
 /// Used as salt to derive account addresses. This ensures the uniqueness of
 /// account addresses.
 pub type AccountIndex = u32;
-
-// ----------------------------------- info ------------------------------------
 
 /// Information of an account.
 #[grug::derive(Serde, Borsh)]
@@ -21,17 +17,6 @@ pub struct Account {
     pub index: AccountIndex,
     pub params: AccountParams,
 }
-
-impl Account {
-    pub fn is_otp_enabled(&self) -> bool {
-        match &self.params {
-            AccountParams::Spot(params) | AccountParams::Margin(params) => params.is_otp_active,
-            AccountParams::Safe(_) => false,
-        }
-    }
-}
-
-// ---------------------------------- params -----------------------------------
 
 /// Parameters of an account.
 #[grug::derive(Serde, Borsh)]
@@ -78,8 +63,6 @@ impl AccountParams {
         }
     }
 }
-
-// ----------------------------------- type ------------------------------------
 
 /// Types of accounts the protocol supports.
 #[grug::derive(Serde, Borsh)]

@@ -1,7 +1,9 @@
 use {
     crate::{Config, CONFIG, WITHHELD_FEE},
     grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
-    grug_types::{AuthCtx, AuthMode, Coins, Message, Response, StdResult, Storage, Tx, TxOutcome},
+    grug_types::{
+        AuthCtx, AuthMode, Coins, Message, QuerierExt, Response, StdResult, Storage, Tx, TxOutcome,
+    },
 };
 
 pub fn initialize_config(storage: &mut dyn Storage, cfg: &Config) -> StdResult<Response> {

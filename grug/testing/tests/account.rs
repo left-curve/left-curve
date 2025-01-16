@@ -124,7 +124,9 @@ fn check_tx_and_finalize() {
 mod backrunner {
     use {
         grug_math::{Number, NumberConst, Uint128},
-        grug_types::{AuthCtx, AuthResponse, Coins, Denom, Message, Response, StdResult, Tx},
+        grug_types::{
+            AuthCtx, AuthResponse, Coins, Denom, Message, QuerierExt, Response, StdResult, Tx,
+        },
         std::str::FromStr,
     };
 

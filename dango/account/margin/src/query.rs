@@ -1,15 +1,15 @@
 use {
     crate::MarginQuerier,
-    dango_auth::NEXT_NONCE,
+    dango_auth::query_seen_nonces,
     dango_types::account::margin::QueryMsg,
-    grug::{ImmutableCtx, Json, JsonSerExt, StdResult, Storage},
+    grug::{ImmutableCtx, Json, JsonSerExt},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
-        QueryMsg::Nonce {} => {
-            let res = query_nonce(ctx.storage)?;
+        QueryMsg::SeenNonces {} => {
+            let res = query_seen_nonces(ctx.storage)?;
             res.to_json_value()
         },
         QueryMsg::Health {} => {
@@ -18,8 +18,4 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
     }
     .map_err(Into::into)
-}
-
-fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
-    NEXT_NONCE.current(storage)
 }

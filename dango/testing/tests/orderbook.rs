@@ -6,7 +6,7 @@ use {
     dango_types::orderbook::{self, Direction, OrderId, QueryOrdersRequest},
     grug::{
         btree_map, Addr, Addressable, Coins, Denom, Inner, Message, MultiplyFraction, NonEmpty,
-        Signer, StdResult, Udec128, Uint128,
+        QuerierExt, Signer, StdResult, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock},

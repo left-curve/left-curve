@@ -7,14 +7,13 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Code, Coins,
-        Config, ContractInfo, Denom, Duration, GenesisState, Hash256, JsonDeExt, JsonSerExt,
-        Message, NonEmpty, Query, QueryRequest, ResultExt, Signer, StdError, Tx, TxError,
-        TxOutcome, TxSuccess, UnsignedTx,
+        Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Coins, Config,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Querier, Query, QueryResponse, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
+        TxSuccess, UnsignedTx,
     },
     grug_vm_rust::RustVm,
-    serde::{de::DeserializeOwned, ser::Serialize},
-    std::{collections::BTreeMap, fmt::Debug},
+    serde::ser::Serialize,
 };
 
 // ------------------------------- UploadOutcome -------------------------------
@@ -309,7 +308,7 @@ where
             .app
             .do_prepare_proposal(raw_txs, usize::MAX)
             .into_iter()
-            .map(|raw_tx| raw_tx.deserialize_json().unwrap())
+            .map(|raw_tx| (raw_tx.deserialize_json().unwrap(), raw_tx.hash256()))
             .collect();
 
         let block = Block {
@@ -674,33 +673,43 @@ where
             Message::migrate(contract, new_code_hash, msg).unwrap(),
         )
     }
+}
 
-    pub fn query_config(&self) -> AppResult<Config> {
-        self.app
-            .do_query_app(Query::config(), 0, false)
-            .map(|val| val.as_config())
+impl<DB, VM, PP, ID> Querier for TestSuite<DB, VM, PP, ID>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    type Error = AppError;
+
+    fn query_chain(&self, req: Query) -> AppResult<QueryResponse> {
+        self.app.do_query_app(req, 0, false)
     }
+}
 
-    pub fn query_app_config<T>(&self) -> AppResult<T>
-    where
-        T: DeserializeOwned,
-    {
-        self.app
-            .do_query_app(Query::app_config(), 0, false)
-            .map(|res| res.as_app_config().deserialize_json().unwrap())
-    }
-
-    pub fn query_balance<D>(&self, account: &dyn Addressable, denom: D) -> AppResult<Uint128>
+impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    Self: Querier,
+{
+    pub fn query_balance<D>(
+        &self,
+        address: &dyn Addressable,
+        denom: D,
+    ) -> Result<Uint128, <Self as Querier>::Error>
     where
         D: TryInto<Denom>,
-        D::Error: Debug,
+        <D as TryInto<Denom>>::Error: std::fmt::Debug,
     {
-        self.app
-            .do_query_app(
-                Query::balance(account.address(), denom.try_into().unwrap()),
-                0, // zero means to use the latest height
-                false,
-            )
+        let denom = denom.try_into().unwrap();
+        self.query_chain(Query::balance(address.address(), denom))
             .map(|res| res.as_balance().amount)
     }
 
@@ -712,67 +721,5 @@ where
                 false,
             )
             .map(|res| res.as_balances())
-    }
-
-    pub fn query_supply<D>(&self, denom: D) -> AppResult<Uint128>
-    where
-        D: TryInto<Denom>,
-        D::Error: Debug,
-    {
-        self.app
-            .do_query_app(Query::supply(denom.try_into().unwrap()), 0, false)
-            .map(|res| res.as_supply().amount)
-    }
-
-    pub fn query_supplies(&self) -> AppResult<Coins> {
-        self.app
-            .do_query_app(Query::supplies(None, Some(u32::MAX)), 0, false)
-            .map(|res| res.as_supplies())
-    }
-
-    pub fn query_code(&self, hash: Hash256) -> AppResult<Code> {
-        self.app
-            .do_query_app(Query::code(hash), 0, false)
-            .map(|res| res.as_code())
-    }
-
-    pub fn query_codes(&self) -> AppResult<BTreeMap<Hash256, Code>> {
-        self.app
-            .do_query_app(Query::codes(None, Some(u32::MAX)), 0, false)
-            .map(|res| res.as_codes())
-    }
-
-    pub fn query_contract(&self, contract: &dyn Addressable) -> AppResult<ContractInfo> {
-        self.app
-            .do_query_app(Query::contract(contract.address()), 0, false)
-            .map(|res| res.as_contract())
-    }
-
-    pub fn query_contracts(&self) -> AppResult<BTreeMap<Addr, ContractInfo>> {
-        self.app
-            .do_query_app(Query::contracts(None, Some(u32::MAX)), 0, false)
-            .map(|res| res.as_contracts())
-    }
-
-    pub fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> AppResult<Option<Binary>>
-    where
-        B: Into<Binary>,
-    {
-        self.app
-            .do_query_app(Query::wasm_raw(contract, key), 0, false)
-            .map(|res| res.as_wasm_raw())
-    }
-
-    pub fn query_wasm_smart<R>(&self, contract: Addr, req: R) -> AppResult<R::Response>
-    where
-        R: QueryRequest,
-        R::Message: Serialize,
-        R::Response: DeserializeOwned + Debug,
-    {
-        let msg = R::Message::from(req);
-
-        self.app
-            .do_query_app(Query::wasm_smart(contract, &msg)?, 0, false)
-            .map(|res| res.as_wasm_smart().deserialize_json().unwrap())
     }
 }

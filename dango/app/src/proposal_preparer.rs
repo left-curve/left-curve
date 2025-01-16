@@ -3,7 +3,10 @@ use {
         config::AppConfig,
         oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
     },
-    grug::{Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierWrapper, StdError, Tx},
+    grug::{
+        Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
+        Tx,
+    },
     grug_app::{AppError, Shared},
     prost::bytes::Bytes,
     std::{

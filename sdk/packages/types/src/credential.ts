@@ -1,34 +1,29 @@
 import type { Username } from "./account.js";
-import type { Base64 } from "./encoding.js";
+import type { Timestamp } from "./common.js";
 import type { KeyHash } from "./key.js";
+import type { SessionCredential } from "./session.js";
+import type { Signature } from "./signature.js";
 
 export type Metadata = {
-  /** Identifies which key was used to signed this transaction. */
-  keyHash: KeyHash;
-  /** The sequence number this transaction was signed with. */
-  sequence: number;
   /** The username of the account that signed this transaction */
   username: Username;
+  /** Identifies the chain this transaction is intended for. */
+  chainId: string;
+  /** The nonce this transaction was signed with. */
+  nonce: number;
+  /** The expiration time of this transaction. */
+  expiry?: Timestamp;
 };
 
 export type Credential =
-  /** An Secp256k1 signature. */
-  | { secp256k1: Base64 }
-  /** An Ed25519 signature. */
-  | { ed25519: Base64 }
-  /** An Secp256r1 signature signed by a Passkey, along with necessary metadata. */
-  | { passkey: PasskeyCredential }
-  /** An EVM signature signed by a wallet, along with its typedata. */
-  | { eip712: Eip712Credential };
+  /**Signatures of the authorized key and optional OTP key. */
+  | { standard: StandardCredential }
+  /** Session credential information with the authorization signatures */
+  | { session: SessionCredential };
 
-export type PasskeyCredential = {
-  sig: Base64;
-  client_data: Base64;
-  authenticator_data: Base64;
-};
-
-export type Eip712Credential = {
-  sig: Base64;
-  /** The EIP712 typed data object containing types, domain and the message. */
-  typed_data: Base64;
+export type StandardCredential = {
+  /** Identifies the key which the user used to sign this transaction. */
+  keyHash: KeyHash;
+  /** Signature of the `SignDoc` or `SessionInfo` by the user private key. */
+  signature: Signature;
 };

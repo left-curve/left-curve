@@ -1,4 +1,8 @@
-use grug::{Bound, Bounded, Bounds, NumberConst, Udec128};
+use {
+    crate::auth::Nonce,
+    grug::{Bound, Bounded, Bounds, NumberConst, Udec128},
+    std::collections::BTreeSet,
+};
 
 /// Defines the bounds for a collateral power: 0 < CollateralPower <= 1.
 #[grug::derive(Serde)]
@@ -27,9 +31,9 @@ pub struct HealthResponse {
 /// Query messages for the margin account
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Query the account's current nonce number.
-    #[returns(u32)]
-    Nonce {},
+    /// Query the most recent transaction nonces that have been recorded.
+    #[returns(BTreeSet<Nonce>)]
+    SeenNonces {},
     /// Queries the health of the margin account.
     #[returns(HealthResponse)]
     Health {},

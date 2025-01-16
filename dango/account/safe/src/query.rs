@@ -1,6 +1,6 @@
 use {
     crate::{PROPOSALS, VOTES},
-    dango_auth::NEXT_NONCE,
+    dango_auth::query_seen_nonces,
     dango_types::{
         account::multi::{Proposal, ProposalId, QueryMsg, Status, Vote},
         account_factory::Username,
@@ -14,8 +14,8 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Nonce {} => {
-            let res = query_nonce(ctx.storage)?;
+        QueryMsg::SeenNonces {} => {
+            let res = query_seen_nonces(ctx.storage)?;
             res.to_json_value()
         },
         QueryMsg::Proposal { proposal_id } => {
@@ -38,10 +38,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
     }
-}
-
-fn query_nonce(storage: &dyn Storage) -> StdResult<u32> {
-    NEXT_NONCE.current(storage)
 }
 
 fn query_proposal(ctx: ImmutableCtx, proposal_id: ProposalId) -> StdResult<Proposal> {

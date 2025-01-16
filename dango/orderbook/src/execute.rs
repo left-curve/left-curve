@@ -13,7 +13,8 @@ use {
     },
     grug::{
         Addr, Coin, Coins, ContractEvent, Denom, Message, MultiplyFraction, MutableCtx, Number,
-        Order as IterationOrder, Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
+        Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };

@@ -8,8 +8,8 @@ use {
         config::DANGO_DENOM,
     },
     grug::{
-        btree_map, coins, Coin, CoinPair, Coins, Denom, Message, NonEmpty, ResultExt, Udec128,
-        Uint128, UniqueVec,
+        btree_map, coins, Coin, CoinPair, Coins, Denom, Message, NonEmpty, QuerierExt, ResultExt,
+        Udec128, Uint128, UniqueVec,
     },
     std::{str::FromStr, sync::LazyLock},
 };
@@ -19,6 +19,9 @@ static OSMO: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uosmo").unwrap(
 static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
 static LP_1: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("amm/pool/1").unwrap());
 static LP_2: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("amm/pool/2").unwrap());
+
+// Irrelevant for this test, but we need to assert the balance...
+static SYNTH: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/ethereum/ether").unwrap());
 
 #[test]
 fn amm() {
@@ -123,6 +126,7 @@ fn amm() {
         .query_balances(&accounts.user1)
         .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
+            SYNTH.clone() => Uint128::new(100_000_000_000_000),
             // 100,000,000,000,000 - 657,761,324,779 - 224,078,907,873
             ATOM.clone() => Uint128::new(99_118_159_767_348),
             // 100,000,000,000,000 - 5,886,161,498,040
@@ -269,6 +273,7 @@ fn amm() {
         .query_balances(&accounts.user1)
         .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
+            SYNTH.clone() => Uint128::new(100_000_000_000_000),
             // 99_118_159_767_348 - 6_577_613 - 100_000_000
             ATOM.clone() => Uint128::new(99_118_053_189_735),
             // 94_113_838_501_960 - 58_861_614
@@ -402,6 +407,7 @@ fn amm() {
         .query_balances(&accounts.user1)
         .should_succeed_and_equal(coins! {
             DANGO_DENOM.clone() => Uint128::new(100_000_000_000_000),
+            SYNTH.clone() => Uint128::new(100_000_000_000_000),
             // 99,118,053,189,735 + 219,296,717,672
             ATOM.clone() => Uint128::new(99_337_349_907_407),
             // 94,113,779,640,346 + 1,961,670,389,167

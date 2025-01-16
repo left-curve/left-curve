@@ -5,7 +5,10 @@ use {
         ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID,
         USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
     },
-    grug::{btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, ResultExt, Udec128},
+    grug::{
+        btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, QuerierExt, ResultExt,
+        Udec128,
+    },
     grug_app::NaiveProposalPreparer,
     pyth_sdk::PriceFeed,
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},

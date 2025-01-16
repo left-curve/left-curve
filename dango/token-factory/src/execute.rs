@@ -9,7 +9,7 @@ use {
         token_factory::{Config, ExecuteMsg, InstantiateMsg, NAMESPACE},
         DangoQuerier,
     },
-    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, Response, Uint128},
+    grug::{Addr, Coins, Denom, Inner, Message, MutableCtx, Part, QuerierExt, Response, Uint128},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]

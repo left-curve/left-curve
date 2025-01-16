@@ -31,7 +31,10 @@ export async function reconnect<config extends Config>(
     if (!connector || !chain) continue;
 
     try {
-      connector.connect({ chainId, username });
+      connector.onConnect({ chainId, username });
+      connector.emitter.off("connect", config._internal.events.connect);
+      connector.emitter.on("change", config._internal.events.change);
+      connector.emitter.on("disconnect", config._internal.events.disconnect);
       connectors.set(chainId, connector.uid);
       connections.set(connector.uid, {
         account,

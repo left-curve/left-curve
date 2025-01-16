@@ -3,8 +3,8 @@ use {
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
-        Addr, BankMsg, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part, Response,
-        StdResult, Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };

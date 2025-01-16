@@ -47,6 +47,8 @@
   "dependencies": {
     "@dango/config": "workspace:^",
     "@left-curve/react": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/crypto": "workspace:^",
     "@left-curve/sdk": "workspace:^",
     "@left-curve/connect-kit": "workspace:^",
     "@left-curve/utils": "workspace:^",
@@ -90,7 +92,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
-    "nuqs": "catalog:",
     "postcss": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -102,7 +103,6 @@
   "peerDependencies": {
     "react-hook-form": "^7",
     "@tanstack/react-query": ">=5.0.0",
-    "nuqs": ">=2.0.0",
     "react": "^18",
     "react-dom": "^18"
   }

@@ -115,10 +115,8 @@ export type {
 } from "./client.js";
 
 export type {
-  Credential,
   Metadata,
-  Eip712Credential,
-  PasskeyCredential,
+  Credential,
 } from "./credential.js";
 
 export type {
@@ -166,10 +164,14 @@ export {
 } from "./mipd.js";
 
 export type {
+  RawSignature,
+  PasskeySignature,
+  Eip712Signature,
   Signature,
   SignDoc,
-  SignedDoc,
+  SignatureOutcome,
   EthPersonalMessage,
+  ArbitrarySignatureOutcome,
 } from "./signature.js";
 
 export type {
@@ -298,6 +300,12 @@ export {
   TxEvent,
   QueryAbciResponse,
 } from "./cometbft.js";
+
+export {
+  SigningSession,
+  SessionCredential,
+  SigningSessionInfo,
+} from "./session.js";
 
 export { AccountType } from "./account.js";
 export { KeyTag, KeyAlgo } from "./key.js";
