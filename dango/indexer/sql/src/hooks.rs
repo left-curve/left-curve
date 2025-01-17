@@ -49,10 +49,10 @@ mod tests {
         indexer.shutdown().expect("Can't shutdown Indexer");
         assert!(!indexer.indexing);
 
-        let swaps = entity::swaps::Entity::find()
+        let transfers = entity::transfers::Entity::find()
             .all(&indexer.context.db)
             .await?;
-        assert_that!(swaps).is_empty();
+        assert_that!(transfers).is_empty();
 
         Ok(())
     }

@@ -22,4 +22,4 @@ refresh_dev_db:
 
 # Generate entity from the datatabase
 generate_entity:
-  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'swaps'
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'transfers'

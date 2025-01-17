@@ -189,6 +189,7 @@ features = [
   "runtime-tokio-rustls",
   "sqlx-postgres",
   "sqlx-sqlite",
+  "with-bigdecimal",
   "with-chrono",
   "with-json",
   "with-uuid",

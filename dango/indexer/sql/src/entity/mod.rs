@@ -2,4 +2,4 @@
 
 pub mod prelude;
 
-pub mod swaps;
+pub mod transfers;
