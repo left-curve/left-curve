@@ -12,13 +12,12 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // For later, we can use this to add support for different databases and
         // keep numeric for psql but text for sqlite
+        #[allow(clippy::single_match)]
         match manager.get_database_backend() {
             DatabaseBackend::Sqlite => {
-                println!("Running on SQLite");
+                //
             },
-            _ => {
-                println!("Not running on SQLite");
-            },
+            _ => {},
         }
 
         manager
@@ -31,7 +30,6 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Transfer::BlockHeight)
                             .big_unsigned()
-                            .unique_key()
                             .not_null(),
                     )
                     .col(string(Transfer::FromAddress))

@@ -1,4 +1,5 @@
 use {
+    assertor::*,
     dango_testing::{generate_random_key, setup_test, setup_test_with_indexer},
     grug::{
         Addressable, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
@@ -16,7 +17,7 @@ use {
     },
     hyperlane_warp::ROUTES,
     k256::ecdsa::SigningKey,
-    sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
+    sea_orm::EntityTrait,
     std::{collections::BTreeSet, str::FromStr},
 };
 
@@ -191,30 +192,27 @@ fn send_escrowing_collateral() {
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    // The message should have been indexed.
+    // The transfers should have been indexed.
     suite.app.indexer.handle.block_on(async {
         let blocks = indexer_sql::entity::blocks::Entity::find()
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch blocks");
 
-        println!("blocks: {:#?}", blocks);
+        assert_that!(blocks).has_length(3);
 
-        let messages = indexer_sql::entity::messages::Entity::find()
+        let transfers = dango_indexer_sql::entity::transfers::Entity::find()
             .all(&suite.app.indexer.context.db)
             .await
-            .expect("Can't fetch messages");
+            .expect("Can't fetch transfers");
 
-        println!("messages: {:#?}", messages);
+        assert_that!(transfers).has_length(3);
 
-        let events = indexer_sql::entity::events::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch events");
-
-        println!("events: {:#?}", events);
-
-        // assert_that!(blocks).is_not_empty();
+        assert_that!(transfers
+            .iter()
+            .map(|t| t.amount.as_str())
+            .collect::<Vec<_>>())
+        .is_equal_to(vec!["100", "25", "25"]);
     });
 }
 

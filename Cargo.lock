@@ -2877,6 +2877,7 @@ version = "0.0.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "assertor",
  "criterion",
  "dango-app",
  "dango-genesis",

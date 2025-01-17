@@ -1,8 +1,5 @@
 use {
-    crate::{
-        entity,
-        error::{IndexerError, Result},
-    },
+    crate::{entity, error::Result},
     grug_math::Inner,
     grug_types::{
         flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
@@ -243,7 +240,7 @@ fn build_event_active_model(
     // I could also use #[serde(flatten)] on `FlattenEvent`
     let data = serde_json::to_value(&index_event.event)?;
     // Removing the top hash
-    let data = match data {
+    let inside_data = match &data {
         Json::Object(map) => map
             .keys()
             .next()
@@ -253,19 +250,17 @@ fn build_event_active_model(
             })
             .unwrap_or_default(),
         _ => {
-            return Err(IndexerError::Anyhow(anyhow::anyhow!(
-                "can't get the top hash! never supposed to happen",
-            )));
+            unreachable!("can't get the top hash! never supposed to happen");
         },
     };
 
-    let method = data
+    let method = inside_data
         .get("method")
         .and_then(|s| s.as_str())
         .map(|c| c.to_string());
 
-    let event_status = index_event.event_status.to_string();
-    let commitment_status = index_event.commitment_status.to_string();
+    let event_status = index_event.event_status.as_i16();
+    let commitment_status = index_event.commitment_status.as_i16();
 
     Ok(entity::events::ActiveModel {
         id: Set(event_id),
@@ -275,7 +270,7 @@ fn build_event_active_model(
         created_at: Set(created_at),
         r#type: Set(index_event.event.to_string()),
         method: Set(method),
-        attributes: Set(data),
+        data: Set(data),
         event_status: Set(event_status),
         commitment_status: Set(commitment_status),
         transaction_idx: Set(index_event.id.category_index as i32),

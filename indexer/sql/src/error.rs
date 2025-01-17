@@ -40,6 +40,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
 }
 
 impl From<IndexerError> for AppError {

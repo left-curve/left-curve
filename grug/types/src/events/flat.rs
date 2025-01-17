@@ -22,30 +22,54 @@ pub struct FlatEventInfo {
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
 )]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 pub enum FlatEventStatus {
-    #[strum(serialize = "0")]
     Ok,
-    #[strum(serialize = "1")]
     Failed(String),
-    #[strum(serialize = "2")]
     NestedFailed,
-    #[strum(serialize = "3")]
     Handled(String),
+}
+
+impl From<&FlatEventStatus> for i16 {
+    fn from(status: &FlatEventStatus) -> i16 {
+        match status {
+            FlatEventStatus::Ok => 0,
+            FlatEventStatus::Failed(_) => 1,
+            FlatEventStatus::NestedFailed => 2,
+            FlatEventStatus::Handled(_) => 3,
+        }
+    }
+}
+
+impl FlatEventStatus {
+    pub fn as_i16(&self) -> i16 {
+        i16::from(self)
+    }
 }
 
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq, Display,
 )]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all = "snake_case")]
 pub enum FlatCommitmentStatus {
-    #[strum(serialize = "0")]
     Committed,
-    #[strum(serialize = "1")]
     Failed,
-    #[strum(serialize = "2")]
     Reverted,
+}
+
+impl From<&FlatCommitmentStatus> for i16 {
+    fn from(status: &FlatCommitmentStatus) -> i16 {
+        match status {
+            FlatCommitmentStatus::Committed => 0,
+            FlatCommitmentStatus::Failed => 1,
+            FlatCommitmentStatus::Reverted => 2,
+        }
+    }
+}
+
+impl FlatCommitmentStatus {
+    pub fn as_i16(&self) -> i16 {
+        i16::from(self)
+    }
 }
 
 #[derive(
@@ -55,9 +79,9 @@ pub enum FlatCommitmentStatus {
     BorshDeserialize,
     Debug,
     Clone,
-    Copy,
     PartialEq,
     Eq,
+    Copy,
     Display,
 )]
 #[serde(rename_all = "snake_case")]
