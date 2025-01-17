@@ -2,12 +2,12 @@
 exclude = ["indexer/.data"]
 members = [
   "dango/account/*",
-  "dango/amm",
   "dango/app",
   "dango/auth",
   "dango/bank",
   "dango/cli",
   "dango/client",
+  "dango/dex",
   "dango/genesis",
   "dango/ibc-transfer",
   "dango/indexer/sql",
@@ -16,7 +16,6 @@ members = [
   "dango/oracle",
   "dango/taxman",
   "dango/testing",
-  "dango/token-factory",
   "dango/types",
   "dango/vesting",
   "grug/app",
@@ -159,6 +158,7 @@ dango-app                   = { path = "dango/app" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
+dango-dex                   = { path = "dango/dex" }
 dango-genesis               = { path = "dango/genesis" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }

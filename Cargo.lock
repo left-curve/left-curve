@@ -2673,15 +2673,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-amm"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
-]
-
-[[package]]
 name = "dango-app"
 version = "0.0.0"
 dependencies = [
@@ -2767,6 +2758,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-dex"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "test-case",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
@@ -2776,13 +2777,12 @@ dependencies = [
  "dango-account-margin",
  "dango-account-safe",
  "dango-account-spot",
- "dango-amm",
  "dango-bank",
+ "dango-dex",
  "dango-ibc-transfer",
  "dango-lending",
  "dango-oracle",
  "dango-taxman",
- "dango-token-factory",
  "dango-types",
  "dango-vesting",
  "grug",
@@ -2904,16 +2904,6 @@ dependencies = [
  "test-case",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "dango-token-factory"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-account-factory",
- "dango-types",
- "grug",
 ]
 
 [[package]]

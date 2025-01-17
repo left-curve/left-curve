@@ -3,7 +3,6 @@ use {
     dango_types::{account_factory::Username, auth::Key},
     grug::{
         btree_map, coins, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
-        Uint128,
     },
     hex_literal::hex,
     home::home_dir,
@@ -104,7 +103,6 @@ fn main() {
         &Username::from_str("owner").unwrap(),
         "uusdc",
         Udec128::new_percent(25),                 // 0.25 uusdc per gas unit
-        Some(Uint128::new(10_000_000)),           // 10 USDC
         Duration::from_seconds(7 * 24 * 60 * 60), // 1 week
     )
     .unwrap();

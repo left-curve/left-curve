@@ -24,7 +24,7 @@ The drawback of this naïve approach to handling nonces is _it enforces a strict
 
 Here, the block builder would reject tx B from entering the mempool, because it expects a nonce of $N$, while tx B comes with $N + 1$. When tx A later arrives, it will be accepted. The result is Alice submits two txs, but only one makes it into a block.
 
-Imagine Alice is trading on an orderbook exchange and wants to cancel two active limit orders. These actions are not correlated – there's no reason we must cancel one first then the other. So Alice click buttons to cancel the two in quick succession. However, only one ends up being canceled; she has to retry canceling the other one. Bad UX!
+Imagine Alice is trading on an order book exchange and wants to cancel two active limit orders. These actions are not correlated – there's no reason we must cancel one first then the other. So Alice click buttons to cancel the two in quick succession. However, only one ends up being canceled; she has to retry canceling the other one. Bad UX!
 
 ## HyperLiquid's solution
 

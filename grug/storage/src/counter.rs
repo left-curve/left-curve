@@ -1,7 +1,7 @@
 use {
     crate::{Borsh, Codec, Item, Map, PrimaryKey},
     grug_math::Number,
-    grug_types::{StdResult, Storage},
+    grug_types::{Bound, Order, StdResult, Storage},
 };
 
 /// A single number that is monotonically incremented by the given step size.
@@ -50,6 +50,11 @@ where
 
         Ok((old_value, new_value))
     }
+
+    /// Reset the counter to the base value.
+    pub fn reset(&self, storage: &mut dyn Storage) {
+        self.item.remove(storage);
+    }
 }
 
 /// A single number under each key, that is monotonically incremented by the
@@ -90,6 +95,17 @@ where
             .map(|maybe_value| maybe_value.unwrap_or(self.base))
     }
 
+    /// Enumerate the current values of all counters _with non-zero values_.
+    pub fn current_range<'b>(
+        &self,
+        storage: &'b dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = StdResult<(K::Output, T)>> + 'b> {
+        self.map.range(storage, min, max, order)
+    }
+
     /// Increment the value under the given key by the step size; return the
     /// values before and after incrementing.
     pub fn increment(&self, storage: &mut dyn Storage, key: K) -> StdResult<(T, T)> {
@@ -99,6 +115,16 @@ where
         self.map.save(storage, key, &new_value)?;
 
         Ok((old_value, new_value))
+    }
+
+    /// Reset the counter under the given key to the base value.
+    pub fn reset(&self, storage: &mut dyn Storage, key: K) {
+        self.map.remove(storage, key);
+    }
+
+    /// Reset all counters to the base value.
+    pub fn reset_all(&self, storage: &mut dyn Storage) {
+        self.map.clear(storage, None, None);
     }
 }
 

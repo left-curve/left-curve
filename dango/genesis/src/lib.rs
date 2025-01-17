@@ -1,22 +1,21 @@
 use {
     dango_types::{
         account_factory::{self, AccountType, NewUserSalt, Username},
-        amm::{self, FeeRate},
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig},
-        ibc,
+        dex, ibc,
         lending::{self, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
         },
-        taxman, token_factory, vesting,
+        taxman, vesting,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
-        Denom, Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message,
-        NonZero, Permission, Permissions, ResultExt, StdResult, Udec128, Uint128, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
+        Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, Permission,
+        Permissions, ResultExt, StdResult, Udec128, GENESIS_SENDER,
     },
     hyperlane_types::{hooks, isms, mailbox, recipients::warp},
     serde::Serialize,
@@ -30,14 +29,13 @@ pub type Addresses = BTreeMap<Username, Addr>;
 #[grug::derive(Serde)]
 pub struct Contracts {
     pub account_factory: Addr,
-    pub amm: Addr,
     pub bank: Addr,
+    pub dex: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
-    pub token_factory: Addr,
     pub vesting: Addr,
 }
 
@@ -47,14 +45,13 @@ pub struct Codes<T> {
     pub account_margin: T,
     pub account_safe: T,
     pub account_spot: T,
-    pub amm: T,
     pub bank: T,
+    pub dex: T,
     pub hyperlane: Hyperlane<T>,
     pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
     pub taxman: T,
-    pub token_factory: T,
     pub vesting: T,
 }
 
@@ -101,16 +98,17 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_account_spot::query))
         .build();
 
-    let amm = ContractBuilder::new(Box::new(dango_amm::instantiate))
-        .with_execute(Box::new(dango_amm::execute))
-        .with_query(Box::new(dango_amm::query))
-        .build();
-
     let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
         .with_execute(Box::new(dango_bank::execute))
         .with_query(Box::new(dango_bank::query))
         .with_bank_execute(Box::new(dango_bank::bank_execute))
         .with_bank_query(Box::new(dango_bank::bank_query))
+        .build();
+
+    let dex = ContractBuilder::new(Box::new(dango_dex::instantiate))
+        .with_execute(Box::new(dango_dex::execute))
+        .with_cron_execute(Box::new(dango_dex::cron_execute))
+        .with_query(Box::new(dango_dex::query))
         .build();
 
     let fee = ContractBuilder::new(Box::new(hyperlane_fee::instantiate))
@@ -160,11 +158,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_finalize_fee(Box::new(dango_taxman::finalize_fee))
         .build();
 
-    let token_factory = ContractBuilder::new(Box::new(dango_token_factory::instantiate))
-        .with_execute(Box::new(dango_token_factory::execute))
-        .with_query(Box::new(dango_token_factory::query))
-        .build();
-
     let vesting = ContractBuilder::new(Box::new(dango_vesting::instantiate))
         .with_execute(Box::new(dango_vesting::execute))
         .with_query(Box::new(dango_vesting::query))
@@ -175,8 +168,8 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_margin,
         account_safe,
         account_spot,
-        amm,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -188,7 +181,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         lending,
         oracle,
         taxman,
-        token_factory,
         vesting,
     }
 }
@@ -198,8 +190,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
-    let amm = fs::read(artifacts_dir.join("dango_amm.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
+    let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
     let fee = fs::read(artifacts_dir.join("hyperlane_fee.wasm"))?;
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
@@ -209,7 +201,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
-    let token_factory = fs::read(artifacts_dir.join("dango_token_factory.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
 
     Ok(Codes {
@@ -217,8 +208,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_margin,
         account_safe,
         account_spot,
-        amm,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -230,7 +221,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         lending,
         oracle,
         taxman,
-        token_factory,
         vesting,
     })
 }
@@ -241,7 +231,6 @@ pub fn build_genesis<T, D>(
     owner: &Username,
     fee_denom: D,
     fee_rate: Udec128,
-    token_creation_fee: Option<Uint128>,
     max_orphan_age: Duration,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
@@ -258,8 +247,8 @@ where
     let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
-    let amm_code_hash = upload(&mut msgs, codes.amm);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let dex_code_hash = upload(&mut msgs, codes.dex);
     let hyperlane_fee_code_hash = upload(&mut msgs, codes.hyperlane.fee);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
@@ -269,7 +258,6 @@ where
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
-    let token_factory_code_hash = upload(&mut msgs, codes.token_factory);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
 
     // Instantiate account factory.
@@ -380,36 +368,13 @@ where
         "dango/ibc_transfer",
     )?;
 
-    // Instantiate the token factory contract.
-    let token_creation_fee = token_creation_fee
-        .map(|amount| Coin::new(fee_denom.clone(), amount).and_then(NonZero::new))
-        .transpose()?;
-
-    let token_factory = instantiate(
+    // Instantiate the DEX contract.
+    let dex = instantiate(
         &mut msgs,
-        token_factory_code_hash,
-        &token_factory::InstantiateMsg {
-            config: token_factory::Config { token_creation_fee },
-        },
-        "dango/token_factory",
-        "dango/token_factory",
-    )?;
-
-    // Instantiate the AMM contract.
-    let amm = instantiate(
-        &mut msgs,
-        amm_code_hash,
-        &amm::InstantiateMsg {
-            config: amm::Config {
-                protocol_fee_rate: FeeRate::new_unchecked(Udec128::new_bps(10)), // 0.1%
-                pool_creation_fee: NonZero::new_unchecked(Coin::new(
-                    fee_denom.clone(),
-                    10_000_000,
-                )?), // 10 USDC
-            },
-        },
-        "dango/amm",
-        "dango/amm",
+        dex_code_hash,
+        &dex::InstantiateMsg {},
+        "dango/dex",
+        "dango/dex",
     )?;
 
     // Instantiate the lending pool contract.
@@ -444,10 +409,8 @@ where
     // Token factory gets the "factory" namespace.
     // IBC trasfer gets the "ibc" namespace.
     let namespaces = btree_map! {
-        amm::NAMESPACE.clone()           => amm,
         ibc::transfer::NAMESPACE.clone() => ibc_transfer,
         lending::NAMESPACE.clone()       => lending,
-        token_factory::NAMESPACE.clone() => token_factory,
         warp::NAMESPACE.clone()          => warp,
     };
 
@@ -524,8 +487,8 @@ where
 
     let contracts = Contracts {
         account_factory,
-        amm,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -537,7 +500,6 @@ where
         lending,
         oracle,
         taxman,
-        token_factory,
         vesting,
     };
 
@@ -550,7 +512,8 @@ where
         owner: addresses.get(owner).cloned().unwrap(),
         bank,
         taxman,
-        cronjobs: BTreeMap::new(),
+        // Important: DEX cronjob is to be invoked at end of every block.
+        cronjobs: btree_map! { dex => Duration::ZERO },
         permissions,
         max_orphan_age,
     };
