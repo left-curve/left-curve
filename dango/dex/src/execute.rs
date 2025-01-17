@@ -6,7 +6,7 @@ use {
     anyhow::ensure,
     dango_types::{
         bank,
-        orderbook::{
+        dex::{
             Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
             OrderSubmitted, OrdersMatched,
         },

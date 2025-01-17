@@ -16,10 +16,10 @@ dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
+dango-dex             = { workspace = true, features = ["library"] }
 dango-ibc-transfer    = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
-dango-orderbook       = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-vesting         = { workspace = true, features = ["library"] }
