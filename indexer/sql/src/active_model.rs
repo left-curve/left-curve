@@ -49,7 +49,7 @@ impl Models {
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
-                    None,
+                    &[],
                     created_at,
                 )?;
 
@@ -95,7 +95,7 @@ impl Models {
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
-                    None,
+                    &[],
                     created_at,
                 )?;
 
@@ -106,11 +106,13 @@ impl Models {
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
-                    None,
+                    &[],
                     created_at,
                 )?;
 
                 events.extend(active_models);
+
+                let mut message_ids = vec![];
 
                 // 3. Storing messages
                 {
@@ -127,8 +129,11 @@ impl Models {
                             .and_then(|obj| obj.keys().next().cloned())
                             .unwrap_or_default();
 
+                        let message_id = Uuid::new_v4();
+                        message_ids.push(message_id);
+
                         let new_message = entity::messages::ActiveModel {
-                            id: Set(Uuid::new_v4()),
+                            id: Set(message_id),
                             transaction_id: Set(transaction_id),
                             order_idx: Set(message_idx as i32),
                             block_height: Set(block.info.height.try_into()?),
@@ -150,7 +155,7 @@ impl Models {
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
-                        None,
+                        &message_ids,
                         created_at,
                     )?;
 
@@ -161,7 +166,7 @@ impl Models {
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
-                        None,
+                        &[],
                         created_at,
                     )?;
 
@@ -192,7 +197,7 @@ fn flatten_events<T>(
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
-    message_id: Option<uuid::Uuid>,
+    message_ids: &[uuid::Uuid],
     created_at: NaiveDateTime,
 ) -> Result<Vec<entity::events::ActiveModel>>
 where
@@ -207,6 +212,20 @@ where
 
     for event in flatten_events {
         let db_event_id = uuid::Uuid::new_v4();
+
+        let message_id = match event.id.message_index {
+            Some(idx) => {
+                let message_id = message_ids.get(idx as usize).cloned();
+                if message_id.is_none() {
+                    unreachable!(
+                        "message_id is none for message_index: {:?} ids: {:?}",
+                        next_id.message_index, message_ids
+                    );
+                }
+                message_id
+            },
+            None => None,
+        };
 
         events_ids.insert(event.id.event_index, db_event_id);
 

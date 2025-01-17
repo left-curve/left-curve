@@ -62,16 +62,19 @@ fn index_block_with_nonblocking_indexer() {
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch messages");
-        dbg!(&messages);
+
         assert_that!(messages).is_not_empty();
 
         let events = entity::events::Entity::find()
             .all(&suite.app.indexer.context.db)
             .await
             .expect("Can't fetch events");
-        dbg!(&events);
 
-        // TODO: the `transfer` event has no message_id...
+        // Verify message_id is set correctly based on message_idx
+        for event in events.iter() {
+            assert_that!(event.message_id.is_some()).is_equal_to(event.message_idx.is_some());
+        }
+
         assert_that!(events).is_not_empty();
     });
 }
