@@ -1,6 +1,6 @@
 use {
     crate::ORDERS,
-    dango_types::orderbook::{
+    dango_types::dex::{
         OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, QueryMsg,
     },
     grug::{

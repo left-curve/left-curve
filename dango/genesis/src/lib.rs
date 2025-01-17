@@ -4,13 +4,13 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig},
-        ibc,
+        dex, ibc,
         lending::{self, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
         },
-        orderbook, taxman, vesting,
+        taxman, vesting,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
@@ -30,11 +30,11 @@ pub type Addresses = BTreeMap<Username, Addr>;
 pub struct Contracts {
     pub account_factory: Addr,
     pub bank: Addr,
+    pub dex: Addr,
     pub hyperlane: Hyperlane<Addr>,
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
-    pub orderbook: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
 }
@@ -46,11 +46,11 @@ pub struct Codes<T> {
     pub account_safe: T,
     pub account_spot: T,
     pub bank: T,
+    pub dex: T,
     pub hyperlane: Hyperlane<T>,
     pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
-    pub orderbook: T,
     pub taxman: T,
     pub vesting: T,
 }
@@ -105,6 +105,12 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_bank_query(Box::new(dango_bank::bank_query))
         .build();
 
+    let dex = ContractBuilder::new(Box::new(dango_dex::instantiate))
+        .with_execute(Box::new(dango_dex::execute))
+        .with_cron_execute(Box::new(dango_dex::cron_execute))
+        .with_query(Box::new(dango_dex::query))
+        .build();
+
     let fee = ContractBuilder::new(Box::new(hyperlane_fee::instantiate))
         .with_execute(Box::new(hyperlane_fee::execute))
         .with_query(Box::new(hyperlane_fee::query))
@@ -140,12 +146,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_oracle::query))
         .build();
 
-    let orderbook = ContractBuilder::new(Box::new(dango_orderbook::instantiate))
-        .with_execute(Box::new(dango_orderbook::execute))
-        .with_cron_execute(Box::new(dango_orderbook::cron_execute))
-        .with_query(Box::new(dango_orderbook::query))
-        .build();
-
     let lending = ContractBuilder::new(Box::new(dango_lending::instantiate))
         .with_execute(Box::new(dango_lending::execute))
         .with_query(Box::new(dango_lending::query))
@@ -169,6 +169,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_safe,
         account_spot,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -179,7 +180,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         ibc_transfer,
         lending,
         oracle,
-        orderbook,
         taxman,
         vesting,
     }
@@ -191,6 +191,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
+    let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
     let fee = fs::read(artifacts_dir.join("hyperlane_fee.wasm"))?;
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
@@ -199,7 +200,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
-    let orderbook = fs::read(artifacts_dir.join("dango_orderbook.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
 
@@ -209,6 +209,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_safe,
         account_spot,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -219,7 +220,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         ibc_transfer,
         lending,
         oracle,
-        orderbook,
         taxman,
         vesting,
     })
@@ -248,6 +248,7 @@ where
     let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
+    let dex_code_hash = upload(&mut msgs, codes.dex);
     let hyperlane_fee_code_hash = upload(&mut msgs, codes.hyperlane.fee);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
@@ -256,7 +257,6 @@ where
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
-    let orderbook_code_hash = upload(&mut msgs, codes.orderbook);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
 
@@ -368,13 +368,13 @@ where
         "dango/ibc_transfer",
     )?;
 
-    // Instantiate the orderbook contract.
-    let orderbook = instantiate(
+    // Instantiate the DEX contract.
+    let dex = instantiate(
         &mut msgs,
-        orderbook_code_hash,
-        &orderbook::InstantiateMsg {},
-        "dango/orderbook",
-        "dango/orderbook",
+        dex_code_hash,
+        &dex::InstantiateMsg {},
+        "dango/dex",
+        "dango/dex",
     )?;
 
     // Instantiate the lending pool contract.
@@ -488,6 +488,7 @@ where
     let contracts = Contracts {
         account_factory,
         bank,
+        dex,
         hyperlane: Hyperlane {
             fee,
             ism,
@@ -498,7 +499,6 @@ where
         ibc_transfer,
         lending,
         oracle,
-        orderbook,
         taxman,
         vesting,
     };
@@ -512,8 +512,8 @@ where
         owner: addresses.get(owner).cloned().unwrap(),
         bank,
         taxman,
-        // Important: orderbook cronjob is to be invoked at end of every block.
-        cronjobs: btree_map! { orderbook => Duration::ZERO },
+        // Important: DEX cronjob is to be invoked at end of every block.
+        cronjobs: btree_map! { dex => Duration::ZERO },
         permissions,
         max_orphan_age,
     };

@@ -1,5 +1,5 @@
 use {
-    dango_types::orderbook::{Direction, OrderId},
+    dango_types::dex::{Direction, OrderId},
     grug::{Addr, Counter, Counters, Denom, IndexedMap, Udec128, Uint128, UniqueIndex},
 };
 

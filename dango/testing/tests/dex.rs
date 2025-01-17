@@ -3,7 +3,7 @@
 
 use {
     dango_testing::{setup_test_naive, TestSuite},
-    dango_types::orderbook::{self, Direction, OrderId, QueryOrdersRequest},
+    dango_types::dex::{self, Direction, OrderId, QueryOrdersRequest},
     grug::{
         btree_map, Addr, Addressable, Coins, Denom, Inner, Message, MultiplyFraction, NonEmpty,
         QuerierExt, Signer, StdResult, Udec128, Uint128,
@@ -306,7 +306,7 @@ impl BalanceTracker {
     };
     "example 5"
 )]
-fn orderbook_works(
+fn dex_works(
     // A list of orders to submit: direction, price, amount.
     orders_to_submit: Vec<(Direction, u128, u128)>,
     // Orders that should remain not fully filled: order_id => remaining amount.
@@ -351,8 +351,8 @@ fn orderbook_works(
             };
 
             let msg = Message::execute(
-                contracts.orderbook,
-                &orderbook::ExecuteMsg::SubmitOrder {
+                contracts.dex,
+                &dex::ExecuteMsg::SubmitOrder {
                     base_denom: BASE_DENOM.clone(),
                     quote_denom: QUOTE_DENOM.clone(),
                     direction,
@@ -375,7 +375,7 @@ fn orderbook_works(
 
     // Check the remaining unfilled orders.
     let orders = suite
-        .query_wasm_smart(contracts.orderbook, QueryOrdersRequest {
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
             start_after: None,
             limit: None,
         })

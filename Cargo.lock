@@ -2758,6 +2758,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-dex"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "test-case",
+]
+
+[[package]]
 name = "dango-genesis"
 version = "0.0.0"
 dependencies = [
@@ -2768,10 +2778,10 @@ dependencies = [
  "dango-account-safe",
  "dango-account-spot",
  "dango-bank",
+ "dango-dex",
  "dango-ibc-transfer",
  "dango-lending",
  "dango-oracle",
- "dango-orderbook",
  "dango-taxman",
  "dango-types",
  "dango-vesting",
@@ -2816,16 +2826,6 @@ dependencies = [
  "dango-types",
  "grug",
  "pyth-sdk 0.8.0",
-]
-
-[[package]]
-name = "dango-orderbook"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
- "test-case",
 ]
 
 [[package]]
