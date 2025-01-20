@@ -270,6 +270,218 @@ The above plot assumes oracle equals exactly the pool price: $R = 200$. However,
 
 As seen, the deviation does not exceed 0.003% when oracle price jumps less than ~5%. As such, we believe the pool is not ssusceptible to LVR, given that the oracle price's latency is sufficient low to reflect the true asset price.
 
+## Suggested implementation
+
+We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2–0.9 second; we suggest picking a block time from this range.
+
+Each block should follow the following workflow:
+
+1. At the beginning of the block, validators submit an up-to-date oracle feed of supported assets.
+2. During the block, the DEX smart contract accepts user orders and save them in the book, but do nothing else with the orders.
+3. At the very end of the block, the DEX matches and clears the orders.
+
+To ensure the auctions to be sealed-bid, new orders accepted om step (2) must not be made public for query by other smart contracts. Only after the auction is completed, unfilled orders are made public.
+
+The specific algorithm for matching the orders is described below, in Rust pseudocode.
+
+First, we define the following types:
+
+```rust
+enum Directioin {
+    Bid,
+    Ask,
+}
+```
+
+```rust
+struct Order {
+    /// The order's limit price.
+    pub price: Decimal,
+    /// The quantity of that's not yet filled, measured in the base asset.
+    pub quantity: Uint128,
+}
+```
+
+Second, the DEX contract must be capable of iterating over orders in the book following the **price-time priority**. That is, orders with better prices (for BUY orders, the higher; for SELL orders, the lower) come first; for orders with the same price, the older ones come first. We abstract this as a Rust iterator type:
+
+```rust
+type OrderIterator<'a> = Box<dyn Iterator<Item = Order> + 'a>;
+```
+
+Third, the passive liquidity pool must implement the following trait:
+
+```rust
+trait LiquidityPool {
+    /// Return an iterator over the BUY orders that the passive liquidity pool
+    /// would place in the order book following its CFMM invariant, given the
+    /// latest oracle price.
+    fn get_bids<'a>(&'a self, oracle_price: Decimal) -> OrderIterator<'a>;
+
+    /// Similarly, return an iterator over SELL orders.
+    fn get_asks<'a>(&'a self, oracle_price: Decimal) -> OrderIterator<'a>;
+}
+```
+
+When matching orders, we work with two order books:
+
+- a "**physical**" book that contains orders submitted by users;
+- a "**virtual**" book that contains orders that the passive liquidity pool would place.
+
+We must match orders from the two books at the same time. For this we can use a the following merged iterator:
+
+```rust
+struct MergedIterator {
+    a: Peekable<Item = Order>,
+    b: Peekable<Item = Order>,
+    direction: Direction,
+}
+
+impl MergedIterator {
+    pub fn new<A, B>(a: A, b: B) -> Self
+    where
+        A: Iterator<Item = Order>,
+        B: Iterator<Item = Order>,
+    {
+        Self {
+            a: a.peekable(),
+            b: b.peekable(),
+        }
+    }
+}
+
+impl Iterator<Item = Order> for MergedIterator {
+    fn next(&mut self) -> Option<Order> {
+        match (self.a.peek(), self.b.peek()) => {
+            // Both iterators have orders left. Return the one with better price.
+            // If prices are the, we arbitrarily choose the order in B.
+            (Some(a), Some(b)) => {
+                match self.direction {
+                    Direction::Bid if a.price > b.price | Direction::Ask if a.price < b.price => {
+                        a.next()
+                    },
+                    _ => b.next(),
+                }
+            },
+            // A still has orders, but B has run out. Return the next order in A.
+            (Some(_a), None) => a.next(),
+            // B still has orders, but A has run out. Return the next order in B.
+            (None, Some(_b)) => a.next(),
+            // Both iterators have run out of orders. We're done.
+            (None, None) => None,
+        }
+    }
+}
+```
+
+The DEX smart contract should prepare four iterators:
+
+1. BUY orders in the physical book
+2. SELL orders in the physical book
+3. BUY ordres in the virtual book
+4. SELL orders in the virtual book
+
+and combine them using `MergedIterator`:
+
+```rust
+let physical_bid_iter: OrderIterator = /* ... */;
+let physical_ask_iter: OrderIterator = /* ... */;
+
+let virtual_bid_iter: OrderIterator = /* ... */;
+let virtual_bid_iter: OrderIterator = /* ... */;
+
+// Use the virtual book iterators as the `B` in `MergedIterator`, such that
+// orders from the passive liquidity pool is prioritized.
+let bid_iter = MergedIterator::new(physical_bid_iter, physical_ask_iter);
+let ask_iter = MergedIterator::new(virtual_bid_iter, virtual_bid_iter);
+```
+
+Note that we compute the virtual orders based on the latest oracle price _before orders are matched_. This ensures the passively liquidity pool always quotes the latest price, providing its LVR resistance.
+
+Then, we use the following pure function to find the clearing price:
+
+```rust
+struct MatchingOutcome {
+    /// The range of prices that results in the maximal volume.
+    /// The clearing price can be chosen as any value within this range.
+    /// It's up to the caller to make the choice.
+    range: Option<(Decimal, Decimal)>,
+    /// The maximal volume.
+    volume: Uint128,
+    /// List of BUY orders that have found a match.
+    bids: Vec<Order>,
+    /// List of SELL orders that have found a match.
+    asks: Vec<Order>,
+}
+
+fn clear_orders(mut bid_iter: OrderIterator, mut ask_iter: OrderIterator) -> MatchingOutcome {
+    let mut maybe_bid = bids.next();
+    let mut bids = Vec::new();
+    let mut bid_is_new = true;
+    let mut bid_volume = Uint128::ZERO;
+    let mut maybe_ask = asks.next();
+    let mut asks = Vec::new();
+    let mut ask_is_new = true;
+    let mut ask_volume = Uint128::ZERO;
+    let mut range = None;
+
+    loop {
+        // If we run out of orders on either side, then we're done.
+        let (Some(bid), Some(ask)) = (maybe_bid, maybe_ask) else {
+            break;
+        }
+
+        // If the prices don't cross, then we're done.
+        if bid.price < ask.price {
+            break;
+        }
+
+        range = Some((ask.price, bid.price));
+
+        if bid_is_new {
+            bids.push(bid);
+            bid_volume += bid.quantity;
+        }
+
+        if ask_is_new {
+            asks.push(ask);
+            ask_volume += ask.quantity;
+        }
+
+        if bid_volume <= ask_volume {
+            bid = bid_iter.next();
+            bid_is_new = true;
+        } else {
+            bid_is_new = false;
+        }
+
+        if ask_volume <= bid_volume {
+            ask = ask_iter.next();
+            ask_is_new = true;
+        } else {
+            ask_is_new = false;
+        }
+    }
+
+    let volume = bid_volume.min(ask_volume);
+
+    MatchingOutcome { range, volume, bids, asks }
+}
+```
+
+Once we have the clearing price, clearing the orders is trivial (which involves updating the order state in the book and refund assets to traders) so don't discuss them here.
+
+### Dango's custom smart contract VM
+
+We recognize the above is challenging to implement in legacy virtual machines (VMs) such as the Ethereum virtual machine (EVM), due to:
+
+- In EVM, smart contract actions need to be triggered via transactions. This means each block must have a txn at the very beginning of the block to update the oracle price, and another one at the end of the block to trigger order matching. During periods of high traffic, it can be difficult to get txns into the block, not to mention ensuring they are located at the beginning and end of the block. The only way to achieve this is to utilize a centralized block builder.
+
+  Dango's custom smart contract VM, [Grug](https://grug.build/whitepaper.html), allows validators to submit oracle updates via Tendermint's ABCI++ API, at the top of every block. Additionally, it automatically triggers order matching via end-of-block cronjobs.
+
+- EVM does not support iterating keys in `mapping` data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.
+
+  In Grug, contract states are B-tree maps which supports iteration.
+
 ## Conclusion
 
 We have identified, and proposed Dango DEX as a solution for the following problems:
