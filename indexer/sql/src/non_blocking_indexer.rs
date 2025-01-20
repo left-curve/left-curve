@@ -447,7 +447,7 @@ impl Drop for NonBlockingIndexer {
 /// Wrapper around Tokio runtime to allow running in sync context
 #[derive(Debug)]
 pub struct RuntimeHandler {
-    runtime: Option<Runtime>,
+    pub runtime: Option<Runtime>,
     handle: Handle,
 }
 

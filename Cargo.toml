@@ -78,6 +78,7 @@ dotenvy            = "0.15"
 dyn-clone          = "1"
 ed25519-dalek      = "2"
 elsa               = "1"
+futures            = "0.3"
 glob               = "0.3"
 hex                = "0.4"
 hex-literal        = "0.4"
@@ -85,6 +86,7 @@ home               = "0.5"
 ics23              = "0.12"
 k256               = "0.13"
 lzma-rs            = "0.3"
+num_cpus           = "1"
 p256               = "0.13"
 paste              = "1"
 pbkdf2             = "0.12"
@@ -117,7 +119,7 @@ toml               = "0.8"
 tower              = "0.5"
 tower-abci         = "0.18"
 tracing            = "0.1"
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 uuid               = { version = "1", features = ["serde", "v4"] }
 wasmer             = "5"
 wasmer-middlewares = "5"
@@ -166,8 +168,18 @@ dango-vesting         = { path = "dango/vesting" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }
+indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+
+# httpd packages
+actix                   = "0.13"
+actix-files             = "0"
+actix-web               = "4"
+async-graphql           = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] }
+async-graphql-actix-web = "7.0"
+tera                    = "1"
+tracing-actix-web       = "0.7"
 
 # Hyperlane packages
 hyperlane-fee     = { path = "hyperlane/grug/hooks/fee" }
