@@ -2,6 +2,7 @@ packages:
   - "sdk/packages/*"
   - "sdk/examples/*"
   - "ui/workers/*"
+  - "ui/portal/*"
   - "ui/*"
 
 catalog:
