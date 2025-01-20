@@ -270,6 +270,18 @@ The above plot assumes oracle equals exactly the pool price: $R = 200$. However,
 
 As seen, the deviation does not exceed 0.003% when oracle price jumps less than ~5%. As such, we believe the pool is not ssusceptible to LVR, given that the oracle price's latency is sufficient low to reflect the true asset price.
 
+## Conclusion
+
+We have identified, and proposed Dango DEX as a solution for the following problems:
+
+| The problem                                                  | The cause                                                                                 | Our solution                                                                                                           |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Market making on LOBs is not accessible for retail investors | High level of sophistication is required                                                  | Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                               |
+| LVR                                                          | AMMs do not actively adjust quotes in reaction to changes in asset prices                 | Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader |
+| MEV                                                          | User orders are broadcasted publicly; some traders have information advantage over others | Private mempool; frequent sealed-bid batch auctions at uniform prices                                                  |
+
+
+
 ## Suggested implementation
 
 We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2–0.9 second; we suggest picking a block time from this range.
@@ -481,16 +493,6 @@ We recognize the above is challenging to implement in legacy virtual machines (V
 - EVM does not support iterating keys in `mapping` data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.
 
   In Grug, contract states are B-tree maps which supports iteration.
-
-## Conclusion
-
-We have identified, and proposed Dango DEX as a solution for the following problems:
-
-| The problem                                                  | The cause                                                                                 | Our solution                                                                                                           |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Market making on LOBs is not accessible for retail investors | High level of sophistication is required                                                  | Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                               |
-| LVR                                                          | AMMs do not actively adjust quotes in reaction to changes in asset prices                 | Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader |
-| MEV                                                          | User orders are broadcasted publicly; some traders have information advantage over others | Private mempool; frequent sealed-bid batch auctions at uniform prices                                                  |
 
 ## Related works
 
