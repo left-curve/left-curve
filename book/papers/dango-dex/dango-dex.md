@@ -280,9 +280,28 @@ We have identified, and proposed Dango DEX as a solution for the following probl
 | LVR                                                          | AMMs do not actively adjust quotes in reaction to changes in asset prices                 | Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader |
 | MEV                                                          | User orders are broadcasted publicly; some traders have information advantage over others | Private mempool; frequent sealed-bid batch auctions at uniform prices                                                  |
 
+## Appendix 1. Related works
 
+We're aware of three projects working on enabling passive liquidity provision on LOBs:
 
-## Suggested implementation
+- Hyperliquid's HLP is an actively managed fund operated by the Hyperliquid team. It market makes on Hyperliquid's perpetual futures markets using the team's private, proprietary strategies. While it has generated respectable yields for users, it's closed source, totally centralized, legally ambiguous, and definitely can't be considered DeFi.
+- [Elixir](https://www.elixir.xyz/) provides passive liquidity vaults on a number of perp exchanges. It's also closed source, but we speculate it essentially runs [Hummingbot](https://github.com/hummingbot/hummingbot)'s implementation of the [Avellaneda-Stoikov strategy](https://people.orie.cornell.edu/sfs33/LimitOrderBook.pdf).
+- [Mito](https://mito.fi/) provides passive liquidity vaults on Injective's spot order books. It's also closed source, but we speculate it operates similarly to the xyk strategy described in this article, and thus is capital inefficient and susceptible to LVR.
+
+On LVR, readers are referred to [this excellent overview](https://mirror.xyz/0xbdA5bCe76bF62d97D9C9dF0425CC10079Df1aD75/bWOCccjVC7eoYKOzgmjXFdhWDc8rrUL6Yei-eugF52s) by Fenbushi Capital. The article found the following approaches to tackling the LVR problem:
+
+- LVR minimization:
+  - oracle-informed CFMM (our approach)
+  - Diamond protocol (LVR rebate)
+- LVR redistribution:
+  - dynamic fee
+  - auction-based model
+
+The article claims redistribution is the future for LVR-resistant DEXs, because the LVR minimization approaches discourage orderflow to the point it's less profitable for LPs. We find this argument unconvincing, because reduced orderflow applies only to the LVR rebate approach (Diamond protocol). For oracle-informed CFMM approach, the main concern is the oracle's latency and accuracy. For our use case, we consider Pyth oracle good enough.
+
+On FBA, it is used [by the Injective DEX](https://blog.injective.com/en/injective-exchange-upgrade-a-novel-order-matching-mechanism/) as well as in CowSwap's offchain order book.
+
+## Appendix 2. Suggested implementation
 
 We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2–0.9 second; we suggest picking a block time from this range.
 
@@ -493,22 +512,3 @@ We recognize the above is challenging to implement in legacy virtual machines (V
 - EVM does not support iterating keys in `mapping` data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.
 
   In Grug, contract states are B-tree maps which supports iteration.
-
-## Related works
-
-We're aware of three projects working on enabling passive liquidity provision on LOBs:
-
-- Hyperliquid's HLP is an actively managed fund operated by the Hyperliquid team. It market makes on Hyperliquid's perpetual futures markets using the team's private, proprietary strategies. While it has generated respectable yields for users, it's closed source, totally centralized, legally ambiguous, and definitely can't be considered DeFi.
-- [Elixir](https://www.elixir.xyz/) provides passive liquidity vaults on a number of perp exchanges. It's also closed source, but we speculate it essentially runs [Hummingbot](https://github.com/hummingbot/hummingbot)'s implementation of the [Avellaneda-Stoikov strategy](https://people.orie.cornell.edu/sfs33/LimitOrderBook.pdf).
-- [Mito](https://mito.fi/) provides passive liquidity vaults on Injective's spot order books. It's also closed source, but we speculate it operates similarly to the xyk strategy described in this article, and thus is capital inefficient and susceptible to LVR.
-
-On LVR, readers are referred to [this excellent overview](https://mirror.xyz/0xbdA5bCe76bF62d97D9C9dF0425CC10079Df1aD75/bWOCccjVC7eoYKOzgmjXFdhWDc8rrUL6Yei-eugF52s) by Fenbushi Capital. The article found the following approaches to tackling the LVR problem:
-
-- LVR minimization:
-  - oracle-informed CFMM (our approach)
-  - Diamond protocol (LVR rebate)
-- LVR redistribution:
-  - dynamic fee
-  - auction-based model
-
-The article claims redistribution is the future for LVR-resistant DEXs, because the LVR minimization approaches discourage orderflow to the point it's less profitable for LPs. We find this argument unconvincing, because reduced orderflow applies only to the LVR rebate approach (Diamond protocol). For oracle-informed CFMM approach, the main concern is the oracle's latency and accuracy. For our use case, we consider Pyth oracle good enough.
