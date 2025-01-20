@@ -1,6 +1,6 @@
 use {
     crate::home_directory::HomeDirectory,
-    anyhow::{anyhow, Ok},
+    anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
     dango_genesis::build_rust_codes,
@@ -55,6 +55,8 @@ impl StartCmd {
                 .build()
                 .expect("Can't create indexer");
             if self.indexer_httpd_enabled {
+                // NOTE: If the httpd was heavily used, it would be better to run it in a separate
+                // tokio runtime
                 tokio::try_join!(
                     Self::run_httpd_server(self.indexer_database_url.clone()),
                     self.run_with_indexer(app_dir, indexer)

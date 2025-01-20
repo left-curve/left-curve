@@ -11,9 +11,9 @@ pub struct BlockQuery {}
 #[Object]
 impl BlockQuery {
     /// Get a block
-    async fn block<'a>(
+    async fn block(
         &self,
-        ctx: &async_graphql::Context<'a>,
+        ctx: &async_graphql::Context<'_>,
         height: u64,
     ) -> Result<Option<types::block::Block>> {
         let app_ctx = ctx.data::<Context>()?;
