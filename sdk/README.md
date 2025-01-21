@@ -13,7 +13,7 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 | [`crypto`](./packages/crypto)        | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
 | [`encoding`](./packages/encoding)    | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
 | [`react`](./packages/react)          | It wrap dango-kit actions into react-hooks and wrap the state in a react provider with hydration for ssr                                                    |
-| [`sdk`](./packages/core)             | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
+| [`sdk`](./packages/grug)             | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
 | [`types`](./packages/types)          | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./packages/utils)          | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 

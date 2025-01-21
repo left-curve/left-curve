@@ -1,4 +1,4 @@
-import { createStorage } from "@left-curve/dango-sdk";
+import { createStorage } from "@left-curve/dango";
 import type {
   AnyCoin,
   CoinGeckoId,

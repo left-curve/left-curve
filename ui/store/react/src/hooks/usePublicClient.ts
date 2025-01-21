@@ -3,7 +3,7 @@ import {
   type GetPublicClientReturnType,
   getPublicClient,
   watchPublicClient,
-} from "@left-curve/dango-sdk";
+} from "@left-curve/dango";
 
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
 import { useConfig } from "./useConfig.js";

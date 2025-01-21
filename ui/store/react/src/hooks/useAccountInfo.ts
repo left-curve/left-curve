@@ -9,7 +9,7 @@ import {
   type GetAccountInfoQueryFnData,
   type GetAccountInfoQueryKey,
   getAccountInfoQueryOptions,
-} from "@left-curve/dango-sdk/handlers";
+} from "@left-curve/dango/handlers";
 
 export type UseAccountInfoParameters<
   config extends Config = Config,

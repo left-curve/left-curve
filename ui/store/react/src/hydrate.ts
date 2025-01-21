@@ -1,6 +1,6 @@
 "use client";
 
-import { hydrate } from "@left-curve/dango-sdk";
+import { hydrate } from "@left-curve/dango";
 import type { Config, State } from "@left-curve/types";
 import { type ReactElement, useEffect, useRef } from "react";
 

@@ -9,7 +9,7 @@ import {
   type GetConnectorClientOptions,
   type GetConnectorClientQueryKey,
   getConnectorClientQueryOptions,
-} from "@left-curve/dango-sdk/handlers";
+} from "@left-curve/dango/handlers";
 
 export type UseConnectorClientParameters<
   config extends Config = Config,

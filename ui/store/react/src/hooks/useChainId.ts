@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import { type GetChainIdReturnType, getChainId, watchChainId } from "@left-curve/dango-sdk";
+import { type GetChainIdReturnType, getChainId, watchChainId } from "@left-curve/dango";
 import type { Config, ConfigParameter } from "@left-curve/types";
 import { useConfig } from "./useConfig.js";
 
