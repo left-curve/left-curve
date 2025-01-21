@@ -3,11 +3,11 @@ import {
   type DisconnectParameters,
   type DisconnectReturnType,
   disconnect,
-} from "../store/actions/disconnect.js";
-export { type DisconnectErrorType } from "../store/actions/disconnect.js";
-import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
+} from "../actions/disconnect.js";
 
 import type { Config } from "../types/store.js";
+import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
+export type { DisconnectErrorType } from "../actions/disconnect.js";
 
 export function disconnectMutationOptions<config extends Config>(config: config) {
   return {

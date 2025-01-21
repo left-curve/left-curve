@@ -4,7 +4,8 @@ import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 import type { Account, AccountTypes, Username } from "@left-curve/dango/types";
 import type { Chain, ChainId } from "@left-curve/types";
 
-import type { Config, Connector } from "../types/index.js";
+import type { Connector } from "../types/connector.js";
+import type { Config } from "../types/store.js";
 
 export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {

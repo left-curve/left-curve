@@ -1,4 +1,7 @@
 import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
+import { createKeyHash, createSignerClient } from "@left-curve/dango";
+import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { KeyAlgo } from "@left-curve/dango/types";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
 import {
   composeArbitraryTypedData,
@@ -6,22 +9,14 @@ import {
   getRootDomain,
   hashTypedData,
 } from "@left-curve/utils";
+
 import { createConnector } from "./createConnector.js";
 
+import type { AccountTypes, Eip712Signature, SignerClient } from "@left-curve/dango/types";
 import type { Address, Json, Transport, TypedDataProperty } from "@left-curve/types";
 
-import "@left-curve/types/window";
-import { createKeyHash } from "../../account/key.js";
-import { getAccountsByUsername } from "../../actions/account-factory/queries/getAccountsByUsername.js";
-import { getKeysByUsername } from "../../actions/account-factory/queries/getKeysByUsername.js";
-import { type SignerClient, createSignerClient } from "../../clients/signerClient.js";
-import {
-  type AccountTypes,
-  type ConnectorId,
-  type EIP1193Provider,
-  type Eip712Signature,
-  KeyAlgo,
-} from "../../types/index.js";
+import type { ConnectorId } from "../types/connector.js";
+import type { EIP1193Provider } from "../types/eip1193.js";
 
 type EIP1193ConnectorParameters = {
   id: ConnectorId;

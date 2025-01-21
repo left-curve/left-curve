@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- */
-/*                             Re-export Grug SDK                             */
+/*                                 Transports                                 */
 /* -------------------------------------------------------------------------- */
 
 export { http } from "@left-curve/sdk";
@@ -21,6 +21,7 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export { createPublicClient, createSignerClient } from "./clients/index.js";
+export { createGrugClient } from "@left-curve/sdk";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Chains                                   */
@@ -53,4 +54,4 @@ export {
   safeMutationActions,
   type SafeQueryActions,
   safeQueryActions,
-} from "./actions//index.js";
+} from "./actions/index.js";

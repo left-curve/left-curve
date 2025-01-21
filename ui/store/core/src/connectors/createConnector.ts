@@ -1,5 +1,5 @@
 import type { Transport } from "@left-curve/types";
-import type { CreateConnectorFn } from "../../types/index.js";
+import type { CreateConnectorFn } from "../types/connector.js";
 
 export function createConnector<
   provider extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,

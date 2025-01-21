@@ -1,7 +1,7 @@
 import type { ChainId, Prettify, Transport, UID } from "@left-curve/types";
 import type { Emitter, EventData } from "./emitter.js";
 
-import type { Account, Chain, Signer, Username } from "@left-curve/dango/types";
+import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 

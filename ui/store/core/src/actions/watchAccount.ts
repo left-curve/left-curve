@@ -1,5 +1,6 @@
 import { assertDeepEqual } from "@left-curve/utils";
-import type { Config } from "../../types/store.js";
+
+import type { Config } from "../types/store.js";
 import { type GetAccountReturnType, getAccount } from "./getAccount.js";
 
 export type WatchAccountParameters = {

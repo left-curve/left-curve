@@ -1,22 +1,21 @@
-import { type EventData, createEmitter } from "./createEmitter.js";
-import { createStorage } from "./storages/createStorage.js";
-
-import { createBaseClient } from "@left-curve/sdk";
-
-import { uid } from "@left-curve/utils";
 import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
-import pkgJson from "../../package.json" with { type: "json" };
+import { createPublicClient } from "@left-curve/dango";
+import { uid } from "@left-curve/utils";
+
+import pkgJson from "../package.json" with { type: "json" };
+import { eip6963 } from "./connectors/eip6963.js";
+import { type EventData, createEmitter } from "./createEmitter.js";
+import { createMipdStore } from "./mipd.js";
+import { createStorage } from "./storages/createStorage.js";
+import { ConnectionStatus } from "./types/store.js";
 
 import type { AnyCoin, Chain, Client, Transport } from "@left-curve/types";
-import { eip6963 } from "./connectors/eip6963.js";
-import { createMipdStore } from "./mipd.js";
 
-import type { Connector, ConnectorEventMap, CreateConnectorFn } from "../types/connector.js";
-import type { EIP6963ProviderDetail } from "../types/eip6963.js";
-import type { Config, CreateConfigParameters, State, StoreApi } from "../types/store.js";
-import { ConnectionStatus } from "../types/store.js";
+import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
+import type { EIP6963ProviderDetail } from "./types/eip6963.js";
+import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
 
 export function createConfig<
   const chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
@@ -114,7 +113,7 @@ export function createConfig<
     {
       const chainId = chain.id as chains[number]["id"];
 
-      const client = createBaseClient<Transport, chains[number]>({
+      const client = createPublicClient({
         chain,
         transport: (parameters) => rest.transports[chainId]({ ...parameters }),
       });

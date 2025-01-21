@@ -1,6 +1,7 @@
-import { ConnectionStatus } from "../types/index.js";
+import { ConnectionStatus } from "../types/store.js";
 
-import type { Config, Connector } from "../types/index.js";
+import type { Connector } from "../types/connector.js";
+import type { Config } from "../types/store.js";
 
 export type ConnectParameters = {
   chainId: string;

@@ -1,8 +1,8 @@
-import { getChainInfo } from "@left-curve/sdk/actions";
+import { getChainInfo } from "@left-curve/dango/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
 import type { BlockInfo, ChainId } from "@left-curve/types";
-import type { Config } from "../../types/store.js";
+import type { Config } from "../types/store.js";
 
 export type GetBlockParameters = {
   chainId?: ChainId;

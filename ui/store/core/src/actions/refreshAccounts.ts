@@ -1,7 +1,10 @@
-import type { Address, UID } from "@left-curve/types";
-import type { AccountTypes, Config, Username } from "../../types/index.js";
 import { getConnector } from "./getConnector.js";
 import { getConnectorClient } from "./getConnectorClient.js";
+
+import type { AccountTypes, Username } from "@left-curve/dango/types";
+import type { Address, UID } from "@left-curve/types";
+
+import type { Config } from "../types/store.js";
 
 export type RefreshAccountsParameters = {
   username?: Username;

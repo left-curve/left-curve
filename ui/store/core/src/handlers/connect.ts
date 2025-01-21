@@ -3,11 +3,11 @@ import {
   type ConnectParameters,
   type ConnectReturnType,
   connect,
-} from "../store/actions/connect.js";
-export { type ConnectErrorType } from "../store/actions/connect.js";
-import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
+} from "../actions/connect.js";
 
 import type { Config } from "../types/store.js";
+import type { Mutate, MutateAsync, MutationOptions } from "./mutation.js";
+export type { ConnectErrorType } from "../actions/connect.js";
 
 export function connectMutationOptions<config extends Config>(config: config) {
   return {

@@ -1,4 +1,4 @@
-import { type Config, ConnectionStatus } from "../../types/store.js";
+import { type Config, ConnectionStatus } from "../types/store.js";
 
 export type ReconnectReturnType = void;
 

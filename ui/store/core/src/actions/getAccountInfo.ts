@@ -1,8 +1,10 @@
-import { getAccountInfo as getAccountInfoSdkAction } from "../../actions/account-factory/queries/getAccountInfo.js";
+import { getAccountInfo as getAccountInfoSdkAction } from "@left-curve/dango/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
+import type { Account, AccountTypes } from "@left-curve/dango/types";
 import type { Address, ChainId } from "@left-curve/types";
-import type { Account, AccountTypes, Config } from "../../types/index.js";
+
+import type { Config } from "../types/store.js";
 
 export type GetAccountInfoParameters = {
   address: Address;

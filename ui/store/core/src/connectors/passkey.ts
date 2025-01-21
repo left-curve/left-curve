@@ -1,16 +1,16 @@
 import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/crypto";
-import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
-import { createKeyHash } from "../../account/key.js";
-import { getAccountsByUsername } from "../../actions/account-factory/queries/getAccountsByUsername.js";
-import { getKeysByUsername } from "../../actions/account-factory/queries/getKeysByUsername.js";
-import { KeyAlgo } from "../../types/key.js";
-import { createConnector } from "./createConnector.js";
 
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
+
+import { createKeyHash, createSignerClient } from "@left-curve/dango";
+import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { KeyAlgo } from "@left-curve/dango/types";
 import { getRootDomain } from "@left-curve/utils";
 
+import { createConnector } from "./createConnector.js";
+
+import type { AccountTypes, SignerClient } from "@left-curve/dango/types";
 import type { Address, Transport } from "@left-curve/types";
-import { type SignerClient, createSignerClient } from "../../clients/signerClient.js";
-import type { AccountTypes } from "../../types/account.js";
 
 type PasskeyConnectorParameters = {
   icon?: string;

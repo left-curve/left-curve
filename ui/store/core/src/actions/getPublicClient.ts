@@ -1,7 +1,9 @@
+import { publicActions } from "@left-curve/dango";
+
+import type { Chain, PublicClient, Signer } from "@left-curve/dango/types";
 import type { Client, Transport } from "@left-curve/types";
-import { publicActions } from "../../actions/publicActions.js";
-import type { PublicClient } from "../../clients/publicClient.js";
-import type { Chain, Config, Signer } from "../../types/index.js";
+
+import type { Config } from "../types/index.js";
 
 export type GetPublicClientParameters = {
   chainId?: string;

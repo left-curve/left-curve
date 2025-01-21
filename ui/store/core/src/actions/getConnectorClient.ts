@@ -1,7 +1,9 @@
-import type { UID } from "@left-curve/types";
-import type { SignerClient } from "../../clients/signerClient.js";
-import type { Config } from "../../types/index.js";
 import { getConnector } from "./getConnector.js";
+
+import type { SignerClient } from "@left-curve/dango/types";
+import type { UID } from "@left-curve/types";
+
+import type { Config } from "../types/store.js";
 
 export type GetConnectorClientParameters = {
   connectorUId?: UID;

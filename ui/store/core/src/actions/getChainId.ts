@@ -1,4 +1,4 @@
-import type { Config } from "../../types/store.js";
+import type { Config } from "../types/store.js";
 
 export type GetChainIdReturnType<config extends Config = Config> = config["chains"][number]["id"];
 
