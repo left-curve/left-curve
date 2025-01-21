@@ -2,7 +2,7 @@ import { createBaseClient } from "@left-curve/sdk";
 import { publicActions } from "../actions/index.js";
 
 import type { Transport } from "@left-curve/types";
-import type { PublicClient, PublicClientConfig } from "../types/index.js";
+import type { PublicClient, PublicClientConfig } from "../types/clients.js";
 
 export function createPublicClient<transport extends Transport>(
   parameters: PublicClientConfig<transport>,

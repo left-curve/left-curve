@@ -3,7 +3,7 @@ import { publicActions, signerActions } from "../actions/index.js";
 
 import type { Transport } from "@left-curve/types";
 
-import type { SignerClient, SignerClientConfig } from "../types/index.js";
+import type { SignerClient, SignerClientConfig } from "../types/clients.js";
 
 export function createSignerClient<transport extends Transport = Transport>(
   parameters: SignerClientConfig<transport>,
