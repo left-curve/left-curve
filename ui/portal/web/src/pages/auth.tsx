@@ -1,7 +1,7 @@
 import { createRoute, notFound, redirect, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { WizardProvider } from "@dango/shared";
+import { WizardProvider } from "@left-curve/portal-shared";
 import { RootRouter } from "~/AppRouter";
 import {
   AuthWizard,

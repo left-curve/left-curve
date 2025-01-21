@@ -1,5 +1,5 @@
 {
-  "name": "@dango/portal-web",
+  "name": "@left-curve/portal-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,8 +8,8 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@dango/config": "workspace:^",
-    "@dango/shared": "workspace:^",
+    "@left-curve/ui-config": "workspace:^",
+    "@left-curve/portal-shared": "workspace:^",
     "@left-curve/connect-kit": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",

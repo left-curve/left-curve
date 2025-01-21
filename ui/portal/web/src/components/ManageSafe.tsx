@@ -5,7 +5,7 @@ import {
   SafeProposalsTable,
   Tab,
   Tabs,
-} from "@dango/shared";
+} from "@left-curve/portal-shared";
 
 import type { Account, AccountType } from "@left-curve/types";
 

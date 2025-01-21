@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, useWizard } from "@dango/shared";
+import { Button, Select, SelectItem, useWizard } from "@left-curve/portal-shared";
 import { useConfig, useConnectors } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";

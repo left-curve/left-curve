@@ -1,4 +1,4 @@
-import { Button, Input, useWizard } from "@dango/shared";
+import { Button, Input, useWizard } from "@left-curve/portal-shared";
 import { usePublicClient } from "@left-curve/react";
 import type React from "react";
 import { useForm } from "react-hook-form";

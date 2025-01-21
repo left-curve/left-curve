@@ -1,4 +1,4 @@
-import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@dango/shared";
+import { AccountInfo, SpotEditAccount, SpotPortfolioTable } from "@left-curve/portal-shared";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 

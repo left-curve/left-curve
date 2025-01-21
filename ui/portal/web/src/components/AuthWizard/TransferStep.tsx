@@ -1,4 +1,4 @@
-import { Button, Input, Select, SelectItem } from "@dango/shared";
+import { Button, Input, Select, SelectItem } from "@left-curve/portal-shared";
 import { useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 

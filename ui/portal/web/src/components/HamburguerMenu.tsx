@@ -6,7 +6,7 @@ import {
   type VisibleRef,
   twMerge,
   useClickAway,
-} from "@dango/shared";
+} from "@left-curve/portal-shared";
 import type React from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 

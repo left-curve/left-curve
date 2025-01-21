@@ -1,4 +1,4 @@
-import { Button, Input, useSigningClient, useWizard } from "@dango/shared";
+import { Button, Input, useSigningClient, useWizard } from "@left-curve/portal-shared";
 import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 

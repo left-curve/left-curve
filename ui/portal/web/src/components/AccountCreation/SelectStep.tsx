@@ -1,4 +1,4 @@
-import { AccountDescriptionCard, useWizard } from "@dango/shared";
+import { AccountDescriptionCard, useWizard } from "@left-curve/portal-shared";
 import { motion } from "framer-motion";
 import type React from "react";
 

@@ -1,4 +1,4 @@
-import { twMerge, useWizard } from "@dango/shared";
+import { twMerge, useWizard } from "@left-curve/portal-shared";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 

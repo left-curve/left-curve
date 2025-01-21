@@ -1,4 +1,4 @@
-import { Button, twMerge, useWizard } from "@dango/shared";
+import { Button, twMerge, useWizard } from "@left-curve/portal-shared";
 import { AnimatePresence } from "framer-motion";
 import type { PropsWithChildren } from "react";
 

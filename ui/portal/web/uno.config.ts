@@ -3,7 +3,10 @@ import { defineConfig, presetUno } from "unocss";
 
 export default defineConfig({
   content: {
-    filesystem: ["node_modules/@dango/shared/build/**/*.mjs", "./src/**/*.{html,js,ts,jsx,tsx}"],
+    filesystem: [
+      "node_modules/@left-curve/portal-shared/build/**/*.mjs",
+      "./src/**/*.{html,js,ts,jsx,tsx}",
+    ],
   },
   presets: [presetUno(), leftCurvePreset()],
 });

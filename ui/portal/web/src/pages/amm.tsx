@@ -1,7 +1,7 @@
 import { createLazyRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { PoolManagment, PoolSelector, Tab, Tabs } from "@dango/shared";
+import { PoolManagment, PoolSelector, Tab, Tabs } from "@left-curve/portal-shared";
 
 const actions = ["deposit", "withdraw"];
 

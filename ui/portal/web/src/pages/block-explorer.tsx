@@ -1,6 +1,6 @@
 import { createLazyRoute } from "@tanstack/react-router";
 
-import { Button, Emoji, Input } from "@dango/shared";
+import { Button, Emoji, Input } from "@left-curve/portal-shared";
 
 export const BlockExplorerRoute = createLazyRoute("/block-explorer")({
   component: () => {

@@ -1,4 +1,10 @@
-import { AccountSearchInput, Button, CoinSelector, Input, useSigningClient } from "@dango/shared";
+import {
+  AccountSearchInput,
+  Button,
+  CoinSelector,
+  Input,
+  useSigningClient,
+} from "@left-curve/portal-shared";
 import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { isValidAddress } from "@left-curve/sdk";
 import type { Address } from "@left-curve/types";

@@ -1,4 +1,4 @@
-import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@dango/shared";
+import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@left-curve/portal-shared";
 
 import type { Account } from "@left-curve/types";
 

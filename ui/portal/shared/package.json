@@ -1,5 +1,5 @@
 {
-  "name": "@dango/shared",
+  "name": "@left-curve/portal-shared",
   "version": "0.1.0",
   "scripts": {
     "ci": "pnpm lint",
@@ -45,7 +45,7 @@
     }
   },
   "dependencies": {
-    "@dango/config": "workspace:^",
+    "@left-curve/ui-config": "workspace:^",
     "@left-curve/react": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/crypto": "workspace:^",

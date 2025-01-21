@@ -9,7 +9,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../shared"
+      "path": "../shared"
     },
     {
       "path": "../../../sdk/packages/types"

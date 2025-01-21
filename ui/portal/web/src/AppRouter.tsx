@@ -14,7 +14,7 @@ import { useAccount, useConfig, usePublicClient } from "@left-curve/react";
 import { AccountsRoute } from "./pages/accounts";
 import { AuthRoute } from "./pages/auth";
 
-import { Spinner } from "@dango/shared";
+import { Spinner } from "@left-curve/portal-shared";
 import { AppLayout } from "./components/AppLayout";
 
 import type {

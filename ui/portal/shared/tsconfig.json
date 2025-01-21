@@ -9,16 +9,16 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../sdk/packages/types"
+      "path": "../../../sdk/packages/types"
     },
     {
-      "path": "../../sdk/packages/core"
+      "path": "../../../sdk/packages/core"
     },
     {
-      "path": "../../sdk/packages/utils"
+      "path": "../../../sdk/packages/utils"
     },
     {
-      "path": "../../sdk/packages/react"
+      "path": "../../../sdk/packages/react"
     }
   ]
 }

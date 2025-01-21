@@ -5,7 +5,7 @@ import {
   MenuNotifications,
   type VisibleRef,
   twMerge,
-} from "@dango/shared";
+} from "@left-curve/portal-shared";
 
 import { AccountType } from "@left-curve/types";
 
