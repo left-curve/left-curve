@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@left-curve/config/ts/react.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "rootDir": "src"
+  },
+  "include": ["src", "../web/src/hooks/useMediaQuery.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../../sdk/packages/types"
+    },
+    {
+      "path": "../../../sdk/packages/core"
+    },
+    {
+      "path": "../../../sdk/packages/utils"
+    },
+    {
+      "path": "../../../sdk/packages/react"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "extends": ["@left-curve/config/ts/react.json"],
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../applets/kit"
+    },
+    {
+      "path": "../../../sdk/packages/types"
+    },
+    {
+      "path": "../../../sdk/packages/connect-kit"
+    },
+    {
+      "path": "../../../sdk/packages/crypto"
+    },
+    {
+      "path": "../../../sdk/packages/utils"
+    },
+    {
+      "path": "../../../sdk/packages/core"
+    },
+    {
+      "path": "../../../sdk/packages/react"
+    }
+  ]
+}
