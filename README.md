@@ -6,12 +6,12 @@
 
 This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number of [Left Curve Software](https://x.com/leftCurveSoft) products:
 
-| Name              | Language   | Description                                               |
-| ----------------- | ---------- | --------------------------------------------------------- |
-| [dango](./dango/) | Rust       | A suite of DeFi application smart contracts               |
-| [grug](./grug/)   | Rust       | An execution environment for blockchains                  |
-| [sdk](./sdk/)     | TypeScript | An SDK for interacting with Grug chains                   |
-| [ui](./ui/)       | TypeScript | A web interface for accessing Dango and other Grug chains |
+| Name              | Language   | Description                                 |
+| ----------------- | ---------- | ------------------------------------------- |
+| [dango](./dango/) | Rust       | A suite of DeFi application smart contracts |
+| [grug](./grug/)   | Rust       | An execution environment for blockchains    |
+| [sdk](./sdk/)     | TypeScript | An SDK for interacting with Grug chains     |
+| [ui](./ui/)       | TypeScript | A web interface for accessing Dango         |
 
 ## How to use
 
