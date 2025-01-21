@@ -1,6 +1,6 @@
 use {
     crate::Order,
-    dango_types::orderbook::OrderId,
+    dango_types::dex::OrderId,
     grug::{Number, NumberConst, StdResult, Udec128, Uint128},
 };
 

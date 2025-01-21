@@ -7,11 +7,11 @@ members = [
   "dango/bank",
   "dango/cli",
   "dango/client",
+  "dango/dex",
   "dango/genesis",
   "dango/ibc-transfer",
   "dango/lending",
   "dango/oracle",
-  "dango/orderbook",
   "dango/taxman",
   "dango/testing",
   "dango/types",
@@ -154,11 +154,11 @@ dango-app             = { path = "dango/app" }
 dango-auth            = { path = "dango/auth" }
 dango-bank            = { path = "dango/bank" }
 dango-client          = { path = "dango/client" }
+dango-dex             = { path = "dango/dex" }
 dango-genesis         = { path = "dango/genesis" }
 dango-ibc-transfer    = { path = "dango/ibc-transfer" }
 dango-lending         = { path = "dango/lending" }
 dango-oracle          = { path = "dango/oracle" }
-dango-orderbook       = { path = "dango/orderbook" }
 dango-taxman          = { path = "dango/taxman" }
 dango-testing         = { path = "dango/testing" }
 dango-types           = { path = "dango/types" }
