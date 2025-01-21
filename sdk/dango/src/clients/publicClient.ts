@@ -1,20 +1,8 @@
 import { createBaseClient } from "@left-curve/sdk";
-import type { Client, ClientConfig, Transport } from "@left-curve/types";
-import { type PublicActions, publicActions } from "../actions/index.js";
-import type { Chain } from "../types/index.js";
+import { publicActions } from "../actions/index.js";
 
-export type PublicClientConfig<transport extends Transport = Transport> = ClientConfig<
-  transport,
-  Chain,
-  undefined
->;
-
-export type PublicClient<transport extends Transport = Transport> = Client<
-  transport,
-  Chain,
-  undefined,
-  PublicActions<transport>
->;
+import type { Transport } from "@left-curve/types";
+import type { PublicClient, PublicClientConfig } from "../types/index.js";
 
 export function createPublicClient<transport extends Transport>(
   parameters: PublicClientConfig<transport>,

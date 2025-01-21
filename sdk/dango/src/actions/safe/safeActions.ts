@@ -42,12 +42,7 @@ import {
   safeAccountVote,
 } from "./mutations/vote.js";
 
-export type SafeActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = Signer,
-> = {
-  // queries
+export type SafeQueryActions = {
   safeAccountGetProposal: (
     args: SafeAccountGetProposalParameters,
   ) => SafeAccountGetProposalReturnType;
@@ -56,7 +51,9 @@ export type SafeActions<
   ) => SafeAccountGetProposalsReturnType;
   safeAccountGetVote: (args: SafeAccountGetVoteParameters) => SafeAccountGetVoteReturnType;
   safeAccountGetVotes: (args: SafeAccountGetVotesParameters) => SafeAccountGetVotesReturnType;
-  // mutations
+};
+
+export type SafeMutationActions = {
   safeAccountExecute: (
     args: SafeAccountExecuteParameters,
     txArgs: TxParameters,
@@ -71,24 +68,25 @@ export type SafeActions<
   ) => SafeAccountVoteReturnType;
 };
 
-export function safeActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain,
-  signer extends Signer = Signer,
->(client: Client<transport, chain, signer>): SafeActions<transport, chain, signer> {
+export function safeQueryActions<transport extends Transport = Transport>(
+  client: Client<transport, Chain, Signer>,
+): SafeQueryActions {
   return {
-    // queries
     safeAccountGetProposal: (args: SafeAccountGetProposalParameters) =>
-      safeAccountGetProposal<chain, signer>(client, args),
+      safeAccountGetProposal(client, args),
     safeAccountGetProposals: (args: SafeAccountGetProposalsParameters) =>
-      safeAccountGetProposals<chain, signer>(client, args),
-    safeAccountGetVote: (args: SafeAccountGetVoteParameters) =>
-      safeAccountGetVote<chain, signer>(client, args),
-    safeAccountGetVotes: (args: SafeAccountGetVotesParameters) =>
-      safeAccountGetVotes<chain, signer>(client, args),
-    // mutations
-    safeAccountExecute: (...args) => safeAccountExecute<chain, signer>(client, ...args),
-    safeAccountPropose: (...args) => safeAccountPropose<chain, signer>(client, ...args),
-    safeAccountVote: (...args) => safeAccountVote<chain, signer>(client, ...args),
+      safeAccountGetProposals(client, args),
+    safeAccountGetVote: (args: SafeAccountGetVoteParameters) => safeAccountGetVote(client, args),
+    safeAccountGetVotes: (args: SafeAccountGetVotesParameters) => safeAccountGetVotes(client, args),
+  };
+}
+
+export function safeMutationActions<transport extends Transport = Transport>(
+  client: Client<transport, Chain, Signer>,
+): SafeMutationActions {
+  return {
+    safeAccountExecute: (...args) => safeAccountExecute(client, ...args),
+    safeAccountPropose: (...args) => safeAccountPropose(client, ...args),
+    safeAccountVote: (...args) => safeAccountVote(client, ...args),
   };
 }

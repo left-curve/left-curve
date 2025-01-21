@@ -1,21 +1,9 @@
-import type { Client, ClientConfig, RequiredBy, Transport } from "@left-curve/types";
-
 import { createBaseClient } from "@left-curve/sdk";
-import { type PublicActions, publicActions } from "../actions/index.js";
-import { type SignerActions, signerActions } from "../actions/signerActions.js";
-import type { Chain, Signer } from "../types/index.js";
+import { publicActions, signerActions } from "../actions/index.js";
 
-export type SignerClientConfig<transport extends Transport = Transport> = RequiredBy<
-  ClientConfig<transport, Chain, Signer>,
-  "signer"
-> & { username: string };
+import type { Transport } from "@left-curve/types";
 
-export type SignerClient<transport extends Transport = Transport> = Client<
-  transport,
-  Chain,
-  Signer,
-  PublicActions<transport> & SignerActions & { username: string }
->;
+import type { SignerClient, SignerClientConfig } from "../types/index.js";
 
 export function createSignerClient<transport extends Transport = Transport>(
   parameters: SignerClientConfig<transport>,

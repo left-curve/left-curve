@@ -1,7 +1,10 @@
-import type { Chain, ChainId } from "@left-curve/types";
-import type { Account, AccountTypes, Config, Connector, Username } from "../../types/index.js";
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
+
+import type { Account, AccountTypes, Username } from "@left-curve/dango/types";
+import type { Chain, ChainId } from "@left-curve/types";
+
+import type { Config, Connector } from "../types/index.js";
 
 export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {

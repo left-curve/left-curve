@@ -31,17 +31,8 @@ import {
   type TransferReturnType,
   transfer,
 } from "./mutations/transfer.js";
-import {
-  type ComputeAddressParameters,
-  type ComputeAddressReturnType,
-  computeAddress,
-} from "./queries/computeAddress.js";
 
 import type { Chain, Signer } from "../../types/index.js";
-
-export type AppQueryActions = {
-  computeAddress(args: ComputeAddressParameters): ComputeAddressReturnType;
-};
 
 export type AppMutationActions = {
   broadcastTxSync(args: BroadcastTxSyncParameters): BroadcastTxSyncReturnType;
@@ -55,14 +46,6 @@ export type AppMutationActions = {
   ): StoreCodeAndInstantiateReturnType;
   transfer(args: TransferParameters): TransferReturnType;
 };
-
-export function appQueryActions<transport extends Transport = Transport>(
-  _client: Client<transport, Chain, Signer>,
-): AppQueryActions {
-  return {
-    computeAddress: (args: ComputeAddressParameters) => computeAddress(args),
-  };
-}
 
 export function appMutationActions<transport extends Transport = Transport>(
   client: Client<transport, Chain, Signer>,

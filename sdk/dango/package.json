@@ -26,6 +26,22 @@
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
+    },
+    "./actions": {
+      "types": "./build/actions/index.d.ts",
+      "import": "./build/actions/index.js",
+      "default": "./build/actions/index.cjs"
+    },
+     "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "types": ["./build/types/index.d.ts"],
+      "actions": ["./build/actions/index.d.ts"]
     }
   },
   "devDependencies": {
