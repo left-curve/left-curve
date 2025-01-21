@@ -9,7 +9,7 @@ import {
   type ConnectMutateAsync,
   type ConnectVariables,
   connectMutationOptions,
-} from "@left-curve/dango-kit/handlers";
+} from "@left-curve/dango-sdk/handlers";
 
 import {
   type Config,

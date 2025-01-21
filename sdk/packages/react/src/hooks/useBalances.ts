@@ -9,7 +9,7 @@ import {
   type GetBalancesQueryFnData,
   type GetBalancesQueryKey,
   getBalancesQueryOptions,
-} from "@left-curve/dango-kit/handlers";
+} from "@left-curve/dango-sdk/handlers";
 
 export type UseBalancesParameters<
   config extends Config = Config,

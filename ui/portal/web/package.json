@@ -10,7 +10,7 @@
   "dependencies": {
     "@left-curve/ui-config": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
-    "@left-curve/dango-kit": "workspace:^",
+    "@left-curve/dango-sdk": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/react": "workspace:^",

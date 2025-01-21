@@ -286,7 +286,7 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
-  sdk/packages/dango-kit:
+  sdk/packages/dango-sdk:
     dependencies:
       '@left-curve/crypto':
         specifier: workspace:^
@@ -344,9 +344,9 @@ importers:
       '@left-curve/crypto':
         specifier: workspace:^
         version: link:../crypto
-      '@left-curve/dango-kit':
+      '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../dango-kit
+        version: link:../dango-sdk
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
@@ -409,9 +409,9 @@ importers:
       '@left-curve/crypto':
         specifier: workspace:^
         version: link:../../../sdk/packages/crypto
-      '@left-curve/dango-kit':
+      '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/dango-kit
+        version: link:../../../sdk/packages/dango-sdk
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/packages/encoding
@@ -612,9 +612,9 @@ importers:
       '@left-curve/crypto':
         specifier: workspace:^
         version: link:../../../sdk/packages/crypto
-      '@left-curve/dango-kit':
+      '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/dango-kit
+        version: link:../../../sdk/packages/dango-sdk
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/packages/encoding

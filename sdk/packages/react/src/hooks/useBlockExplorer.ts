@@ -1,4 +1,4 @@
-import { type GetBlockExplorerParameters, getBlockExplorer } from "@left-curve/dango-kit";
+import { type GetBlockExplorerParameters, getBlockExplorer } from "@left-curve/dango-sdk";
 import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
 import { useConfig } from "./useConfig.js";
 
