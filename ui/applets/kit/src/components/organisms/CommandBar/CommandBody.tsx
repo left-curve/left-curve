@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { AppletCard } from "../../";
 
-import { useStorage } from "@left-curve/react";
 import { Command } from "cmdk";
+import { useStorage } from "../../../../../../../sdk/packages/dango/src/store/react";
 import type { AppletMetadata } from "../../../types";
 
 interface Props {

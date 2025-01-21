@@ -1,4 +1,4 @@
-import { useBalances } from "@left-curve/react";
+import { useBalances } from "../../../../../../sdk/packages/dango/src/store/react";
 import { AssetCard } from "./AssetCard";
 
 import type { Account } from "@left-curve/types";

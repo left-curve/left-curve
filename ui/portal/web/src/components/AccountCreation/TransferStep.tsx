@@ -1,6 +1,10 @@
 import { Button, Input, useSigningClient, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
+import {
+  useAccount,
+  useBalances,
+  useConfig,
+} from "../../../../../../sdk/packages/dango/src/store/react";
 
 import type { AccountTypes, NativeCoin } from "@left-curve/types";
 import { formatUnits, parseUnits, wait } from "@left-curve/utils";

@@ -1,8 +1,8 @@
 "use client";
 
-import { useAccount } from "@left-curve/react";
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
+import { useAccount } from "../../../../../../sdk/packages/dango/src/store/react";
 
 import { twMerge } from "../../utils";
 

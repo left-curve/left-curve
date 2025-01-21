@@ -9,7 +9,11 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 
-import { useAccount, useConfig, usePublicClient } from "@left-curve/react";
+import {
+  useAccount,
+  useConfig,
+  usePublicClient,
+} from "../../../../sdk/packages/dango/src/store/react";
 
 import { AccountsRoute } from "./pages/accounts";
 import { AuthRoute } from "./pages/auth";
@@ -17,12 +21,12 @@ import { AuthRoute } from "./pages/auth";
 import { Spinner } from "@left-curve/applets-kit";
 import { AppLayout } from "./components/AppLayout";
 
+import { useEffect } from "react";
 import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
-} from "@left-curve/react";
-import { useEffect } from "react";
+} from "../../../../sdk/packages/dango/src/store/react";
 
 export const AppRoute = createRoute({
   id: "app-layout",

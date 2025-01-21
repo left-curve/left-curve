@@ -9,19 +9,19 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../utils"
+      "path": "../../../sdk/packages/utils"
     },
     {
-      "path": "../types"
+      "path": "../../../sdk/packages/types"
     },
     {
-      "path": "../crypto"
+      "path": "../../../sdk/packages/crypto"
     },
     {
-      "path": "../encoding"
+      "path": "../../../sdk/packages/encoding"
     },
     {
-      "path": "../dango-kit"
+      "path": "../../../sdk/packages/dango"
     }
   ]
 }

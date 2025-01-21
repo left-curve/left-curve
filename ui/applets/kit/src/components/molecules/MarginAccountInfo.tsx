@@ -1,5 +1,5 @@
-import { useAccount } from "@left-curve/react";
 import type React from "react";
+import { useAccount } from "../../../../../../sdk/packages/dango/src/store/react";
 import { Button } from "../atoms/Button";
 import { BorrowingBar } from "./BorrowingBar";
 

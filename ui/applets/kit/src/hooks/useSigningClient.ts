@@ -1,5 +1,5 @@
-import { useConnectorClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
+import { useConnectorClient } from "../../../../../sdk/packages/dango/src/store/react";
 import { useSessionKey } from "./useSessionKey";
 
 export function useSigningClient() {

@@ -1,5 +1,5 @@
-import { http, createConfig, passkey } from "@left-curve/react";
-import { devnet } from "@left-curve/react/chains";
+import { http, createConfig, passkey } from "../../../sdk/packages/dango/src/store/react";
+import { devnet } from "../../../sdk/packages/dango/src/store/react/chains";
 
 import "@left-curve/types/window";
 import type { Config } from "@left-curve/types";

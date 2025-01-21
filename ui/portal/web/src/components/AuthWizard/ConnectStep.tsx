@@ -2,8 +2,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { Select, SelectItem, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
+import {
+  useAccount,
+  useConfig,
+  useConnectors,
+  usePublicClient,
+} from "../../../../../../sdk/packages/dango/src/store/react";
 
 import {
   createWebAuthnCredential,

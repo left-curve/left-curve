@@ -2,8 +2,8 @@ import type React from "react";
 import { Button } from "../atoms/Button";
 import { PortfolioTable } from "./PortfolioTable";
 
-import { useAccount } from "@left-curve/react";
 import type { Account } from "@left-curve/types";
+import { useAccount } from "../../../../../../sdk/packages/dango/src/store/react";
 
 interface Props {
   account: Account;

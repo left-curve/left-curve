@@ -26,41 +26,10 @@ export type { Chain } from "./chain.js";
 export type { Signer } from "./signer.js";
 
 export type {
-  Connection,
-  Connector,
-  ConnectorEventMap,
-  ConnectorId,
-  ConnectorIds,
-  ConnectorParameter,
-  ConnectorType,
-  ConnectorTypes,
-  CreateConnectorFn,
-} from "./connector.js";
-
-export type {
   Credential,
   SessionCredential,
   StandardCredential,
 } from "./credential.js";
-
-export type { Currencies } from "./currency.js";
-
-export type { EIP1193Provider } from "./eip1193.js";
-
-export type {
-  EIP6963AnnounceProviderEvent,
-  EIP6963ProviderDetail,
-  EIP6963ProviderInfo,
-  EIP6963RequestProviderEvent,
-} from "./eip6963.js";
-
-export type {
-  Emitter,
-  EventData,
-  EventFn,
-  EventKey,
-  EventMap,
-} from "./emitter.js";
 
 export type {
   Key,
@@ -70,8 +39,6 @@ export type {
 } from "./key.js";
 
 export type { Metadata } from "./metadata.js";
-
-export type { MipdStore } from "./mipd.js";
 
 export type {
   ConcentratedParams,
@@ -114,21 +81,6 @@ export type {
 } from "./signature.js";
 
 export type {
-  AbstractStorage,
-  CreateStorageParameters,
-  Storage,
-} from "./storage.js";
-
-export type {
-  Config,
-  ConnectionStatusType,
-  CreateConfigParameters,
-  State,
-  ConfigParameter,
-  StoreApi,
-} from "./store.js";
-
-export type {
   TokenFactoryConfig,
   TokenFactoryExecuteMsg,
   TokenFactoryQueryMsg,
@@ -141,5 +93,3 @@ export { KeyAlgo } from "./key.js";
 export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
-
-export { ConnectionStatus } from "./store.js";

@@ -3,8 +3,8 @@ import type React from "react";
 
 import { type PropsWithChildren, useState } from "react";
 
-import { useConnectors } from "@left-curve/react";
 import { Button, CloseIcon } from "../../";
+import { useConnectors } from "../../../../../../../sdk/packages/dango/src/store/react";
 import { useWizard } from "../../../providers";
 import { twMerge } from "../../../utils";
 

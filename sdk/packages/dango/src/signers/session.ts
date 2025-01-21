@@ -3,10 +3,7 @@ import { encodeBase64, serialize } from "@left-curve/encoding";
 
 import type { JsonValue } from "@left-curve/types";
 
-import type { SessionCredential } from "../types/credential.js";
-import type { SigningSession } from "../types/session.js";
-import type { SignDoc } from "../types/signature.js";
-import type { Signer } from "../types/signer.js";
+import type { SessionCredential, SignDoc, Signer, SigningSession } from "../types/index.js";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
   const { sessionInfo, authorization, privateKey, keyHash } = session;

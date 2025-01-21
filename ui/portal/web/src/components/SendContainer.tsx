@@ -5,11 +5,15 @@ import {
   Input,
   useSigningClient,
 } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { isValidAddress } from "@left-curve/sdk";
 import type { Address } from "@left-curve/types";
 import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
+import {
+  useAccount,
+  useBalances,
+  useConfig,
+} from "../../../../../sdk/packages/dango/src/store/react";
 
 export const SendContainer: React.FC = () => {
   const { coins: chainCoins } = useConfig();

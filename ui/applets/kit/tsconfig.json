@@ -5,20 +5,20 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "include": ["src", "../web/src/hooks/useMediaQuery.ts"],
+  "include": ["src"],
   "exclude": ["node_modules"],
   "references": [
     {
       "path": "../../../sdk/packages/types"
     },
     {
-      "path": "../../../sdk/packages/core"
+      "path": "../../../sdk/packages/grug"
     },
     {
       "path": "../../../sdk/packages/utils"
     },
     {
-      "path": "../../../sdk/packages/react"
+      "path": "../../store"
     }
   ]
 }

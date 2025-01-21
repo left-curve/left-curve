@@ -1,5 +1,5 @@
-import { usePublicClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "../../../../../../sdk/packages/dango/src/store/react";
 import { ProposalBar } from "../atoms/ProposalBar";
 
 import type { Address, Proposal } from "@left-curve/types";

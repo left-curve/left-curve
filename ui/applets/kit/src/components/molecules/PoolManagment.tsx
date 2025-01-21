@@ -1,6 +1,10 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/react";
 import type React from "react";
 import { Button, Emoji, Input } from "../";
+import {
+  useAccount,
+  useBalances,
+  usePrices,
+} from "../../../../../../sdk/packages/dango/src/store/react";
 import { twMerge } from "../../utils";
 
 interface Props {

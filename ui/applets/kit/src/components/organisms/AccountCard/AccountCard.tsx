@@ -1,6 +1,10 @@
 "use client";
 
-import { useAccount, useBalances, usePrices } from "@left-curve/react";
+import {
+  useAccount,
+  useBalances,
+  usePrices,
+} from "../../../../../../../sdk/packages/dango/src/store/react";
 
 import { motion } from "framer-motion";
 

@@ -1,6 +1,6 @@
 {
-  "name": "@left-curve/dango-sdk",
-  "version": "0.1.0",
+  "name": "@left-curve/store",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "bump": "npm version --no-git-tag-version",
@@ -9,8 +9,6 @@
     "clean:build": "rm -rf ./build",
     "lint": "pnpm biome check --write src",
     "lint:fix": "pnpm biome ci ./src",
-    "test": "pnpm vitest run",
-    "test:watch": "pnpm vitest",
     "pre-dev": "tsc",
     "dev": "tsc -w",
     "build": "pnpm tsup --clean"
@@ -18,9 +16,10 @@
   "main": "./build/index.cjs",
   "module": "./build/index.js",
   "types": "./build/index.d.ts",
-  "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build"],
+  "files": [
+    "build"
+  ],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -28,30 +27,25 @@
       "default": "./build/index.cjs"
     }
   },
-  "devDependencies": {
-    "@left-curve/config": "workspace:^",
-    "@tanstack/query-core": "^5.56.2",
-    "vitest": "catalog:"
-  },
   "dependencies": {
+    "@left-curve/dango-sdk": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
-    "@left-curve/sdk": "workspace:^",
-    "@left-curve/types": "workspace:^",
-    "@left-curve/utils": "workspace:^",
-    "eventemitter3": "^5.0.1",
-    "zustand": "catalog:"
+    "@left-curve/utils": "workspace:^"
   },
-  "peerDependencies": {
-    "@tanstack/query-core": ">=5.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@tanstack/query-core": {
-      "optional": true
-    }
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@left-curve/types": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",
   "repository": "left-curve/left-curve",
-  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }

@@ -1,6 +1,6 @@
-import { GrunnectProvider } from "@left-curve/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
+import { GrunnectProvider } from "../../../../sdk/packages/dango/src/store/react";
 import { config } from "../grunnect.config";
 
 const queryClient = new QueryClient({

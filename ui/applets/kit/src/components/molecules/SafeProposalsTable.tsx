@@ -1,6 +1,6 @@
-import { usePublicClient } from "@left-curve/react";
 import { safeAccountGetProposals } from "@left-curve/sdk/actions";
 import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "../../../../../../sdk/packages/dango/src/store/react";
 
 import { ProposalCard } from "./ProposalCard";
 

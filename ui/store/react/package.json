@@ -1,5 +1,5 @@
 {
-  "name": "@left-curve/react",
+  "name": "@left-curve/store-react",
   "version": "0.1.1",
   "type": "module",
   "scripts": {

@@ -1,6 +1,6 @@
-import { useConfig, usePrices } from "@left-curve/react";
 import type { Coin } from "@left-curve/types";
 import { formatUnits } from "@left-curve/utils";
+import { useConfig, usePrices } from "../../../../../../sdk/packages/dango/src/store/react";
 import { twMerge } from "../../utils";
 
 interface Props {

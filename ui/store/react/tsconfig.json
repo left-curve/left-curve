@@ -3,10 +3,10 @@
   "extends": "@left-curve/config/ts/browser.json",
   "compilerOptions": {
     "outDir": "build",
-    "rootDir": "src"
+    "rootDir": "../dango/src/store/src"
   },
   "include": ["src"],
-  "exclude": ["node_modules", "build"],
+  "exclude": ["node_modules"],
   "references": [
     {
       "path": "../utils"
@@ -21,7 +21,7 @@
       "path": "../encoding"
     },
     {
-      "path": "../grug"
+      "path": "../dango-kit"
     }
   ]
 }

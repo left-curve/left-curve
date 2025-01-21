@@ -1,0 +1,6 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "extends": ["@left-curve/config/typedoc/common"],
+  "entryPoints": ["src/index.ts"],
+  "readme": "../../README.md"
+}
