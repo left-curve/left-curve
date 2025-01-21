@@ -1,6 +1,7 @@
 packages:
   - "sdk/packages/*"
   - "sdk/examples/*"
+  - "ui/applets/*"
   - "ui/workers/*"
   - "ui/portal/*"
   - "ui/*"

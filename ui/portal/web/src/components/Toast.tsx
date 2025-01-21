@@ -1,7 +1,7 @@
 import { useState } from "react";
 import hotToast from "react-hot-toast";
 
-import { CrossIcon } from "@left-curve/portal-shared";
+import { CrossIcon } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/utils";
 
 interface ToastMsg {

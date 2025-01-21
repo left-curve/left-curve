@@ -1,4 +1,4 @@
-import { AccountDescriptionCard, useWizard } from "@left-curve/portal-shared";
+import { AccountDescriptionCard, useWizard } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 import type React from "react";
 

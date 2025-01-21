@@ -1,4 +1,4 @@
-import { twMerge, useWizard } from "@left-curve/portal-shared";
+import { twMerge, useWizard } from "@left-curve/applets-kit";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 

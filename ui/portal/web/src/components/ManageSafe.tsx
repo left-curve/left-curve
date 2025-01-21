@@ -5,7 +5,7 @@ import {
   SafeProposalsTable,
   Tab,
   Tabs,
-} from "@left-curve/portal-shared";
+} from "@left-curve/applets-kit";
 
 import type { Account, AccountType } from "@left-curve/types";
 

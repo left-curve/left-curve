@@ -1,4 +1,4 @@
-import { QRCode, useAccountName } from "@left-curve/portal-shared";
+import { QRCode, useAccountName } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/react";
 import { truncateAddress } from "@left-curve/utils";
 

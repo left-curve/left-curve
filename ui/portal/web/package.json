@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@left-curve/ui-config": "workspace:^",
-    "@left-curve/portal-shared": "workspace:^",
+    "@left-curve/applets-kit": "workspace:^",
     "@left-curve/connect-kit": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",

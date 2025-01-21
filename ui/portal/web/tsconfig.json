@@ -9,7 +9,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../shared"
+      "path": "../../applets/kit"
     },
     {
       "path": "../../../sdk/packages/types"

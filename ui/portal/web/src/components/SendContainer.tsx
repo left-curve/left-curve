@@ -4,7 +4,7 @@ import {
   CoinSelector,
   Input,
   useSigningClient,
-} from "@left-curve/portal-shared";
+} from "@left-curve/applets-kit";
 import { useAccount, useBalances, useConfig } from "@left-curve/react";
 import { isValidAddress } from "@left-curve/sdk";
 import type { Address } from "@left-curve/types";

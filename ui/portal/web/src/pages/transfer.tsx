@@ -1,6 +1,6 @@
 import { createLazyRoute, useNavigate, useSearch } from "@tanstack/react-router";
 
-import { Tab, Tabs } from "@left-curve/portal-shared";
+import { Tab, Tabs } from "@left-curve/applets-kit";
 import { ReceiveContainer } from "~/components/ReceiveContainer";
 import { SendContainer } from "~/components/SendContainer";
 

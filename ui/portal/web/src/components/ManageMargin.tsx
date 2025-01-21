@@ -1,4 +1,4 @@
-import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@left-curve/portal-shared";
+import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@left-curve/applets-kit";
 
 import type { Account } from "@left-curve/types";
 

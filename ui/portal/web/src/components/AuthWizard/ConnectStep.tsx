@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Select, SelectItem, useWizard } from "@left-curve/portal-shared";
+import { Select, SelectItem, useWizard } from "@left-curve/applets-kit";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -16,7 +16,7 @@ import { AccountType, ConnectionStatus, KeyAlgo } from "@left-curve/types";
 import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
 import { useToast } from "../Toast";
 
-import { Button } from "@left-curve/portal-shared";
+import { Button } from "@left-curve/applets-kit";
 
 import type { EIP1193Provider, Key } from "@left-curve/types";
 import type { DangoAppConfigResponse } from "@left-curve/types/dango";

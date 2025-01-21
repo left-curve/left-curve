@@ -6,7 +6,7 @@ import {
   type VisibleRef,
   twMerge,
   useClickAway,
-} from "@left-curve/portal-shared";
+} from "@left-curve/applets-kit";
 import type React from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 

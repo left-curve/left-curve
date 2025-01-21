@@ -404,44 +404,7 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
-  ui/config:
-    dependencies:
-      tailwind-scrollbar:
-        specifier: ^3.1.0
-        version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
-      tailwindcss:
-        specifier: 'catalog:'
-        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
-
-  ui/portal/app:
-    dependencies:
-      expo:
-        specifier: ~52.0.26
-        version: 52.0.26(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1))(react@18.3.1)
-      expo-status-bar:
-        specifier: ~2.0.1
-        version: 2.0.1(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1))(react@18.3.1)
-      react:
-        specifier: 18.3.1
-        version: 18.3.1
-      react-native:
-        specifier: 0.76.6
-        version: 0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1)
-    devDependencies:
-      '@babel/core':
-        specifier: ^7.25.2
-        version: 7.25.7
-      '@types/react':
-        specifier: ~18.3.12
-        version: 18.3.17
-      typescript:
-        specifier: ^5.3.3
-        version: 5.6.3
-
-  ui/portal/shared:
+  ui/applets/kit:
     dependencies:
       '@left-curve/connect-kit':
         specifier: workspace:^
@@ -604,8 +567,48 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(typescript@5.6.3)(vite@5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1))
 
+  ui/config:
+    dependencies:
+      tailwind-scrollbar:
+        specifier: ^3.1.0
+        version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3))
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.13))(@types/node@22.7.5)(typescript@5.6.3)))
+
+  ui/portal/app:
+    dependencies:
+      expo:
+        specifier: ~52.0.26
+        version: 52.0.26(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1))(react@18.3.1)
+      expo-status-bar:
+        specifier: ~2.0.1
+        version: 2.0.1(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1))(react@18.3.1)
+      react:
+        specifier: 18.3.1
+        version: 18.3.1
+      react-native:
+        specifier: 0.76.6
+        version: 0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.26.0(@babel/core@7.25.7))(@types/react@18.3.17)(react@18.3.1)
+    devDependencies:
+      '@babel/core':
+        specifier: ^7.25.2
+        version: 7.25.7
+      '@types/react':
+        specifier: ~18.3.12
+        version: 18.3.17
+      typescript:
+        specifier: ^5.3.3
+        version: 5.6.3
+
   ui/portal/web:
     dependencies:
+      '@left-curve/applets-kit':
+        specifier: workspace:^
+        version: link:../../applets/kit
       '@left-curve/connect-kit':
         specifier: workspace:^
         version: link:../../../sdk/packages/connect-kit
@@ -615,9 +618,6 @@ importers:
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/packages/encoding
-      '@left-curve/portal-shared':
-        specifier: workspace:^
-        version: link:../shared
       '@left-curve/react':
         specifier: workspace:^
         version: link:../../../sdk/packages/react

@@ -5,7 +5,7 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "include": ["src"],
+  "include": ["src", "../web/src/hooks/useMediaQuery.ts"],
   "exclude": ["node_modules"],
   "references": [
     {

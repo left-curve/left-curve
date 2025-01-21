@@ -1,4 +1,4 @@
-import { Button, Input, Select, SelectItem } from "@left-curve/portal-shared";
+import { Button, Input, Select, SelectItem } from "@left-curve/applets-kit";
 import { useConfig } from "@left-curve/react";
 import { motion } from "framer-motion";
 

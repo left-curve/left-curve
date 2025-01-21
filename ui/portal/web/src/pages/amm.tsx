@@ -1,7 +1,7 @@
 import { createLazyRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { PoolManagment, PoolSelector, Tab, Tabs } from "@left-curve/portal-shared";
+import { PoolManagment, PoolSelector, Tab, Tabs } from "@left-curve/applets-kit";
 
 const actions = ["deposit", "withdraw"];
 

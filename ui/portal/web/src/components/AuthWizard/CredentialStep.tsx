@@ -6,7 +6,7 @@ import {
   XCircleIcon,
   useDebounce,
   useWizard,
-} from "@left-curve/portal-shared";
+} from "@left-curve/applets-kit";
 import { usePublicClient } from "@left-curve/react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";

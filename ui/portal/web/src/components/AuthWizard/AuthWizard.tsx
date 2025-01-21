@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { type PropsWithChildren, useEffect } from "react";
 
-import { Button, useMeasure, useWizard } from "@left-curve/portal-shared";
+import { Button, useMeasure, useWizard } from "@left-curve/applets-kit";
 import { WizardLoginWrapper } from "./LoginWrapper";
 import { WizardSignupWrapper } from "./SignupWrapper";
 

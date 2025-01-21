@@ -5,7 +5,7 @@ import {
   MenuNotifications,
   type VisibleRef,
   twMerge,
-} from "@left-curve/portal-shared";
+} from "@left-curve/applets-kit";
 
 import { AccountType } from "@left-curve/types";
 

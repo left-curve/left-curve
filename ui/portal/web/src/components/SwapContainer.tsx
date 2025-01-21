@@ -1,4 +1,4 @@
-import { Button, CoinSelector, Input, SwapArrowDownIcon } from "@left-curve/portal-shared";
+import { Button, CoinSelector, Input, SwapArrowDownIcon } from "@left-curve/applets-kit";
 import { useAccount, useConfig } from "@left-curve/react";
 import type React from "react";
 
