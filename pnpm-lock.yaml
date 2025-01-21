@@ -170,7 +170,7 @@ importers:
         version: link:../../packages/encoding
       '@left-curve/sdk':
         specifier: workspace:^
-        version: link:../../packages/core
+        version: link:../../packages/grug
       '@left-curve/utils':
         specifier: workspace:^
         version: link:../../packages/utils
@@ -233,28 +233,6 @@ importers:
 
   sdk/packages/config: {}
 
-  sdk/packages/core:
-    dependencies:
-      '@left-curve/crypto':
-        specifier: workspace:^
-        version: link:../crypto
-      '@left-curve/encoding':
-        specifier: workspace:^
-        version: link:../encoding
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../types
-      '@left-curve/utils':
-        specifier: workspace:^
-        version: link:../utils
-    devDependencies:
-      '@left-curve/config':
-        specifier: workspace:^
-        version: link:../config
-      vitest:
-        specifier: 'catalog:'
-        version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
-
   sdk/packages/crypto:
     dependencies:
       '@noble/curves':
@@ -286,7 +264,7 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
-  sdk/packages/dango-sdk:
+  sdk/packages/dango:
     dependencies:
       '@left-curve/crypto':
         specifier: workspace:^
@@ -296,7 +274,7 @@ importers:
         version: link:../encoding
       '@left-curve/sdk':
         specifier: workspace:^
-        version: link:../core
+        version: link:../grug
       '@left-curve/types':
         specifier: workspace:^
         version: link:../types
@@ -339,6 +317,28 @@ importers:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
+  sdk/packages/grug:
+    dependencies:
+      '@left-curve/crypto':
+        specifier: workspace:^
+        version: link:../crypto
+      '@left-curve/encoding':
+        specifier: workspace:^
+        version: link:../encoding
+      '@left-curve/types':
+        specifier: workspace:^
+        version: link:../types
+      '@left-curve/utils':
+        specifier: workspace:^
+        version: link:../utils
+    devDependencies:
+      '@left-curve/config':
+        specifier: workspace:^
+        version: link:../config
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
+
   sdk/packages/react:
     dependencies:
       '@left-curve/crypto':
@@ -346,7 +346,7 @@ importers:
         version: link:../crypto
       '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../dango-sdk
+        version: link:../dango
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../encoding
@@ -411,7 +411,7 @@ importers:
         version: link:../../../sdk/packages/crypto
       '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/dango-sdk
+        version: link:../../../sdk/packages/dango
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/packages/encoding
@@ -420,7 +420,7 @@ importers:
         version: link:../../../sdk/packages/react
       '@left-curve/sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/core
+        version: link:../../../sdk/packages/grug
       '@left-curve/ui-config':
         specifier: workspace:^
         version: link:../../config
@@ -614,7 +614,7 @@ importers:
         version: link:../../../sdk/packages/crypto
       '@left-curve/dango-sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/dango-sdk
+        version: link:../../../sdk/packages/dango
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/packages/encoding
@@ -623,7 +623,7 @@ importers:
         version: link:../../../sdk/packages/react
       '@left-curve/sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/core
+        version: link:../../../sdk/packages/grug
       '@left-curve/ui-config':
         specifier: workspace:^
         version: link:../../config
@@ -748,7 +748,7 @@ importers:
     dependencies:
       '@left-curve/sdk':
         specifier: workspace:^
-        version: link:../../../sdk/packages/core
+        version: link:../../../sdk/packages/grug
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
