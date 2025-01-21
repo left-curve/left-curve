@@ -21,7 +21,7 @@
     "dev:website": "turbo dev -F @left-curve/dango-website",
     "build:pkg": "turbo build -F=./sdk/packages/**",
     "build:graph": "turbo build --graph=build-graph.png",
-    "build:portal-web": "turbo build -F @leftcurve/portal-web",
+    "build:portal-web": "turbo build -F @left-curve/portal-web",
     "build:website": "pnpm -F @left-curve/dango-website build:cf",
     "example:vite": "pnpm -F example-vite",
     "example:next": "pnpm -F example-nextjs",
