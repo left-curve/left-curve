@@ -258,7 +258,9 @@ fn dex_works(
         .collect::<BTreeMap<_, _>>();
 
     // Track the users' balances.
-    suite.record_balances(users_by_order_id.values().copied());
+    suite
+        .balance_tracker()
+        .record_balances(users_by_order_id.values().copied());
 
     // Submit the orders in a single block.
     let txs = orders_to_submit
@@ -296,7 +298,9 @@ fn dex_works(
 
     // Check the users' balances should have changed correctly.
     for (order_id, changes) in balance_changes {
-        suite.assert(users_by_order_id[&order_id], changes);
+        suite
+            .balance_tracker()
+            .assert_balance(users_by_order_id[&order_id], changes);
     }
 
     // Check the remaining unfilled orders.

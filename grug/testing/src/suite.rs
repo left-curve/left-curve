@@ -1,11 +1,12 @@
 use {
+    crate::BalanceTracker,
     grug_app::{
         App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
         ProposalPreparer, Vm,
     },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
-    grug_math::{Inner, Int256, NextNumber, NumberConst, PrevNumber, Signed, Uint128, Unsigned},
+    grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Coins, Config,
         Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
@@ -109,12 +110,6 @@ impl ResultExt for UploadAndInstantiateOutcome {
 
 // --------------------------------- TestSuite ---------------------------------
 
-pub enum BalanceChange {
-    Increased(u128),
-    Decreased(u128),
-    Unchanged,
-}
-
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
 where
     DB: Db,
@@ -133,7 +128,7 @@ where
     pub block_time: Duration,
     /// Transaction gas limit to use if user doesn't specify one.
     pub default_gas_limit: u64,
-    balances: BTreeMap<Addr, Coins>,
+    pub(crate) balances: BTreeMap<Addr, Coins>,
 }
 
 impl TestSuite {
@@ -731,135 +726,8 @@ where
             )
             .map(|res| res.as_balances())
     }
-}
 
-impl<DB, VM, PP, ID> TestSuite<DB, VM, PP, ID>
-where
-    DB: Db,
-    VM: Vm + Clone + 'static,
-    PP: ProposalPreparer,
-    ID: Indexer,
-    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
-    Self: Querier,
-{
-    pub fn record_balances<I, A>(&mut self, accounts: I)
-    where
-        I: IntoIterator<Item = A>,
-        A: Addressable,
-    {
-        self.balances = accounts
-            .into_iter()
-            .map(|addr| (addr.address(), self.query_balances(&addr).unwrap()))
-            .collect();
-    }
-
-    pub fn assert_balance<A>(&self, account: A, changes: BTreeMap<Denom, BalanceChange>)
-    where
-        A: Addressable,
-    {
-        let account = account.address();
-        let old_balances = self.balances.get(&account).unwrap();
-        let new_balances = self.query_balances(&account).unwrap();
-
-        for (denom, change) in changes {
-            let old_balance = old_balances.amount_of(&denom);
-            let new_balance = new_balances.amount_of(&denom);
-            match change {
-                BalanceChange::Increased(diff) => {
-                    assert_eq!(
-                        new_balance,
-                        old_balance + Uint128::new(diff),
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {} + {}",
-                        account,
-                        denom,
-                        new_balance,
-                        old_balance,
-                        diff
-                    );
-                },
-                BalanceChange::Decreased(diff) => {
-                    assert_eq!(
-                        new_balance,
-                        old_balance - Uint128::new(diff),
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {} - {}",
-                        account,
-                        denom,
-                        new_balance,
-                        old_balance,
-                        diff
-                    );
-                },
-                BalanceChange::Unchanged => {
-                    assert_eq!(
-                        new_balance, old_balance,
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {}",
-                        account, denom, new_balance, old_balance
-                    );
-                },
-            }
-        }
-    }
-
-    /// Clear all recorded balances.
-    pub fn clear_balances(&mut self) {
-        self.balances.clear();
-    }
-
-    /// Refresh all recorded balances.
-    pub fn refresh_balances(&mut self) {
-        // Need to collect the addresses first to avoid borrowing issues
-        let addresses: Vec<_> = self.balances.keys().cloned().collect();
-        for addr in addresses {
-            let coins = self.query_balances(&addr).unwrap();
-            self.balances.insert(addr, coins);
-        }
-    }
-
-    /// Refresh the balance of a single account.
-    pub fn refresh_balance<A>(&mut self, account: A)
-    where
-        A: Addressable,
-    {
-        let account = account.address();
-        let coins = self.query_balances(&account).unwrap();
-        self.balances.insert(account, coins);
-    }
-
-    /// Get the changes in balances of an account since the last recorded balances.
-    pub fn get_balances<A>(&self, account: A) -> BTreeMap<Denom, BalanceChange>
-    where
-        A: Addressable,
-    {
-        let account = account.address();
-        let old_balances = self.balances.get(&account).unwrap();
-        let new_balances = self.query_balances(&account).unwrap();
-
-        let mut changes = BTreeMap::new();
-        for coin in old_balances {
-            let old_balance = old_balances.amount_of(coin.denom);
-            let new_balance = new_balances.amount_of(coin.denom);
-            let diff: Int256 = new_balance.into_next().checked_into_signed().unwrap()
-                - old_balance.into_next().checked_into_signed().unwrap();
-            let change = match diff {
-                Int256::ZERO => BalanceChange::Unchanged,
-                diff if diff > Int256::ZERO => BalanceChange::Increased(
-                    diff.checked_into_unsigned()
-                        .unwrap()
-                        .checked_into_prev()
-                        .unwrap()
-                        .into_inner(),
-                ),
-                diff => BalanceChange::Decreased(
-                    diff.checked_into_unsigned()
-                        .unwrap()
-                        .checked_into_prev()
-                        .unwrap()
-                        .into_inner(),
-                ),
-            };
-            changes.insert(coin.denom.clone(), change);
-        }
-
-        changes
+    pub fn balance_tracker(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
+        BalanceTracker { suite: self }
     }
 }
