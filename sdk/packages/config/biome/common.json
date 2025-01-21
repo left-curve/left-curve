@@ -39,7 +39,7 @@
   },
   "overrides": [
     {
-      "include": ["sdk/examples/**", "ui/**"],
+      "include": ["ui/**"],
       "linter": {
         "rules": {
           "correctness": {
