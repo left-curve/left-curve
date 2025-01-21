@@ -1,9 +1,9 @@
-name: PR Packages Checks
+name: SDK Pull-Request Checks
 
 on:
   pull_request:
     paths:
-      - "sdk/packages/**"
+      - "sdk/**"
 
 jobs:
   checks:
