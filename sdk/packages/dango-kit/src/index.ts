@@ -19,9 +19,9 @@ export { createStorage } from "./store/storages/createStorage.js";
 /*                                 Connectors                                 */
 /* -------------------------------------------------------------------------- */
 
-export { createConnector } from "./connectors/createConnector.js";
-export { passkey } from "./connectors/passkey.js";
-export { eip1193 } from "./connectors/eip1193.js";
+export { createConnector } from "./store/connectors/createConnector.js";
+export { passkey } from "./store/connectors/passkey.js";
+export { eip1193 } from "./store/connectors/eip1193.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

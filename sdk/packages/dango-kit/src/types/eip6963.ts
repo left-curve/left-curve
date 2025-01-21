@@ -1,4 +1,5 @@
 import type { EIP1193Provider } from "./eip1193.js";
+import "./window.js";
 
 export interface EIP6963AnnounceProviderEvent extends CustomEvent<EIP6963ProviderDetail> {
   type: "eip6963:announceProvider";

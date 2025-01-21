@@ -27,5 +27,5 @@ export function createPublicClient<transport extends Transport>(
     type: "dango",
   });
 
-  return client.extend(publicActions);
+  return client.extend(publicActions as any);
 }

@@ -10,7 +10,7 @@ import { createStore } from "zustand/vanilla";
 import pkgJson from "../../package.json" with { type: "json" };
 
 import type { AnyCoin, Chain, Client, Transport } from "@left-curve/types";
-import { eip6963 } from "../connectors/eip6963.js";
+import { eip6963 } from "./connectors/eip6963.js";
 import { createMipdStore } from "./mipd.js";
 
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "../types/connector.js";
