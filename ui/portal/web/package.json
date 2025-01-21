@@ -13,7 +13,7 @@
     "@left-curve/dango-sdk": "workspace:^",
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
-    "@left-curve/react": "workspace:^",
+    "@left-curve/store-react": "workspace:^",
     "@left-curve/sdk": "workspace:^",
     "@left-curve/utils": "workspace:^",
     "@tanstack/react-query": "catalog:",

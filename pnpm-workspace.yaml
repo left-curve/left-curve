@@ -3,6 +3,7 @@ packages:
   - "ui/applets/*"
   - "ui/workers/*"
   - "ui/portal/*"
+  - "ui/store/*"
   - "ui/*"
 
 catalog:

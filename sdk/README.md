@@ -33,7 +33,7 @@ stateDiagram-v2
     state "@left-curve/sdk" as left_curve_sdk
     state "@left-curve/crypto" as left_curve_crypto
     state "@left-curve/encoding" as left_curve_encoding
-    state "@left-curve/react" as left_curve_react
+    state "@left-curve/store-react" as left_curve_react
     state "@left-curve/connectkit" as left_curve_connectkit
 
     left_curve_config --> left_curve_types
