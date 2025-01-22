@@ -67,7 +67,7 @@ pub enum Event {
     #[allow(clippy::enum_variant_names)]
     EventIdx,
     // ContractAddr,
-    Attributes,
+    Data,
     BlockHeight,
     CreatedAt,
 }

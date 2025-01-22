@@ -15,6 +15,7 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
+    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
     std::{path::PathBuf, str::FromStr},
 };
 
@@ -48,6 +49,13 @@ pub const FEE_RATE: Udec128 = Udec128::ZERO;
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
     grug::TestSuite<DB, VM, PP, ID>;
 
+pub type TestSuiteWithIndexer<
+    PP = ProposalPreparer,
+    DB = MemDb,
+    VM = RustVm,
+    ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
+> = grug::TestSuite<DB, VM, PP, ID>;
+
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///
@@ -61,6 +69,33 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         codes,
         ProposalPreparer::new(),
         NullIndexer,
+    )
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
+/// `ContractWrapper` codes but with a non-blocking indexer.
+///
+/// Used for running tests that require an indexer.
+pub fn setup_test_with_indexer() -> (
+    TestSuiteWithIndexer,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+) {
+    let codes = build_rust_codes();
+
+    let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
+        .with_memory_database()
+        .with_hooks(dango_indexer_sql::hooks::Hooks)
+        .build()
+        .unwrap();
+
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        codes,
+        ProposalPreparer::new(),
+        indexer,
     )
 }
 

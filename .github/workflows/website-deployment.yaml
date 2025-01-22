@@ -7,15 +7,11 @@ on:
       - "main"
       - "develop"
     paths:
-      - "sdk/packages/react/**"
-      - "ui/shared/**"
       - "ui/website/**"
   pull_request:
     branches:
       - "*"
     paths:
-      - "sdk/packages/react/**"
-      - "ui/shared/**"
       - "ui/website/**"
 
 jobs:

@@ -92,13 +92,13 @@ impl MigrationTrait for Migration {
                     .col(date_time(Event::CreatedAt))
                     .col(string(Event::Type))
                     .col(string_null(Event::Method))
-                    .col(string(Event::EventStatus))
-                    .col(string(Event::CommitmentStatus))
+                    .col(small_integer(Event::EventStatus))
+                    .col(small_integer(Event::CommitmentStatus))
                     .col(small_integer(Event::TransactionType))
                     .col(integer(Event::TransactionIdx))
                     .col(integer_null(Event::MessageIdx))
                     .col(integer(Event::EventIdx))
-                    .col(json_binary(Event::Attributes))
+                    .col(json_binary(Event::Data))
                     // TODO: add foreign key to blocks
                     .col(ColumnDef::new(Event::BlockHeight).big_unsigned().not_null())
                     .to_owned(),
