@@ -6,7 +6,7 @@ on:
     branches:
       - "main"
     paths:
-      - "ui/shared/**"
+      - "ui/applets/kit/**"
 
 jobs:
   deploy:
@@ -36,7 +36,7 @@ jobs:
         run: pnpm build:pkg
 
       - name: Build Storybook
-        working-directory: "ui/shared"
+        working-directory: "ui/applets/kit"
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages
@@ -46,6 +46,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-storybook
-          directory: ./ui/shared/storybook-static
+          directory: ./ui/applets/kit/storybook-static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

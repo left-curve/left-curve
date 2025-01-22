@@ -1,5 +1,5 @@
 {
-  "name": "@dango/website",
+  "name": "@left-curve/dango-website",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@dango/config": "workspace:^",
+    "@left-curve/ui-config": "workspace:^",
     "@fullpage/react-fullpage": "^0.1.45",
     "next": "catalog:",
     "react": "catalog:",
