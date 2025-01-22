@@ -3,7 +3,7 @@ use {
         dyn_abi::{Eip712Domain, TypedData},
         primitives::U160,
     },
-    anyhow::{anyhow, bail, ensure},
+    anyhow::{bail, ensure},
     base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
@@ -14,8 +14,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, BorshDeExt, Inner, Item, JsonDeExt, JsonSerExt,
-        QuerierExt, StdResult, Storage, Tx,
+        json, Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt,
+        StdResult, Storage, StorageQuerier, Tx,
     },
     std::collections::BTreeSet,
 };
@@ -175,9 +175,7 @@ pub fn verify_nonce_and_signature(
             // Query the key by key hash and username.
             let key = ctx
                 .querier
-                .query_wasm_raw(factory, KEYS.path((&metadata.username, key_hash)))?
-                .ok_or_else(|| anyhow!("key hash {} not found", key_hash))?
-                .deserialize_borsh()?;
+                .query_wasm_path(factory, KEYS.path((&metadata.username, key_hash)))?;
 
             if let Some(session) = session_credential {
                 ensure!(

@@ -3,8 +3,8 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
     grug::{
-        Addr, BorshDeExt, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
-        Udec128,
+        Addr, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
+        StorageQuerier, Udec128,
     },
 };
 
@@ -41,9 +41,7 @@ where
 
         // Query all debts for the account.
         let debts = self
-            .query_wasm_raw(app_cfg.addresses.lending, DEBTS.path(account))?
-            .map(|coins| coins.deserialize_borsh::<Coins>())
-            .transpose()?
+            .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
             .unwrap_or_default();
 
         // Calculate the total value of the debts.
