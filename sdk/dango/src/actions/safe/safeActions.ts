@@ -1,4 +1,4 @@
-import type { Chain, Client, Signer, Transport, TxParameters } from "@left-curve/types";
+import type { Chain, Client, Transport, TxParameters } from "@left-curve/types";
 
 import {
   type SafeAccountGetProposalParameters,
@@ -42,6 +42,9 @@ import {
   safeAccountVote,
 } from "./mutations/vote.js";
 
+import { DangoClient } from "../../types/clients.js";
+import { Signer } from '../../types/signer.js';
+
 export type SafeQueryActions = {
   safeAccountGetProposal: (
     args: SafeAccountGetProposalParameters,
@@ -82,7 +85,7 @@ export function safeQueryActions<transport extends Transport = Transport>(
 }
 
 export function safeMutationActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: DangoClient<transport, Signer>,
 ): SafeMutationActions {
   return {
     safeAccountExecute: (...args) => safeAccountExecute(client, ...args),

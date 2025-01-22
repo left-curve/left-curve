@@ -1,8 +1,8 @@
 import { getAppConfig, simulate } from "@left-curve/sdk";
-import type { Chain, Client, Hex, Signer, Transport } from "@left-curve/types";
+import type {  Hex, Transport } from "@left-curve/types";
 import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
-import type { AppConfig, Key, KeyHash, Username } from "../../../types/index.js";
+import type { AppConfig, DangoClient, Key, KeyHash, Username, Signer } from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
@@ -22,10 +22,9 @@ export type MsgRegisterUser = {
 };
 
 export async function registerUser<
-  chain extends Chain | undefined,
-  signer extends Signer | undefined,
+  transport extends Transport
 >(
-  client: Client<Transport, chain, signer>,
+  client: DangoClient<transport, Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
   const { username, keyHash, key } = parameters;

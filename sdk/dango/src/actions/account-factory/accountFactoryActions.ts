@@ -86,7 +86,7 @@ import {
   getUsersByKeyHash,
 } from "./queries/getUsersByKeyHash.js";
 
-import type { Chain, Signer } from "../../types/index.js";
+import type { Chain, DangoClient, Signer } from "../../types/index.js";
 
 export type AccountFactoryQueryActions = {
   getAccountInfo: (args: GetAccountInfoParameters) => GetAccountInfoReturnType;
@@ -141,7 +141,7 @@ export function accountFactoryQueryActions<transport extends Transport = Transpo
 }
 
 export function accountFactoryMutationActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: DangoClient<transport, Signer>,
 ): AccountFactoryMutationActions {
   return {
     registerUser: (...args) => registerUser(client, ...args),

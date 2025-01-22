@@ -1,14 +1,14 @@
 import type {
   Address,
-  Chain,
-  Client,
-  Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { ProposalId, Vote } from "../../../types/safe.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
+
+import type { ProposalId, Vote } from "../../../types/safe.js";
+import type { DangoClient } from "../../../types/clients.js";
+import type { Signer } from "../../../types/signer.js";
 
 export type SafeAccountVoteParameters = {
   proposalId: ProposalId;
@@ -34,8 +34,8 @@ export type SafeAccountVoteReturnType = ExecuteReturnType;
  * @param txParameters.funds The funds to send with the transaction.
  * @returns The tx hash of the transaction.
  */
-export async function safeAccountVote<chain extends Chain | undefined, signer extends Signer>(
-  client: Client<Transport, chain, signer>,
+export async function safeAccountVote<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: SafeAccountVoteParameters,
   txParameters: TxParameters,
 ): SafeAccountVoteReturnType {

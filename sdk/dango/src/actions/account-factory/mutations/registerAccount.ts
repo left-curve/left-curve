@@ -4,14 +4,11 @@ import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js"
 
 import type {
   Address,
-  Chain,
-  Client,
-  Signer,
   Transport,
   TxParameters,
   TypedDataParameter,
 } from "@left-curve/types";
-import type { AccountConfig, AppConfig } from "../../../types/index.js";
+import type { AccountConfig, AppConfig, DangoClient, Signer } from "../../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;
@@ -20,8 +17,8 @@ export type RegisterAccountParameters = {
 
 export type RegisterAccountReturnType = ExecuteReturnType;
 
-export async function registerAccount<chain extends Chain | undefined, signer extends Signer>(
-  client: Client<Transport, chain, signer>,
+export async function registerAccount<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: RegisterAccountParameters,
   txParameters: TxParameters = {},
 ): RegisterAccountReturnType {
