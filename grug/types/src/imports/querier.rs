@@ -107,8 +107,11 @@ where
             .map(|res| res.as_contracts())
     }
 
-    /// Note: It's almost always preferred to use the [`grug::StorageQuerier::query_wasm_path`]
+    /// Note: In most cases, it's preferred to use the [`grug::StorageQuerier::query_wasm_path`]
     /// method instead.
+    ///
+    /// The only case where this method is preferred is if you just want to know
+    /// whether a data exists or not, without needing to deserilize it.
     fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary>,
