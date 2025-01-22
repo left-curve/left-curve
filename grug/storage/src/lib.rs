@@ -5,6 +5,7 @@ mod index;
 mod item;
 mod map;
 mod path;
+mod path_querier;
 mod prefix;
 mod prefixer;
 mod primary_key;
@@ -12,6 +13,6 @@ mod raw_key;
 mod set;
 
 pub use {
-    bound::*, codec::*, counter::*, index::*, item::*, map::*, path::*, prefix::*, prefixer::*,
-    primary_key::*, raw_key::*, set::*,
+    bound::*, codec::*, counter::*, index::*, item::*, map::*, path::*, path_querier::*, prefix::*,
+    prefixer::*, primary_key::*, raw_key::*, set::*,
 };
