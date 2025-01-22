@@ -8,7 +8,7 @@ members = [
   "dango/cli",
   "dango/client",
   "dango/dex",
-  "dango/genesis",
+  "dango/genesis", "dango/httpd",
   "dango/ibc-transfer",
   "dango/lending",
   "dango/oracle",

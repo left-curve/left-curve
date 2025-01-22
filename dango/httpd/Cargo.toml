@@ -1,0 +1,21 @@
+[package]
+authors.workspace       = true
+categories.workspace    = true
+documentation.workspace = true
+edition.workspace       = true
+homepage.workspace      = true
+keywords.workspace      = true
+license.workspace       = true
+name                    = "dango-httpd"
+repository.workspace    = true
+rust-version.workspace  = true
+version.workspace       = true
+
+[dependencies]
+async-graphql = { workspace = true }
+chrono        = { workspace = true }
+indexer-httpd = { workspace = true }
+indexer-sql   = { workspace = true }
+sea-orm       = { workspace = true }
+serde         = { workspace = true }
+thiserror     = { workspace = true }

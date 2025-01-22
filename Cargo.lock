@@ -3254,6 +3254,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-httpd"
+version = "0.0.0"
+dependencies = [
+ "async-graphql",
+ "chrono",
+ "indexer-httpd",
+ "indexer-sql",
+ "sea-orm",
+ "serde",
+ "thiserror 2.0.9",
+]
+
+[[package]]
 name = "dango-ibc-transfer"
 version = "0.0.0"
 dependencies = [

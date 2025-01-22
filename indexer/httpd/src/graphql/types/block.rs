@@ -10,11 +10,6 @@ use {
 #[graphql(complex)]
 #[serde(default)]
 pub struct Block {
-    ///// Internal UUID, might change between when the indexer is reran.
-    // NOTE: disabling this, as those ID will change based on server and using them
-    // will probably lead to issues. Noone should rely on those uuids.
-    //#[serde(default)]
-    // pub id: async_graphql::ID,
     pub block_height: i64,
     pub created_at: DateTime<Utc>,
     pub hash: String,

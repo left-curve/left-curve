@@ -2,10 +2,13 @@ use {
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-        web::{self, ServiceConfig},
         App, Error,
     },
-    indexer_httpd::{context::Context, graphql::build_schema, routes, server::build_actix_app},
+    indexer_httpd::{
+        context::Context,
+        graphql::build_schema,
+        server::{build_actix_app, config_app},
+    },
     std::collections::HashMap,
 };
 
@@ -20,22 +23,11 @@ pub async fn build_actix_test_app(
         Error = Error,
     >,
 > {
-    let context = Context::new(None).await.expect("Can't create context");
-    let graphql_schema = build_schema(context.clone());
+    let graphql_schema = build_schema(app_ctx.clone());
 
-    let app = App::new()
-        .service(routes::index::index)
-        .service(routes::graphql::graphql_route())
-        .app_data(web::Data::new(app_ctx.clone()))
-        .app_data(web::Data::new(graphql_schema.clone()));
+    let app = App::new();
 
-    app.configure(config_app())
-}
-
-pub fn config_app(// app_ctx: web::Data<AppContext>,
-    // schema: web::Data<AppSchema>,
-) -> Box<dyn Fn(&mut ServiceConfig)> {
-    todo!()
+    app.configure(config_app(app_ctx, graphql_schema))
 }
 
 #[derive(serde::Serialize, Debug)]
