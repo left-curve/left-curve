@@ -107,6 +107,8 @@ where
             .map(|res| res.as_contracts())
     }
 
+    /// Note: It's almost always preferred to use the [`grug::StorageQuerier::query_wasm_path`]
+    /// method instead.
     fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary>,
