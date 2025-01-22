@@ -1,4 +1,4 @@
-import type { Client, Transport } from "@left-curve/types";
+import type { Transport } from "@left-curve/types";
 import {
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,
@@ -32,7 +32,7 @@ import {
   transfer,
 } from "./mutations/transfer.js";
 
-import type { Chain, Signer } from "../../types/index.js";
+import type { DangoClient, Signer } from "../../types/index.js";
 
 export type AppMutationActions = {
   broadcastTxSync(args: BroadcastTxSyncParameters): BroadcastTxSyncReturnType;
@@ -48,7 +48,7 @@ export type AppMutationActions = {
 };
 
 export function appMutationActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: DangoClient<transport, Signer>,
 ): AppMutationActions {
   return {
     broadcastTxSync: (args) => broadcastTxSync(client, args),

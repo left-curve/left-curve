@@ -1,14 +1,7 @@
 import { encodeBase64, serialize } from "@left-curve/encoding";
-import type {
-  Chain,
-  Client,
-  Prettify,
-  Signer,
-  Transport,
-  Tx,
-  TxData,
-  UnsignedTx,
-} from "@left-curve/types";
+import type { Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/types";
+
+import type { DangoClient, Signer } from "../../../types/index.js";
 
 export type BroadcastTxSyncParameters = {
   tx: Tx | UnsignedTx;
@@ -22,11 +15,8 @@ export type BroadcastTxSyncReturnType = Promise<Prettify<{ hash: Uint8Array } & 
  * @param parameters.tx The transaction to broadcast.
  * @returns The transaction hash and data.
  */
-export async function broadcastTxSync<
-  chain extends Chain | undefined = Chain,
-  signer extends Signer | undefined = undefined,
->(
-  client: Client<Transport, chain, signer>,
+export async function broadcastTxSync<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: BroadcastTxSyncParameters,
 ): BroadcastTxSyncReturnType {
   const { tx } = parameters;

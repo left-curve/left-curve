@@ -1,16 +1,15 @@
 import type {
   Address,
-  Chain,
-  Client,
   Funds,
   Json,
-  Signer,
   Transport,
   TxMessageType,
   TypedDataParameter,
 } from "@left-curve/types";
 import { getCoinsTypedData } from "@left-curve/utils";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
+
+import type { DangoClient, Signer } from "../../../types/index.js";
 
 export type ExecuteParameters = {
   sender: Address;
@@ -23,8 +22,8 @@ export type ExecuteParameters = {
 
 export type ExecuteReturnType = SignAndBroadcastTxReturnType;
 
-export async function execute<chain extends Chain | undefined, signer extends Signer>(
-  client: Client<Transport, chain, signer>,
+export async function execute<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: ExecuteParameters,
 ): ExecuteReturnType {
   const { sender, contract, msg, gasLimit, funds = {} } = parameters;

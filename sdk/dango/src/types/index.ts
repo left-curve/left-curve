@@ -24,6 +24,7 @@ export type { AppConfig } from "./app.js";
 export type { Chain } from "./chain.js";
 
 export type {
+  DangoClient,
   PublicClient,
   SignerClient,
   PublicClientConfig,

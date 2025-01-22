@@ -1,10 +1,7 @@
 import { getChainInfo, simulate } from "@left-curve/sdk";
 import type {
   Address,
-  Chain,
-  Client,
   Message,
-  Signer,
   Transport,
   TxMessageType,
   TypedDataParameter,
@@ -12,6 +9,8 @@ import type {
 
 import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
+
+import type { DangoClient, Signer } from "../../../types/index.js";
 
 export type SignAndBroadcastTxParameters = {
   sender: Address;
@@ -22,8 +21,8 @@ export type SignAndBroadcastTxParameters = {
 
 export type SignAndBroadcastTxReturnType = BroadcastTxSyncReturnType;
 
-export async function signAndBroadcastTx<chain extends Chain | undefined, signer extends Signer>(
-  client: Client<Transport, chain, signer>,
+export async function signAndBroadcastTx<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: SignAndBroadcastTxParameters,
 ): SignAndBroadcastTxReturnType {
   if (!client.signer) throw new Error("client must have a signer");
@@ -35,7 +34,7 @@ export async function signAndBroadcastTx<chain extends Chain | undefined, signer
     return chainId;
   })();
 
-  const { username } = client as unknown as { username: string };
+  const { username } = client;
 
   if (!username) {
     throw new Error("client must have a username");

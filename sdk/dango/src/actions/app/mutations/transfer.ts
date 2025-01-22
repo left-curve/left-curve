@@ -1,15 +1,15 @@
 import type {
   Address,
-  Chain,
   Client,
   Coins,
-  Signer,
   Transport,
   TxMessageType,
   TypedDataParameter,
 } from "@left-curve/types";
 import { getCoinsTypedData } from "@left-curve/utils";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
+
+import type { DangoClient, Signer } from "../../../types/index.js";
 
 export type TransferParameters = {
   sender: Address;
@@ -19,8 +19,8 @@ export type TransferParameters = {
 
 export type TransferReturnType = SignAndBroadcastTxReturnType;
 
-export async function transfer<chain extends Chain | undefined, signer extends Signer>(
-  client: Client<Transport, chain, signer>,
+export async function transfer<transport extends Transport>(
+  client: DangoClient<transport, Signer>,
   parameters: TransferParameters,
 ): TransferReturnType {
   const { sender, to, coins } = parameters;
