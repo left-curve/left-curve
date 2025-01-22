@@ -7,7 +7,7 @@ import {
   twMerge,
 } from "@left-curve/applets-kit";
 
-import { AccountType } from "@left-curve/types";
+import { AccountType } from "@left-curve/dango/types";
 
 import { useEffect, useRef, useState } from "react";
 

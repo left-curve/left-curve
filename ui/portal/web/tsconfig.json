@@ -12,22 +12,19 @@
       "path": "../../applets/kit"
     },
     {
-      "path": "../../../sdk/packages/types"
+      "path": "../../../sdk/types"
     },
     {
-      "path": "../../../sdk/packages/dango-kit"
+      "path": "../../../sdk/dango"
     },
     {
-      "path": "../../../sdk/packages/crypto"
+      "path": "../../../sdk/crypto"
     },
     {
-      "path": "../../../sdk/packages/utils"
+      "path": "../../../sdk/utils"
     },
     {
-      "path": "../../../sdk/packages/core"
-    },
-    {
-      "path": "../../../sdk/packages/react"
+      "path": "../../store/react"
     }
   ]
 }

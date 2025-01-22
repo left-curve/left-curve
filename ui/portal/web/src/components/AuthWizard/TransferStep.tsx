@@ -1,6 +1,6 @@
 import { Button, Input, Select, SelectItem } from "@left-curve/applets-kit";
+import { useConfig } from "@left-curve/store-react";
 import { motion } from "framer-motion";
-import { useConfig } from "../../../../../../sdk/packages/dango/src/store/react";
 
 import type { NativeCoin } from "@left-curve/types";
 

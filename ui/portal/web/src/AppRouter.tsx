@@ -1,5 +1,4 @@
 import {
-  Link,
   Outlet,
   RouterProvider,
   createRootRouteWithContext,
@@ -9,11 +8,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 
-import {
-  useAccount,
-  useConfig,
-  usePublicClient,
-} from "../../../../sdk/packages/dango/src/store/react";
+import { useAccount, useConfig, usePublicClient } from "@left-curve/store-react";
 
 import { AccountsRoute } from "./pages/accounts";
 import { AuthRoute } from "./pages/auth";
@@ -21,12 +16,12 @@ import { AuthRoute } from "./pages/auth";
 import { Spinner } from "@left-curve/applets-kit";
 import { AppLayout } from "./components/AppLayout";
 
-import { useEffect } from "react";
 import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
-} from "../../../../sdk/packages/dango/src/store/react";
+} from "@left-curve/store-react";
+import { useEffect } from "react";
 
 export const AppRoute = createRoute({
   id: "app-layout",

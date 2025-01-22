@@ -1,8 +1,6 @@
-import { http, createConfig, passkey } from "../../../sdk/packages/dango/src/store/react";
-import { devnet } from "../../../sdk/packages/dango/src/store/react/chains";
+import { http, createConfig, devnet, passkey } from "@left-curve/store-react";
 
-import "@left-curve/types/window";
-import type { Config } from "@left-curve/types";
+import type { Config } from "@left-curve/store-react/types";
 
 const dango = devnet;
 

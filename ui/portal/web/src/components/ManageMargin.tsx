@@ -1,6 +1,6 @@
 import { MarginAccountInfo, MarginAssetsTable, MarginDebtsTable } from "@left-curve/applets-kit";
 
-import type { Account } from "@left-curve/types";
+import type { Account } from "@left-curve/dango/types";
 
 interface Props {
   account: Account;

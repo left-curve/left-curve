@@ -14,7 +14,6 @@
     "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/store-react": "workspace:^",
-    "@left-curve/sdk": "workspace:^",
     "@left-curve/utils": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",

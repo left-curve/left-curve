@@ -1,10 +1,10 @@
-import { isValidAddress } from "@left-curve/sdk";
+import { isValidAddress } from "@left-curve/dango";
 import { createRoute, notFound } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { AccountRouter } from "~/components/AccountRouter";
 
-import type { AccountTypes } from "@left-curve/types";
+import type { AccountTypes } from "@left-curve/dango/types";
 import { AppRoute } from "~/AppRouter";
 
 export const AccountsRoute = createRoute({

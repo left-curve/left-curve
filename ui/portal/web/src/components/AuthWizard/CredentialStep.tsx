@@ -7,9 +7,9 @@ import {
   useDebounce,
   useWizard,
 } from "@left-curve/applets-kit";
+import { usePublicClient } from "@left-curve/store-react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-import { usePublicClient } from "../../../../../../sdk/packages/dango/src/store/react";
 
 export const CredentialStep: React.FC = () => {
   const { nextStep, setData } = useWizard();

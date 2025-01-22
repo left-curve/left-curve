@@ -1,6 +1,8 @@
 export { createConfig } from "./createConfig.js";
 export { hydrate } from "./hydrate.js";
 
+export { devnet, http } from "@left-curve/dango";
+
 /* -------------------------------------------------------------------------- */
 /*                                   Storage                                  */
 /* -------------------------------------------------------------------------- */
@@ -15,6 +17,7 @@ export { createStorage } from "./storages/createStorage.js";
 export { createConnector } from "./connectors/createConnector.js";
 export { passkey } from "./connectors/passkey.js";
 export { eip1193 } from "./connectors/eip1193.js";
+export { eip6963 } from "./connectors/eip6963.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

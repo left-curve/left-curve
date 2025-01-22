@@ -1,6 +1,6 @@
+import { DangoStoreProvider } from "@left-curve/store-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
-import { GrunnectProvider } from "../../../../sdk/packages/dango/src/store/react";
 import { config } from "../grunnect.config";
 
 const queryClient = new QueryClient({
@@ -14,8 +14,8 @@ const queryClient = new QueryClient({
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <GrunnectProvider config={config}>
+    <DangoStoreProvider config={config}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </GrunnectProvider>
+    </DangoStoreProvider>
   );
 };

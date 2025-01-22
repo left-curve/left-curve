@@ -1,7 +1,7 @@
 import { Button, Input, useWizard } from "@left-curve/applets-kit";
+import { usePublicClient } from "@left-curve/store-react";
 import type React from "react";
 import { useForm } from "react-hook-form";
-import { usePublicClient } from "../../../../../../sdk/packages/dango/src/store/react";
 
 export const LoginStep: React.FC = () => {
   const { nextStep, setData, data } = useWizard();

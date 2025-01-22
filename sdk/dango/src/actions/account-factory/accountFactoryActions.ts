@@ -1,4 +1,4 @@
-import type { Client, Transport } from "@left-curve/types";
+import type { Client, Transport, TxParameters } from "@left-curve/types";
 
 import {
   type RegisterUserParameters,
@@ -112,7 +112,10 @@ export type AccountFactoryQueryActions = {
 
 export type AccountFactoryMutationActions = {
   registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
-  registerAccount: (args: RegisterAccountParameters) => RegisterUserReturnType;
+  registerAccount: (
+    args: RegisterAccountParameters,
+    txArgs: TxParameters,
+  ) => RegisterUserReturnType;
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
@@ -141,7 +144,7 @@ export function accountFactoryMutationActions<transport extends Transport = Tran
   client: Client<transport, Chain, Signer>,
 ): AccountFactoryMutationActions {
   return {
-    registerUser: (args) => registerUser(client, args),
-    registerAccount: (args) => registerAccount(client, args),
+    registerUser: (...args) => registerUser(client, ...args),
+    registerAccount: (...args) => registerAccount(client, ...args),
   };
 }

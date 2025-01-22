@@ -1,7 +1,7 @@
 import { Button, Select, SelectItem, useWizard } from "@left-curve/applets-kit";
+import { useConfig, useConnectors } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useConfig, useConnectors } from "../../../../../../sdk/packages/dango/src/store/react";
 
 export const ConnectorStep: React.FC = () => {
   const connectors = useConnectors();
