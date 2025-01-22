@@ -8,7 +8,8 @@ members = [
   "dango/cli",
   "dango/client",
   "dango/dex",
-  "dango/genesis", "dango/httpd",
+  "dango/genesis",
+  "dango/httpd",
   "dango/ibc-transfer",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
@@ -175,6 +176,7 @@ dango-vesting               = { path = "dango/vesting" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }
+indexer-graphql-macro = { path = "indexer/graphql-macro" }
 indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }

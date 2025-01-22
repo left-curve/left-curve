@@ -5277,6 +5277,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer-graphql-macro"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.93",
+]
+
+[[package]]
 name = "indexer-httpd"
 version = "0.0.0"
 dependencies = [
@@ -5289,6 +5298,7 @@ dependencies = [
  "async-graphql-actix-web",
  "chrono",
  "clap",
+ "indexer-graphql-macro",
  "indexer-sql",
  "num_cpus",
  "sea-orm",

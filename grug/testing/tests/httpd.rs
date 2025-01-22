@@ -2,7 +2,7 @@ use {
     assertor::*,
     grug_testing::{call_graphql, GraphQLCustomRequest, GraphQLCustomResponse, TestBuilder},
     grug_types::{Coins, Denom, Message, ResultExt},
-    indexer_httpd::context::Context,
+    indexer_httpd::{context::Context, graphql::types::block::Block},
     std::str::FromStr,
 };
 
@@ -64,16 +64,10 @@ async fn graphql_returns_block() {
 
     let local_set = tokio::task::LocalSet::new();
 
-    #[derive(serde::Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct BlockResponse {
-        block_height: u64,
-    }
-
     local_set
         .run_until(async {
             tokio::task::spawn_local(async {
-                let response: GraphQLCustomResponse<BlockResponse> =
+                let response: GraphQLCustomResponse<Block> =
                     call_graphql(httpd_context, request_body)
                         .await
                         .expect("Can't call graphql");

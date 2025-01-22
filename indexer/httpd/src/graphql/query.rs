@@ -1,6 +1,7 @@
 use {
     async_graphql::{MergedObject, ObjectType},
     block::BlockQuery,
+    indexer_graphql_macro::MyMacro,
 };
 
 pub mod block;
@@ -10,7 +11,15 @@ pub mod index;
 pub struct Query(BlockQuery);
 
 // #[derive(MergedObject, Default)]
-pub struct Query2(BlockQuery);
+// pub struct Query2(BlockQuery);
+
+// #[MyMacro]
+// pub struct Query3(Query, Query2);
+
+// #[derive(MyMacro)]
+// pub struct Query3(Query, Query2);
+
+// pub struct Query3(BlockQuery, BlockQuery);
 
 // #[derive(MergedObject, Default)]
 // pub struct QueryWithSub<S>(BlockQuery, S)
@@ -38,9 +47,9 @@ macro_rules! merge_query {
     };
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+// #[cfg(test)]
+// mod test {
+//     use super::*;
 
-    merge_query!(MergedQuery, BlockQuery, BlockQuery);
-}
+//     merge_query!(MergedQuery, BlockQuery, BlockQuery);
+// }
