@@ -131,6 +131,7 @@ fn send_escrowing_collateral() {
                 denom: denom.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )
@@ -204,6 +205,7 @@ fn send_burning_synth() {
                 denom: denom.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )
@@ -293,6 +295,7 @@ fn receive_release_collateral() {
                 denom: denom.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )
@@ -394,6 +397,7 @@ fn receive_minting_synth() {
                 denom: denom.clone(),
                 destination_domain: origin_domain,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )

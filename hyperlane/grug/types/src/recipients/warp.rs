@@ -6,7 +6,8 @@ use {
     },
     anyhow::ensure,
     grug::{
-        Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+        Addr, Bound, Bounded, Bounds, Bytable, Denom, HexBinary, Inner, NextNumber, NumberConst,
+        Part, PrevNumber, Udec128, Uint128, Uint256,
     },
     std::sync::LazyLock,
 };
@@ -119,6 +120,11 @@ pub enum ExecuteMsg {
         denom: Denom,
         destination_domain: Domain,
         route: Route,
+        rate_limit: Option<RateLimitConfig>,
+    },
+    SetRateLimit {
+        denom: Denom,
+        rate_limit: RateLimitConfig,
     },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
@@ -158,6 +164,32 @@ pub struct QueryRoutesResponseItem {
     pub destination_domain: Domain,
     pub route: Route,
 }
+
+#[grug::derive(Serde)]
+
+pub struct RateLimitConfig {
+    pub min: Uint128,
+    pub rate_share: RateShare,
+}
+
+// -------------------------------- rate-limit ---------------------------------
+
+#[grug::derive(Serde, Borsh)]
+pub struct RateLimit {
+    pub min: Uint128,
+    pub rate_share: RateShare,
+    pub remaining: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct RateBound;
+
+impl Bounds<Udec128> for RateBound {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+}
+
+pub type RateShare = Bounded<Udec128, RateBound>;
 
 // ---------------------------------- events -----------------------------------
 
