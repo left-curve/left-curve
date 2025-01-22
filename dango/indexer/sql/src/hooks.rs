@@ -87,6 +87,8 @@ impl HooksTrait for Hooks {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {

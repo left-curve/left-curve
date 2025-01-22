@@ -60,6 +60,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(Transfer::Table).to_owned())
             .await?;
+
         Ok(())
     }
 }

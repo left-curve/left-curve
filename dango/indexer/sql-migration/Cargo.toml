@@ -1,11 +1,13 @@
 [package]
-edition = "2021"
-name    = "dango-indexer-sql-migration"
-publish = false
-version = "0.1.0"
-
-[lib]
-path = "src/lib.rs"
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-indexer-sql-migration"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [dependencies]
 async-std         = { workspace = true }
