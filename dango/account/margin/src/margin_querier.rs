@@ -3,18 +3,40 @@ use {
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
     grug::{
-        Addr, BorshDeExt, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
+        Addr, BorshDeExt, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
         Udec128,
     },
 };
 
 /// Margin account query methods.
 pub trait MarginQuerier {
-    fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse>;
+    /// Queries the health of the margin account.
+    ///
+    /// Arguments:
+    ///
+    /// - `account`: The margin account to query.
+    /// - `discount_collateral`: If set, does not include the value of these
+    ///    coins in the total collateral value. Used when liquidating the
+    ///    account as the liquidator has sent additional funds to the account
+    ///    that should not be included in the total collateral value.
+    fn query_health(
+        &self,
+        account: Addr,
+        discount_collateral: Option<Coins>,
+    ) -> anyhow::Result<HealthResponse>;
 }
 
-impl MarginQuerier for QuerierWrapper<'_> {
-    fn query_health(&self, account: Addr) -> anyhow::Result<HealthResponse> {
+impl<Q> MarginQuerier for Q
+where
+    Q: QuerierExt,
+    Q::Error: From<StdError>,
+    anyhow::Error: From<Q::Error>,
+{
+    fn query_health(
+        &self,
+        account: Addr,
+        discount_collateral: Option<Coins>,
+    ) -> anyhow::Result<HealthResponse> {
         let app_cfg: AppConfig = self.query_app_config()?;
 
         // Query all debts for the account.
@@ -26,18 +48,25 @@ impl MarginQuerier for QuerierWrapper<'_> {
 
         // Calculate the total value of the debts.
         let mut total_debt_value = Udec128::ZERO;
-        for debt in debts {
-            let price = self.query_price(app_cfg.addresses.oracle, &debt.denom)?;
-            let value = price.value_of_unit_amount(debt.amount)?;
+        for debt in &debts {
+            let price = self.query_price(app_cfg.addresses.oracle, debt.denom)?;
+            let value = price.value_of_unit_amount(*debt.amount)?;
 
             total_debt_value.checked_add_assign(value)?;
         }
 
         // Calculate the total value of the account's collateral adjusted for the
         // collateral power.
+        let mut total_collateral_value = Udec128::ZERO;
         let mut total_adjusted_collateral_value = Udec128::ZERO;
+        let mut collaterals = Coins::new();
+
         for (denom, power) in app_cfg.collateral_powers {
-            let collateral_balance = self.query_balance(account, denom.clone())?;
+            let mut collateral_balance = self.query_balance(account, denom.clone())?;
+
+            if let Some(discount_collateral) = discount_collateral.as_ref() {
+                collateral_balance.checked_sub_assign(discount_collateral.amount_of(&denom))?;
+            }
 
             // As an optimization, don't query the price if the collateral balance
             // is zero.
@@ -49,6 +78,8 @@ impl MarginQuerier for QuerierWrapper<'_> {
             let value = price.value_of_unit_amount(collateral_balance)?;
             let adjusted_value = value.checked_mul(power.into_inner())?;
 
+            collaterals.insert(Coin::new(denom, collateral_balance)?)?;
+            total_collateral_value.checked_add_assign(value)?;
             total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
         }
 
@@ -58,8 +89,9 @@ impl MarginQuerier for QuerierWrapper<'_> {
             // regardless of collateral value.
             Udec128::ZERO
         } else if total_adjusted_collateral_value.is_zero() {
-            // The account has non-zero debt but zero collateral. This should
-            // not happen! We set utilization to maximum.
+            // The account has non-zero debt but zero collateral. This can
+            // happen if the account is liquidated. We set utilization to
+            // maximum.
             Udec128::MAX
         } else {
             total_debt_value / total_adjusted_collateral_value
@@ -68,7 +100,10 @@ impl MarginQuerier for QuerierWrapper<'_> {
         Ok(HealthResponse {
             utilization_rate,
             total_debt_value,
+            total_collateral_value,
             total_adjusted_collateral_value,
+            debts,
+            collaterals,
         })
     }
 }

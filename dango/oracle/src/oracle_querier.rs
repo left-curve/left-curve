@@ -20,17 +20,24 @@ where
     fn query_price(&self, oracle: Addr, denom: &Denom) -> anyhow::Result<PrecisionedPrice> {
         let price_source = self
             .query_wasm_raw(oracle, PRICE_SOURCES.path(denom))?
-            .ok_or(anyhow!("price source not found for denom `{denom}`"))?
+            .ok_or_else(|| anyhow!("price source not found for denom `{denom}`"))?
             .deserialize_borsh::<PriceSource>()?;
 
         match price_source {
+            PriceSource::Fixed {
+                humanized_price,
+                precision,
+                timestamp,
+            } => {
+                let price = PrecisionlessPrice::new(humanized_price, humanized_price, timestamp);
+                Ok(price.with_precision(precision))
+            },
             PriceSource::Pyth { id, precision } => {
                 let price = self
                     .query_wasm_raw(oracle, PRICES.path(id))?
-                    .ok_or(anyhow!("price not found for pyth id: {id}"))?
-                    .deserialize_borsh::<PrecisionlessPrice>()?
-                    .with_precision(precision);
-                Ok(price)
+                    .ok_or_else(|| anyhow!("price not found for pyth id: {id}"))?
+                    .deserialize_borsh::<PrecisionlessPrice>()?;
+                Ok(price.with_precision(precision))
             },
         }
     }

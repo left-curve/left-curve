@@ -1,9 +1,9 @@
 #[cfg(all(feature = "abci", feature = "tracing"))]
 use data_encoding::BASE64;
-#[cfg(feature = "abci")]
-use grug_types::JsonDeExt;
 #[cfg(any(feature = "abci", feature = "tracing"))]
 use grug_types::JsonSerExt;
+#[cfg(feature = "abci")]
+use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
@@ -19,8 +19,8 @@ use {
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
         CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
-        GenericResultExt, GenesisState, Hash256, HashExt, Json, Message, MsgsAndBackrunEvents,
-        Order, Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
+        GenericResultExt, GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order,
+        Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
         TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
     },
     prost::bytes::Bytes,

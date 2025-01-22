@@ -79,6 +79,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .build();
 
     let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
+        .with_execute(Box::new(dango_account_margin::execute))
         .with_authenticate(Box::new(dango_account_margin::authenticate))
         .with_backrun(Box::new(dango_account_margin::backrun))
         .with_receive(Box::new(dango_account_margin::receive))
@@ -525,7 +526,7 @@ where
             lending,
             oracle,
         },
-        collateral_powers: btree_map! {},
+        ..Default::default()
     };
 
     let genesis_state = GenesisState {

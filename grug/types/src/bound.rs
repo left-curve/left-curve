@@ -1,10 +1,10 @@
 use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::Inner,
+    grug_math::{Inner, NumberConst, Udec128},
     serde::{
         de::{self, Error},
-        ser,
+        ser, Deserialize, Serialize,
     },
     std::{io, marker::PhantomData, ops::Deref},
 };
@@ -164,6 +164,40 @@ where
 
         Self::new(value).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
+}
+
+// ------------------------------ Standard bounds ------------------------------
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ZeroInclusiveOneInclusive;
+
+impl Bounds<Udec128> for ZeroInclusiveOneInclusive {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ZeroInclusiveOneExclusive;
+
+impl Bounds<Udec128> for ZeroInclusiveOneExclusive {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ZeroExclusiveOneInclusive;
+
+impl Bounds<Udec128> for ZeroExclusiveOneInclusive {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ZeroExclusiveOneExclusive;
+
+impl Bounds<Udec128> for ZeroExclusiveOneExclusive {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
 }
 
 // ----------------------------------- tests -----------------------------------
