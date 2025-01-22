@@ -20,7 +20,7 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::ValidatorSet { domain } => {
-            let res = query_validaor_set(ctx, domain)?;
+            let res = query_validator_set(ctx, domain)?;
             res.to_json_value()
         },
         QueryMsg::ValidatorSets { start_after, limit } => {
@@ -39,7 +39,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 #[inline]
-fn query_validaor_set(ctx: ImmutableCtx, domain: Domain) -> StdResult<ValidatorSet> {
+fn query_validator_set(ctx: ImmutableCtx, domain: Domain) -> StdResult<ValidatorSet> {
     VALIDATOR_SETS.load(ctx.storage, domain)
 }
 
