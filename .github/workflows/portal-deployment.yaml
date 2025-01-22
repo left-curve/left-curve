@@ -7,14 +7,16 @@ on:
       - "main"
       - "develop"
     paths:
-      - "sdk/dango/**"
+      - "sdk/**"
+      - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
   pull_request:
     branches:
       - "*"
     paths:
-      - "sdk/dango/**"
+      - "sdk/**"
+      - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
 

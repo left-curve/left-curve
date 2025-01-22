@@ -4,10 +4,10 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/packages/types"
+      "path": "../../../sdk/types"
     },
     {
-      "path": "../../../sdk/packages/core"
+      "path": "../../../sdk/grug"
     }
   ]
 }
