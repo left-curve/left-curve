@@ -17,7 +17,7 @@ use {
         Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, Permission,
         Permissions, ResultExt, StdResult, Udec128, GENESIS_SENDER,
     },
-    hyperlane_types::{hooks, isms, mailbox, recipients::warp},
+    hyperlane_types::{hooks, isms, mailbox, recipients::warp, va},
     serde::Serialize,
     std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
 };
@@ -62,6 +62,7 @@ pub struct Hyperlane<T> {
     pub ism: T,
     pub mailbox: T,
     pub merkle: T,
+    pub va: T,
     pub warp: T,
 }
 
@@ -131,6 +132,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(hyperlane_merkle::query))
         .build();
 
+    let va = ContractBuilder::new(Box::new(hyperlane_va::instantiate))
+        .with_execute(Box::new(hyperlane_va::execute))
+        .with_query(Box::new(hyperlane_va::query))
+        .build();
+
     let warp = ContractBuilder::new(Box::new(hyperlane_warp::instantiate))
         .with_execute(Box::new(hyperlane_warp::execute))
         .with_query(Box::new(hyperlane_warp::query))
@@ -175,6 +181,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
             ism,
             mailbox,
             merkle,
+            va,
             warp,
         },
         ibc_transfer,
@@ -196,6 +203,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
+    let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
     let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
@@ -215,6 +223,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
             ism,
             mailbox,
             merkle,
+            va,
             warp,
         },
         ibc_transfer,
@@ -253,6 +262,7 @@ where
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
+    let hyperlane_va_hash = upload(&mut msgs, codes.hyperlane.va);
     let hyperlane_warp_code_hash = upload(&mut msgs, codes.hyperlane.warp);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
@@ -358,6 +368,15 @@ where
         "hyperlane/mailbox",
     )
     .should_succeed_and_equal(mailbox);
+
+    // Instantiate Hyperlane validator announce.
+    let va = instantiate(
+        &mut msgs,
+        hyperlane_va_hash,
+        &va::InstantiateMsg { mailbox },
+        "hyperlane/va",
+        "hyperlane/va",
+    )?;
 
     // Instantiate the IBC transfer contract.
     let ibc_transfer = instantiate(
@@ -494,6 +513,7 @@ where
             ism,
             mailbox,
             merkle,
+            va,
             warp,
         },
         ibc_transfer,

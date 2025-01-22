@@ -2794,6 +2794,7 @@ dependencies = [
  "hyperlane-mailbox",
  "hyperlane-merkle",
  "hyperlane-types",
+ "hyperlane-va",
  "hyperlane-warp",
  "rand",
  "serde",
