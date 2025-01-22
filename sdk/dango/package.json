@@ -1,0 +1,62 @@
+{
+  "name": "@left-curve/dango",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "bump": "npm version --no-git-tag-version",
+    "ci": "pnpm lint",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": ["build"],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    },
+    "./actions": {
+      "types": "./build/actions/index.d.ts",
+      "import": "./build/actions/index.js",
+      "default": "./build/actions/index.cjs"
+    },
+     "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "types": ["./build/types/index.d.ts"],
+      "actions": ["./build/actions/index.d.ts"]
+    }
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@left-curve/crypto": "workspace:^",
+    "@left-curve/encoding": "workspace:^",
+    "@left-curve/sdk": "workspace:^",
+    "@left-curve/types": "workspace:^",
+    "@left-curve/utils": "workspace:^"
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+}

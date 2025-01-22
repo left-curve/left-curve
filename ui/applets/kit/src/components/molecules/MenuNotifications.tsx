@@ -4,7 +4,7 @@ import { Fragment, forwardRef, useImperativeHandle, useRef, useState } from "rea
 import { twMerge } from "../../utils";
 
 import { useClickAway } from "react-use";
-import { BellIcon, Button, CloseIcon } from "../";
+import { BellIcon, Button } from "../";
 import type { VisibleRef } from "../../types";
 import { CrossIcon } from "../icons/Cross";
 import { NotificationCard } from "./NotificationCard";

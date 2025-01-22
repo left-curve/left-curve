@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "@left-curve/react";
+import { useAccount } from "@left-curve/store-react";
 import { useRef } from "react";
 import { Button, ConnectModal } from "../";
 import type { ModalRef } from "./Modal";

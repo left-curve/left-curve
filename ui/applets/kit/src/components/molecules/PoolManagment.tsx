@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/react";
+import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import type React from "react";
 import { Button, Emoji, Input } from "../";
 import { twMerge } from "../../utils";

@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { AppletCard } from "../../";
 
-import { useStorage } from "@left-curve/react";
+import { useStorage } from "@left-curve/store-react";
 import { Command } from "cmdk";
 import type { AppletMetadata } from "../../../types";
 

@@ -2,7 +2,7 @@ import { AccountDescriptionCard, useWizard } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 import type React from "react";
 
-import { AccountType, type AccountTypes } from "@left-curve/types";
+import { AccountType, type AccountTypes } from "@left-curve/dango/types";
 
 export const SelectStep: React.FC = () => {
   const { setData, goToStep } = useWizard();

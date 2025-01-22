@@ -1,6 +1,6 @@
 import { lazy } from "react";
 
-import { type Account, AccountType } from "@left-curve/types";
+import { type Account, AccountType } from "@left-curve/dango/types";
 
 const ManageSpot = lazy(() => import("./ManageSpot"));
 const ManageSafe = lazy(() => import("./ManageSafe"));

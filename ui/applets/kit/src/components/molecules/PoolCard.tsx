@@ -1,7 +1,7 @@
-import { useChainId, useConfig, usePrices } from "@left-curve/react";
+import { useChainId, useConfig, usePrices } from "@left-curve/store-react";
 import { formatUnits } from "@left-curve/utils";
 
-import type { Pool, PoolId } from "@left-curve/types";
+import type { Pool, PoolId } from "@left-curve/dango/types";
 
 interface Props {
   poolId: PoolId;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Connector } from "@left-curve/types";
+import type { Connector } from "@left-curve/store-react/types";
 
 import { Button, WalletIcon } from "../../";
 import { twMerge } from "../../../utils";
