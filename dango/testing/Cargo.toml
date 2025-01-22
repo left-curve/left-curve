@@ -27,23 +27,24 @@ k256              = { workspace = true }
 sea-orm           = { workspace = true }
 
 [dev-dependencies]
-alloy           = { workspace = true, features = ["full", "signer-mnemonic"] }
-anyhow          = { workspace = true }
-assertor        = { workspace = true }
-criterion       = { workspace = true }
-dango-oracle    = { workspace = true, features = ["library"] }
-dango-types     = { workspace = true }
-dotenvy         = { workspace = true }
-grug-crypto     = { workspace = true }
-hyperlane-types = { workspace = true }
-hyperlane-warp  = { workspace = true, features = ["library"] }
-proptest        = { workspace = true }
-pyth-sdk        = { workspace = true }
-rand            = { workspace = true }
-reqwest         = { workspace = true, features = ["json"] }
-test-case       = { workspace = true }
-tokio           = { workspace = true, features = ["full"] }
-tracing         = { workspace = true }
+alloy                 = { workspace = true, features = ["full", "signer-mnemonic"] }
+anyhow                = { workspace = true }
+assertor              = { workspace = true }
+criterion             = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+dotenvy               = { workspace = true }
+grug-crypto           = { workspace = true }
+hyperlane-types       = { workspace = true }
+hyperlane-warp        = { workspace = true, features = ["library"] }
+proptest              = { workspace = true }
+pyth-sdk              = { workspace = true }
+rand                  = { workspace = true }
+reqwest               = { workspace = true, features = ["json"] }
+test-case             = { workspace = true }
+tokio                 = { workspace = true, features = ["full"] }
+tracing               = { workspace = true }
 
 [[bench]]
 harness = false
