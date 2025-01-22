@@ -17,20 +17,18 @@ pub struct AppConfig {
     /// collateral token has a power of 0.9, then the value of the collateral
     /// token is 90% of its actual value.
     pub collateral_powers: BTreeMap<Denom, CollateralPower>,
-
+    /// The minimum liquidation bonus that liquidators receive when liquidating an
+    /// undercollateralized margin account.
+    /// The liquidation bonus is defined as a percentage of the repaid debt value.
+    pub min_liquidation_bonus: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// The maximum liquidation bonus that liquidators receive when liquidating an
+    /// undercollateralized margin account.
+    pub max_liquidation_bonus: Bounded<Udec128, ZeroExclusiveOneExclusive>,
     /// The margin account utilization rate down to which an account can be liquidated.
     /// E.g. if this is set to 0.9, then as soon as the account's utilization rate reaches 1.0
     /// and becomes liquidatable, liquidators can pay off the accounts debts (in return for some of
     /// its collateral) until the account's utilization rate is at this value.
     pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-    /// The minimum liquidation bonus that liquidators receive when liquidating an
-    /// undercollateralized margin account.
-    /// The liquidation bonus is defined as a percentage of the repaid debt value.
-    pub min_liquidation_bonus: Bounded<Udec128, ZeroInclusiveOneExclusive>,
-
-    /// The maximum liquidation bonus that liquidators receive when liquidating an
-    /// undercollateralized margin account.
-    pub max_liquidation_bonus: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }
 
 /// Addresses of relevant Dango contracts.
@@ -42,8 +40,8 @@ pub struct AppAddresses {
     pub oracle: Addr,
 }
 
-/// Default implementation that can be used in tests when the addresses are not
-/// needed.
+// Default implementation that can be used in tests when the addresses are not
+// needed.
 impl Default for AppAddresses {
     fn default() -> Self {
         AppAddresses {

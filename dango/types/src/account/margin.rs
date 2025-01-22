@@ -46,7 +46,7 @@ pub enum QueryMsg {
 }
 
 #[grug::derive(Serde)]
-pub struct LiquidationEvent {
+pub struct Liquidate {
     pub liquidation_denom: Denom,
     pub repay_coins: Coins,
     pub refunds: Coins,

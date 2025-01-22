@@ -60,6 +60,7 @@ where
         let mut total_collateral_value = Udec128::ZERO;
         let mut total_adjusted_collateral_value = Udec128::ZERO;
         let mut collaterals = Coins::new();
+
         for (denom, power) in app_cfg.collateral_powers {
             let mut collateral_balance = self.query_balance(account, denom.clone())?;
 

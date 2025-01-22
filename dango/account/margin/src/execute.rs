@@ -1,11 +1,11 @@
 use {
     crate::MarginQuerier,
-    anyhow::{anyhow, bail, ensure},
+    anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
     dango_types::{
         account::{
-            margin::{ExecuteMsg, HealthResponse, LiquidationEvent},
+            margin::{ExecuteMsg, HealthResponse, Liquidate},
             InstantiateMsg,
         },
         config::AppConfig,
@@ -13,7 +13,7 @@ use {
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
-        Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128, Uint128,
+        Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -74,10 +74,10 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     let HealthResponse {
         total_debt_value,
         utilization_rate,
-        total_collateral_value: _,
         total_adjusted_collateral_value,
         debts,
         collaterals,
+        ..
     } = ctx
         .querier
         .query_health(ctx.contract, Some(ctx.funds.clone()))?;
@@ -85,7 +85,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     // Ensure account is undercollateralized
     ensure!(
         utilization_rate > Udec128::ONE,
-        "account is not undercollateralized"
+        "account is not undercollateralized! utilization rate: {utilization_rate}"
     );
 
     let health_factor = utilization_rate.checked_inv()?;
@@ -93,13 +93,15 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     let liquidation_collateral_power = *app_cfg
         .collateral_powers
         .get(&liquidation_denom)
-        .ok_or_else(|| anyhow!("collateral power not found for chosen collateral"))?
+        .ok_or_else(|| {
+            anyhow!("collateral power not found for chosen collateral: `{liquidation_denom}`")
+        })?
         .inner();
 
     // Calculate liquidation bonus.
-    let bonus_cap = (total_adjusted_collateral_value
-        .checked_div(total_debt_value.checked_mul(liquidation_collateral_power)?))?
-    .saturating_sub(Udec128::ONE);
+    let bonus_cap = total_adjusted_collateral_value
+        .checked_div(total_debt_value.checked_mul(liquidation_collateral_power)?)?
+        .saturating_sub(Udec128::ONE);
     let liq_bonus = max(
         *app_cfg.min_liquidation_bonus,
         min(
@@ -108,12 +110,15 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         ),
     );
 
-    // Calculate value of maximum repayable debt (MRD) to reach the target utilization rate.
+    // Calculate value of maximum repayable debt (MRD) to reach the target
+    // utilization rate.
+    //
+    // It shouldn't be possible for the numerator to be negative, as the accunt
+    // should only be liquidatable if it is undercollateralized. If the
+    // denominator is negative (should only happen with an excessive minimum
+    // liquidation bonus), then the MRD is set to the account's total debt value.
+    //
     // See derivation of the equation in [liquidation-math.md](book/notes/liquidation-math.md).
-    // It shouldn't be possible for the numerator to be negative, as the accunt should only be
-    // liquidatable if it is undercollateralized. If the denominator is negative (should only
-    // happen with an excessive minimum liquidation bonus), then the MRD is set to the account's
-    // total debt value.
     let mrd_to_target_health = if target_health_factor
         <= (Udec128::ONE + liq_bonus) * liquidation_collateral_power
     {
@@ -138,26 +143,22 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         liquidation_collateral_value.checked_div(Udec128::ONE + liq_bonus)?;
 
     // Calculate the debt value to repay.
-    let debt_repay_value = [
-        mrd_to_target_health,
-        mrd_from_chosen_collateral,
+    let debt_repay_value = min(
         total_debt_value,
-    ]
-    .into_iter()
-    .min()
-    .ok_or_else(|| anyhow!("unable to calculate debt repay value"))?;
+        min(mrd_to_target_health, mrd_from_chosen_collateral),
+    );
 
-    if debt_repay_value.is_zero() {
-        bail!(
-            "Debt repay value is zero. Probably the account either has no debt, or no collateral."
-        );
-    }
+    ensure!(
+        debt_repay_value.is_non_zero(),
+        "debt repay value is zero! probably the account either has no debt, or no collateral."
+    );
 
     // Repay the account's debts with the sent funds, up to the maximum value
     // of the repayable debt.
     let mut refunds = Coins::new();
     let mut repaid_debt_value = Udec128::ZERO;
     let mut repay_coins = Coins::new();
+
     for coin in ctx.funds {
         let debt_amount = debts.amount_of(&coin.denom);
         let price = ctx
@@ -186,7 +187,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     }
 
     // Ensure repaid debt value is not zero
-    ensure!(!repaid_debt_value.is_zero(), "no debt was repaid");
+    ensure!(repaid_debt_value.is_non_zero(), "no debt was repaid");
 
     // Calculate the amount of collateral to send to the liquidator. We round
     // up so that no dust is left in the account.
@@ -195,7 +196,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Ensure liquidator receives a non-zero amount of collateral
     ensure!(
-        claimed_collateral_amount > Uint128::ZERO,
+        claimed_collateral_amount.is_non_zero(),
         "liquidation would result in zero collateral claimed"
     );
 
@@ -214,18 +215,16 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         repay_coins.clone(),
     )?;
 
-    let liquidation_event = LiquidationEvent {
-        liquidation_denom,
-        repay_coins,
-        refunds,
-        repaid_debt_value,
-        claimed_collateral_amount,
-        liquidation_bonus: liq_bonus,
-        target_health_factor,
-    };
-
     Ok(Response::new()
         .add_message(repay_msg)
         .add_message(send_msg)
-        .add_event("margin/liquidation", liquidation_event)?)
+        .add_event("liquidate", Liquidate {
+            liquidation_denom,
+            repay_coins,
+            refunds,
+            repaid_debt_value,
+            claimed_collateral_amount,
+            liquidation_bonus: liq_bonus,
+            target_health_factor,
+        })?)
 }

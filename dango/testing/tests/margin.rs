@@ -5,7 +5,7 @@ use {
     dango_types::{
         account::{
             self,
-            margin::{CollateralPower, LiquidationEvent, QueryHealthRequest},
+            margin::{CollateralPower, Liquidate, QueryHealthRequest},
             single,
         },
         account_factory::AccountParams,
@@ -24,7 +24,7 @@ use {
 };
 
 static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
-static BTC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("bridge/btc").unwrap());
+static BTC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bitcoin/sat").unwrap());
 
 /// The Pyth ID for USDC.
 pub const USDC_USD_ID: &str = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
@@ -47,7 +47,7 @@ const WBTC_VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neOb
 /// - publish_time: **1732965697**
 const WBTC_VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQNHHIXSITl1E5rklfcRJ+fTmdXaBHA1Rhpd4AKd6gpJbGvcVZT0bmi5p1aaw10oEkruufXhvmEDgtCE1WENpk0xAARVRgaUYTxGBqPnzyOD6flYdHgL21qD2wm4AwHw8WMNOR3yvLDjuRkPdKCUHLUbOuaiUPJzK7DqphslPmTtChyXAQba+OsLHO3tJP5mFTfp9C0+wYbFk5DaXLYo0dHpshKqkC0tzXFrxzwiFUJscJ/qO5YC/ELvSB7eOyyYACqdzwJ+AQi+TpwsCHYMqT/DgSC3R4Il8WVVwp9KByaoAwswCH4y1mCtaV/rkpDHbK9dA9hm1hsEhpt3706y0YgttJny7uqCAQrPJK5440aRWGWqAUOH9COAomYlwb/qS+GJPRu5WizFIkhlsFK1osJSnHD5hmyXL0y58IyznYIjSr23/7RwWu//AAtm1B5zLdF2QgpQOLn3GGO8XNsvyWTb78I9oh1PQxnM+Rg89ImtRNpcbB9bF7wL3/wFUlZuBQGkm6igEzwzn/MGAAweFo1G9Fi0U9O9TjkUwGAKu4vVjwyP7j7tUI1FaYvRSxgL8Xvsx6uGePebx1y8V6TPcbjVR7ElL6TdKkOoVYxkAQ0M2X/klMnTmnBEZP1uMv4uAirn5QtFPX+q0FRI2Vnd/mPc1hF1saZ7kxah9M+V/1uGTQACalJBcLDLLbIcugy4AA5pvhB/AMUhVT5ejOO8ivazNhNtRhyp21Qk/qVYk8dmkhA+QY7RdjTXuU8TQg8e9HPhCo1/pNvt3NCZIP/ylNPHAQ+YF5H8kAq8OVTZlGvI7WvE6TKNtu8O9TuSdgibj5M3xFfZWf2hZZjuugKHVCe9DI0T+TIcjlyvON6+PrETUwNgARCfgdbK0GZ/Rw2GxakrXnE65vyUfMzTY63S93XcVrNlvSpEJIWbS2hhvxFw45WEksxPko6UfMJPpTZKG3sIAb4jABG1t35Wbn+AJ0fkoBPQL5lbRJVBTtY4RgBwhQnFKb2BdH8kHFI2DZD1pH+563Z08/RBPCjN48GZZzitp9OvBx8hABJTX8Up7HtYhLbqQendITTU3L27cmrGzjYHM7lR7VBlCBV7ebLHD8gShmxcJrPWnCCbuk6BrGRsTU7dgtz46U7jAGdJxewAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFv/gqAUFVV1YAAAAAAArM0q4AACcQvH/JSE5oq9bhIvQg1VV414fW/SsBAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAjRZEA9pwAAAAKQIm7x////+AAAAABnScXsAAAAAGdJxewAAAjPg8DAoAAAAAKaCFQ0CwdL0pYZ6jFIksWRnD8Yx1WX4LYMrhe9/+Z0T3i7MarKAlss59jV+mt6A/kKK+jDSP/oJz8vRNcCi8ZBhb/Qe7dJHJxIUzii5JHD9ItZ66YI1350NAVkQOysOWecA2JNOP1cK9RCHretlbv//OPlp7zfi8yn/wOr2RxcXPaERgM9r95qX6ltsOq8F6ZA45dR5DLrkby3Ymn1z+pLBYQWSubgJD5s8LNiBGKhME1OtZozdQZ9ifYY4FxdYRqBeiGgfunKrCJYh9Ud6LA+Xl+hRui8fmq8VIhmsxaPpPg=";
 
-/// Calculates the relative difference between two `Udec128` values
+/// Calculates the relative difference between two `Udec128` values.
 fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
     // Handle the case where both numbers are zero
     if a == Udec128::ZERO && b == Udec128::ZERO {
@@ -73,9 +73,10 @@ fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
 }
 
 /// Asserts that two `Udec128` values are approximately equal within a specified
-/// relative difference
+/// relative difference.
 fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) -> Result<(), TestCaseError> {
     let rel_diff = relative_difference(a, b);
+
     prop_assert!(
         rel_diff <= Udec128::from_str(max_rel_diff).unwrap(),
         "assertion failed: values are not approximately equal\n  left: {}\n right: {}\n  max_rel_diff: {}\n  actual_rel_diff: {}",
@@ -84,6 +85,7 @@ fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) -> Result<(), Te
         max_rel_diff,
         rel_diff
     );
+
     Ok(())
 }
 
@@ -145,7 +147,7 @@ fn register_and_feed_btc_price(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
-    let btc_denom = Denom::from_str("bridge/btc").unwrap();
+    let btc_denom = Denom::from_str("hyp/bitcoin/sat").unwrap();
 
     register_price_feed(suite, accounts, contracts, btc_denom, 8, WBTC_USD_ID);
     feed_oracle_price(suite, accounts, contracts, WBTC_VAA_1);
@@ -530,8 +532,8 @@ fn liquidation_works_with_multiple_debt_denoms() {
                 collateral: USDC.clone(),
             },
             Coins::try_from(btree_map! {
-                "uusdc" => 1_000_000_000, // 1K USDC
-                "bridge/btc" => 100_000, // 0.001 BTC
+                "uusdc"           => 1_000_000_000, // 1K USDC
+                "hyp/bitcoin/sat" => 100_000,       // 0.001 BTC
             })
             .unwrap(),
         )
@@ -1051,10 +1053,14 @@ proptest! {
 
         // Get liquidators total account value before liquidation
         let liquidator_balances_before = suite.query_balances(&liquidator).unwrap();
-        let liquidator_worth_before = liquidator_balances_before.clone().into_iter().map(|coin| {
-            let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
-            price.value_of_unit_amount(coin.amount).unwrap()
-        }).reduce(|a, b| a + b).unwrap();
+        let liquidator_worth_before = liquidator_balances_before
+            .clone()
+            .into_iter().map(|coin| {
+                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                price.value_of_unit_amount(coin.amount).unwrap()
+            })
+            .reduce(|a, b| a + b)
+            .unwrap();
 
         // Attempt liquidation
         let res = suite
@@ -1070,10 +1076,14 @@ proptest! {
 
         // Get liquidators total account value after liquidation
         let liquidator_balances_after = suite.query_balances(&liquidator).unwrap();
-        let liquidator_worth_after = liquidator_balances_after.into_iter().map(|coin| {
-            let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
-            price.value_of_unit_amount(coin.amount).unwrap()
-        }).reduce(|a, b| a + b).unwrap();
+        let liquidator_worth_after = liquidator_balances_after
+            .into_iter()
+            .map(|coin| {
+                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                price.value_of_unit_amount(coin.amount).unwrap()
+            })
+            .reduce(|a, b| a + b)
+            .unwrap();
 
         // Property: Liquidation should always result in a profit for the liquidator
         prop_assert!(
@@ -1083,24 +1093,29 @@ proptest! {
 
         // Check liquidation bonus
         let config = suite.query_app_config::<AppConfig>().unwrap();
-        let liquidation_event: LiquidationEvent = res.events
+        let liquidation_event = res.events
             .search_event::<ContractEvent>()
-            .with_predicate(|e| e.ty == "margin/liquidation")
+            .with_predicate(|e| e.ty == "liquidate")
             .take()
             .one()
             .event
             .data
-            .deserialize_json()
+            .deserialize_json::<Liquidate>()
             .unwrap();
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
-        let claimed_collateral_value = suite.query_price(contracts.oracle, &scenario.collaterals[0].denom.denom).unwrap().value_of_unit_amount(claimed_collateral_amount).unwrap();
+        let claimed_collateral_value = suite
+            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom)
+            .unwrap()
+            .value_of_unit_amount(claimed_collateral_amount)
+            .unwrap();
         let liquidation_bonus = (claimed_collateral_value - repaid_debt_value) / repaid_debt_value;
         let liquidation_bonus_from_event: Udec128 = liquidation_event.liquidation_bonus;
 
         // Property: Liquidation bonus is within the bounds
         prop_assert!(
-            liquidation_bonus_from_event >= *config.min_liquidation_bonus && liquidation_bonus_from_event <= *config.max_liquidation_bonus,
+            liquidation_bonus_from_event >= *config.min_liquidation_bonus
+                && liquidation_bonus_from_event <= *config.max_liquidation_bonus,
             "Liquidation bonus should be within the bounds"
         );
 
@@ -1110,8 +1125,7 @@ proptest! {
         // than the configured value.
         if scenario.collaterals[0].amount > Uint128::new(1000) {
             assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.01")?;
-        }
-        else {
+        } else {
             // If collateral amount is very small, rounding will occur so we just
             // check that the liquidation bonus is larger than the configured value
             // (so that liquidators don't lose out)
