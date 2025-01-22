@@ -3,25 +3,22 @@
   "extends": "@left-curve/config/ts/browser.json",
   "compilerOptions": {
     "outDir": "build",
-    "rootDir": "../dango/src/store/src"
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../utils"
+      "path": "../../../sdk/dango"
     },
     {
-      "path": "../types"
+      "path": "../../../sdk/utils"
     },
     {
-      "path": "../crypto"
+      "path": "../../../sdk/types"
     },
     {
-      "path": "../encoding"
-    },
-    {
-      "path": "../dango-kit"
+      "path": "../core"
     }
   ]
 }

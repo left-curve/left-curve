@@ -1,8 +1,9 @@
-import { createStorage } from "@left-curve/dango";
+import { createStorage } from "@left-curve/store";
 
-import type { Storage } from "@left-curve/types";
-import type { Dispatch, SetStateAction } from "react";
 import { useQuery } from "../query.js";
+
+import type { Storage } from "@left-curve/store/types";
+import type { Dispatch, SetStateAction } from "react";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);

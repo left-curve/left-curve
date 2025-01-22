@@ -12,6 +12,8 @@ export type {
 
 export type { Currencies } from "./currency.js";
 
+export type { Language } from "./languages.js";
+
 export type { EIP1193Provider } from "./eip1193.js";
 
 export type {

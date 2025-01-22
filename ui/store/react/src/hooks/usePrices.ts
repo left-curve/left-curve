@@ -1,16 +1,10 @@
-import { createStorage } from "@left-curve/dango";
-import type {
-  AnyCoin,
-  CoinGeckoId,
-  Denom,
-  Funds,
-  Language,
-  Prettify,
-  Storage,
-} from "@left-curve/types";
+import type { AnyCoin, CoinGeckoId, Denom, Funds, Prettify } from "@left-curve/types";
 import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@left-curve/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
+
+import { createStorage } from "@left-curve/store";
+import type { Language, Storage } from "@left-curve/store/types";
 
 export type UsePricesParameters = {
   refetchInterval?: number;

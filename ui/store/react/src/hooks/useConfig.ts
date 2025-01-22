@@ -3,7 +3,7 @@
 import { useContext } from "react";
 import { GrunnectContext } from "../context.js";
 
-import type { Config } from "@left-curve/types";
+import type { Config } from "@left-curve/store/types";
 
 export type UseConfigParameters<config extends Config = Config> = { config?: Config | config };
 

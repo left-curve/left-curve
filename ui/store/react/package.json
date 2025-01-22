@@ -26,11 +26,6 @@
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
-    "./chains": {
-      "types": "./build/chains.d.ts",
-      "import": "./build/chains.js",
-      "default": "./build/chains.cjs"
-    },
     "./types": {
       "types": "./build/types.d.ts",
       "import": "./build/types.js",
@@ -39,9 +34,6 @@
   },
   "typesVersions": {
     "*": {
-      "chains": [
-        "./build/chains.d.ts"
-      ],
       "types": [
         "./build/types.d.ts"
       ]
@@ -49,8 +41,7 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
-    "@left-curve/crypto": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
+    "@left-curve/store": "workspace:^",
     "@left-curve/utils": "workspace:^",
     "use-sync-external-store": "^1.2.2"
   },

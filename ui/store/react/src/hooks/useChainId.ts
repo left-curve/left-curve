@@ -2,9 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 
-import { type GetChainIdReturnType, getChainId, watchChainId } from "@left-curve/dango";
-import type { Config, ConfigParameter } from "@left-curve/types";
+import { type GetChainIdReturnType, getChainId, watchChainId } from "@left-curve/store";
 import { useConfig } from "./useConfig.js";
+
+import type { Config, ConfigParameter } from "@left-curve/store/types";
 
 export type UseChainIdParameters<config extends Config = Config> = ConfigParameter<config>;
 

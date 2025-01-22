@@ -3,12 +3,13 @@ import {
   type GetPublicClientReturnType,
   getPublicClient,
   watchPublicClient,
-} from "@left-curve/dango";
+} from "@left-curve/store";
 
 import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/with-selector.js";
 import { useConfig } from "./useConfig.js";
 
-import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
+import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Prettify } from "@left-curve/types";
 
 export type UsePublicClientParameters<config extends Config = Config> = Prettify<
   GetPublicClientParameters & ConfigParameter<config>

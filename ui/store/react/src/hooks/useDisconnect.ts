@@ -5,11 +5,13 @@ import {
   type DisconnectMutateAsync,
   type DisconnectVariables,
   disconnectMutationOptions,
-} from "@left-curve/dango/handlers";
-import type { ConfigParameter, Connector, Prettify } from "@left-curve/types";
+} from "@left-curve/store";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
 import { useConfig } from "./useConfig.js";
 import { useConnectors } from "./useConnectors.js";
+
+import type { ConfigParameter, Connector } from "@left-curve/store/types";
+import type { Prettify } from "@left-curve/types";
 
 export type UseDisconnectParameters<context = unknown> = Prettify<
   ConfigParameter & {

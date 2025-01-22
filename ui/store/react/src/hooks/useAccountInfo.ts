@@ -1,7 +1,3 @@
-import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
-import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
-import { useConfig } from "./useConfig.js";
-
 import {
   type GetAccountInfoData,
   type GetAccountInfoErrorType,
@@ -9,7 +5,13 @@ import {
   type GetAccountInfoQueryFnData,
   type GetAccountInfoQueryKey,
   getAccountInfoQueryOptions,
-} from "@left-curve/dango/handlers";
+} from "@left-curve/store";
+
+import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
+import { useConfig } from "./useConfig.js";
+
+import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Prettify } from "@left-curve/types";
 
 export type UseAccountInfoParameters<
   config extends Config = Config,

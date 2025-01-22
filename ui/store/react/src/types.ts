@@ -1,1 +1,1 @@
-export * from "@left-curve/types";
+export type * from "@left-curve/store/types";

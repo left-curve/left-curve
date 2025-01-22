@@ -1,4 +1,3 @@
-import type { Config, ConfigParameter, Prettify } from "@left-curve/types";
 import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
 import { useConfig } from "./useConfig.js";
 
@@ -9,7 +8,10 @@ import {
   type GetConnectorClientOptions,
   type GetConnectorClientQueryKey,
   getConnectorClientQueryOptions,
-} from "@left-curve/dango/handlers";
+} from "@left-curve/store";
+
+import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Prettify } from "@left-curve/types";
 
 export type UseConnectorClientParameters<
   config extends Config = Config,

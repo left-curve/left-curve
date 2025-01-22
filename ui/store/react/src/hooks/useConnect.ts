@@ -9,18 +9,14 @@ import {
   type ConnectMutateAsync,
   type ConnectVariables,
   connectMutationOptions,
-} from "@left-curve/dango/handlers";
-
-import {
-  type Config,
-  type ConfigParameter,
-  ConnectionStatus,
-  type Prettify,
-} from "@left-curve/types";
+} from "@left-curve/store";
+import { ConnectionStatus } from "@left-curve/store/types";
 import { type UseMutationParameters, type UseMutationReturnType, useMutation } from "../query.js";
-
 import { useConfig } from "./useConfig.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
+
+import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Prettify } from "@left-curve/types";
 
 export type UseConnectParameters<config extends Config = Config, context = unknown> = Prettify<
   ConfigParameter<config> & {

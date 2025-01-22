@@ -1,7 +1,7 @@
 "use client";
 
-import { hydrate } from "@left-curve/dango";
-import type { Config, State } from "@left-curve/types";
+import { hydrate } from "@left-curve/store";
+import type { Config, State } from "@left-curve/store/types";
 import { type ReactElement, useEffect, useRef } from "react";
 
 export type HydrateProps = {
