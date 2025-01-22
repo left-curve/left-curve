@@ -167,19 +167,10 @@ importers:
       '@left-curve/utils':
         specifier: workspace:^
         version: link:../utils
-      eventemitter3:
-        specifier: ^5.0.1
-        version: 5.0.1
-      zustand:
-        specifier: 'catalog:'
-        version: 5.0.1(@types/react@18.3.17)(react@18.3.1)(use-sync-external-store@1.2.2(react@18.3.1))
     devDependencies:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../config
-      '@tanstack/query-core':
-        specifier: ^5.56.2
-        version: 5.59.0
       vitest:
         specifier: 'catalog:'
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
@@ -461,9 +452,6 @@ importers:
       '@left-curve/encoding':
         specifier: workspace:^
         version: link:../../../sdk/encoding
-      '@left-curve/sdk':
-        specifier: workspace:^
-        version: link:../../../sdk/grug
       '@left-curve/store-react':
         specifier: workspace:^
         version: link:../../store/react
@@ -558,6 +546,12 @@ importers:
       '@left-curve/utils':
         specifier: workspace:^
         version: link:../../../sdk/utils
+      eventemitter3:
+        specifier: ^5.0.1
+        version: 5.0.1
+      zustand:
+        specifier: 'catalog:'
+        version: 5.0.1(@types/react@18.3.17)(react@18.3.1)(use-sync-external-store@1.2.2(react@18.3.1))
     devDependencies:
       '@left-curve/config':
         specifier: workspace:^
@@ -565,6 +559,9 @@ importers:
       '@left-curve/types':
         specifier: workspace:^
         version: link:../../../sdk/types
+      '@tanstack/query-core':
+        specifier: ^5.56.2
+        version: 5.59.0
 
   ui/store/react:
     dependencies:
