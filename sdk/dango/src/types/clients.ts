@@ -18,10 +18,12 @@ export type PublicClient<transport extends Transport = Transport> = Client<
   PublicActions<transport>
 >;
 
-export type SignerClientConfig<transport extends Transport = Transport> = RequiredBy<
-  ClientConfig<transport, Chain, Signer>,
-  "signer"
-> & { username: string };
+export type SignerClientConfig<transport extends Transport = Transport> = ClientConfig<
+  transport,
+  Chain,
+  Signer,
+  { username: string }
+>;
 
 export type SignerClient<transport extends Transport = Transport> = Client<
   transport,

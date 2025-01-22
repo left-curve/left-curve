@@ -12,12 +12,14 @@ export function createBaseClient<
   transport extends Transport = Transport,
   chain extends Chain | undefined = undefined,
   signer extends Signer | undefined = undefined,
->(parameters: ClientConfig<transport, chain, signer>): Client<transport, chain, signer> {
-  const { chain, signer, name = "Base Client", type = "base" } = parameters;
+  custom extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
+>(parameters: ClientConfig<transport, chain, signer>): Client<transport, chain, signer, custom> {
+  const { chain, signer, name = "Base Client", type = "base", ...rest } = parameters;
 
   const { config: transport, request } = parameters.transport({ chain });
 
   const client = {
+    ...rest,
     signer,
     chain,
     name,
@@ -40,6 +42,7 @@ export function createBaseClient<
   return Object.assign(client, { extend: extendClient(client) }) as Client<
     transport,
     chain,
-    signer
+    signer,
+    custom
   >;
 }

@@ -9,6 +9,7 @@ export type ClientConfig<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   signer extends Signer | undefined = undefined,
+  custom extends Record<string, unknown> | undefined = Record<string, unknown> | undefined,
 > = {
   /** The signer used for sign the txs. */
   signer?: signer;
@@ -17,10 +18,10 @@ export type ClientConfig<
   /** The name of the client. */
   name?: string;
   /** The type of the client. */
-  type?: string;
+  type?: string | undefined;
   /** The RPC transport */
   transport: transport;
-};
+} & custom;
 
 export type Client<
   transport extends Transport = Transport,
