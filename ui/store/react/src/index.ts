@@ -1,4 +1,4 @@
-export * from "@left-curve/dango";
+export { createStorage } from "@left-curve/store";
 
 export {
   type GrunnectProviderProps,

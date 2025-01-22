@@ -1,4 +1,4 @@
-import { useAccount } from "../../../../../../sdk/packages/dango/src/store/react";
+import { useAccount } from "@left-curve/store-react";
 import { BorrowAssetCard } from "./BorrowAssetCard";
 
 export const MarginAssetsTable: React.FC = () => {

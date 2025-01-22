@@ -3,7 +3,6 @@ export type {
   Connector,
   ConnectorEventMap,
   ConnectorId,
-  ConnectorIds,
   ConnectorParameter,
   ConnectorType,
   ConnectorTypes,
@@ -49,3 +48,4 @@ export type {
 } from "./store.js";
 
 export { ConnectionStatus } from "./store.js";
+export { ConnectorIds } from "./connector.js";

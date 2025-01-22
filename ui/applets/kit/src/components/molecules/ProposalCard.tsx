@@ -1,8 +1,9 @@
+import { usePublicClient } from "@left-curve/store-react";
 import { useQuery } from "@tanstack/react-query";
-import { usePublicClient } from "../../../../../../sdk/packages/dango/src/store/react";
 import { ProposalBar } from "../atoms/ProposalBar";
 
-import type { Address, Proposal } from "@left-curve/types";
+import type { Proposal } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/types";
 
 interface Props {
   proposalId: number;

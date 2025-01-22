@@ -1,7 +1,7 @@
 "use client";
 
+import { useBlockExplorer } from "@left-curve/store-react";
 import { CloseIcon, ExternalLinkIcon } from "../";
-import { useBlockExplorer } from "../../../../../../sdk/packages/dango/src/store/react";
 
 interface Props {
   notification: {

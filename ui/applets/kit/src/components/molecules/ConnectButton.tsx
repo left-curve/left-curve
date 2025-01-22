@@ -1,8 +1,8 @@
 "use client";
 
+import { useAccount } from "@left-curve/store-react";
 import { useRef } from "react";
 import { Button, ConnectModal } from "../";
-import { useAccount } from "../../../../../../sdk/packages/dango/src/store/react";
 import type { ModalRef } from "./Modal";
 
 export const ConnectButton: React.FC = () => {

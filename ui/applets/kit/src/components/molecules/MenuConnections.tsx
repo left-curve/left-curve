@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount, useDisconnect } from "../../../../../../sdk/packages/dango/src/store/react";
+import { useAccount, useDisconnect } from "@left-curve/store-react";
 
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { useClickAway } from "react-use";

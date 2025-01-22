@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useAccount,
-  useBalances,
-  usePrices,
-} from "../../../../../../../sdk/packages/dango/src/store/react";
+import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 
 import { motion } from "framer-motion";
 
@@ -16,7 +12,7 @@ import { CardMarginBottom } from "./CardMarginBottom";
 import { CardSafeBottom } from "./CardSafeBottom";
 import { CardSpotBottom } from "./CardSpotBottom";
 
-import { type Account, AccountType } from "@left-curve/types";
+import { type Account, AccountType } from "@left-curve/dango/types";
 import { useAccountName } from "../../../hooks";
 
 export interface CardProps extends VariantProps<typeof cardVariants> {
