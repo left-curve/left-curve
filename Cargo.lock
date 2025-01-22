@@ -2809,6 +2809,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-indexer-sql"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-trait",
+ "borsh 1.5.3",
+ "dango-indexer-sql-migration",
+ "grug-app",
+ "grug-math",
+ "grug-types",
+ "indexer-disk-saver",
+ "indexer-sql",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "thiserror 2.0.9",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "dango-indexer-sql-migration"
+version = "0.0.0"
+dependencies = [
+ "async-std",
+ "sea-orm-migration",
+]
+
+[[package]]
 name = "dango-lending"
 version = "0.0.0"
 dependencies = [
@@ -2843,9 +2877,11 @@ version = "0.0.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "assertor",
  "criterion",
  "dango-app",
  "dango-genesis",
+ "dango-indexer-sql",
  "dango-types",
  "dotenvy",
  "grug",
@@ -2859,10 +2895,12 @@ dependencies = [
  "hex-literal",
  "hyperlane-types",
  "hyperlane-warp",
+ "indexer-sql",
  "k256",
  "pyth-sdk 0.8.0",
  "rand",
  "reqwest 0.12.12",
+ "sea-orm",
  "test-case",
  "tokio",
  "tracing",
@@ -4729,6 +4767,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-trait",
  "borsh 1.5.3",
  "grug-app",
  "grug-math",

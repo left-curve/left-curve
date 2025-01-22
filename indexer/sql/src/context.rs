@@ -1,5 +1,5 @@
 use {
-    migration::{Migrator, MigratorTrait},
+    indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
 };
 

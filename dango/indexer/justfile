@@ -4,14 +4,6 @@ set positional-arguments
 default:
   @just --list
 
-# Create the development indexer database
-create_dev_db:
-  createdb -h localhost -U postgres grug_dev
-
-# Run the development database
-run_dev_db:
-  docker compose up db
-
 # Migrate the development database
 migrate_dev_db:
   sea-orm-cli migrate up -d sql-migration
@@ -22,4 +14,4 @@ refresh_dev_db:
 
 # Generate entity from the datatabase
 generate_entity:
-  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' --ignore-tables 'transfers'
+  sea-orm-cli generate entity -o sql/src/entity --model-extra-derives 'Default' -t transfers

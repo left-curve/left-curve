@@ -10,6 +10,8 @@ members = [
   "dango/dex",
   "dango/genesis",
   "dango/ibc-transfer",
+  "dango/indexer/sql",
+  "dango/indexer/sql-migration",
   "dango/lending",
   "dango/oracle",
   "dango/taxman",
@@ -58,6 +60,7 @@ alloy              = "0.8"
 anyhow             = "1"
 assertor           = { version = "0.0", git = "https://github.com/google/assertor" }
 async-std          = { version = "1", features = ["attributes", "tokio1"] }
+async-trait        = "0"
 base64             = "0.22"
 bip32              = "0.5"
 blake2             = "0.10"
@@ -146,23 +149,27 @@ grug-vm-rust      = { path = "grug/vm/rust" }
 grug-vm-wasm      = { path = "grug/vm/wasm" }
 
 # Dango packages
-dango-account-factory = { path = "dango/account/factory" }
-dango-account-margin  = { path = "dango/account/margin" }
-dango-account-safe    = { path = "dango/account/safe" }
-dango-account-spot    = { path = "dango/account/spot" }
-dango-app             = { path = "dango/app" }
-dango-auth            = { path = "dango/auth" }
-dango-bank            = { path = "dango/bank" }
-dango-client          = { path = "dango/client" }
-dango-dex             = { path = "dango/dex" }
-dango-genesis         = { path = "dango/genesis" }
-dango-ibc-transfer    = { path = "dango/ibc-transfer" }
-dango-lending         = { path = "dango/lending" }
-dango-oracle          = { path = "dango/oracle" }
-dango-taxman          = { path = "dango/taxman" }
-dango-testing         = { path = "dango/testing" }
-dango-types           = { path = "dango/types" }
-dango-vesting         = { path = "dango/vesting" }
+dango-account-factory       = { path = "dango/account/factory" }
+dango-account-margin        = { path = "dango/account/margin" }
+dango-account-safe          = { path = "dango/account/safe" }
+dango-account-spot          = { path = "dango/account/spot" }
+dango-amm                   = { path = "dango/amm" }
+dango-app                   = { path = "dango/app" }
+dango-auth                  = { path = "dango/auth" }
+dango-bank                  = { path = "dango/bank" }
+dango-client                = { path = "dango/client" }
+dango-dex                   = { path = "dango/dex" }
+dango-genesis               = { path = "dango/genesis" }
+dango-ibc-transfer          = { path = "dango/ibc-transfer" }
+dango-indexer-sql           = { path = "dango/indexer/sql" }
+dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
+dango-lending               = { path = "dango/lending" }
+dango-oracle                = { path = "dango/oracle" }
+dango-taxman                = { path = "dango/taxman" }
+dango-testing               = { path = "dango/testing" }
+dango-token-factory         = { path = "dango/token-factory" }
+dango-types                 = { path = "dango/types" }
+dango-vesting               = { path = "dango/vesting" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }
@@ -182,6 +189,7 @@ features = [
   "runtime-tokio-rustls",
   "sqlx-postgres",
   "sqlx-sqlite",
+  "with-bigdecimal",
   "with-chrono",
   "with-json",
   "with-uuid",

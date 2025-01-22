@@ -1,5 +1,6 @@
 use {
-    dango_testing::{generate_random_key, setup_test},
+    assertor::*,
+    dango_testing::{generate_random_key, setup_test, setup_test_with_indexer},
     grug::{
         Addressable, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
         QuerierExt, ResultExt, StdError, Uint128,
@@ -16,6 +17,7 @@ use {
     },
     hyperlane_warp::ROUTES,
     k256::ecdsa::SigningKey,
+    sea_orm::EntityTrait,
     std::{collections::BTreeSet, str::FromStr},
 };
 
@@ -100,7 +102,7 @@ impl MockValidatorSet {
 
 #[test]
 fn send_escrowing_collateral() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, mut accounts, _, contracts) = setup_test_with_indexer();
 
     let denom = Denom::from_str("udng").unwrap();
     let metadata = HexBinary::from_inner(b"hello".to_vec());
@@ -186,6 +188,32 @@ fn send_escrowing_collateral() {
     suite
         .query_balance(&contracts.hyperlane.fee, denom)
         .should_succeed_and_equal(MOCK_ROUTE.fee);
+
+    // Force the runtime to wait for the async indexer task to finish
+    suite.app.indexer.wait_for_finish();
+
+    // The transfers should have been indexed.
+    suite.app.indexer.handle.block_on(async {
+        let blocks = indexer_sql::entity::blocks::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch blocks");
+
+        assert_that!(blocks).has_length(3);
+
+        let transfers = dango_indexer_sql::entity::transfers::Entity::find()
+            .all(&suite.app.indexer.context.db)
+            .await
+            .expect("Can't fetch transfers");
+
+        assert_that!(transfers).has_length(3);
+
+        assert_that!(transfers
+            .iter()
+            .map(|t| t.amount.as_str())
+            .collect::<Vec<_>>())
+        .is_equal_to(vec!["100", "25", "25"]);
+    });
 }
 
 #[test]

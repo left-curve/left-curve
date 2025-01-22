@@ -5,7 +5,6 @@ publish = false
 version = "0.1.0"
 
 [lib]
-name = "migration"
 path = "src/lib.rs"
 
 [dependencies]
