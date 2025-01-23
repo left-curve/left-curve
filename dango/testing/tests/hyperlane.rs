@@ -1,8 +1,9 @@
 use {
     assertor::*,
     dango_testing::{generate_random_key, setup_test, setup_test_with_indexer},
+    dango_types::constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
     grug::{
-        Addressable, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
+        Addressable, Coins, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
         QuerierExt, ResultExt, StdError, Uint128,
     },
     grug_crypto::Identity256,
@@ -18,7 +19,7 @@ use {
     hyperlane_warp::ROUTES,
     k256::ecdsa::SigningKey,
     sea_orm::EntityTrait,
-    std::{collections::BTreeSet, str::FromStr},
+    std::collections::BTreeSet,
 };
 
 const MOCK_ROUTE: Route = Route {
@@ -108,7 +109,6 @@ impl MockValidatorSet {
 fn send_escrowing_collateral() {
     let (mut suite, mut accounts, _, contracts) = setup_test_with_indexer();
 
-    let denom = Denom::from_str("udng").unwrap();
     let metadata = HexBinary::from_inner(b"hello".to_vec());
 
     // Attempt to send before a route is set.
@@ -122,10 +122,12 @@ fn send_escrowing_collateral() {
                 recipient: MOCK_RECIPIENT,
                 metadata: Some(metadata.clone()),
             },
-            Coins::one("udng", 100).unwrap(),
+            Coins::one(DANGO_DENOM.clone(), 100).unwrap(),
         )
         .should_fail_with_error(StdError::data_not_found::<Route>(
-            ROUTES.path((&denom, MOCK_REMOTE_DOMAIN)).storage_key(),
+            ROUTES
+                .path((&DANGO_DENOM, MOCK_REMOTE_DOMAIN))
+                .storage_key(),
         ));
 
     // Owner sets the route.
@@ -134,7 +136,7 @@ fn send_escrowing_collateral() {
             &mut accounts.owner,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::SetRoute {
-                denom: denom.clone(),
+                denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
             },
@@ -145,7 +147,7 @@ fn send_escrowing_collateral() {
     // Query the route. Should have been set.
     suite
         .query_wasm_smart(contracts.hyperlane.warp, warp::QueryRouteRequest {
-            denom: denom.clone(),
+            denom: DANGO_DENOM.clone(),
             destination_domain: MOCK_REMOTE_DOMAIN,
         })
         .should_succeed_and_equal(MOCK_ROUTE);
@@ -160,7 +162,7 @@ fn send_escrowing_collateral() {
                 recipient: MOCK_RECIPIENT,
                 metadata: Some(metadata.clone()),
             },
-            Coins::one(denom.clone(), 100).unwrap(),
+            Coins::one(DANGO_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -190,7 +192,7 @@ fn send_escrowing_collateral() {
 
     // The fee hook should have received the fee.
     suite
-        .query_balance(&contracts.hyperlane.fee, denom)
+        .query_balance(&contracts.hyperlane.fee, DANGO_DENOM.clone())
         .should_succeed_and_equal(MOCK_ROUTE.fee);
 
     // Force the runtime to wait for the async indexer task to finish
@@ -224,7 +226,6 @@ fn send_escrowing_collateral() {
 fn send_burning_synth() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let denom = Denom::from_str("hyp/ethereum/ether").unwrap();
     let metadata = HexBinary::from_inner(b"foo".to_vec());
 
     // Set the route for the synth token.
@@ -233,7 +234,7 @@ fn send_burning_synth() {
             &mut accounts.owner,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::SetRoute {
-                denom: denom.clone(),
+                denom: ETH_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
             },
@@ -251,7 +252,7 @@ fn send_burning_synth() {
                 recipient: MOCK_RECIPIENT,
                 metadata: Some(metadata.clone()),
             },
-            Coins::one(denom.clone(), 12345).unwrap(),
+            Coins::one(ETH_DENOM.clone(), 12345).unwrap(),
         )
         .should_succeed();
 
@@ -281,17 +282,17 @@ fn send_burning_synth() {
 
     // Sender should have been deducted balance.
     suite
-        .query_balance(&accounts.user1, denom.clone())
+        .query_balance(&accounts.user1, ETH_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 12345));
 
     // Warp contract should not hold any of the synth token (should be burned).
     suite
-        .query_balance(&contracts.hyperlane.warp, denom.clone())
+        .query_balance(&contracts.hyperlane.warp, ETH_DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     // Fee hook should have received the fee.
     suite
-        .query_balance(&contracts.hyperlane.fee, denom)
+        .query_balance(&contracts.hyperlane.fee, ETH_DENOM.clone())
         .should_succeed_and_equal(MOCK_ROUTE.fee);
 }
 
@@ -299,8 +300,6 @@ fn send_burning_synth() {
 fn receive_release_collateral() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
     let mut mock_validator_set = MockValidatorSet::new_random(3);
-
-    let denom = Denom::from_str("udng").unwrap();
 
     // Set validators at the ISM.
     suite
@@ -322,7 +321,7 @@ fn receive_release_collateral() {
             &mut accounts.owner,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::SetRoute {
-                denom: denom.clone(),
+                denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
             },
@@ -340,7 +339,7 @@ fn receive_release_collateral() {
                 recipient: MOCK_RECIPIENT,
                 metadata: None,
             },
-            Coins::one(denom.clone(), 125).unwrap(),
+            Coins::one(DANGO_DENOM.clone(), 125).unwrap(),
         )
         .should_succeed();
 
@@ -386,12 +385,12 @@ fn receive_release_collateral() {
 
     // The recipient should have received the tokens.
     suite
-        .query_balance(&accounts.user1, denom.clone())
+        .query_balance(&accounts.user1, DANGO_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000_000_000 - 125 + 88));
 
     // Warp contract should have been deducted tokens.
     suite
-        .query_balance(&contracts.hyperlane.warp, denom)
+        .query_balance(&contracts.hyperlane.warp, DANGO_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100 - 88));
 }
 
@@ -400,7 +399,6 @@ fn receive_minting_synth() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
     let mut mock_validator_set = MockValidatorSet::new_random(3);
 
-    let denom = Denom::from_str("hyp/solana/fartcoin").unwrap();
     let origin_domain = 123;
 
     // Set validators at the ISM.
@@ -423,7 +421,7 @@ fn receive_minting_synth() {
             &mut accounts.owner,
             contracts.hyperlane.warp,
             &warp::ExecuteMsg::SetRoute {
-                denom: denom.clone(),
+                denom: SOL_DENOM.clone(),
                 destination_domain: origin_domain,
                 route: MOCK_ROUTE,
             },
@@ -475,6 +473,6 @@ fn receive_minting_synth() {
 
     // Synthetic tokens should have been minted to the receiver.
     suite
-        .query_balance(&accounts.user1, denom.clone())
+        .query_balance(&accounts.user1, SOL_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(88));
 }

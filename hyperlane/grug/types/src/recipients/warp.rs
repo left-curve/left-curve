@@ -20,14 +20,20 @@ use {
 /// hyp/{chain_symbol}/{token_symbol}
 /// ```
 ///
-/// For examples,
+/// E.g.,
 ///
 /// - `hyp/btc/btc`
-/// - `hyp/eth/eth`
+/// - `hyp/xrp/xrp`
 /// - `hyp/sol/bonk`
-///
-/// TODO: The exception to this is alloyed tokens (unimplemented yet).
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hyp"));
+
+/// The namespace used for alloyed tokens.
+///
+/// E.g.,
+///
+/// - `alloy/eth`
+/// - `alloy/usdc`
+pub static ALLOY_NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("alloy"));
 
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]

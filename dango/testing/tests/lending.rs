@@ -5,11 +5,12 @@ use {
         account::{margin::CollateralPower, single},
         account_factory::AccountParams,
         config::AppConfig,
+        constants::{ATOM_DENOM, USDC_DENOM},
         lending::{
             self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
             NAMESPACE, SUBNAMESPACE,
         },
-        oracle::{self, PythId},
+        oracle,
     },
     grug::{
         btree_map, Addressable, Binary, Coins, Denom, JsonSerExt, Message, MsgConfigure,
@@ -17,15 +18,8 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
-    std::{str::FromStr, sync::LazyLock},
+    std::str::FromStr,
 };
-
-static ATOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uatom").unwrap());
-static _OSMO: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uosmo").unwrap());
-static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
-
-/// The Pyth ID for USDC.
-pub const USDC_USD_ID: &str = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
 
 /// An example Pyth VAA for an USDC price feed.
 /// - id: **eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a**
@@ -41,21 +35,7 @@ fn feed_oracle_usdc_price(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
-    let id = PythId::from_str(USDC_USD_ID).unwrap();
     let precision = 6;
-    let usdc_denom = Denom::from_str("uusdc").unwrap();
-
-    // Register price source
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc_denom.clone() => dango_types::oracle::PriceSource::Pyth { id, precision }
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
 
     // Push price
     {
@@ -73,7 +53,7 @@ fn feed_oracle_usdc_price(
 
         let current_price = suite
             .query_wasm_smart(contracts.oracle, dango_types::oracle::QueryPriceRequest {
-                denom: usdc_denom.clone(),
+                denom: USDC_DENOM.clone(),
             })
             .unwrap();
 
@@ -102,7 +82,7 @@ fn cant_transfer_to_lending() {
             &mut accounts.user1,
             Message::Transfer(MsgTransfer {
                 to: contracts.lending,
-                coins: Coins::one(USDC.clone(), 123).unwrap(),
+                coins: Coins::one(USDC_DENOM.clone(), 123).unwrap(),
             }),
         )
         .should_fail_with_error(VmError::function_not_found("receive"));
@@ -118,7 +98,7 @@ fn update_markets_works() {
             limit: None,
             start_after: None,
         })
-        .should_succeed_and(|markets| markets.contains_key(&USDC));
+        .should_succeed_and(|markets| markets.contains_key(&USDC_DENOM));
 
     // Try to update markets from non-owner, should fail.
     suite
@@ -136,7 +116,7 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM.clone() => MarketUpdates {},
+                ATOM_DENOM.clone() => MarketUpdates {},
             }),
             Coins::new(),
         )
@@ -148,7 +128,7 @@ fn update_markets_works() {
             limit: None,
             start_after: None,
         })
-        .should_succeed_and(|markets| markets.contains_key(&ATOM));
+        .should_succeed_and(|markets| markets.contains_key(&ATOM_DENOM));
 }
 
 fn set_collateral_power(
@@ -187,7 +167,7 @@ fn set_collateral_power_works() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(80)).unwrap(),
     );
 }
@@ -196,21 +176,23 @@ fn set_collateral_power_works() {
 fn deposit_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test_naive();
 
-    let lp_denom = USDC.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
-    let balance_before = suite.query_balance(&accounts.user1, USDC.clone()).unwrap();
+    let lp_denom = USDC_DENOM.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
+    let balance_before = suite
+        .query_balance(&accounts.user1, USDC_DENOM.clone())
+        .unwrap();
 
     suite
         .execute(
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 123).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
         .should_succeed();
 
     // Ensure balance was deducted from depositor.
     suite
-        .query_balance(&accounts.user1, USDC.clone())
+        .query_balance(&accounts.user1, USDC_DENOM.clone())
         .should_succeed_and_equal(balance_before - Uint128::new(123));
 
     // Ensure LP token was minted to recipient.
@@ -223,7 +205,7 @@ fn deposit_works() {
 fn withdraw_works() {
     let (mut suite, mut accounts, _codes, contracts) = setup_test_naive();
 
-    let lp_denom = USDC.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
+    let lp_denom = USDC_DENOM.prepend(&[&NAMESPACE, &SUBNAMESPACE]).unwrap();
 
     // First deposit
     suite
@@ -231,7 +213,7 @@ fn withdraw_works() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 123).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
         .should_succeed();
 
@@ -239,7 +221,9 @@ fn withdraw_works() {
         .query_balance(&accounts.user1.address(), lp_denom.clone())
         .should_succeed_and_equal(Uint128::new(123));
 
-    let balance_before = suite.query_balance(&accounts.user1, USDC.clone()).unwrap();
+    let balance_before = suite
+        .query_balance(&accounts.user1, USDC_DENOM.clone())
+        .unwrap();
 
     // Now withdraw
     suite
@@ -258,7 +242,7 @@ fn withdraw_works() {
 
     // Ensure balance was added to recipient.
     suite
-        .query_balance(&accounts.user1, USDC.clone())
+        .query_balance(&accounts.user1, USDC_DENOM.clone())
         .should_succeed_and_equal(balance_before + Uint128::new(123));
 }
 
@@ -299,7 +283,7 @@ fn cant_borrow_if_no_collateral() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -308,7 +292,7 @@ fn cant_borrow_if_no_collateral() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -337,7 +321,7 @@ fn cant_borrow_if_undercollateralized() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -345,7 +329,7 @@ fn cant_borrow_if_undercollateralized() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(90)).unwrap(),
     );
 
@@ -354,7 +338,7 @@ fn cant_borrow_if_undercollateralized() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_fail_with_error("this action would make account undercollateralized!");
@@ -382,7 +366,7 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_fail_with_error("subtraction overflow: 0 - 100");
@@ -393,7 +377,7 @@ fn borrowing_works() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -401,7 +385,7 @@ fn borrowing_works() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
@@ -410,14 +394,14 @@ fn borrowing_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_succeed();
 
     // Confirm the margin account has the borrowed coins
     suite
-        .query_balance(&margin_account.address(), USDC.clone())
+        .query_balance(&margin_account.address(), USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100));
 
     // Confirm that the lending pool has the liability
@@ -425,7 +409,7 @@ fn borrowing_works() {
         .query_wasm_smart(contracts.lending, QueryDebtRequest {
             account: margin_account.address(),
         })
-        .should_succeed_and_equal(Coins::one(USDC.clone(), 100).unwrap());
+        .should_succeed_and_equal(Coins::one(USDC_DENOM.clone(), 100).unwrap());
 
     suite
         .query_wasm_smart(contracts.lending, QueryDebtsRequest {
@@ -433,7 +417,7 @@ fn borrowing_works() {
             start_after: None,
         })
         .should_succeed_and_equal(btree_map! {
-            margin_account.address() => Coins::one(USDC.clone(), 100).unwrap(),
+            margin_account.address() => Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         });
 }
 
@@ -459,7 +443,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -467,7 +451,7 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
@@ -477,13 +461,13 @@ fn all_coins_refunded_if_repaying_when_no_debts() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Repay {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
     // Check that the excess is refunded
     suite
-        .query_balance(&margin_account.address(), USDC.clone())
+        .query_balance(&margin_account.address(), USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100));
 }
 
@@ -509,7 +493,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -517,7 +501,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
@@ -527,7 +511,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -536,7 +520,7 @@ fn excess_refunded_when_repaying_more_than_debts() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 50).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 50).unwrap()),
             Coins::new(),
         )
         .should_succeed();
@@ -547,13 +531,13 @@ fn excess_refunded_when_repaying_more_than_debts() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Repay {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
     // Check that the excess is refunded
     suite
-        .query_balance(&margin_account.address(), USDC.clone())
+        .query_balance(&margin_account.address(), USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100));
 }
 
@@ -579,7 +563,7 @@ fn repay_works() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -587,7 +571,7 @@ fn repay_works() {
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
@@ -597,7 +581,7 @@ fn repay_works() {
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 
@@ -606,7 +590,7 @@ fn repay_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
             Coins::new(),
         )
         .should_succeed();
@@ -617,7 +601,7 @@ fn repay_works() {
             &mut margin_account,
             contracts.lending,
             &lending::ExecuteMsg::Repay {},
-            Coins::one(USDC.clone(), 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_succeed();
 }
