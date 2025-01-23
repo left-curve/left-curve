@@ -2,12 +2,12 @@ use {
     crate::{LOCAL_DOMAIN, MAILBOX, REPLAY_PROTECTIONS, STORAGE_LOCATIONS, VALIDATORS},
     anyhow::ensure,
     grug::{
-        Addr, Empty, Hash256, HashExt, HexBinary, HexByteArray, ImmutableCtx, MutableCtx,
-        QuerierExt, Response,
+        Empty, Hash256, HashExt, HexByteArray, ImmutableCtx, Inner, MutableCtx, QuerierExt,
+        Response, StdResult,
     },
     hyperlane_types::{
-        eip191_hash, mailbox,
-        va::{Announcement, ExecuteMsg, Initialized, InstantiateMsg},
+        domain_hash, eip191_hash, mailbox,
+        va::{EvtAnnouncement, EvtInitialize, ExecuteMsg, InstantiateMsg, VA_DOMAIN_KEY},
     },
 };
 
@@ -19,9 +19,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         .local_domain;
 
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
+
     LOCAL_DOMAIN.save(ctx.storage, &local_domain)?;
     Ok(
-        Response::new().add_event("init-validator-announce", &Initialized {
+        Response::new().add_event("init-validator-announce", &EvtInitialize {
             creator: ctx.sender,
             mailbox: msg.mailbox,
             local_domain,
@@ -47,14 +48,12 @@ pub fn migrate(_ctx: ImmutableCtx, _msg: Empty) -> anyhow::Result<Response> {
 
 fn announce(
     ctx: MutableCtx,
-    validator: HexBinary,
-    signature: HexBinary,
+    validator: HexByteArray<20>,
+    signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
-    ensure!(validator.len() == 20, "length should be 20");
-
     // Check replay protection.
-    let replay_id = replay_hash(&validator, &storage_location);
+    let replay_id = replay_hash(validator, &storage_location);
     ensure!(
         !REPLAY_PROTECTIONS.has(ctx.storage, replay_id),
         "replay protection triggered"
@@ -66,36 +65,41 @@ fn announce(
     let mailbox_addr = MAILBOX.load(ctx.storage)?;
 
     let message_hash = eip191_hash(announcement_hash(
-        domain_hash(local_domain, mailbox_addr.into()).to_vec(),
+        domain_hash(local_domain, mailbox_addr.into(), VA_DOMAIN_KEY).to_vec(),
         &storage_location,
     ));
 
     // Recover pubkey from signature & verify.
     let pubkey = ctx.api.secp256k1_pubkey_recover(
         &message_hash,
-        &signature,
+        &signature[..64],
         // We subs 27 according to this - https://eips.ethereum.org/EIPS/eip-155
         signature[64] - 27,
         false,
     )?;
-    ensure!(HexBinary::from(pubkey) == validator, "pubkey mismatch");
+    let pk_hash = ctx.api.keccak256(&pubkey[1..]);
+    let address = &pk_hash[12..];
 
-    let validator_hexbyte = HexByteArray::from_inner(validator.to_vec().try_into().unwrap());
+    ensure!(address == validator.inner(), "pubkey mismatch");
 
     // Save validator if not saved yet.
-    if !VALIDATORS.has(ctx.storage, validator_hexbyte) {
-        VALIDATORS.insert(ctx.storage, validator_hexbyte)?;
+    if !VALIDATORS.has(ctx.storage, validator) {
+        VALIDATORS.insert(ctx.storage, validator)?;
     }
 
     // Append storage_locations.
-    let mut storage_locations = STORAGE_LOCATIONS
-        .may_load(ctx.storage, validator_hexbyte)?
-        .unwrap_or_default();
-    storage_locations.push(storage_location.clone());
-    STORAGE_LOCATIONS.save(ctx.storage, validator_hexbyte, &storage_locations)?;
+    STORAGE_LOCATIONS.may_update(
+        ctx.storage,
+        validator,
+        |maybe_storage_locations| -> StdResult<_> {
+            let mut storage_locations = maybe_storage_locations.unwrap_or_default();
+            storage_locations.push(storage_location.clone());
+            Ok(storage_locations)
+        },
+    )?;
 
     Ok(
-        Response::new().add_event("validator-announcement", &Announcement {
+        Response::new().add_event("validator-announcement", &EvtAnnouncement {
             sender: ctx.sender,
             validator,
             storage_location,
@@ -103,22 +107,10 @@ fn announce(
     )
 }
 
-fn replay_hash(validator: &HexBinary, storage_location: &str) -> Hash256 {
-    [validator.to_vec(), storage_location.as_bytes().to_vec()]
+fn replay_hash(validator: HexByteArray<20>, storage_location: &str) -> Hash256 {
+    [validator.inner(), storage_location.as_bytes()]
         .concat()
         .keccak256()
-}
-
-fn domain_hash(local_domain: u32, mailbox: Addr) -> Hash256 {
-    let mut bz = vec![];
-    bz.append(&mut local_domain.to_be_bytes().to_vec());
-    // left pad with zeroes
-    let mut addr = [0u8; 32];
-    addr[32 - mailbox.len()..].copy_from_slice(&mailbox);
-    bz.append(&mut addr.to_vec());
-    bz.append(&mut "HYPERLANE_ANNOUNCEMENT".as_bytes().to_vec());
-
-    bz.keccak256()
 }
 
 fn announcement_hash(mut domain_hash: Vec<u8>, storage_location: &str) -> Hash256 {

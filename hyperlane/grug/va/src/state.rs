@@ -1,8 +1,11 @@
-use grug::{Addr, Hash256, HexByteArray, Item, Map, Set};
+use {
+    grug::{Addr, Hash256, HexByteArray, Item, Map, Set},
+    hyperlane_types::mailbox::Domain,
+};
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");
 
-pub const LOCAL_DOMAIN: Item<u32> = Item::new("local_domain");
+pub const LOCAL_DOMAIN: Item<Domain> = Item::new("local_domain");
 
 pub const VALIDATORS: Set<HexByteArray<20>> = Set::new("validators");
 

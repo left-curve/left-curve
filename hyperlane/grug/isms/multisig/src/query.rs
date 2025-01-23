@@ -6,7 +6,7 @@ use {
         domain_hash, eip191_hash,
         isms::{
             multisig::{Metadata, QueryMsg, ValidatorSet},
-            IsmQuery, IsmQueryResponse,
+            IsmQuery, IsmQueryResponse, HYPERLANE_DOMAIN_KEY,
         },
         mailbox::{Domain, Message},
         multisig_hash,
@@ -64,7 +64,11 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 
     // This is the hash that validators are supposed to sign.
     let multisig_hash = eip191_hash(multisig_hash(
-        domain_hash(message.origin_domain, metadata.origin_merkle_tree),
+        domain_hash(
+            message.origin_domain,
+            metadata.origin_merkle_tree,
+            HYPERLANE_DOMAIN_KEY,
+        ),
         metadata.merkle_root,
         metadata.merkle_index,
         raw_message.keccak256(),

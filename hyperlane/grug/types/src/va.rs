@@ -1,8 +1,10 @@
-use std::ops::Add;
-
 use grug::{Addr, HexBinary, HexByteArray};
 
+use crate::mailbox::Domain;
+
 // ----------------------------------- types -----------------------------------
+
+pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 
 #[grug::derive(Serde)]
 pub struct GetAnnounceStorageLocationsResponse {
@@ -21,7 +23,7 @@ pub struct MailboxResponse {
 
 #[grug::derive(Serde)]
 pub struct LocalDomainResponse {
-    pub local_domain: u32,
+    pub local_domain: Domain,
 }
 
 // --------------------------------- messages ----------------------------------
@@ -34,8 +36,8 @@ pub struct InstantiateMsg {
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
     Announce {
-        validator: HexBinary,
-        signature: HexBinary,
+        validator: HexByteArray<20>,
+        signature: HexByteArray<65>,
         storage_location: String,
     },
 }
@@ -58,15 +60,15 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
-pub struct Initialized {
+pub struct EvtInitialize {
     pub creator: Addr,
     pub mailbox: Addr,
-    pub local_domain: u32,
+    pub local_domain: Domain,
 }
 
 #[grug::derive(Serde)]
-pub struct Announcement {
+pub struct EvtAnnouncement {
     pub sender: Addr,
-    pub validator: HexBinary,
+    pub validator: HexByteArray<20>,
     pub storage_location: String,
 }

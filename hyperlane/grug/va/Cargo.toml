@@ -18,9 +18,10 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow          = { workspace = true }
-grug            = { workspace = true }
-hyperlane-types = { workspace = true }
+anyhow            = { workspace = true }
+grug              = { workspace = true }
+hyperlane-mailbox = { workspace = true, features = ["library"] }
+hyperlane-types   = { workspace = true }
 
 [dev-dependencies]
 hex-literal = { workspace = true }

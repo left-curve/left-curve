@@ -4478,6 +4478,7 @@ dependencies = [
  "anyhow",
  "grug",
  "hex-literal",
+ "hyperlane-mailbox",
  "hyperlane-types",
  "test-case",
 ]
