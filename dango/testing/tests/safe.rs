@@ -1,4 +1,5 @@
 use {
+    dango_account_factory::KEYS,
     dango_genesis::Contracts,
     dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
@@ -10,11 +11,12 @@ use {
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
             Username,
         },
+        auth::Key,
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
         HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer,
-        Uint128,
+        StdError, Uint128,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -433,7 +435,10 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
             accounts.user4.first_key_hash(),
-            format!("key hash {} not found", accounts.user4.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user2.username, accounts.user4.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
@@ -537,14 +542,20 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
             accounts.user3.username.clone(),
             accounts.user2.first_key_hash(),
             3,
-            format!("key hash {} not found", accounts.user2.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user3.username, accounts.user2.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
             accounts.user3.first_key_hash(),
             3,
-            format!("key hash {} not found", accounts.user3.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user2.username, accounts.user3.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
