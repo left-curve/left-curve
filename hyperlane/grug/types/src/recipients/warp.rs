@@ -168,28 +168,28 @@ pub struct QueryRoutesResponseItem {
 #[grug::derive(Serde)]
 
 pub struct RateLimitConfig {
-    pub min: Uint128,
-    pub rate_share: RateShare,
+    pub min_remaining: Uint128,
+    pub supply_share: SupplyShare,
 }
 
 // -------------------------------- rate-limit ---------------------------------
 
 #[grug::derive(Serde, Borsh)]
 pub struct RateLimit {
-    pub min: Uint128,
-    pub rate_share: RateShare,
+    pub min_remaining: Uint128,
+    pub supply_share: SupplyShare,
     pub remaining: Uint128,
 }
 
 #[grug::derive(Serde)]
-pub struct RateBound;
+pub struct SupplyShareBound;
 
-impl Bounds<Udec128> for RateBound {
+impl Bounds<Udec128> for SupplyShareBound {
     const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
     const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
 }
 
-pub type RateShare = Bounded<Udec128, RateBound>;
+pub type SupplyShare = Bounded<Udec128, SupplyShareBound>;
 
 // ---------------------------------- events -----------------------------------
 

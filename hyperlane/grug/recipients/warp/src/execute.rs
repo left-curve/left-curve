@@ -63,8 +63,8 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         .collect::<StdResult<Vec<_>>>()?
     {
         set_rate_limit(ctx.storage, &ctx.querier, None, denom, RateLimitConfig {
-            min: rate_limit.min,
-            rate_share: rate_limit.rate_share,
+            min_remaining: rate_limit.min_remaining,
+            supply_share: rate_limit.supply_share,
         })?;
     }
 
@@ -97,11 +97,11 @@ fn set_route(
 fn set_rate_limit(
     storage: &mut dyn Storage,
     querier: &QuerierWrapper,
-    assert_owner: Option<Addr>,
+    sender: Option<Addr>,
     denom: Denom,
     rate_limit: RateLimitConfig,
 ) -> anyhow::Result<Response> {
-    if let Some(owner) = assert_owner {
+    if let Some(owner) = sender {
         ensure!(
             owner == querier.query_owner()?,
             "only chain owner can call `set_rate_limit`"
@@ -111,19 +111,15 @@ fn set_rate_limit(
     let supply = querier.query_supply(denom.clone())?;
 
     let remaining = max(
-        supply.checked_mul_dec_floor(*rate_limit.rate_share.inner())?,
-        rate_limit.min,
+        supply.checked_mul_dec_floor(*rate_limit.supply_share.inner())?,
+        rate_limit.min_remaining,
     );
 
-    let rate_limit = RateLimit {
+    RATE_LIMIT.save(storage, &denom, &RateLimit {
         remaining,
-        min: rate_limit.min,
-        rate_share: rate_limit.rate_share,
-    };
-
-    // TODO: In case a rate limit already exists, remaining is recalculated.
-    // Should we consider the current remaining amount? and how?
-    RATE_LIMIT.save(storage, &denom, &rate_limit)?;
+        min_remaining: rate_limit.min_remaining,
+        supply_share: rate_limit.supply_share,
+    })?;
 
     Ok(Response::new())
 }
@@ -149,7 +145,7 @@ fn transfer_remote(
         )
     })?;
 
-    if let Ok(mut rate_limit) = RATE_LIMIT.load(ctx.storage, &token.denom) {
+    if let Some(mut rate_limit) = RATE_LIMIT.may_load(ctx.storage, &token.denom)? {
         rate_limit
             .remaining
             .checked_sub_assign(token.amount)
@@ -238,7 +234,7 @@ fn handle(
     let body = TokenMessage::decode(&body)?;
     let denom = REVERSE_ROUTES.load(ctx.storage, (origin_domain, sender))?;
 
-    if let Ok(mut rate_limit) = RATE_LIMIT.load(ctx.storage, &denom) {
+    if let Some(mut rate_limit) = RATE_LIMIT.may_load(ctx.storage, &denom)? {
         rate_limit.remaining.checked_add_assign(body.amount)?;
 
         RATE_LIMIT.save(ctx.storage, &denom, &rate_limit)?;
