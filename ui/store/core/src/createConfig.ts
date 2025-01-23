@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
-import { uid } from "@left-curve/utils";
+import { uid } from "@left-curve/dango/utils";
 
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";

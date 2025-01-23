@@ -9,9 +9,6 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/utils"
-    },
-    {
       "path": "../../../sdk/types"
     },
     {

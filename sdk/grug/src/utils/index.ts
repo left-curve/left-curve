@@ -1,9 +1,4 @@
 export {
-  getNavigatorOS,
-  getRootDomain,
-} from "./browser.js";
-
-export {
   camelToSnake,
   snakeToCamel,
   capitalize,
@@ -17,14 +12,6 @@ export {
 } from "./mappers.js";
 
 export {
-  getCoinsTypedData,
-  getMembersTypedData,
-  composeTxTypedData,
-  composeArbitraryTypedData,
-  hashTypedData,
-} from "./typedData.js";
-
-export {
   assertBoolean,
   assertString,
   assertNumber,
@@ -34,15 +21,6 @@ export {
   assertObject,
   assertSet,
 } from "./asserts.js";
-
-export {
-  type CurrencyFormatterOptions,
-  formatCurrency,
-  type NumberFormatterOptions,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-} from "./formatters.js";
 
 export {
   wait,

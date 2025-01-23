@@ -18,9 +18,6 @@
       "path": "../../../sdk/dango"
     },
     {
-      "path": "../../../sdk/utils"
-    },
-    {
       "path": "../../store/react"
     }
   ]

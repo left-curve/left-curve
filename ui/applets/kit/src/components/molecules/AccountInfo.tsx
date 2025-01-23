@@ -1,7 +1,7 @@
 "use client";
 
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
-import { formatNumber, formatUnits } from "@left-curve/utils";
 import { useAccountName } from "../../hooks";
 import { Button } from "../atoms/Button";
 

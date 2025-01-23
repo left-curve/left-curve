@@ -13,8 +13,8 @@ import {
 } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { AccountType, KeyAlgo } from "@left-curve/dango/types";
+import { getNavigatorOS, getRootDomain, wait } from "@left-curve/dango/utils";
 import { ConnectionStatus } from "@left-curve/store-react/types";
-import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
 import { useToast } from "../Toast";
 
 import { Button } from "@left-curve/applets-kit";

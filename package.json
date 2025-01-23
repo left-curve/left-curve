@@ -27,15 +27,9 @@
     "example:next": "pnpm -F example-nextjs",
     "example:node": "pnpm -F example-nodejs",
     "base": "pnpm -F config",
-    "kit": "pnpm -F dango-kit",
-    "react": "pnpm -F react",
+    "dango": "pnpm -F dango",
     "sdk": "pnpm -F sdk",
     "types": "pnpm -F types",
-    "utils": "pnpm -F utils",
-    "storybook": "pnpm shared sb:dev",
-    "shared": "pnpm -F shared",
-    "website": "pnpm -F website",
-    "portal": "pnpm -F portal",
     "bump": "pnpm -r 'bump'"
   },
   "devDependencies": {

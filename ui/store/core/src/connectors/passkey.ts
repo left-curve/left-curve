@@ -5,7 +5,7 @@ import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding"
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { KeyAlgo } from "@left-curve/dango/types";
-import { getRootDomain } from "@left-curve/utils";
+import { getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 

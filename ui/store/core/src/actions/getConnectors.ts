@@ -1,4 +1,4 @@
-import { assertDeepEqual } from "@left-curve/utils";
+import { assertDeepEqual } from "@left-curve/dango/utils";
 
 import type { Connector } from "../types/connector.js";
 import type { Config } from "../types/store.js";

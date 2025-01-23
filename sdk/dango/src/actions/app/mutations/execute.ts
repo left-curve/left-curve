@@ -6,7 +6,7 @@ import type {
   TxMessageType,
   TypedDataParameter,
 } from "@left-curve/types";
-import { getCoinsTypedData } from "@left-curve/utils";
+import { getCoinsTypedData } from "../../../utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 import type { DangoClient, Signer } from "../../../types/index.js";

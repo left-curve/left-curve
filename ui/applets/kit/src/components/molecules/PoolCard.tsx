@@ -1,5 +1,5 @@
+import { formatUnits } from "@left-curve/dango/utils";
 import { useChainId, useConfig, usePrices } from "@left-curve/store-react";
-import { formatUnits } from "@left-curve/utils";
 
 import type { Pool, PoolId } from "@left-curve/dango/types";
 

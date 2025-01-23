@@ -1,3 +1,4 @@
+import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 import type {
   Coins,
   EIP712Domain,
@@ -11,8 +12,6 @@ import type {
   TypedDataProperty,
 } from "@left-curve/types";
 import type { HashTypedDataParameters } from "viem";
-import { recursiveTransform } from "./mappers.js";
-import { camelToSnake } from "./strings.js";
 
 /**
  * @description Hash the typed data.

@@ -1,5 +1,5 @@
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store-react";
-import { formatNumber, formatUnits } from "@left-curve/utils";
 
 import type { Coin } from "@left-curve/types";
 

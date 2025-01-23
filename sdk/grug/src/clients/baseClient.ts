@@ -6,7 +6,7 @@ import type {
   Signer,
   Transport,
 } from "@left-curve/types";
-import { uid } from "@left-curve/utils";
+import { uid } from "../utils/uid.js";
 
 export function createBaseClient<
   transport extends Transport = Transport,

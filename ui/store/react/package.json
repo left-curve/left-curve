@@ -42,7 +42,6 @@
   "dependencies": {
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
-    "@left-curve/utils": "workspace:^",
     "use-sync-external-store": "^1.2.2"
   },
   "devDependencies": {

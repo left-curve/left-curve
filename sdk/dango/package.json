@@ -46,6 +46,11 @@
       "types": "./build/encoding.d.ts",
       "import": "./build/encoding.js",
       "default": "./build/encoding.cjs"
+    },
+    "./utils": {
+      "types": "./build/utils/index.d.ts",
+      "import": "./build/utils/index.js",
+      "default": "./build/utils/index.cjs"
     }
   },
   "typesVersions": {
@@ -53,7 +58,8 @@
       "types": ["./build/types/index.d.ts"],
       "actions": ["./build/actions/index.d.ts"],
       "crypto": ["./build/crypto.d.ts"],
-      "encoding": ["./build/encoding.d.ts"]
+      "encoding": ["./build/encoding.d.ts"],
+      "utils": ["./build/utils/index.d.ts"]
     }
   },
   "devDependencies": {
@@ -62,8 +68,7 @@
   },
   "dependencies": {
     "@left-curve/sdk": "workspace:^",
-    "@left-curve/types": "workspace:^",
-    "@left-curve/utils": "workspace:^"
+    "@left-curve/types": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

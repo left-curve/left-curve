@@ -6,9 +6,9 @@ import {
   useSigningClient,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
+import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
 import type { Address } from "@left-curve/types";
-import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
 export const SendContainer: React.FC = () => {

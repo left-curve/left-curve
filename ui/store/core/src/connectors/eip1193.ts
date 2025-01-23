@@ -8,7 +8,7 @@ import {
   composeTxTypedData,
   getRootDomain,
   hashTypedData,
-} from "@left-curve/utils";
+} from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 

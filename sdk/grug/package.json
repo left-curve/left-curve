@@ -53,6 +53,11 @@
       "types": "./build/encoding/index.d.ts",
       "import": "./build/encoding/index.js",
       "default": "./build/encoding/index.cjs"
+    },
+    "./utils": {
+      "types": "./build/utils/index.d.ts",
+      "import": "./build/utils/index.js",
+      "default": "./build/utils/index.cjs"
     }
   },
   "typesVersions": {
@@ -71,6 +76,9 @@
       ],
       "encoding": [
         "./build/encoding/index.d.ts"
+      ],
+      "utils": [
+        "./build/utils/index.d.ts"
       ]
     }
   },
@@ -79,8 +87,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/types": "workspace:^",
-    "@left-curve/utils": "workspace:^"
+    "@left-curve/types": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

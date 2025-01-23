@@ -3,8 +3,8 @@ import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
 import { motion } from "framer-motion";
 
 import type { AccountTypes } from "@left-curve/dango/types";
+import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import type { NativeCoin } from "@left-curve/types";
-import { formatUnits, parseUnits, wait } from "@left-curve/utils";
 import { useForm } from "react-hook-form";
 
 import { useNavigate } from "@tanstack/react-router";

@@ -12,7 +12,6 @@
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store-react": "workspace:^",
-    "@left-curve/utils": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "@tanstack/zod-adapter": "catalog:",

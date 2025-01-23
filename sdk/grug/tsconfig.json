@@ -10,12 +10,6 @@
   "references": [
     {
       "path": "../types"
-    },
-    {
-      "path": "../utils"
-    },
-    {
-      "path": "../encoding"
     }
   ]
 }
