@@ -94,6 +94,14 @@
     "@left-curve/config": "workspace:^",
     "vitest": "catalog:"
   },
+  "dependencies": {
+    "superjson": "^2.2.1",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.4.0",
+    "@scure/bip32": "^1.4.0",
+    "@scure/bip39": "^1.3.0",
+    "cbor-x": "^1.6.0"
+  },
   "license": "TBD",
   "homepage": "https://grug.build",
   "repository": "left-curve/left-curve",

@@ -67,6 +67,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "viem": "^2.21.34",
     "@left-curve/sdk": "workspace:^"
   },
   "license": "TBD",
