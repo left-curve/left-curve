@@ -1,12 +1,10 @@
 use {
-    crate::{MAILBOX, REPLAY_PROTECTIONS, STORAGE_LOCATIONS, VALIDATORS},
+    crate::{MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug::{
-        Hash256, HashExt, HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier,
-    },
+    grug::{HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier},
     hyperlane_types::{
-        domain_hash, eip191_hash,
-        va::{EvtAnnouncement, EvtInitialize, ExecuteMsg, InstantiateMsg, VA_DOMAIN_KEY},
+        announcement_hash, domain_hash, eip191_hash,
+        va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
     },
 };
 
@@ -15,7 +13,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
 
     Ok(
-        Response::new().add_event("init-validator-announce", &EvtInitialize {
+        Response::new().add_event("init_validator_announce", &Initialize {
             creator: ctx.sender,
             mailbox: msg.mailbox,
         })?,
@@ -39,24 +37,16 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
-    // Check replay protection.
-    let replay_id = replay_hash(validator, &storage_location);
-    ensure!(
-        !REPLAY_PROTECTIONS.has(ctx.storage, replay_id),
-        "replay protection triggered"
-    );
-    REPLAY_PROTECTIONS.insert(ctx.storage, replay_id)?;
-
     // Make announcement digest.
-    let mailbox_addr = MAILBOX.load(ctx.storage)?;
+    let mailbox = MAILBOX.load(ctx.storage)?;
 
     let local_domain = ctx
         .querier
-        .query_wasm_path(mailbox_addr, hyperlane_mailbox::CONFIG.path().clone())?
+        .query_wasm_path(mailbox, hyperlane_mailbox::CONFIG.path())?
         .local_domain;
 
     let message_hash = eip191_hash(announcement_hash(
-        domain_hash(local_domain, mailbox_addr.into(), VA_DOMAIN_KEY).to_vec(),
+        domain_hash(local_domain, mailbox.into(), VA_DOMAIN_KEY),
         &storage_location,
     ));
 
@@ -73,9 +63,6 @@ fn announce(
 
     ensure!(address == validator.inner(), "pubkey mismatch");
 
-    // Save validator.
-    VALIDATORS.insert(ctx.storage, validator)?;
-
     // Append storage_locations.
     STORAGE_LOCATIONS.may_update(
         ctx.storage,
@@ -88,26 +75,12 @@ fn announce(
     )?;
 
     Ok(
-        Response::new().add_event("validator-announcement", &EvtAnnouncement {
+        Response::new().add_event("validator_announcement", &Announce {
             sender: ctx.sender,
             validator,
             storage_location,
         })?,
     )
-}
-
-fn replay_hash(validator: HexByteArray<20>, storage_location: &str) -> Hash256 {
-    [validator.inner(), storage_location.as_bytes()]
-        .concat()
-        .keccak256()
-}
-
-fn announcement_hash(mut domain_hash: Vec<u8>, storage_location: &str) -> Hash256 {
-    let mut bz = vec![];
-    bz.append(&mut domain_hash);
-    bz.append(&mut storage_location.as_bytes().to_vec());
-
-    bz.keccak256()
 }
 
 // ----------------------------------- tests -----------------------------------

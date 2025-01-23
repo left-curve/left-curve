@@ -2,9 +2,9 @@ pub mod multisig;
 
 use grug::HexBinary;
 
-// ----------------------------------- types -----------------------------------
-
 pub const HYPERLANE_DOMAIN_KEY: &str = "HYPERLANE";
+
+// ----------------------------------- types -----------------------------------
 
 #[grug::derive(Serde)]
 pub enum IsmQuery {
@@ -30,6 +30,7 @@ impl IsmQueryResponse {
 }
 
 // --------------------------------- messages ----------------------------------
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     #[returns(IsmQueryResponse)]

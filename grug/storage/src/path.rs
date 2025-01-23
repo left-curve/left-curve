@@ -4,7 +4,6 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-// #[derive(Clone)]
 pub struct Path<'a, T, C> {
     storage_key: Cow<'a, [u8]>,
     data: PhantomData<T>,

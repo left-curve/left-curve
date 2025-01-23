@@ -1,32 +1,10 @@
-use std::collections::BTreeSet;
-
-use grug::{Addr, HexBinary, HexByteArray};
-
-use crate::mailbox::Domain;
-
-// ----------------------------------- types -----------------------------------
+use {
+    crate::mailbox::Domain,
+    grug::{Addr, HexByteArray},
+    std::collections::{BTreeMap, BTreeSet},
+};
 
 pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
-
-#[grug::derive(Serde)]
-pub struct GetAnnounceStorageLocationsResponse {
-    pub storage_locations: Vec<(String, BTreeSet<String>)>,
-}
-
-#[grug::derive(Serde)]
-pub struct GetAnnouncedValidatorsResponse {
-    pub validators: Vec<HexByteArray<20>>,
-}
-
-#[grug::derive(Serde)]
-pub struct MailboxResponse {
-    pub mailbox: String,
-}
-
-#[grug::derive(Serde)]
-pub struct LocalDomainResponse {
-    pub local_domain: Domain,
-}
 
 // --------------------------------- messages ----------------------------------
 
@@ -46,30 +24,31 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    #[returns(GetAnnounceStorageLocationsResponse)]
-    GetAnnounceStorageLocations { validators: Vec<HexBinary> },
+    #[returns(BTreeMap<HexByteArray<20>, BTreeSet<String>>)]
+    AnnounceStorageLocations {
+        validators: BTreeSet<HexByteArray<20>>,
+    },
 
-    #[returns(GetAnnouncedValidatorsResponse)]
-    GetAnnouncedValidators {},
+    #[returns(BTreeSet<HexByteArray<20>>)]
+    AnnouncedValidators {},
 
-    #[returns(MailboxResponse)]
+    #[returns(Addr)]
     Mailbox {},
 
-    #[returns(LocalDomainResponse)]
+    #[returns(Domain)]
     LocalDomain {},
 }
 
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
-pub struct EvtInitialize {
+pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
-    // pub local_domain: Domain,
 }
 
 #[grug::derive(Serde)]
-pub struct EvtAnnouncement {
+pub struct Announce {
     pub sender: Addr,
     pub validator: HexByteArray<20>,
     pub storage_location: String,
