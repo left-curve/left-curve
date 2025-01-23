@@ -1,17 +1,16 @@
+import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
+
+import type { Coins, Hex, Json, Message } from "@left-curve/sdk/types";
+import type { HashTypedDataParameters } from "viem";
+
 import type {
-  Coins,
   EIP712Domain,
   EIP712Message,
-  Hex,
-  Json,
-  Message,
   TxMessageType,
   TypedData,
   TypedDataParameter,
   TypedDataProperty,
-} from "@left-curve/sdk/types";
-import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
-import type { HashTypedDataParameters } from "viem";
+} from "../types/typedData.js";
 
 /**
  * @description Hash the typed data.

@@ -2,8 +2,14 @@ import { getAppConfig } from "@left-curve/sdk";
 import { getMembersTypedData } from "../../../utils/typedData.js";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import type { Address, Transport, TxParameters, TypedDataParameter } from "@left-curve/sdk/types";
-import type { AccountConfig, AppConfig, DangoClient, Signer } from "../../../types/index.js";
+import type { Address, Transport, TxParameters } from "@left-curve/sdk/types";
+import type {
+  AccountConfig,
+  AppConfig,
+  DangoClient,
+  Signer,
+  TypedDataParameter,
+} from "../../../types/index.js";
 
 export type RegisterAccountParameters = {
   sender: Address;

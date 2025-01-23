@@ -131,6 +131,9 @@ export type {
   TxEvent,
   QueryAbciResponse,
   RawSignature,
+} from "@left-curve/sdk/types";
+
+export type {
   DomainType,
   EIP712Domain,
   EIP712Message,
@@ -142,7 +145,7 @@ export type {
   TypedData,
   TypedDataParameter,
   TypedDataProperty,
-} from "@left-curve/sdk/types";
+} from "./typedData.js";
 
 export type {
   Account,
