@@ -1,5 +1,5 @@
 import type { Account } from "@left-curve/dango/types";
-import type { UID } from "@left-curve/types";
+import type { UID } from "@left-curve/dango/types";
 
 import type { Config } from "../types/store.js";
 

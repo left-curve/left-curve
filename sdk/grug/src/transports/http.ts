@@ -2,6 +2,8 @@ import { UrlRequiredError } from "../errors/transports.js";
 import { httpRpc } from "../rpc/httpClient.js";
 import { createTransport } from "./createTransport.js";
 
+import { createBatchScheduler } from "../utils/scheduler.js";
+
 import type {
   CometBftRpcSchema,
   HttpRpcClientOptions,
@@ -9,8 +11,7 @@ import type {
   JsonRpcRequest,
   RequestFn,
   Transport,
-} from "@left-curve/types";
-import { createBatchScheduler } from "@left-curve/utils";
+} from "../types/index.js";
 
 export type HttpTransportConfig = {
   /**

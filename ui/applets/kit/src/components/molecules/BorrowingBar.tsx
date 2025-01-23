@@ -1,5 +1,5 @@
+import { formatNumber } from "@left-curve/dango/utils";
 import type { Language } from "@left-curve/store-react/types";
-import { formatNumber } from "@left-curve/utils";
 import type React from "react";
 import { twMerge } from "../../utils";
 

@@ -1,5 +1,5 @@
+import { capitalize } from "@left-curve/dango/utils";
 import { ConnectorIds } from "@left-curve/store-react/types";
-import { capitalize } from "@left-curve/utils";
 
 import { Button } from "../atoms/Button";
 

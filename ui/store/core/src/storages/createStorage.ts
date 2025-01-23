@@ -1,4 +1,4 @@
-import { deserializeJson, serializeJson } from "@left-curve/encoding";
+import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
 
 import { createMemoryStorage } from "./memoryStorage.js";
 

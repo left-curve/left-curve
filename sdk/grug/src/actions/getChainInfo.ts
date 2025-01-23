@@ -1,4 +1,4 @@
-import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "@left-curve/types";
+import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "../types/index.js";
 
 export type GetChainInfoReturnType = Promise<ChainInfoResponse>;
 

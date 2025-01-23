@@ -7,18 +7,5 @@
   },
   "include": ["src"],
   "exclude": ["node_modules", "build"],
-  "references": [
-    {
-      "path": "../types"
-    },
-    {
-      "path": "../utils"
-    },
-    {
-      "path": "../crypto"
-    },
-    {
-      "path": "../encoding"
-    }
-  ]
+  "references": []
 }

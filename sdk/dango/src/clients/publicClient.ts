@@ -1,7 +1,7 @@
 import { createBaseClient } from "@left-curve/sdk";
 import { publicActions } from "../actions/index.js";
 
-import type { Transport } from "@left-curve/types";
+import type { Transport } from "@left-curve/sdk/types";
 import type { Chain } from "../types/chain.js";
 import type { PublicClient, PublicClientConfig } from "../types/clients.js";
 import type { Signer } from "../types/signer.js";

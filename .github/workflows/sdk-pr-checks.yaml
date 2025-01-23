@@ -26,10 +26,10 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Linter checks
-        run: pnpm lint:pkg
+        run: pnpm lint:sdk
 
       - name: Build checks
-        run: pnpm build:pkg
+        run: pnpm build:sdk
 
       - name: Doc Build Check
         run: pnpm doc

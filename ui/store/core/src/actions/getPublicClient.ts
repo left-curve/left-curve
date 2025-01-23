@@ -1,7 +1,7 @@
 import { publicActions } from "@left-curve/dango";
 
 import type { Chain, PublicClient, Signer } from "@left-curve/dango/types";
-import type { Client, Transport } from "@left-curve/types";
+import type { Client, Transport } from "@left-curve/dango/types";
 
 import type { Config } from "../types/index.js";
 

@@ -1,6 +1,6 @@
 // This file type is partially forked from viem types in the following repository: https://github.com/wevm/mipd/blob/main/src/store.ts
 
-import { debounce } from "@left-curve/utils";
+import { debounce } from "@left-curve/dango/utils";
 
 import type { EIP6963AnnounceProviderEvent, EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { MipdStore, MipdStoreListener } from "./types/mipd.js";

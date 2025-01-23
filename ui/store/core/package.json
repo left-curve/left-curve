@@ -41,16 +41,12 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
-    "@left-curve/crypto": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
-    "@left-curve/utils": "workspace:^",
     "eventemitter3": "^5.0.1",
     "zustand": "catalog:"
   },
   "devDependencies": {
     "@tanstack/query-core": "^5.56.2",
-    "@left-curve/config": "workspace:^",
-    "@left-curve/types": "workspace:^"
+    "@left-curve/config": "workspace:^"
   },
    "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0"

@@ -1,4 +1,4 @@
-import type { Chain, Client, Transport, TxParameters } from "@left-curve/types";
+import type { Chain, Client, Transport, TxParameters } from "@left-curve/sdk/types";
 
 import {
   type SafeAccountGetProposalParameters,
@@ -42,8 +42,8 @@ import {
   safeAccountVote,
 } from "./mutations/vote.js";
 
-import { DangoClient } from "../../types/clients.js";
-import { Signer } from '../../types/signer.js';
+import type { DangoClient } from "../../types/clients.js";
+import type { Signer } from "../../types/signer.js";
 
 export type SafeQueryActions = {
   safeAccountGetProposal: (

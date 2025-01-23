@@ -1,4 +1,10 @@
-import type { Client, ClientConfig, ClientExtend, RequiredBy, Transport } from "@left-curve/types";
+import type {
+  Client,
+  ClientConfig,
+  ClientExtend,
+  RequiredBy,
+  Transport,
+} from "@left-curve/sdk/types";
 
 import type { PublicActions } from "../actions/publicActions.js";
 import type { SignerActions } from "../actions/signerActions.js";

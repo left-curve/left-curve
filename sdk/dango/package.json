@@ -36,12 +36,30 @@
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
+    },
+    "./crypto": {
+      "types": "./build/crypto.d.ts",
+      "import": "./build/crypto.js",
+      "default": "./build/crypto.cjs"
+    },
+     "./encoding": {
+      "types": "./build/encoding.d.ts",
+      "import": "./build/encoding.js",
+      "default": "./build/encoding.cjs"
+    },
+    "./utils": {
+      "types": "./build/utils/index.d.ts",
+      "import": "./build/utils/index.js",
+      "default": "./build/utils/index.cjs"
     }
   },
   "typesVersions": {
     "*": {
       "types": ["./build/types/index.d.ts"],
-      "actions": ["./build/actions/index.d.ts"]
+      "actions": ["./build/actions/index.d.ts"],
+      "crypto": ["./build/crypto.d.ts"],
+      "encoding": ["./build/encoding.d.ts"],
+      "utils": ["./build/utils/index.d.ts"]
     }
   },
   "devDependencies": {
@@ -49,11 +67,8 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/crypto": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
-    "@left-curve/sdk": "workspace:^",
-    "@left-curve/types": "workspace:^",
-    "@left-curve/utils": "workspace:^"
+    "viem": "^2.21.34",
+    "@left-curve/sdk": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

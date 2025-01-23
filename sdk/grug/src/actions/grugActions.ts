@@ -5,7 +5,7 @@ import type {
   JsonValue,
   Signer,
   Transport,
-} from "@left-curve/types";
+} from "../types/index.js";
 
 import { type GetBalanceParameters, type GetBalanceReturnType, getBalance } from "./getBalance.js";
 
