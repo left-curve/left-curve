@@ -5,7 +5,7 @@ import type {
   ClientExtend,
   Signer,
   Transport,
-} from "@left-curve/types";
+} from "../types/index.js";
 import { uid } from "../utils/uid.js";
 
 export function createBaseClient<

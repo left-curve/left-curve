@@ -1,5 +1,5 @@
-import type { Hex } from "@left-curve/types";
 import { decodeHex, encodeHex, encodeUtf8, isHex } from "../../encoding/index.js";
+import type { Hex } from "../../types/index.js";
 import { keccak256 } from "../sha.js";
 
 export type EthPersonalMessage = Hex | string | Uint8Array;

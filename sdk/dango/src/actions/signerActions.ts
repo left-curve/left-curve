@@ -4,7 +4,7 @@ import {
 } from "./account-factory/accountFactoryActions.js";
 import { type AppMutationActions, appMutationActions } from "./app/appActions.js";
 
-import type { Transport } from "@left-curve/types";
+import type { Transport } from "@left-curve/sdk/types";
 
 import type { DangoClient, Signer } from "../types/index.js";
 

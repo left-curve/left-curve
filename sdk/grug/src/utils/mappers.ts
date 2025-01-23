@@ -1,4 +1,4 @@
-import type { Json, JsonValue } from "@left-curve/types";
+import type { Json, JsonValue } from "../types/index.js";
 /**
  * Given a payload, recursively transform the case of the keys.
  *

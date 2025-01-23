@@ -3,7 +3,7 @@ import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import { encodeHex, hexToBigInt, isHex } from "../../encoding/hex.js";
 
-import type { Hex, RawSignature } from "@left-curve/types";
+import type { Hex, RawSignature } from "../../types/index.js";
 import type { KeyPair } from "./keypair.js";
 
 /**

@@ -11,7 +11,7 @@ import type {
   JsonRpcRequest,
   RequestFn,
   Transport,
-} from "@left-curve/types";
+} from "../types/index.js";
 
 export type HttpTransportConfig = {
   /**

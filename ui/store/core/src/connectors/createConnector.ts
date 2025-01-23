@@ -1,4 +1,4 @@
-import type { Transport } from "@left-curve/types";
+import type { Transport } from "@left-curve/dango/types";
 import type { CreateConnectorFn } from "../types/connector.js";
 
 export function createConnector<

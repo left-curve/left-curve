@@ -5,7 +5,7 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
 
 import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";

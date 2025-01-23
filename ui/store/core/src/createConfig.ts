@@ -11,7 +11,7 @@ import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { AnyCoin, Chain, Client, Transport } from "@left-curve/types";
+import type { AnyCoin, Chain, Client, Transport } from "@left-curve/dango/types";
 
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";

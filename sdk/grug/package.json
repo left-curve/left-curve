@@ -58,6 +58,11 @@
       "types": "./build/utils/index.d.ts",
       "import": "./build/utils/index.js",
       "default": "./build/utils/index.cjs"
+    },
+     "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
     }
   },
   "typesVersions": {
@@ -79,15 +84,15 @@
       ],
       "utils": [
         "./build/utils/index.d.ts"
+      ],
+      "types": [
+        "./build/types/index.d.ts"
       ]
     }
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
     "vitest": "catalog:"
-  },
-  "dependencies": {
-    "@left-curve/types": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

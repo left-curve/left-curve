@@ -1,4 +1,4 @@
-import type { Coin } from "@left-curve/types";
+import type { Coin } from "@left-curve/sdk/types";
 
 export type PoolId = number;
 

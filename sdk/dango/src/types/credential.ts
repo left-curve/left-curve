@@ -1,4 +1,4 @@
-import type { Base64 } from "@left-curve/types";
+import type { Base64 } from "@left-curve/sdk/types";
 import type { KeyHash } from "./key.js";
 import type { SigningSessionInfo } from "./session.js";
 import type { Signature } from "./signature.js";

@@ -12,9 +12,6 @@
       "path": "../../../sdk/dango"
     },
     {
-      "path": "../../../sdk/types"
-    },
-    {
       "path": "../core"
     }
   ]

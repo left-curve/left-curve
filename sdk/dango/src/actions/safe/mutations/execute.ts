@@ -1,13 +1,8 @@
-import type {
-  Address,
-  Transport,
-  TxParameters,
-  TypedDataParameter,
-} from "@left-curve/types";
+import type { Address, Transport, TxParameters, TypedDataParameter } from "@left-curve/sdk/types";
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import type { ProposalId } from "../../../types/safe.js";
 import type { DangoClient } from "../../../types/clients.js";
+import type { ProposalId } from "../../../types/safe.js";
 import type { Signer } from "../../../types/signer.js";
 
 export type SafeAccountExecuteParameters = {

@@ -24,7 +24,6 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
-    "@left-curve/types": "workspace:^",
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
     "@tanstack/router-devtools": "catalog:",

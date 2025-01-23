@@ -124,9 +124,6 @@ importers:
       '@left-curve/sdk':
         specifier: workspace:^
         version: link:../grug
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../types
     devDependencies:
       '@left-curve/config':
         specifier: workspace:^
@@ -136,10 +133,6 @@ importers:
         version: 2.1.1(@types/node@22.7.5)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
 
   sdk/grug:
-    dependencies:
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../types
     devDependencies:
       '@left-curve/config':
         specifier: workspace:^
@@ -159,9 +152,6 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
-      '@left-curve/sdk':
-        specifier: workspace:^
-        version: link:../../../sdk/grug
       '@left-curve/store-react':
         specifier: workspace:^
         version: link:../../store/react
@@ -253,9 +243,6 @@ importers:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/config
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../../../sdk/types
       '@react-types/select':
         specifier: ^3.9.6
         version: 3.9.7(react@18.3.1)
@@ -390,9 +377,6 @@ importers:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/config
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../../../sdk/types
       '@rsbuild/core':
         specifier: 'catalog:'
         version: 1.0.9
@@ -445,9 +429,6 @@ importers:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/config
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../../../sdk/types
       '@tanstack/query-core':
         specifier: ^5.56.2
         version: 5.59.0
@@ -470,9 +451,6 @@ importers:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/config
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../../../sdk/types
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.59.0(react@18.3.1)
@@ -544,9 +522,6 @@ importers:
       '@left-curve/config':
         specifier: workspace:^
         version: link:../../../sdk/config
-      '@left-curve/types':
-        specifier: workspace:^
-        version: link:../../../sdk/types
       typescript:
         specifier: 'catalog:'
         version: 5.6.3

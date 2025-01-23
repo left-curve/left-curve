@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ProposalBar } from "../atoms/ProposalBar";
 
 import type { Proposal } from "@left-curve/dango/types";
-import type { Address } from "@left-curve/types";
+import type { Address } from "@left-curve/dango/types";
 
 interface Props {
   proposalId: number;

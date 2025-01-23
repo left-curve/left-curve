@@ -67,8 +67,7 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/sdk": "workspace:^",
-    "@left-curve/types": "workspace:^"
+    "@left-curve/sdk": "workspace:^"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

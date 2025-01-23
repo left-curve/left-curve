@@ -9,7 +9,7 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
 
 import { computeAddress } from "../../../account/address.js";
 import { getCoinsTypedData } from "../../../utils/typedData.js";

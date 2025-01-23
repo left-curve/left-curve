@@ -13,7 +13,7 @@ import {
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, Eip712Signature, SignerClient } from "@left-curve/dango/types";
-import type { Address, Json, Transport, TypedDataProperty } from "@left-curve/types";
+import type { Address, Json, Transport, TypedDataProperty } from "@left-curve/dango/types";
 
 import type { ConnectorId } from "../types/connector.js";
 import type { EIP1193Provider } from "../types/eip1193.js";

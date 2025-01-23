@@ -1,4 +1,4 @@
-## Grug SDK
+## Grug and Dango SDK
 
 You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
@@ -13,31 +13,9 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 | [`crypto`](./grug/crypto)     | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
 | [`encoding`](./grug/encoding) | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
 | [`grug-sdk`](./grug)          | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
-| [`types`](./types)            | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
+| [`types`](./grug/types)       | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
 | [`utils`](./grug/utils)       | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 
-## Module Graph
-
-```mermaid
-%%{
-  init: {
-  'theme': 'base',
-  'themeVariables': {"primaryTextColor":"#fff","primaryColor":"#5a4f7c","lineColor":"#f5a623" }
-  }
-}%%
-stateDiagram-v2
-    state "@left-curve/config" as left_curve_config
-    state "@left-curve/types" as left_curve_types
-    state "@left-curve/grug" as left_curve_sdk
-    state "@left-curve/dango" as left_curve_dango
-
-    left_curve_config --> left_curve_types
-    left_curve_config --> left_curve_sdk
-    left_curve_types --> left_curve_sdk
-    left_curve_config --> left_curve_dango
-    left_curve_sdk --> left_curve_dango
-    left_curve_types --> left_curve_dango
-```
 
 ## Supported JS environments
 

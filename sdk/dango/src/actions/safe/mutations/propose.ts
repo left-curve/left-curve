@@ -7,7 +7,7 @@ import type {
   TxMessageType,
   TxParameters,
   TypedDataParameter,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
 
 import type { DangoClient } from "../../../types/clients.js";
 import type { Signer } from "../../../types/signer.js";

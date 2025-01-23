@@ -4,7 +4,7 @@ import { createKeyHash } from "../account/key.js";
 import { KeyAlgo } from "../types/key.js";
 
 import type { KeyPair } from "@left-curve/sdk/crypto";
-import type { JsonValue } from "@left-curve/types";
+import type { JsonValue } from "@left-curve/sdk/types";
 import type { KeyAlgoType, KeyHash, SignDoc, Signer } from "../types/index.js";
 
 export class PrivateKeySigner implements Signer {

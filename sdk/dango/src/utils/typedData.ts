@@ -1,4 +1,3 @@
-import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 import type {
   Coins,
   EIP712Domain,
@@ -10,7 +9,8 @@ import type {
   TypedData,
   TypedDataParameter,
   TypedDataProperty,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
+import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 import type { HashTypedDataParameters } from "viem";
 
 /**

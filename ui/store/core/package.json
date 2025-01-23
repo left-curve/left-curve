@@ -46,8 +46,7 @@
   },
   "devDependencies": {
     "@tanstack/query-core": "^5.56.2",
-    "@left-curve/config": "workspace:^",
-    "@left-curve/types": "workspace:^"
+    "@left-curve/config": "workspace:^"
   },
    "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0"

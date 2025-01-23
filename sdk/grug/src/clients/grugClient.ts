@@ -1,4 +1,4 @@
-import type { Chain, Client, ClientConfig, Transport } from "@left-curve/types";
+import type { Chain, Client, ClientConfig, Transport } from "../types/index.js";
 
 import { type GrugActions, grugActions } from "../actions/grugActions.js";
 import { createBaseClient } from "./baseClient.js";

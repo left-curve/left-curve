@@ -7,7 +7,7 @@ import type {
   SimulateRequest,
   SimulateResponse,
   Transport,
-} from "@left-curve/types";
+} from "../types/index.js";
 import { queryAbci } from "./queryAbci.js";
 
 export type SimulateParameters = {

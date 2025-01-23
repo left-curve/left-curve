@@ -1,4 +1,4 @@
-import type { Address, Prettify } from "@left-curve/types";
+import type { Address, Prettify } from "@left-curve/sdk/types";
 import type { Key, KeyHash } from "./key.js";
 import type { Safe } from "./safe.js";
 

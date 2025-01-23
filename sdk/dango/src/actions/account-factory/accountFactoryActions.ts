@@ -1,4 +1,4 @@
-import type { Client, Transport, TxParameters } from "@left-curve/types";
+import type { Client, Transport, TxParameters } from "@left-curve/sdk/types";
 
 import {
   type RegisterUserParameters,

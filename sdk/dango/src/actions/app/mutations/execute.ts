@@ -5,7 +5,7 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
 import { getCoinsTypedData } from "../../../utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 

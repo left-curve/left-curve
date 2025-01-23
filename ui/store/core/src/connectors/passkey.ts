@@ -10,7 +10,7 @@ import { getRootDomain } from "@left-curve/dango/utils";
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, SignerClient } from "@left-curve/dango/types";
-import type { Address, Transport } from "@left-curve/types";
+import type { Address, Transport } from "@left-curve/dango/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;

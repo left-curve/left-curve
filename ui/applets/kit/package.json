@@ -47,7 +47,6 @@
   "dependencies": {
     "@left-curve/ui-config": "workspace:^",
     "@left-curve/store-react": "workspace:^",
-    "@left-curve/sdk": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
@@ -77,7 +76,6 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
-    "@left-curve/types": "workspace:^",
     "@react-types/select": "^3.9.6",
     "@storybook/addon-a11y": "^8.3.2",
     "@storybook/addon-essentials": "^8.3.2",

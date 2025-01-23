@@ -1,5 +1,5 @@
 import { type GrugActions, grugActions } from "@left-curve/sdk";
-import type { Client, Transport } from "@left-curve/types";
+import type { Client, Transport } from "@left-curve/sdk/types";
 import type { Chain, Signer } from "../types/index.js";
 import {
   type AccountFactoryQueryActions,

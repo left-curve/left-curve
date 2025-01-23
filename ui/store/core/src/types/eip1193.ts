@@ -7,7 +7,7 @@ import type {
   Prettify,
   RequestFn,
   RequiredBy,
-} from "@left-curve/types";
+} from "@left-curve/dango/types";
 
 type Index = `0x${string}`;
 type Quantity = `0x${string}`;

@@ -1,5 +1,5 @@
-import type { Chain, Client, QueryAbciResponse, Signer, Transport } from "@left-curve/types";
 import { encodeHex } from "../encoding/hex.js";
+import type { Chain, Client, QueryAbciResponse, Signer, Transport } from "../types/index.js";
 
 export type QueryAbciParameters = {
   path: string;

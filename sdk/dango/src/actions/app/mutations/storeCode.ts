@@ -4,7 +4,7 @@ import type {
   Transport,
   TxMessageType,
   TypedDataParameter,
-} from "@left-curve/types";
+} from "@left-curve/sdk/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 import type { DangoClient, Signer } from "../../../types/index.js";

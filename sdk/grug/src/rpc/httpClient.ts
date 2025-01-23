@@ -1,6 +1,6 @@
-import type { HttpRpcClientOptions, RpcClient } from "@left-curve/types";
 import { HttpRequestError } from "../errors/request.js";
 import { TimeoutError } from "../errors/timeout.js";
+import type { HttpRpcClientOptions, RpcClient } from "../types/index.js";
 import { withTimeout } from "../utils/promises.js";
 
 function createIdStore() {

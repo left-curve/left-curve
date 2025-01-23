@@ -10,8 +10,8 @@ import {
   getConnectorClientQueryOptions,
 } from "@left-curve/store";
 
+import type { Prettify } from "@left-curve/dango/types";
 import type { Config, ConfigParameter } from "@left-curve/store/types";
-import type { Prettify } from "@left-curve/types";
 
 export type UseConnectorClientParameters<
   config extends Config = Config,

@@ -1,4 +1,4 @@
-import type { Hex } from "@left-curve/types";
+import type { Hex } from "../types/index.js";
 
 /**
  * Encode a byte array to a string using the Hex scheme, lowercase

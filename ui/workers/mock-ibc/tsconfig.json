@@ -4,9 +4,6 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/types"
-    },
-    {
       "path": "../../../sdk/grug"
     }
   ]
