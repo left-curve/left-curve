@@ -6,7 +6,8 @@ on:
     branches:
       - "main"
     paths:
-      - "ui/applets/kit/**"
+      - "ui/**"
+      - "sdk/**"
 
 jobs:
   deploy:
@@ -32,8 +33,8 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm build:sdk
+      - name: Build Library dependencies
+        run: pnpm turbo "build" "-F=./ui/store/**"
 
       - name: Build Storybook
         working-directory: "ui/applets/kit"

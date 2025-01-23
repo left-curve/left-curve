@@ -12,9 +12,6 @@
       "path": "../../applets/kit"
     },
     {
-      "path": "../../../sdk/types"
-    },
-    {
       "path": "../../../sdk/dango"
     },
     {
