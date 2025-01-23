@@ -4,11 +4,21 @@ use {
     std::{borrow::Cow, marker::PhantomData},
 };
 
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct Path<'a, T, C> {
     storage_key: Cow<'a, [u8]>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
+}
+
+impl<'a, T, C> Clone for Path<'a, T, C> {
+    fn clone(&self) -> Self {
+        Self {
+            storage_key: self.storage_key.clone(),
+            data: PhantomData,
+            codec: PhantomData,
+        }
+    }
 }
 
 impl<'a, T, C> Path<'a, T, C>

@@ -1,31 +1,23 @@
 use {
-    crate::{LOCAL_DOMAIN, MAILBOX, REPLAY_PROTECTIONS, STORAGE_LOCATIONS, VALIDATORS},
+    crate::{MAILBOX, REPLAY_PROTECTIONS, STORAGE_LOCATIONS, VALIDATORS},
     anyhow::ensure,
     grug::{
-        Empty, Hash256, HashExt, HexByteArray, ImmutableCtx, Inner, MutableCtx, QuerierExt,
-        Response, StdResult,
+        Hash256, HashExt, HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier,
     },
     hyperlane_types::{
-        domain_hash, eip191_hash, mailbox,
+        domain_hash, eip191_hash,
         va::{EvtAnnouncement, EvtInitialize, ExecuteMsg, InstantiateMsg, VA_DOMAIN_KEY},
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    let local_domain = ctx
-        .querier
-        .query_wasm_smart(msg.mailbox, mailbox::QueryConfigRequest {})?
-        .local_domain;
-
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
 
-    LOCAL_DOMAIN.save(ctx.storage, &local_domain)?;
     Ok(
         Response::new().add_event("init-validator-announce", &EvtInitialize {
             creator: ctx.sender,
             mailbox: msg.mailbox,
-            local_domain,
         })?,
     )
 }
@@ -39,11 +31,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             storage_location,
         } => announce(ctx, validator, signature, storage_location),
     }
-}
-
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn migrate(_ctx: ImmutableCtx, _msg: Empty) -> anyhow::Result<Response> {
-    Ok(Response::new())
 }
 
 fn announce(
@@ -61,8 +48,12 @@ fn announce(
     REPLAY_PROTECTIONS.insert(ctx.storage, replay_id)?;
 
     // Make announcement digest.
-    let local_domain = LOCAL_DOMAIN.load(ctx.storage)?;
     let mailbox_addr = MAILBOX.load(ctx.storage)?;
+
+    let local_domain = ctx
+        .querier
+        .query_wasm_path(mailbox_addr, hyperlane_mailbox::CONFIG.path().clone())?
+        .local_domain;
 
     let message_hash = eip191_hash(announcement_hash(
         domain_hash(local_domain, mailbox_addr.into(), VA_DOMAIN_KEY).to_vec(),
@@ -82,10 +73,8 @@ fn announce(
 
     ensure!(address == validator.inner(), "pubkey mismatch");
 
-    // Save validator if not saved yet.
-    if !VALIDATORS.has(ctx.storage, validator) {
-        VALIDATORS.insert(ctx.storage, validator)?;
-    }
+    // Save validator.
+    VALIDATORS.insert(ctx.storage, validator)?;
 
     // Append storage_locations.
     STORAGE_LOCATIONS.may_update(
@@ -93,7 +82,7 @@ fn announce(
         validator,
         |maybe_storage_locations| -> StdResult<_> {
             let mut storage_locations = maybe_storage_locations.unwrap_or_default();
-            storage_locations.push(storage_location.clone());
+            storage_locations.insert(storage_location.clone());
             Ok(storage_locations)
         },
     )?;

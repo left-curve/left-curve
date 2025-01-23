@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use grug::{Addr, HexBinary, HexByteArray};
 
 use crate::mailbox::Domain;
@@ -8,7 +10,7 @@ pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 
 #[grug::derive(Serde)]
 pub struct GetAnnounceStorageLocationsResponse {
-    pub storage_locations: Vec<(String, Vec<String>)>,
+    pub storage_locations: Vec<(String, BTreeSet<String>)>,
 }
 
 #[grug::derive(Serde)]
@@ -63,7 +65,7 @@ pub enum QueryMsg {
 pub struct EvtInitialize {
     pub creator: Addr,
     pub mailbox: Addr,
-    pub local_domain: Domain,
+    // pub local_domain: Domain,
 }
 
 #[grug::derive(Serde)]
