@@ -10,24 +10,19 @@ use {
         },
         account_factory::AccountParams,
         config::AppConfig,
+        constants::{USDC_DENOM, WBTC_DENOM},
         lending::{self, MarketUpdates, QueryDebtRequest},
-        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PythId, WBTC_USD_ID},
+        oracle::{self, PrecisionedPrice, PrecisionlessPrice},
     },
     grug::{
-        btree_map, Addr, Addressable, Binary, Coins, ContractEvent, Denom, JsonDeExt, JsonSerExt,
-        Message, MsgConfigure, NextNumber, NonEmpty, Number, NumberConst, PrevNumber, QuerierExt,
-        ResultExt, SearchEvent, Udec128, Uint128,
+        btree_map, coins, Addr, Addressable, Binary, Coins, ContractEvent, Denom, JsonDeExt,
+        JsonSerExt, Message, MsgConfigure, NextNumber, NonEmpty, Number, NumberConst, PrevNumber,
+        QuerierExt, ResultExt, SearchEvent, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
-    std::{cmp::min, str::FromStr, sync::LazyLock},
+    std::{cmp::min, str::FromStr},
 };
-
-static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
-static BTC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("hyp/bitcoin/sat").unwrap());
-
-/// The Pyth ID for USDC.
-pub const USDC_USD_ID: &str = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
 
 /// An example Pyth VAA for an USDC price feed.
 /// - id: **eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a**
@@ -89,27 +84,6 @@ fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) -> Result<(), Te
     Ok(())
 }
 
-fn register_price_feed(
-    suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    denom: Denom,
-    precision: u8,
-    id: PythId,
-) {
-    // Register price source
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                denom => dango_types::oracle::PriceSource::Pyth { id, precision }
-            }),
-            Coins::default(),
-        )
-        .should_succeed();
-}
-
 fn feed_oracle_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -130,26 +104,20 @@ fn feed_oracle_price(
 }
 
 /// Feeds the oracle contract a price for USDC
-fn register_and_feed_usdc_price(
+fn feed_usdc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
-    let id = PythId::from_str(USDC_USD_ID).unwrap();
-
-    register_price_feed(suite, accounts, contracts, USDC.clone(), 6, id);
     feed_oracle_price(suite, accounts, contracts, USDC_VAA);
 }
 
 /// Feeds the oracle contract a price for WBTC
-fn register_and_feed_btc_price(
+fn feed_btc_price(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) {
-    let btc_denom = Denom::from_str("hyp/bitcoin/sat").unwrap();
-
-    register_price_feed(suite, accounts, contracts, btc_denom, 8, WBTC_USD_ID);
     feed_oracle_price(suite, accounts, contracts, WBTC_VAA_1);
 }
 
@@ -239,6 +207,7 @@ fn margin_account_creation() {
 
     // Create a margin account.
     let username = accounts.user1.username.clone();
+
     accounts
         .user1
         .register_new_account(
@@ -263,8 +232,8 @@ fn setup_margin_test_env(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> TestAccount {
-    register_and_feed_usdc_price(suite, accounts, contracts);
-    register_and_feed_btc_price(suite, accounts, contracts);
+    feed_usdc_price(suite, accounts, contracts);
+    feed_btc_price(suite, accounts, contracts);
 
     // Create a margin account.
     let username = accounts.user1.username.clone();
@@ -284,7 +253,7 @@ fn setup_margin_test_env(
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(USDC.clone(), 100_000_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -292,21 +261,9 @@ fn setup_margin_test_env(
     set_collateral_power(
         suite,
         accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
-
-    // Add lending/borrowing market for BTC
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                BTC.clone() => MarketUpdates {},
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
 
     // Deposit some btc to the lending pool
     suite
@@ -314,7 +271,7 @@ fn setup_margin_test_env(
             &mut accounts.user1,
             contracts.lending,
             &lending::ExecuteMsg::Deposit {},
-            Coins::one(BTC.clone(), 100_000_000_000).unwrap(),
+            Coins::one(WBTC_DENOM.clone(), 100_000_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -322,7 +279,7 @@ fn setup_margin_test_env(
     set_collateral_power(
         suite,
         accounts,
-        BTC.clone(),
+        WBTC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(80)).unwrap(),
     );
 
@@ -339,7 +296,7 @@ fn cant_liquidate_when_overcollateralised() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
             Coins::new(),
         )
         .should_succeed();
@@ -350,7 +307,7 @@ fn cant_liquidate_when_overcollateralised() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: USDC.clone(),
+                collateral: USDC_DENOM.clone(),
             },
             Coins::new(),
         )
@@ -367,21 +324,21 @@ fn liquidation_works() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 100_000_000).unwrap()),
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap()),
             Coins::new(),
         )
         .should_succeed();
 
     // Confirm the margin account has the borrowed coins
     suite
-        .query_balance(&margin_account.address(), USDC.clone())
+        .query_balance(&margin_account.address(), USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_000));
 
     // Update USDC collateral power to 90% to make the account undercollateralised
     set_collateral_power(
         &mut suite,
         &mut accounts,
-        USDC.clone(),
+        USDC_DENOM.clone(),
         CollateralPower::new(Udec128::new_percent(90)).unwrap(),
     );
 
@@ -394,7 +351,7 @@ fn liquidation_works() {
 
     // Check liquidator account's USDC balance before
     let balance_before = suite
-        .query_balance(&accounts.user1.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, should succeed
@@ -403,15 +360,15 @@ fn liquidation_works() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: USDC.clone(),
+                collateral: USDC_DENOM.clone(),
             },
-            Coins::one(USDC.clone(), 50_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 50_000_000).unwrap(),
         )
         .should_succeed();
 
     // Check liquidator account's USDC balance after
     let balance_after = suite
-        .query_balance(&accounts.user1.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -426,7 +383,7 @@ fn liquidation_works() {
 
     // Since this is a partial liquidation, ensure the debt has decreased exactly with the sent amount
     assert_eq!(
-        debts_before.amount_of(&USDC) - debts_after.amount_of(&USDC),
+        debts_before.amount_of(&USDC_DENOM) - debts_after.amount_of(&USDC_DENOM),
         Uint128::new(50_000_000)
     );
 
@@ -436,16 +393,16 @@ fn liquidation_works() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: USDC.clone(),
+                collateral: USDC_DENOM.clone(),
             },
-            Coins::one(USDC.clone(), 100_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
     // Check liquidator account's USDC balance after
     let balance_before = balance_after;
     let balance_after = suite
-        .query_balance(&accounts.user1.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -460,11 +417,11 @@ fn liquidation_works() {
         .unwrap();
 
     // This liquidation incurred bad debt, so we just check that the debts have decreased
-    assert!(debts_before.amount_of(&USDC) > debts_after.amount_of(&USDC));
+    assert!(debts_before.amount_of(&USDC_DENOM) > debts_after.amount_of(&USDC_DENOM));
 
     // Ensure the account has no collateral left
     suite
-        .query_balance(&margin_account.address(), USDC.clone())
+        .query_balance(&margin_account.address(), USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 }
 
@@ -478,7 +435,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(USDC.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
             Coins::new(),
         )
         .should_succeed();
@@ -488,7 +445,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .transfer(
             &mut accounts.user1,
             margin_account.address(),
-            Coins::one(USDC.clone(), 15_000_000_000).unwrap(), // 15k USDC
+            Coins::one(USDC_DENOM.clone(), 15_000_000_000).unwrap(), // 15k USDC
         )
         .should_succeed();
 
@@ -497,7 +454,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .execute(
             &mut margin_account,
             contracts.lending,
-            &lending::ExecuteMsg::Borrow(Coins::one(BTC.clone(), 100_000_000).unwrap()), // 1 BTC
+            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 100_000_000).unwrap()), // 1 BTC
             Coins::new(),
         )
         .should_succeed();
@@ -519,7 +476,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Check liquidator account's USDC balance before
     let usdc_balance_before = suite
-        .query_balance(&accounts.user1.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
         .unwrap();
 
     // Try to partially liquidate the margin account, fully paying off USDC debt,
@@ -529,19 +486,18 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: USDC.clone(),
+                collateral: USDC_DENOM.clone(),
             },
-            Coins::try_from(btree_map! {
-                "uusdc"           => 1_000_000_000, // 1K USDC
-                "hyp/bitcoin/sat" => 100_000,       // 0.001 BTC
-            })
-            .unwrap(),
+            coins! {
+                USDC_DENOM.clone() => 1_000_000_000, // 1K USDC
+                WBTC_DENOM.clone() => 100_000,       // 0.001 BTC
+            },
         )
         .should_succeed();
 
     // Check liquidator account's USDC balance after
     let usdc_balance_after = suite
-        .query_balance(&accounts.user1.address(), USDC.clone())
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
         .unwrap();
 
     // Ensure liquidators USDC balance increased
@@ -556,7 +512,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
 
     // Since this is a partial liquidation, ensure the debt has decreased exactly with the sent amount
     assert_eq!(
-        debts_before.amount_of(&USDC) - debts_after.amount_of(&USDC),
+        debts_before.amount_of(&USDC_DENOM) - debts_after.amount_of(&USDC_DENOM),
         Uint128::new(1_000_000_000)
     );
 
@@ -567,15 +523,15 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: BTC.clone(),
+                collateral: WBTC_DENOM.clone(),
             },
-            Coins::one(USDC.clone(), 100_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_fail_with_error("no debt was repaid");
 
     // Check liquidator account's BTC balance before
     let btc_balance_before = suite
-        .query_balance(&accounts.user1.address(), BTC.clone())
+        .query_balance(&accounts.user1.address(), WBTC_DENOM.clone())
         .unwrap();
 
     // Try to liquidate the rest of the account's collateral, should succeed
@@ -584,15 +540,15 @@ fn liquidation_works_with_multiple_debt_denoms() {
             &mut accounts.user1,
             margin_account.address(),
             &account::margin::ExecuteMsg::Liquidate {
-                collateral: BTC.clone(),
+                collateral: WBTC_DENOM.clone(),
             },
-            Coins::one(BTC.clone(), 100_000_000).unwrap(),
+            Coins::one(WBTC_DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();
 
     // Check liquidator account's BTC balance after
     let btc_balance_after = suite
-        .query_balance(&accounts.user1.address(), BTC.clone())
+        .query_balance(&accounts.user1.address(), WBTC_DENOM.clone())
         .unwrap();
 
     // Ensure balance increased (should receive collateral plus bonus worth more than the repaid debt)
@@ -624,7 +580,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
             account: margin_account.address(),
         })
         .unwrap();
-    assert_eq!(debts_after.amount_of(&BTC), Uint128::new(42916818));
+    assert_eq!(debts_after.amount_of(&WBTC_DENOM), Uint128::new(42916818));
 
     // Check that the collateral value after is correct (using manual calculation via equations)
     assert_approx_eq(

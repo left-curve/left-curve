@@ -1,11 +1,8 @@
 use {
     crate::account::margin::CollateralPower,
     grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive},
-    std::{collections::BTreeMap, sync::LazyLock},
+    std::collections::BTreeMap,
 };
-
-/// Denomination of the Dango token.
-pub static DANGO_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["udng"]));
 
 /// Application-specific configurations of the Dango chain.
 #[grug::derive(Serde)]

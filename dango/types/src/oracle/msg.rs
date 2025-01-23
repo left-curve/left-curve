@@ -1,12 +1,12 @@
 use {
-    super::{GuardianSet, PrecisionedPrice, PriceSource},
+    crate::oracle::{GuardianSet, GuardianSetIndex, PrecisionedPrice, PriceSource},
     grug::{Binary, Denom, NonEmpty},
     std::collections::BTreeMap,
 };
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub guardian_sets: BTreeMap<u32, GuardianSet>,
+    pub guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
     pub price_sources: BTreeMap<Denom, PriceSource>,
 }
 
@@ -40,11 +40,11 @@ pub enum QueryMsg {
     },
     /// Query the guardian set of the given index.
     #[returns(GuardianSet)]
-    GuardianSet { index: u32 },
+    GuardianSet { index: GuardianSetIndex },
     /// Enumerate the guardian set of all known indexed.
-    #[returns(BTreeMap<u32, GuardianSet>)]
+    #[returns(BTreeMap<GuardianSetIndex, GuardianSet>)]
     GuardianSets {
-        start_after: Option<u32>,
+        start_after: Option<GuardianSetIndex>,
         limit: Option<u32>,
     },
 }

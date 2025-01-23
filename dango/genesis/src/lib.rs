@@ -6,20 +6,23 @@ use {
         config::{AppAddresses, AppConfig},
         dex, ibc,
         lending::{self, MarketUpdates},
-        oracle::{
-            self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
-            USDC_USD_ID, WBTC_USD_ID,
-        },
+        oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
-        Duration, GenesisState, Hash160, Hash256, HashExt, Inner, JsonSerExt, Message, Permission,
-        Permissions, ResultExt, StdResult, Udec128, GENESIS_SENDER,
+        Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission, Permissions,
+        ResultExt, StdResult, GENESIS_SENDER,
     },
-    hyperlane_types::{hooks, isms, mailbox, recipients::warp},
+    hyperlane_types::{
+        hooks,
+        isms::{self, multisig::ValidatorSet},
+        mailbox::{self, Domain},
+        recipients::warp,
+        Addr32,
+    },
     serde::Serialize,
-    std::{collections::BTreeMap, error::Error, fs, io, path::Path, str::FromStr},
+    std::{collections::BTreeMap, fs, io, path::Path},
 };
 
 pub type GenesisUsers = BTreeMap<Username, GenesisUser>;
@@ -71,6 +74,43 @@ pub struct GenesisUser {
     pub balances: Coins,
 }
 
+pub struct GenesisConfig<T> {
+    /// Smart contract bytecodes.
+    pub codes: Codes<T>,
+    /// Initial users and their balances.
+    /// For each genesis user will be created a spot account.
+    pub users: BTreeMap<Username, GenesisUser>,
+    /// A username whose genesis spot account is to be appointed as the owner.
+    /// We expect to transfer ownership to a multisig account afterwards.
+    pub owner: Username,
+    /// Gas fee configuration.
+    pub fee_cfg: taxman::Config,
+    /// The maximum age a contract bytecode can remain orphaned (not used by any
+    /// contract).
+    /// Once this time is elapsed, the code is deleted and must be uploaded again.
+    pub max_orphan_age: Duration,
+    /// Metadata of tokens.
+    pub metadatas: BTreeMap<Denom, bank::Metadata>,
+    /// Initial Dango lending markets.
+    pub markets: BTreeMap<Denom, MarketUpdates>,
+    /// Oracle price sources.
+    pub price_sources: BTreeMap<Denom, PriceSource>,
+    /// Cliff for Dango token unlocking.
+    pub unlocking_cliff: Duration,
+    /// Period for Dango token unlocking.
+    pub unlocking_period: Duration,
+    /// Wormhole guardian sets that will sign Pyth VAA messages.
+    pub wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
+    /// Hyperlane domain ID of the local domain.
+    pub hyperlane_local_domain: Domain,
+    /// Hyperlane validator sets for remote domains.
+    pub hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    /// Hyperlane token transfer routes.
+    pub hyperlane_warp_routes: BTreeMap<(Denom, Domain), Addr32>,
+    // TODO: add margin account parameters (collateral powers and liquidation)
+}
+
+/// Create genesis contract codes for the Rust VM.
 pub fn build_rust_codes() -> Codes<ContractWrapper> {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
@@ -186,6 +226,10 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     }
 }
 
+/// Create genesis contract codes from the Wasm VM.
+///
+/// This isn't used for production, as for mainnet we use the Rust VM for core
+/// Dango contracts.
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
@@ -226,22 +270,30 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     })
 }
 
-pub fn build_genesis<T, D>(
-    codes: Codes<T>,
-    genesis_users: GenesisUsers,
-    owner: &Username,
-    fee_denom: D,
-    fee_rate: Udec128,
-    max_orphan_age: Duration,
+/// Create the Dango genesis state given a genesis config.
+pub fn build_genesis<T>(
+    GenesisConfig {
+        codes,
+        users: genesis_users,
+        owner,
+        fee_cfg,
+        max_orphan_age,
+        metadatas,
+        markets,
+        price_sources,
+        unlocking_cliff,
+        unlocking_period,
+        wormhole_guardian_sets,
+        hyperlane_local_domain,
+        hyperlane_ism_validator_sets,
+        // TODO: allow setting warp routes during instantiation
+        hyperlane_warp_routes: _,
+    }: GenesisConfig<T>,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
     T: Into<Binary>,
-    D: TryInto<Denom>,
-    D::Error: Error + Send + Sync + 'static,
 {
     let mut msgs = Vec::new();
-
-    let fee_denom = fee_denom.try_into()?;
 
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
@@ -328,7 +380,7 @@ where
         &mut msgs,
         hyperlane_ism_code_hash,
         &isms::multisig::InstantiateMsg {
-            validator_sets: btree_map! {},
+            validator_sets: hyperlane_ism_validator_sets,
         },
         "hyperlane/ism/multisig",
         "hyperlane/ism/multisig",
@@ -349,7 +401,7 @@ where
         hyperlane_mailbox_code_hash,
         &mailbox::InstantiateMsg {
             config: mailbox::Config {
-                local_domain: 88888888, // TODO
+                local_domain: hyperlane_local_domain,
                 default_ism: ism,
                 default_hook: fee,
                 required_hook: merkle,
@@ -382,13 +434,7 @@ where
     let lending = instantiate(
         &mut msgs,
         lending_code_hash,
-        &lending::InstantiateMsg {
-            markets: btree_map! {
-                fee_denom.clone() => MarketUpdates {
-                    // TODO
-                },
-            },
-        },
+        &lending::InstantiateMsg { markets },
         "dango/lending",
         "dango/lending",
     )?;
@@ -406,25 +452,19 @@ where
         })
         .collect();
 
-    // Create the `namespaces` map needed for instantiating bank.
-    // Token factory gets the "factory" namespace.
-    // IBC trasfer gets the "ibc" namespace.
-    let namespaces = btree_map! {
-        ibc::transfer::NAMESPACE.clone() => ibc_transfer,
-        lending::NAMESPACE.clone()       => lending,
-        warp::NAMESPACE.clone()          => warp,
-    };
-
     // Instantiate the bank contract.
     let bank = instantiate(
         &mut msgs,
         bank_code_hash,
         &bank::InstantiateMsg {
             balances,
-            namespaces,
-            metadatas: btree_map! {
-                // TODO: add dango token metadata
+            namespaces: btree_map! {
+                ibc::transfer::NAMESPACE.clone() => ibc_transfer,
+                lending::NAMESPACE.clone()       => lending,
+                warp::NAMESPACE.clone()          => warp,
+                warp::ALLOY_NAMESPACE.clone()    => warp,
             },
+            metadatas,
         },
         "dango/bank",
         "dango/bank",
@@ -434,12 +474,7 @@ where
     let taxman = instantiate(
         &mut msgs,
         taxman_code_hash,
-        &taxman::InstantiateMsg {
-            config: taxman::Config {
-                fee_denom,
-                fee_rate,
-            },
-        },
+        &taxman::InstantiateMsg { config: fee_cfg },
         "dango/taxman",
         "dango/taxman",
     )?;
@@ -449,27 +484,8 @@ where
         &mut msgs,
         oracle_code_hash,
         &oracle::InstantiateMsg {
-            guardian_sets: btree_map! {
-                GUARDIAN_SETS_INDEX => GuardianSet {
-                    addresses: GUARDIANS_ADDRESSES
-                        .into_iter()
-                        .map(|addr| {
-                            let bytes = Binary::from_str(addr)
-                                .unwrap()
-                                .into_inner()
-                                .try_into()
-                                .unwrap();
-                            Hash160::from_inner(bytes)
-                        })
-                        .collect(),
-                    expiration_time: None,
-                },
-            },
-            price_sources: btree_map! {
-                Denom::from_str("usdc").unwrap() => PriceSource::Pyth { id: USDC_USD_ID, precision: 6 },
-                Denom::from_str("btc").unwrap()  => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
-                Denom::from_str("eth").unwrap()  => PriceSource::Pyth { id: ETH_USD_ID, precision: 18 },
-            },
+            guardian_sets: wormhole_guardian_sets,
+            price_sources,
         },
         "dango/oracle",
         "dango/oracle",
@@ -479,8 +495,8 @@ where
         &mut msgs,
         vesting_code_hash,
         &vesting::InstantiateMsg {
-            unlocking_cliff: Duration::from_weeks(4 * 9),
-            unlocking_period: Duration::from_weeks(4 * 27),
+            unlocking_cliff,
+            unlocking_period,
         },
         "dango/vesting",
         "dango/vesting",
@@ -510,7 +526,7 @@ where
     };
 
     let config = Config {
-        owner: addresses.get(owner).cloned().unwrap(),
+        owner: addresses.get(&owner).cloned().unwrap(),
         bank,
         taxman,
         // Important: DEX cronjob is to be invoked at end of every block.
