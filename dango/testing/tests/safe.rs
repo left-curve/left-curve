@@ -12,6 +12,7 @@ use {
             Username,
         },
         auth::Key,
+        constants::USDC_DENOM,
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
@@ -52,7 +53,7 @@ fn setup_safe_test<'a>() -> (
             },
             // Fund the Safe with some tokens.
             // The Safe will pay for gas fees, so it must have sufficient tokens.
-            Coins::one("uusdc", 5_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 5_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -113,7 +114,7 @@ fn safe_creation() {
 
     // The Safe should have received tokens.
     suite
-        .query_balance(&safe, "uusdc")
+        .query_balance(&safe, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(5_000_000));
 }
 
@@ -132,7 +133,7 @@ fn proposal_passing_with_auto_execution() {
                 description: None,
                 messages: vec![Message::transfer(
                     accounts.owner.address(),
-                    Coins::one("uusdc", 888_888).unwrap(),
+                    Coins::one(USDC_DENOM.clone(), 888_888).unwrap(),
                 )
                 .unwrap()],
             },
@@ -179,7 +180,7 @@ fn proposal_passing_with_auto_execution() {
     // Ensure the tokens have been delivered.
     // Owner has 100_000_000_000 uusd to start, and now has received 888_888.
     suite
-        .query_balance(&accounts.owner, "uusdc")
+        .query_balance(&accounts.owner, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_888_888));
 }
 
@@ -644,7 +645,7 @@ fn unauthorized_messages() {
         .transfer(
             safe.with_signer(&accounts.user1),
             accounts.user1.address(),
-            Coins::one("uusdc", 123).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
         .should_fail_with_error("the only action a Safe account can do is to execute itself");
 
