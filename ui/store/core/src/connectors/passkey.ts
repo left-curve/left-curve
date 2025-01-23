@@ -1,6 +1,6 @@
 import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/dango/crypto";
 
-import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
 
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";

@@ -1,4 +1,4 @@
-import { encodeBase64, serialize } from "@left-curve/encoding";
+import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import type { Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/types";
 
 import type { DangoClient, Signer } from "../../../types/index.js";

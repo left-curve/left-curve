@@ -1,5 +1,5 @@
-import { encodeUtf8 } from "@left-curve/encoding";
 import { decode } from "cbor-x";
+import { encodeUtf8 } from "../../encoding/utf8.js";
 import { sha256 } from "../sha.js";
 
 export type CredentialAttestion = {

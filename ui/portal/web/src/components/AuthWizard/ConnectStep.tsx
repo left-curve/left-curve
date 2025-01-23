@@ -11,8 +11,8 @@ import {
   ethHashMessage,
   secp256k1RecoverPubKey,
 } from "@left-curve/dango/crypto";
+import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 import { AccountType, KeyAlgo } from "@left-curve/dango/types";
-import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
 import { ConnectionStatus } from "@left-curve/store-react/types";
 import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
 import { useToast } from "../Toast";

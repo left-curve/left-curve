@@ -41,7 +41,6 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
     "@left-curve/utils": "workspace:^",
     "eventemitter3": "^5.0.1",
     "zustand": "catalog:"

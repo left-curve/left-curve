@@ -15,12 +15,6 @@
       "path": "../types"
     },
     {
-      "path": "../crypto"
-    },
-    {
-      "path": "../encoding"
-    },
-    {
       "path": "../grug"
     }
   ]

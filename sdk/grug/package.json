@@ -48,6 +48,11 @@
       "types": "./build/crypto/index.d.ts",
       "import": "./build/crypto/index.js",
       "default": "./build/crypto/index.cjs"
+    },
+     "./encoding": {
+      "types": "./build/encoding/index.d.ts",
+      "import": "./build/encoding/index.js",
+      "default": "./build/encoding/index.cjs"
     }
   },
   "typesVersions": {
@@ -63,6 +68,9 @@
       ],
       "crypto": [
         "./build/crypto/index.d.ts"
+      ],
+      "encoding": [
+        "./build/encoding/index.d.ts"
       ]
     }
   },
@@ -71,7 +79,6 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/encoding": "workspace:^",
     "@left-curve/types": "workspace:^",
     "@left-curve/utils": "workspace:^"
   },

@@ -47,7 +47,6 @@
   "dependencies": {
     "@left-curve/ui-config": "workspace:^",
     "@left-curve/store-react": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
     "@left-curve/sdk": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@left-curve/utils": "workspace:^",

@@ -1,6 +1,5 @@
-import { isHex } from "@left-curve/encoding";
-import { decodeHex, encodeHex } from "@left-curve/encoding";
 import { Sha256, ripemd160 } from "@left-curve/sdk/crypto";
+import { decodeHex, encodeHex, isHex } from "@left-curve/sdk/encoding";
 import type { Address, Hex } from "@left-curve/types";
 
 export type ComputeAddressParameters = {

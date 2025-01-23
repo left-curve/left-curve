@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decodeHex } from "@left-curve/encoding";
+import { decodeHex } from "../encoding/hex.js";
 import { Ripemd160 } from "./ripemd.js";
 
 describe("ripemd160", () => {

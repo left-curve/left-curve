@@ -30,7 +30,6 @@ stateDiagram-v2
     state "@left-curve/types" as left_curve_types
     state "@left-curve/utils" as left_curve_utils
     state "@left-curve/grug" as left_curve_sdk
-    state "@left-curve/encoding" as left_curve_encoding
     state "@left-curve/dango" as left_curve_dango
 
     left_curve_config --> left_curve_types
@@ -39,12 +38,7 @@ stateDiagram-v2
     left_curve_config --> left_curve_sdk
     left_curve_types --> left_curve_sdk
     left_curve_utils --> left_curve_sdk
-    left_curve_encoding --> left_curve_sdk
-    left_curve_config --> left_curve_encoding
-    left_curve_types --> left_curve_encoding
-    left_curve_utils --> left_curve_encoding
     left_curve_config --> left_curve_dango
-    left_curve_encoding --> left_curve_dango
     left_curve_sdk --> left_curve_dango
     left_curve_types --> left_curve_dango
     left_curve_utils --> left_curve_dango

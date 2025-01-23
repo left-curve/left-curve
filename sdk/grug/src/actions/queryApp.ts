@@ -1,4 +1,4 @@
-import { decodeBase64, deserialize, serialize } from "@left-curve/encoding";
+import { decodeBase64, deserialize, serialize } from "../encoding/index.js";
 
 import type {
   Chain,

@@ -15,12 +15,6 @@
       "path": "../../../sdk/types"
     },
     {
-      "path": "../../../sdk/crypto"
-    },
-    {
-      "path": "../../../sdk/encoding"
-    },
-    {
       "path": "../../../sdk/dango"
     }
   ]

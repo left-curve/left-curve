@@ -1,4 +1,4 @@
-import { encodeBase64 } from "@left-curve/encoding";
+import { encodeBase64 } from "@left-curve/sdk/encoding";
 import type {
   Address,
   Funds,

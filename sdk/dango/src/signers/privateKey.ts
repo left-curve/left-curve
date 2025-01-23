@@ -1,5 +1,5 @@
-import { encodeBase64, serialize } from "@left-curve/encoding";
 import { Ed25519, Secp256k1, sha256 } from "@left-curve/sdk/crypto";
+import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import { createKeyHash } from "../account/key.js";
 import { KeyAlgo } from "../types/key.js";
 

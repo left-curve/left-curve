@@ -1,7 +1,7 @@
-import { encodeHex, hexToBigInt, isHex } from "@left-curve/encoding";
 import { secp256k1 } from "@noble/curves/secp256k1";
 import { HDKey } from "@scure/bip32";
 import { mnemonicToSeedSync } from "@scure/bip39";
+import { encodeHex, hexToBigInt, isHex } from "../../encoding/hex.js";
 
 import type { Hex, RawSignature } from "@left-curve/types";
 import type { KeyPair } from "./keypair.js";
