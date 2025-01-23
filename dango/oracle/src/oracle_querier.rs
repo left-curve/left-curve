@@ -17,7 +17,7 @@ where
     anyhow::Error: From<Q::Error>,
 {
     fn query_price(&self, oracle: Addr, denom: &Denom) -> anyhow::Result<PrecisionedPrice> {
-        match self.query_wasm_path(oracle, PRICE_SOURCES.path(denom))? {
+        match self.query_wasm_path(oracle, &PRICE_SOURCES.path(denom))? {
             PriceSource::Fixed {
                 humanized_price,
                 precision,
@@ -27,7 +27,7 @@ where
                 Ok(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision } => {
-                let price = self.query_wasm_path(oracle, PRICES.path(id))?;
+                let price = self.query_wasm_path(oracle, &PRICES.path(id))?;
                 Ok(price.with_precision(precision))
             },
         }

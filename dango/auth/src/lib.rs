@@ -175,7 +175,7 @@ pub fn verify_nonce_and_signature(
             // Query the key by key hash and username.
             let key = ctx
                 .querier
-                .query_wasm_path(factory, KEYS.path((&metadata.username, key_hash)))?;
+                .query_wasm_path(factory, &KEYS.path((&metadata.username, key_hash)))?;
 
             if let Some(session) = session_credential {
                 ensure!(
