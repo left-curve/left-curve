@@ -1,6 +1,6 @@
-import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/crypto";
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
+import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/dango/crypto";
 import { KeyAlgo } from "@left-curve/dango/types";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/encoding";
 import {

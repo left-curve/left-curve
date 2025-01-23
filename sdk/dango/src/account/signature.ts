@@ -1,5 +1,5 @@
-import { Sha256 } from "@left-curve/crypto";
 import { decodeHex, encodeEndian32, encodeUtf8, serialize } from "@left-curve/encoding";
+import { Sha256 } from "@left-curve/sdk/crypto";
 import type { Address, Message } from "@left-curve/types";
 
 /**

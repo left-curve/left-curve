@@ -1,5 +1,5 @@
-import { Secp256k1, sha256 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
+import { Secp256k1, sha256 } from "@left-curve/sdk/crypto";
 
 import type { JsonValue } from "@left-curve/types";
 

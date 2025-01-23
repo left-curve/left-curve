@@ -36,12 +36,18 @@
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
+    },
+    "./crypto": {
+      "types": "./build/crypto.d.ts",
+      "import": "./build/crypto.js",
+      "default": "./build/crypto.cjs"
     }
   },
   "typesVersions": {
     "*": {
       "types": ["./build/types/index.d.ts"],
-      "actions": ["./build/actions/index.d.ts"]
+      "actions": ["./build/actions/index.d.ts"],
+      "crypto": ["./build/crypto.d.ts"]
     }
   },
   "devDependencies": {
@@ -49,7 +55,6 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/sdk": "workspace:^",
     "@left-curve/types": "workspace:^",

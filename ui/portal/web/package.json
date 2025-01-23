@@ -11,7 +11,6 @@
     "@left-curve/ui-config": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
-    "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/store-react": "workspace:^",
     "@left-curve/utils": "workspace:^",

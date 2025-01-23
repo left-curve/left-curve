@@ -44,10 +44,10 @@
       "import": "./build/chains/index.js",
       "default": "./build/chains/index.cjs"
     },
-    "./signers": {
-      "types": "./build/signers/index.d.ts",
-      "import": "./build/signers/index.js",
-      "default": "./build/signers/index.cjs"
+    "./crypto": {
+      "types": "./build/crypto/index.d.ts",
+      "import": "./build/crypto/index.js",
+      "default": "./build/crypto/index.cjs"
     }
   },
   "typesVersions": {
@@ -61,8 +61,8 @@
       "chains": [
         "./build/chains/index.d.ts"
       ],
-      "signers": [
-        "./build/signers/index.d.ts"
+      "crypto": [
+        "./build/crypto/index.d.ts"
       ]
     }
   },
@@ -71,7 +71,6 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/crypto": "workspace:^",
     "@left-curve/encoding": "workspace:^",
     "@left-curve/types": "workspace:^",
     "@left-curve/utils": "workspace:^"

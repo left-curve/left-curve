@@ -1,4 +1,4 @@
-import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/crypto";
+import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/dango/crypto";
 
 import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
 

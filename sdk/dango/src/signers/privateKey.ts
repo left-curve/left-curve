@@ -1,10 +1,9 @@
-import { Ed25519, sha256 } from "@left-curve/crypto";
-import { Secp256k1 } from "@left-curve/crypto";
 import { encodeBase64, serialize } from "@left-curve/encoding";
+import { Ed25519, Secp256k1, sha256 } from "@left-curve/sdk/crypto";
 import { createKeyHash } from "../account/key.js";
 import { KeyAlgo } from "../types/key.js";
 
-import type { KeyPair } from "@left-curve/crypto";
+import type { KeyPair } from "@left-curve/sdk/crypto";
 import type { JsonValue } from "@left-curve/types";
 import type { KeyAlgoType, KeyHash, SignDoc, Signer } from "../types/index.js";
 

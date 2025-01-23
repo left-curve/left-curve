@@ -5,12 +5,12 @@ import { Select, SelectItem, useWizard } from "@left-curve/applets-kit";
 import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
 
+import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/dango";
 import {
   createWebAuthnCredential,
   ethHashMessage,
   secp256k1RecoverPubKey,
-} from "@left-curve/crypto";
-import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/dango";
+} from "@left-curve/dango/crypto";
 import { AccountType, KeyAlgo } from "@left-curve/dango/types";
 import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
 import { ConnectionStatus } from "@left-curve/store-react/types";
