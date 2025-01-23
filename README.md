@@ -74,28 +74,28 @@ Before running any command is necessary to run:
 pnpm install
 ```
 
-Start the development mode for all packages in the `sdk/packages`:
+Start the development mode for dango and grug sdk:
 
 ```shell
-pnpm dev:pkg
+pnpm dev:sdk
 ```
 
-Start the development mode for the app located in the `ui/portal` directory:
+Start the development mode for the app located in the `ui/portal/web` directory:
 
 ```shell
-pnpm dev:portal
+pnpm dev:portal-web
 ```
 
-Build the SDK:
+Build Grug and Dango SDK:
 
 ```shell
-pnpm build:pkg
+pnpm build:sdk
 ```
 
-Build both the SDK and the Portal App:
+Build Portal Website:
 
 ```shell
-pnpm build:portal
+pnpm build:portal-web
 ```
 
 Run tests:
