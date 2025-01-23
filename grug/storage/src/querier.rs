@@ -18,7 +18,11 @@ pub trait StorageQuerier: Querier {
     /// Query and deserialize the data corresponding to a given storage path in
     /// the given contract.
     /// Error if the data is not found.
-    fn query_wasm_path<T, C>(&self, contract: Addr, path: Path<'_, T, C>) -> Result<T, Self::Error>
+    fn query_wasm_path<T, C>(
+        &self,
+        contract: Addr,
+        path: &Path<'_, T, C>,
+    ) -> Result<T, Self::Error>
     where
         C: Codec<T>;
 }
@@ -41,7 +45,7 @@ where
             .transpose()
     }
 
-    fn query_wasm_path<T, C>(&self, contract: Addr, path: Path<'_, T, C>) -> Result<T, Self::Error>
+    fn query_wasm_path<T, C>(&self, contract: Addr, path: &Path<'_, T, C>) -> Result<T, Self::Error>
     where
         C: Codec<T>,
     {

@@ -117,7 +117,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // An an optimization, use raw instead of smart query.
     ensure!(
         ctx.querier
-            .query_wasm_path(account_factory, ACCOUNTS.path(ctx.sender))?
+            .query_wasm_path(account_factory, &ACCOUNTS.path(ctx.sender))?
             .params
             .is_margin(),
         "Only margin accounts can borrow and repay"
