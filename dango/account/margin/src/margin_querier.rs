@@ -1,10 +1,10 @@
 use {
-    dango_lending::DEBTS,
+    dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{account::margin::HealthResponse, config::AppConfig},
     grug::{
         Addr, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
-        StorageQuerier, Udec128,
+        StorageQuerier, Timestamp, Udec128,
     },
 };
 
@@ -22,6 +22,7 @@ pub trait MarginQuerier {
     fn query_health(
         &self,
         account: Addr,
+        current_time: Timestamp,
         discount_collateral: Option<Coins>,
     ) -> anyhow::Result<HealthResponse>;
 }
@@ -35,20 +36,32 @@ where
     fn query_health(
         &self,
         account: Addr,
+        current_time: Timestamp,
         discount_collateral: Option<Coins>,
     ) -> anyhow::Result<HealthResponse> {
         let app_cfg: AppConfig = self.query_app_config()?;
 
         // Query all debts for the account.
-        let debts = self
+        let scaled_debts = self
             .may_query_wasm_path(app_cfg.addresses.lending, DEBTS.path(account))?
             .unwrap_or_default();
 
         // Calculate the total value of the debts.
+        let mut debts = Coins::new();
         let mut total_debt_value = Udec128::ZERO;
-        for debt in &debts {
-            let price = self.query_price(app_cfg.addresses.oracle, debt.denom)?;
-            let value = price.value_of_unit_amount(*debt.amount)?;
+        for (denom, scaled_debt) in &scaled_debts {
+            // Query the market for the denom.
+            let market = self
+                .query_wasm_path(app_cfg.addresses.lending, MARKETS.path(denom))?
+                .update_indices(current_time)?;
+
+            // Calculate the real debt.
+            let debt = market.calculate_debt(*scaled_debt)?;
+            debts.insert(Coin::new(denom.clone(), debt)?)?;
+
+            // Calculate the value of the debt.
+            let price = self.query_price(app_cfg.addresses.oracle, denom)?;
+            let value = price.value_of_unit_amount(debt)?;
 
             total_debt_value.checked_add_assign(value)?;
         }

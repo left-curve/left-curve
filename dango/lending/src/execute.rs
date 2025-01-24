@@ -1,20 +1,34 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::{bail, ensure, Ok},
+    anyhow::{anyhow, bail, ensure, Ok},
     dango_account_factory::ACCOUNTS,
     dango_types::{
         bank,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
         DangoQuerier,
     },
-    grug::{Coin, Coins, Denom, Message, MutableCtx, QuerierExt, Response, StorageQuerier},
+    grug::{
+        Coin, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, QuerierExt, Response,
+        StorageQuerier, Udec128, Uint128,
+    },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, _updates) in msg.markets {
-        MARKETS.save(ctx.storage, &denom, &Market {})?;
+    for (denom, updates) in msg.markets {
+        let interest_rate_model = updates
+            .interest_rate_model
+            .ok_or_else(|| anyhow!("interest rate model is required for market {}", denom))?;
+
+        MARKETS.save(ctx.storage, &denom, &Market {
+            interest_rate_model,
+            total_borrowed: Uint128::ZERO,
+            total_supplied: Uint128::ZERO,
+            borrow_index: Udec128::ONE,
+            supply_index: Udec128::ONE,
+            last_update_time: ctx.block.timestamp,
+        })?;
     }
 
     Ok(Response::new())
@@ -41,8 +55,31 @@ fn update_markets(
         "Only the owner can whitelist denoms"
     );
 
-    for (denom, _updates) in updates {
-        MARKETS.save(ctx.storage, &denom, &Market {})?;
+    for (denom, updates) in updates {
+        let market = MARKETS.may_load(ctx.storage, &denom)?;
+
+        if let Some(market) = market {
+            if let Some(interest_rate_model) = updates.interest_rate_model {
+                MARKETS.save(ctx.storage, &denom, &Market {
+                    interest_rate_model,
+                    ..market
+                })?;
+            }
+        } else {
+            MARKETS.save(ctx.storage, &denom, &Market {
+                interest_rate_model: updates.interest_rate_model.ok_or_else(|| {
+                    anyhow!(
+                        "interest rate model is required when adding new market {}",
+                        denom
+                    )
+                })?,
+                total_borrowed: Uint128::ZERO,
+                total_supplied: Uint128::ZERO,
+                borrow_index: Udec128::ONE,
+                supply_index: Udec128::ONE,
+                last_update_time: ctx.block.timestamp,
+            })?;
+        }
     }
 
     Ok(Response::new())
@@ -54,19 +91,26 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     for coin in ctx.funds {
         ensure!(MARKETS.has(ctx.storage, &coin.denom), "Invalid denom");
+        let lp_denom = coin.denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?;
 
-        let denom = coin.denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?;
+        // Update the market indices
+        let market = MARKETS
+            .load(ctx.storage, &coin.denom)?
+            .update_indices(ctx.block.timestamp)?
+            .add_supplied(coin.amount)?;
+        MARKETS.save(ctx.storage, &coin.denom, &market)?;
 
-        // TODO:
-        // 1. compute LP token mint amount
-        // 2. update `Market`
-        let amount = coin.amount;
+        // Compute the amount of LP tokens to mint
+        let supply_index = market.supply_index;
+        let amount = Udec128::new(coin.amount.into_inner())
+            .checked_div(supply_index)?
+            .into_int();
 
         msgs.push(Message::execute(
             bank,
             &bank::ExecuteMsg::Mint {
                 to: ctx.sender,
-                denom,
+                denom: lp_denom,
                 amount,
             },
             Coins::new(),
@@ -86,10 +130,19 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
             bail!("not a lending pool token: {}", coin.denom)
         };
 
-        // TODO:
-        // 1. compute withdraw amount
-        // 2. update `Market`
-        let underlying_amount = coin.amount;
+        // Update the market indices
+        let market = MARKETS
+            .load(ctx.storage, &underlying_denom)?
+            .update_indices(ctx.block.timestamp)?
+            .deduct_supplied(coin.amount)?;
+        MARKETS.save(ctx.storage, &underlying_denom, &market)?;
+
+        // Compute the amount of underlying coins to withdraw
+        // Compute the amount of underlying coins to withdraw
+        let supply_index = market.supply_index;
+        let underlying_amount = Udec128::new(coin.amount.into_inner())
+            .checked_div(supply_index)?
+            .into_int();
 
         // Burn the LP tokens
         msgs.push(Message::execute(
@@ -123,50 +176,73 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         "Only margin accounts can borrow and repay"
     );
 
-    // Ensure the coins are whitelisted
-    for coin in &coins {
-        ensure!(
-            MARKETS.has(ctx.storage, coin.denom),
-            "Invalid denom. Only whitelisted denoms can be borrowed."
+    // Load the sender's debts
+    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
+
+    for coin in coins.clone() {
+        // Update the market state
+        let market = MARKETS
+            .load(ctx.storage, &coin.denom)?
+            .update_indices(ctx.block.timestamp)?
+            .add_borrowed(coin.amount)?;
+        MARKETS.save(ctx.storage, &coin.denom, &market)?;
+
+        // Update the sender's liabilities
+        let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
+        let new_scaled_debt =
+            Udec128::new(coin.amount.into_inner()).checked_div(market.borrow_index)?;
+        scaled_debts.insert(
+            coin.denom.clone(),
+            prev_scaled_debt.checked_add(new_scaled_debt)?,
         );
     }
 
-    // Update the sender's liabilities
-    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
-        let mut debts = maybe_debts.unwrap_or_default();
-
-        debts.insert_many(coins.clone())?;
-
-        Ok(debts)
-    })?;
+    // Save the updated debts
+    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
 
     // Transfer the coins to the caller
     Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Ensure all sent coins are whitelisted
-    for coin in &ctx.funds {
-        ensure!(
-            MARKETS.has(ctx.storage, coin.denom),
-            "Invalid denom. Only whitelisted denoms can be repaid."
-        );
-    }
+    let mut refunds = Coins::new();
 
-    let mut maybe_msg = None;
+    // Read debts
+    let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
 
-    // Update the sender's liabilities
-    DEBTS.may_update(ctx.storage, ctx.sender, |maybe_debts| {
-        let mut debts = maybe_debts.unwrap_or_default();
+    for coin in ctx.funds {
+        // Update the market indices
+        let market = MARKETS
+            .load(ctx.storage, &coin.denom)?
+            .update_indices(ctx.block.timestamp)?;
 
-        // Deduct the sent coins from the account's debts, saturating at zero.
-        let remainders = debts.saturating_deduct_many(ctx.funds)?;
+        // Calculated the users real debt
+        let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
+        let debt = market.calculate_debt(scaled_debt)?;
 
         // Refund the remainders to the sender, if any.
-        maybe_msg = Some(Message::transfer(ctx.sender, remainders)?);
+        let repaid = if coin.amount > debt {
+            let refund_amount = coin.amount.checked_sub(debt)?;
+            refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
+            debt
+        } else {
+            coin.amount
+        };
 
-        Ok(debts)
-    })?;
+        // Update the sender's liabilities
+        let repaid_debt_scaled =
+            Udec128::new(repaid.into_inner()).checked_div(market.borrow_index)?;
+        scaled_debts.insert(
+            coin.denom.clone(),
+            scaled_debt.saturating_sub(repaid_debt_scaled),
+        );
 
-    Ok(Response::new().may_add_message(maybe_msg))
+        // Deduct the repaid debt and save the updated market state
+        MARKETS.save(ctx.storage, &coin.denom, &market.deduct_borrowed(repaid)?)?;
+    }
+
+    // Save the updated debts
+    DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
+
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, refunds)?))
 }

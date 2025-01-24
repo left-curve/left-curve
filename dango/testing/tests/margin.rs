@@ -10,13 +10,13 @@ use {
         },
         account_factory::AccountParams,
         config::AppConfig,
-        lending::{self, MarketUpdates, QueryDebtRequest},
+        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PythId, WBTC_USD_ID},
     },
     grug::{
-        btree_map, Addr, Addressable, Binary, Coins, ContractEvent, Denom, JsonDeExt, JsonSerExt,
-        Message, MsgConfigure, NextNumber, NonEmpty, Number, NumberConst, PrevNumber, QuerierExt,
-        ResultExt, SearchEvent, Udec128, Uint128,
+        btree_map, Addr, Addressable, Binary, Coins, ContractEvent, Denom, Inner, IsZero,
+        JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty,
+        Number, NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -302,7 +302,9 @@ fn setup_margin_test_env(
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                BTC.clone() => MarketUpdates {},
+                BTC.clone() => MarketUpdates {
+                    interest_rate_model: Some(InterestRateModel::default()),
+                },
             }),
             Coins::new(),
         )
@@ -516,6 +518,8 @@ fn liquidation_works_with_multiple_debt_denoms() {
         .unwrap();
     assert!(health.utilization_rate > Udec128::ONE);
     let debts_before = health.debts;
+    // Add one microunit as debt may have increased by the time we liquidate due to interest
+    let usdc_repay_amount = debts_before.amount_of(&USDC).into_inner() + 1;
 
     // Check liquidator account's USDC balance before
     let usdc_balance_before = suite
@@ -532,7 +536,7 @@ fn liquidation_works_with_multiple_debt_denoms() {
                 collateral: USDC.clone(),
             },
             Coins::try_from(btree_map! {
-                "uusdc"           => 1_000_000_000, // 1K USDC
+                "uusdc"           => usdc_repay_amount,
                 "hyp/bitcoin/sat" => 100_000,       // 0.001 BTC
             })
             .unwrap(),
@@ -554,11 +558,8 @@ fn liquidation_works_with_multiple_debt_denoms() {
         })
         .unwrap();
 
-    // Since this is a partial liquidation, ensure the debt has decreased exactly with the sent amount
-    assert_eq!(
-        debts_before.amount_of(&USDC) - debts_after.amount_of(&USDC),
-        Uint128::new(1_000_000_000)
-    );
+    // Ensure the USDC debt was fully paid off
+    assert!(debts_after.amount_of(&USDC).is_zero());
 
     // Try to liquidate the rest of the account's BTC collateral, but send USDC
     // to cover the debt. Should fail since the account no longer has USDC debt.
@@ -759,7 +760,7 @@ fn liquidation_scenario() -> impl Strategy<Value = LiquidationScenario> {
             )| {
                 // Generate how many percent of the total debt value each debt denom should be
                 let debt_percentages =
-                    vec(1u128..1_000_000, debt_denoms.len()).prop_map(move |weights| {
+                    vec(1u128..100, debt_denoms.len()).prop_map(move |weights| {
                         let sum: u128 = weights.iter().sum();
                         weights
                             .into_iter()
@@ -982,13 +983,13 @@ proptest! {
 
         // Mint debt denoms, provide to lending market, and borrow against it
         for debt in &scenario.debts {
-            // Mint debt denom to the liquidator account (for repaying debt)
+            // Mint debt denom to the liquidator account (for repaying debt). Mint some extra to cover interest.
             mint_coins(
                 &mut suite,
                 &mut accounts,
                 &contracts,
                 liquidator.address(),
-                Coins::one(debt.denom.denom.clone(), debt.amount).unwrap(),
+                Coins::one(debt.denom.denom.clone(), debt.amount.checked_mul_dec(Udec128::new_percent(110)).unwrap()).unwrap(),
             );
 
             // Mint debt denom to the user account
@@ -1007,7 +1008,9 @@ proptest! {
                     &mut accounts.owner,
                     contracts.lending,
                     &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                        debt.denom.denom.clone() => MarketUpdates {},
+                        debt.denom.denom.clone() => MarketUpdates {
+                            interest_rate_model: Some(InterestRateModel::default()),
+                        },
                     }),
                     Coins::new(),
                 )

@@ -5,7 +5,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig},
         dex, ibc,
-        lending::{self, MarketUpdates},
+        lending::{self, InterestRateModel, MarketUpdates},
         oracle::{
             self, GuardianSet, PriceSource, ETH_USD_ID, GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX,
             USDC_USD_ID, WBTC_USD_ID,
@@ -385,7 +385,7 @@ where
         &lending::InstantiateMsg {
             markets: btree_map! {
                 fee_denom.clone() => MarketUpdates {
-                    // TODO
+                    interest_rate_model: Some(InterestRateModel::default()),
                 },
             },
         },

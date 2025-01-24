@@ -6,8 +6,8 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         lending::{
-            self, MarketUpdates, QueryDebtRequest, QueryDebtsRequest, QueryMarketsRequest,
-            NAMESPACE, SUBNAMESPACE,
+            self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryDebtsRequest,
+            QueryMarketsRequest, NAMESPACE, SUBNAMESPACE,
         },
         oracle::{self, PythId},
     },
@@ -136,7 +136,9 @@ fn update_markets_works() {
             &mut accounts.owner,
             contracts.lending,
             &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                ATOM.clone() => MarketUpdates {},
+                ATOM.clone() => MarketUpdates {
+                    interest_rate_model: Some(InterestRateModel::default()),
+                },
             }),
             Coins::new(),
         )
