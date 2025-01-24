@@ -6,7 +6,7 @@ use {
 pub fn domain_hash(domain: Domain, address: Addr32, key: &str) -> Hash256 {
     // domain: 4
     // address: 32
-    let mut preimage = Vec::with_capacity(36 + key.len());
+    let mut preimage = vec![0u8; 36 + key.len()];
     preimage[..4].copy_from_slice(&domain.to_be_bytes());
     preimage[4..36].copy_from_slice(address.inner());
     preimage[36..].copy_from_slice(key.as_bytes());

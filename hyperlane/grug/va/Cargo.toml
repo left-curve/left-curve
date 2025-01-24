@@ -24,5 +24,3 @@ hyperlane-mailbox = { workspace = true, features = ["library"] }
 hyperlane-types   = { workspace = true }
 
 [dev-dependencies]
-hex-literal = { workspace = true }
-test-case   = { workspace = true }
