@@ -40,12 +40,12 @@
     frame=single,
     framesep=0pt,
     framerule=0pt,
-    framexleftmargin=12pt,
-    framexrightmargin=12pt,
-    framextopmargin=12pt,
-    framexbottommargin=0pt,
-    xleftmargin=12pt,
-    xrightmargin=12pt,
+    framexleftmargin=10pt,
+    framexrightmargin=10pt,
+    framextopmargin=10pt,
+    framexbottommargin=10pt,
+    xleftmargin=10pt,
+    xrightmargin=10pt,
     backgroundcolor=\color{GrayCodeBlock},
     basicstyle=\ttfamily\color{BlackText},
     keywords={
@@ -378,7 +378,7 @@ In general, however, $R$ does not match exactly the composition of assets in the
 
 \begin{figure}
   \centering
-  \includegraphics[width=4in]{3-solidly-pool-price-vs-oracle.png}
+  \includegraphics[width=4.5in]{3-solidly-pool-price-vs-oracle.png}
   \caption{Deviation of pool price from oracle price}
   \label{fig:3}
 \end{figure}
@@ -407,7 +407,7 @@ A searcher relies on two prerequisites both being satisfied in order to pull off
   \item trades are possibly executed at different prices throughout the same block.
 \end{itemize}
 
-On the first point, we believe the endgame solution is encrypted mempool.\supercite{encryptedmempool} However, to achieve a faster go-to-market, we propose a faster interim solution: the Dango blockchain to run on a proof-of-authority validator set; validators to configure their mempools such that they only receive transactions, and broadcast only to other validators, but not to any other node. Users will broadcast their transactions directly to the validators. As such, assume validators themselves do not engage in malicious MEV (as they will be contractually obliged to), user transactions can be considered private.
+On the first point, we believe the endgame solution is encrypted mempool.\supercite{encryptedmempool} However, to achieve a faster go-to-market, we propose a easier interim solution: the Dango blockchain to run on a proof-of-authority validator set; validators to configure their mempools such that they only receive transactions, and broadcast only to other validators, but not to any other node. Users will broadcast their transactions directly to the validators. As such, assume validators themselves do not engage in malicious MEV, user transactions can be considered private.
 
 On the second point, we propose to execute orders using the frequent batch auctions (FBAs) approach.\supercite{frequentbatchauctions,frequentbatchauctions2} Specifically, the flow of a block would be:
 
@@ -432,33 +432,27 @@ There are two notable elements in this:
 
 \section{Conclusion}
 
-We have identified and analyzed the causes of three main problem faced by today's DEXs. We propose Dango DEX as a solution. See \hyperref[tab:conclusion]{Table 1} for a summary.
+\tabulinesep=3mm
+\newcolumntype{Y}{>{\RaggedRight}X[m]} % avoid hyphenation when wrapping words in tabularx
+\begin{tabu} to \textwidth {YYY}
+  \toprule
+  \textbf{The problem}                                                                                       & \textbf{The cause} & \textbf{Our solution} \\
+  \midrule
+  Market making on LOBs is not accessible for retail investors                                               &
+  High level of sophistication is required                                                                   &
+  Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                                                                \\
+  \hline
+  LVR                                                                                                        &
+  CFMMs do not actively adjust quotes in reaction to changes in asset prices                                 &
+  Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader                                  \\
+  \hline
+  MEV                                                                                                        &
+  User orders are broadcasted publicly, and are settled at potentially different prices throughout the block &
+  Private mempool; frequent sealed-bid batch auctions at uniform prices                                                                                   \\
+  \bottomrule
+\end{tabu}
 
-\begin{table}
-  \tabulinesep=2.5mm
-  \newcolumntype{Y}{>{\RaggedRight}X} % avoid hyphenation when wrapping words in tabularx
-  \begin{tabu} to \textwidth {YYY}
-    \toprule
-    \textbf{The problem}                                                                                       & \textbf{The cause} & \textbf{Our solution} \\
-    \midrule
-    Market making on LOBs is not accessible for retail investors                                               &
-    High level of sophistication is required                                                                   &
-    Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                                                                \\
-    \hline
-    LVR                                                                                                        &
-    CFMMs do not actively adjust quotes in reaction to changes in asset prices                                 &
-    Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader                                  \\
-    \hline
-    MEV                                                                                                        &
-    User orders are broadcasted publicly, and are settled at potentially different prices throughout the block &
-    Private mempool; frequent sealed-bid batch auctions at uniform prices                                                                                   \\
-    \bottomrule
-  \end{tabu}
-  \vspace*{0.1in}
-  \caption{Conclusion}
-  \label{tab:conclusion}
-\end{table}
-
+\pagebreak
 \appendix
 \section{Suggested implementation}
 \label{sec:appendixa}
@@ -469,8 +463,7 @@ The specific algorithm for matching the orders is described below, in Rust pseud
 
 First, we define the following types:
 
-\begin{minipage}{\linewidth}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 enum Direction {
     Bid,
     Ask,
@@ -482,23 +475,17 @@ struct Order {
     /// The quantity of that's not yet filled, measured in the base asset.
     pub quantity: Uint128,
 }
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
 Second, the DEX contract must be capable of iterating over orders in the book following the \textbf{price-time priority}. That is, orders with better prices (for BUY orders, the higher; for SELL orders, the lower) come first; for orders with the same price, the older ones come first. We abstract this as a Rust iterator type:
 
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 type OrderIterator<'a> = Box<dyn Iterator<Item = Order> + 'a>;
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
 Third, the passive liquidity pool must implement the following trait:
 
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 trait LiquidityPool {
     /// Return an iterator over the BUY orders that the passive liquidity pool
     /// would place in the order book following its CFMM invariant, given the
@@ -508,16 +495,13 @@ trait LiquidityPool {
     /// Similarly, return an iterator over SELL orders.
     fn get_asks<'a>(&'a self, oracle_price: Decimal) -> OrderIterator<'a>;
 }
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
 When matching orders, we work with two order books: a ``\textbf{physical}'' book that contains orders submitted by users, and a ``\textbf{virtual}'' book that contains orders that the passive liquidity pool would place.
 
 We must match orders from the two books at the same time. For this we can use a the following merged iterator:
 
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 struct MergedIterator {
     a: Peekable<Item = Order>,
     b: Peekable<Item = Order>,
@@ -558,14 +542,11 @@ impl Iterator<Item = Order> for MergedIterator {
         }
     }
 }
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
 The DEX smart contract prepares iterators over orders in the two books, and combine them using \texttt{MergedIterator}:
 
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 let physical_bid_iter: OrderIterator = /* ... */;
 let physical_ask_iter: OrderIterator = /* ... */;
 
@@ -576,16 +557,11 @@ let virtual_bid_iter: OrderIterator = /* ... */;
 // orders from the passive liquidity pool is prioritized.
 let bid_iter = MergedIterator::new(physical_bid_iter, physical_ask_iter);
 let ask_iter = MergedIterator::new(virtual_bid_iter, virtual_bid_iter);
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
-Note that we compute the virtual orders based on the latest oracle price \textit{before orders are matched}. This ensures the passively liquidity pool always quotes the latest price, providing its LVR resistance.
+Then, we use the following function to find the clearing price:
 
-Then, we use the following pure function to find the clearing price:
-
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
+\begin{lstlisting}[language=rust]
 struct MatchingOutcome {
     /// The range of prices that results in the maximal volume.
     /// The clearing price can be chosen as any value within this range.
@@ -593,15 +569,13 @@ struct MatchingOutcome {
     range: Option<(Decimal, Decimal)>,
     /// The maximal volume.
     volume: Uint128,
-    /// List of BUY orders that have found a match.
+    /// Lists of BUY and SELL orders that have found a match.
     bids: Vec<Order>,
-    /// List of SELL orders that have found a match.
     asks: Vec<Order>,
 }
 
 fn clear_orders(
-    mut bid_iter: OrderIterator,
-    mut ask_iter: OrderIterator,
+    mut bid_iter: OrderIterator, mut ask_iter: OrderIterator,
 ) -> MatchingOutcome {
     let mut maybe_bid = bids.next();
     let mut bids = Vec::new();
@@ -638,12 +612,6 @@ fn clear_orders(
 
         if bid_volume <= ask_volume {
             bid = bid_iter.next();
-  \end{lstlisting}
-\end{minipage}
-
-\begin{minipage}{\linewidth}
-  \vspace*{0.1in}
-  \begin{lstlisting}[language=rust]
             bid_is_new = true;
         } else {
             bid_is_new = false;
@@ -661,8 +629,7 @@ fn clear_orders(
 
     MatchingOutcome { range, volume, bids, asks }
 }
-  \end{lstlisting}
-\end{minipage}
+\end{lstlisting}
 
 Once we have the clearing price, clearing the orders is trivial (which involves updating the order state in the book and refund assets to traders) so we don't discuss them here.
 
@@ -677,7 +644,7 @@ In the above formulation of the passive liquidity pool, the pool places orders e
 
 \subsection{Dango's custom smart contract VM}
 
-We recognize the above is challenging to implement in legacy virtual machines (VMs) such as the Ethereum virtual machine (EVM), due to:
+We recognize the above is challenging to implement in legacy virtual machines (VMs) such as the EVM, due to:
 
 \begin{itemize}
   \item In EVM, smart contract actions need to be triggered via transactions. This means each block must have a txn at the very beginning of the block to update the oracle price, and another one at the end of the block to trigger order matching. During periods of high traffic, it can be difficult to get txns into the block, not to mention ensuring they are located at the beginning and end of the block. The only way to achieve this is to utilize a centralized block builder, which introduced additional trust assumptions.\\ \\ Dango's custom smart contract VM, Grug,\supercite{grug} allows validators to submit oracle updates via Tendermint's ABCI++ API, at the top of every block. Additionally, it automatically triggers order matching via end-of-block cronjobs.\\
