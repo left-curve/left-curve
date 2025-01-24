@@ -51,22 +51,6 @@ impl NewUserSalt<'_> {
         // - key: 33
         // Total: 82 bytes.
 
-        // let mut bytes = Vec::with_capacity(82);
-        // bytes.push(self.username.len());
-        // bytes.extend_from_slice(self.username.as_ref());
-        // bytes.extend_from_slice(&self.key_hash);
-        // match self.key {
-        //     Key::Secp256r1(pk) => {
-        //         bytes.push(0);
-        //         bytes.extend_from_slice(&pk);
-        //     },
-        //     Key::Secp256k1(pk) => {
-        //         bytes.push(1);
-        //         bytes.extend_from_slice(&pk);
-        //     },
-        // }
-        // bytes
-
         let mut bytes = [0; 82];
 
         bytes[0] = self.username.len();
