@@ -1,10 +1,6 @@
 use {
     super::error::Error,
-    crate::{
-        context::Context,
-        graphql::{build_schema, AppSchema},
-        routes,
-    },
+    crate::{context::Context, graphql::build_schema, routes},
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
@@ -30,8 +26,9 @@ pub async fn run_server(
     let ip = ip.unwrap_or("0.0.0.0");
 
     let context = Context::new(Some(database_url)).await?;
+    let graphql_schema = build_schema(context.clone());
 
-    HttpServer::new(move || build_actix_app(context.clone()))
+    HttpServer::new(move || build_actix_app(context.clone(), graphql_schema.clone()))
         .bind((ip, port))?
         .run()
         .await?;
@@ -39,8 +36,9 @@ pub async fn run_server(
     Ok(())
 }
 
-pub fn build_actix_app(
+pub fn build_actix_app<G>(
     app_ctx: Context,
+    graphql_schema: G,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -49,15 +47,25 @@ pub fn build_actix_app(
         InitError = (),
         Error = actix_web::Error,
     >,
-> {
-    let graphql_schema = build_schema(app_ctx.clone());
+>
+where
+    // S: async_graphql::ObjectType + Default + 'static,
+    G: Clone + 'static,
+{
+    // merge_query!(MergedQuery, BlockQuery, MessageQuery, sub);
+
+    // let graphql_schema = build_schema_with_sub::<S>(app_ctx.clone());
+    // let graphql_schema = build_schema(app_ctx.clone());
 
     let app = App::new().wrap(Logger::default()).wrap(Compress::default());
 
     app.configure(config_app(app_ctx, graphql_schema))
 }
 
-pub fn config_app(app_ctx: Context, graphql_schema: AppSchema) -> Box<dyn Fn(&mut ServiceConfig)> {
+pub fn config_app<G>(app_ctx: Context, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
+where
+    G: Clone + 'static,
+{
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
             .service(routes::graphql::graphql_route())

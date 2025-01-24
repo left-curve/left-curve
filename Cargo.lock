@@ -3257,13 +3257,17 @@ dependencies = [
 name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
  "async-graphql",
+ "async-graphql-actix-web",
  "chrono",
+ "dango-indexer-sql",
  "indexer-httpd",
  "indexer-sql",
  "sea-orm",
  "serde",
  "thiserror 2.0.9",
+ "tracing",
 ]
 
 [[package]]
@@ -3342,12 +3346,15 @@ dependencies = [
 name = "dango-testing"
 version = "0.0.0"
 dependencies = [
+ "actix-web",
  "alloy",
  "anyhow",
  "assertor",
+ "async-graphql",
  "criterion",
  "dango-app",
  "dango-genesis",
+ "dango-httpd",
  "dango-indexer-sql",
  "dango-types",
  "dotenvy",
@@ -3362,15 +3369,19 @@ dependencies = [
  "hex-literal",
  "hyperlane-types",
  "hyperlane-warp",
+ "indexer-httpd",
  "indexer-sql",
  "k256",
  "pyth-sdk 0.8.0",
  "rand",
  "reqwest 0.12.12",
  "sea-orm",
+ "serde",
+ "serde_json",
  "test-case",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4452,6 +4463,7 @@ dependencies = [
  "actix-web",
  "anyhow",
  "assertor",
+ "async-graphql",
  "borsh 1.5.3",
  "grug-app",
  "grug-crypto",

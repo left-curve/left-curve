@@ -12,10 +12,14 @@ rust-version.workspace  = true
 version.workspace       = true
 
 [dependencies]
-async-graphql = { workspace = true }
-chrono        = { workspace = true }
-indexer-httpd = { workspace = true }
-indexer-sql   = { workspace = true }
-sea-orm       = { workspace = true }
-serde         = { workspace = true }
-thiserror     = { workspace = true }
+actix-web               = { workspace = true }
+async-graphql           = { workspace = true }
+async-graphql-actix-web = { workspace = true }
+chrono                  = { workspace = true }
+dango-indexer-sql       = { workspace = true }
+indexer-httpd           = { workspace = true }
+indexer-sql             = { workspace = true }
+sea-orm                 = { workspace = true }
+serde                   = { workspace = true }
+thiserror               = { workspace = true }
+tracing                 = { workspace = true }

@@ -11,7 +11,7 @@ use {
 
 #[test]
 fn index_transfer_events() {
-    let (mut suite, mut accounts, _, contracts) = setup_test_with_indexer();
+    let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(

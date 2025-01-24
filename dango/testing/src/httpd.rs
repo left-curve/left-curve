@@ -2,56 +2,13 @@ use {
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-        App,
+        web::{self, ServiceConfig},
+        App, HttpResponse,
     },
-    indexer_httpd::{context::Context, graphql::build_schema, server::build_actix_app},
-    std::collections::HashMap,
+    dango_httpd::{graphql::build_schema, server::build_actix_app},
+    grug::{GraphQLCustomRequest, GraphQLCustomResponse, GraphQLResponse},
+    indexer_httpd::context::Context,
 };
-
-// pub async fn build_actix_test_app<G>(
-//     app_ctx: Context,
-//     graphql_schema: G,
-// ) -> App<
-//     impl ServiceFactory<
-//         ServiceRequest,
-//         Response = ServiceResponse<impl MessageBody>,
-//         Config = (),
-//         InitError = (),
-//         Error = Error,
-//     >,
-// >
-// where
-//     // S: async_graphql::ObjectType + Default + 'static,
-//     G: Clone + 'static,
-// {
-//     // let graphql_schema = build_schema_with_sub::<BlankQueryHook>(app_ctx.clone());
-//     // let graphql_schema = build_schema(app_ctx.clone());
-
-//     // let app = App::new();
-
-//     let app = actix_web::test::init_service(build_actix_app(app_ctx, graphql_schema)).await;
-
-//     app.configure(config_app(app_ctx, graphql_schema))
-// }
-
-#[derive(serde::Serialize, Debug)]
-pub struct GraphQLCustomRequest<'a> {
-    pub name: &'a str,
-    pub query: &'a str,
-    pub variables: serde_json::Map<String, serde_json::Value>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct GraphQLResponse {
-    pub data: HashMap<String, serde_json::Value>,
-    pub errors: Option<Vec<serde_json::Value>>,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct GraphQLCustomResponse<R> {
-    pub data: R,
-    pub errors: Option<Vec<serde_json::Value>>,
-}
 
 pub fn build_app_service(
     app_ctx: Context,
@@ -67,6 +24,19 @@ pub fn build_app_service(
     let graphql_schema = build_schema(app_ctx.clone());
 
     build_actix_app(app_ctx, graphql_schema)
+}
+
+pub fn config_app<G>(app_ctx: Context, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
+where
+    G: Clone + 'static,
+{
+    Box::new(move |cfg: &mut ServiceConfig| {
+        cfg.service(indexer_httpd::routes::index::index)
+            .service(indexer_httpd::routes::graphql::graphql_route())
+            .default_service(web::to(HttpResponse::NotFound))
+            .app_data(web::Data::new(app_ctx.clone()))
+            .app_data(web::Data::new(graphql_schema.clone()));
+    })
 }
 
 pub async fn call_graphql<R>(

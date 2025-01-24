@@ -1,14 +1,22 @@
-use {
-    async_graphql::{MergedObject, ObjectType},
-    block::BlockQuery,
-    indexer_graphql_macro::MyMacro,
-};
+use {async_graphql::MergedObject, block::BlockQuery, message::MessageQuery};
 
 pub mod block;
 pub mod index;
+pub mod message;
 
 #[derive(MergedObject, Default)]
-pub struct Query(BlockQuery);
+pub struct Query(BlockQuery, MessageQuery);
+
+// #[derive(MergedObject, Default)]
+// pub struct Query2(MessageQuery);
+
+// #[derive(MergedObject, Default)]
+// pub struct Query3(BlockQuery);
+
+// #[derive(MergedObject, Default)]
+// pub struct QueryWithSub<X>(Query2, Query3, X)
+// where
+//     X: ObjectType;
 
 // #[derive(MergedObject, Default)]
 // pub struct Query2(BlockQuery);
@@ -33,19 +41,19 @@ pub struct Query(BlockQuery);
 //    }
 //}
 
-crate::merge_query!(MergedQuery, BlockQuery, BlockQuery);
+// crate::merge_query!(MergedQuery, BlockQuery, BlockQuery);
 
-#[macro_export]
-macro_rules! merge_query {
-    ($name:ident, $($structs:ty),+ $(,)?) => {
-        #[derive(MergedObject, Default)]
-        pub struct $name(
-            $(
-                $structs
-            ),*
-        );
-    };
-}
+// #[macro_export]
+// macro_rules! merge_query {
+//     ($name:ident, $($structs:ty),+ $(,)?) => {
+//         #[derive(MergedObject, Default)]
+//         pub struct $name(
+//             $(
+//                 $structs
+//             ),*
+//         );
+//     };
+// }
 
 // #[cfg(test)]
 // mod test {

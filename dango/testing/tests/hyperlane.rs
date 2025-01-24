@@ -102,7 +102,7 @@ impl MockValidatorSet {
 
 #[test]
 fn send_escrowing_collateral() {
-    let (mut suite, mut accounts, _, contracts) = setup_test_with_indexer();
+    let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
 
     let denom = Denom::from_str("udng").unwrap();
     let metadata = HexBinary::from_inner(b"hello".to_vec());

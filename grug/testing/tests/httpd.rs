@@ -1,25 +1,24 @@
 use {
     assertor::*,
-    grug_testing::{call_graphql, GraphQLCustomRequest, GraphQLCustomResponse, TestBuilder},
+    grug_testing::{build_app_service, call_graphql, GraphQLCustomRequest, TestBuilder},
     grug_types::{Coins, Denom, Message, ResultExt},
     indexer_httpd::{context::Context, graphql::types::block::Block},
     std::str::FromStr,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn graphql_returns_block() {
-    let denom = Denom::from_str("ugrug").unwrap();
+async fn graphql_returns_block() -> anyhow::Result<()> {
+    let denom = Denom::from_str("ugrug")?;
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
-        .build()
-        .expect("Can't create indexer");
+        .build()?;
 
     let httpd_context: Context = indexer.context.clone().into();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
-        .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
+        .add_account("sender", Coins::one(denom.clone(), 30_000)?)
         .set_owner("owner")
         .build();
 
@@ -31,7 +30,7 @@ async fn graphql_returns_block() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())?,
         )
         .should_succeed();
 
@@ -67,15 +66,17 @@ async fn graphql_returns_block() {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async {
-                let response: GraphQLCustomResponse<Block> =
-                    call_graphql(httpd_context, request_body)
-                        .await
-                        .expect("Can't call graphql");
+                let app = build_app_service(httpd_context);
+
+                let response = call_graphql::<Block>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
             })
             .await
-            .unwrap();
         })
-        .await;
+        .await??;
+
+    Ok(())
 }

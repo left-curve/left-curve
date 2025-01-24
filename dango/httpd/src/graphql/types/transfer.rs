@@ -1,6 +1,7 @@
 use {
     async_graphql::{ComplexObject, SimpleObject},
-    chrono::{DateTime, Utc},
+    chrono::{DateTime, TimeZone, Utc},
+    dango_indexer_sql::entity,
     serde::Deserialize,
 };
 
@@ -17,15 +18,18 @@ pub struct Transfer {
     pub denom: String,
 }
 
-// TODO: Once subindexer is merged
-// impl From<entity::transfers::Model> for Block {
-//    fn from(item: entity::transfers::Model) -> Self {
-//        Self {
-//            block_height: item.block_height,
-//            created_at: Utc.from_utc_datetime(&item.created_at),
-//        }
-//    }
-//}
+impl From<entity::transfers::Model> for Transfer {
+    fn from(item: entity::transfers::Model) -> Self {
+        Self {
+            block_height: item.block_height,
+            created_at: Utc.from_utc_datetime(&item.created_at),
+            from_address: item.from_address,
+            to_address: item.to_address,
+            amount: item.amount,
+            denom: item.denom,
+        }
+    }
+}
 
 #[ComplexObject]
 impl Transfer {}

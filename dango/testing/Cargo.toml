@@ -10,8 +10,12 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+actix-web         = { workspace = true }
+anyhow            = { workspace = true }
+async-graphql     = { workspace = true }
 dango-app         = { workspace = true }
 dango-genesis     = { workspace = true }
+dango-httpd       = { workspace = true }
 dango-indexer-sql = { workspace = true, features = ["tracing"] }
 dango-types       = { workspace = true }
 grug              = { workspace = true }
@@ -22,26 +26,31 @@ grug-vm-hybrid    = { workspace = true }
 grug-vm-rust      = { workspace = true }
 grug-vm-wasm      = { workspace = true }
 hex-literal       = { workspace = true }
+indexer-httpd     = { workspace = true }
 indexer-sql       = { workspace = true, features = ["tracing"] }
 k256              = { workspace = true }
 sea-orm           = { workspace = true }
+serde             = { workspace = true }
+serde_json        = { workspace = true }
 
 [dev-dependencies]
-alloy           = { workspace = true, features = ["full", "signer-mnemonic"] }
-anyhow          = { workspace = true }
-assertor        = { workspace = true }
-criterion       = { workspace = true }
-dango-types     = { workspace = true }
-dotenvy         = { workspace = true }
-grug-crypto     = { workspace = true }
-hyperlane-types = { workspace = true }
-hyperlane-warp  = { workspace = true, features = ["library"] }
-pyth-sdk        = { workspace = true }
-rand            = { workspace = true }
-reqwest         = { workspace = true, features = ["json"] }
-test-case       = { workspace = true }
-tokio           = { workspace = true, features = ["full"] }
-tracing         = { workspace = true }
+alloy              = { workspace = true, features = ["full", "signer-mnemonic"] }
+assertor           = { workspace = true }
+criterion          = { workspace = true }
+dango-httpd        = { workspace = true }
+dango-types        = { workspace = true }
+dotenvy            = { workspace = true }
+grug-crypto        = { workspace = true }
+hyperlane-types    = { workspace = true }
+hyperlane-warp     = { workspace = true, features = ["library"] }
+pyth-sdk           = { workspace = true }
+rand               = { workspace = true }
+reqwest            = { workspace = true, features = ["json"] }
+serde_json         = { workspace = true }
+test-case          = { workspace = true }
+tokio              = { workspace = true, features = ["full"] }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [[bench]]
 harness = false
