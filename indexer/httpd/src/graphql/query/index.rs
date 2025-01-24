@@ -17,7 +17,7 @@ pub(crate) async fn graphql_index(
 }
 
 #[tracing::instrument(name = "graphql::graphiql_playgound")]
-pub(crate) async fn graphiql_playgound() -> HttpResponse {
+pub async fn graphiql_playgound() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(

@@ -1,29 +1,20 @@
 use {
     assertor::*,
-    dango_httpd::graphql::types,
-    dango_testing::{build_app_service, call_graphql, setup_test_with_indexer},
+    dango_httpd::{graphql::types, server::build_actix_app},
+    dango_testing::setup_test_with_indexer,
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
     },
-    grug::{Coins, GraphQLCustomRequest, Message, NonEmpty, ResultExt},
-    std::sync::Once,
+    grug::{
+        call_graphql, setup_tracing_subscriber, Coins, GraphQLCustomRequest, Message, NonEmpty,
+        ResultExt,
+    },
 };
-
-static INIT: Once = Once::new();
-
-fn init_tracing() {
-    INIT.call_once(|| {
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::DEBUG)
-            .with_test_writer()
-            .init();
-    });
-}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
-    init_tracing();
+    setup_tracing_subscriber(tracing::Level::INFO);
 
     let ((mut suite, mut accounts, _, contracts), indexer_context) = setup_test_with_indexer();
 
@@ -76,14 +67,24 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async {
-                let app = build_app_service(indexer_context.into());
+                let app = build_actix_app(indexer_context.into());
 
                 let response =
                     call_graphql::<Vec<types::transfer::Transfer>>(app, request_body).await?;
 
-                println!("{:#?}", response);
+                assert_that!(response
+                    .data
+                    .iter()
+                    .map(|t| t.block_height)
+                    .collect::<Vec<_>>())
+                .is_equal_to(vec![1, 1]);
 
-                // assert_that!(response.data.block_height).is_equal_to(1);
+                assert_that!(response
+                    .data
+                    .iter()
+                    .map(|t| t.amount.as_str())
+                    .collect::<Vec<_>>())
+                .is_equal_to(vec!["100000000", "100000000"]);
 
                 Ok::<(), anyhow::Error>(())
             })

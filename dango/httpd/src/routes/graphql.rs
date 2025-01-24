@@ -1,7 +1,7 @@
 use {
     crate::graphql::AppSchema,
     actix_web::{web, HttpRequest, HttpResponse, Resource},
-    async_graphql::{http::*, Schema},
+    async_graphql::Schema,
     async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
 };
 
@@ -13,7 +13,7 @@ pub fn graphql_route() -> Resource {
                 .guard(actix_web::guard::Header("upgrade", "websocket"))
                 .to(graphql_ws),
         )
-        .route(web::get().to(graphiql_playgound))
+        .route(web::get().to(indexer_httpd::graphql::query::index::graphiql_playgound))
 }
 
 #[tracing::instrument(name = "graphql::graphql_index", skip_all)]
@@ -25,18 +25,6 @@ pub(crate) async fn graphql_index(
     let request = gql_request.into_inner();
 
     schema.execute(request).await.into()
-}
-
-#[tracing::instrument(name = "graphql::graphiql_playgound")]
-pub(crate) async fn graphiql_playgound() -> HttpResponse {
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(
-            GraphiQLSource::build()
-                .endpoint("/graphql")
-                .credentials(Credentials::Include)
-                .finish(),
-        )
 }
 
 #[tracing::instrument(name = "graphql::graphql_ws", skip_all)]

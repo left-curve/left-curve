@@ -1,19 +1,16 @@
 use {
-    crate::routes::graphql,
+    crate::{graphql::build_schema, routes::graphql},
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-        middleware::{Compress, Logger},
         web::{self, ServiceConfig},
-        App, HttpResponse, HttpServer,
+        App, HttpResponse,
     },
-    async_graphql::MergedObject,
-    indexer_httpd::{context::Context, routes::index},
+    indexer_httpd::{context::Context, routes::index, server::build_actix_app_with_config},
 };
 
-pub fn build_actix_app<G>(
+pub fn build_actix_app(
     app_ctx: Context,
-    graphql_schema: G,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -22,13 +19,12 @@ pub fn build_actix_app<G>(
         InitError = (),
         Error = actix_web::Error,
     >,
->
-where
-    G: Clone + 'static,
-{
-    let app = App::new().wrap(Logger::default()).wrap(Compress::default());
+> {
+    let graphql_schema = build_schema(app_ctx.clone());
 
-    app.configure(config_app(app_ctx, graphql_schema))
+    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
+        config_app(app_ctx, graphql_schema)
+    })
 }
 
 pub fn config_app<G>(app_ctx: Context, graphql_schema: G) -> Box<dyn Fn(&mut ServiceConfig)>
