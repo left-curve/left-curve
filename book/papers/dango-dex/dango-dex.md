@@ -1,12 +1,8 @@
 # Dango DEX
 
-Dango DEX is a fully onchain spot limit order book exchange that:
+Dango DEX is an onchain limit order book exchange that tackles three main challenges faced by today's DEXs: the inaccessibility of order book market making to retail investors due to the high level of sophistication required; reduced yield for AMM LPs due to arbitrage flow; and malicious MEV. Dango DEX enshrines its order book with a passive liquidity pool that actively adjusts its quotes utilizing a low latency oracle, and clears orders using frequent, uniform price, sealed bid auctions. Overall, Dango DEX seeks to democratize market making on order books; minimize toxic arbitrage flow while maximize organic, non-arbitrage flow; and offer fair prices to retail traders.
 
-- allows for passive liquidity provision;
-- is resistent to LVR;
-- is resistent to MEV.
-
-It is one of the two flagship apps of our upcoming DeFi ecosystem [Dango](https://x.com/dango_zone), besides the cross-collateralized **credit account**. To learn more about the credit account, check out this video. **[TODO: ADD URL]**
+Dango DEX is one of the two flagship apps of our upcoming DeFi ecosystem [Dango](https://x.com/dango_zone), besides the cross-collateralized **credit account**. To learn more about the credit account, check out this video. **[TODO: ADD URL]**
 
 This paper is laid out as follows: 1) identifying the problems in today's DeFi exchanges; 2) analyzing the causes of the problems; and 3) proposing our solutions.
 
@@ -56,24 +52,24 @@ There are other ways besides arbitrage with which searchers make money. Once of 
 
 ### The problems
 
-Through the above discussions, we have identified problems with TradFi and DeFi exchanges:
+Through the above discussions, we have identified three problems with TradFi and DeFi exchanges:
 
 1. Market making in LOBs is not accessible to retail investors because of the high level of sophistication required, which is in larger part a result of the HFT arms race.
 2. CFMM democratizes market making to retail investors, but they generally don't make money or even lose money because of LVR.
 3. Traders are susceptible to sandwich attacks due to the lack of privacy.
 
-We do not aim to solve IL / inventory risk, because it's rooted in the assets' volalitity, not a problem with DEX design. We can imagine vaults that automatically deploy hedging strategies to mitigate this.
+We do not aim to solve IL / inventory risk, because it's rooted in the assets' volalitity, not a problem with DEX design. We can imagine vaults that automatically deploy hedging strategies to mitigate it.
 
 ## Our solution
 
 We propose solving the above problems as follows:
 
 - Create a LOB that has an enshrined passive liquidity pool. The pool will place orders in the LOB following a CFMM invariant.
-- In order to mitigate LVR, we must;
+- In order to mitigate LVR, we:
   - make available a high-frequency, low-latency oracle reporting the latest prevailing market prices;
   - incorporate this oracle feed into the liquidity pool's CFMM invariant;
   - give the pool priority in adjusting its quotes over other traders.
-- In order to mitigate MEV, we must:
+- In order to mitigate MEV, we:
   - use a private mempool so that user orders aren't public;
   - use frequent, uniform price, sealed-bid auctions to match and execute orders, so that HFTs don't have time advantage over other traders.
 
@@ -151,7 +147,7 @@ $$
 \Delta a_{\mathrm{bid}} = a_{\mathrm{bid}} - a'_{\mathrm{bid}} = B \left(\frac{1}{p} - \frac{1}{p'} \right) = B \frac{\Delta p}{p (p + \Delta p)}
 $$
 
-This is the quantity of BUY order that the pool will place at price $p'$.
+This is the quantity of BUY order that the pool will place at price $p$.
 
 Similarly, one the SELL side, for two prices $p' = p - \Delta p$ and $p' > p_{\mathrm{pool}}$:
 
@@ -167,21 +163,21 @@ Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset US
 
 #### Brief conclusion
 
-We have established the concept of pool price $p_{\mathrm{pool}}$, and a way to derive buy/sell order size $\Delta a_{\mathrm{bid}}$ and $\Delta a_{\mathrm{ask}}$ in relation to price $p$.
+We have established the concept of pool price $p_{\mathrm{pool}}$, and a way to derive BUY/SELL order size $\Delta a_{\mathrm{bid}}$ and $\Delta a_{\mathrm{ask}}$ in relation to a given price $p$.
 
 Looking at the order depth chart of the xyk invariant, it puts liquidity roughly evenly over a wide range of prices. This in capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{pool}}$.
 
-Additionally, this invariant is not LVR-resistant, as $p_{\mathrm{pool}}$ does not adjust in response to the change of price in CEXs.
+Additionally, this invariant is susceptible to LVR, as $p_{\mathrm{pool}}$ does not adjust in response to the change of price in CEXs.
 
 ### Passive liquidity on a LOB following the Solidly invariant
 
-The Solidly invariant, [conceived by Andre Cronje](https://x.com/0xdef1/status/1482133989720743946) and popularized by Velodrome, has the form:
+The Solidly invariant, [conceived by Andre Cronje](https://x.com/0xdef1/status/1482133989720743946) and popularized by Velodrome and its forks, has the form:
 
 $$
 f(x, y) = x^3 y + x y^3 = K
 $$
 
-This formula assumes the two asset has the same price. In case they're not the same price, and we have an oracle feed that one unit of $x$ is equivalent in value to $R$ units of $y$, the formula can be updated to:
+This formula assumes the two assets have the same price. In case they're not the same price, and we have an oracle feed indicating that one unit of $x$ is equivalent in value to $R$ units of $y$, the formula can be updated to:
 
 $$
 f(x, y) = x^3 \left( \frac{y}{R} \right) + x \left( \frac{y}{R} \right)^3
@@ -258,52 +254,69 @@ $$
 g'(a_{\mathrm{ask}}) = \frac{p}{R} \alpha^3 - a \alpha^2 \beta + \frac{3p}{R} \alpha \beta^2 - \beta^3
 $$
 
-Plot the results:
+#### Example
+
+Following the same example of SOL-USD pool in the previous discussions, assuming oracle price $R = 200$ (USD per SOL), the liquidity depth can be computed and plotted as follows:
 
 ![Order size and depth following the Solidly invariant](2-solidly.png)
 
 It's obvious that liquidity is now indeed concentrated around the pool price.
 
-The above plot assumes oracle equals exactly the pool price: $R = 200$. However, the usual case is they don't match. Remember that in order to mitigate LVR, we need $p_{\mathrm{pool}}$ to closely track $R$. Let's plot the deviation of $p_{\mathrm{pool}}$ from $R$ against $R$:
+In general, however, $R$ does not match exactly the composition of assets in the pool. In order to mitigate LVR, we need $p_{\mathrm{pool}}$ to closely track $R$. Let's plot the deviation of $p_{\mathrm{pool}}$ from $R$ against $R$:
 
 ![deviation of pool price from oracle price](3-solidly-pool-price-vs-oracle.png)
 
 As seen, the deviation does not exceed 0.003% when oracle price jumps less than ~5%. As such, we believe the pool is not ssusceptible to LVR, given that the oracle price's latency is sufficient low to reflect the true asset price.
 
+### Minimizing LVR with oracle-imformed CFMM
+
+In order for the passive liquidity pool to provide accurate quotes, it's important that:
+
+- it has access to a low-latency oracle that accurately reports the up-to-date market prices; and,
+- it must be able to adjust its orders before any other trader is able to pick up the scale quotes.
+
+For the oracle, we propose using [Pyth Lazer](https://x.com/PythNetwork/status/1879545169781166397), which provides ultra fast price feeds with 1 millisecond updates. Each block, the proposer fetches the prices and submit them onchain in a transaction on the very top of the block.
+
+To ensure the passive liquidity pool has priority in updating quotes, we utilize a technique which we dub **virtual order book**. Instead of physically placing orders, the pool constructs a virtual order book based its asset reserves and oracle price, prior to any order being matched. The matching engine then combine the real, physical order book with the virtual book before performing matching. See Appendix A for code snippets demonstrating this idea.
+
+### Mitigating MEV with frequent batch auctions
+
+A searcher relies on two prerequisites to both be satisfied in order to pull off malicious MEV activities:
+
+- user orders are broadcasted transparently, unencrypted, through the public p2p network;
+- trades are possibly executed at different prices throughout the same block.
+
+On the first point, we believe the endgame solution is [encrypted mempool](https://eprint.iacr.org/2022/898). However, to achieve a faster go-to-market, we propose a faster interim solution: the Dango blockchain to run on a proof-of-authority validator set; validators to configure their mempools such that they only receive transactions, and broadcast only to other validators, but not to any other node. Users will broadcast their transactions directly to the validators. As such, assume validators themselves do not engage in malicious MEV (as they will be contractually obliged to), user transactions can be considered private.
+
+On the second point, we propose to execute orders using the [frequent batch auction](https://academic.oup.com/qje/article/130/4/1547/1916146) approach. Specifically, the flow of a block would be:
+
+1. In the first transaction, the proposer submits up-to-date oracle prices.
+2. Users submit orders. These orders are stored in a **transient storage** in the DEX smart contract. Data in the transient storage only persists through one block (wiped at the end of the block) and importantly, cannot be queried by other contracts.
+3. After all user transactions have been processed, the DEX contract iterates through all trading pairs that have received new orders in this block and attempts to match the orders:
+
+   1. Add new orders in the transient storage into the order book.
+   2. Compute the virtual order book of the passive liquidity pool based the pool's asset reserves and oracle price.
+   3. Combine the two books in (i) and (ii) and perform order matching through a [uniform price auction](https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better). The objective is to find the intersection between the aggregate supply and demand curves, which is the price that maximizes trading volume.
+   4. Given the clearing price found in (iii), fill the orders, send the output funds to traders.
+
+There are two notable elements in this:
+
+- This is a **sealed-bid** auction. Given that users broadcast transactions to a private mempool, and orders are stored in the transient storage, the orders are kept confidential prior to the auction.
+- This is a **uniform price** auction. All trades are settled at the same clearing price, so it's literally impossible to execute sandwich attacks.
+
 ## Conclusion
 
-We have identified, and proposed Dango DEX as a solution for the following problems:
+We have identified, analyzed the causes of, and proposed Dango DEX as a solution to the following problems:
 
-| The problem                                                  | The cause                                                                                 | Our solution                                                                                                           |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Market making on LOBs is not accessible for retail investors | High level of sophistication is required                                                  | Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                               |
-| LVR                                                          | AMMs do not actively adjust quotes in reaction to changes in asset prices                 | Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader |
-| MEV                                                          | User orders are broadcasted publicly; some traders have information advantage over others | Private mempool; frequent sealed-bid batch auctions at uniform prices                                                  |
+| The problem                                                  | The cause                                                                                                  | Our solution                                                                                                           |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Market making on LOBs is not accessible for retail investors | High level of sophistication is required                                                                   | Our LOB to be enshrined with a passive liquidity pool that follows the Solidly AMM curve                               |
+| LVR                                                          | AMMs do not actively adjust quotes in reaction to changes in asset prices                                  | Our passive liquidity pool to adjust its curve based on a low-latency oracle feed, with priority over any other trader |
+| MEV                                                          | User orders are broadcasted publicly, and are settled at potentially different prices throughout the block | Private mempool; frequent sealed-bid batch auctions at uniform prices                                                  |
 
-## Appendix 1. Related works
+## Appendix A. Suggested implementation
 
-We're aware of three projects working on enabling passive liquidity provision on LOBs:
-
-- Hyperliquid's HLP is an actively managed fund operated by the Hyperliquid team. It market makes on Hyperliquid's perpetual futures markets using the team's private, proprietary strategies. While it has generated respectable yields for users, it's closed source, totally centralized, legally ambiguous, and definitely can't be considered DeFi.
-- [Elixir](https://www.elixir.xyz/) provides passive liquidity vaults on a number of perp exchanges. It's also closed source, but we speculate it essentially runs [Hummingbot](https://github.com/hummingbot/hummingbot)'s implementation of the [Avellaneda-Stoikov strategy](https://people.orie.cornell.edu/sfs33/LimitOrderBook.pdf).
-- [Mito](https://mito.fi/) provides passive liquidity vaults on Injective's spot order books. It's also closed source, but we speculate it operates similarly to the xyk strategy described in this article, and thus is capital inefficient and susceptible to LVR.
-
-On LVR, readers are referred to [this excellent overview](https://mirror.xyz/0xbdA5bCe76bF62d97D9C9dF0425CC10079Df1aD75/bWOCccjVC7eoYKOzgmjXFdhWDc8rrUL6Yei-eugF52s) by Fenbushi Capital. The article found the following approaches to tackling the LVR problem:
-
-- LVR minimization:
-  - oracle-informed CFMM (our approach)
-  - Diamond protocol (LVR rebate)
-- LVR redistribution:
-  - dynamic fee
-  - auction-based model
-
-The article claims redistribution is the future for LVR-resistant DEXs, because the LVR minimization approaches discourage orderflow to the point it's less profitable for LPs. We find this argument unconvincing, because reduced orderflow applies only to the LVR rebate approach (Diamond protocol). For oracle-informed CFMM approach, the main concern is the oracle's latency and accuracy. For our use case, we consider Pyth oracle good enough.
-
-On FBA, it is used [by the Injective DEX](https://blog.injective.com/en/injective-exchange-upgrade-a-novel-order-matching-mechanism/) as well as in CowSwap's offchain order book.
-
-## Appendix 2. Suggested implementation
-
-We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2–0.9 second; we suggest picking a block time from this range.
+We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2–0.9 second; we suggest picking a block time within this range.
 
 Each block should follow the following workflow:
 
@@ -501,14 +514,21 @@ fn clear_orders(mut bid_iter: OrderIterator, mut ask_iter: OrderIterator) -> Mat
 
 Once we have the clearing price, clearing the orders is trivial (which involves updating the order state in the book and refund assets to traders) so don't discuss them here.
 
+### Customizations
+
+In the above formulation of the passive liquidity pool, the pool places orders every tick, starting on tick above and below $p_{\mathrm{pool}}$. This can be customized by introducing two additional parameters:
+
+- **Cadence**: The pool can instead place an order every $N$ ticks. Alternatively, it can place orders more densely closer to $p_{\mathrm{pool}}$, but more loosely when farther away. Either way, there will be fewer orders overall, reducing computation load.
+- **Spread**: The pool can place orders a few ticks further away from $p_{\mathrm{pool}}$. A bigger spread may improve the pool's profitability.The spread can either be defined as constant values, or calculated dynamically based on marketing conditions, following models such as the one proposed by [Avellaneda and Stoikov](https://people.orie.cornell.edu/sfs33/LimitOrderBook.pdf)
+
 ### Dango's custom smart contract VM
 
 We recognize the above is challenging to implement in legacy virtual machines (VMs) such as the Ethereum virtual machine (EVM), due to:
 
-- In EVM, smart contract actions need to be triggered via transactions. This means each block must have a txn at the very beginning of the block to update the oracle price, and another one at the end of the block to trigger order matching. During periods of high traffic, it can be difficult to get txns into the block, not to mention ensuring they are located at the beginning and end of the block. The only way to achieve this is to utilize a centralized block builder.
+- In EVM, smart contract actions need to be triggered via transactions. This means each block must have a txn at the very beginning of the block to update the oracle price, and another one at the end of the block to trigger order matching. During periods of high traffic, it can be difficult to get txns into the block, not to mention ensuring they are located at the beginning and end of the block. The only way to achieve this is to utilize a centralized block builder, which introduced additional trust assumptions.
 
   Dango's custom smart contract VM, [Grug](https://grug.build/whitepaper.html), allows validators to submit oracle updates via Tendermint's ABCI++ API, at the top of every block. Additionally, it automatically triggers order matching via end-of-block cronjobs.
 
-- EVM does not support iterating keys in `mapping` data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.
+- EVM does not support iterating keys in its `mapping` data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.
 
-  In Grug, contract states are B-tree maps which supports iteration.
+  In Grug, contract states are B-tree maps which support iteration.
