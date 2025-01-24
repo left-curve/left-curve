@@ -3,6 +3,7 @@ use {
     actix_web::{web, HttpRequest, HttpResponse, Resource},
     async_graphql::Schema,
     async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
+    indexer_httpd::routes::graphql::graphiql_playgound,
 };
 
 pub fn graphql_route() -> Resource {
@@ -13,7 +14,7 @@ pub fn graphql_route() -> Resource {
                 .guard(actix_web::guard::Header("upgrade", "websocket"))
                 .to(graphql_ws),
         )
-        .route(web::get().to(indexer_httpd::graphql::query::index::graphiql_playgound))
+        .route(web::get().to(graphiql_playgound))
 }
 
 #[tracing::instrument(name = "graphql::graphql_index", skip_all)]
