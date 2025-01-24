@@ -27,6 +27,14 @@ impl HooksTrait for Hooks {
         context: Context,
         block: BlockToIndex,
     ) -> Result<(), Self::Error> {
+        self.save_transfers(&context, &block).await?;
+
+        Ok(())
+    }
+}
+
+impl Hooks {
+    async fn save_transfers(&self, context: &Context, block: &BlockToIndex) -> Result<(), Error> {
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
             main_entity::events::Entity::find()
@@ -78,10 +86,12 @@ impl HooksTrait for Hooks {
             })
             .collect();
 
-        // 3. insert the transfers into the database
-        entity::transfers::Entity::insert_many(new_transfers)
-            .exec_without_returning(&context.db)
-            .await?;
+        if !new_transfers.is_empty() {
+            // 3. insert the transfers into the database
+            entity::transfers::Entity::insert_many(new_transfers)
+                .exec_without_returning(&context.db)
+                .await?;
+        }
 
         Ok(())
     }

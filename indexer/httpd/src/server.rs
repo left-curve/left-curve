@@ -49,13 +49,8 @@ pub fn build_actix_app<G>(
     >,
 >
 where
-    // S: async_graphql::ObjectType + Default + 'static,
     G: Clone + 'static,
 {
-    // merge_query!(MergedQuery, BlockQuery, MessageQuery, sub);
-    // let graphql_schema = build_schema_with_sub::<S>(app_ctx.clone());
-    // let graphql_schema = build_schema(app_ctx.clone());
-
     build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
         config_app(app_ctx, graphql_schema)
     })

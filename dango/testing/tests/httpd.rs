@@ -24,7 +24,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one("uusdc", 100_000_000).unwrap(),
+        Coins::one("hyp/eth/usdc", 100_000_000).unwrap(),
     )?];
 
     suite

@@ -83,10 +83,7 @@ pub async fn call_graphql<R>(
 ) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
 where
     R: serde::de::DeserializeOwned,
-    //     S: async_graphql::ObjectType + Default + 'static + Clone,
 {
-    // let graphql_schema = build_schema(app_ctx.clone());
-
     let app = actix_web::test::init_service(app).await;
 
     let request = actix_web::test::TestRequest::post()
