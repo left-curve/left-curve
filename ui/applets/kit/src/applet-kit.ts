@@ -54,6 +54,17 @@ export function initAppletKit() {
     return () => target.delete(listener);
   }
 
+  window.addEventListener("message", (e) => {
+    const message = deserializeJson<Events>(e.data);
+
+    if (!message) return;
+
+    const target = listeners[message.type];
+    if (!target) return;
+
+    (target as Set<(p: Events) => void>).forEach((listener) => listener(message));
+  });
+
   const AppletKit = {
     sendActionMessage,
     subscribe,
