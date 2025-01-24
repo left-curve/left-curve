@@ -1,6 +1,6 @@
 use {
     crate::context::Context,
-    async_graphql::{extensions, EmptyMutation, EmptySubscription, MergedObject, Schema},
+    async_graphql::{extensions, EmptyMutation, EmptySubscription, Schema},
     query::Query,
 };
 
