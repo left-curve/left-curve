@@ -2,7 +2,7 @@ import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 
 import type { Account, AccountTypes, Username } from "@left-curve/dango/types";
-import type { Chain, ChainId } from "@left-curve/types";
+import type { Chain, ChainId } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
 import type { Config } from "../types/store.js";

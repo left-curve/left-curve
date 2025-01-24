@@ -1,16 +1,15 @@
 import { getChainInfo, simulate } from "@left-curve/sdk";
-import type {
-  Address,
-  Message,
-  Transport,
-  TxMessageType,
-  TypedDataParameter,
-} from "@left-curve/types";
+import type { Address, Message, Transport } from "@left-curve/sdk/types";
 
 import { getAccountSeenNonces } from "../../account-factory/queries/getAccountSeenNonces.js";
 import { type BroadcastTxSyncReturnType, broadcastTxSync } from "./broadcastTxSync.js";
 
-import type { DangoClient, Signer } from "../../../types/index.js";
+import type {
+  DangoClient,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "../../../types/index.js";
 
 export type SignAndBroadcastTxParameters = {
   sender: Address;

@@ -1,5 +1,5 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
-import type { Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 import type { AppConfig, Key, KeyHash } from "../../../types/index.js";
 
 export type GetKeysParameters = {

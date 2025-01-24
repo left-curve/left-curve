@@ -2,7 +2,7 @@ import { useState } from "react";
 import hotToast from "react-hot-toast";
 
 import { CrossIcon } from "@left-curve/applets-kit";
-import { wait } from "@left-curve/utils";
+import { wait } from "@left-curve/dango/utils";
 
 interface ToastMsg {
   title?: string;

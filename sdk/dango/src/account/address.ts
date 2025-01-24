@@ -1,7 +1,6 @@
-import { Sha256, ripemd160 } from "@left-curve/crypto";
-import { isHex } from "@left-curve/encoding";
-import { decodeHex, encodeHex } from "@left-curve/encoding";
-import type { Address, Hex } from "@left-curve/types";
+import { Sha256, ripemd160 } from "@left-curve/sdk/crypto";
+import { decodeHex, encodeHex, isHex } from "@left-curve/sdk/encoding";
+import type { Address, Hex } from "@left-curve/sdk/types";
 
 export type ComputeAddressParameters = {
   deployer: Address;

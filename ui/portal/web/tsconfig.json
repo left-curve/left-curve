@@ -12,16 +12,7 @@
       "path": "../../applets/kit"
     },
     {
-      "path": "../../../sdk/types"
-    },
-    {
       "path": "../../../sdk/dango"
-    },
-    {
-      "path": "../../../sdk/crypto"
-    },
-    {
-      "path": "../../../sdk/utils"
     },
     {
       "path": "../../store/react"

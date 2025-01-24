@@ -4,7 +4,7 @@ import {
 } from "@left-curve/dango/actions";
 import { getPublicClient } from "./getPublicClient.js";
 
-import type { ChainId, Coins, Prettify } from "@left-curve/types";
+import type { ChainId, Coins, Prettify } from "@left-curve/dango/types";
 import type { Config } from "../types/store.js";
 
 export type GetBalanceParameters = Prettify<

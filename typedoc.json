@@ -1,13 +1,6 @@
 {
   "name": "Left Curve Software Stack",
-  "entryPoints": [
-    "./sdk/grug",
-    "./sdk/crypto",
-    "./sdk/encoding",
-    "./sdk/dango",
-    "./sdk/types",
-    "./sdk/utils"
-  ],
+  "entryPoints": ["./sdk/grug", "./sdk/dango", "./sdk/types", "./sdk/utils"],
   "navigationLinks": {
     "Home": "https://grug.build",
     "GitHub": "https://github.com/left-curve/left-curve/tree/main/sdk"

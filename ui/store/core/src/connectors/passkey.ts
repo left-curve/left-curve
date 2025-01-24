@@ -1,16 +1,16 @@
-import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/crypto";
+import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/dango/crypto";
 
-import { encodeBase64, encodeUtf8, serialize } from "@left-curve/encoding";
+import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
 
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { KeyAlgo } from "@left-curve/dango/types";
-import { getRootDomain } from "@left-curve/utils";
+import { getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, SignerClient } from "@left-curve/dango/types";
-import type { Address, Transport } from "@left-curve/types";
+import type { Address, Transport } from "@left-curve/dango/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;

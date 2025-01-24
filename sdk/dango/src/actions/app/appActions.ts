@@ -1,4 +1,4 @@
-import type { Transport } from "@left-curve/types";
+import type { Transport } from "@left-curve/sdk/types";
 import {
   type BroadcastTxSyncParameters,
   type BroadcastTxSyncReturnType,

@@ -1,4 +1,4 @@
-import type { UID } from "@left-curve/types";
+import type { UID } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
 import type { Config } from "../types/store.js";
