@@ -1,7 +1,7 @@
 import type React from "react";
 import { Button, Input, PoolCard, SearchIcon } from "../";
 
-import type { Pool, PoolId } from "@left-curve/types";
+import type { Pool, PoolId } from "@left-curve/dango/types";
 
 interface Props {
   onPoolSelected: (id: number) => void;

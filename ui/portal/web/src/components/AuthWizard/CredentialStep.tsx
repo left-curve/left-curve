@@ -7,7 +7,7 @@ import {
   useDebounce,
   useWizard,
 } from "@left-curve/applets-kit";
-import { usePublicClient } from "@left-curve/react";
+import { usePublicClient } from "@left-curve/store-react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 

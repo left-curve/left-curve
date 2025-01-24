@@ -7,7 +7,7 @@ import {
   Tabs,
 } from "@left-curve/applets-kit";
 
-import type { Account, AccountType } from "@left-curve/types";
+import type { Account, AccountType } from "@left-curve/dango/types";
 
 interface Props {
   account: Account;

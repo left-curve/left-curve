@@ -1,5 +1,5 @@
 import { Button, Select, SelectItem, useWizard } from "@left-curve/applets-kit";
-import { useConfig, useConnectors } from "@left-curve/react";
+import { useConfig, useConnectors } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 

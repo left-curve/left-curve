@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "@left-curve/react";
+import { useAccount } from "@left-curve/store-react";
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
@@ -8,8 +8,8 @@ import { twMerge } from "../../utils";
 
 import { AccountCard, Button } from "../";
 
-import { type Account, AccountType } from "@left-curve/types";
-import { capitalize } from "@left-curve/utils";
+import { type Account, AccountType } from "@left-curve/dango/types";
+import { capitalize } from "@left-curve/dango/utils";
 import { useAccountName } from "../../hooks";
 import type { VisibleRef } from "../../types";
 import { CrossIcon } from "../icons/Cross";

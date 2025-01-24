@@ -1,36 +1,12 @@
 use {
-    super::BytesAnalyzer,
+    crate::oracle::BytesAnalyzer,
     anyhow::{anyhow, ensure},
     data_encoding::BASE64,
     grug::{Api, BlockInfo, ByteArray, Hash160, Hash256, Inner, Map, NonZero, Storage, Timestamp},
     std::{collections::BTreeMap, ops::Deref},
 };
 
-/// Addresses of the Wormhole guardian set as of November 4, 2024.
-pub const GUARDIANS_ADDRESSES: [&str; 19] = [
-    "WJO1p2w/c5ZFZIiFvczAbNcKPNM=",
-    "/2y5Ulib3oYsJe9DkhMvudSkIVc=",
-    "EU3oRgGTvfOi/PgfhqCXZfR2L9E=",
-    "EHoAhrMtegl3kmogUTHYcx05y+s=",
-    "jIKy/YL67ScR1Zrw8kmdFucm9rI=",
-    "EbOXVsBCRBvm2GULabVOvnFeI0M=",
-    "VM5bTTSPt0uVjolm4uw9vUlYp80=",
-    "FefK8HxOPcjnxGn5LIzYj7gAWiA=",
-    "dKO/kTlT1pUmDYi8GqJaTu42PvA=",
-    "AArAB2cns1++otrCj+5cyw/qdo4=",
-    "r0XO0Ta52eJJA0ZK6In1yKcj/BQ=",
-    "+TEkt8c4hDy7iehkyGLDjN3Mz5U=",
-    "0sw3pNwDao0jK0j2LN1HMUEvSJA=",
-    "2nmPaJajMx9ktIwS0dV/2cvnCBE=",
-    "caob4dNsr+OGeRD5nAnjR4mcGcM=",
-    "gZK25zh8zXaCd8F9qxt6UCfAs88=",
-    "F44hrS53rgZxFUnPux+cep2Alug=",
-    "XhSH81UV0CqSdTUEqNdUcbn0nts=",
-    "b768iY9APkdz6V/rFegMmpnINI0=",
-];
-
-/// Index of the Wormhole guardian set as of November 4, 2024.
-pub const GUARDIAN_SETS_INDEX: u32 = 4;
+pub type GuardianSetIndex = u32;
 
 #[grug::derive(Serde, Borsh)]
 pub struct GuardianSet {
@@ -67,7 +43,7 @@ impl GuardianSignature {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WormholeVaa {
     pub version: u8,
-    pub guardian_set_index: u32,
+    pub guardian_set_index: GuardianSetIndex,
     pub hash: Hash256,
     pub timestamp: u32,
     pub nonce: u32,
@@ -134,7 +110,7 @@ impl WormholeVaa {
         storage: &dyn Storage,
         api: &dyn Api,
         block: BlockInfo,
-        guardian_sets: Map<u32, GuardianSet>,
+        guardian_sets: Map<GuardianSetIndex, GuardianSet>,
     ) -> anyhow::Result<()> {
         ensure!(
             self.version == 1,

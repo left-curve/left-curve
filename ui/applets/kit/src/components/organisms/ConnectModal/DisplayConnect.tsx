@@ -9,7 +9,7 @@ import { LoadingIndicator } from "./LoadingIndicator";
 import { motion } from "framer-motion";
 import { twMerge } from "../../../utils";
 
-import type { Connector } from "@left-curve/types";
+import type { Connector } from "@left-curve/store-react/types";
 
 export const DisplayConnect: React.FC = () => {
   const { nextStep, previousStep, setData, data } = useWizard<{

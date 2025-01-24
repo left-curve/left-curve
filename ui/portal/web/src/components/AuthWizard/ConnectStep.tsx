@@ -2,24 +2,26 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { Select, SelectItem, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/react";
+import { useAccount, useConfig, useConnectors, usePublicClient } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
 
+import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/dango";
 import {
   createWebAuthnCredential,
   ethHashMessage,
   secp256k1RecoverPubKey,
-} from "@left-curve/crypto";
-import { encodeBase64, encodeUtf8 } from "@left-curve/encoding";
-import { computeAddress, createAccountSalt, createKeyHash } from "@left-curve/sdk";
-import { AccountType, ConnectionStatus, KeyAlgo } from "@left-curve/types";
-import { getNavigatorOS, getRootDomain, wait } from "@left-curve/utils";
+} from "@left-curve/dango/crypto";
+import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
+import { AccountType, KeyAlgo } from "@left-curve/dango/types";
+import { getNavigatorOS, getRootDomain, wait } from "@left-curve/dango/utils";
+import { ConnectionStatus } from "@left-curve/store-react/types";
 import { useToast } from "../Toast";
 
 import { Button } from "@left-curve/applets-kit";
 
-import type { EIP1193Provider, Key } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
+import { registerUser } from "@left-curve/dango/actions";
+import type { AppConfig, Key } from "@left-curve/dango/types";
+import type { EIP1193Provider } from "@left-curve/store-react/types";
 
 export const ConnectStep: React.FC = () => {
   const navigate = useNavigate();
@@ -83,7 +85,7 @@ export const ConnectStep: React.FC = () => {
           return { key, keyHash };
         })();
 
-        const { addresses } = await client.getAppConfig<DangoAppConfigResponse>();
+        const { addresses } = await client.getAppConfig<AppConfig>();
         const accountCodeHash = await client.getAccountTypeCodeHash({
           accountType: AccountType.Spot,
         });
@@ -100,8 +102,7 @@ export const ConnectStep: React.FC = () => {
           body: JSON.stringify({ address }),
         });
         if (!response.ok) throw new Error("error: failed to send funds");
-
-        await client.registerUser({ key, keyHash, username });
+        await registerUser(client, { key, keyHash, username });
         // TODO: Do pooling instead of wait to check account creation
         await wait(1000);
         await connector.connect({ username, chainId: config.chains[0].id });

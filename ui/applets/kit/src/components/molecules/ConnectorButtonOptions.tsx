@@ -1,9 +1,9 @@
-import { ConnectorIds } from "@left-curve/types";
-import { capitalize } from "@left-curve/utils";
+import { capitalize } from "@left-curve/dango/utils";
+import { ConnectorIds } from "@left-curve/store-react/types";
 
 import { Button } from "../atoms/Button";
 
-import type { Connector, ConnectorId } from "@left-curve/types";
+import type { Connector, ConnectorId } from "@left-curve/store-react/types";
 import { WalletIcon } from "../icons/Wallet";
 
 interface Props {

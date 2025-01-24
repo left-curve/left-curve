@@ -1,9 +1,10 @@
 import { Button, Input, useSigningClient, useWizard } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig } from "@left-curve/react";
+import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
 import { motion } from "framer-motion";
 
-import type { AccountTypes, NativeCoin } from "@left-curve/types";
-import { formatUnits, parseUnits, wait } from "@left-curve/utils";
+import type { AccountTypes } from "@left-curve/dango/types";
+import type { NativeCoin } from "@left-curve/dango/types";
+import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useForm } from "react-hook-form";
 
 import { useNavigate } from "@tanstack/react-router";

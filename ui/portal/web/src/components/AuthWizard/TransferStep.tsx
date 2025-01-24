@@ -1,8 +1,8 @@
 import { Button, Input, Select, SelectItem } from "@left-curve/applets-kit";
-import { useConfig } from "@left-curve/react";
+import { useConfig } from "@left-curve/store-react";
 import { motion } from "framer-motion";
 
-import type { NativeCoin } from "@left-curve/types";
+import type { NativeCoin } from "@left-curve/dango/types";
 
 export const TransferStep: React.FC = () => {
   const { chains, coins } = useConfig();

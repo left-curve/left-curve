@@ -1,10 +1,10 @@
 "use client";
 
-import { useAccount, useBalances, usePrices } from "@left-curve/react";
+import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 
 import { motion } from "framer-motion";
 
-import { capitalize, truncateAddress } from "@left-curve/utils";
+import { capitalize, truncateAddress } from "@left-curve/dango/utils";
 import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "../../../utils";
 
@@ -12,7 +12,7 @@ import { CardMarginBottom } from "./CardMarginBottom";
 import { CardSafeBottom } from "./CardSafeBottom";
 import { CardSpotBottom } from "./CardSpotBottom";
 
-import { type Account, AccountType } from "@left-curve/types";
+import { type Account, AccountType } from "@left-curve/dango/types";
 import { useAccountName } from "../../../hooks";
 
 export interface CardProps extends VariantProps<typeof cardVariants> {

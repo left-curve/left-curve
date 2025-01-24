@@ -1,6 +1,6 @@
 import { QRCode, useAccountName } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/react";
-import { truncateAddress } from "@left-curve/utils";
+import { truncateAddress } from "@left-curve/dango/utils";
+import { useAccount } from "@left-curve/store-react";
 
 export const ReceiveContainer: React.FC = () => {
   const { account } = useAccount();

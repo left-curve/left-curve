@@ -1,6 +1,7 @@
 use {
     crate::{Addr, Coins, ContractEvent, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp},
     borsh::{BorshDeserialize, BorshSerialize},
+    paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
 };
@@ -35,7 +36,44 @@ pub enum Event {
     // TODO: IBC events
 }
 
+macro_rules! generate_downcast {
+    ($id:ident => $ret:ty) => {
+        paste! {
+            pub fn [<as_$id:snake>](self) -> $ret {
+                match self {
+                    Event::$id(value) => value,
+                    _ => panic!("Event is not {}", stringify!($id)),
+                }
+            }
+
+            pub fn [<is_$id:snake>](self) -> bool {
+                matches!(self, Event::$id(_))
+            }
+        }
+    };
+    ($($id:ident => $ret:ty),+ $(,)?) => {
+        $(
+            generate_downcast!($id => $ret);
+        )+
+    };
+}
+
 impl Event {
+    generate_downcast! {
+        Configure    => EvtConfigure,
+        Transfer     => EvtTransfer,
+        Upload       => EvtUpload,
+        Instantiate  => EvtInstantiate,
+        Execute      => EvtExecute,
+        Migrate      => EvtMigrate,
+        Reply        => EvtReply,
+        Authenticate => EvtAuthenticate,
+        Backrun      => EvtBackrun,
+        Withhold     => EvtWithhold,
+        Finalize     => EvtFinalize,
+        Cron         => EvtCron,
+    }
+
     pub fn reply(contract: Addr, reply_on: ReplyOn, guest_event: EventStatus<EvtGuest>) -> Self {
         Self::Reply(EvtReply {
             contract,

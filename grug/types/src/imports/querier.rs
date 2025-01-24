@@ -107,6 +107,11 @@ where
             .map(|res| res.as_contracts())
     }
 
+    /// Note: In most cases, for querying a single storage path in another
+    /// contract, the `StorageQuerier::query_wasm_path` method is preferred.
+    ///
+    /// The only case where `query_wasm_raw` is preferred is if you just want to
+    /// know whether a data exists or not, without needing to deserialize it.
     fn query_wasm_raw<B>(&self, contract: Addr, key: B) -> Result<Option<Binary>, Self::Error>
     where
         B: Into<Binary>,

@@ -1,11 +1,11 @@
 "use client";
 
-import { useAccount, useBalances, useConfig } from "@left-curve/react";
-import { formatNumber, formatUnits } from "@left-curve/utils";
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
 import { useAccountName } from "../../hooks";
 import { Button } from "../atoms/Button";
 
-import type { Account } from "@left-curve/types";
+import type { Account } from "@left-curve/dango/types";
 
 interface Props {
   avatarUri?: string;

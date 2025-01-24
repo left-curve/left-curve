@@ -16,7 +16,6 @@
   "sideEffects": false,
   "devDependencies": {
     "@left-curve/config": "workspace:^",
-    "@left-curve/types": "workspace:^",
     "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
     "wrangler": "catalog:"

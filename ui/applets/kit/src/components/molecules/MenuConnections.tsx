@@ -1,11 +1,11 @@
 "use client";
 
-import { useAccount, useDisconnect } from "@left-curve/react";
+import { useAccount, useDisconnect } from "@left-curve/store-react";
 
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { useClickAway } from "react-use";
 
-import { truncateAddress } from "@left-curve/utils";
+import { truncateAddress } from "@left-curve/dango/utils";
 import { twMerge } from "../../utils";
 
 import { Button, CopyCheckIcon, CopyIcon, ProfileIcon, WalletIcon } from "../";

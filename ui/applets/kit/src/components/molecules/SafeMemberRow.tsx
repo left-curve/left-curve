@@ -1,4 +1,4 @@
-import type { Power, Username } from "@left-curve/types";
+import type { Power, Username } from "@left-curve/dango/types";
 
 interface Props {
   username: Username;

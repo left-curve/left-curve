@@ -1,5 +1,4 @@
 import {
-  Link,
   Outlet,
   RouterProvider,
   createRootRouteWithContext,
@@ -9,7 +8,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 
-import { useAccount, useConfig, usePublicClient } from "@left-curve/react";
+import { useAccount, useConfig, usePublicClient } from "@left-curve/store-react";
 
 import { AccountsRoute } from "./pages/accounts";
 import { AuthRoute } from "./pages/auth";
@@ -21,7 +20,7 @@ import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
-} from "@left-curve/react";
+} from "@left-curve/store-react";
 import { useEffect } from "react";
 
 export const AppRoute = createRoute({

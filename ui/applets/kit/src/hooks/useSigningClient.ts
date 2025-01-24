@@ -1,4 +1,4 @@
-import { useConnectorClient } from "@left-curve/react";
+import { useConnectorClient } from "@left-curve/store-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSessionKey } from "./useSessionKey";
 

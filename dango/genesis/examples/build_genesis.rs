@@ -1,6 +1,11 @@
 use {
-    dango_genesis::{build_genesis, build_rust_codes, GenesisUser},
-    dango_types::{account_factory::Username, auth::Key},
+    dango_genesis::{build_genesis, build_rust_codes, GenesisConfig, GenesisUser},
+    dango_types::{
+        account_factory::Username,
+        auth::Key,
+        constants::{DANGO_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, USDC_DENOM},
+        taxman,
+    },
     grug::{
         btree_map, coins, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
     },
@@ -9,6 +14,7 @@ use {
     std::{env, fs, str::FromStr},
 };
 
+// Private keys of devnet test accounts.
 // See docs for the seed phrases of these keys.
 const PK_OWNER: [u8; 33] =
     hex!("0278f7b7d93da9b5a62e28434184d1c337c2c28d4ced291793215ab6ee89d7fff8");
@@ -35,76 +41,85 @@ fn main() {
     // Read CLI arguments.
     // There should be exactly two arguments: the chain ID and genesis time.
     let mut args = env::args().collect::<Vec<_>>();
-    assert_eq!(args.len(), 3, "expected exactly two arguments");
+    assert_eq!(
+        args.len(),
+        3,
+        "expecting exactly two positional arguments: chain ID and genesis time. example:\n$ cargo run -p dango-genesis --example build_genesis -- dev-5 2025-02-01T00:00:00Z",
+    );
 
-    // Read wasm files.
-    let codes = build_rust_codes();
-
-    // Owner gets DG token and USDC; all others get USDC.
-    let users = btree_map! {
-        Username::from_str("owner").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_OWNER.into()),
-            key_hash: PK_OWNER.hash256(),
-            balances: coins! {
-                "udng" => 30_000_000_000,
-                "uusdc" => 100_000_000_000_000,
+    let (genesis_state, contracts, addresses) = build_genesis(GenesisConfig {
+        codes: build_rust_codes(),
+        users: btree_map! {
+            Username::from_str("owner").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_OWNER.into()),
+                key_hash: PK_OWNER.hash256(),
+                balances: coins! {
+                    DANGO_DENOM.clone() => 30_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
+                },
+            },
+            Username::from_str("user1").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER1.into()),
+                key_hash: PK_USER1.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user2").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER2.into()),
+                key_hash: PK_USER2.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user3").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER3.into()),
+                key_hash: PK_USER3.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user4").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER4.into()),
+                key_hash: PK_USER4.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user5").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER5.into()),
+                key_hash: PK_USER5.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user6").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER6.into()),
+                key_hash: PK_USER6.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user7").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER7.into()),
+                key_hash: PK_USER7.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user8").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER8.into()),
+                key_hash: PK_USER8.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
+            },
+            Username::from_str("user9").unwrap() => GenesisUser {
+                key: Key::Secp256k1(PK_USER9.into()),
+                key_hash: PK_USER9.hash256(),
+                balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
         },
-        Username::from_str("user1").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER1.into()),
-            key_hash: PK_USER1.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
+        owner: Username::from_str("owner").unwrap(),
+        fee_cfg: taxman::Config {
+            fee_denom: USDC_DENOM.clone(),
+            fee_rate: Udec128::new_percent(25), // 0.25 uusdc per gas unit
         },
-        Username::from_str("user2").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER2.into()),
-            key_hash: PK_USER2.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user3").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER3.into()),
-            key_hash: PK_USER3.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user4").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER4.into()),
-            key_hash: PK_USER4.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user5").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER5.into()),
-            key_hash: PK_USER5.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user6").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER6.into()),
-            key_hash: PK_USER6.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user7").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER7.into()),
-            key_hash: PK_USER7.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user8").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER8.into()),
-            key_hash: PK_USER8.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-        Username::from_str("user9").unwrap() => GenesisUser {
-            key: Key::Secp256k1(PK_USER9.into()),
-            key_hash: PK_USER9.hash256(),
-            balances: coins! { "uusdc" => 100_000_000_000_000 },
-        },
-    };
-
-    let (genesis_state, contracts, addresses) = build_genesis(
-        codes,
-        users,
-        &Username::from_str("owner").unwrap(),
-        "uusdc",
-        Udec128::new_percent(25),                 // 0.25 uusdc per gas unit
-        Duration::from_seconds(7 * 24 * 60 * 60), // 1 week
-    )
+        max_orphan_age: Duration::from_weeks(1),
+        metadatas: btree_map! {},
+        markets: btree_map! {},
+        price_sources: PYTH_PRICE_SOURCES.clone(),
+        unlocking_cliff: Duration::from_weeks(4 * 9), // ~9 months
+        unlocking_period: Duration::from_weeks(4 * 27), // ~27 months
+        wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+        hyperlane_local_domain: 88888888,
+        hyperlane_ism_validator_sets: btree_map! {},
+        hyperlane_warp_routes: btree_map! {},
+    })
     .unwrap();
 
     println!(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useBlockExplorer } from "@left-curve/react";
+import { useBlockExplorer } from "@left-curve/store-react";
 import { CloseIcon, ExternalLinkIcon } from "../";
 
 interface Props {

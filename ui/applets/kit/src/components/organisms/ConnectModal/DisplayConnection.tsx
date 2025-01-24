@@ -1,14 +1,16 @@
 "use client";
 
-import { useChainId } from "@left-curve/react";
-import type { Connector, Username } from "@left-curve/types";
-import { wait } from "@left-curve/utils";
+import { wait } from "@left-curve/dango/utils";
+import { useChainId } from "@left-curve/store-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { BackArrowIcon, Button, WalletIcon } from "../../";
 import { useWizard } from "../../../providers";
 import { twMerge } from "../../../utils";
 import { LoadingIndicator } from "./LoadingIndicator";
+
+import type { Username } from "@left-curve/dango/types";
+import type { Connector } from "@left-curve/store-react/types";
 
 export const DisplayConnection: React.FC = () => {
   const chainId = useChainId();

@@ -5,10 +5,10 @@ import {
   Input,
   useSigningClient,
 } from "@left-curve/applets-kit";
-import { useAccount, useBalances, useConfig } from "@left-curve/react";
-import { isValidAddress } from "@left-curve/sdk";
-import type { Address } from "@left-curve/types";
-import { formatUnits, parseUnits, wait } from "@left-curve/utils";
+import { isValidAddress } from "@left-curve/dango";
+import type { Address } from "@left-curve/dango/types";
+import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { useAccount, useBalances, useConfig } from "@left-curve/store-react";
 import { useForm } from "react-hook-form";
 
 export const SendContainer: React.FC = () => {

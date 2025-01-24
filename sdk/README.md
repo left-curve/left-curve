@@ -1,4 +1,4 @@
-## Grug SDK
+## Grug and Dango SDK
 
 You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
@@ -6,63 +6,16 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
 #### `/packages`
 
-| Package                                  | Description                                                                                                                                                 |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`config`](./packages/config)            | Common configurations for tsconfig, tsup, biome, typedoc                                                                                                    |
-| [`connect-kit`](./packages/connect-kit/) | It allows connection to multiple blockchains and wallets, manages accounts, and enables interaction with smart contracts.                                   |
-| [`crypto`](./packages/crypto)            | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
-| [`encoding`](./packages/encoding)        | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
-| [`react`](./packages/react)              | It wrap connect-kit actions into react-hooks and wrap the state in a react provider with hydration for ssr                                                  |
-| [`sdk`](./packages/core)                 | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
-| [`types`](./packages/types)              | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
-| [`utils`](./packages/utils)              | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
+| Package                       | Description                                                                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`config`](./config)          | Common configurations for tsconfig, tsup, biome, typedoc                                                                                                    |
+| [`dango`](./dango/)           | The SDK package provides a set of tools and utilities to interact with [Dango] chain                                                                        |
+| [`crypto`](./grug/crypto)     | It includes various cryptographic functions and utilities for encryption, decryption, hashing, and more.                                                    |
+| [`encoding`](./grug/encoding) | Encoding helpers that are used across packages and assist in encoding and decoding data in various formats                                                  |
+| [`grug-sdk`](./grug)          | The SDK package provides a set of tools and utilities to interact with [Grug] execution environment                                                         |
+| [`types`](./grug/types)       | It contains various type definition used across the codebase. These types help ensure type safety and improve code readbility.                              |
+| [`utils`](./grug/utils)       | Its a collection of utility functions that are used across the project. These utilities are designed to simplify common tasks and improve code reusability. |
 
-## Module Graph
-
-```mermaid
-%%{
-  init: {
-  'theme': 'base',
-  'themeVariables': {"primaryTextColor":"#fff","primaryColor":"#5a4f7c","lineColor":"#f5a623" }
-  }
-}%%
-stateDiagram-v2
-    state "@left-curve/config" as left_curve_config
-    state "@left-curve/types" as left_curve_types
-    state "@left-curve/utils" as left_curve_utils
-    state "@left-curve/sdk" as left_curve_sdk
-    state "@left-curve/crypto" as left_curve_crypto
-    state "@left-curve/encoding" as left_curve_encoding
-    state "@left-curve/react" as left_curve_react
-    state "@left-curve/connectkit" as left_curve_connectkit
-
-    left_curve_config --> left_curve_types
-    left_curve_config --> left_curve_utils
-    left_curve_types --> left_curve_utils
-    left_curve_config --> left_curve_sdk
-    left_curve_types --> left_curve_sdk
-    left_curve_utils --> left_curve_sdk
-    left_curve_crypto --> left_curve_sdk
-    left_curve_encoding --> left_curve_sdk
-    left_curve_config --> left_curve_react
-    left_curve_types --> left_curve_react
-    left_curve_connectkit --> left_curve_react
-    left_curve_crypto --> left_curve_react
-    left_curve_encoding --> left_curve_react
-    left_curve_utils --> left_curve_react
-    left_curve_config --> left_curve_encoding
-    left_curve_types --> left_curve_encoding
-    left_curve_utils --> left_curve_encoding
-    left_curve_config --> left_curve_crypto
-    left_curve_types --> left_curve_crypto
-    left_curve_encoding --> left_curve_crypto
-    left_curve_config --> left_curve_connectkit
-    left_curve_crypto --> left_curve_connectkit
-    left_curve_encoding --> left_curve_connectkit
-    left_curve_sdk --> left_curve_connectkit
-    left_curve_types --> left_curve_connectkit
-    left_curve_utils --> left_curve_connectkit
-```
 
 ## Supported JS environments
 
@@ -85,6 +38,7 @@ We are grateful to both the [Wevm] and [Confio] team for their open-source contr
 TBD
 
 [Grug]: https://grug.build/
+[Dango]: ../dango
 [Wevm]: https://wevm.dev/
 [Wagmi]: https://github.com/wevm/wagmi
 [Viem]: https://github.com/wevm/viem
