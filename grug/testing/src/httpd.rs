@@ -5,6 +5,7 @@ use {
         App,
     },
     indexer_httpd::{context::Context, graphql::build_schema, server::build_actix_app},
+    serde::Deserialize,
     std::collections::HashMap,
 };
 
@@ -67,6 +68,32 @@ pub fn build_app_service(
     let graphql_schema = build_schema(app_ctx.clone());
 
     build_actix_app(app_ctx, graphql_schema)
+}
+
+#[derive(Deserialize)]
+#[allow(unused)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginatedResponse<X> {
+    pub edges: Vec<Edge<X>>,
+    pub nodes: Vec<X>,
+    pub page_info: PageInfo,
+}
+
+#[derive(Deserialize)]
+#[allow(unused)]
+pub struct Edge<X> {
+    pub node: X,
+    pub cursor: String,
+}
+
+#[derive(Deserialize)]
+#[allow(unused)]
+#[serde(rename_all = "camelCase")]
+pub struct PageInfo {
+    pub start_cursor: String,
+    pub end_cursor: String,
+    pub has_next_page: bool,
+    pub has_previous_page: bool,
 }
 
 pub async fn call_graphql<R>(
