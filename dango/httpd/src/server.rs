@@ -4,10 +4,35 @@ use {
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
         web::{self, ServiceConfig},
-        App, HttpResponse,
+        App, HttpResponse, HttpServer,
     },
     indexer_httpd::{context::Context, routes::index, server::build_actix_app_with_config},
 };
+
+/// Run the HTTP server, includes GraphQL and REST endpoints.
+pub async fn run_server(
+    ip: Option<&str>,
+    port: Option<u16>,
+    database_url: String,
+) -> Result<(), indexer_httpd::error::Error> {
+    let port = port
+        .or_else(|| {
+            std::env::var("PORT")
+                .ok()
+                .and_then(|val| val.parse::<u16>().ok())
+        })
+        .unwrap_or(8080);
+    let ip = ip.unwrap_or("0.0.0.0");
+
+    let context = Context::new(Some(database_url)).await?;
+
+    HttpServer::new(move || build_actix_app(context.clone()))
+        .bind((ip, port))?
+        .run()
+        .await?;
+
+    Ok(())
+}
 
 pub fn build_actix_app(
     app_ctx: Context,

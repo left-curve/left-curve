@@ -71,9 +71,9 @@ impl StartCmd {
         }
     }
 
-    /// Run the HTTP server for the indexer
+    /// Run the HTTP server
     async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, database_url).await?;
+        dango_httpd::server::run_server(None, None, database_url).await?;
         Ok(())
     }
 
