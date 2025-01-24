@@ -26,6 +26,7 @@ async-graphql           = { workspace = true }
 async-graphql-actix-web = { workspace = true }
 chrono                  = { workspace = true }
 clap                    = { workspace = true }
+grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
 num_cpus                = { workspace = true }
 sea-orm                 = { workspace = true }

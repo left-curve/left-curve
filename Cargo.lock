@@ -5304,6 +5304,7 @@ dependencies = [
  "async-graphql-actix-web",
  "chrono",
  "clap",
+ "grug-types",
  "indexer-sql",
  "num_cpus",
  "sea-orm",
