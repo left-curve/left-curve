@@ -10,7 +10,7 @@ pub struct Path<'a, T, C> {
     codec: PhantomData<C>,
 }
 
-impl<'a, T, C> Clone for Path<'a, T, C> {
+impl<T, C> Clone for Path<'_, T, C> {
     fn clone(&self) -> Self {
         Self {
             storage_key: self.storage_key.clone(),

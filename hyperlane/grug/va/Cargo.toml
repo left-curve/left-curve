@@ -22,5 +22,3 @@ anyhow            = { workspace = true }
 grug              = { workspace = true }
 hyperlane-mailbox = { workspace = true, features = ["library"] }
 hyperlane-types   = { workspace = true }
-
-[dev-dependencies]

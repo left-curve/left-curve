@@ -53,7 +53,7 @@ fn get_validators(ctx: ImmutableCtx) -> StdResult<BTreeSet<HexByteArray<20>>> {
 }
 
 fn get_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
-    Ok(MAILBOX.load(ctx.storage)?)
+    MAILBOX.load(ctx.storage)
 }
 
 fn get_local_domain(ctx: ImmutableCtx) -> StdResult<Domain> {

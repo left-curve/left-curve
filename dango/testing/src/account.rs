@@ -285,6 +285,10 @@ where
         *self.keys.keys().next().unwrap()
     }
 
+    pub fn first_signing_key(&self) -> &SigningKey {
+        &self.keys.iter().next().unwrap().1 .0
+    }
+
     pub fn keys(&self) -> &BTreeMap<Hash256, (SigningKey, Key)> {
         &self.keys
     }
