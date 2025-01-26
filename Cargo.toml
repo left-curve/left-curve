@@ -9,7 +9,6 @@ members = [
   "dango/client",
   "dango/dex",
   "dango/genesis",
-  "dango/ibc-transfer",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
@@ -160,7 +159,6 @@ dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-genesis               = { path = "dango/genesis" }
-dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }

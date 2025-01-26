@@ -32,7 +32,6 @@ pub struct AppConfig {
 #[grug::derive(Serde)]
 pub struct AppAddresses {
     pub account_factory: Addr,
-    pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
 }
@@ -43,7 +42,6 @@ impl Default for AppAddresses {
     fn default() -> Self {
         AppAddresses {
             account_factory: Addr::mock(0),
-            ibc_transfer: Addr::mock(0),
             lending: Addr::mock(0),
             oracle: Addr::mock(0),
         }

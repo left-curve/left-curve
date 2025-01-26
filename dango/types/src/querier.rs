@@ -9,8 +9,6 @@ pub trait DangoQuerier {
     fn query_dango_config(&self) -> StdResult<AppConfig>;
 
     fn query_account_factory(&self) -> StdResult<Addr>;
-
-    fn query_ibc_transfer(&self) -> StdResult<Addr>;
 }
 
 impl DangoQuerier for QuerierWrapper<'_> {
@@ -21,10 +19,5 @@ impl DangoQuerier for QuerierWrapper<'_> {
     fn query_account_factory(&self) -> StdResult<Addr> {
         self.query_app_config::<AppConfig>()
             .map(|app_cfg| app_cfg.addresses.account_factory)
-    }
-
-    fn query_ibc_transfer(&self) -> StdResult<Addr> {
-        self.query_app_config::<AppConfig>()
-            .map(|app_cfg| app_cfg.addresses.ibc_transfer)
     }
 }

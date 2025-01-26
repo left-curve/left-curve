@@ -34,7 +34,6 @@ pub struct Contracts {
     pub bank: Addr,
     pub dex: Addr,
     pub hyperlane: Hyperlane<Addr>,
-    pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
@@ -51,7 +50,6 @@ pub struct Codes<T> {
     pub bank: T,
     pub dex: T,
     pub hyperlane: Hyperlane<T>,
-    pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
     pub taxman: T,
@@ -172,10 +170,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(hyperlane_merkle::query))
         .build();
 
-    let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
-        .with_execute(Box::new(dango_ibc_transfer::execute))
-        .build();
-
     let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
         .with_execute(Box::new(dango_oracle::execute))
         .with_authenticate(Box::new(dango_oracle::authenticate))
@@ -217,7 +211,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
             mailbox,
             merkle,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -241,12 +234,11 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
-    let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
-    let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
+    let warp = fs::read(artifacts_dir.join("dango_warp.wasm"))?;
 
     Ok(Codes {
         account_factory,
@@ -261,7 +253,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
             mailbox,
             merkle,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -306,7 +297,6 @@ where
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
-    let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
@@ -412,15 +402,6 @@ where
     )
     .should_succeed_and_equal(mailbox);
 
-    // Instantiate the IBC transfer contract.
-    let ibc_transfer = instantiate(
-        &mut msgs,
-        ibc_transfer_code_hash,
-        &ibc::transfer::InstantiateMsg {},
-        "dango/ibc_transfer",
-        "dango/ibc_transfer",
-    )?;
-
     // Instantiate the DEX contract.
     let dex = instantiate(
         &mut msgs,
@@ -459,7 +440,6 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
-                ibc::transfer::NAMESPACE.clone() => ibc_transfer,
                 lending::NAMESPACE.clone()       => lending,
                 warp::NAMESPACE.clone()          => warp,
                 warp::ALLOY_NAMESPACE.clone()    => warp,
@@ -512,7 +492,6 @@ where
             mailbox,
             merkle,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -538,7 +517,6 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
-            ibc_transfer,
             lending,
             oracle,
         },
