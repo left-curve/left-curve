@@ -2934,6 +2934,7 @@ name = "dango-warp"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account-factory",
  "dango-types",
  "grug",
  "hyperlane-types",

@@ -1,7 +1,9 @@
 use {
+    crate::{account_factory::Username, auth::Key},
     anyhow::ensure,
     grug::{
-        Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+        Addr, Bytable, Denom, Hash256, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128,
+        Uint256,
     },
     hyperlane_types::{
         mailbox::Domain,
@@ -47,6 +49,7 @@ pub struct TokenMessage {
     // it will error on the destination chain which means the token is stuck on
     // the sender chain.
     pub amount: Uint128,
+    // For incoming transfers, this is expected to be `Metadata` in JSON encoding.
     pub metadata: HexBinary,
 }
 
@@ -77,6 +80,13 @@ impl TokenMessage {
             metadata: buf[64..].to_vec().into(),
         })
     }
+}
+
+#[grug::derive(Serde)]
+pub struct Metadata {
+    pub username: Username,
+    pub key: Key,
+    pub key_hash: Hash256,
 }
 
 #[grug::derive(Serde, Borsh)]

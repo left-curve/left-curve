@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CONFIG, KEYS, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -8,93 +8,42 @@ use {
             Username,
         },
         auth::Key,
-        DangoQuerier,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        Addr, Coins, Hash256, Inner, IsZero, Message, MutableCtx, Op, Order, Response, StdResult,
+        Storage,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
-    // Save the code hashes associated with the account types.
-    for (account_type, code_hash) in &msg.code_hashes {
-        CODE_HASHES.save(ctx.storage, *account_type, code_hash)?;
-    }
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    CONFIG.save(ctx.storage, &msg.config)?;
 
+    // Each genesis user gets a spot account created.
+    let code_hash = msg.config.code_hash_for(AccountType::Spot)?;
     let instantiate_msgs = msg
         .users
         .into_iter()
         .map(|(username, (key_hash, key))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, false)
+            onboard_new_user(
+                ctx.storage,
+                ctx.contract,
+                code_hash,
+                username,
+                key,
+                key_hash,
+                Coins::new(),
+            )
         })
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(Response::new().add_messages(instantiate_msgs))
 }
 
-// A new user who wishes to be onboarded must first make an initial deposit,
-// then send a transaction with the account factory as sender, that contains
-// exactly one message, to execute the factory itself with `Execute::RegisterUser`.
-// This transaction does not need to include any metadata or credential.
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
-    let mut msgs = tx.msgs.iter();
-
-    let (Some(Message::Execute(MsgExecute { contract, msg, .. })), None) =
-        (msgs.next(), msgs.next())
-    else {
-        bail!("transaction must contain exactly one message");
-    };
-
-    let Ok(ExecuteMsg::RegisterUser { .. }) = msg.clone().deserialize_json() else {
-        bail!("the execute message must be registering user");
-    };
-
-    ensure!(
-        contract == ctx.contract,
-        "the contract being executed must be the factory itself"
-    );
-
-    ensure!(
-        tx.data.is_null() && tx.credential.is_null(),
-        "unexpected transaction metadata or credential"
-    );
-
-    // Whereas normally during `CheckTx`, only `authenticate` and `withhold_fee`
-    // are performed, here we also execute the register user message.
-    //
-    // This is to prevent a spamming attack, where the attacker spams txs that
-    // contain an invalid register user message (i.e. the username already
-    // exists, or a deposit doesn't exist).
-    //
-    // If we don't ensure the message is valid using `CheckTx`, the transaction
-    // will make it into the mempool, and fail during `FinalizeBlock`, consuming
-    // the node's computing power at no cost to the attacker, since the factory
-    // is exempt from gas fees.
-    //
-    // The easy way to prevent this is to simply execute this message during
-    // `CheckTx`. If it's invalid, check fails, and the tx is rejected from
-    // entering mempool.
-    let maybe_msg = if ctx.mode == AuthMode::Check {
-        // We already asserted that `tx.msgs` contains exactly one message,
-        // so safe to unwrap here.
-        Some(tx.msgs.into_inner().pop().unwrap())
-    } else {
-        None
-    };
-
-    Ok(AuthResponse::new()
-        .may_add_message(maybe_msg)
-        .request_backrun(false))
-}
-
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::RegisterUser {
             username,
             key,
@@ -106,47 +55,37 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_ibc_transfer()?,
-        "only IBC transfer contract can make deposits"
-    );
-
-    // 1. If someone makes a depsoit twice, then we simply merge the deposits.
-    // 2. We trust the IBC transfer contract is implemented correctly and won't
-    // make empty deposits.
-    DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
-        if let Some(mut existing_deposit) = maybe_deposit {
-            for coin in ctx.funds {
-                existing_deposit.insert(coin)?;
-            }
-            Ok(existing_deposit)
-        } else {
-            Ok(ctx.funds)
-        }
-    })?;
-
-    Ok(Response::new())
-}
-
 fn register_user(
     ctx: MutableCtx,
     username: Username,
     key: Key,
     key_hash: Hash256,
 ) -> anyhow::Result<Response> {
+    let cfg = CONFIG.load(ctx.storage)?;
+
+    // The initial deposit must contain at least one supported denom and no less
+    // than the minimum amount.
+    ensure!(
+        ctx.funds.iter().any(|coin| {
+            let min = cfg.minimum_deposits.amount_of(&coin.denom);
+            min.is_non_zero() && *coin.amount >= min
+        }),
+        "insufficient deposit: {}, must be at least {}",
+        ctx.funds,
+        cfg.minimum_deposits
+    );
+
     // The username must not already exist.
     // We ensure this by asserting there isn't any key already associated with
     // this username, since any existing username necessarily has at least one
-    // key associated with it. (However, this key isn't necessarily index 1.)
-    if KEYS
-        .prefix(&username)
-        .keys(ctx.storage, None, None, Order::Ascending)
-        .next()
-        .is_some()
-    {
-        bail!("username `{}` already exists", username);
-    }
+    // key associated with it.
+    ensure!(
+        KEYS.prefix(&username)
+            .keys(ctx.storage, None, None, Order::Ascending)
+            .next()
+            .is_none(),
+        "username `{username}` already exists",
+    );
 
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
@@ -154,10 +93,11 @@ fn register_user(
     Ok(Response::new().add_message(onboard_new_user(
         ctx.storage,
         ctx.contract,
+        cfg.code_hash_for(AccountType::Spot)?,
         username,
         key,
         key_hash,
-        true,
+        ctx.funds,
     )?))
 }
 
@@ -166,14 +106,12 @@ fn register_user(
 fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
+    code_hash: Hash256,
     username: Username,
     key: Key,
     key_hash: Hash256,
-    must_have_deposit: bool,
+    funds: Coins,
 ) -> StdResult<Message> {
-    // A new user's 1st account is always a spot account.
-    let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
-
     // Increment the global account index, predict its address, and save the
     // account info under the username.
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
@@ -186,12 +124,6 @@ fn onboard_new_user(
     .into_bytes();
 
     let address = Addr::derive(factory, code_hash, &salt);
-
-    let funds = if must_have_deposit {
-        DEPOSITS.take(storage, &address)?
-    } else {
-        Coins::new()
-    };
 
     let account = Account {
         index,
@@ -233,13 +165,15 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         },
     }
 
+    let cfg = CONFIG.load(ctx.storage)?;
+
     // Increment the global account index. This is used in the salt for deriving
     // the account address.
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(ctx.storage)?;
     let salt = Salt { index }.into_bytes();
 
     // Find the code hash based on the account type.
-    let code_hash = CODE_HASHES.load(ctx.storage, params.ty())?;
+    let code_hash = cfg.code_hash_for(params.ty())?;
 
     // Derive the account address.
     let address = Addr::derive(ctx.contract, code_hash, &salt);

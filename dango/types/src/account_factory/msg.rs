@@ -4,6 +4,7 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
+    anyhow::anyhow,
     grug::{Addr, Coins, Hash256, Op},
     std::collections::BTreeMap,
 };
@@ -17,27 +18,40 @@ pub struct User {
     pub accounts: BTreeMap<Addr, Account>,
 }
 
-#[grug::derive(Serde)]
-pub struct InstantiateMsg {
+#[grug::derive(Serde, Borsh)]
+pub struct Config {
+    /// The minimum amount of deposit required to register a new user.
+    pub minimum_deposits: Coins,
     /// Code hash to be associated with each account type.
     pub code_hashes: BTreeMap<AccountType, Hash256>,
-    /// Users with associated key to set up during genesis.
-    /// Each genesis user is to be associated with exactly one key.
-    /// A spot account will be created for each genesis user.
+}
+
+impl Config {
+    pub fn code_hash_for(&self, ty: AccountType) -> anyhow::Result<Hash256> {
+        self.code_hashes
+            .get(&ty)
+            .copied()
+            .ok_or_else(|| anyhow!("code hash not found for account type: {ty}"))
+    }
+}
+
+#[grug::derive(Serde)]
+pub struct InstantiateMsg {
+    pub config: Config,
+    /// Users to be registered during genesis.
+    ///
+    ///
+    /// Note:
+    ///
+    /// - Each genesis user is to be associated with exactly one key.
+    /// - A spot account will be created for each genesis user.
+    /// - Genesis users don't need to make initial deposits.
     pub users: BTreeMap<Username, (Hash256, Key)>,
 }
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Make an initial deposit, prior to registering a username.
-    ///
-    /// This the first of the two-step user onboarding process.
-    ///
-    /// This method can only be invoked by the IBC transfer contract.
-    Deposit { recipient: Addr },
-    /// Create a new user, following an initial deposit.
-    ///
-    /// This is the second of the two-step user onboarding process.
+    /// Create a new user with an initial deposit.
     RegisterUser {
         username: Username,
         key: Key,
@@ -53,28 +67,13 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Return the account factory configuration.
+    #[returns(Config)]
+    Config {},
     /// Query the account index, which is used in deriving the account address,
     /// that will be used if a user is to create a new account.
     #[returns(AccountIndex)]
     NextAccountIndex {},
-    /// Query the code hash associated with the an account type.
-    #[returns(Hash256)]
-    CodeHash { account_type: AccountType },
-    /// Enumerate all code hashes associated with account types.
-    #[returns(BTreeMap<AccountType, Hash256>)]
-    CodeHashes {
-        start_after: Option<AccountType>,
-        limit: Option<u32>,
-    },
-    /// Query unclaimed deposit for the given address.
-    #[returns(Coins)]
-    Deposit { recipient: Addr },
-    /// Enumerate all unclaimed deposits.
-    #[returns(BTreeMap<Addr, Coins>)]
-    Deposits {
-        start_after: Option<Addr>,
-        limit: Option<u32>,
-    },
     /// Query a key by its hash associated to a username.
     #[returns(Key)]
     Key { hash: Hash256, username: Username },

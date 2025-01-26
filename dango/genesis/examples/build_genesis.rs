@@ -111,6 +111,9 @@ fn main() {
         },
         max_orphan_age: Duration::from_weeks(1),
         metadatas: btree_map! {},
+        minimum_deposits: coins! {
+            USDC_DENOM.clone() => 10_000_000, // 10 USDC
+        },
         markets: btree_map! {},
         price_sources: PYTH_PRICE_SOURCES.clone(),
         unlocking_cliff: Duration::from_weeks(4 * 9), // ~9 months

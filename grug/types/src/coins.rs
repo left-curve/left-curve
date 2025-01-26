@@ -337,6 +337,10 @@ impl Coins {
         Ok(Self(map))
     }
 
+    pub fn iter(&self) -> CoinsIter<'_> {
+        self.into_iter()
+    }
+
     // note that we provide iter and into_iter methods, but not iter_mut method,
     // because users may use it to perform illegal actions, such as setting a
     // denom's amount to zero. use increase_amount and decrease_amount methods

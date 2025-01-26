@@ -18,7 +18,8 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-anyhow          = { workspace = true }
-dango-types     = { workspace = true }
-grug            = { workspace = true }
-hyperlane-types = { workspace = true }
+anyhow                = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+grug                  = { workspace = true }
+hyperlane-types       = { workspace = true }

@@ -4,7 +4,7 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig},
-        dex, ibc,
+        dex,
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting, warp,
@@ -89,6 +89,8 @@ pub struct GenesisConfig<T> {
     pub max_orphan_age: Duration,
     /// Metadata of tokens.
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
+    /// Minimum deposits for registering new users.
+    pub minimum_deposits: Coins,
     /// Initial Dango lending markets.
     pub markets: BTreeMap<Denom, MarketUpdates>,
     /// Oracle price sources.
@@ -113,7 +115,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     let account_factory = ContractBuilder::new(Box::new(dango_account_factory::instantiate))
         .with_execute(Box::new(dango_account_factory::execute))
         .with_query(Box::new(dango_account_factory::query))
-        .with_authenticate(Box::new(dango_account_factory::authenticate))
         .build();
 
     let account_margin = ContractBuilder::new(Box::new(dango_account_margin::instantiate))
@@ -270,6 +271,7 @@ pub fn build_genesis<T>(
         fee_cfg,
         max_orphan_age,
         metadatas,
+        minimum_deposits,
         markets,
         price_sources,
         unlocking_cliff,
@@ -313,10 +315,13 @@ where
         &mut msgs,
         account_factory_code_hash,
         &account_factory::InstantiateMsg {
-            code_hashes: btree_map! {
-                AccountType::Margin => account_margin_code_hash,
-                AccountType::Safe   => account_safe_code_hash,
-                AccountType::Spot   => account_spot_code_hash,
+            config: account_factory::Config {
+                code_hashes: btree_map! {
+                    AccountType::Margin => account_margin_code_hash,
+                    AccountType::Safe   => account_safe_code_hash,
+                    AccountType::Spot   => account_spot_code_hash,
+                },
+                minimum_deposits,
             },
             users,
         },

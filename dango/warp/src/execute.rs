@@ -1,15 +1,18 @@
 use {
     crate::{MAILBOX, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
+    dango_account_factory::ACCOUNTS,
     dango_types::{
-        bank,
+        account_factory, bank,
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote, NAMESPACE,
+            ExecuteMsg, Handle, InstantiateMsg, Metadata, Route, TokenMessage, TransferRemote,
+            NAMESPACE,
         },
+        DangoQuerier,
     },
     grug::{
-        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierExt, Response,
-        StdResult,
+        Addr, Coin, Coins, Denom, HexBinary, IsZero, JsonDeExt, Message, MutableCtx, Number,
+        QuerierExt, Response, StdResult,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
@@ -157,32 +160,81 @@ fn handle(
 
     // Deserialize the message.
     let body = TokenMessage::decode(&body)?;
+
+    // Find the local denom corresponding to the origin domain and sender.
     let denom = REVERSE_ROUTES.load(ctx.storage, (origin_domain, sender))?;
 
-    Ok(Response::new()
-        // If the denom is synthetic, then mint the token.
-        // Otherwise, if it's a collateral, then release the collateral.
-        .add_message(if denom.namespace() == Some(&NAMESPACE) {
+    // Find whether the recipient address exists.
+    let account_factory = ctx.querier.query_account_factory()?;
+    let recipient: Addr = body.recipient.try_into()?;
+    let recipient_exists = ctx
+        .querier
+        .query_wasm_raw(account_factory, ACCOUNTS.path(recipient).storage_key())?
+        .is_some();
+
+    let res = match (denom.namespace() == Some(&NAMESPACE), recipient_exists) {
+        // Minting synthetic token to an existing recipient.
+        (true, true) => {
             let bank = ctx.querier.query_bank()?;
-            Message::execute(
+            Response::new().add_message(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
-                    to: body.recipient.try_into()?,
+                    to: recipient,
                     denom: denom.clone(),
                     amount: body.amount,
                 },
                 Coins::new(),
-            )?
-        } else {
-            // TODO: check whether the recipient exists; if not, register it at account factory.
-            Message::transfer(body.recipient.try_into()?, Coin {
+            )?)
+        },
+        // Release escrowed collateral to an existing recipient.
+        (false, true) => {
+            Response::new().add_message(Message::transfer(body.recipient.try_into()?, Coin {
                 denom: denom.clone(),
                 amount: body.amount,
-            })?
-        })
-        .add_event("handle", &Handle {
-            recipient: body.recipient,
-            token: denom,
-            amount: body.amount,
-        })?)
+            })?)
+        },
+        // Minting synthetic token to a non-existing recipient.
+        (true, false) => {
+            let bank = ctx.querier.query_bank()?;
+            let metadata: Metadata = body.metadata.deserialize_json()?;
+            Response::new()
+                .add_message(Message::execute(
+                    bank,
+                    &bank::ExecuteMsg::Mint {
+                        to: ctx.contract,
+                        denom: denom.clone(),
+                        amount: body.amount,
+                    },
+                    Coins::new(),
+                )?)
+                .add_message(Message::execute(
+                    account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: metadata.username,
+                        key: metadata.key,
+                        key_hash: metadata.key_hash,
+                    },
+                    Coins::one(denom.clone(), body.amount)?,
+                )?)
+        },
+        // Release escrowed collateral to a non-existing recipient.
+        (false, false) => {
+            let metadata: Metadata = body.metadata.deserialize_json()?;
+            Response::new().add_message(Message::execute(
+                account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    username: metadata.username,
+                    key: metadata.key,
+                    key_hash: metadata.key_hash,
+                },
+                Coins::one(denom.clone(), body.amount)?,
+            )?)
+        },
+    };
+
+    Ok(res.add_event("handle", &Handle {
+        recipient: body.recipient,
+        token: denom,
+        amount: body.amount,
+    })?)
 }

@@ -1,15 +1,13 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CONFIG, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{
-            Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryMsg, User, Username,
+            Account, AccountIndex, Config, QueryKeyPaginateParam, QueryKeyResponseItem, QueryMsg,
+            User, Username,
         },
         auth::Key,
     },
-    grug::{
-        Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
-    },
+    grug::{Addr, Bound, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
 };
 
@@ -18,24 +16,12 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::Config {} => {
+            let res = query_config(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::NextAccountIndex {} => {
             let res = query_next_account_index(ctx.storage)?;
-            res.to_json_value()
-        },
-        QueryMsg::CodeHash { account_type } => {
-            let res = query_code_hash(ctx.storage, account_type)?;
-            res.to_json_value()
-        },
-        QueryMsg::CodeHashes { start_after, limit } => {
-            let res = query_code_hashes(ctx.storage, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::Deposit { recipient } => {
-            let res = query_deposit(ctx, recipient)?;
-            res.to_json_value()
-        },
-        QueryMsg::Deposits { start_after, limit } => {
-            let res = query_deposits(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Key { hash, username } => {
@@ -70,44 +56,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     .map_err(Into::into)
 }
 
+fn query_config(storage: &dyn Storage) -> StdResult<Config> {
+    CONFIG.load(storage)
+}
+
 fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
     NEXT_ACCOUNT_INDEX.current(storage)
-}
-
-fn query_code_hash(storage: &dyn Storage, account_type: AccountType) -> StdResult<Hash256> {
-    CODE_HASHES.load(storage, account_type)
-}
-
-fn query_code_hashes(
-    storage: &dyn Storage,
-    start_after: Option<AccountType>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<AccountType, Hash256>> {
-    let start = start_after.map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    CODE_HASHES
-        .range(storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
-}
-
-fn query_deposit(ctx: ImmutableCtx, recipient: Addr) -> StdResult<Option<Coins>> {
-    DEPOSITS.may_load(ctx.storage, &recipient)
-}
-
-fn query_deposits(
-    ctx: ImmutableCtx,
-    start_after: Option<Addr>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, Coins>> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    DEPOSITS
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
 }
 
 fn query_key(storage: &dyn Storage, hash: Hash256, username: Username) -> StdResult<Key> {

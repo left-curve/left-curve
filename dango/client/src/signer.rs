@@ -211,10 +211,7 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory,
-                    // the other addresses don't matter
-                    ibc_transfer: Addr::mock(0),
-                    lending: Addr::mock(0),
-                    oracle: Addr::mock(0),
+                    ..Default::default()
                 },
                 collateral_powers: Default::default(),
                 ..Default::default()
