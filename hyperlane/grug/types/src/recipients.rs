@@ -1,5 +1,3 @@
-pub mod warp;
-
 use {
     crate::{mailbox::Domain, Addr32},
     grug::{Addr, HexBinary},

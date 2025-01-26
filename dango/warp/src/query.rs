@@ -1,12 +1,10 @@
 use {
     crate::{MAILBOX, ROUTES},
+    dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
     grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     hyperlane_types::{
         mailbox::Domain,
-        recipients::{
-            warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
-            RecipientQuery, RecipientQueryResponse,
-        },
+        recipients::{RecipientQuery, RecipientQueryResponse},
     },
 };
 
