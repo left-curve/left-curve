@@ -2,8 +2,8 @@ use {
     crate::{account_factory::Username, auth::Key},
     anyhow::ensure,
     grug::{
-        Addr, Bytable, Denom, Hash256, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128,
-        Uint256,
+        Addr, Bytable, Coin, Denom, Hash256, HexBinary, Inner, NextNumber, Part, PrevNumber,
+        Uint128, Uint256,
     },
     hyperlane_types::{
         mailbox::Domain,
@@ -140,6 +140,13 @@ pub enum ExecuteMsg {
     Recipient(RecipientMsg),
 }
 
+#[grug::derive(Serde)]
+pub enum ReplyMsg {
+    /// Handle the case if onbaording fails, possibly due to duplicate username
+    /// or insufficient deposit.
+    AfterFailedOnboard { username: Username, deposit: Coin },
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query the address of the mailbox contract.
@@ -193,4 +200,11 @@ pub struct Handle {
     pub recipient: Addr32,
     pub token: Denom,
     pub amount: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct FailedOnboard {
+    pub username: Username,
+    pub deposit: Coin,
+    pub error: String,
 }

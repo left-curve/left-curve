@@ -3,16 +3,17 @@ use {
     anyhow::{anyhow, ensure},
     dango_account_factory::ACCOUNTS,
     dango_types::{
-        account_factory, bank,
+        account_factory::{self, Username},
+        bank,
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, Metadata, Route, TokenMessage, TransferRemote,
-            NAMESPACE,
+            ExecuteMsg, FailedOnboard, Handle, InstantiateMsg, Metadata, ReplyMsg, Route,
+            TokenMessage, TransferRemote, NAMESPACE,
         },
         DangoQuerier,
     },
     grug::{
         Addr, Coin, Coins, Denom, HexBinary, IsZero, JsonDeExt, Message, MutableCtx, Number,
-        QuerierExt, Response, StdResult,
+        QuerierExt, Response, ResultExt, StdResult, SubMessage, SubMsgResult, SudoCtx,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
@@ -145,7 +146,6 @@ fn transfer_remote(
         })?)
 }
 
-// TODO: handle any the error that can happen here
 #[inline]
 fn handle(
     ctx: MutableCtx,
@@ -197,6 +197,7 @@ fn handle(
         (true, false) => {
             let bank = ctx.querier.query_bank()?;
             let metadata: Metadata = body.metadata.deserialize_json()?;
+            let deposit = Coin::new(denom.clone(), body.amount)?;
             Response::new()
                 .add_message(Message::execute(
                     bank,
@@ -207,27 +208,40 @@ fn handle(
                     },
                     Coins::new(),
                 )?)
-                .add_message(Message::execute(
-                    account_factory,
-                    &account_factory::ExecuteMsg::RegisterUser {
+                .add_submessage(SubMessage::reply_on_error(
+                    Message::execute(
+                        account_factory,
+                        &account_factory::ExecuteMsg::RegisterUser {
+                            username: metadata.username.clone(),
+                            key: metadata.key,
+                            key_hash: metadata.key_hash,
+                        },
+                        deposit.clone(),
+                    )?,
+                    &ReplyMsg::AfterFailedOnboard {
                         username: metadata.username,
-                        key: metadata.key,
-                        key_hash: metadata.key_hash,
+                        deposit,
                     },
-                    Coins::one(denom.clone(), body.amount)?,
                 )?)
         },
         // Release escrowed collateral to a non-existing recipient.
         (false, false) => {
             let metadata: Metadata = body.metadata.deserialize_json()?;
-            Response::new().add_message(Message::execute(
-                account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
+            let deposit = Coin::new(denom.clone(), body.amount)?;
+            Response::new().add_submessage(SubMessage::reply_on_error(
+                Message::execute(
+                    account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: metadata.username.clone(),
+                        key: metadata.key,
+                        key_hash: metadata.key_hash,
+                    },
+                    deposit.clone(),
+                )?,
+                &ReplyMsg::AfterFailedOnboard {
                     username: metadata.username,
-                    key: metadata.key,
-                    key_hash: metadata.key_hash,
+                    deposit,
                 },
-                Coins::one(denom.clone(), body.amount)?,
             )?)
         },
     };
@@ -237,4 +251,36 @@ fn handle(
         token: denom,
         amount: body.amount,
     })?)
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterFailedOnboard { username, deposit } => {
+            after_failed_onboard(ctx, username, deposit, res.should_fail())
+        },
+    }
+}
+
+/// Following a failed user onboarding, possibly due to duplicate username or
+/// insufficient deposit, send the deposit to the chain owner and emit an event.
+///
+/// This shouldn't happen if user uses the UI properly. If it does happen, guide
+/// the user to contact support for a refund.
+#[inline]
+fn after_failed_onboard(
+    ctx: SudoCtx,
+    username: Username,
+    deposit: Coin,
+    error: String,
+) -> StdResult<Response> {
+    let owner = ctx.querier.query_owner()?;
+
+    Ok(Response::new()
+        .add_message(Message::transfer(owner, deposit.clone())?)
+        .add_event("failed_onboard", FailedOnboard {
+            username,
+            deposit,
+            error,
+        })?)
 }
