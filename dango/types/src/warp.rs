@@ -1,12 +1,12 @@
 use {
-    crate::{
-        mailbox::Domain,
-        recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
-        Addr32,
-    },
     anyhow::ensure,
     grug::{
         Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+    },
+    hyperlane_types::{
+        mailbox::Domain,
+        recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
+        Addr32,
     },
     std::sync::LazyLock,
 };

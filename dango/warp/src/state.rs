@@ -1,6 +1,7 @@
 use {
+    dango_types::warp::Route,
     grug::{Addr, Denom, Item, Map},
-    hyperlane_types::{mailbox::Domain, recipients::warp::Route, Addr32},
+    hyperlane_types::{mailbox::Domain, Addr32},
 };
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");

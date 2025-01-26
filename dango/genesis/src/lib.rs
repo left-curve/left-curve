@@ -7,7 +7,7 @@ use {
         dex, ibc,
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
-        taxman, vesting,
+        taxman, vesting, warp,
     },
     grug::{
         btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
@@ -18,7 +18,6 @@ use {
         hooks,
         isms::{self, multisig::ValidatorSet},
         mailbox::{self, Domain},
-        recipients::warp,
         Addr32,
     },
     serde::Serialize,
@@ -40,6 +39,7 @@ pub struct Contracts {
     pub oracle: Addr,
     pub taxman: Addr,
     pub vesting: Addr,
+    pub warp: Addr,
 }
 
 #[derive(Clone, Copy)]
@@ -56,6 +56,7 @@ pub struct Codes<T> {
     pub oracle: T,
     pub taxman: T,
     pub vesting: T,
+    pub warp: T,
 }
 
 #[grug::derive(Serde)]
@@ -65,7 +66,6 @@ pub struct Hyperlane<T> {
     pub ism: T,
     pub mailbox: T,
     pub merkle: T,
-    pub warp: T,
 }
 
 pub struct GenesisUser {
@@ -105,8 +105,8 @@ pub struct GenesisConfig<T> {
     pub hyperlane_local_domain: Domain,
     /// Hyperlane validator sets for remote domains.
     pub hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
-    /// Hyperlane token transfer routes.
-    pub hyperlane_warp_routes: BTreeMap<(Denom, Domain), Addr32>,
+    /// Warp token transfer routes.
+    pub warp_routes: BTreeMap<(Denom, Domain), Addr32>,
     // TODO: add margin account parameters (collateral powers and liquidation)
 }
 
@@ -172,11 +172,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(hyperlane_merkle::query))
         .build();
 
-    let warp = ContractBuilder::new(Box::new(hyperlane_warp::instantiate))
-        .with_execute(Box::new(hyperlane_warp::execute))
-        .with_query(Box::new(hyperlane_warp::query))
-        .build();
-
     let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
         .with_execute(Box::new(dango_ibc_transfer::execute))
         .build();
@@ -204,6 +199,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_vesting::query))
         .build();
 
+    let warp = ContractBuilder::new(Box::new(dango_warp::instantiate))
+        .with_execute(Box::new(dango_warp::execute))
+        .with_query(Box::new(dango_warp::query))
+        .build();
+
     Codes {
         account_factory,
         account_margin,
@@ -216,13 +216,13 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
             ism,
             mailbox,
             merkle,
-            warp,
         },
         ibc_transfer,
         lending,
         oracle,
         taxman,
         vesting,
+        warp,
     }
 }
 
@@ -241,12 +241,12 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
-    let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
     let vesting = fs::read(artifacts_dir.join("dango_vesting.wasm"))?;
+    let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
 
     Ok(Codes {
         account_factory,
@@ -260,13 +260,13 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
             ism,
             mailbox,
             merkle,
-            warp,
         },
         ibc_transfer,
         lending,
         oracle,
         taxman,
         vesting,
+        warp,
     })
 }
 
@@ -287,7 +287,7 @@ pub fn build_genesis<T>(
         hyperlane_local_domain,
         hyperlane_ism_validator_sets,
         // TODO: allow setting warp routes during instantiation
-        hyperlane_warp_routes: _,
+        warp_routes: _,
     }: GenesisConfig<T>,
 ) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
 where
@@ -306,12 +306,12 @@ where
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
-    let hyperlane_warp_code_hash = upload(&mut msgs, codes.hyperlane.warp);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
     let vesting_code_hash = upload(&mut msgs, codes.vesting);
+    let warp_code_hash = upload(&mut msgs, codes.warp);
 
     // Instantiate account factory.
     let users = genesis_users
@@ -386,13 +386,13 @@ where
         "hyperlane/ism/multisig",
     )?;
 
-    // Instantiate Hyperlane Warp contract.
+    // Instantiate Warp contract.
     let warp = instantiate(
         &mut msgs,
-        hyperlane_warp_code_hash,
+        warp_code_hash,
         &warp::InstantiateMsg { mailbox },
-        "hyperlane/warp",
-        "hyperlane/warp",
+        "dango/warp",
+        "dango/warp",
     )?;
 
     // Instantiate Hyperlane mailbox. Ensure address is the same as the predicted.
@@ -511,13 +511,13 @@ where
             ism,
             mailbox,
             merkle,
-            warp,
         },
         ibc_transfer,
         lending,
         oracle,
         taxman,
         vesting,
+        warp,
     };
 
     let permissions = Permissions {

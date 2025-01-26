@@ -11,5 +11,6 @@ pub mod oracle;
 mod querier;
 pub mod taxman;
 pub mod vesting;
+pub mod warp;
 
 pub use querier::DangoQuerier;

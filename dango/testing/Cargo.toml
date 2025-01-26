@@ -34,10 +34,10 @@ criterion             = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
+dango-warp            = { workspace = true, features = ["library"] }
 dotenvy               = { workspace = true }
 grug-crypto           = { workspace = true }
 hyperlane-types       = { workspace = true }
-hyperlane-warp        = { workspace = true, features = ["library"] }
 proptest              = { workspace = true }
 pyth-sdk              = { workspace = true }
 rand                  = { workspace = true }
