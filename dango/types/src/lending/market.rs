@@ -24,6 +24,18 @@ pub struct Market {
 }
 
 impl Market {
+    /// Computes the utilization rate of this market.
+    pub fn utilization_rate(&self) -> anyhow::Result<Udec128> {
+        if self.total_supplied == Uint128::ZERO {
+            return Ok(Udec128::ZERO);
+        }
+
+        Ok(Udec128::checked_from_ratio(
+            self.total_borrowed,
+            self.total_supplied,
+        )?)
+    }
+
     /// Immutably updates the indices of this market and returns the new market
     /// state.
     pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
@@ -33,8 +45,7 @@ impl Market {
         }
 
         // Calculate interest rates
-        let utilization_rate =
-            Udec128::checked_from_ratio(self.total_borrowed, self.total_supplied)?;
+        let utilization_rate = self.utilization_rate()?;
         let rates = self.interest_rate_model.calculate_rates(utilization_rate)?;
 
         // Update the indices
