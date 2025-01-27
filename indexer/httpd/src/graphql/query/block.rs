@@ -20,7 +20,17 @@ pub enum SortBy {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BlockCursor(u64);
+pub struct BlockCursor {
+    block_height: i64,
+}
+
+impl From<types::block::Block> for BlockCursor {
+    fn from(block: types::block::Block) -> Self {
+        Self {
+            block_height: block.block_height as i64,
+        }
+    }
+}
 
 pub type BlockCursorType = OpaqueCursor<BlockCursor>;
 
@@ -72,21 +82,21 @@ impl BlockQuery {
                 match (after, before, first, last) {
                     (after, None, first, None) => {
                         if let Some(after) = after {
-                            query = apply_filter(query, sort_by, after.0);
+                            query = apply_filter(query, sort_by, &after);
                         }
 
                         limit = first.map(|x| x as u64).unwrap_or(MAX_BLOCKS);
 
-                        query = query.limit(limit);
+                        query = query.limit(limit + 1);
                     }
                     (None, before, None, last) => {
                         if let Some(before) = before {
-                            query = apply_filter(query, sort_by, before.0);
+                            query = apply_filter(query, sort_by, &before);
                         }
 
                         limit = last.map(|x| x as u64).unwrap_or(MAX_BLOCKS);
 
-                        query = query.limit(limit);
+                        query = query.limit(limit + 1);
                     }
                     _ => unreachable!()
                 }
@@ -123,7 +133,7 @@ impl BlockQuery {
                     .into_iter()
                     .map(|block|
                         Edge::with_additional_fields(
-                            OpaqueCursor(BlockCursor(block.block_height)),
+                            OpaqueCursor(block.clone().into()),
                             block,
                             EmptyFields
                         )
@@ -136,13 +146,13 @@ impl BlockQuery {
     }
 }
 
-fn apply_filter(query: Select<Blocks>, sort_by: SortBy, after: BlockCursor) -> Select<Blocks> {
+fn apply_filter(query: Select<Blocks>, sort_by: SortBy, after: &BlockCursor) -> Select<Blocks> {
     match sort_by {
         SortBy::BlockHeightAsc => {
-            query.filter(entity::blocks::Column::BlockHeight.lt(after.0 as i64))
+            query.filter(entity::blocks::Column::BlockHeight.lt(after.block_height))
         },
         SortBy::BlockHeightDesc => {
-            query.filter(entity::blocks::Column::BlockHeight.gt(after.0 as i64))
+            query.filter(entity::blocks::Column::BlockHeight.gt(after.block_height))
         },
     }
 }

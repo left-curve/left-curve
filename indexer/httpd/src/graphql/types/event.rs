@@ -9,27 +9,21 @@ use {
 #[serde(rename_all = "camelCase")]
 #[graphql(complex)]
 #[serde(default)]
-pub struct Message {
+pub struct Event {
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
-    pub order_idx: i32,
-    pub method_name: String,
-    pub contract_addr: Option<String>,
-    pub sender_addr: String,
+    pub event_idx: i32,
 }
 
-impl From<entity::messages::Model> for Message {
-    fn from(item: entity::messages::Model) -> Self {
+impl From<entity::events::Model> for Event {
+    fn from(item: entity::events::Model) -> Self {
         Self {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            order_idx: item.order_idx as i32,
-            method_name: item.method_name.clone(),
-            contract_addr: item.contract_addr.clone(),
-            sender_addr: item.sender_addr.clone(),
+            event_idx: item.event_idx,
         }
     }
 }
 
 #[ComplexObject]
-impl Message {}
+impl Event {}
