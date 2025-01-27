@@ -50,9 +50,7 @@ impl NewUserSalt<'_> {
         // - key_tag: 1
         // - key: 33
         // Total: 82 bytes.
-
         let mut bytes = [0; 82];
-
         bytes[0] = self.username.len();
         bytes[1..1 + self.username.len() as usize].copy_from_slice(self.username.as_ref());
         bytes[16..48].copy_from_slice(&self.key_hash);
