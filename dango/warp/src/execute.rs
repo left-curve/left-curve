@@ -131,7 +131,7 @@ fn transfer_remote(
                 }
             },
         )?)
-        .add_event("transfer_remote", &TransferRemote {
+        .add_event(TransferRemote {
             sender: ctx.sender,
             destination_domain,
             recipient,
@@ -180,7 +180,7 @@ fn handle(
                 amount: body.amount,
             })?
         })
-        .add_event("handle", &Handle {
+        .add_event(Handle {
             recipient: body.recipient,
             token: denom,
             amount: body.amount,

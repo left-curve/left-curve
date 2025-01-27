@@ -1,9 +1,15 @@
 mod derive;
+mod event;
 mod export;
 mod index_list;
 mod query;
 
 use proc_macro::TokenStream;
+
+#[proc_macro_attribute]
+pub fn event(attr: TokenStream, input: TokenStream) -> TokenStream {
+    event::process(attr, input)
+}
 
 #[proc_macro_attribute]
 pub fn derive(attr: TokenStream, input: TokenStream) -> TokenStream {
