@@ -1,6 +1,5 @@
 use {
-    grug::{ByteArray, Hash256, Inner},
-    grug_crypto::Identity256,
+    grug::ByteArray,
     k256::{
         ecdsa::{signature::Signer, Signature, SigningKey},
         elliptic_curve::rand_core::OsRng,
@@ -26,10 +25,4 @@ pub fn create_signature(sk: &SigningKey, sign_bytes: &[u8]) -> ByteArray<64> {
     let signature: Signature = sk.sign(sign_bytes);
 
     signature.to_bytes().as_slice().try_into().unwrap()
-}
-
-pub fn create_recoverable_signature(sk: &SigningKey, sign_bytes: Hash256) -> ([u8; 64], u8) {
-    let sign_bytes = Identity256::from(sign_bytes.into_inner());
-    let (signature, recovery_id) = sk.sign_digest_recoverable(sign_bytes).unwrap();
-    (signature.to_bytes().into(), recovery_id.to_byte())
 }

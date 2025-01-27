@@ -1,32 +1,43 @@
 use {
-    dango_testing::{create_recoverable_signature, setup_test, TestAccount},
-    grug::{Addr, Coins, HashExt, HexByteArray, QuerierExt, ResultExt},
+    dango_testing::{generate_random_key, setup_test},
+    grug::{
+        Addr, Addressable, Coins, ContractEvent, HashExt, HexByteArray, Inner, JsonDeExt,
+        QuerierExt, ResultExt, SearchEvent,
+    },
+    grug_crypto::Identity256,
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         mailbox::{self, Domain},
-        va::{self, VA_DOMAIN_KEY},
+        va::{self, Announce, VA_DOMAIN_KEY},
     },
+    k256::ecdsa::SigningKey,
     std::collections::{BTreeMap, BTreeSet},
 };
 
 struct MockAnnouncement {
+    sk: SigningKey,
     validator: HexByteArray<20>,
     signature: HexByteArray<65>,
     storage_location: String,
 }
 
 impl MockAnnouncement {
-    fn new(
-        account: &TestAccount,
+    fn new(mailbox: Addr, local_domain: Domain, storage_location: &str) -> Self {
+        let (sk, _) = generate_random_key();
+
+        Self::new_with_singing_key(sk, mailbox, local_domain, storage_location)
+    }
+
+    fn new_with_singing_key(
+        sk: SigningKey,
         mailbox: Addr,
         local_domain: Domain,
         storage_location: &str,
     ) -> Self {
-        // Retrieve validator address.
-        let singing_key = account.first_signing_key();
-        let public_key = singing_key.verifying_key().to_encoded_point(false);
-        let pk_hash = (&public_key.as_bytes()[1..]).keccak256();
-        let validator = &pk_hash[12..];
+        // We need the _uncompressed_ pubkey for deriving Ethereum address.
+        let pk = sk.verifying_key().to_encoded_point(false).to_bytes();
+        let pk_hash = (&pk[1..]).keccak256();
+        let validator_address = &pk_hash[12..];
 
         // Create msg to sign.
         let message_hash = eip191_hash(announcement_hash(
@@ -34,15 +45,18 @@ impl MockAnnouncement {
             storage_location,
         ));
 
-        // Create signature.
-        let (signature, recover_id) = create_recoverable_signature(singing_key, message_hash);
-        let mut recoverable_signature = [0u8; 65];
-        recoverable_signature[..64].copy_from_slice(&signature);
-        recoverable_signature[64] = recover_id + 27; // Add 27 to recover_id.
+        let (signature, recovery_id) = sk
+            .sign_digest_recoverable(Identity256::from(message_hash.into_inner()))
+            .unwrap();
+
+        let mut packed = [0u8; 65];
+        packed[..64].copy_from_slice(&signature.to_bytes());
+        packed[64] = recovery_id.to_byte() + 27;
 
         Self {
-            validator: validator.try_into().unwrap(),
-            signature: HexByteArray::from_inner(recoverable_signature),
+            sk,
+            validator: validator_address.try_into().unwrap(),
+            signature: packed.into(),
             storage_location: storage_location.to_string(),
         }
     }
@@ -52,6 +66,8 @@ impl MockAnnouncement {
 fn test_announce() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
+    let mut signer = accounts.user1;
+
     let mailbox = contracts.hyperlane.mailbox;
     let local_domain = suite
         .query_wasm_smart(mailbox, mailbox::QueryConfigRequest {})
@@ -60,174 +76,209 @@ fn test_announce() {
 
     let va = contracts.hyperlane.va;
 
+    let mut validators_expected = BTreeSet::new();
+    let mut storage_locations_expected = BTreeMap::new();
+
     // Create a working announcement.
-    let announcement = MockAnnouncement::new(
-        &accounts.user1,
-        mailbox,
-        local_domain,
-        "Test/Storage/Location",
-    );
+    let announcement = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location");
 
-    suite
-        .execute(
-            &mut accounts.user1,
-            va,
-            &va::ExecuteMsg::Announce {
+    // Adding a valid announcement.
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                Coins::new(),
+            )
+            .should_succeed()
+            .events
+            .search_event::<ContractEvent>()
+            .with_predicate(|evt| evt.ty == "validator_announcement")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json::<Announce>()
+            .should_succeed_and_equal(Announce {
+                sender: signer.address(),
+                validator: announcement.validator,
                 storage_location: announcement.storage_location.clone(),
-                validator: announcement.validator,
-                signature: announcement.signature,
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+            });
 
-    // Check that the validator was added to the validators.
-    let mut validators_expected = BTreeSet::from([announcement.validator]);
+        // Check that the validator was added to the validators.
+        validators_expected.insert(announcement.validator);
 
-    let validators_query = suite
-        .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
-        .should_succeed();
-    assert_eq!(validators_query, validators_expected);
+        suite
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .should_succeed_and_equal(validators_expected.clone());
 
-    // Check that the validator was added to the storage locations.
-    let mut storage_locations_expected = BTreeMap::from([(
-        announcement.validator,
-        BTreeSet::from(["Test/Storage/Location".to_string()]),
-    )]);
+        // Check that the validator was added to the storage locations.
+        storage_locations_expected.insert(
+            announcement.validator,
+            BTreeSet::from(["Test/Storage/Location".to_string()]),
+        );
 
-    let storage_locations_query = suite
-        .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-            validators: BTreeSet::from_iter([announcement.validator]),
-        })
-        .should_succeed();
-    assert_eq!(storage_locations_query, storage_locations_expected);
+        suite
+            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+                validators: BTreeSet::from_iter([announcement.validator]),
+            })
+            .should_succeed_and_equal(storage_locations_expected.clone());
+    }
 
-    // Adding for second time same validator and same storage location;
-    // there should be no changes.
-    suite
-        .execute(
-            &mut accounts.user1,
-            va,
-            &va::ExecuteMsg::Announce {
-                storage_location: announcement.storage_location,
-                validator: announcement.validator,
-                signature: announcement.signature,
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    // Adding the same announcement again (success but no changes).
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location,
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                Coins::new(),
+            )
+            .should_succeed();
 
-    // Check that there are no changes.
-    let validators_query = suite
-        .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
-        .should_succeed();
-    assert_eq!(validators_query, validators_expected);
+        // Check that there are no changes.
+        suite
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .should_succeed_and_equal(validators_expected.clone());
 
-    let storage_locations_query = suite
-        .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-            validators: BTreeSet::from_iter([announcement.validator]),
-        })
-        .should_succeed();
-    assert_eq!(storage_locations_query, storage_locations_expected);
+        suite
+            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+                validators: BTreeSet::from_iter([announcement.validator]),
+            })
+            .should_succeed_and_equal(storage_locations_expected.clone());
+    }
 
     // Adding same validator with different storage location.
-    let announcement_2 = MockAnnouncement::new(
-        &accounts.user1,
-        mailbox,
-        local_domain,
-        "Test/Storage/Location/2",
-    );
+    {
+        let announcement2 = MockAnnouncement::new_with_singing_key(
+            announcement.sk,
+            mailbox,
+            local_domain,
+            "Test/Storage/Location/2",
+        );
 
-    suite
-        .execute(
-            &mut accounts.user1,
-            va,
-            &va::ExecuteMsg::Announce {
-                storage_location: announcement_2.storage_location.clone(),
-                validator: announcement_2.validator,
-                signature: announcement_2.signature,
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement2.storage_location.clone(),
+                    validator: announcement2.validator,
+                    signature: announcement2.signature,
+                },
+                Coins::new(),
+            )
+            .should_succeed()
+            .events
+            .search_event::<ContractEvent>()
+            .with_predicate(|evt| evt.ty == "validator_announcement")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json::<Announce>()
+            .should_succeed_and_equal(Announce {
+                sender: signer.address(),
+                validator: announcement2.validator,
+                storage_location: announcement2.storage_location.clone(),
+            });
 
-    // Check that the validator was added to the validators.
-    validators_expected.insert(announcement_2.validator);
+        // Check there are no change in validators.
+        suite
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .should_succeed_and_equal(validators_expected.clone());
 
-    let validators_query = suite
-        .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
-        .should_succeed();
-    assert_eq!(validators_query, validators_expected);
+        // Check that the storage location was added.
+        storage_locations_expected
+            .get_mut(&announcement.validator)
+            .unwrap()
+            .insert(announcement2.storage_location);
 
-    // Check that the storage location was added.
-    let storage_locations_query = suite
-        .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-            validators: BTreeSet::from_iter([announcement.validator]),
-        })
-        .should_succeed();
-
-    storage_locations_expected
-        .get_mut(&announcement.validator)
-        .unwrap()
-        .insert(announcement_2.storage_location);
-
-    assert_eq!(storage_locations_query, storage_locations_expected);
+        suite
+            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+                validators: BTreeSet::from_iter([announcement.validator]),
+            })
+            .should_succeed_and_equal(storage_locations_expected.clone());
+    }
 
     // Adding a different validator.
-    let announcement_3 = MockAnnouncement::new(
-        &accounts.user2,
-        mailbox,
-        local_domain,
-        "Test/Storage/Location/3",
-    );
+    {
+        let announcement3 = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location/3");
 
-    suite
-        .execute(
-            &mut accounts.user2,
-            va,
-            &va::ExecuteMsg::Announce {
-                storage_location: announcement_3.storage_location.clone(),
-                validator: announcement_3.validator,
-                signature: announcement_3.signature,
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+        suite
+            .execute(
+                &mut accounts.user2,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement3.storage_location.clone(),
+                    validator: announcement3.validator,
+                    signature: announcement3.signature,
+                },
+                Coins::new(),
+            )
+            .should_succeed()
+            .events
+            .search_event::<ContractEvent>()
+            .with_predicate(|evt| evt.ty == "validator_announcement")
+            .take()
+            .one()
+            .event
+            .data
+            .deserialize_json::<Announce>()
+            .should_succeed_and_equal(Announce {
+                sender: accounts.user2.address(),
+                validator: announcement3.validator,
+                storage_location: announcement3.storage_location.clone(),
+            });
 
-    // Check that the storage location was added.
-    let storage_locations_query = suite
-        .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-            validators: BTreeSet::from_iter([announcement.validator, announcement_3.validator]),
-        })
-        .should_succeed();
+        // Check that the validator was added to the validators.
+        validators_expected.insert(announcement3.validator);
 
-    storage_locations_expected.insert(
-        announcement_3.validator,
-        BTreeSet::from([announcement_3.storage_location]),
-    );
+        suite
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .should_succeed_and_equal(validators_expected.clone());
 
-    assert_eq!(storage_locations_query, storage_locations_expected);
+        // Check that the storage location was added.
+        storage_locations_expected.insert(
+            announcement3.validator,
+            BTreeSet::from([announcement3.storage_location]),
+        );
 
-    // Creating a failing announcement for different local denom.
-    let announcement = MockAnnouncement::new(
-        &accounts.user1,
-        mailbox,
-        local_domain + 1,
-        "Test/Storage/Location",
-    );
+        suite
+            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+                validators: BTreeSet::from_iter([announcement.validator, announcement3.validator]),
+            })
+            .should_succeed_and_equal(storage_locations_expected.clone());
+    }
 
-    suite
-        .execute(
-            &mut accounts.user1,
-            va,
-            &va::ExecuteMsg::Announce {
-                storage_location: announcement.storage_location,
-                validator: announcement.validator,
-                signature: announcement.signature,
-            },
-            Coins::new(),
-        )
-        .should_fail_with_error("pubkey mismatch");
+    // Try adding a invalid announcement with different local domain
+    // (should fail for pubkey mismatch).
+    {
+        let announcement =
+            MockAnnouncement::new(mailbox, local_domain + 1, "Test/Storage/Location");
+
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location,
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                Coins::new(),
+            )
+            .should_fail_with_error("pubkey mismatch");
+    }
 }
 
 #[test]
@@ -242,16 +293,12 @@ fn test_query() {
         .local_domain;
 
     // Assert that the local domain is correct.
-    let local_domain_query = suite
+    suite
         .query_wasm_smart(va, va::QueryLocalDomainRequest {})
-        .should_succeed();
-
-    assert_eq!(local_domain_query, local_domain);
+        .should_succeed_and_equal(local_domain);
 
     // Assert mailbox is correct.
-    let mailbox_query = suite
+    suite
         .query_wasm_smart(va, va::QueryMailboxRequest {})
-        .should_succeed();
-
-    assert_eq!(mailbox_query, mailbox);
+        .should_succeed_and_equal(mailbox);
 }
