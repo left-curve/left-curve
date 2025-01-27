@@ -149,6 +149,8 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges).has_length(1);
 
+                println!("{:#?}", response);
+
                 Ok::<(), anyhow::Error>(())
             })
             .await

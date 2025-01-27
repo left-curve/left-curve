@@ -9,32 +9,6 @@ use {
     std::collections::HashMap,
 };
 
-// pub async fn build_actix_test_app<G>(
-//     app_ctx: Context,
-//     graphql_schema: G,
-// ) -> App<
-//     impl ServiceFactory<
-//         ServiceRequest,
-//         Response = ServiceResponse<impl MessageBody>,
-//         Config = (),
-//         InitError = (),
-//         Error = Error,
-//     >,
-// >
-// where
-//     // S: async_graphql::ObjectType + Default + 'static,
-//     G: Clone + 'static,
-// {
-//     // let graphql_schema = build_schema_with_sub::<BlankQueryHook>(app_ctx.clone());
-//     // let graphql_schema = build_schema(app_ctx.clone());
-
-//     // let app = App::new();
-
-//     let app = actix_web::test::init_service(build_actix_app(app_ctx, graphql_schema)).await;
-
-//     app.configure(config_app(app_ctx, graphql_schema))
-// }
-
 #[derive(serde::Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,
@@ -70,7 +44,7 @@ pub fn build_app_service(
     build_actix_app(app_ctx, graphql_schema)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PaginatedResponse<X> {
@@ -79,14 +53,14 @@ pub struct PaginatedResponse<X> {
     pub page_info: PageInfo,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused)]
 pub struct Edge<X> {
     pub node: X,
     pub cursor: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(unused)]
 #[serde(rename_all = "camelCase")]
 pub struct PageInfo {
