@@ -2796,7 +2796,6 @@ dependencies = [
  "hyperlane-merkle",
  "hyperlane-types",
  "hyperlane-va",
- "hyperlane-warp",
  "rand",
  "serde",
 ]
@@ -4531,16 +4530,6 @@ dependencies = [
  "anyhow",
  "grug",
  "hyperlane-mailbox",
- "hyperlane-types",
-]
-
-[[package]]
-name = "hyperlane-warp"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
  "hyperlane-types",
 ]
 

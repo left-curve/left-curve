@@ -31,7 +31,6 @@ hyperlane-mailbox     = { workspace = true, features = ["library"] }
 hyperlane-merkle      = { workspace = true, features = ["library"] }
 hyperlane-types       = { workspace = true }
 hyperlane-va          = { workspace = true, features = ["library"] }
-hyperlane-warp        = { workspace = true, features = ["library"] }
 serde                 = { workspace = true }
 
 [dev-dependencies]
