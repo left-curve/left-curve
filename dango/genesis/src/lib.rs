@@ -18,7 +18,6 @@ use {
         hooks,
         isms::{self, multisig::ValidatorSet},
         mailbox::{self, Domain},
-        recipients::warp,
         va, Addr32,
     },
     serde::Serialize,
@@ -68,7 +67,6 @@ pub struct Hyperlane<T> {
     pub mailbox: T,
     pub merkle: T,
     pub va: T,
-    pub warp: T,
 }
 
 pub struct GenesisUser {
@@ -180,11 +178,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(hyperlane_va::query))
         .build();
 
-    let warp = ContractBuilder::new(Box::new(hyperlane_warp::instantiate))
-        .with_execute(Box::new(hyperlane_warp::execute))
-        .with_query(Box::new(hyperlane_warp::query))
-        .build();
-
     let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
         .with_execute(Box::new(dango_ibc_transfer::execute))
         .build();
@@ -230,7 +223,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
             mailbox,
             merkle,
             va,
-            warp,
         },
         ibc_transfer,
         lending,
@@ -257,7 +249,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
     let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
-    let warp = fs::read(artifacts_dir.join("hyperlane_warp.wasm"))?;
     let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
@@ -278,7 +269,6 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
             mailbox,
             merkle,
             va,
-            warp,
         },
         ibc_transfer,
         lending,
@@ -326,7 +316,6 @@ where
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
-    let hyperlane_warp_code_hash = upload(&mut msgs, codes.hyperlane.warp);
     let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
@@ -542,7 +531,6 @@ where
             mailbox,
             merkle,
             va,
-            warp,
         },
         ibc_transfer,
         lending,
