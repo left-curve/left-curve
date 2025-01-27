@@ -288,6 +288,14 @@ where
             .unwrap_or_else(|err| panic!("fatal error while checking tx: {err}"))
     }
 
+    /// Increase the chain's time by the given duration.
+    pub fn increase_time(&mut self, duration: Duration) {
+        let old_block_time = self.block_time;
+        self.block_time = duration;
+        self.make_empty_block();
+        self.block_time = old_block_time;
+    }
+
     /// Make a new block without any transaction.
     pub fn make_empty_block(&mut self) -> BlockOutcome {
         self.make_block(vec![])
