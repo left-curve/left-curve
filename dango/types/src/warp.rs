@@ -1,7 +1,8 @@
 use {
     anyhow::ensure,
     grug::{
-        Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+        Addr, Bound, Bounded, Bounds, Bytable, Denom, HexBinary, Inner, NextNumber, NumberConst,
+        Part, PrevNumber, Udec128, Uint128, Uint256,
     },
     hyperlane_types::{
         mailbox::Domain,
@@ -85,6 +86,31 @@ pub struct Route {
     pub fee: Uint128,
 }
 
+#[grug::derive(Serde)]
+pub struct RateLimitConfig {
+    pub min_remaining: Uint128,
+    pub supply_share: SupplyShare,
+}
+
+// -------------------------------- rate-limit ---------------------------------
+
+#[grug::derive(Serde, Borsh)]
+pub struct RateLimit {
+    pub min_remaining: Uint128,
+    pub supply_share: SupplyShare,
+    pub remaining: Uint128,
+}
+
+#[grug::derive(Serde)]
+pub struct SupplyShareBound;
+
+impl Bounds<Udec128> for SupplyShareBound {
+    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
+    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
+}
+
+pub type SupplyShare = Bounded<Udec128, SupplyShareBound>;
+
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
@@ -119,12 +145,18 @@ pub enum ExecuteMsg {
         // NOT the metadata for the hooks.
         metadata: Option<HexBinary>,
     },
+    /// Set the rate limit for a Denom.
+    SetRateLimit {
+        denom: Denom,
+        rate_limit: RateLimitConfig,
+    },
     /// Define the recipient contract and withdrawal fee rate for a token on a
     /// destination domain.
     SetRoute {
         denom: Denom,
         destination_domain: Domain,
         route: Route,
+        rate_limit: Option<RateLimitConfig>,
     },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
