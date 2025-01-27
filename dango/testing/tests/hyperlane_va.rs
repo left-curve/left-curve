@@ -1,8 +1,8 @@
 use {
     dango_testing::{generate_random_key, setup_test},
     grug::{
-        Addr, Addressable, Coins, ContractEvent, HashExt, HexByteArray, Inner, JsonDeExt,
-        QuerierExt, ResultExt, SearchEvent,
+        btree_set, Addr, Addressable, Coins, ContractEvent, HashExt, HexByteArray, Inner,
+        JsonDeExt, QuerierExt, ResultExt, SearchEvent,
     },
     grug_crypto::Identity256,
     hyperlane_types::{
@@ -125,7 +125,7 @@ fn test_announce() {
 
         suite
             .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-                validators: BTreeSet::from_iter([announcement.validator]),
+                validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
@@ -152,7 +152,7 @@ fn test_announce() {
 
         suite
             .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-                validators: BTreeSet::from_iter([announcement.validator]),
+                validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
@@ -205,7 +205,7 @@ fn test_announce() {
 
         suite
             .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-                validators: BTreeSet::from_iter([announcement.validator]),
+                validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
@@ -255,7 +255,7 @@ fn test_announce() {
 
         suite
             .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
-                validators: BTreeSet::from_iter([announcement.validator, announcement3.validator]),
+                validators: btree_set![announcement.validator, announcement3.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
     }

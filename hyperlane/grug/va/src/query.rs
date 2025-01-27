@@ -9,25 +9,25 @@ use {
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
         QueryMsg::AnnounceStorageLocations { validators } => {
-            let res = get_announce(ctx, validators)?;
+            let res = query_announce_storage_locations(ctx, validators)?;
             res.to_json_value()
         },
         QueryMsg::AnnouncedValidators {} => {
-            let res = get_validators(ctx)?;
+            let res = query_announced_validators(ctx)?;
             res.to_json_value()
         },
         QueryMsg::Mailbox {} => {
-            let res = get_mailbox(ctx)?;
+            let res = query_mailbox(ctx)?;
             res.to_json_value()
         },
         QueryMsg::LocalDomain {} => {
-            let res = get_local_domain(ctx)?;
+            let res = query_local_domain(ctx)?;
             res.to_json_value()
         },
     }
 }
 
-fn get_announce(
+fn query_announce_storage_locations(
     ctx: ImmutableCtx,
     validators: BTreeSet<HexByteArray<20>>,
 ) -> StdResult<BTreeMap<HexByteArray<20>, BTreeSet<String>>> {
@@ -44,7 +44,7 @@ fn get_announce(
     Ok(storage_locations)
 }
 
-fn get_validators(ctx: ImmutableCtx) -> StdResult<BTreeSet<HexByteArray<20>>> {
+fn query_announced_validators(ctx: ImmutableCtx) -> StdResult<BTreeSet<HexByteArray<20>>> {
     let validators = STORAGE_LOCATIONS
         .keys(ctx.storage, None, None, Order::Ascending)
         .collect::<StdResult<_>>()?;
@@ -52,11 +52,11 @@ fn get_validators(ctx: ImmutableCtx) -> StdResult<BTreeSet<HexByteArray<20>>> {
     Ok(validators)
 }
 
-fn get_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
+fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
     MAILBOX.load(ctx.storage)
 }
 
-fn get_local_domain(ctx: ImmutableCtx) -> StdResult<Domain> {
+fn query_local_domain(ctx: ImmutableCtx) -> StdResult<Domain> {
     Ok(ctx
         .querier
         .query_wasm_path(MAILBOX.load(ctx.storage)?, hyperlane_mailbox::CONFIG.path())?
