@@ -30,7 +30,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     quote::quote! {
         #input
 
-        impl grug::AsContractEvent for #input_name {
+        impl grug::EventName for #input_name {
             const NAME: &'static str = #name;
         }
     }
