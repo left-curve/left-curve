@@ -391,7 +391,7 @@ In order for the passive liquidity pool to provide accurate quotes, it's importa
 
 \begin{itemize}
   \item it has access to a low-latency oracle that accurately reports the up-to-date market prices; and,
-  \item it must be able to adjust its orders before any other trader is able to pick up the scale quotes.
+  \item it must be able to adjust its orders before any other trader is able to pick up the stale quotes.
 \end{itemize}
 
 For the oracle, we propose using Pyth Laser,\supercite{pythlaser} which provides ultra fast price feeds with 1 millisecond updates. Each block, the proposer fetches the prices and submit them onchain in a transaction on the very top of the block.
@@ -407,7 +407,7 @@ A searcher relies on two prerequisites both being satisfied in order to pull off
   \item trades are possibly executed at different prices throughout the same block.
 \end{itemize}
 
-On the first point, we believe the endgame solution is encrypted mempool.\supercite{encryptedmempool} However, to achieve a faster go-to-market, we propose a easier interim solution: the Dango blockchain to run on a proof-of-authority validator set; validators to configure their mempools such that they only receive transactions, and broadcast only to other validators, but not to any other node. Users will broadcast their transactions directly to the validators. As such, assume validators themselves do not engage in malicious MEV, user transactions can be considered private.
+On the first point, we believe the endgame solution is implementing an encrypted mempool.\supercite{encryptedmempool} We may do this, however, to achieve a faster go-to-market, we propose an interim solution: 1) the Dango chain to temporarily run on a proof-of-authority validator set; 2) validators to configure their mempools such that they only receive transactions, and broadcast only to other validators, but not to any other node; 3) users to broadcast their transactions directly to the validators. As such, one can assume validators themselves do not engage in malicious MEV, and user transactions can be considered private.
 
 On the second point, we propose to execute orders using the frequent batch auctions (FBAs) approach.\supercite{frequentbatchauctions,frequentbatchauctions2} Specifically, the flow of a block would be:
 
