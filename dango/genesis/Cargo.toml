@@ -23,6 +23,7 @@ dango-oracle          = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-vesting         = { workspace = true, features = ["library"] }
+dango-warp            = { workspace = true, features = ["library"] }
 grug                  = { workspace = true }
 hyperlane-fee         = { workspace = true, features = ["library"] }
 hyperlane-ism         = { workspace = true, features = ["library"] }

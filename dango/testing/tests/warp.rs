@@ -1,7 +1,11 @@
 use {
     assertor::*,
     dango_testing::{generate_random_key, setup_test, setup_test_with_indexer},
-    dango_types::constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
+    dango_types::{
+        constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
+        warp::{self, Route, TokenMessage},
+    },
+    dango_warp::ROUTES,
     grug::{
         Addressable, Coins, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
         QuerierExt, ResultExt, StdError, Uint128,
@@ -12,11 +16,8 @@ use {
         hooks::merkle,
         isms::{self, multisig::Metadata, HYPERLANE_DOMAIN_KEY},
         mailbox::{self, Domain, Message, MAILBOX_VERSION},
-        multisig_hash,
-        recipients::warp::{self, Route, TokenMessage},
-        Addr32, IncrementalMerkleTree,
+        multisig_hash, Addr32, IncrementalMerkleTree,
     },
-    hyperlane_warp::ROUTES,
     k256::ecdsa::SigningKey,
     sea_orm::EntityTrait,
     std::collections::BTreeSet,
@@ -116,7 +117,7 @@ fn send_escrowing_collateral() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_RECIPIENT,
@@ -134,7 +135,7 @@ fn send_escrowing_collateral() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::SetRoute {
                 denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -146,7 +147,7 @@ fn send_escrowing_collateral() {
 
     // Query the route. Should have been set.
     suite
-        .query_wasm_smart(contracts.hyperlane.warp, warp::QueryRouteRequest {
+        .query_wasm_smart(contracts.warp, warp::QueryRouteRequest {
             denom: DANGO_DENOM.clone(),
             destination_domain: MOCK_REMOTE_DOMAIN,
         })
@@ -156,7 +157,7 @@ fn send_escrowing_collateral() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_RECIPIENT,
@@ -179,7 +180,7 @@ fn send_escrowing_collateral() {
                 version: MAILBOX_VERSION,
                 nonce: 0,
                 origin_domain: MOCK_LOCAL_DOMAIN,
-                sender: contracts.hyperlane.warp.into(),
+                sender: contracts.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_ROUTE.address,
                 body: token_msg.encode(),
@@ -232,7 +233,7 @@ fn send_burning_synth() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::SetRoute {
                 denom: ETH_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -246,7 +247,7 @@ fn send_burning_synth() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_RECIPIENT,
@@ -269,7 +270,7 @@ fn send_burning_synth() {
                 version: MAILBOX_VERSION,
                 nonce: 0,
                 origin_domain: MOCK_LOCAL_DOMAIN,
-                sender: contracts.hyperlane.warp.into(),
+                sender: contracts.warp.into(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_ROUTE.address,
                 body: token_msg.encode(),
@@ -287,7 +288,7 @@ fn send_burning_synth() {
 
     // Warp contract should not hold any of the synth token (should be burned).
     suite
-        .query_balance(&contracts.hyperlane.warp, ETH_DENOM.clone())
+        .query_balance(&contracts.warp, ETH_DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
     // Fee hook should have received the fee.
@@ -319,7 +320,7 @@ fn receive_release_collateral() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::SetRoute {
                 denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
@@ -333,7 +334,7 @@ fn receive_release_collateral() {
     suite
         .execute(
             &mut accounts.user1,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::TransferRemote {
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 recipient: MOCK_RECIPIENT,
@@ -350,7 +351,7 @@ fn receive_release_collateral() {
         origin_domain: MOCK_REMOTE_DOMAIN,
         sender: MOCK_ROUTE.address,
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
-        recipient: contracts.hyperlane.warp.into(),
+        recipient: contracts.warp.into(),
         body: TokenMessage {
             recipient: accounts.user1.address().into(),
             amount: Uint128::new(88),
@@ -390,7 +391,7 @@ fn receive_release_collateral() {
 
     // Warp contract should have been deducted tokens.
     suite
-        .query_balance(&contracts.hyperlane.warp, DANGO_DENOM.clone())
+        .query_balance(&contracts.warp, DANGO_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100 - 88));
 }
 
@@ -419,7 +420,7 @@ fn receive_minting_synth() {
     suite
         .execute(
             &mut accounts.owner,
-            contracts.hyperlane.warp,
+            contracts.warp,
             &warp::ExecuteMsg::SetRoute {
                 denom: SOL_DENOM.clone(),
                 destination_domain: origin_domain,
@@ -436,7 +437,7 @@ fn receive_minting_synth() {
         origin_domain,
         sender: MOCK_ROUTE.address,
         destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
-        recipient: contracts.hyperlane.warp.into(),
+        recipient: contracts.warp.into(),
         body: TokenMessage {
             recipient: accounts.user1.address().into(),
             amount: Uint128::new(88),

@@ -18,6 +18,7 @@ members = [
   "dango/testing",
   "dango/types",
   "dango/vesting",
+  "dango/warp",
   "grug/app",
   "grug/bob-the-builder",
   "grug/client",
@@ -171,6 +172,7 @@ dango-testing               = { path = "dango/testing" }
 dango-token-factory         = { path = "dango/token-factory" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
+dango-warp                  = { path = "dango/warp" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }

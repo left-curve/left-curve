@@ -2785,6 +2785,7 @@ dependencies = [
  "dango-taxman",
  "dango-types",
  "dango-vesting",
+ "dango-warp",
  "grug",
  "hex",
  "hex-literal",
@@ -2886,6 +2887,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-oracle",
  "dango-types",
+ "dango-warp",
  "dotenvy",
  "grug",
  "grug-app",
@@ -2897,7 +2899,6 @@ dependencies = [
  "grug-vm-wasm",
  "hex-literal",
  "hyperlane-types",
- "hyperlane-warp",
  "indexer-sql",
  "k256",
  "proptest",
@@ -2920,6 +2921,7 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex-literal",
+ "hyperlane-types",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",
@@ -2937,6 +2939,16 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
+]
+
+[[package]]
+name = "dango-warp"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "hyperlane-types",
 ]
 
 [[package]]
