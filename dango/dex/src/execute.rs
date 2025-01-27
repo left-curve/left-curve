@@ -111,18 +111,16 @@ fn submit_order(
         },
     )?;
 
-    Ok(
-        Response::new().add_event("order_submitted", OrderSubmitted {
-            order_id,
-            user: ctx.sender,
-            base_denom,
-            quote_denom,
-            direction,
-            price,
-            amount,
-            deposit,
-        })?,
-    )
+    Ok(Response::new().add_event(OrderSubmitted {
+        order_id,
+        user: ctx.sender,
+        base_denom,
+        quote_denom,
+        direction,
+        price,
+        amount,
+        deposit,
+    })?)
 }
 
 #[inline]

@@ -168,6 +168,7 @@ pub struct QueryRoutesResponseItem {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("transfer_remote")]
 pub struct TransferRemote {
     pub sender: Addr,
     pub destination_domain: Domain,
@@ -179,6 +180,7 @@ pub struct TransferRemote {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("handle")]
 pub struct Handle {
     pub recipient: Addr32,
     pub token: Denom,

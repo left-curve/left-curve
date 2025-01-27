@@ -50,11 +50,11 @@ fn post_dispatch(ctx: MutableCtx, raw_message: HexBinary) -> anyhow::Result<Resp
     })?;
 
     Ok(Response::new()
-        .add_event("post_dispatch", PostDispatch {
+        .add_event(PostDispatch {
             message_id,
             index: tree.count - 1,
         })?
-        .add_event("inserted_into_tree", InsertedIntoTree {
+        .add_event(InsertedIntoTree {
             index: tree.count - 1,
         })?)
 }

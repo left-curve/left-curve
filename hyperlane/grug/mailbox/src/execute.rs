@@ -105,13 +105,13 @@ fn dispatch(
             }),
             ctx.funds,
         )?)
-        .add_event("mailbox_dispatch", &Dispatch {
+        .add_event(Dispatch {
             sender: message.sender,
             destination_domain: message.destination_domain,
             recipient: message.recipient,
             message: message.body,
         })?
-        .add_event("mailbox_dispatch_id", &DispatchId { message_id })?)
+        .add_event(DispatchId { message_id })?)
 }
 
 #[inline]
@@ -183,10 +183,10 @@ fn process(
             }),
             Coins::new(),
         )?)
-        .add_event("mailbox_process", &Process {
+        .add_event(Process {
             origin_domain: message.origin_domain,
             sender: message.sender,
             recipient: message.recipient,
         })?
-        .add_event("mailbox_process_id", &ProcessId { message_id })?)
+        .add_event(ProcessId { message_id })?)
 }
