@@ -23,7 +23,7 @@ impl From<entity::messages::Model> for Message {
         Self {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            order_idx: item.order_idx as i32,
+            order_idx: item.order_idx,
             method_name: item.method_name.clone(),
             contract_addr: item.contract_addr.clone(),
             sender_addr: item.sender_addr.clone(),
