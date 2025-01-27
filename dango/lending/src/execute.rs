@@ -1,15 +1,15 @@
 use {
-    crate::{DEBTS, MARKETS},
-    anyhow::{anyhow, bail, ensure, Ok},
+    crate::{query_preview_deposit, query_preview_withdraw, DEBTS, MARKETS},
+    anyhow::{anyhow, ensure, Ok},
     dango_account_factory::ACCOUNTS,
     dango_types::{
         bank,
-        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
+        lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates},
         DangoQuerier,
     },
     grug::{
         Coin, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, QuerierExt, Response,
-        StorageQuerier, Udec128, Uint128,
+        StdResult, StorageQuerier, Udec128, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -86,77 +86,62 @@ fn update_markets(
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let bank = ctx.querier.query_bank()?;
-    let mut msgs = vec![];
+    // Immutably update markets and compute the amount of LP tokens to mint
+    let (lp_tokens, markets) =
+        query_preview_deposit(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
 
-    for coin in ctx.funds {
-        ensure!(MARKETS.has(ctx.storage, &coin.denom), "Invalid denom");
-        let lp_denom = coin.denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?;
-
-        // Update the market indices
-        let market = MARKETS
-            .load(ctx.storage, &coin.denom)?
-            .update_indices(ctx.block.timestamp)?
-            .add_supplied(coin.amount)?;
-        MARKETS.save(ctx.storage, &coin.denom, &market)?;
-
-        // Compute the amount of LP tokens to mint
-        let supply_index = market.supply_index;
-        let amount = Udec128::new(coin.amount.into_inner())
-            .checked_div(supply_index)?
-            .into_int();
-
-        msgs.push(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Mint {
-                to: ctx.sender,
-                denom: lp_denom,
-                amount,
-            },
-            Coins::new(),
-        )?);
+    // Save the updated markets
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
+
+    // Mint the LP tokens
+    let bank = ctx.querier.query_bank()?;
+    let msgs = lp_tokens
+        .into_iter()
+        .map(|coin| {
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.sender,
+                    denom: coin.denom,
+                    amount: coin.amount,
+                },
+                Coins::new(),
+            )
+        })
+        .collect::<StdResult<Vec<_>>>()?;
 
     Ok(Response::new().add_messages(msgs))
 }
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let bank = ctx.querier.query_bank()?;
-    let mut msgs = vec![];
-    let mut withdrawn = Coins::new();
+    // Immutably update markets and compute the amount of underlying coins to withdraw
+    let (withdrawn, markets) =
+        query_preview_withdraw(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
 
-    for coin in ctx.funds {
-        let Some(underlying_denom) = coin.denom.strip(&[&NAMESPACE, &SUBNAMESPACE]) else {
-            bail!("not a lending pool token: {}", coin.denom)
-        };
-
-        // Update the market indices
-        let market = MARKETS
-            .load(ctx.storage, &underlying_denom)?
-            .update_indices(ctx.block.timestamp)?
-            .deduct_supplied(coin.amount)?;
-        MARKETS.save(ctx.storage, &underlying_denom, &market)?;
-
-        // Compute the amount of underlying coins to withdraw
-        // Compute the amount of underlying coins to withdraw
-        let supply_index = market.supply_index;
-        let underlying_amount = Udec128::new(coin.amount.into_inner())
-            .checked_div(supply_index)?
-            .into_int();
-
-        // Burn the LP tokens
-        msgs.push(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Burn {
-                from: ctx.contract,
-                denom: coin.denom,
-                amount: coin.amount,
-            },
-            Coins::new(),
-        )?);
-
-        withdrawn.insert(Coin::new(underlying_denom, underlying_amount)?)?;
+    // Save the updated markets
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market)?;
     }
+
+    // Burn the LP tokens
+    let bank = ctx.querier.query_bank()?;
+    let msgs = ctx
+        .funds
+        .into_iter()
+        .map(|coin| {
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    denom: coin.denom,
+                    amount: coin.amount,
+                },
+                Coins::new(),
+            )
+        })
+        .collect::<StdResult<Vec<_>>>()?;
 
     Ok(Response::new()
         .add_messages(msgs)
