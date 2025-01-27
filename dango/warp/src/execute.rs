@@ -1,19 +1,19 @@
 use {
     crate::{MAILBOX, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
-    dango_types::bank,
+    dango_types::{
+        bank,
+        warp::{
+            ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote, NAMESPACE,
+        },
+    },
     grug::{
         Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierExt, Response,
         StdResult,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
-        recipients::{
-            warp::{
-                ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote, NAMESPACE,
-            },
-            RecipientMsg,
-        },
+        recipients::RecipientMsg,
         Addr32,
     },
 };
@@ -131,7 +131,7 @@ fn transfer_remote(
                 }
             },
         )?)
-        .add_event("transfer_remote", &TransferRemote {
+        .add_event(TransferRemote {
             sender: ctx.sender,
             destination_domain,
             recipient,
@@ -180,7 +180,7 @@ fn handle(
                 amount: body.amount,
             })?
         })
-        .add_event("handle", &Handle {
+        .add_event(Handle {
             recipient: body.recipient,
             token: denom,
             amount: body.amount,

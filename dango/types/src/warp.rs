@@ -1,12 +1,12 @@
 use {
-    crate::{
-        mailbox::Domain,
-        recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
-        Addr32,
-    },
     anyhow::ensure,
     grug::{
         Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+    },
+    hyperlane_types::{
+        mailbox::Domain,
+        recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
+        Addr32,
     },
     std::sync::LazyLock,
 };
@@ -168,6 +168,7 @@ pub struct QueryRoutesResponseItem {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("transfer_remote")]
 pub struct TransferRemote {
     pub sender: Addr,
     pub destination_domain: Domain,
@@ -179,6 +180,7 @@ pub struct TransferRemote {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("handle")]
 pub struct Handle {
     pub recipient: Addr32,
     pub token: Denom,

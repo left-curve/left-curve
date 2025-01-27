@@ -322,7 +322,7 @@ where
         wormhole_guardian_sets: GUARDIAN_SETS.clone(),
         hyperlane_local_domain: 88888888,
         hyperlane_ism_validator_sets: btree_map! {},
-        hyperlane_warp_routes: btree_map! {},
+        warp_routes: btree_map! {},
     })
     .unwrap();
 

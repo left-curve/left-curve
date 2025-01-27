@@ -19,6 +19,7 @@ members = [
   "dango/testing",
   "dango/types",
   "dango/vesting",
+  "dango/warp",
   "grug/app",
   "grug/bob-the-builder",
   "grug/client",
@@ -38,7 +39,6 @@ members = [
   "hyperlane/grug/hooks/*",
   "hyperlane/grug/isms/*",
   "hyperlane/grug/mailbox",
-  "hyperlane/grug/recipients/*",
   "indexer/*",
 ]
 resolver = "2"
@@ -174,6 +174,7 @@ dango-testing               = { path = "dango/testing" }
 dango-token-factory         = { path = "dango/token-factory" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
+dango-warp                  = { path = "dango/warp" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }
@@ -196,7 +197,6 @@ hyperlane-ism     = { path = "hyperlane/grug/isms/multisig" }
 hyperlane-mailbox = { path = "hyperlane/grug/mailbox" }
 hyperlane-merkle  = { path = "hyperlane/grug/hooks/merkle" }
 hyperlane-types   = { path = "hyperlane/grug/types" }
-hyperlane-warp    = { path = "hyperlane/grug/recipients/warp" }
 
 [workspace.dependencies.sea-orm]
 features = [
