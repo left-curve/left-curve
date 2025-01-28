@@ -21,14 +21,14 @@ pub enum SortBy {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TransactionCursor {
-    block_height: i64,
-    transaction_idx: i32,
+    block_height: u64,
+    transaction_idx: u32,
 }
 
 impl From<types::transaction::Transaction> for TransactionCursor {
     fn from(transaction: types::transaction::Transaction) -> Self {
         Self {
-            block_height: transaction.block_height as i64,
+            block_height: transaction.block_height,
             transaction_idx: transaction.transaction_idx,
         }
     }

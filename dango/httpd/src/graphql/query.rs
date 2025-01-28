@@ -10,9 +10,9 @@ pub mod transfer;
 
 #[derive(MergedObject, Default)]
 pub struct Query(
-    TransferQuery,
     BlockQuery,
     TransactionQuery,
     MessageQuery,
     EventQuery,
+    TransferQuery,
 );

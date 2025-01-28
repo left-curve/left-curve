@@ -12,7 +12,7 @@ use {
 pub struct Message {
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
-    pub order_idx: i32,
+    pub order_idx: u32,
     pub method_name: String,
     pub contract_addr: Option<String>,
     pub sender_addr: String,
@@ -23,7 +23,7 @@ impl From<entity::messages::Model> for Message {
         Self {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            order_idx: item.order_idx,
+            order_idx: item.order_idx as u32,
             method_name: item.method_name.clone(),
             contract_addr: item.contract_addr.clone(),
             sender_addr: item.sender_addr.clone(),

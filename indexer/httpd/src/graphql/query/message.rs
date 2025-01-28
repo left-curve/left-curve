@@ -21,14 +21,14 @@ pub enum SortBy {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MessageCursor {
-    block_height: i64,
-    order_idx: i32,
+    block_height: u64,
+    order_idx: u32,
 }
 
 impl From<types::message::Message> for MessageCursor {
     fn from(message: types::message::Message) -> Self {
         Self {
-            block_height: message.block_height as i64,
+            block_height: message.block_height,
             order_idx: message.order_idx,
         }
     }

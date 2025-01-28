@@ -21,14 +21,14 @@ pub enum SortBy {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EventCursor {
-    block_height: i64,
-    event_idx: i32,
+    block_height: u64,
+    event_idx: u32,
 }
 
 impl From<types::event::Event> for EventCursor {
     fn from(event: types::event::Event) -> Self {
         Self {
-            block_height: event.block_height as i64,
+            block_height: event.block_height,
             event_idx: event.event_idx,
         }
     }

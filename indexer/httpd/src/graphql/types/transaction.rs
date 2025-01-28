@@ -12,8 +12,9 @@ use {
 pub struct Transaction {
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
+    // TODO: This should be an enum
     pub transaction_type: i16,
-    pub transaction_idx: i32,
+    pub transaction_idx: u32,
     pub sender: String,
     pub hash: String,
     pub has_succeeded: bool,
@@ -28,7 +29,7 @@ impl From<entity::transactions::Model> for Transaction {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
             transaction_type: item.transaction_type,
-            transaction_idx: item.transaction_idx,
+            transaction_idx: item.transaction_idx as u32,
             sender: item.sender.clone(),
             hash: item.hash.clone(),
             has_succeeded: item.has_succeeded,

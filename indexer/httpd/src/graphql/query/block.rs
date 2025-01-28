@@ -4,10 +4,8 @@ use {
         graphql::types::{self, block::Block},
     },
     async_graphql::{types::connection::*, *},
-    // grug_types::{JsonDeExt, JsonSerExt, StdResult},
     indexer_sql::entity::{self, prelude::Blocks},
     sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select},
-    // std::fmt::Display,
     serde::{Deserialize, Serialize},
 };
 
@@ -21,13 +19,13 @@ pub enum SortBy {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BlockCursor {
-    block_height: i64,
+    block_height: u64,
 }
 
 impl From<types::block::Block> for BlockCursor {
     fn from(block: types::block::Block) -> Self {
         Self {
-            block_height: block.block_height as i64,
+            block_height: block.block_height,
         }
     }
 }

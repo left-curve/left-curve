@@ -12,7 +12,7 @@ use {
 pub struct Event {
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
-    pub event_idx: i32,
+    pub event_idx: u32,
 }
 
 impl From<entity::events::Model> for Event {
@@ -20,7 +20,7 @@ impl From<entity::events::Model> for Event {
         Self {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            event_idx: item.event_idx,
+            event_idx: item.event_idx as u32,
         }
     }
 }
