@@ -1,6 +1,6 @@
 use {
     assertor::*,
-    dango_httpd::{graphql::types, server::build_actix_app},
+    dango_httpd::{graphql::types::transfer::Transfer, server::build_actix_app},
     dango_testing::setup_test_with_indexer,
     dango_types::{
         account::single,
@@ -8,7 +8,7 @@ use {
     },
     grug::{
         call_graphql, setup_tracing_subscriber, Coins, GraphQLCustomRequest, Message, NonEmpty,
-        ResultExt,
+        PaginatedResponse, ResultExt,
     },
 };
 
@@ -38,19 +38,23 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
-    query Transfers($height: Int!) {
-      transfers(height: $height) {
-        blockHeight
-        fromAddress
-        toAddress
-        amount
-        denom
+    query Transfers($block_height: Int!) {
+      transfers(blockHeight: $block_height) {
+        nodes {
+          blockHeight
+          fromAddress
+          toAddress
+          amount
+          denom
+        }
+        edges { node { blockHeight fromAddress toAddress amount denom } cursor }
+        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
     }
         "#;
 
     let variables = serde_json::json!({
-        "height": 1,
+        "block_height": 1,
     })
     .as_object()
     .unwrap()
@@ -70,19 +74,23 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
                 let app = build_actix_app(indexer_context.into());
 
                 let response =
-                    call_graphql::<Vec<types::transfer::Transfer>>(app, request_body).await?;
+                    call_graphql::<PaginatedResponse<Transfer>>(app, request_body).await?;
+
+                assert_that!(response.data.edges).has_length(2);
 
                 assert_that!(response
                     .data
+                    .edges
                     .iter()
-                    .map(|t| t.block_height)
+                    .map(|t| t.node.block_height)
                     .collect::<Vec<_>>())
                 .is_equal_to(vec![1, 1]);
 
                 assert_that!(response
                     .data
+                    .edges
                     .iter()
-                    .map(|t| t.amount.as_str())
+                    .map(|t| t.node.amount.as_str())
                     .collect::<Vec<_>>())
                 .is_equal_to(vec!["100000000", "100000000"]);
 
