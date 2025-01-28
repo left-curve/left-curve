@@ -12,12 +12,10 @@ use {
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
 
-    Ok(
-        Response::new().add_event("init_validator_announce", &Initialize {
-            creator: ctx.sender,
-            mailbox: msg.mailbox,
-        })?,
-    )
+    Ok(Response::new().add_event(Initialize {
+        creator: ctx.sender,
+        mailbox: msg.mailbox,
+    })?)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -74,11 +72,9 @@ fn announce(
         },
     )?;
 
-    Ok(
-        Response::new().add_event("validator_announcement", &Announce {
-            sender: ctx.sender,
-            validator,
-            storage_location,
-        })?,
-    )
+    Ok(Response::new().add_event(Announce {
+        sender: ctx.sender,
+        validator,
+        storage_location,
+    })?)
 }

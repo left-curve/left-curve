@@ -42,12 +42,14 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("init_validator_announce")]
 pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
 }
 
 #[grug::derive(Serde)]
+#[grug::event("validator_announcement")]
 pub struct Announce {
     pub sender: Addr,
     pub validator: HexByteArray<20>,
