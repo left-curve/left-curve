@@ -259,8 +259,8 @@ fn dex_works(
 
     // Track the users' balances.
     suite
-        .balance_tracker()
-        .record_balances(users_by_order_id.values().copied());
+        .balances()
+        .record_many(users_by_order_id.values().copied());
 
     // Submit the orders in a single block.
     let txs = orders_to_submit
@@ -299,8 +299,8 @@ fn dex_works(
     // Check the users' balances should have changed correctly.
     for (order_id, changes) in balance_changes {
         suite
-            .balance_tracker()
-            .assert_balance(users_by_order_id[&order_id], changes);
+            .balances()
+            .should_change(users_by_order_id[&order_id], changes);
     }
 
     // Check the remaining unfilled orders.

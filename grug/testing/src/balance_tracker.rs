@@ -1,9 +1,12 @@
 use {
     crate::TestSuite,
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
-    grug_math::{Inner, Int256, NextNumber, NumberConst, PrevNumber, Signed, Unsigned},
+    grug_math::Inner,
     grug_types::{Addressable, Denom},
-    std::collections::{BTreeMap, BTreeSet},
+    std::{
+        cmp::Ordering,
+        collections::{BTreeMap, BTreeSet},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,7 +35,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
     /// Record the current balance of a list of accounts.
-    pub fn record_balances<I, A>(&mut self, accounts: I)
+    pub fn record_many<I, A>(&mut self, accounts: I)
     where
         I: IntoIterator<Item = A>,
         A: Addressable,
@@ -47,7 +50,7 @@ where
     }
 
     /// Record the current balance of a single account.
-    pub fn record_balance<A>(&mut self, account: A)
+    pub fn record<A>(&mut self, account: A)
     where
         A: Addressable,
     {
@@ -56,32 +59,8 @@ where
         self.suite.balances.insert(account, coins);
     }
 
-    /// Assert a list of balance changes for an account.
-    pub fn assert_balance<A>(&self, account: A, changes: BTreeMap<Denom, BalanceChange>)
-    where
-        A: Addressable,
-    {
-        let account = account.address();
-        let delta = self.balance_changes(account);
-
-        for (denom, change) in changes {
-            let diff = delta.get(&denom).unwrap();
-            if change != *diff {
-                panic!(
-                    "incorrect balance! account: {}, denom: {}, expected: {:?}, actual: {:?}",
-                    account, denom, change, diff
-                );
-            }
-        }
-    }
-
-    /// Clear all recorded balances.
-    pub fn clear(&mut self) {
-        self.suite.balances.clear();
-    }
-
     /// Refresh all recorded balances.
-    pub fn refresh_balances(&mut self) {
+    pub fn refresh_all(&mut self) {
         // Need to collect the addresses first to avoid borrowing issues
         let addresses: Vec<_> = self.suite.balances.keys().cloned().collect();
         for addr in addresses {
@@ -91,7 +70,7 @@ where
     }
 
     /// Refresh the balance of a single account.
-    pub fn refresh_balance<A>(&mut self, account: A)
+    pub fn refresh<A>(&mut self, account: A)
     where
         A: Addressable,
     {
@@ -100,8 +79,13 @@ where
         self.suite.balances.insert(account, coins);
     }
 
+    /// Clear all recorded balances.
+    pub fn clear(&mut self) {
+        self.suite.balances.clear();
+    }
+
     /// Get the changes in balances of an account since the last recorded balances.
-    pub fn balance_changes<A>(&self, account: A) -> BTreeMap<Denom, BalanceChange>
+    pub fn changes<A>(&self, account: A) -> BTreeMap<Denom, BalanceChange>
     where
         A: Addressable,
     {
@@ -119,28 +103,37 @@ where
             .map(|denom| {
                 let old_balance = old_balances.amount_of(denom);
                 let new_balance = new_balances.amount_of(denom);
-                let diff: Int256 = new_balance.into_next().checked_into_signed().unwrap()
-                    - old_balance.into_next().checked_into_signed().unwrap();
-                let change = match diff {
-                    Int256::ZERO => BalanceChange::Unchanged,
-                    diff if diff > Int256::ZERO => BalanceChange::Increased(
-                        diff.checked_into_unsigned()
-                            .unwrap()
-                            .checked_into_prev()
-                            .unwrap()
-                            .into_inner(),
+                let change = match new_balance.cmp(&old_balance) {
+                    Ordering::Greater => BalanceChange::Increased(
+                        (new_balance - old_balance).into_inner(),
                     ),
-                    diff => BalanceChange::Decreased(
-                        (- diff).checked_into_unsigned()
-                            .unwrap()
-                            .checked_into_prev()
-                            .unwrap()
-                            .into_inner(),
+                    Ordering::Less => BalanceChange::Decreased(
+                        (old_balance - new_balance).into_inner(),
                     ),
+                    Ordering::Equal => BalanceChange::Unchanged,
                 };
 
                 (denom.clone(), change)
             })
             .collect()
+    }
+
+    /// Assert a list of balance changes for an account.
+    pub fn should_change<A>(&self, account: A, changes: BTreeMap<Denom, BalanceChange>)
+    where
+        A: Addressable,
+    {
+        let account = account.address();
+        let delta = self.changes(account);
+
+        for (denom, change) in changes {
+            let diff = delta.get(&denom).unwrap();
+            if change != *diff {
+                panic!(
+                    "incorrect balance! account: {}, denom: {}, expected: {:?}, actual: {:?}",
+                    account, denom, change, diff
+                );
+            }
+        }
     }
 }
