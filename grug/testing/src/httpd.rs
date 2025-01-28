@@ -2,9 +2,11 @@ use {
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
+        middleware::{Compress, Logger},
+        web::ServiceConfig,
         App,
     },
-    indexer_httpd::{context::Context, graphql::build_schema, server::build_actix_app},
+    indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     serde::Deserialize,
     std::collections::HashMap,
 };
@@ -113,4 +115,52 @@ where
             request_body.name
         ))
     }
+}
+
+pub fn build_actix_app<G>(
+    app_ctx: Context,
+    graphql_schema: G,
+) -> App<
+    impl ServiceFactory<
+        ServiceRequest,
+        Response = ServiceResponse<impl MessageBody>,
+        Config = (),
+        InitError = (),
+        Error = actix_web::Error,
+    >,
+>
+where
+    G: Clone + 'static,
+{
+    build_actix_app_with_config(app_ctx, graphql_schema, |app_ctx, graphql_schema| {
+        config_app(app_ctx, graphql_schema)
+    })
+}
+
+/// Builds an Actix app with a custom config function. Used for Dango to have
+/// a different GraphQL executor and custom routes to use that executor.
+///
+/// I tried really hard to use async-graphql + generics but couldn't get it to
+/// work. I'm not sure that's doable.
+/// See https://github.com/async-graphql/async-graphql/discussions/1630
+pub fn build_actix_app_with_config<F, G>(
+    app_ctx: Context,
+    graphql_schema: G,
+    config_app: F,
+) -> App<
+    impl ServiceFactory<
+        ServiceRequest,
+        Response = ServiceResponse<impl MessageBody>,
+        Config = (),
+        InitError = (),
+        Error = actix_web::Error,
+    >,
+>
+where
+    G: Clone + 'static,
+    F: FnOnce(Context, G) -> Box<dyn Fn(&mut ServiceConfig)>,
+{
+    let app = App::new().wrap(Logger::default()).wrap(Compress::default());
+
+    app.configure(config_app(app_ctx, graphql_schema))
 }

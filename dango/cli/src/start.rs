@@ -4,15 +4,11 @@ use {
     clap::Parser,
     dango_app::ProposalPreparer,
     dango_genesis::build_rust_codes,
-    dango_httpd::{
-        graphql::{self, build_schema},
-        server::config_app,
-    },
+    dango_httpd::{graphql::build_schema, server::config_app},
     grug_app::{App, AppError, Db, Indexer, NullIndexer},
     grug_db_disk::DiskDb,
     grug_types::HashExt,
     grug_vm_hybrid::HybridVm,
-    indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, time},
     tower::ServiceBuilder,
@@ -78,8 +74,6 @@ impl StartCmd {
 
     /// Run the HTTP server
     async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
-        // let context = Context::new(Some(database_url.clone())).await?;
-        // let graphql_schema = build_schema(context.clone());
         indexer_httpd::server::run_server(None, None, database_url, config_app, build_schema)
             .await?;
         Ok(())
