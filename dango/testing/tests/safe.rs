@@ -1,4 +1,5 @@
 use {
+    dango_account_factory::KEYS,
     dango_genesis::Contracts,
     dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
@@ -10,11 +11,13 @@ use {
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
             Username,
         },
+        auth::Key,
+        constants::USDC_DENOM,
     },
     grug::{
         btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
         HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer,
-        Uint128,
+        StdError, Uint128,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -50,7 +53,7 @@ fn setup_safe_test<'a>() -> (
             },
             // Fund the Safe with some tokens.
             // The Safe will pay for gas fees, so it must have sufficient tokens.
-            Coins::one("uusdc", 5_000_000).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 5_000_000).unwrap(),
         )
         .should_succeed();
 
@@ -111,7 +114,7 @@ fn safe_creation() {
 
     // The Safe should have received tokens.
     suite
-        .query_balance(&safe, "uusdc")
+        .query_balance(&safe, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(5_000_000));
 }
 
@@ -130,7 +133,7 @@ fn proposal_passing_with_auto_execution() {
                 description: None,
                 messages: vec![Message::transfer(
                     accounts.owner.address(),
-                    Coins::one("uusdc", 888_888).unwrap(),
+                    Coins::one(USDC_DENOM.clone(), 888_888).unwrap(),
                 )
                 .unwrap()],
             },
@@ -177,7 +180,7 @@ fn proposal_passing_with_auto_execution() {
     // Ensure the tokens have been delivered.
     // Owner has 100_000_000_000 uusd to start, and now has received 888_888.
     suite
-        .query_balance(&accounts.owner, "uusdc")
+        .query_balance(&accounts.owner, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(100_000_888_888));
 }
 
@@ -433,7 +436,10 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
             accounts.user4.first_key_hash(),
-            format!("key hash {} not found", accounts.user4.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user2.username, accounts.user4.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
@@ -537,14 +543,20 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
             accounts.user3.username.clone(),
             accounts.user2.first_key_hash(),
             3,
-            format!("key hash {} not found", accounts.user2.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user3.username, accounts.user2.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
             accounts.user3.first_key_hash(),
             3,
-            format!("key hash {} not found", accounts.user3.first_key_hash()),
+            {
+                let path = KEYS.path((&accounts.user2.username, accounts.user3.first_key_hash()));
+                StdError::data_not_found::<Key>(path.storage_key()).to_string()
+            },
         ),
         (
             accounts.user2.username.clone(),
@@ -633,7 +645,7 @@ fn unauthorized_messages() {
         .transfer(
             safe.with_signer(&accounts.user1),
             accounts.user1.address(),
-            Coins::one("uusdc", 123).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
         .should_fail_with_error("the only action a Safe account can do is to execute itself");
 

@@ -3,17 +3,17 @@
 
 use {
     dango_testing::setup_test_naive,
-    dango_types::dex::{self, Direction, OrderId, QueryOrdersRequest},
+    dango_types::{
+        constants::{DANGO_DENOM, USDC_DENOM},
+        dex::{self, Direction, OrderId, QueryOrdersRequest},
+    },
     grug::{
         btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
         NonEmpty, QuerierExt, Signer, StdResult, Udec128, Uint128,
     },
-    std::{collections::BTreeMap, str::FromStr, sync::LazyLock},
+    std::collections::BTreeMap,
     test_case::test_case,
 };
-
-static BASE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("udng").unwrap());
-static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
 
 // --------------------------------- example 1 ---------------------------------
 #[test_case(
@@ -31,28 +31,28 @@ static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(200),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(200),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(200),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(200),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 1"
@@ -73,28 +73,28 @@ static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 2"
@@ -117,32 +117,32 @@ static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(5),   // half filled
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(188), // -200 deposit, +12 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(5),   // half filled
+            USDC_DENOM.clone()  => BalanceChange::Decreased(188), // -200 deposit, +12 refund
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
         !6 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(5),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(88), // -150 deposit, +62 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(5),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(88), // -150 deposit, +62 refund
         },
     };
     "example 3"
@@ -164,28 +164,28 @@ static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(20),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(450), // -600 deposit, +150 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(20),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(450), // -600 deposit, +150 refund
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(225),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(225),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(225),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(225),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 4"
@@ -207,28 +207,28 @@ static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(25),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(688), // -750 deposit, +62 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(25),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(688), // -750 deposit, +62 refund
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(275),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(275),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(275),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(275),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(137), // refund: floor(5 * 27.5) = 137
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(137), // refund: floor(5 * 27.5) = 137
         },
     };
     "example 5"
@@ -273,16 +273,16 @@ fn dex_works(
             let funds = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(QUOTE_DENOM.clone(), quote_amount).unwrap()
+                    Coins::one(USDC_DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(BASE_DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coins::one(DANGO_DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::SubmitOrder {
-                    base_denom: BASE_DENOM.clone(),
-                    quote_denom: QUOTE_DENOM.clone(),
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
                     direction,
                     amount,
                     price,

@@ -4,6 +4,7 @@ use {
         account::single,
         account_factory::{self, Account, AccountParams, Username},
         auth::Key,
+        constants::USDC_DENOM,
         ibc,
     },
     grug::{
@@ -35,7 +36,7 @@ fn user_onboarding() {
             &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                 recipient: user.address(),
             },
-            Coins::one("uusdc", 123).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
         .should_succeed();
 
@@ -85,7 +86,7 @@ fn user_onboarding() {
 
     // User's account should have been created with the correct token balance.
     suite
-        .query_balance(&user, "uusdc")
+        .query_balance(&user, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(123));
 }
 
@@ -112,7 +113,7 @@ fn onboarding_existing_user() {
                 &ibc::transfer::ExecuteMsg::ReceiveTransfer {
                     recipient: user.address(),
                 },
-                Coins::one("uusdc", 123).unwrap(),
+                Coins::one(USDC_DENOM.clone(), 123).unwrap(),
             )
             .should_succeed();
 

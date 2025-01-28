@@ -2,7 +2,7 @@ use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
     anyhow::{bail, ensure},
     dango_types::{
-        config::DANGO_DENOM,
+        constants::DANGO_DENOM,
         vesting::{ExecuteMsg, InstantiateMsg, Position, Schedule, VestingStatus},
     },
     grug::{

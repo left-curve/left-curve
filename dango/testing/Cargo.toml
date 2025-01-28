@@ -10,34 +10,41 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-dango-app      = { workspace = true }
-dango-genesis  = { workspace = true }
-dango-types    = { workspace = true }
-grug           = { workspace = true }
-grug-app       = { workspace = true }
-grug-db-disk   = { workspace = true }
-grug-db-memory = { workspace = true }
-grug-vm-hybrid = { workspace = true }
-grug-vm-rust   = { workspace = true }
-grug-vm-wasm   = { workspace = true }
-hex-literal    = { workspace = true }
-k256           = { workspace = true }
+dango-app         = { workspace = true }
+dango-genesis     = { workspace = true }
+dango-indexer-sql = { workspace = true, features = ["tracing"] }
+dango-types       = { workspace = true }
+grug              = { workspace = true }
+grug-app          = { workspace = true }
+grug-db-disk      = { workspace = true }
+grug-db-memory    = { workspace = true }
+grug-vm-hybrid    = { workspace = true }
+grug-vm-rust      = { workspace = true }
+grug-vm-wasm      = { workspace = true }
+hex-literal       = { workspace = true }
+indexer-sql       = { workspace = true, features = ["tracing"] }
+k256              = { workspace = true }
+sea-orm           = { workspace = true }
 
 [dev-dependencies]
-alloy           = { workspace = true, features = ["full", "signer-mnemonic"] }
-anyhow          = { workspace = true }
-criterion       = { workspace = true }
-dango-types     = { workspace = true }
-dotenvy         = { workspace = true }
-grug-crypto     = { workspace = true }
-hyperlane-types = { workspace = true }
-hyperlane-warp  = { workspace = true, features = ["library"] }
-pyth-sdk        = { workspace = true }
-rand            = { workspace = true }
-reqwest         = { workspace = true, features = ["json"] }
-test-case       = { workspace = true }
-tokio           = { workspace = true, features = ["full"] }
-tracing         = { workspace = true }
+alloy                 = { workspace = true, features = ["full", "signer-mnemonic"] }
+anyhow                = { workspace = true }
+assertor              = { workspace = true }
+criterion             = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+dango-oracle          = { workspace = true, features = ["library"] }
+dango-types           = { workspace = true }
+dango-warp            = { workspace = true, features = ["library"] }
+dotenvy               = { workspace = true }
+grug-crypto           = { workspace = true }
+hyperlane-types       = { workspace = true }
+proptest              = { workspace = true }
+pyth-sdk              = { workspace = true }
+rand                  = { workspace = true }
+reqwest               = { workspace = true, features = ["json"] }
+test-case             = { workspace = true }
+tokio                 = { workspace = true, features = ["full"] }
+tracing               = { workspace = true }
 
 [[bench]]
 harness = false

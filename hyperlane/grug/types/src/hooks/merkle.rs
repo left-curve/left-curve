@@ -36,12 +36,14 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("post_dispatch")]
 pub struct PostDispatch {
     pub message_id: Hash256,
     pub index: u128,
 }
 
 #[grug::derive(Serde)]
+#[grug::event("inserted_into_tree")]
 pub struct InsertedIntoTree {
     pub index: u128,
 }

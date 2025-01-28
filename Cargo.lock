@@ -2785,6 +2785,7 @@ dependencies = [
  "dango-taxman",
  "dango-types",
  "dango-vesting",
+ "dango-warp",
  "grug",
  "hex",
  "hex-literal",
@@ -2794,7 +2795,6 @@ dependencies = [
  "hyperlane-mailbox",
  "hyperlane-merkle",
  "hyperlane-types",
- "hyperlane-warp",
  "rand",
  "serde",
 ]
@@ -2806,6 +2806,40 @@ dependencies = [
  "dango-account-factory",
  "dango-types",
  "grug",
+]
+
+[[package]]
+name = "dango-indexer-sql"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-trait",
+ "borsh 1.5.3",
+ "dango-indexer-sql-migration",
+ "grug-app",
+ "grug-math",
+ "grug-types",
+ "indexer-disk-saver",
+ "indexer-sql",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "strum",
+ "strum_macros",
+ "tempfile",
+ "thiserror 2.0.9",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "dango-indexer-sql-migration"
+version = "0.0.0"
+dependencies = [
+ "async-std",
+ "sea-orm-migration",
 ]
 
 [[package]]
@@ -2843,10 +2877,15 @@ version = "0.0.0"
 dependencies = [
  "alloy",
  "anyhow",
+ "assertor",
  "criterion",
+ "dango-account-factory",
  "dango-app",
  "dango-genesis",
+ "dango-indexer-sql",
+ "dango-oracle",
  "dango-types",
+ "dango-warp",
  "dotenvy",
  "grug",
  "grug-app",
@@ -2858,11 +2897,13 @@ dependencies = [
  "grug-vm-wasm",
  "hex-literal",
  "hyperlane-types",
- "hyperlane-warp",
+ "indexer-sql",
  "k256",
+ "proptest",
  "pyth-sdk 0.8.0",
  "rand",
  "reqwest 0.12.12",
+ "sea-orm",
  "test-case",
  "tokio",
  "tracing",
@@ -2878,6 +2919,7 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex-literal",
+ "hyperlane-types",
  "paste",
  "pyth-sdk 0.8.0",
  "pyth-wormhole-attester-sdk",
@@ -2895,6 +2937,16 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
+]
+
+[[package]]
+name = "dango-warp"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "hyperlane-types",
 ]
 
 [[package]]
@@ -4471,16 +4523,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperlane-warp"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
- "hyperlane-types",
-]
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4729,6 +4771,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-trait",
  "borsh 1.5.3",
  "grug-app",
  "grug-math",

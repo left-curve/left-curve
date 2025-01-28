@@ -1,0 +1,116 @@
+{
+  "name": "@left-curve/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "bump": "npm version --no-git-tag-version",
+    "ci": "pnpm lint",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "test": "pnpm vitest run",
+    "test:watch": "pnpm vitest",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "build"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    },
+    "./actions": {
+      "types": "./build/actions/index.d.ts",
+      "import": "./build/actions/index.js",
+      "default": "./build/actions/index.cjs"
+    },
+    "./clients": {
+      "types": "./build/clients/index.d.ts",
+      "import": "./build/clients/index.js",
+      "default": "./build/clients/index.cjs"
+    },
+    "./chains": {
+      "types": "./build/chains/index.d.ts",
+      "import": "./build/chains/index.js",
+      "default": "./build/chains/index.cjs"
+    },
+    "./crypto": {
+      "types": "./build/crypto/index.d.ts",
+      "import": "./build/crypto/index.js",
+      "default": "./build/crypto/index.cjs"
+    },
+     "./encoding": {
+      "types": "./build/encoding/index.d.ts",
+      "import": "./build/encoding/index.js",
+      "default": "./build/encoding/index.cjs"
+    },
+    "./utils": {
+      "types": "./build/utils/index.d.ts",
+      "import": "./build/utils/index.js",
+      "default": "./build/utils/index.cjs"
+    },
+     "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "actions": [
+        "./build/actions/index.d.ts"
+      ],
+      "clients": [
+        "./build/clients/index.d.ts"
+      ],
+      "chains": [
+        "./build/chains/index.d.ts"
+      ],
+      "crypto": [
+        "./build/crypto/index.d.ts"
+      ],
+      "encoding": [
+        "./build/encoding/index.d.ts"
+      ],
+      "utils": [
+        "./build/utils/index.d.ts"
+      ],
+      "types": [
+        "./build/types/index.d.ts"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "superjson": "^2.2.1",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.4.0",
+    "@scure/bip32": "^1.4.0",
+    "@scure/bip39": "^1.3.0",
+    "cbor-x": "^1.6.0"
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
+}

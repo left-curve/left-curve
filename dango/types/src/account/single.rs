@@ -9,14 +9,10 @@ pub struct Params {
     /// The user can sign transactions with any key associated with their
     /// username and this account as sender.
     pub owner: Username,
-    pub is_otp_active: bool,
 }
 
 impl Params {
     pub fn new(owner: Username) -> Self {
-        Self {
-            owner,
-            is_otp_active: false,
-        }
+        Self { owner }
     }
 }

@@ -143,6 +143,7 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("order_submitted")]
 pub struct OrderSubmitted {
     pub order_id: OrderId,
     pub user: Addr,
@@ -155,6 +156,7 @@ pub struct OrderSubmitted {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("order_canceled")]
 pub struct OrderCanceled {
     pub order_id: OrderId,
     pub remaining: Uint128,
@@ -162,6 +164,7 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("orders_matched")]
 pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
@@ -170,6 +173,7 @@ pub struct OrdersMatched {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("order_filled")]
 pub struct OrderFilled {
     pub order_id: OrderId,
     /// The price at which the order was executed.
