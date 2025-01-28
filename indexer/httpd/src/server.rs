@@ -1,6 +1,6 @@
 use {
     super::error::Error,
-    crate::{context::Context, graphql::build_schema, routes},
+    crate::{context::Context, routes},
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
@@ -11,11 +11,17 @@ use {
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
-pub async fn run_server(
+pub async fn run_server<CA, GS>(
     ip: Option<&str>,
     port: Option<u16>,
     database_url: String,
-) -> Result<(), Error> {
+    config_app: CA,
+    build_schema: fn(Context) -> GS,
+) -> Result<(), Error>
+where
+    CA: Fn(Context, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
+    GS: Clone + Send + 'static,
+{
     let port = port
         .or_else(|| {
             std::env::var("PORT")
@@ -28,10 +34,14 @@ pub async fn run_server(
     let context = Context::new(Some(database_url)).await?;
     let graphql_schema = build_schema(context.clone());
 
-    HttpServer::new(move || build_actix_app(context.clone(), graphql_schema.clone()))
-        .bind((ip, port))?
-        .run()
-        .await?;
+    HttpServer::new(move || {
+        let app = App::new().wrap(Logger::default()).wrap(Compress::default());
+
+        app.configure(config_app(context.clone(), graphql_schema.clone()))
+    })
+    .bind((ip, port))?
+    .run()
+    .await?;
 
     Ok(())
 }
