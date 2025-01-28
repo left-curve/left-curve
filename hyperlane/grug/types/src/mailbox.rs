@@ -109,6 +109,7 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("mailbox_dispatch")]
 pub struct Dispatch {
     pub sender: Addr32,
     pub destination_domain: Domain,
@@ -117,11 +118,13 @@ pub struct Dispatch {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("mailbox_dispatch_id")]
 pub struct DispatchId {
     pub message_id: Hash256,
 }
 
 #[grug::derive(Serde)]
+#[grug::event("mailbox_process")]
 pub struct Process {
     pub origin_domain: Domain,
     pub sender: Addr32,
@@ -129,6 +132,7 @@ pub struct Process {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("mailbox_process_id")]
 pub struct ProcessId {
     pub message_id: Hash256,
 }
