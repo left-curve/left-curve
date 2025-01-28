@@ -211,27 +211,27 @@ Similarly, on the SELL side, we have:
   a_{\mathrm{ask}} = A - \frac{B}{p}
 \end{equation}
 
-It's immediately obvious that in both cases, if $p = \frac{B}{A}$, then $a = 0$. This is a special price, at which the pool does not offer to buy or sell in any amount, we denote as the \textbf{pool price} $p_{\mathrm{pool}}$. In the most general case, $p_{\mathrm{pool}}$ is \textit{the price at which the trade swapping an infinitesimal amount of base asset into the quote asset is executed}:
+It's immediately obvious that in both cases, if $p = \frac{B}{A}$, then $a = 0$. This is a special price, at which the pool does not offer to buy or sell in any amount, we denote as the \textbf{marginal price} $p_{\mathrm{m}}$. In the most general case, $p_{\mathrm{m}}$ is \textit{the price at which the trade swapping an infinitesimal amount of base asset into the quote asset is executed}:
 
 \begin{equation}
-  p_{\mathrm{pool}}(x, y) = - \frac{\mathrm{d}y}{\mathrm{d}x}
+  p_{\mathrm{m}}(x, y) = - \frac{\mathrm{d}y}{\mathrm{d}x}
 \end{equation}
 
 Since $x$ and $y$ follows $f(x, y) = K$, using the chain rule of multivariant functions, we can get:
 
 \begin{equation}
-  p_{\mathrm{pool}}(x, y) = \frac{\frac{\partial f}{\partial x}}{\frac{\partial f}{\partial y}}
+  p_{\mathrm{m}}(x, y) = \frac{\frac{\partial f}{\partial x}}{\frac{\partial f}{\partial y}}
 \end{equation}
 
 For the xyk invariant specifically, this is:
 
 \begin{equation}
-  p_{\mathrm{pool}}(x, y) = \frac{y}{x}
+  p_{\mathrm{m}}(x, y) = \frac{y}{x}
 \end{equation}
 
-Intuitively, $p_{\mathrm{pool}}$ is the ``inherit'' price mplied by its reserves. The pool will place orders around this price.
+Intuitively, $p_{\mathrm{m}}$ is the ``inherit'' price mplied by its reserves. The pool will place orders around this price.
 
-At any price $p < p_{\mathrm{pool}}$, $a_{\mathrm{bid}} > 0$. This can be understood as the pool offering to buy $a_{\mathrm{bid}}$ amount of the base asset between prices $p$ and $p_{\mathrm{pool}}$.
+At any price $p < p_{\mathrm{m}}$, $a_{\mathrm{bid}} > 0$. This can be understood as the pool offering to buy $a_{\mathrm{bid}}$ amount of the base asset between prices $p$ and $p_{\mathrm{m}}$.
 
 Of course, prices LOBs are discret, separated by \textbf{ticks}. Let's say the tick size is $\Delta p$. Consider the price one tick above $p$, $p' = p + \Delta p$:
 
@@ -245,7 +245,7 @@ Of course, prices LOBs are discret, separated by \textbf{ticks}. Let's say the t
 
 This is the quantity of BUY order that the pool will place at price $p$.
 
-Similarly, one the SELL side, for two prices $p' = p - \Delta p$ and $p' > p_{\mathrm{pool}}$:
+Similarly, one the SELL side, for two prices $p' = p - \Delta p$ and $p' > p_{\mathrm{m}}$:
 
 \begin{equation}
   \Delta a_{\mathrm{ask}} = a_{\mathrm{ask}} - a'_{\mathrm{ask}} = B \left(\frac{1}{p} - \frac{1}{p'} \right) = B \frac{\Delta p}{p (p - \Delta p)}
@@ -253,7 +253,7 @@ Similarly, one the SELL side, for two prices $p' = p - \Delta p$ and $p' > p_{\m
 
 \subsubsection{Example}
 
-Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset USD of quantity $B = 200$. Pool price $p_{\mathrm{pool}} = 200$. \hyperref[fig:1]{Figure 1} plots the order sizes $\Delta a_{\mathrm{bid}}$, $\Delta a_{\mathrm{ask}}$ as well as cumulative BUY/SELL demand agianst price $p$.
+Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset USD of quantity $B = 200$. marginal price $p_{\mathrm{m}} = 200$. \hyperref[fig:1]{Figure 1} plots the order sizes $\Delta a_{\mathrm{bid}}$, $\Delta a_{\mathrm{ask}}$ as well as cumulative BUY/SELL demand agianst price $p$.
 
 \begin{figure}
   \includegraphics[width=\textwidth]{1-xyk.png}
@@ -263,11 +263,11 @@ Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset US
 
 \subsubsection{Bried summary so far}
 
-We have established the concept of pool price $p_{\mathrm{pool}}$, and a way to derive BUY/SELL order size $\Delta a_{\mathrm{bid}}$ and $\Delta a_{\mathrm{ask}}$ in relation to a given price $p$.
+We have established the concept of marginal price $p_{\mathrm{m}}$, and a way to derive BUY/SELL order size $\Delta a_{\mathrm{bid}}$ and $\Delta a_{\mathrm{ask}}$ in relation to a given price $p$.
 
-Looking at the order depth chart of the xyk invariant, it puts liquidity roughly evenly over a wide range of prices. This in capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{pool}}$.
+Looking at the order depth chart of the xyk invariant, it puts liquidity roughly evenly over a wide range of prices. This in capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{m}}$.
 
-Additionally, this invariant is susceptible to LVR, as $p_{\mathrm{pool}}$ does not adjust in response to the change of price in CEXs.
+Additionally, this invariant is susceptible to LVR, as $p_{\mathrm{m}}$ does not adjust in response to the change of price in CEXs.
 
 \subsection{Passive liquidity on a LOB following the Solidly invariant}
 
@@ -283,10 +283,10 @@ This formula assumes the two assets have the same price. In case they're not the
   f(x, y) = x^3 \left( \frac{y}{R} \right) + x \left( \frac{y}{R} \right)^3
 \end{equation}
 
-The pool price is:
+The marginal price is:
 
 \begin{equation}
-  p_{\mathrm{pool}}(x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 R x y^2}
+  p_{\mathrm{m}}(x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 R x y^2}
 \end{equation}
 
 Let's derive $a_{\mathrm{bid}}$ the same way as we did for the xyk pool. Suppose the pool as reserves $A$ and $B$ prior to the swap:
@@ -372,14 +372,14 @@ Following the same example of SOL-USD pool in the previous discussions, assuming
   \label{fig:2}
 \end{figure}
 
-It's obvious that liquidity is now indeed concentrated around the pool price.
+It's obvious that liquidity is now indeed concentrated around the marginal price.
 
-In general, however, $R$ does not match exactly the composition of assets in the pool. In order to mitigate LVR, we need $p_{\mathrm{pool}}$ to closely track $R$. \hyperref[fig:3]{Figure 3} plots the deviation of $p_{\mathrm{pool}}$ from $R$ against $R$.
+In general, however, $R$ does not match exactly the composition of assets in the pool. In order to mitigate LVR, we need $p_{\mathrm{m}}$ to closely track $R$. \hyperref[fig:3]{Figure 3} plots the deviation of $p_{\mathrm{m}}$ from $R$ against $R$.
 
 \begin{figure}
   \centering
   \includegraphics[width=4.5in]{3-solidly-pool-price-vs-oracle.png}
-  \caption{Deviation of pool price from oracle price}
+  \caption{Deviation of marginal price from oracle price}
   \label{fig:3}
 \end{figure}
 
@@ -635,11 +635,11 @@ Once we have the clearing price, clearing the orders is trivial (which involves 
 
 \subsection{Customizations}
 
-In the above formulation of the passive liquidity pool, the pool places orders every tick, starting one tick above and below $p_{\mathrm{pool}}$. This can be customized by introducing two additional parameters:
+In the above formulation of the passive liquidity pool, the pool places orders every tick, starting one tick above and below $p_{\mathrm{m}}$. This can be customized by introducing two additional parameters:
 
 \begin{itemize}
-  \item \textbf{Cadence}: The pool can instead place an order every $N$ ticks. Alternatively, it can place orders more densely when close to $p_{\mathrm{pool}}$, but more loosely when farther away. Either way, there will be fewer orders overall, reducing computational cost.
-  \item \textbf{Spread}: The pool can place orders a few ticks further away from $p_{\mathrm{pool}}$. A bigger spread may improve the pool's profitability.The spread can either be defined as constant values, or calculated dynamically based on marketing conditions, following models such as the one proposed by Avellaneda and Stoikov.\supercite{avellanedastoikov}
+  \item \textbf{Cadence}: The pool can instead place an order every $N$ ticks. Alternatively, it can place orders more densely when close to $p_{\mathrm{m}}$, but more loosely when farther away. Either way, there will be fewer orders overall, reducing computational cost.
+  \item \textbf{Spread}: The pool can place orders a few ticks further away from $p_{\mathrm{m}}$. A bigger spread may improve the pool's profitability.The spread can either be defined as constant values, or calculated dynamically based on marketing conditions, following models such as the one proposed by Avellaneda and Stoikov.\supercite{avellanedastoikov}
 \end{itemize}
 
 \subsection{Dango's custom smart contract VM}
