@@ -15,10 +15,10 @@ use {
         account_factory::{self, AccountParams},
     },
     grug::{
-        call_graphql, setup_tracing_subscriber, Coins, GraphQLCustomRequest, Message, NonEmpty,
-        PaginatedResponse, ResultExt,
+        build_actix_app_with_config, call_graphql, setup_tracing_subscriber, Coins,
+        GraphQLCustomRequest, Message, NonEmpty, PaginatedResponse, ResultExt,
     },
-    indexer_httpd::{context::Context, server::build_actix_app_with_config},
+    indexer_httpd::context::Context,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
