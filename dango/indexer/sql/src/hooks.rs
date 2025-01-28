@@ -65,6 +65,8 @@ impl Hooks {
                 })
                 .collect::<Vec<_>>();
 
+        let mut idx = 0;
+
         // 2. create a transfer for each event
         let new_transfers: Vec<entity::transfers::ActiveModel> = transfer_events
             .into_iter()
@@ -73,14 +75,19 @@ impl Hooks {
                     .coins
                     .inner()
                     .iter()
-                    .map(|(denom, amount)| entity::transfers::ActiveModel {
-                        id: Set(Uuid::new_v4()),
-                        block_height: Set(te.block_height),
-                        created_at: Set(te.created_at),
-                        from_address: Set(flat_transfer_event.sender.to_string()),
-                        to_address: Set(flat_transfer_event.recipient.to_string()),
-                        amount: Set(amount.to_string()),
-                        denom: Set(denom.to_string()),
+                    .map(|(denom, amount)| {
+                        let res = entity::transfers::ActiveModel {
+                            id: Set(Uuid::new_v4()),
+                            idx: Set(idx),
+                            block_height: Set(te.block_height),
+                            created_at: Set(te.created_at),
+                            from_address: Set(flat_transfer_event.sender.to_string()),
+                            to_address: Set(flat_transfer_event.recipient.to_string()),
+                            amount: Set(amount.to_string()),
+                            denom: Set(denom.to_string()),
+                        };
+                        idx += 1;
+                        res
                     })
                     .collect::<Vec<_>>()
             })

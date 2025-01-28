@@ -3,7 +3,9 @@ use {
     async_graphql::{types::connection::*, *},
     dango_indexer_sql::entity::{self, prelude::Transfers},
     indexer_httpd::context::Context,
-    sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select},
+    sea_orm::{
+        ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, Select,
+    },
     serde::{Deserialize, Serialize},
 };
 
@@ -17,13 +19,15 @@ pub enum SortBy {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TransferCursor {
-    block_height: i64,
+    block_height: u64,
+    idx: i32,
 }
 
 impl From<types::transfer::Transfer> for TransferCursor {
     fn from(transfer: types::transfer::Transfer) -> Self {
         Self {
-            block_height: transfer.block_height as i64,
+            block_height: transfer.block_height,
+            idx: transfer.idx,
         }
     }
 }
@@ -147,12 +151,20 @@ fn apply_filter(
     sort_by: SortBy,
     after: &TransferCursor,
 ) -> Select<Transfers> {
-    match sort_by {
-        SortBy::BlockHeightAsc => {
-            query.filter(entity::transfers::Column::BlockHeight.lt(after.block_height))
-        },
-        SortBy::BlockHeightDesc => {
-            query.filter(entity::transfers::Column::BlockHeight.gt(after.block_height))
-        },
-    }
+    query.filter(match sort_by {
+        SortBy::BlockHeightAsc => Condition::any()
+            .add(entity::transfers::Column::BlockHeight.lt(after.block_height))
+            .add(
+                entity::transfers::Column::BlockHeight
+                    .eq(after.block_height)
+                    .and(entity::transfers::Column::Idx.lt(after.idx)),
+            ),
+        SortBy::BlockHeightDesc => Condition::any()
+            .add(entity::transfers::Column::BlockHeight.gt(after.block_height))
+            .add(
+                entity::transfers::Column::BlockHeight
+                    .eq(after.block_height)
+                    .and(entity::transfers::Column::Idx.gt(after.idx)),
+            ),
+    })
 }
