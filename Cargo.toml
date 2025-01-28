@@ -194,7 +194,7 @@ features = [
   "with-json",
   "with-uuid",
 ]
-version = "1"
+version = "1.1"
 
 [workspace.dependencies.sea-orm-migration]
 features = [
@@ -205,7 +205,7 @@ features = [
   "with-json",
   "with-uuid",
 ]
-version = "1"
+version = "1.1"
 
 # The Pyth attester SDK is not published to crates.io.
 # Import from GitHub, using the latest commit at this time.
