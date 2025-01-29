@@ -37,27 +37,21 @@ fn query_announced_validators(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    let validators = STORAGE_LOCATIONS
+    STORAGE_LOCATIONS
         .keys(ctx.storage, start, None, Order::Ascending)
         .take(limit as usize)
-        .collect::<StdResult<_>>()?;
-
-    Ok(validators)
+        .collect()
 }
 
 fn query_announce_storage_locations(
     ctx: ImmutableCtx,
     validators: BTreeSet<HexByteArray<20>>,
 ) -> StdResult<BTreeMap<HexByteArray<20>, BTreeSet<String>>> {
-    let storage_locations = validators
+    validators
         .into_iter()
         .map(|v| {
-            let storage_locations = STORAGE_LOCATIONS
-                .may_load(ctx.storage, v.to_vec().try_into().unwrap())?
-                .unwrap_or_default();
+            let storage_locations = STORAGE_LOCATIONS.load(ctx.storage, v)?;
             Ok((v, storage_locations))
         })
-        .collect::<StdResult<_>>()?;
-
-    Ok(storage_locations)
+        .collect()
 }
