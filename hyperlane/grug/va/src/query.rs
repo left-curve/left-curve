@@ -1,7 +1,7 @@
 use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
-    grug::{Addr, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult, StorageQuerier},
-    hyperlane_types::{mailbox::Domain, va::QueryMsg},
+    grug::{Addr, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -18,10 +18,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::Mailbox {} => {
             let res = query_mailbox(ctx)?;
-            res.to_json_value()
-        },
-        QueryMsg::LocalDomain {} => {
-            let res = query_local_domain(ctx)?;
             res.to_json_value()
         },
     }
@@ -54,11 +50,4 @@ fn query_announced_validators(ctx: ImmutableCtx) -> StdResult<BTreeSet<HexByteAr
 
 fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
     MAILBOX.load(ctx.storage)
-}
-
-fn query_local_domain(ctx: ImmutableCtx) -> StdResult<Domain> {
-    Ok(ctx
-        .querier
-        .query_wasm_path(MAILBOX.load(ctx.storage)?, hyperlane_mailbox::CONFIG.path())?
-        .local_domain)
 }

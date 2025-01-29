@@ -1,5 +1,4 @@
 use {
-    crate::mailbox::Domain,
     grug::{Addr, HexByteArray},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -34,9 +33,6 @@ pub enum QueryMsg {
 
     #[returns(Addr)]
     Mailbox {},
-
-    #[returns(Domain)]
-    LocalDomain {},
 }
 
 // ---------------------------------- events -----------------------------------
