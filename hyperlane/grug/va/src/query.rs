@@ -18,8 +18,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_announced_validators(ctx, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::AnnounceStorageLocations { validators } => {
-            let res = query_announce_storage_locations(ctx, validators)?;
+        QueryMsg::AnnouncedStorageLocations { validators } => {
+            let res = query_announced_storage_locations(ctx, validators)?;
             res.to_json_value()
         },
     }
@@ -43,7 +43,7 @@ fn query_announced_validators(
         .collect()
 }
 
-fn query_announce_storage_locations(
+fn query_announced_storage_locations(
     ctx: ImmutableCtx,
     validators: BTreeSet<HexByteArray<20>>,
 ) -> StdResult<BTreeMap<HexByteArray<20>, BTreeSet<String>>> {

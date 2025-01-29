@@ -34,7 +34,7 @@ pub enum QueryMsg {
     },
     /// Query the storage locations of the given validators.
     #[returns(BTreeMap<HexByteArray<20>, BTreeSet<String>>)]
-    AnnounceStorageLocations {
+    AnnouncedStorageLocations {
         validators: BTreeSet<HexByteArray<20>>,
     },
 }
