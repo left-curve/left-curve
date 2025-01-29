@@ -9,9 +9,9 @@ on:
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "grug/**"
       - "**.toml"
   pull_request:
     branches:
@@ -19,9 +19,9 @@ on:
     paths:
       - ".github/workflows/rust.yml"
       - "dango/**"
+      - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
-      - "grug/**"
       - "**.toml"
 
 jobs:
