@@ -55,9 +55,10 @@ impl StartCmd {
                 .with_dir(app_dir.indexer_dir())
                 .build()
                 .expect("Can't create indexer");
+
             if self.indexer_httpd_enabled {
-                // NOTE: If the httpd was heavily used, it would be better to run it in a separate
-                // tokio runtime
+                // NOTE: If the httpd was heavily used, it would be better to
+                // run it in a separate tokio runtime.
                 tokio::try_join!(
                     Self::run_httpd_server(self.indexer_database_url.clone()),
                     self.run_with_indexer(app_dir, indexer)
@@ -76,6 +77,7 @@ impl StartCmd {
     async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
         indexer_httpd::server::run_server(None, None, database_url, config_app, build_schema)
             .await?;
+
         Ok(())
     }
 

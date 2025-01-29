@@ -57,15 +57,12 @@ impl TransactionQuery {
     ) -> Result<Connection<TransactionCursorType, Transaction, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with(
+        query_with::<TransactionCursorType, _, _, _, _>(
             after,
             before,
             first,
             last,
-            |after: Option<TransactionCursorType>,
-             before: Option<TransactionCursorType>,
-             first,
-             last| async move {
+            |after, before, first, last| async move {
                 let mut query = entity::transactions::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;

@@ -24,6 +24,7 @@ impl Context {
             Some(database_url) => Self::connect_db_with_url(&database_url).await?,
             None => Self::connect_db().await?,
         };
+
         Ok(Self { db })
     }
 
@@ -43,7 +44,7 @@ impl Context {
         let num_workers = num_cpus::get();
 
         opt.max_connections(num_workers as u32);
-        // .min_connections(5)
+        //.min_connections(5)
         //.connect_timeout(Duration::from_secs(settings.timeout))
         //.idle_timeout(Duration::from_secs(8))
         //.max_lifetime(Duration::from_secs(20))

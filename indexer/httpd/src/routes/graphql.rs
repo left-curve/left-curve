@@ -16,7 +16,6 @@ pub fn graphql_route() -> Resource {
         .route(web::get().to(graphiql_playgound))
 }
 
-// #[tracing::instrument(name = "graphql::graphql_index", skip_all)]
 pub(crate) async fn graphql_index(
     schema: web::Data<AppSchema>,
     _req: HttpRequest,
@@ -27,7 +26,6 @@ pub(crate) async fn graphql_index(
     schema.execute(request).await.into()
 }
 
-// #[tracing::instrument(name = "graphql::graphiql_playgound")]
 pub async fn graphiql_playgound() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
@@ -39,7 +37,6 @@ pub async fn graphiql_playgound() -> HttpResponse {
         )
 }
 
-// #[tracing::instrument(name = "graphql::graphql_ws", skip_all)]
 pub(crate) async fn graphql_ws(
     schema: web::Data<AppSchema>,
     req: HttpRequest,

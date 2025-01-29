@@ -13,6 +13,7 @@ use {
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
+        constants::USDC_DENOM,
     },
     grug::{
         build_actix_app_with_config, call_graphql, setup_tracing_subscriber, Coins,
@@ -33,7 +34,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
         &account_factory::ExecuteMsg::RegisterAccount {
             params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
         },
-        Coins::one("hyp/eth/usdc", 100_000_000).unwrap(),
+        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
     )?];
 
     suite
@@ -60,7 +61,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
         pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
     }
-        "#;
+    "#;
 
     let variables = serde_json::json!({
         "block_height": 1,

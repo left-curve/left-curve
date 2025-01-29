@@ -59,12 +59,12 @@ impl MessageQuery {
     ) -> Result<Connection<MessageCursorType, Message, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with(
+        query_with::<MessageCursorType, _, _, _, _>(
             after,
             before,
             first,
             last,
-            |after: Option<MessageCursorType>, before: Option<MessageCursorType>, first, last| async move {
+            |after, before, first, last| async move {
                 let mut query = entity::messages::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;
@@ -79,7 +79,7 @@ impl MessageQuery {
                         limit = first.map(|x| x as u64).unwrap_or(MAX_MESSAGES);
 
                         query = query.limit(limit + 1);
-                    }
+                    },
                     (None, before, None, last) => {
                         if let Some(before) = before {
                             query = apply_filter(query, sort_by, &before);
@@ -88,12 +88,13 @@ impl MessageQuery {
                         limit = last.map(|x| x as u64).unwrap_or(MAX_MESSAGES);
 
                         query = query.limit(limit + 1);
-                    }
-                    _ => unreachable!()
+                    },
+                    _ => unreachable!(),
                 }
 
                 if let Some(block_height) = block_height {
-                    query = query.filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
+                    query =
+                        query.filter(entity::messages::Column::BlockHeight.eq(block_height as i64));
                 }
 
                 if let Some(method_name) = method_name {
@@ -122,11 +123,11 @@ impl MessageQuery {
                 }
 
                 let mut messages: Vec<types::message::Message> = query
-                .all(&app_ctx.db)
-                .await?
-                .into_iter()
-                .map(|message| message.into())
-                .collect::<Vec<_>>();
+                    .all(&app_ctx.db)
+                    .await?
+                    .into_iter()
+                    .map(|message| message.into())
+                    .collect::<Vec<_>>();
 
                 if has_before {
                     messages.reverse();
@@ -139,20 +140,18 @@ impl MessageQuery {
                 }
 
                 let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(
-                    messages
-                    .into_iter()
-                    .map(|message|
-                        Edge::with_additional_fields(
-                            OpaqueCursor(message.clone().into()),
-                            message,
-                            EmptyFields
-                        )
+                connection.edges.extend(messages.into_iter().map(|message| {
+                    Edge::with_additional_fields(
+                        OpaqueCursor(message.clone().into()),
+                        message,
+                        EmptyFields,
                     )
-                );
+                }));
 
                 Ok::<_, async_graphql::Error>(connection)
-            }).await
+            },
+        )
+        .await
     }
 }
 

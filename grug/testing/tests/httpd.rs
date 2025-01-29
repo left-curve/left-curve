@@ -52,15 +52,15 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
     let (httpd_context, _) = create_block().await?;
 
     let graphql_query = r#"
-    query Block($height: Int!) {
-      block(height: $height) {
-        blockHeight
-        appHash
-        hash
-        createdAt
+      query Block($height: Int!) {
+        block(height: $height) {
+          blockHeight
+          appHash
+          hash
+          createdAt
+        }
       }
-    }
-        "#;
+    "#;
 
     let variables = serde_json::json!({
         "height": 1,
@@ -102,17 +102,17 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
     let graphql_query = r#"
     query Blocks {
       blocks {
-       nodes {
-        blockHeight
-        appHash
-        hash
-        createdAt
-       }
-       edges { node { blockHeight appHash hash createdAt } cursor }
-       pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        nodes {
+          blockHeight
+          appHash
+          hash
+          createdAt
+        }
+        edges { node { blockHeight appHash hash createdAt } cursor }
+        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
     }
-        "#;
+    "#;
 
     let request_body = GraphQLCustomRequest {
         name: "blocks",
@@ -148,17 +148,17 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
     let graphql_query = r#"
     query Transactions {
       transactions {
-       nodes {
-        blockHeight
-        sender
-        hash
-        hasSucceeded
-       }
-       edges { node { blockHeight sender hash hasSucceeded } cursor }
-       pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        nodes {
+          blockHeight
+          sender
+          hash
+          hasSucceeded
+        }
+        edges { node { blockHeight sender hash hasSucceeded } cursor }
+        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
     }
-        "#;
+    "#;
 
     let request_body = GraphQLCustomRequest {
         name: "transactions",
@@ -197,17 +197,17 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
     let graphql_query = r#"
     query Messages {
       messages {
-       nodes {
-        blockHeight
-        methodName
-        contractAddr
-        senderAddr
-       }
-       edges { node { blockHeight methodName contractAddr senderAddr } cursor }
-       pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        nodes {
+          blockHeight
+          methodName
+          contractAddr
+          senderAddr
+        }
+        edges { node { blockHeight methodName contractAddr senderAddr } cursor }
+        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
     }
-        "#;
+    "#;
 
     let request_body = GraphQLCustomRequest {
         name: "messages",

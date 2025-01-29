@@ -59,12 +59,12 @@ impl TransferQuery {
     ) -> Result<Connection<TransferCursorType, Transfer, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with(
+        query_with::<TransferCursorType, _, _, _, _>(
             after,
             before,
             first,
             last,
-            |after: Option<TransferCursorType>, before: Option<TransferCursorType>, first, last| async move {
+            |after, before, first, last| async move {
                 let mut query = entity::transfers::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;
@@ -93,7 +93,8 @@ impl TransferQuery {
                 }
 
                 if let Some(block_height) = block_height {
-                    query = query.filter(entity::transfers::Column::BlockHeight.eq(block_height as i64));
+                    query = query
+                        .filter(entity::transfers::Column::BlockHeight.eq(block_height as i64));
                 }
 
                 if let Some(from_address) = from_address {
@@ -140,9 +141,11 @@ impl TransferQuery {
                             EmptyFields,
                         )
                     }));
+
                 Ok::<_, async_graphql::Error>(connection)
             },
-        ).await
+        )
+        .await
     }
 }
 

@@ -66,12 +66,12 @@ impl BlockQuery {
     ) -> Result<Connection<BlockCursorType, Block, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with(
+        query_with::<BlockCursorType, _, _, _, _>(
             after,
             before,
             first,
             last,
-            |after: Option<BlockCursorType>, before: Option<BlockCursorType>, first, last| async move {
+            |after, before, first, last| async move {
                 let mut query = entity::blocks::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;
@@ -86,7 +86,7 @@ impl BlockQuery {
                         limit = first.map(|x| x as u64).unwrap_or(MAX_BLOCKS);
 
                         query = query.limit(limit + 1);
-                    }
+                    },
                     (None, before, None, last) => {
                         if let Some(before) = before {
                             query = apply_filter(query, sort_by, &before);
@@ -95,8 +95,8 @@ impl BlockQuery {
                         limit = last.map(|x| x as u64).unwrap_or(MAX_BLOCKS);
 
                         query = query.limit(limit + 1);
-                    }
-                    _ => unreachable!()
+                    },
+                    _ => unreachable!(),
                 }
 
                 match sort_by {
@@ -126,17 +126,14 @@ impl BlockQuery {
                 }
 
                 let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(
-                    blocks
-                    .into_iter()
-                    .map(|block|
-                        Edge::with_additional_fields(
-                            OpaqueCursor(block.clone().into()),
-                            block,
-                            EmptyFields
-                        )
+                connection.edges.extend(blocks.into_iter().map(|block| {
+                    Edge::with_additional_fields(
+                        OpaqueCursor(block.clone().into()),
+                        block,
+                        EmptyFields,
                     )
-                );
+                }));
+
                 Ok::<_, async_graphql::Error>(connection)
             },
         )

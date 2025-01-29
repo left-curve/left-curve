@@ -24,6 +24,7 @@ pub struct Cli {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let cli = Cli::parse();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
@@ -36,5 +37,6 @@ async fn main() -> Result<(), Error> {
         build_schema,
     )
     .await?;
+
     Ok(())
 }

@@ -6,6 +6,7 @@ use {
         web::ServiceConfig,
         App,
     },
+    anyhow::anyhow,
     indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     serde::Deserialize,
     std::collections::HashMap,
@@ -110,10 +111,7 @@ where
             errors: graphql_response.errors,
         })
     } else {
-        Err(anyhow::anyhow!(
-            "Can't find {} in response",
-            request_body.name
-        ))
+        Err(anyhow!("can't find {} in response", request_body.name))
     }
 }
 
@@ -142,7 +140,8 @@ where
 ///
 /// I tried really hard to use async-graphql + generics but couldn't get it to
 /// work. I'm not sure that's doable.
-/// See https://github.com/async-graphql/async-graphql/discussions/1630
+///
+/// See <https://github.com/async-graphql/async-graphql/discussions/1630>.
 pub fn build_actix_app_with_config<F, G>(
     app_ctx: Context,
     graphql_schema: G,

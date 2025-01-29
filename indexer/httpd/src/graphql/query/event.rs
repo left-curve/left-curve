@@ -55,12 +55,12 @@ impl EventQuery {
     ) -> Result<Connection<EventCursorType, Event, EmptyFields, EmptyFields>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        query_with(
+        query_with::<EventCursorType, _, _, _, _>(
             after,
             before,
             first,
             last,
-            |after: Option<EventCursorType>, before: Option<EventCursorType>, first, last| async move {
+            |after, before, first, last| async move {
                 let mut query = entity::events::Entity::find();
                 let sort_by = sort_by.unwrap_or_default();
                 let limit;
@@ -75,7 +75,7 @@ impl EventQuery {
                         limit = first.map(|x| x as u64).unwrap_or(MAX_EVENTS);
 
                         query = query.limit(limit + 1);
-                    }
+                    },
                     (None, before, None, last) => {
                         if let Some(before) = before {
                             query = apply_filter(query, sort_by, &before);
@@ -84,8 +84,8 @@ impl EventQuery {
                         limit = last.map(|x| x as u64).unwrap_or(MAX_EVENTS);
 
                         query = query.limit(limit + 1);
-                    }
-                    _ => unreachable!()
+                    },
+                    _ => unreachable!(),
                 }
 
                 match sort_by {
@@ -119,17 +119,13 @@ impl EventQuery {
                 }
 
                 let mut connection = Connection::new(first.unwrap_or_default() > 0, has_more);
-                connection.edges.extend(
-                    events
-                    .into_iter()
-                    .map(|event|
-                        Edge::with_additional_fields(
-                            OpaqueCursor(event.clone().into()),
-                            event,
-                            EmptyFields
-                        )
+                connection.edges.extend(events.into_iter().map(|event| {
+                    Edge::with_additional_fields(
+                        OpaqueCursor(event.clone().into()),
+                        event,
+                        EmptyFields,
                     )
-                );
+                }));
                 Ok::<_, async_graphql::Error>(connection)
             },
         )
