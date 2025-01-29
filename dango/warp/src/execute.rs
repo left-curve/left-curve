@@ -1,10 +1,11 @@
 use {
-    crate::{MAILBOX, REVERSE_ROUTES, ROUTES},
+    crate::{ALLOYED, MAILBOX, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote, NAMESPACE,
+            Alloyed, ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote,
+            NAMESPACE,
         },
     },
     grug::{
@@ -43,6 +44,11 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             sender,
             body,
         }) => handle(ctx, origin_domain, sender, body),
+        ExecuteMsg::RegisterAlloy {
+            base_denom,
+            alloyed_denom,
+            destination_domain,
+        } => register_alloy(ctx, base_denom, alloyed_denom, destination_domain),
     }
 }
 
@@ -72,7 +78,33 @@ fn transfer_remote(
     metadata: Option<HexBinary>,
 ) -> anyhow::Result<Response> {
     // Sender must attach exactly one token.
-    let mut token = ctx.funds.into_one_coin()?;
+    let token = ctx.funds.into_one_coin()?;
+
+    let bank = ctx.querier.query_bank()?;
+
+    // Check if the token is alloyed
+    let (mut token, brun_alloyed_msg) = if let Some((base_denom, _)) = ALLOYED
+        .idx
+        .alloyed_domain
+        .may_load(ctx.storage, (token.denom.clone(), destination_domain))?
+    {
+        // Burn the alloy token
+        let brun_alloyed_msg = Message::execute(
+            bank,
+            &bank::ExecuteMsg::Burn {
+                from: ctx.contract,
+                denom: token.denom.clone(),
+                amount: token.amount,
+            },
+            Coins::new(),
+        )?;
+
+        let base_token = Coin::new(base_denom, token.amount)?;
+
+        (base_token, Some(brun_alloyed_msg))
+    } else {
+        (token, None)
+    };
 
     // The token must have a route set.
     let route = ROUTES.load(ctx.storage, (&token.denom, destination_domain))?;
@@ -91,7 +123,6 @@ fn transfer_remote(
         // We determine whether it's synthetic by checking whether its denom is
         // under the `hyp` namespace.
         .may_add_message(if token.denom.namespace() == Some(&NAMESPACE) {
-            let bank = ctx.querier.query_bank()?;
             Some(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Burn {
@@ -104,6 +135,7 @@ fn transfer_remote(
         } else {
             None
         })
+        .may_add_message(brun_alloyed_msg)
         .add_message(Message::execute(
             MAILBOX.load(ctx.storage)?,
             &mailbox::ExecuteMsg::Dispatch {
@@ -158,12 +190,30 @@ fn handle(
     // Deserialize the message.
     let body = TokenMessage::decode(&body)?;
     let denom = REVERSE_ROUTES.load(ctx.storage, (origin_domain, sender))?;
+    let bank = ctx.querier.query_bank()?;
+
+    // Check if the denom is alloyed
+    let (denom, mint_base_denom_msg) =
+        if let Some(alloyed) = ALLOYED.may_load(ctx.storage, denom.clone())? {
+            // Mint the base denom to the wrapper
+            let mint_msg = Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: ctx.contract,
+                    denom,
+                    amount: body.amount,
+                },
+                Coins::new(),
+            )?;
+            (alloyed.alloyed_denom, Some(mint_msg))
+        } else {
+            (denom, None)
+        };
 
     Ok(Response::new()
         // If the denom is synthetic, then mint the token.
         // Otherwise, if it's a collateral, then release the collateral.
         .add_message(if denom.namespace() == Some(&NAMESPACE) {
-            let bank = ctx.querier.query_bank()?;
             Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
@@ -180,9 +230,36 @@ fn handle(
                 amount: body.amount,
             })?
         })
+        .may_add_message(mint_base_denom_msg)
         .add_event(Handle {
             recipient: body.recipient,
             token: denom,
             amount: body.amount,
         })?)
+}
+
+fn register_alloy(
+    ctx: MutableCtx,
+    base_denom: Denom,
+    alloyed_denom: Denom,
+    destination_domain: Domain,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only chain owner can call `register_alloy`"
+    );
+
+    ensure!(
+        alloyed_denom.namespace() == Some(&NAMESPACE),
+        "alloyed_denom must be in the `hyp` namespace"
+    );
+
+    let alloyed = Alloyed {
+        alloyed_denom,
+        destination_domain,
+    };
+
+    ALLOYED.save(ctx.storage, base_denom, &alloyed)?;
+
+    Ok(Response::new())
 }

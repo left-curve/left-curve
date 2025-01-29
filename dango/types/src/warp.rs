@@ -126,6 +126,12 @@ pub enum ExecuteMsg {
         destination_domain: Domain,
         route: Route,
     },
+    /// Register an alloyed token.
+    RegisterAlloy {
+        base_denom: Denom,
+        alloyed_denom: Denom,
+        destination_domain: Domain,
+    },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
 }
@@ -163,6 +169,15 @@ pub struct QueryRoutesResponseItem {
     pub denom: Denom,
     pub destination_domain: Domain,
     pub route: Route,
+}
+
+// ----------------------------------- types -----------------------------------
+
+#[grug::derive(Serde, Borsh)]
+
+pub struct Alloyed {
+    pub alloyed_denom: Denom,
+    pub destination_domain: Domain,
 }
 
 // ---------------------------------- events -----------------------------------
