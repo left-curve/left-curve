@@ -114,7 +114,10 @@ fn test_announce() {
         validators_expected.insert(announcement.validator);
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
+                start_after: None,
+                limit: None,
+            })
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the validator was added to the storage locations.
@@ -124,7 +127,7 @@ fn test_announce() {
         );
 
         suite
-            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
                 validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
@@ -147,11 +150,14 @@ fn test_announce() {
 
         // Check that there are no changes.
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
+                start_after: None,
+                limit: None,
+            })
             .should_succeed_and_equal(validators_expected.clone());
 
         suite
-            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
                 validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
@@ -194,7 +200,10 @@ fn test_announce() {
 
         // Check there are no change in validators.
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
+                start_after: None,
+                limit: None,
+            })
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the storage location was added.
@@ -204,7 +213,7 @@ fn test_announce() {
             .insert(announcement2.storage_location);
 
         suite
-            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
                 validators: btree_set![announcement.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
@@ -244,7 +253,10 @@ fn test_announce() {
         validators_expected.insert(announcement3.validator);
 
         suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {})
+            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
+                start_after: None,
+                limit: None,
+            })
             .should_succeed_and_equal(validators_expected.clone());
 
         // Check that the storage location was added.
@@ -254,7 +266,7 @@ fn test_announce() {
         );
 
         suite
-            .query_wasm_smart(va, va::QueryAnnounceStorageLocationsRequest {
+            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
                 validators: btree_set![announcement.validator, announcement3.validator],
             })
             .should_succeed_and_equal(storage_locations_expected.clone());
@@ -285,20 +297,8 @@ fn test_announce() {
 fn test_query() {
     let (suite, _, _, contracts) = setup_test();
 
-    let va = contracts.hyperlane.va;
-    let mailbox = contracts.hyperlane.mailbox;
-    let local_domain = suite
-        .query_wasm_smart(mailbox, mailbox::QueryConfigRequest {})
-        .should_succeed()
-        .local_domain;
-
-    // Assert that the local domain is correct.
-    suite
-        .query_wasm_smart(va, va::QueryLocalDomainRequest {})
-        .should_succeed_and_equal(local_domain);
-
     // Assert mailbox is correct.
     suite
-        .query_wasm_smart(va, va::QueryMailboxRequest {})
-        .should_succeed_and_equal(mailbox);
+        .query_wasm_smart(contracts.hyperlane.va, va::QueryMailboxRequest {})
+        .should_succeed_and_equal(contracts.hyperlane.mailbox);
 }
