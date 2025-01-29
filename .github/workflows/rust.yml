@@ -7,16 +7,23 @@ on:
       - "main"
       - "develop"
     paths:
+      - ".github/workflows/rust.yml"
       - "dango/**"
+      - "hyperlane/**"
+      - "indexer/**"
       - "grug/**"
       - "**.toml"
   pull_request:
     branches:
       - "*"
     paths:
+      - ".github/workflows/rust.yml"
       - "dango/**"
+      - "hyperlane/**"
+      - "indexer/**"
       - "grug/**"
       - "**.toml"
+
 jobs:
   test:
     name: Test
