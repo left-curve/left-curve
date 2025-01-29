@@ -36,10 +36,10 @@ members = [
   "grug/testing",
   "grug/types",
   "grug/vm/*",
-  "hyperlane/grug/hooks/*",
-  "hyperlane/grug/isms/*",
-  "hyperlane/grug/mailbox",
-  "hyperlane/grug/va",
+  "hyperlane/hooks/*",
+  "hyperlane/isms/*",
+  "hyperlane/mailbox",
+  "hyperlane/va",
   "indexer/*",
 ]
 resolver = "2"
@@ -190,12 +190,12 @@ indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 
 # Hyperlane packages
-hyperlane-fee     = { path = "hyperlane/grug/hooks/fee" }
-hyperlane-ism     = { path = "hyperlane/grug/isms/multisig" }
-hyperlane-mailbox = { path = "hyperlane/grug/mailbox" }
-hyperlane-merkle  = { path = "hyperlane/grug/hooks/merkle" }
-hyperlane-types   = { path = "hyperlane/grug/types" }
-hyperlane-va      = { path = "hyperlane/grug/va" }
+hyperlane-fee     = { path = "hyperlane/hooks/fee" }
+hyperlane-ism     = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox = { path = "hyperlane/mailbox" }
+hyperlane-merkle  = { path = "hyperlane/hooks/merkle" }
+hyperlane-types   = { path = "hyperlane/types" }
+hyperlane-va      = { path = "hyperlane/va" }
 
 [workspace.dependencies.async-graphql]
 features = [
