@@ -7,20 +7,27 @@ on:
       - "main"
       - "develop"
     paths:
+      - ".github/workflows/rust.yml"
       - "dango/**"
       - "grug/**"
+      - "hyperlane/**"
+      - "indexer/**"
       - "**.toml"
   pull_request:
     branches:
       - "*"
     paths:
+      - ".github/workflows/rust.yml"
       - "dango/**"
       - "grug/**"
+      - "hyperlane/**"
+      - "indexer/**"
       - "**.toml"
+
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -37,7 +44,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -53,7 +60,7 @@ jobs:
 
   format:
     name: Format
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
