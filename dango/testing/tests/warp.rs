@@ -14,7 +14,7 @@ use {
     hyperlane_types::{
         addr32, domain_hash, eip191_hash,
         hooks::merkle,
-        isms::{self, multisig::Metadata},
+        isms::{self, multisig::Metadata, HYPERLANE_DOMAIN_KEY},
         mailbox::{self, Domain, Message, MAILBOX_VERSION},
         multisig_hash, Addr32, IncrementalMerkleTree,
     },
@@ -72,7 +72,11 @@ impl MockValidatorSet {
         let merkle_index = (self.merkle_tree.count - 1) as u32;
 
         let multisig_hash = eip191_hash(multisig_hash(
-            domain_hash(MOCK_REMOTE_DOMAIN, MOCK_REMOTE_MERKLE_TREE),
+            domain_hash(
+                MOCK_REMOTE_DOMAIN,
+                MOCK_REMOTE_MERKLE_TREE,
+                HYPERLANE_DOMAIN_KEY,
+            ),
             merkle_root,
             merkle_index,
             message_id,

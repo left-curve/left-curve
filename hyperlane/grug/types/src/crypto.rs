@@ -3,15 +3,13 @@ use {
     grug::{Hash256, HashExt, Inner},
 };
 
-pub fn domain_hash(domain: Domain, address: Addr32) -> Hash256 {
+pub fn domain_hash(domain: Domain, address: Addr32, key: &str) -> Hash256 {
     // domain: 4
     // address: 32
-    // "HYPERLANE": 9
-    // 4 + 32 + 9 = 45
-    let mut preimage = [0u8; 45];
+    let mut preimage = vec![0u8; 36 + key.len()];
     preimage[..4].copy_from_slice(&domain.to_be_bytes());
     preimage[4..36].copy_from_slice(address.inner());
-    preimage[36..].copy_from_slice(b"HYPERLANE");
+    preimage[36..].copy_from_slice(key.as_bytes());
     preimage.keccak256()
 }
 
@@ -32,6 +30,13 @@ pub fn multisig_hash(
     preimage[64..68].copy_from_slice(&merkle_index.to_be_bytes());
     preimage[68..].copy_from_slice(&message_id);
     preimage.keccak256()
+}
+
+pub fn announcement_hash(domain_hash: Hash256, storage_location: &str) -> Hash256 {
+    let mut bz = Vec::with_capacity(Hash256::LENGTH + storage_location.len());
+    bz.extend(domain_hash.inner());
+    bz.extend(storage_location.as_bytes());
+    bz.keccak256()
 }
 
 // https://docs.rs/web3/latest/src/web3/signing.rs.html#226-236

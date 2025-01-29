@@ -39,6 +39,7 @@ members = [
   "hyperlane/grug/hooks/*",
   "hyperlane/grug/isms/*",
   "hyperlane/grug/mailbox",
+  "hyperlane/grug/va",
   "indexer/*",
 ]
 resolver = "2"
@@ -194,6 +195,7 @@ hyperlane-ism     = { path = "hyperlane/grug/isms/multisig" }
 hyperlane-mailbox = { path = "hyperlane/grug/mailbox" }
 hyperlane-merkle  = { path = "hyperlane/grug/hooks/merkle" }
 hyperlane-types   = { path = "hyperlane/grug/types" }
+hyperlane-va      = { path = "hyperlane/grug/va" }
 
 [workspace.dependencies.async-graphql]
 features = [

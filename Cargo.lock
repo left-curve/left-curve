@@ -3250,6 +3250,7 @@ dependencies = [
  "hyperlane-mailbox",
  "hyperlane-merkle",
  "hyperlane-types",
+ "hyperlane-va",
  "rand",
  "serde",
 ]
@@ -5041,6 +5042,16 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3",
+]
+
+[[package]]
+name = "hyperlane-va"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "grug",
+ "hyperlane-mailbox",
+ "hyperlane-types",
 ]
 
 [[package]]
