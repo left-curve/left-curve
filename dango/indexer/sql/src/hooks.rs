@@ -27,6 +27,14 @@ impl HooksTrait for Hooks {
         context: Context,
         block: BlockToIndex,
     ) -> Result<(), Self::Error> {
+        self.save_transfers(&context, &block).await?;
+
+        Ok(())
+    }
+}
+
+impl Hooks {
+    async fn save_transfers(&self, context: &Context, block: &BlockToIndex) -> Result<(), Error> {
         // 1. get all successful transfers events from the database for this block
         let transfer_events: Vec<(FlatEvtTransfer, main_entity::events::Model)> =
             main_entity::events::Entity::find()
@@ -57,6 +65,8 @@ impl HooksTrait for Hooks {
                 })
                 .collect::<Vec<_>>();
 
+        let mut idx = 0;
+
         // 2. create a transfer for each event
         let new_transfers: Vec<entity::transfers::ActiveModel> = transfer_events
             .into_iter()
@@ -65,23 +75,30 @@ impl HooksTrait for Hooks {
                     .coins
                     .inner()
                     .iter()
-                    .map(|(denom, amount)| entity::transfers::ActiveModel {
-                        id: Set(Uuid::new_v4()),
-                        block_height: Set(te.block_height),
-                        created_at: Set(te.created_at),
-                        from_address: Set(flat_transfer_event.sender.to_string()),
-                        to_address: Set(flat_transfer_event.recipient.to_string()),
-                        amount: Set(amount.to_string()),
-                        denom: Set(denom.to_string()),
+                    .map(|(denom, amount)| {
+                        let res = entity::transfers::ActiveModel {
+                            id: Set(Uuid::new_v4()),
+                            idx: Set(idx),
+                            block_height: Set(te.block_height),
+                            created_at: Set(te.created_at),
+                            from_address: Set(flat_transfer_event.sender.to_string()),
+                            to_address: Set(flat_transfer_event.recipient.to_string()),
+                            amount: Set(amount.to_string()),
+                            denom: Set(denom.to_string()),
+                        };
+                        idx += 1;
+                        res
                     })
                     .collect::<Vec<_>>()
             })
             .collect();
 
-        // 3. insert the transfers into the database
-        entity::transfers::Entity::insert_many(new_transfers)
-            .exec_without_returning(&context.db)
-            .await?;
+        if !new_transfers.is_empty() {
+            // 3. insert the transfers into the database
+            entity::transfers::Entity::insert_many(new_transfers)
+                .exec_without_returning(&context.db)
+                .await?;
+        }
 
         Ok(())
     }

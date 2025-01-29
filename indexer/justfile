@@ -13,6 +13,7 @@ run_dev_db:
   docker compose up db
 
 # Migrate the development database
+# DATABASE_URL=postgres://postgres@localhost/grug_dev
 migrate_dev_db:
   sea-orm-cli migrate up -d sql-migration
 

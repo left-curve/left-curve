@@ -23,7 +23,7 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
     std::{path::PathBuf, str::FromStr},
 };
 
@@ -85,10 +85,13 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
 ///
 /// Used for running tests that require an indexer.
 pub fn setup_test_with_indexer() -> (
-    TestSuiteWithIndexer,
-    TestAccounts,
-    Codes<ContractWrapper>,
-    Contracts,
+    (
+        TestSuiteWithIndexer,
+        TestAccounts,
+        Codes<ContractWrapper>,
+        Contracts,
+    ),
+    Context,
 ) {
     let codes = build_rust_codes();
 
@@ -98,12 +101,17 @@ pub fn setup_test_with_indexer() -> (
         .build()
         .unwrap();
 
-    setup_suite_with_db_and_vm(
-        MemDb::new(),
-        RustVm::new(),
-        codes,
-        ProposalPreparer::new(),
-        indexer,
+    let indexer_context = indexer.context.clone();
+
+    (
+        setup_suite_with_db_and_vm(
+            MemDb::new(),
+            RustVm::new(),
+            codes,
+            ProposalPreparer::new(),
+            indexer,
+        ),
+        indexer_context,
     )
 }
 

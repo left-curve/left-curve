@@ -5,6 +5,7 @@ pub enum Transfer {
     #[sea_orm(iden = "transfers")]
     Table,
     Id,
+    Idx,
     BlockHeight,
     CreatedAt,
     FromAddress,
