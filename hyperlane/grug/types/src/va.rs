@@ -23,16 +23,20 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the mailbox contract address.
+    #[returns(Addr)]
+    Mailbox {},
+    /// Query the set of validators who have announced their storage locations.
+    #[returns(BTreeSet<HexByteArray<20>>)]
+    AnnouncedValidators {
+        start_after: Option<HexByteArray<20>>,
+        limit: Option<u32>,
+    },
+    /// Query the storage locations of the given validators.
     #[returns(BTreeMap<HexByteArray<20>, BTreeSet<String>>)]
     AnnounceStorageLocations {
         validators: BTreeSet<HexByteArray<20>>,
     },
-
-    #[returns(BTreeSet<HexByteArray<20>>)]
-    AnnouncedValidators {},
-
-    #[returns(Addr)]
-    Mailbox {},
 }
 
 // ---------------------------------- events -----------------------------------
