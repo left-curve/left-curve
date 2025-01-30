@@ -1,7 +1,10 @@
 use {
-    dango_types::dex::{Direction, OrderId},
-    grug::{Addr, Counter, Counters, Denom, IndexedMap, Udec128, Uint128, UniqueIndex},
+    dango_types::dex::{Direction, OrderId, PairParams},
+    grug::{Addr, Counter, Counters, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
 };
+
+// (base_denom, quote_denom) => params
+pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 
 /// The number of new orders that each trading pair has received during the
 /// current block.
