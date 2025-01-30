@@ -61,7 +61,6 @@ fn query_markets(
 }
 
 fn query_debt(storage: &dyn Storage, timestamp: Timestamp, account: Addr) -> anyhow::Result<Coins> {
-    println!("query_debt timestamp: {:?}", timestamp);
     let scaled_debts = DEBTS.load(storage, account)?;
     let mut debts = Coins::new();
     for (denom, scaled_debt) in scaled_debts {
