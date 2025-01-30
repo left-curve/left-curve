@@ -78,6 +78,13 @@ impl InterestRateModel {
             },
         }
     }
+
+    /// Returns the reserve factor for the interest rate model.
+    pub fn reserve_factor(&self) -> Udec128 {
+        match self {
+            Self::DualSlope { reserve_factor, .. } => **reserve_factor,
+        }
+    }
 }
 
 impl Default for InterestRateModel {

@@ -51,7 +51,7 @@ where
         let mut total_debt_value = Udec128::ZERO;
         for (denom, scaled_debt) in &scaled_debts {
             // Query the market for the denom.
-            let market = self
+            let (market, _) = self
                 .query_wasm_path(app_cfg.addresses.lending, MARKETS.path(denom))?
                 .update_indices(current_time)?;
 

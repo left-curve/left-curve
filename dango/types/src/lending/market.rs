@@ -1,4 +1,7 @@
-use grug::{Decimal, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128, Uint128};
+use grug::{
+    Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
+    Uint128,
+};
 
 use super::InterestRateModel;
 
@@ -7,6 +10,9 @@ pub const SECONDS_PER_YEAR: u32 = 31536000;
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]
 pub struct Market {
+    /// The LP token denom that is minted when coins are deposited on the supply
+    /// side.
+    pub supply_lp_denom: Denom,
     /// The current interest rate model of this market.
     pub interest_rate_model: InterestRateModel,
     /// The total amount of coins borrowed from this market scaled by the
@@ -50,13 +56,16 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
+    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<(Self, Uint128)> {
         // If there is no supply or borrow, then there is no interest to accrue
         if self.total_supplied_scaled.is_zero() || self.total_borrowed_scaled.is_zero() {
-            return Ok(Self {
-                last_update_time: current_time,
-                ..self.clone()
-            });
+            return Ok((
+                Self {
+                    last_update_time: current_time,
+                    ..self.clone()
+                },
+                Uint128::ZERO,
+            ));
         }
 
         // Calculate interest rates
@@ -74,15 +83,30 @@ impl Market {
             Udec128::ONE.checked_add(rates.deposit_rate.checked_mul(time_out_of_year)?)?,
         )?;
 
-        // Return the new market state
-        Ok(Self {
+        // Calculate the protocol fee
+        let previous_total_borrowed = self.total_borrowed()?;
+        let new_market = Self {
+            supply_lp_denom: self.supply_lp_denom.clone(),
             interest_rate_model: self.interest_rate_model.clone(),
             total_borrowed_scaled: self.total_borrowed_scaled,
             total_supplied_scaled: self.total_supplied_scaled,
             borrow_index,
             supply_index,
             last_update_time: current_time,
-        })
+        };
+        let new_total_borrowed = new_market.total_borrowed()?;
+        let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
+        let protocol_fee =
+            borrow_interest.checked_mul_dec(self.interest_rate_model.reserve_factor())?;
+        let protocol_fee_scaled = Udec128::new(protocol_fee.into_inner())
+            .checked_div(supply_index)?
+            .into_int();
+
+        // Return the new market state
+        Ok((
+            new_market.add_supplied(protocol_fee_scaled)?,
+            protocol_fee_scaled,
+        ))
     }
 
     /// Immutably adds the given amount to the scaled total supplied and returns
