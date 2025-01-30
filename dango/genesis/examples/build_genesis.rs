@@ -3,7 +3,11 @@ use {
     dango_types::{
         account_factory::Username,
         auth::Key,
-        constants::{DANGO_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, USDC_DENOM},
+        constants::{
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
+            USDC_DENOM,
+        },
+        dex::{PairParams, PairUpdate},
         taxman,
     },
     grug::{
@@ -111,6 +115,28 @@ fn main() {
         },
         max_orphan_age: Duration::from_weeks(1),
         metadatas: btree_map! {},
+        pairs: vec![
+            PairUpdate {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: BTC_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: SOL_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+        ],
         markets: btree_map! {},
         price_sources: PYTH_PRICE_SOURCES.clone(),
         unlocking_cliff: Duration::from_weeks(4 * 9), // ~9 months

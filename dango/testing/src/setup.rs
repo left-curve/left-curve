@@ -7,8 +7,10 @@ use {
     },
     dango_types::{
         constants::{
-            DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, USDC_DENOM, WBTC_DENOM,
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
+            USDC_DENOM, WBTC_DENOM,
         },
+        dex::{PairParams, PairUpdate},
         lending::MarketUpdates,
         taxman,
     },
@@ -312,6 +314,28 @@ where
         },
         max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
         metadatas: btree_map! {},
+        pairs: vec![
+            PairUpdate {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: BTC_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: SOL_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+        ],
         markets: btree_map! {
             USDC_DENOM.clone() => MarketUpdates {},
             WBTC_DENOM.clone() => MarketUpdates {},

@@ -4,7 +4,8 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig},
-        dex, ibc,
+        dex::{self, PairUpdate},
+        ibc,
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting, warp,
@@ -92,6 +93,8 @@ pub struct GenesisConfig<T> {
     pub max_orphan_age: Duration,
     /// Metadata of tokens.
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
+    /// Initial Dango DEX trading pairs.
+    pub pairs: Vec<PairUpdate>,
     /// Initial Dango lending markets.
     pub markets: BTreeMap<Denom, MarketUpdates>,
     /// Oracle price sources.
@@ -288,6 +291,7 @@ pub fn build_genesis<T>(
         fee_cfg,
         max_orphan_age,
         metadatas,
+        pairs,
         markets,
         price_sources,
         unlocking_cliff,
@@ -444,7 +448,7 @@ where
     let dex = instantiate(
         &mut msgs,
         dex_code_hash,
-        &dex::InstantiateMsg {},
+        &dex::InstantiateMsg { pairs },
         "dango/dex",
         "dango/dex",
     )?;
