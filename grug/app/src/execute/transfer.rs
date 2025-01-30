@@ -112,6 +112,7 @@ where
     }
 
     if do_receive {
+        // If recipient is not existing, skip call `_do_receive`
         if let Ok(contract_info) = CONTRACTS.load(&storage, msg.to) {
             catch_and_update_event! {
                 _do_receive(
