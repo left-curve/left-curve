@@ -3,8 +3,8 @@ use {
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
-        Addr, BankMsg, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part, QuerierExt,
-        Response, StdResult, Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Coin, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part,
+        QuerierExt, Response, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };
@@ -63,8 +63,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
         ExecuteMsg::BatchTransfer(transfers) => batch_transfer(ctx, transfers),
-        ExecuteMsg::RevertNonExistingTransfer { to } => revert_non_existing_transfer(ctx, to),
-        ExecuteMsg::ClaimPendingTransfer { addr } => claim_pending_transfer(ctx, addr),
+        ExecuteMsg::ClaimPendingTransfer { sender, recipient } => {
+            claim_pending_transfer(ctx, sender, recipient)
+        },
     }
 }
 
@@ -100,7 +101,20 @@ fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Res
     ensure_namespace_owner(&ctx, &denom)?;
 
     increase_supply(ctx.storage, &denom, amount)?;
-    increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    if ctx.querier.query_contract(to).is_ok() {
+        increase_balance(ctx.storage, &to, &denom, amount)?;
+    } else {
+        NON_EXISTING_DEPOSITS.may_update(
+            ctx.storage,
+            (&to, &ctx.sender),
+            |coins| -> StdResult<_> {
+                let mut coins = coins.unwrap_or_default();
+                coins.insert(Coin::new(denom, amount)?)?;
+                Ok(coins)
+            },
+        )?;
+    }
 
     Ok(Response::new())
 }
@@ -167,32 +181,24 @@ fn batch_transfer(ctx: MutableCtx, transfers: BTreeMap<Addr, Coins>) -> anyhow::
     Ok(Response::new())
 }
 
-fn revert_non_existing_transfer(ctx: MutableCtx, to: Addr) -> anyhow::Result<Response> {
-    let coins = NON_EXISTING_DEPOSITS.load(ctx.storage, (&to, &ctx.sender))?;
+fn claim_pending_transfer(
+    ctx: MutableCtx,
+    sender: Addr,
+    recipient: Addr,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == sender || ctx.sender == recipient,
+        "only sender or recipient can claim pending transfer"
+    );
+
+    let coins = NON_EXISTING_DEPOSITS.load(ctx.storage, (&recipient, &sender))?;
+    NON_EXISTING_DEPOSITS.remove(ctx.storage, (&recipient, &sender));
+
+    ensure!(!coins.is_empty(), "no pending transfer");
 
     for coin in coins {
         increase_balance(ctx.storage, &ctx.sender, &coin.denom, coin.amount)?;
     }
-
-    NON_EXISTING_DEPOSITS.remove(ctx.storage, (&to, &ctx.sender));
-
-    Ok(Response::new())
-}
-
-fn claim_pending_transfer(ctx: MutableCtx, addr: Addr) -> anyhow::Result<Response> {
-    // Check if the address is now existing
-    ensure!(
-        ctx.querier.query_contract(addr).is_ok(),
-        "recipient does not exist"
-    );
-
-    let coins = NON_EXISTING_DEPOSITS.load(ctx.storage, (&addr, &ctx.sender))?;
-
-    for coin in coins {
-        increase_balance(ctx.storage, &addr, &coin.denom, coin.amount)?;
-    }
-
-    NON_EXISTING_DEPOSITS.remove(ctx.storage, (&addr, &ctx.sender));
 
     Ok(Response::new())
 }

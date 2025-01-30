@@ -35,6 +35,7 @@ pub struct AppAddresses {
     pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
+    pub warp: Addr,
 }
 
 // Default implementation that can be used in tests when the addresses are not
@@ -46,6 +47,7 @@ impl Default for AppAddresses {
             ibc_transfer: Addr::mock(0),
             lending: Addr::mock(0),
             oracle: Addr::mock(0),
+            warp: Addr::mock(0),
         }
     }
 }

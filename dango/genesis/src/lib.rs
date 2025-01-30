@@ -565,6 +565,7 @@ where
             ibc_transfer,
             lending,
             oracle,
+            warp,
         },
         ..Default::default()
     };

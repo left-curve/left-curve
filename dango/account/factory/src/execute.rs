@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -8,11 +8,10 @@ use {
             Username,
         },
         auth::Key,
-        bank,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, QuerierExt, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -29,10 +28,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .map(|(username, (key_hash, key))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
             // claim msg can be ignored
-            let (init_msg, _) =
-                onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, None)?;
-
-            Ok(init_msg)
+            onboard_new_user(
+                ctx.storage,
+                ctx.contract,
+                username,
+                key,
+                key_hash,
+                Coins::default(),
+            )
         })
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -131,18 +134,16 @@ fn register_user(
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
-    let (init_msg, claim_msg) = onboard_new_user(
+    let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
+
+    Ok(Response::new().add_message(onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
         key,
         key_hash,
-        Some(ctx.querier.query_bank()?),
-    )?;
-
-    Ok(Response::new()
-        .add_message(init_msg)
-        .may_add_message(claim_msg))
+        minimum_deposit,
+    )?))
 }
 
 // Onboarding a new user involves saving an initial key, and intantiate an
@@ -153,8 +154,8 @@ fn onboard_new_user(
     username: Username,
     key: Key,
     key_hash: Hash256,
-    check_bank_deposit: Option<Addr>,
-) -> StdResult<(Message, Option<Message>)> {
+    minimum_receive: Coins,
+) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
@@ -171,16 +172,6 @@ fn onboard_new_user(
 
     let address = Addr::derive(factory, code_hash, &salt);
 
-    let maybe_claim_msg = if let Some(bank_addr) = check_bank_deposit {
-        Some(Message::execute(
-            bank_addr,
-            &bank::ExecuteMsg::ClaimPendingTransfer { addr: address },
-            Coins::default(),
-        )?)
-    } else {
-        None
-    };
-
     let account = Account {
         index,
         params: AccountParams::Spot(single::Params::new(username.clone())),
@@ -192,14 +183,16 @@ fn onboard_new_user(
     // Create the message to instantiate this account.
     let init_msg = Message::instantiate(
         code_hash,
-        &account::InstantiateMsg {},
+        &account::spot::InstantiateMsg {
+            at_least: minimum_receive,
+        },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
         Coins::default(),
     )?;
 
-    Ok((init_msg, maybe_claim_msg))
+    Ok(init_msg)
 }
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {

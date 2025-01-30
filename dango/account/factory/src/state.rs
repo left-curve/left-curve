@@ -3,7 +3,7 @@ use {
         account_factory::{Account, AccountIndex, AccountType, Username},
         auth::Key,
     },
-    grug::{Addr, Counter, Hash256, Map, Set},
+    grug::{Addr, Coins, Counter, Hash256, Item, Map, Set},
 };
 
 pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
@@ -15,3 +15,5 @@ pub const KEYS: Map<(&Username, Hash256), Key> = Map::new("key");
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 
 pub const ACCOUNTS_BY_USER: Set<(&Username, Addr)> = Set::new("account__user");
+
+pub const MINIMUM_DEPOSIT: Item<Coins> = Item::new("minium_deposit");

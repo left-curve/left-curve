@@ -66,12 +66,9 @@ pub enum ExecuteMsg {
     /// Transfer coins to multiple recipients at once.
     BatchTransfer(BTreeMap<Addr, Coins>),
 
-    RevertNonExistingTransfer {
-        to: Addr,
-    },
-
     ClaimPendingTransfer {
-        addr: Addr,
+        sender: Addr,
+        recipient: Addr,
     },
 }
 
