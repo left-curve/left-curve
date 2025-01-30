@@ -34,7 +34,6 @@ serde             = { workspace = true }
 serde_json        = { workspace = true }
 
 [dev-dependencies]
-alloy                 = { workspace = true, features = ["full", "signer-mnemonic"] }
 anyhow                = { workspace = true }
 assertor              = { workspace = true }
 criterion             = { workspace = true }
@@ -43,7 +42,6 @@ dango-httpd           = { workspace = true }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
-dotenvy               = { workspace = true }
 grug-crypto           = { workspace = true }
 hyperlane-types       = { workspace = true }
 proptest              = { workspace = true }
