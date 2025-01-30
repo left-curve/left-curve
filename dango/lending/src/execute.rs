@@ -183,8 +183,11 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
 
         // Save the updated market state
-        let market = market.add_borrowed(added_scaled_debt)?;
-        MARKETS.save(ctx.storage, &coin.denom, &market)?;
+        MARKETS.save(
+            ctx.storage,
+            &coin.denom,
+            &market.add_borrowed(added_scaled_debt)?,
+        )?;
     }
 
     // Save the updated debts
@@ -209,7 +212,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
         let debt = market.calculate_debt(scaled_debt)?;
-        // Refund the remainders to the sender, if any.
+
+        // Calculate the repaid amount and refund the remainders to the sender,
+        // if any.
         let repaid = if coin.amount > debt {
             let refund_amount = coin.amount.checked_sub(debt)?;
             refunds.insert(Coin::new(coin.denom.clone(), refund_amount)?)?;
@@ -217,13 +222,6 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         } else {
             coin.amount
         };
-
-        let debt_after = debt.checked_sub(repaid)?;
-
-        let debt_after_scaled =
-            Udec128::new(debt_after.into_inner()).checked_div(market.borrow_index)?;
-
-        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
 
         // Update the sender's liabilities
         let repaid_debt_scaled =
@@ -233,7 +231,11 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
             scaled_debt.saturating_sub(repaid_debt_scaled),
         );
 
-        // Deduct the repaid debt and save the updated market state
+        // Deduct the repaid scaled debt and save the updated market state
+        let debt_after = debt.checked_sub(repaid)?;
+        let debt_after_scaled =
+            Udec128::new(debt_after.into_inner()).checked_div(market.borrow_index)?;
+        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
         MARKETS.save(
             ctx.storage,
             &coin.denom,

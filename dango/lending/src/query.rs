@@ -118,9 +118,8 @@ pub fn query_preview_deposit(
             .checked_div(supply_index)?
             .into_int();
 
-        let market = market.add_supplied(amount_scaled)?;
         lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
-        markets.insert(coin.denom, market);
+        markets.insert(coin.denom, market.add_supplied(amount_scaled)?);
     }
 
     Ok((lp_tokens, markets))
@@ -142,14 +141,12 @@ pub fn query_preview_withdraw(
         // Update the market indices
         let market = MARKETS
             .load(storage, &underlying_denom)?
-            .update_indices(timestamp)?;
-
-        let market = market.deduct_supplied(coin.amount)?;
+            .update_indices(timestamp)?
+            .deduct_supplied(coin.amount)?;
 
         // Compute the amount of underlying coins to withdraw
-        let supply_index = market.supply_index;
         let underlying_amount = Udec128::new(coin.amount.into_inner())
-            .checked_mul(supply_index)?
+            .checked_mul(market.supply_index)?
             .into_int();
 
         withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
