@@ -1,17 +1,15 @@
 use {
-    dango_types::dex::{Direction, OrderId, PairParams},
-    grug::{Addr, Counter, Counters, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
+    dango_types::{
+        dex::{Direction, OrderId, PairParams},
+        TransientMap,
+    },
+    grug::{Addr, Counter, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
 };
+
+pub(crate) static INCOMING_ORDERS: TransientMap<OrderId, (OrderKey, Order)> = TransientMap::new();
 
 // (base_denom, quote_denom) => params
 pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
-
-/// The number of new orders that each trading pair has received during the
-/// current block.
-///
-/// At the end of the block, we perform order matching for all pairs that have
-/// received new orders.
-pub const NEW_ORDER_COUNTS: Counters<(&Denom, &Denom), u32> = Counters::new("order_count", 0, 1);
 
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
 

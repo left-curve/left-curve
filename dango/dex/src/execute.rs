@@ -1,9 +1,9 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         dex::{
@@ -127,22 +127,22 @@ fn submit_order(
         order_id = !order_id;
     }
 
-    NEW_ORDER_COUNTS.increment(ctx.storage, (&base_denom, &quote_denom))?;
-
-    ORDERS.save(
-        ctx.storage,
+    INCOMING_ORDERS.insert(
+        order_id,
         (
-            (base_denom.clone(), quote_denom.clone()),
-            direction,
-            price,
-            order_id,
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                direction,
+                price,
+                order_id,
+            ),
+            Order {
+                user: ctx.sender,
+                amount,
+                remaining: amount,
+            },
         ),
-        &Order {
-            user: ctx.sender,
-            amount,
-            remaining: amount,
-        },
-    )?;
+    );
 
     Ok(Response::new().add_event(OrderSubmitted {
         order_id,
@@ -162,8 +162,14 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
     let mut events = Vec::new();
 
     for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        // First attempt to load the order from the persistent storage. If not
+        // found, try looking for it in the transient storage.
+        let (((base_denom, quote_denom), direction, price, _), order) = ORDERS
+            .idx
+            .order_id
+            .may_load(ctx.storage, order_id)?
+            .or_else(|| INCOMING_ORDERS.remove(&order_id))
+            .ok_or_else(|| anyhow!("order with id `{order_id}` not found"))?;
 
         ensure!(
             ctx.sender == order.user,
@@ -209,14 +215,26 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
 
+    // Take out all incoming orders from transient storage.
+    let incoming_orders = INCOMING_ORDERS
+        .drain()
+        .into_values()
+        .collect::<BTreeMap<_, _>>();
+
     // Find all pairs that have received new orders during the block.
-    let pairs = NEW_ORDER_COUNTS
-        .current_range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let (pair, _) = res?;
-            Ok(pair)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
+    let pairs = incoming_orders
+        .keys()
+        .map(|((base, quote), ..)| (base.clone(), quote.clone()))
+        .collect::<BTreeSet<_>>();
+
+    // Persist the incoming orders to the physical storage.
+    for (((base_denom, quote_denom), direction, price, order_id), order) in incoming_orders {
+        ORDERS.save(
+            ctx.storage,
+            ((base_denom, quote_denom), direction, price, order_id),
+            &order,
+        )?;
+    }
 
     // Loop through the pairs, match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
@@ -229,9 +247,6 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             &mut refunds,
         )?;
     }
-
-    // Reset the order counters for the next block.
-    NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
     Ok(Response::new()
         .add_message({

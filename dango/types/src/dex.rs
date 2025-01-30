@@ -20,7 +20,7 @@ use {
 pub type OrderId = u64;
 
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 pub enum Direction {
     /// Give away the quote asset, get the base asset; a.k.a. a BUY order.
     Bid,

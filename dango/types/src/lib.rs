@@ -10,7 +10,8 @@ pub mod lending;
 pub mod oracle;
 mod querier;
 pub mod taxman;
+mod transient_map;
 pub mod vesting;
 pub mod warp;
 
-pub use querier::DangoQuerier;
+pub use {querier::DangoQuerier, transient_map::TransientMap};
