@@ -20,6 +20,7 @@ use {
 /// A client for interacting with a Grug chain via Tendermint RPC.
 ///
 /// Internally, this is a wrapper over [`tendermint_rpc::HttpClient`](tendermint_rpc::HttpClient).
+#[derive(Debug, Clone)]
 pub struct Client {
     inner: HttpClient,
 }
