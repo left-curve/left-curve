@@ -8,8 +8,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        Bound, Coin, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, Order,
-        QuerierExt, Response, StdResult, StorageQuerier, Udec128, Uint128,
+        Bound, Coin, Coins, Denom, Inner, Message, MutableCtx, Number, Order, QuerierExt, Response,
+        StdResult, StorageQuerier, Udec128,
     },
     std::collections::BTreeMap,
 };
@@ -21,16 +21,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             .interest_rate_model
             .ok_or_else(|| anyhow!("interest rate model is required for market {}", denom))?;
 
-        MARKETS.save(ctx.storage, &denom, &Market {
-            supply_lp_denom: denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-            interest_rate_model,
-            total_borrowed_scaled: Udec128::ZERO,
-            total_supplied_scaled: Uint128::ZERO,
-            borrow_index: Udec128::ONE,
-            supply_index: Udec128::ONE,
-            last_update_time: ctx.block.timestamp,
-            pending_protocol_fee_scaled: Uint128::ZERO,
-        })?;
+        MARKETS.save(
+            ctx.storage,
+            &denom,
+            &Market::new(
+                denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
+                interest_rate_model,
+            ),
+        )?;
     }
 
     Ok(Response::new())
@@ -66,27 +64,26 @@ fn update_markets(
 
         if let Some(market) = market {
             if let Some(interest_rate_model) = updates.interest_rate_model {
-                MARKETS.save(ctx.storage, &denom, &Market {
-                    interest_rate_model,
-                    ..market
-                })?;
+                MARKETS.save(
+                    ctx.storage,
+                    &denom,
+                    &market.set_interest_rate_model(interest_rate_model),
+                )?;
             }
         } else {
-            MARKETS.save(ctx.storage, &denom, &Market {
-                supply_lp_denom: denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
-                interest_rate_model: updates.interest_rate_model.ok_or_else(|| {
-                    anyhow!(
-                        "interest rate model is required when adding new market {}",
-                        denom
-                    )
-                })?,
-                total_borrowed_scaled: Udec128::ZERO,
-                total_supplied_scaled: Uint128::ZERO,
-                borrow_index: Udec128::ONE,
-                supply_index: Udec128::ONE,
-                last_update_time: ctx.block.timestamp,
-                pending_protocol_fee_scaled: Uint128::ZERO,
-            })?;
+            MARKETS.save(
+                ctx.storage,
+                &denom,
+                &Market::new(
+                    denom.prepend(&[&NAMESPACE, &SUBNAMESPACE])?,
+                    updates.interest_rate_model.ok_or_else(|| {
+                        anyhow!(
+                            "interest rate model is required when adding new market {}",
+                            denom
+                        )
+                    })?,
+                ),
+            )?;
         }
     }
 

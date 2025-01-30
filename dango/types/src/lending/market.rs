@@ -38,6 +38,19 @@ pub struct Market {
 }
 
 impl Market {
+    pub fn new(supply_lp_denom: Denom, interest_rate_model: InterestRateModel) -> Self {
+        Self {
+            supply_lp_denom,
+            interest_rate_model,
+            total_borrowed_scaled: Udec128::ZERO,
+            total_supplied_scaled: Uint128::ZERO,
+            borrow_index: Udec128::ONE,
+            supply_index: Udec128::ONE,
+            last_update_time: Timestamp::ZERO,
+            pending_protocol_fee_scaled: Uint128::ZERO,
+        }
+    }
+
     /// Computes the utilization rate of this market.
     pub fn utilization_rate(&self) -> anyhow::Result<Udec128> {
         let total_borrowed = self.total_borrowed()?;
@@ -188,6 +201,15 @@ impl Market {
     pub fn set_last_update_time(&self, time: Timestamp) -> Self {
         Self {
             last_update_time: time,
+            ..self.clone()
+        }
+    }
+
+    /// Immutably sets the interest rate model to the given value and returns
+    /// the new market state.
+    pub fn set_interest_rate_model(&self, interest_rate_model: InterestRateModel) -> Self {
+        Self {
+            interest_rate_model,
             ..self.clone()
         }
     }
