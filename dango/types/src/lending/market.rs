@@ -1,6 +1,9 @@
-use grug::{
-    Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
-    Uint128,
+use {
+    anyhow::ensure,
+    grug::{
+        Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
+        Uint128,
+    },
 };
 
 use super::InterestRateModel;
@@ -59,8 +62,17 @@ impl Market {
     /// Immutably updates the indices of this market and returns the new market
     /// state.
     pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
-        // If there is no supply or borrow, then there is no interest to accrue
-        if self.total_supplied_scaled.is_zero() || self.total_borrowed_scaled.is_zero() {
+        ensure!(
+            current_time >= self.last_update_time,
+            "last update time is in the future"
+        );
+
+        // If there is no supply or borrow or last update time is equal to the
+        // current time, then there is no interest to accrue
+        if self.total_supplied_scaled.is_zero()
+            || self.total_borrowed_scaled.is_zero()
+            || current_time == self.last_update_time
+        {
             return Ok(self.set_last_update_time(current_time));
         }
 
