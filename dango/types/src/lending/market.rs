@@ -1,18 +1,21 @@
-use grug::{Decimal, MultiplyFraction, Number, NumberConst, Timestamp, Udec128, Uint128};
+use grug::{Decimal, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128, Uint128};
 
 use super::InterestRateModel;
 
-const SECONDS_PER_YEAR: u32 = 31536000;
+pub const SECONDS_PER_YEAR: u32 = 31536000;
 
 /// Configurations and state of a market.
 #[grug::derive(Serde, Borsh)]
 pub struct Market {
     /// The current interest rate model of this market.
     pub interest_rate_model: InterestRateModel,
-    /// The total amount of coins borrowed from this market.
-    pub total_borrowed: Uint128,
-    /// The total amount of coins supplied to this market.
-    pub total_supplied: Uint128,
+    /// The total amount of coins borrowed from this market scaled by the
+    /// borrow index.
+    pub total_borrowed_scaled: Udec128,
+    /// The total amount of coins supplied to this market scaled by the
+    /// supply index. This is stored as a Uint128 rather than a Udec128 because
+    /// we mint LP tokens in integer amounts.
+    pub total_supplied_scaled: Uint128,
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
@@ -26,22 +29,34 @@ pub struct Market {
 impl Market {
     /// Computes the utilization rate of this market.
     pub fn utilization_rate(&self) -> anyhow::Result<Udec128> {
-        if self.total_supplied == Uint128::ZERO {
+        let total_borrowed = self.total_borrowed()?;
+        let total_supplied = self.total_supplied()?;
+
+        if total_supplied.is_zero() {
             return Ok(Udec128::ZERO);
         }
 
-        Ok(Udec128::checked_from_ratio(
-            self.total_borrowed,
-            self.total_supplied,
-        )?)
+        let utilization_rate = Udec128::checked_from_ratio(total_borrowed, total_supplied)?;
+
+        // Limit utilization rate to 100%
+        // This can happen if 100% of the supply is borrowed, which can then cause
+        // borrowing to outgrow the supply due to interest accrual.
+        if utilization_rate > Udec128::new_percent(100) {
+            return Ok(Udec128::new_percent(100));
+        }
+
+        Ok(utilization_rate)
     }
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
     pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
-        // If there is no supply, then there is no interest to accrue
-        if self.total_supplied == Uint128::ZERO {
-            return Ok(self.clone());
+        // If there is no supply or borrow, then there is no interest to accrue
+        if self.total_supplied_scaled.is_zero() || self.total_borrowed_scaled.is_zero() {
+            return Ok(Self {
+                last_update_time: current_time,
+                ..self.clone()
+            });
         }
 
         // Calculate interest rates
@@ -59,53 +74,49 @@ impl Market {
             Udec128::ONE.checked_add(rates.deposit_rate.checked_mul(time_out_of_year)?)?,
         )?;
 
-        // Update the total borrowed and supplied to account for interest
-        let total_borrowed = self.total_borrowed.checked_mul_dec_ceil(borrow_index)?;
-        let total_supplied = self.total_supplied.checked_mul_dec_ceil(supply_index)?;
-
         // Return the new market state
         Ok(Self {
             interest_rate_model: self.interest_rate_model.clone(),
-            total_borrowed,
-            total_supplied,
+            total_borrowed_scaled: self.total_borrowed_scaled,
+            total_supplied_scaled: self.total_supplied_scaled,
             borrow_index,
             supply_index,
             last_update_time: current_time,
         })
     }
 
-    /// Immutably adds the given amount to the total supplied and returns the new
-    /// market state.
-    pub fn add_supplied(&self, amount: Uint128) -> anyhow::Result<Self> {
-        Ok(Self {
-            total_supplied: self.total_supplied.checked_add(amount)?,
-            ..self.clone()
-        })
-    }
-
-    /// Immutably deducts the given amount from the total supplied and returns
+    /// Immutably adds the given amount to the scaled total supplied and returns
     /// the new market state.
-    pub fn deduct_supplied(&self, amount: Uint128) -> anyhow::Result<Self> {
+    pub fn add_supplied(&self, amount_scaled: Uint128) -> anyhow::Result<Self> {
         Ok(Self {
-            total_supplied: self.total_supplied.checked_sub(amount)?,
+            total_supplied_scaled: self.total_supplied_scaled.checked_add(amount_scaled)?,
             ..self.clone()
         })
     }
 
-    /// Immutably adds the given amount to the total borrowed and returns the
-    /// new market state.
-    pub fn add_borrowed(&self, amount: Uint128) -> anyhow::Result<Self> {
+    /// Immutably deducts the given amount from the scaled total supplied and
+    /// returns the new market state.
+    pub fn deduct_supplied(&self, amount_scaled: Uint128) -> anyhow::Result<Self> {
         Ok(Self {
-            total_borrowed: self.total_borrowed.checked_add(amount)?,
+            total_supplied_scaled: self.total_supplied_scaled.checked_sub(amount_scaled)?,
             ..self.clone()
         })
     }
 
-    /// Immutably deducts the given amount from the total borrowed and returns
+    /// Immutably adds the given amount to the scaled total borrowed and returns
     /// the new market state.
-    pub fn deduct_borrowed(&self, amount: Uint128) -> anyhow::Result<Self> {
+    pub fn add_borrowed(&self, amount_scaled: Udec128) -> anyhow::Result<Self> {
         Ok(Self {
-            total_borrowed: self.total_borrowed.checked_sub(amount)?,
+            total_borrowed_scaled: self.total_borrowed_scaled.checked_add(amount_scaled)?,
+            ..self.clone()
+        })
+    }
+
+    /// Immutably deducts the given amount from the scaled total borrowed and
+    /// returns the new market state.
+    pub fn deduct_borrowed(&self, amount_scaled: Udec128) -> anyhow::Result<Self> {
+        Ok(Self {
+            total_borrowed_scaled: self.total_borrowed_scaled.checked_sub(amount_scaled)?,
             ..self.clone()
         })
     }
@@ -116,6 +127,21 @@ impl Market {
         Ok(scaled_amount
             .checked_mul(self.borrow_index)?
             .checked_ceil()?
+            .into_int())
+    }
+
+    /// Returns the total amount of coins supplied to this market.
+    pub fn total_supplied(&self) -> anyhow::Result<Uint128> {
+        Ok(self
+            .total_supplied_scaled
+            .checked_mul_dec(self.supply_index)?)
+    }
+
+    /// Returns the total amount of coins borrowed from this market.
+    pub fn total_borrowed(&self) -> anyhow::Result<Uint128> {
+        Ok(self
+            .total_borrowed_scaled
+            .checked_mul(self.borrow_index)?
             .into_int())
     }
 }

@@ -114,16 +114,17 @@ pub fn query_preview_deposit(
         // Get market and update the market indices
         let market = MARKETS
             .load(storage, &coin.denom)?
-            .update_indices(timestamp)?
-            .add_supplied(coin.amount)?;
+            .update_indices(timestamp)?;
+
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;
-        let amount = Udec128::new(coin.amount.into_inner())
+        let amount_scaled = Udec128::new(coin.amount.into_inner())
             .checked_div(supply_index)?
             .into_int();
 
-        lp_tokens.insert(Coin::new(lp_denom, amount)?)?;
+        let market = market.add_supplied(amount_scaled)?;
+        lp_tokens.insert(Coin::new(lp_denom, amount_scaled)?)?;
         markets.insert(coin.denom, market);
     }
 

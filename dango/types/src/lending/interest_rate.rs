@@ -49,7 +49,7 @@ impl InterestRateModel {
                 second_slope,
                 reserve_factor,
             } => {
-                if utilization < Udec128::ZERO || utilization > Udec128::ONE {
+                if utilization > Udec128::new_percent(100) {
                     return Err(anyhow::anyhow!("invalid utilization rate"));
                 }
 

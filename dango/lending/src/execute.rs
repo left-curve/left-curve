@@ -23,8 +23,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 
         MARKETS.save(ctx.storage, &denom, &Market {
             interest_rate_model,
-            total_borrowed: Uint128::ZERO,
-            total_supplied: Uint128::ZERO,
+            total_borrowed_scaled: Udec128::ZERO,
+            total_supplied_scaled: Uint128::ZERO,
             borrow_index: Udec128::ONE,
             supply_index: Udec128::ONE,
             last_update_time: ctx.block.timestamp,
@@ -73,8 +73,8 @@ fn update_markets(
                         denom
                     )
                 })?,
-                total_borrowed: Uint128::ZERO,
-                total_supplied: Uint128::ZERO,
+                total_borrowed_scaled: Udec128::ZERO,
+                total_supplied_scaled: Uint128::ZERO,
                 borrow_index: Udec128::ONE,
                 supply_index: Udec128::ONE,
                 last_update_time: ctx.block.timestamp,
@@ -168,18 +168,18 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         // Update the market state
         let market = MARKETS
             .load(ctx.storage, &coin.denom)?
-            .update_indices(ctx.block.timestamp)?
-            .add_borrowed(coin.amount)?;
-        MARKETS.save(ctx.storage, &coin.denom, &market)?;
+            .update_indices(ctx.block.timestamp)?;
 
         // Update the sender's liabilities
         let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
         let new_scaled_debt =
             Udec128::new(coin.amount.into_inner()).checked_div(market.borrow_index)?;
-        scaled_debts.insert(
-            coin.denom.clone(),
-            prev_scaled_debt.checked_add(new_scaled_debt)?,
-        );
+        let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
+        scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
+
+        // Save the updated market state
+        let market = market.add_borrowed(added_scaled_debt)?;
+        MARKETS.save(ctx.storage, &coin.denom, &market)?;
     }
 
     // Save the updated debts
@@ -201,6 +201,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
             .load(ctx.storage, &coin.denom)?
             .update_indices(ctx.block.timestamp)?;
 
+        let repay_amount_scaled =
+            Udec128::new(coin.amount.into_inner()).checked_div(market.borrow_index)?;
+
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
         let debt = market.calculate_debt(scaled_debt)?;
@@ -214,6 +217,13 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
             coin.amount
         };
 
+        let debt_after = debt.checked_sub(repaid)?;
+
+
+        let debt_after_scaled =
+            Udec128::new(debt_after.into_inner()).checked_div(market.borrow_index)?;
+
+        let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
         // Update the sender's liabilities
         let repaid_debt_scaled =
             Udec128::new(repaid.into_inner()).checked_div(market.borrow_index)?;
@@ -223,7 +233,11 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         );
 
         // Deduct the repaid debt and save the updated market state
-        MARKETS.save(ctx.storage, &coin.denom, &market.deduct_borrowed(repaid)?)?;
+        MARKETS.save(
+            ctx.storage,
+            &coin.denom,
+            &market.deduct_borrowed(scaled_debt_diff)?,
+        )?;
     }
 
     // Save the updated debts
