@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use grug::{
     Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
     ZeroInclusiveOneInclusive,
@@ -36,6 +38,16 @@ pub struct InterestRates {
     pub borrow_rate: Udec128,
     pub deposit_rate: Udec128,
     pub spread: Udec128,
+}
+
+impl Display for InterestRates {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "borrow_rate: {}, deposit_rate: {}, spread: {}",
+            self.borrow_rate, self.deposit_rate, self.spread
+        )
+    }
 }
 
 impl InterestRateModel {
