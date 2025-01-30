@@ -5099,6 +5099,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.9",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-actix-web",
  "tracing-subscriber",

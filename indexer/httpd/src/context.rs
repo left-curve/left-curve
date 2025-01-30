@@ -1,22 +1,33 @@
 use {
-    crate::error::Error,
+    crate::{
+        error::Error,
+        pubsub::{MemoryPubSub, PubSub},
+    },
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
+    std::sync::Arc,
 };
 
 #[derive(Debug, Clone)]
 pub struct Context {
     pub db: DatabaseConnection,
+    pub pubsub: Arc<dyn PubSub + Send + Sync>,
 }
 
 impl From<indexer_sql::Context> for Context {
     fn from(ctx: indexer_sql::Context) -> Self {
-        Self { db: ctx.db }
+        Self {
+            db: ctx.db,
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        }
     }
 }
 
 impl Context {
     pub fn new_with_database_connection(db: DatabaseConnection) -> Self {
-        Self { db }
+        Self {
+            db,
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        }
     }
 
     pub async fn new(database_url: Option<String>) -> Result<Self, Error> {
@@ -25,7 +36,10 @@ impl Context {
             None => Self::connect_db().await?,
         };
 
-        Ok(Self { db })
+        Ok(Self {
+            db,
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        })
     }
 
     pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
@@ -43,12 +57,12 @@ impl Context {
         // TODO: add this as a configuration flag
         let num_workers = num_cpus::get();
 
-        opt.max_connections(num_workers as u32);
+        opt.max_connections(num_workers as u32)
         //.min_connections(5)
         //.connect_timeout(Duration::from_secs(settings.timeout))
         //.idle_timeout(Duration::from_secs(8))
         //.max_lifetime(Duration::from_secs(20))
-        //.sqlx_logging(settings.logging);
+        .sqlx_logging(false);
 
         Database::connect(opt).await
     }

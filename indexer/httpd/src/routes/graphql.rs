@@ -32,7 +32,8 @@ pub async fn graphiql_playgound() -> HttpResponse {
         .body(
             GraphiQLSource::build()
                 .endpoint("/graphql")
-                .credentials(Credentials::Include)
+                .subscription_endpoint("/graphql")
+                // .credentials(Credentials::Include)
                 .finish(),
         )
 }

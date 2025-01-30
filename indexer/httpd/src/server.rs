@@ -6,6 +6,7 @@ use {
         web::{self, ServiceConfig},
         App, HttpResponse, HttpServer,
     },
+    std::time::Duration,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
@@ -31,6 +32,18 @@ where
 
     let context = Context::new(Some(database_url)).await?;
     let graphql_schema = build_schema(context.clone());
+
+    // Generate fake pubsub events
+    let pubsub = context.pubsub.clone();
+    tokio::task::spawn(async move {
+        let mut block_height = 1;
+        loop {
+            pubsub.publish_new_block(block_height);
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            block_height += 1;
+        }
+    });
+    //
 
     HttpServer::new(move || {
         let app = App::new().wrap(Logger::default()).wrap(Compress::default());
