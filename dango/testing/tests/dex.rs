@@ -8,6 +8,7 @@ use {
         btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
         NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
     },
+    serial_test::serial,
     std::collections::BTreeMap,
     test_case::test_case,
 };
@@ -257,6 +258,9 @@ fn cannot_submit_orders_in_non_existing_pairs() {
     };
     "example 5"
 )]
+// Important: ensure these tests are run in serial, not in parallel, otherwise
+// they will attempt to access the same transient storage.
+#[serial]
 fn dex_works(
     // A list of orders to submit: direction, price, amount.
     orders_to_submit: Vec<(Direction, u128, u128)>,
