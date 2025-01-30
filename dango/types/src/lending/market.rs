@@ -61,10 +61,7 @@ impl Market {
     pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
         // If there is no supply or borrow, then there is no interest to accrue
         if self.total_supplied_scaled.is_zero() || self.total_borrowed_scaled.is_zero() {
-            return Ok(Self {
-                last_update_time: current_time,
-                ..self.clone()
-            });
+            return Ok(self.set_last_update_time(current_time));
         }
 
         // Calculate interest rates
@@ -84,12 +81,7 @@ impl Market {
 
         // Calculate the protocol fee
         let previous_total_borrowed = self.total_borrowed()?;
-        let new_market = Self {
-            borrow_index,
-            supply_index,
-            last_update_time: current_time,
-            ..self.clone()
-        };
+        let new_market = self.set_borrow_index(borrow_index);
         let new_total_borrowed = new_market.total_borrowed()?;
         let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
         let protocol_fee =
@@ -99,9 +91,11 @@ impl Market {
             .into_int();
 
         // Return the new market state
-        Ok(new_market
+        new_market
             .add_supplied(protocol_fee_scaled)?
-            .add_pending_protocol_fee(protocol_fee_scaled)?)
+            .set_supply_index(supply_index)
+            .set_last_update_time(current_time)
+            .add_pending_protocol_fee(protocol_fee_scaled)
     }
 
     /// Immutably adds the given amount to the scaled total supplied and returns
@@ -155,6 +149,33 @@ impl Market {
     pub fn reset_pending_protocol_fee(&self) -> Self {
         Self {
             pending_protocol_fee_scaled: Uint128::ZERO,
+            ..self.clone()
+        }
+    }
+
+    /// Immutably sets the supply index to the given value and returns the new
+    /// market state.
+    pub fn set_supply_index(&self, index: Udec128) -> Self {
+        Self {
+            supply_index: index,
+            ..self.clone()
+        }
+    }
+
+    /// Immutably sets the borrow index to the given value and returns the new
+    /// market state.
+    pub fn set_borrow_index(&self, index: Udec128) -> Self {
+        Self {
+            borrow_index: index,
+            ..self.clone()
+        }
+    }
+
+    /// Immutably sets the last update time to the given value and returns the
+    /// new market state.
+    pub fn set_last_update_time(&self, time: Timestamp) -> Self {
+        Self {
+            last_update_time: time,
             ..self.clone()
         }
     }
