@@ -3,6 +3,7 @@ use std::{
     sync::{LazyLock, Mutex},
 };
 
+#[derive(Default)]
 pub struct TransientMap<K, V>
 where
     K: Ord,
