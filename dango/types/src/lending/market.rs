@@ -30,6 +30,8 @@ pub struct Market {
     pub supply_index: Udec128,
     /// The last time the indices were updated.
     pub last_update_time: Timestamp,
+    /// The pending scaled protocol fee that can be minted.
+    pub pending_protocol_fee_scaled: Uint128,
 }
 
 impl Market {
@@ -56,16 +58,13 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<(Self, Uint128)> {
+    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
         // If there is no supply or borrow, then there is no interest to accrue
         if self.total_supplied_scaled.is_zero() || self.total_borrowed_scaled.is_zero() {
-            return Ok((
-                Self {
-                    last_update_time: current_time,
-                    ..self.clone()
-                },
-                Uint128::ZERO,
-            ));
+            return Ok(Self {
+                last_update_time: current_time,
+                ..self.clone()
+            });
         }
 
         // Calculate interest rates
@@ -86,13 +85,10 @@ impl Market {
         // Calculate the protocol fee
         let previous_total_borrowed = self.total_borrowed()?;
         let new_market = Self {
-            supply_lp_denom: self.supply_lp_denom.clone(),
-            interest_rate_model: self.interest_rate_model.clone(),
-            total_borrowed_scaled: self.total_borrowed_scaled,
-            total_supplied_scaled: self.total_supplied_scaled,
             borrow_index,
             supply_index,
             last_update_time: current_time,
+            ..self.clone()
         };
         let new_total_borrowed = new_market.total_borrowed()?;
         let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
@@ -103,10 +99,9 @@ impl Market {
             .into_int();
 
         // Return the new market state
-        Ok((
-            new_market.add_supplied(protocol_fee_scaled)?,
-            protocol_fee_scaled,
-        ))
+        Ok(new_market
+            .add_supplied(protocol_fee_scaled)?
+            .add_pending_protocol_fee(protocol_fee_scaled)?)
     }
 
     /// Immutably adds the given amount to the scaled total supplied and returns
@@ -143,6 +138,25 @@ impl Market {
             total_borrowed_scaled: self.total_borrowed_scaled.checked_sub(amount_scaled)?,
             ..self.clone()
         })
+    }
+
+    /// Immutably adds the given amount to the pending protocol fee and returns
+    /// the new market state.
+    pub fn add_pending_protocol_fee(&self, amount_scaled: Uint128) -> anyhow::Result<Self> {
+        Ok(Self {
+            pending_protocol_fee_scaled: self
+                .pending_protocol_fee_scaled
+                .checked_add(amount_scaled)?,
+            ..self.clone()
+        })
+    }
+
+    /// Resets the pending protocol fee to zero.
+    pub fn reset_pending_protocol_fee(&self) -> Self {
+        Self {
+            pending_protocol_fee_scaled: Uint128::ZERO,
+            ..self.clone()
+        }
     }
 
     /// Calculates the actual debt for the given scaled amount. Makes sure to

@@ -65,7 +65,7 @@ fn query_debt(storage: &dyn Storage, timestamp: Timestamp, account: Addr) -> any
     let scaled_debts = DEBTS.load(storage, account)?;
     let mut debts = Coins::new();
     for (denom, scaled_debt) in scaled_debts {
-        let (market, _) = MARKETS.load(storage, &denom)?.update_indices(timestamp)?;
+        let market = MARKETS.load(storage, &denom)?.update_indices(timestamp)?;
         let debt = market.calculate_debt(scaled_debt)?;
         debts.insert(Coin::new(denom, debt)?)?;
     }
@@ -89,7 +89,7 @@ fn query_debts(
             let debts = scaled_debts
                 .iter()
                 .map(|(denom, scaled_debt)| {
-                    let (market, _) = MARKETS.load(storage, denom)?.update_indices(timestamp)?;
+                    let market = MARKETS.load(storage, denom)?.update_indices(timestamp)?;
                     let debt = market.calculate_debt(*scaled_debt)?;
                     Ok(Coin::new(denom.clone(), debt)?)
                 })
@@ -103,14 +103,13 @@ pub fn query_preview_deposit(
     storage: &dyn Storage,
     timestamp: Timestamp,
     underlying: Coins,
-) -> anyhow::Result<(Coins, Coins, BTreeMap<Denom, Market>)> {
-    let mut sender_lp_tokens = Coins::new();
-    let mut protocol_lp_tokens = Coins::new();
+) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
+    let mut lp_tokens = Coins::new();
     let mut markets = BTreeMap::new();
 
     for coin in underlying {
         // Get market and update the market indices
-        let (market, protocol_fee_scaled) = MARKETS
+        let market = MARKETS
             .load(storage, &coin.denom)?
             .update_indices(timestamp)?;
 
@@ -121,24 +120,19 @@ pub fn query_preview_deposit(
             .into_int();
 
         let market = market.add_supplied(amount_scaled)?;
-        sender_lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
-        protocol_lp_tokens.insert(Coin::new(
-            market.supply_lp_denom.clone(),
-            protocol_fee_scaled,
-        )?)?;
+        lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
         markets.insert(coin.denom, market);
     }
 
-    Ok((sender_lp_tokens, protocol_lp_tokens, markets))
+    Ok((lp_tokens, markets))
 }
 
 pub fn query_preview_withdraw(
     storage: &dyn Storage,
     timestamp: Timestamp,
     lp_tokens: Coins,
-) -> anyhow::Result<(Coins, Coins, BTreeMap<Denom, Market>)> {
+) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
     let mut withdrawn = Coins::new();
-    let mut protocol_lp_tokens = Coins::new();
     let mut markets = BTreeMap::new();
 
     for coin in lp_tokens {
@@ -147,7 +141,7 @@ pub fn query_preview_withdraw(
         };
 
         // Update the market indices
-        let (market, protocol_fee_scaled) = MARKETS
+        let market = MARKETS
             .load(storage, &underlying_denom)?
             .update_indices(timestamp)?;
 
@@ -159,13 +153,9 @@ pub fn query_preview_withdraw(
             .checked_mul(supply_index)?
             .into_int();
 
-        protocol_lp_tokens.insert(Coin::new(
-            market.supply_lp_denom.clone(),
-            protocol_fee_scaled,
-        )?)?;
         withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
         markets.insert(underlying_denom, market);
     }
 
-    Ok((withdrawn, protocol_lp_tokens, markets))
+    Ok((withdrawn, markets))
 }

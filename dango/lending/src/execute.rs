@@ -8,8 +8,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        Coin, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, QuerierExt, Response,
-        StdResult, StorageQuerier, Udec128, Uint128,
+        Bound, Coin, Coins, Denom, Inner, Message, MutableCtx, Number, NumberConst, Order,
+        QuerierExt, Response, StdResult, StorageQuerier, Udec128, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -29,6 +29,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             borrow_index: Udec128::ONE,
             supply_index: Udec128::ONE,
             last_update_time: ctx.block.timestamp,
+            pending_protocol_fee_scaled: Uint128::ZERO,
         })?;
     }
 
@@ -43,6 +44,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
         ExecuteMsg::Repay {} => repay(ctx),
+        ExecuteMsg::ClaimPendingProtocolFees {
+            start_after_denom,
+            limit,
+        } => claim_pending_protocol_fees(ctx, start_after_denom, limit),
     }
 }
 
@@ -80,6 +85,7 @@ fn update_markets(
                 borrow_index: Udec128::ONE,
                 supply_index: Udec128::ONE,
                 last_update_time: ctx.block.timestamp,
+                pending_protocol_fee_scaled: Uint128::ZERO,
             })?;
         }
     }
@@ -89,7 +95,7 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint
-    let (sender_lp_tokens, protocol_lp_tokens, markets) =
+    let (lp_tokens, markets) =
         query_preview_deposit(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
 
     // Save the updated markets
@@ -99,7 +105,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Mint the LP tokens to the sender
     let bank = ctx.querier.query_bank()?;
-    let mut msgs = sender_lp_tokens
+    let msgs = lp_tokens
         .into_iter()
         .map(|coin| {
             Message::execute(
@@ -114,31 +120,12 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         })
         .collect::<StdResult<Vec<_>>>()?;
 
-    // Mint the protocol LP tokens to the owner
-    let owner = ctx.querier.query_owner()?;
-    msgs.extend(
-        protocol_lp_tokens
-            .into_iter()
-            .map(|coin| {
-                Message::execute(
-                    bank,
-                    &bank::ExecuteMsg::Mint {
-                        to: owner,
-                        denom: coin.denom,
-                        amount: coin.amount,
-                    },
-                    Coins::new(),
-                )
-            })
-            .collect::<StdResult<Vec<_>>>()?,
-    );
-
     Ok(Response::new().add_messages(msgs))
 }
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
-    let (withdrawn, protocol_lp_tokens, markets) =
+    let (withdrawn, markets) =
         query_preview_withdraw(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
 
     // Save the updated markets
@@ -148,7 +135,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Burn the LP tokens
     let bank = ctx.querier.query_bank()?;
-    let mut msgs = ctx
+    let msgs = ctx
         .funds
         .into_iter()
         .map(|coin| {
@@ -163,25 +150,6 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
             )
         })
         .collect::<StdResult<Vec<_>>>()?;
-
-    // Mint the protocol LP tokens to the owner
-    let owner = ctx.querier.query_owner()?;
-    msgs.extend(
-        protocol_lp_tokens
-            .into_iter()
-            .map(|coin| {
-                Message::execute(
-                    bank,
-                    &bank::ExecuteMsg::Mint {
-                        to: owner,
-                        denom: coin.denom,
-                        amount: coin.amount,
-                    },
-                    Coins::new(),
-                )
-            })
-            .collect::<StdResult<Vec<_>>>()?,
-    );
 
     Ok(Response::new()
         .add_messages(msgs)
@@ -204,13 +172,9 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // Load the sender's debts
     let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
 
-    let bank = ctx.querier.query_bank()?;
-    let owner = ctx.querier.query_owner()?;
-    let mut protocol_lp_mint_msgs = vec![];
-
     for coin in coins.clone() {
         // Update the market state
-        let (market, protocol_fee_scaled) = MARKETS
+        let market = MARKETS
             .load(ctx.storage, &coin.denom)?
             .update_indices(ctx.block.timestamp)?;
 
@@ -224,26 +188,13 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         // Save the updated market state
         let market = market.add_borrowed(added_scaled_debt)?;
         MARKETS.save(ctx.storage, &coin.denom, &market)?;
-
-        // Mint the protocol LP tokens to the owner
-        protocol_lp_mint_msgs.push(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Mint {
-                to: owner,
-                denom: market.supply_lp_denom,
-                amount: protocol_fee_scaled,
-            },
-            Coins::new(),
-        )?);
     }
 
     // Save the updated debts
     DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
 
     // Transfer the coins to the caller
-    Ok(Response::new()
-        .add_messages(protocol_lp_mint_msgs)
-        .add_message(Message::transfer(ctx.sender, coins)?))
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, coins)?))
 }
 
 fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -252,13 +203,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Read debts
     let mut scaled_debts = DEBTS.may_load(ctx.storage, ctx.sender)?.unwrap_or_default();
 
-    let bank = ctx.querier.query_bank()?;
-    let owner = ctx.querier.query_owner()?;
-    let mut protocol_lp_mint_msgs = vec![];
-
     for coin in ctx.funds {
         // Update the market indices
-        let (market, protocol_fee_scaled) = MARKETS
+        let market = MARKETS
             .load(ctx.storage, &coin.denom)?
             .update_indices(ctx.block.timestamp)?;
 
@@ -295,23 +242,51 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
             &coin.denom,
             &market.deduct_borrowed(scaled_debt_diff)?,
         )?;
-
-        // Mint the protocol LP tokens to the owner
-        protocol_lp_mint_msgs.push(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Mint {
-                to: owner,
-                denom: market.supply_lp_denom,
-                amount: protocol_fee_scaled,
-            },
-            Coins::new(),
-        )?);
     }
 
     // Save the updated debts
     DEBTS.save(ctx.storage, ctx.sender, &scaled_debts)?;
 
-    Ok(Response::new()
-        .add_messages(protocol_lp_mint_msgs)
-        .add_message(Message::transfer(ctx.sender, refunds)?))
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, refunds)?))
+}
+
+const DEFAULT_LIMIT: u32 = 30;
+
+fn claim_pending_protocol_fees(
+    ctx: MutableCtx,
+    start_after_denom: Option<Denom>,
+    limit: Option<u32>,
+) -> anyhow::Result<Response> {
+    let bank = ctx.querier.query_bank()?;
+    let owner = ctx.querier.query_owner()?;
+
+    let start = start_after_denom.as_ref().map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
+
+    let (msgs, markets) = MARKETS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (denom, market) = res?;
+            Ok((
+                Message::execute(
+                    bank,
+                    &bank::ExecuteMsg::Mint {
+                        to: owner,
+                        denom: market.supply_lp_denom.clone(),
+                        amount: market.pending_protocol_fee_scaled,
+                    },
+                    Coins::new(),
+                )?,
+                (denom, market),
+            ))
+        })
+        .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
+
+    // Reset the pending protocol fees and save the updated markets
+    for (denom, market) in markets {
+        MARKETS.save(ctx.storage, &denom, &market.reset_pending_protocol_fee())?;
+    }
+
+    Ok(Response::new().add_messages(msgs))
 }
