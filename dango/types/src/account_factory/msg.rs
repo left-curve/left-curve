@@ -4,7 +4,7 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
-    grug::{Addr, Coins, Hash256, Op},
+    grug::{Addr, Hash256, Op},
     std::collections::BTreeMap,
 };
 
@@ -29,12 +29,6 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Make an initial deposit, prior to registering a username.
-    ///
-    /// This the first of the two-step user onboarding process.
-    ///
-    /// This method can only be invoked by the IBC transfer contract.
-    Deposit { recipient: Addr },
     /// Create a new user, following an initial deposit.
     ///
     /// This is the second of the two-step user onboarding process.
@@ -64,15 +58,6 @@ pub enum QueryMsg {
     #[returns(BTreeMap<AccountType, Hash256>)]
     CodeHashes {
         start_after: Option<AccountType>,
-        limit: Option<u32>,
-    },
-    /// Query unclaimed deposit for the given address.
-    #[returns(Coins)]
-    Deposit { recipient: Addr },
-    /// Enumerate all unclaimed deposits.
-    #[returns(BTreeMap<Addr, Coins>)]
-    Deposits {
-        start_after: Option<Addr>,
         limit: Option<u32>,
     },
     /// Query a key by its hash associated to a username.

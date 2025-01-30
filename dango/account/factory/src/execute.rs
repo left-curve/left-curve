@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -8,11 +8,11 @@ use {
             Username,
         },
         auth::Key,
-        DangoQuerier,
+        bank,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        MsgExecute, MutableCtx, Op, Order, QuerierExt, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -28,7 +28,11 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .into_iter()
         .map(|(username, (key_hash, key))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, false)
+            // claim msg can be ignored
+            let (init_msg, _) =
+                onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, None)?;
+
+            Ok(init_msg)
         })
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -94,7 +98,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::RegisterUser {
             username,
             key,
@@ -104,29 +107,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
-}
-
-fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_ibc_transfer()?,
-        "only IBC transfer contract can make deposits"
-    );
-
-    // 1. If someone makes a depsoit twice, then we simply merge the deposits.
-    // 2. We trust the IBC transfer contract is implemented correctly and won't
-    // make empty deposits.
-    DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
-        if let Some(mut existing_deposit) = maybe_deposit {
-            for coin in ctx.funds {
-                existing_deposit.insert(coin)?;
-            }
-            Ok(existing_deposit)
-        } else {
-            Ok(ctx.funds)
-        }
-    })?;
-
-    Ok(Response::new())
 }
 
 fn register_user(
@@ -151,14 +131,18 @@ fn register_user(
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
-    Ok(Response::new().add_message(onboard_new_user(
+    let (init_msg, claim_msg) = onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
         key,
         key_hash,
-        true,
-    )?))
+        Some(ctx.querier.query_bank()?),
+    )?;
+
+    Ok(Response::new()
+        .add_message(init_msg)
+        .may_add_message(claim_msg))
 }
 
 // Onboarding a new user involves saving an initial key, and intantiate an
@@ -169,8 +153,8 @@ fn onboard_new_user(
     username: Username,
     key: Key,
     key_hash: Hash256,
-    must_have_deposit: bool,
-) -> StdResult<Message> {
+    check_bank_deposit: Option<Addr>,
+) -> StdResult<(Message, Option<Message>)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
@@ -187,10 +171,14 @@ fn onboard_new_user(
 
     let address = Addr::derive(factory, code_hash, &salt);
 
-    let funds = if must_have_deposit {
-        DEPOSITS.take(storage, &address)?
+    let maybe_claim_msg = if let Some(bank_addr) = check_bank_deposit {
+        Some(Message::execute(
+            bank_addr,
+            &bank::ExecuteMsg::ClaimPendingTransfer { addr: address },
+            Coins::default(),
+        )?)
     } else {
-        Coins::new()
+        None
     };
 
     let account = Account {
@@ -202,14 +190,16 @@ fn onboard_new_user(
     ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
 
     // Create the message to instantiate this account.
-    Message::instantiate(
+    let init_msg = Message::instantiate(
         code_hash,
         &account::InstantiateMsg {},
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
-        funds,
-    )
+        Coins::default(),
+    )?;
+
+    Ok((init_msg, maybe_claim_msg))
 }
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {
