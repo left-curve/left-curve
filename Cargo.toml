@@ -10,7 +10,6 @@ members = [
   "dango/dex",
   "dango/genesis",
   "dango/httpd",
-  "dango/ibc-transfer",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",

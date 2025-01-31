@@ -17,7 +17,6 @@ dango-account-safe    = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
 dango-dex             = { workspace = true, features = ["library"] }
-dango-ibc-transfer    = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-taxman          = { workspace = true, features = ["library"] }

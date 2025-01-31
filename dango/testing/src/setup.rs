@@ -26,7 +26,7 @@ use {
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
     indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
-    std::{path::PathBuf, str::FromStr},
+    std::{path::PathBuf, str::FromStr, sync::LazyLock},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -55,6 +55,9 @@ pub const USER9_PRIVATE_KEY: [u8; 32] =
 
 pub const FEE_DENOM: &str = "uusdc";
 pub const FEE_RATE: Udec128 = Udec128::ZERO;
+
+pub const ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
+    LazyLock::new(|| coins! { USDC_DENOM.clone() => 10_000_000 });
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
     grug::TestSuite<DB, VM, PP, ID>;
@@ -160,7 +163,6 @@ pub fn setup_benchmark_hybrid(
         codes.account_safe.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
-        codes.ibc_transfer.to_bytes().hash256(),
         codes.lending.to_bytes().hash256(),
         codes.oracle.to_bytes().hash256(),
         codes.taxman.to_bytes().hash256(),
@@ -307,6 +309,7 @@ where
                 },
             },
         },
+        account_factory_minimum_deposit: ACCOUNT_FACTORY_MINIMUM_DEPOSIT.clone(),
         owner: owner.username.clone(),
         fee_cfg: taxman::Config {
             fee_denom: Denom::from_str(FEE_DENOM).unwrap(),

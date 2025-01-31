@@ -3016,7 +3016,6 @@ dependencies = [
  "dango-account-spot",
  "dango-bank",
  "dango-dex",
- "dango-ibc-transfer",
  "dango-lending",
  "dango-oracle",
  "dango-taxman",
@@ -3052,15 +3051,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.9",
  "tracing",
-]
-
-[[package]]
-name = "dango-ibc-transfer"
-version = "0.0.0"
-dependencies = [
- "dango-account-factory",
- "dango-types",
- "grug",
 ]
 
 [[package]]

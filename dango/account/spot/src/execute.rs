@@ -26,7 +26,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
                     bank_addr,
                     &bank::ExecuteMsg::ClaimPendingTransfer {
                         sender: warp,
-                        recipient: ctx.sender,
+                        recipient: ctx.contract,
                     },
                     Coins::default(),
                 )?,

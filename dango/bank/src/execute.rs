@@ -191,7 +191,13 @@ fn claim_pending_transfer(
         "only sender or recipient can claim pending transfer"
     );
 
-    let coins = NON_EXISTING_DEPOSITS.load(ctx.storage, (&recipient, &sender))?;
+    let coins = NON_EXISTING_DEPOSITS
+        .load(ctx.storage, (&recipient, &sender))
+        .map_err(|_| {
+            anyhow::anyhow!(
+                "no pending transfer found for sender: {sender} - recipient: {recipient}"
+            )
+        })?;
     NON_EXISTING_DEPOSITS.remove(ctx.storage, (&recipient, &sender));
 
     ensure!(!coins.is_empty(), "no pending transfer");

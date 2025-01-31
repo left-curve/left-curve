@@ -15,7 +15,7 @@ use {
     },
     hex_literal::hex,
     home::home_dir,
-    std::{env, fs, str::FromStr},
+    std::{env, fs, str::FromStr, sync::LazyLock},
 };
 
 // Private keys of devnet test accounts.
@@ -40,6 +40,10 @@ const PK_USER8: [u8; 33] =
     hex!("02a888b140a836cd71a5ef9bc7677a387a2a4272343cf40722ab9e85d5f8aa21bd");
 const PK_USER9: [u8; 33] =
     hex!("0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52");
+
+// TODO: duplicate this in testing/src/setup.rs
+pub const ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
+    LazyLock::new(|| coins! { USDC_DENOM.clone() => 10_000_000 });
 
 fn main() {
     // Read CLI arguments.
@@ -108,6 +112,7 @@ fn main() {
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
         },
+        account_factory_minimum_deposit: ACCOUNT_FACTORY_MINIMUM_DEPOSIT.clone(),
         owner: Username::from_str("owner").unwrap(),
         fee_cfg: taxman::Config {
             fee_denom: USDC_DENOM.clone(),

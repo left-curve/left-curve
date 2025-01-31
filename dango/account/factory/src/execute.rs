@@ -39,6 +39,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         })
         .collect::<StdResult<Vec<_>>>()?;
 
+    MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
+
     Ok(Response::new().add_messages(instantiate_msgs))
 }
 
@@ -245,7 +247,9 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
 
     Ok(Response::new().add_message(Message::instantiate(
         code_hash,
-        &account::InstantiateMsg {},
+        &account::spot::InstantiateMsg {
+            at_least: Coins::default(),
+        },
         salt,
         Some(format!("dango/account/{}/{}", account.params.ty(), index)),
         Some(ctx.contract),

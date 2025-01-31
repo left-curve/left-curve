@@ -4,7 +4,7 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
-    grug::{Addr, Hash256, Op},
+    grug::{Addr, Coins, Hash256, Op},
     std::collections::BTreeMap,
 };
 
@@ -25,6 +25,8 @@ pub struct InstantiateMsg {
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
     pub users: BTreeMap<Username, (Hash256, Key)>,
+    /// The minimum deposit required to onboard a user.
+    pub minimum_deposit: Coins,
 }
 
 #[grug::derive(Serde)]
