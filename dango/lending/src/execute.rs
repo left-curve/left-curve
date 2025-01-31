@@ -275,6 +275,7 @@ fn claim_pending_protocol_fees(
         .take(limit)
         .map(|res| {
             let (denom, market) = res?;
+            let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
             Ok((
                 Message::execute(
                     bank,
