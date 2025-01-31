@@ -292,7 +292,7 @@ where
         };
 
         let next_block_height = last_indexed_block_height + 1;
-        if next_block_height >= latest_block_height {
+        if latest_block_height > next_block_height {
             return Ok(());
         }
 
