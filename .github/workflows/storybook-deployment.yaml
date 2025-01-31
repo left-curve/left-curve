@@ -6,7 +6,8 @@ on:
     branches:
       - "main"
     paths:
-      - "ui/shared/**"
+      - "ui/**"
+      - "sdk/**"
 
 jobs:
   deploy:
@@ -32,11 +33,11 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
 
-      - name: Build SDK
-        run: pnpm build:pkg
+      - name: Build Library dependencies
+        run: pnpm turbo "build" "-F=./ui/store/**"
 
       - name: Build Storybook
-        working-directory: "ui/shared"
+        working-directory: "ui/applets/kit"
         run: pnpm sb:build
 
       - name: Uploading to Cloudflare Pages
@@ -46,6 +47,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-storybook
-          directory: ./ui/shared/storybook-static
+          directory: ./ui/applets/kit/storybook-static
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

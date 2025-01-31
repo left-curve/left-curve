@@ -35,8 +35,14 @@ pub enum IndexerError {
     #[error(transparent)]
     Persistence(#[from] indexer_disk_saver::error::Error),
 
+    #[error("hooks error: {0}")]
+    Hooks(String),
+
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] std::num::ParseIntError),
 }
 
 impl From<IndexerError> for AppError {

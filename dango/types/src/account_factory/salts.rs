@@ -42,7 +42,7 @@ impl NewUserSalt<'_> {
     /// - `0` for Secp256r1
     /// - `1` for Secp256k1
     /// - `2` for Ed25519
-    pub fn into_bytes(self) -> Vec<u8> {
+    pub fn into_bytes(self) -> [u8; 82] {
         // Maximum possible length for the bytes:
         // - len(username): 1
         // - username: 15
@@ -50,18 +50,18 @@ impl NewUserSalt<'_> {
         // - key_tag: 1
         // - key: 33
         // Total: 82 bytes.
-        let mut bytes = Vec::with_capacity(82);
-        bytes.push(self.username.len());
-        bytes.extend_from_slice(self.username.as_ref());
-        bytes.extend_from_slice(&self.key_hash);
+        let mut bytes = [0; 82];
+        bytes[0] = self.username.len();
+        bytes[1..1 + self.username.len() as usize].copy_from_slice(self.username.as_ref());
+        bytes[16..48].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {
-                bytes.push(0);
-                bytes.extend_from_slice(&pk);
+                bytes[48] = 0;
+                bytes[49..82].copy_from_slice(&pk);
             },
             Key::Secp256k1(pk) => {
-                bytes.push(1);
-                bytes.extend_from_slice(&pk);
+                bytes[48] = 1;
+                bytes[49..82].copy_from_slice(&pk);
             },
         }
         bytes

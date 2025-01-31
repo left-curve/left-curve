@@ -1,14 +1,13 @@
 use {
     crate::{DEBTS, MARKETS},
-    anyhow::{anyhow, bail, ensure, Ok},
+    anyhow::{bail, ensure, Ok},
     dango_account_factory::ACCOUNTS,
     dango_types::{
-        account_factory::Account,
         bank,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
         DangoQuerier,
     },
-    grug::{BorshDeExt, Coin, Coins, Denom, Message, MutableCtx, QuerierExt, Response},
+    grug::{Coin, Coins, Denom, Message, MutableCtx, QuerierExt, Response, StorageQuerier},
     std::collections::BTreeMap,
 };
 
@@ -118,12 +117,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
     // An an optimization, use raw instead of smart query.
     ensure!(
         ctx.querier
-            .query_wasm_raw(account_factory, ACCOUNTS.path(ctx.sender))?
-            .ok_or_else(|| anyhow!(
-                "borrower {} is not registered in account factory",
-                ctx.sender
-            ))?
-            .deserialize_borsh::<Account>()?
+            .query_wasm_path(account_factory, &ACCOUNTS.path(ctx.sender))?
             .params
             .is_margin(),
         "Only margin accounts can borrow and repay"

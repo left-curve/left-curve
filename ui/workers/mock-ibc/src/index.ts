@@ -1,9 +1,9 @@
 import type { Request } from "@cloudflare/workers-types";
+import type { Address } from "@left-curve/dango/types";
+import type { DangoAppConfigResponse } from "@left-curve/dango/types/dango";
 import { http, createSignerClient, isValidAddress } from "@left-curve/sdk";
 import { devnet } from "@left-curve/sdk/chains";
 import { PrivateKeySigner } from "@left-curve/sdk/signers";
-import type { Address } from "@left-curve/types";
-import type { DangoAppConfigResponse } from "@left-curve/types/dango";
 
 interface Env {
   MNEMONIC: string;

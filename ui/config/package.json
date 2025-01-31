@@ -1,5 +1,5 @@
 {
-  "name": "@dango/config",
+  "name": "@left-curve/ui-config",
   "version": "0.1.0",
   "exports": {
     "./fonts/*": "./fonts/*",

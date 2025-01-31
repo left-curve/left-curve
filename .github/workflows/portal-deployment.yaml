@@ -7,16 +7,18 @@ on:
       - "main"
       - "develop"
     paths:
-      - "sdk/packages/react/**"
-      - "ui/shared/**"
+      - "sdk/**"
+      - "ui/store/**"
       - "ui/portal/**"
+      - "ui/applets/**"
   pull_request:
     branches:
       - "*"
     paths:
-      - "sdk/packages/react/**"
-      - "ui/shared/**"
+      - "sdk/**"
+      - "ui/store/**"
       - "ui/portal/**"
+      - "ui/applets/**"
 
 jobs:
   deploy:
@@ -43,7 +45,7 @@ jobs:
         run: pnpm i --frozen-lockfile
 
       - name: Build Portal
-        run: pnpm build:portal
+        run: pnpm build:portal-web
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1
@@ -52,6 +54,6 @@ jobs:
           apiToken: ${{ secrets.CF_TOKEN }}
           accountId: 9f30716e11f27c296dfbadb7b7571ae6
           projectName: dango-portal
-          directory: ./ui/portal/build
+          directory: ./ui/portal/web/build
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           branch: ${GITHUB_REF##*/}

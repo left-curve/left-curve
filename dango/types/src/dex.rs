@@ -55,6 +55,28 @@ impl PrimaryKey for Direction {
 }
 
 #[grug::derive(Serde)]
+pub struct Pair {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct PairParams {
+    // TODO: add:
+    // - fee rate (either here or as a global parameter)
+    // - tick size (necessary or not?)
+    // - minimum order size
+    // - params for the passive liquidity pool
+}
+
+#[grug::derive(Serde)]
+pub struct PairUpdate {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub params: PairParams,
+}
+
+#[grug::derive(Serde)]
 pub struct OrderResponse {
     pub user: Addr,
     pub base_denom: Denom,
@@ -87,10 +109,16 @@ pub struct OrdersByUserResponse {
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub pairs: Vec<PairUpdate>,
+}
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Create new, or modify the parametes of existing, trading pairs.
+    ///
+    /// Can only be called by the chain owner.
+    BatchUpdatePairs(Vec<PairUpdate>),
     /// Submit a new order.
     ///
     /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
@@ -114,6 +142,18 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the parameters of a single trading pair.
+    #[returns(PairParams)]
+    Pair {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
+    /// Enumerate all trading pairs and their parameters.
+    #[returns(Vec<PairUpdate>)]
+    Pairs {
+        start_after: Option<Pair>,
+        limit: Option<u32>,
+    },
     /// Query a single active order by ID.
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
@@ -143,6 +183,14 @@ pub enum QueryMsg {
 // ---------------------------------- events -----------------------------------
 
 #[grug::derive(Serde)]
+#[grug::event("pair_updated")]
+pub struct PairUpdated {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("order_submitted")]
 pub struct OrderSubmitted {
     pub order_id: OrderId,
     pub user: Addr,
@@ -155,6 +203,7 @@ pub struct OrderSubmitted {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("order_canceled")]
 pub struct OrderCanceled {
     pub order_id: OrderId,
     pub remaining: Uint128,
@@ -162,6 +211,7 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("orders_matched")]
 pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
@@ -170,6 +220,7 @@ pub struct OrdersMatched {
 }
 
 #[grug::derive(Serde)]
+#[grug::event("order_filled")]
 pub struct OrderFilled {
     pub order_id: OrderId,
     /// The price at which the order was executed.

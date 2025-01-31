@@ -1,0 +1,21 @@
+{
+  "extends": ["@left-curve/config/ts/react.json"],
+  "compilerOptions": {
+    "paths": {
+      "~/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../applets/kit"
+    },
+    {
+      "path": "../../../sdk/dango"
+    },
+    {
+      "path": "../../store/react"
+    }
+  ]
+}

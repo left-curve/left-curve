@@ -1,8 +1,5 @@
 use {
-    crate::{
-        entity,
-        error::{IndexerError, Result},
-    },
+    crate::{entity, error::Result},
     grug_math::Inner,
     grug_types::{
         flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
@@ -52,7 +49,7 @@ impl Models {
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
-                    None,
+                    &[],
                     created_at,
                 )?;
 
@@ -98,7 +95,7 @@ impl Models {
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
-                    None,
+                    &[],
                     created_at,
                 )?;
 
@@ -109,11 +106,13 @@ impl Models {
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
-                    None,
+                    &[],
                     created_at,
                 )?;
 
                 events.extend(active_models);
+
+                let mut message_ids = vec![];
 
                 // 3. Storing messages
                 {
@@ -130,8 +129,11 @@ impl Models {
                             .and_then(|obj| obj.keys().next().cloned())
                             .unwrap_or_default();
 
+                        let message_id = Uuid::new_v4();
+                        message_ids.push(message_id);
+
                         let new_message = entity::messages::ActiveModel {
-                            id: Set(Uuid::new_v4()),
+                            id: Set(message_id),
                             transaction_id: Set(transaction_id),
                             order_idx: Set(message_idx as i32),
                             block_height: Set(block.info.height.try_into()?),
@@ -153,7 +155,7 @@ impl Models {
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
-                        None,
+                        &message_ids,
                         created_at,
                     )?;
 
@@ -164,7 +166,7 @@ impl Models {
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
-                        None,
+                        &[],
                         created_at,
                     )?;
 
@@ -195,7 +197,7 @@ fn flatten_events<T>(
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
-    message_id: Option<uuid::Uuid>,
+    message_ids: &[uuid::Uuid],
     created_at: NaiveDateTime,
 ) -> Result<Vec<entity::events::ActiveModel>>
 where
@@ -210,6 +212,20 @@ where
 
     for event in flatten_events {
         let db_event_id = uuid::Uuid::new_v4();
+
+        let message_id = match event.id.message_index {
+            Some(idx) => {
+                let message_id = message_ids.get(idx as usize).cloned();
+                if message_id.is_none() {
+                    unreachable!(
+                        "message_id is none for message_index: {:?} ids: {:?}",
+                        next_id.message_index, message_ids
+                    );
+                }
+                message_id
+            },
+            None => None,
+        };
 
         events_ids.insert(event.id.event_index, db_event_id);
 
@@ -243,7 +259,7 @@ fn build_event_active_model(
     // I could also use #[serde(flatten)] on `FlattenEvent`
     let data = serde_json::to_value(&index_event.event)?;
     // Removing the top hash
-    let data = match data {
+    let inside_data = match &data {
         Json::Object(map) => map
             .keys()
             .next()
@@ -253,19 +269,17 @@ fn build_event_active_model(
             })
             .unwrap_or_default(),
         _ => {
-            return Err(IndexerError::Anyhow(anyhow::anyhow!(
-                "can't get the top hash! never supposed to happen",
-            )));
+            unreachable!("can't get the top hash! never supposed to happen");
         },
     };
 
-    let method = data
+    let method = inside_data
         .get("method")
         .and_then(|s| s.as_str())
         .map(|c| c.to_string());
 
-    let event_status = index_event.event_status.to_string();
-    let commitment_status = index_event.commitment_status.to_string();
+    let event_status = index_event.event_status.as_i16();
+    let commitment_status = index_event.commitment_status.as_i16();
 
     Ok(entity::events::ActiveModel {
         id: Set(event_id),
@@ -275,7 +289,7 @@ fn build_event_active_model(
         created_at: Set(created_at),
         r#type: Set(index_event.event.to_string()),
         method: Set(method),
-        attributes: Set(data),
+        data: Set(data),
         event_status: Set(event_status),
         commitment_status: Set(commitment_status),
         transaction_idx: Set(index_event.id.category_index as i32),
