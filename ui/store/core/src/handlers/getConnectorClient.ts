@@ -9,7 +9,7 @@ import {
 
 import { type ScopeKeyParameter, filterQueryOptions } from "./query.js";
 
-import type { ExactPartial, Prettify } from "@left-curve/types";
+import type { ExactPartial, Prettify } from "@left-curve/dango/types";
 import type { Config } from "../types/store.js";
 
 export type { GetConnectorClientErrorType };

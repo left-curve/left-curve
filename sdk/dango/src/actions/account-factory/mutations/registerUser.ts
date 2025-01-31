@@ -1,8 +1,15 @@
 import { getAppConfig, simulate } from "@left-curve/sdk";
-import type {  Hex, Transport } from "@left-curve/types";
+import type { Hex, Transport } from "@left-curve/sdk/types";
 import { broadcastTxSync } from "../../app/mutations/broadcastTxSync.js";
 
-import type { AppConfig, DangoClient, Key, KeyHash, Username, Signer } from "../../../types/index.js";
+import type {
+  AppConfig,
+  DangoClient,
+  Key,
+  KeyHash,
+  Signer,
+  Username,
+} from "../../../types/index.js";
 import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
 export type RegisterUserParameters = {
@@ -21,9 +28,7 @@ export type MsgRegisterUser = {
   };
 };
 
-export async function registerUser<
-  transport extends Transport
->(
+export async function registerUser<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {

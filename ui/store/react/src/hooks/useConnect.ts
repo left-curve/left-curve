@@ -15,8 +15,8 @@ import { type UseMutationParameters, type UseMutationReturnType, useMutation } f
 import { useConfig } from "./useConfig.js";
 import { type UseConnectorsReturnType, useConnectors } from "./useConnectors.js";
 
+import type { Prettify } from "@left-curve/dango/types";
 import type { Config, ConfigParameter } from "@left-curve/store/types";
-import type { Prettify } from "@left-curve/types";
 
 export type UseConnectParameters<config extends Config = Config, context = unknown> = Prettify<
   ConfigParameter<config> & {

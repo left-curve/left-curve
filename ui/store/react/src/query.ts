@@ -9,7 +9,7 @@ import {
   useMutation,
 } from "@tanstack/react-query";
 
-import type { ExactPartial, Prettify, UnionStrictOmit } from "@left-curve/types";
+import type { ExactPartial, Prettify, UnionStrictOmit } from "@left-curve/dango/types";
 
 export type UseMutationParameters<
   data = unknown,

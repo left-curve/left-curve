@@ -2,7 +2,16 @@
 
 use sea_orm::entity::prelude::*;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Default)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    DeriveEntityModel,
+    Eq,
+    Default,
+    serde :: Serialize,
+    serde :: Deserialize,
+)]
 #[sea_orm(table_name = "events")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]

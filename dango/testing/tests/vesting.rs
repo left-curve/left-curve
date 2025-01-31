@@ -1,7 +1,7 @@
 use {
     dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
-        config::DANGO_DENOM,
+        constants::{DANGO_DENOM, USDC_DENOM},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},
     },
     grug::{
@@ -81,9 +81,12 @@ fn not_dango_token() {
                     period: Duration::from_seconds(0),
                 },
             },
-            Coins::one("uusdc", 100).unwrap(),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
-        .should_fail_with_error(StdError::invalid_payment(DANGO_DENOM.clone(), "uusdc"));
+        .should_fail_with_error(StdError::invalid_payment(
+            DANGO_DENOM.clone(),
+            USDC_DENOM.clone(),
+        ));
 }
 
 #[test]

@@ -1,16 +1,10 @@
 import { type ExecuteReturnType, execute } from "../../app/mutations/execute.js";
 
-import type {
-  Address,
-  Message,
-  Transport,
-  TxMessageType,
-  TxParameters,
-  TypedDataParameter,
-} from "@left-curve/types";
+import type { Address, Message, Transport, TxParameters } from "@left-curve/sdk/types";
 
 import type { DangoClient } from "../../../types/clients.js";
 import type { Signer } from "../../../types/signer.js";
+import type { TxMessageType, TypedDataParameter } from "../../../types/typedData.js";
 
 export type SafeAccountProposeParameters = {
   sender: Address;

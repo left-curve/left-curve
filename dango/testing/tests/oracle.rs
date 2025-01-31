@@ -1,13 +1,15 @@
 use {
     dango_testing::{setup_test_naive, TestAccounts, TestSuite},
-    dango_types::oracle::{
-        ExecuteMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa, QueryPriceRequest,
-        ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIBA_USD_ID, SOL_USD_ID, TON_USD_ID,
-        USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
+    dango_types::{
+        constants::{
+            ATOM_DENOM, ATOM_USD_ID, BNB_DENOM, BNB_USD_ID, DOGE_DENOM, DOGE_USD_ID, ETH_DENOM,
+            ETH_USD_ID, SHIB_DENOM, SHIB_USD_ID, SOL_DENOM, SOL_USD_ID, USDC_DENOM, USDC_USD_ID,
+            WBTC_DENOM, WBTC_USD_ID, XRP_DENOM, XRP_USD_ID,
+        },
+        oracle::{ExecuteMsg, PrecisionlessPrice, PythId, PythVaa, QueryPriceRequest},
     },
     grug::{
-        btree_map, Addr, Binary, Coins, Denom, Inner, MockApi, NonEmpty, QuerierExt, ResultExt,
-        Udec128,
+        btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
     },
     grug_app::NaiveProposalPreparer,
     pyth_sdk::PriceFeed,
@@ -26,31 +28,14 @@ const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-fn setup_oracle_test(
-    denoms: BTreeMap<Denom, PriceSource>,
-) -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
-    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &ExecuteMsg::RegisterPriceSources(denoms),
-            Coins::default(),
-        )
-        .should_succeed();
-
+fn setup_oracle_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
+    let (suite, accounts, _, contracts) = setup_test_naive();
     (suite, accounts, contracts.oracle)
 }
 
 #[test]
 fn oracle() {
-    let precision = 8;
-    let btc_denom = Denom::from_str("bridge/btc").unwrap();
-
-    let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
-        btc_denom.clone() => PriceSource::Pyth { id: WBTC_USD_ID, precision }
-    });
+    let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
     // Push price
     {
@@ -67,7 +52,7 @@ fn oracle() {
 
         let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: btc_denom.clone(),
+                denom: WBTC_DENOM.clone(),
             })
             .unwrap();
 
@@ -81,7 +66,7 @@ fn oracle() {
             Udec128::from_str("71110.59200000").unwrap()
         );
 
-        assert_eq!(current_price.precision(), precision);
+        assert_eq!(current_price.precision(), 8);
 
         assert_eq!(current_price.timestamp, 1730209108);
     }
@@ -101,7 +86,7 @@ fn oracle() {
 
         let current_price = suite
             .query_wasm_smart(oracle, QueryPriceRequest {
-                denom: btc_denom.clone(),
+                denom: WBTC_DENOM.clone(),
             })
             .unwrap();
 
@@ -132,7 +117,9 @@ fn oracle() {
             .should_succeed();
 
         let current_price = suite
-            .query_wasm_smart(oracle, QueryPriceRequest { denom: btc_denom })
+            .query_wasm_smart(oracle, QueryPriceRequest {
+                denom: WBTC_DENOM.clone(),
+            })
             .unwrap();
 
         assert_eq!(
@@ -151,16 +138,10 @@ fn oracle() {
 
 #[test]
 fn double_vaas() {
+    let (mut suite, mut accounts, oracle) = setup_oracle_test();
+
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
-
-    let btc_denom = Denom::from_str("bridge/btc").unwrap();
-    let eth_denom = Denom::from_str("bridge/eth").unwrap();
-
-    let (mut suite, mut accounts, oracle) = setup_oracle_test(btree_map! {
-        btc_denom.clone() => PriceSource::Pyth { id: WBTC_USD_ID, precision: 8 },
-        eth_denom.clone() => PriceSource::Pyth { id: ETH_USD_ID, precision: 8 },
-    });
 
     for _ in 0..5 {
         // get 2 separate vaa
@@ -216,7 +197,7 @@ fn double_vaas() {
         {
             let current_price = suite
                 .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: btc_denom.clone(),
+                    denom: WBTC_DENOM.clone(),
                 })
                 .unwrap();
 
@@ -234,7 +215,6 @@ fn double_vaas() {
                     .unwrap()
                     .humanized_price
             );
-
             assert_eq!(
                 current_price.humanized_ema,
                 PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
@@ -247,7 +227,7 @@ fn double_vaas() {
         {
             let current_price = suite
                 .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: eth_denom.clone(),
+                    denom: ETH_DENOM.clone(),
                 })
                 .unwrap();
 
@@ -265,7 +245,6 @@ fn double_vaas() {
                     .unwrap()
                     .humanized_price
             );
-
             assert_eq!(
                 current_price.humanized_ema,
                 PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
@@ -281,30 +260,19 @@ fn double_vaas() {
 
 #[test]
 fn multiple_vaas() {
+    let (mut suite, mut accounts, oracle) = setup_oracle_test();
+
     let id_denoms = btree_map! {
-        WBTC_USD_ID  => Denom::from_str("bridge/btc").unwrap() ,
-        ETH_USD_ID   => Denom::from_str("bridge/eth").unwrap() ,
-        USDC_USD_ID  => Denom::from_str("bridge/usdc").unwrap() ,
-        SOL_USD_ID   => Denom::from_str("bridge/sol").unwrap() ,
-        ATOM_USD_ID  => Denom::from_str("bridge/atom").unwrap() ,
-        BNB_USD_ID   => Denom::from_str("bridge/bnb").unwrap() ,
-        DOGE_USD_ID  => Denom::from_str("bridge/doge").unwrap() ,
-        XRP_USD_ID   => Denom::from_str("bridge/xrp").unwrap() ,
-        TON_USD_ID   => Denom::from_str("bridge/ton").unwrap() ,
-        SHIBA_USD_ID => Denom::from_str("bridge/shiba").unwrap(),
+        ATOM_USD_ID => ATOM_DENOM.clone(),
+        BNB_USD_ID  => BNB_DENOM.clone(),
+        DOGE_USD_ID => DOGE_DENOM.clone(),
+        ETH_USD_ID  => ETH_DENOM.clone(),
+        SHIB_USD_ID => SHIB_DENOM.clone(),
+        SOL_USD_ID  => SOL_DENOM.clone(),
+        USDC_USD_ID => USDC_DENOM.clone(),
+        WBTC_USD_ID => WBTC_DENOM.clone(),
+        XRP_USD_ID  => XRP_DENOM.clone(),
     };
-
-    let denom_price_sources = id_denoms
-        .iter()
-        .map(|(id, denom)| {
-            (denom.clone(), PriceSource::Pyth {
-                id: *id,
-                precision: 8,
-            })
-        })
-        .collect();
-
-    let (mut suite, mut accounts, oracle) = setup_oracle_test(denom_price_sources);
 
     let mut last_price_feeds = id_denoms
         .keys()
@@ -377,7 +345,6 @@ fn multiple_vaas() {
                     .unwrap()
                     .humanized_price
             );
-
             assert_eq!(
                 current_price.humanized_ema,
                 PrecisionlessPrice::try_from(last_price_feed.unwrap())

@@ -1,20 +1,20 @@
 use {
     crate::{
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
-        NEXT_ORDER_ID, ORDERS,
+        NEXT_ORDER_ID, ORDERS, PAIRS,
     },
     anyhow::ensure,
     dango_types::{
         bank,
         dex::{
             Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
-            OrderSubmitted, OrdersMatched,
+            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, Message, MultiplyFraction, MutableCtx, Number,
-        Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx, Udec128,
-        Uint128,
+        Addr, Coin, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction, MutableCtx,
+        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
+        Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -22,13 +22,21 @@ use {
 const HALF: Udec128 = Udec128::new_percent(50);
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn instantiate(_ctx: MutableCtx, _msg: InstantiateMsg) -> StdResult<Response> {
-    Ok(Response::new())
+pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    batch_update_pairs(ctx, msg.pairs)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
+        ExecuteMsg::BatchUpdatePairs(updates) => {
+            ensure!(
+                ctx.sender == ctx.querier.query_owner()?,
+                "only the owner can update a trading pair parameters"
+            );
+
+            batch_update_pairs(ctx, updates)
+        },
         ExecuteMsg::SubmitOrder {
             base_denom,
             quote_denom,
@@ -41,6 +49,26 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 }
 
 #[inline]
+fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
+    let mut events = Vec::with_capacity(updates.len());
+
+    for update in updates {
+        PAIRS.save(
+            ctx.storage,
+            (&update.base_denom, &update.quote_denom),
+            &update.params,
+        )?;
+
+        events.push(ContractEvent::new(PairUpdated::NAME, PairUpdated {
+            base_denom: update.base_denom,
+            quote_denom: update.quote_denom,
+        })?);
+    }
+
+    Ok(Response::new().add_subevents(events))
+}
+
+#[inline]
 fn submit_order(
     ctx: MutableCtx,
     base_denom: Denom,
@@ -49,6 +77,11 @@ fn submit_order(
     amount: Uint128,
     price: Udec128,
 ) -> anyhow::Result<Response> {
+    ensure!(
+        PAIRS.has(ctx.storage, (&base_denom, &quote_denom)),
+        "pair not found with base `{base_denom}` and quote `{quote_denom}`"
+    );
+
     let deposit = ctx.funds.into_one_coin()?;
 
     match direction {
@@ -111,18 +144,16 @@ fn submit_order(
         },
     )?;
 
-    Ok(
-        Response::new().add_event("order_submitted", OrderSubmitted {
-            order_id,
-            user: ctx.sender,
-            base_denom,
-            quote_denom,
-            direction,
-            price,
-            amount,
-            deposit,
-        })?,
-    )
+    Ok(Response::new().add_event(OrderSubmitted {
+        order_id,
+        user: ctx.sender,
+        base_denom,
+        quote_denom,
+        direction,
+        price,
+        amount,
+        deposit,
+    })?)
 }
 
 #[inline]

@@ -44,10 +44,25 @@
       "import": "./build/chains/index.js",
       "default": "./build/chains/index.cjs"
     },
-    "./signers": {
-      "types": "./build/signers/index.d.ts",
-      "import": "./build/signers/index.js",
-      "default": "./build/signers/index.cjs"
+    "./crypto": {
+      "types": "./build/crypto/index.d.ts",
+      "import": "./build/crypto/index.js",
+      "default": "./build/crypto/index.cjs"
+    },
+     "./encoding": {
+      "types": "./build/encoding/index.d.ts",
+      "import": "./build/encoding/index.js",
+      "default": "./build/encoding/index.cjs"
+    },
+    "./utils": {
+      "types": "./build/utils/index.d.ts",
+      "import": "./build/utils/index.js",
+      "default": "./build/utils/index.cjs"
+    },
+     "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
     }
   },
   "typesVersions": {
@@ -61,8 +76,17 @@
       "chains": [
         "./build/chains/index.d.ts"
       ],
-      "signers": [
-        "./build/signers/index.d.ts"
+      "crypto": [
+        "./build/crypto/index.d.ts"
+      ],
+      "encoding": [
+        "./build/encoding/index.d.ts"
+      ],
+      "utils": [
+        "./build/utils/index.d.ts"
+      ],
+      "types": [
+        "./build/types/index.d.ts"
       ]
     }
   },
@@ -71,10 +95,12 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "@left-curve/crypto": "workspace:^",
-    "@left-curve/encoding": "workspace:^",
-    "@left-curve/types": "workspace:^",
-    "@left-curve/utils": "workspace:^"
+    "superjson": "^2.2.1",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.4.0",
+    "@scure/bip32": "^1.4.0",
+    "@scure/bip39": "^1.3.0",
+    "cbor-x": "^1.6.0"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

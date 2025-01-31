@@ -1,5 +1,5 @@
 use {
-    crate::{Json, JsonSerExt, Message, StdResult},
+    crate::{EventName, Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -65,12 +65,11 @@ impl Response {
         self
     }
 
-    pub fn add_event<T, U>(mut self, ty: T, data: U) -> StdResult<Self>
+    pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        T: Into<String>,
-        U: Serialize,
+        E: EventName,
     {
-        self.subevents.push(ContractEvent::new(ty, data)?);
+        self.subevents.push(ContractEvent::new(E::NAME, event)?);
         Ok(self)
     }
 
@@ -153,12 +152,11 @@ impl AuthResponse {
         self
     }
 
-    pub fn add_event<T, U>(mut self, ty: T, data: U) -> StdResult<Self>
+    pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        T: Into<String>,
-        U: Serialize,
+        E: EventName,
     {
-        self.response = self.response.add_event(ty, data)?;
+        self.response = self.response.add_event(event)?;
         Ok(self)
     }
 

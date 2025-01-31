@@ -1,6 +1,6 @@
-import { Secp256k1 } from "@left-curve/crypto";
 import { createSessionSigner, createSignerClient } from "@left-curve/dango";
-import { encodeBase64 } from "@left-curve/encoding";
+import { Secp256k1 } from "@left-curve/dango/crypto";
+import { encodeBase64 } from "@left-curve/dango/encoding";
 import {
   createStorage,
   useAccount,

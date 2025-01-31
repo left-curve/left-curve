@@ -1,18 +1,15 @@
-import { encodeBase64 } from "@left-curve/encoding";
-import type {
-  Address,
-  Funds,
-  Hex,
-  Json,
-  Transport,
-  TxMessageType,
-  TypedDataParameter,
-} from "@left-curve/types";
-import { getCoinsTypedData } from "@left-curve/utils";
+import { encodeBase64 } from "@left-curve/sdk/encoding";
+import type { Address, Funds, Hex, Json, Transport } from "@left-curve/sdk/types";
 import { computeAddress } from "../../../account/address.js";
+import { getCoinsTypedData } from "../../../utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
-import type { DangoClient, Signer } from "../../../types/index.js";
+import type {
+  DangoClient,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "../../../types/index.js";
 
 export type InstantiateParameters = {
   sender: Address;

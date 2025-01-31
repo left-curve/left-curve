@@ -1,7 +1,7 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
 import type { AccountIndex, AppConfig, Username } from "../../../types/index.js";
 
-import type { Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 
 export type GetNextAccountIndexParameters = {
   username: Username;

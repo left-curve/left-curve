@@ -1,4 +1,4 @@
-import type { Address, Coin, Denom } from "@left-curve/types";
+import type { Address, Coin, Denom } from "@left-curve/sdk/types";
 import type { Username } from "./account.js";
 
 export type TokenFactoryConfig = {

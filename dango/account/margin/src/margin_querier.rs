@@ -52,7 +52,7 @@ where
         for (denom, scaled_debt) in &scaled_debts {
             // Query the market for the denom.
             let market = self
-                .query_wasm_path(app_cfg.addresses.lending, MARKETS.path(denom))?
+                .query_wasm_path(app_cfg.addresses.lending, &MARKETS.path(denom))?
                 .update_indices(self, current_time)?;
 
             // Calculate the real debt.

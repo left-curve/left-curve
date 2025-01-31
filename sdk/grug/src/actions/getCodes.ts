@@ -1,4 +1,4 @@
-import type { Chain, Client, CodesResponse, Signer, Transport } from "@left-curve/types";
+import type { Chain, Client, CodesResponse, Signer, Transport } from "../types/index.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetCodesParameters =

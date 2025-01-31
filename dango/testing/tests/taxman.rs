@@ -1,14 +1,11 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::taxman,
-    grug::{Addressable, Coins, Denom, MultiplyFraction, Number, ResultExt, Udec128, Uint128},
-    std::{str::FromStr, sync::LazyLock},
+    dango_types::{constants::USDC_DENOM, taxman},
+    grug::{Addressable, Coins, MultiplyFraction, Number, ResultExt, Udec128, Uint128},
 };
 
 const OLD_FEE_RATE: Udec128 = Udec128::new_percent(1); // 0.01 uusdc per gas unit
 const NEW_FEE_RATE: Udec128 = Udec128::new_percent(2); // 0.02 uusdc per gas unit
-
-static USDC: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
 
 #[test]
 fn fee_rate_update_works() {
@@ -28,7 +25,7 @@ fn fee_rate_update_works() {
             contracts.taxman,
             &taxman::ExecuteMsg::Configure {
                 new_cfg: taxman::Config {
-                    fee_denom: USDC.clone(),
+                    fee_denom: USDC_DENOM.clone(),
                     fee_rate: OLD_FEE_RATE,
                 },
             },
@@ -39,7 +36,7 @@ fn fee_rate_update_works() {
     // This transaction was run when fee rate was zero.
     // The owner's USDC balance should be unchanged.
     suite
-        .query_balance(&accounts.owner, USDC.clone())
+        .query_balance(&accounts.owner, USDC_DENOM.clone())
         .should_succeed_and_equal(owner_usdc_balance);
 
     // --------------------------------- tx 2 ----------------------------------
@@ -51,7 +48,7 @@ fn fee_rate_update_works() {
             contracts.taxman,
             &taxman::ExecuteMsg::Configure {
                 new_cfg: taxman::Config {
-                    fee_denom: USDC.clone(),
+                    fee_denom: USDC_DENOM.clone(),
                     fee_rate: NEW_FEE_RATE,
                 },
             },
@@ -64,7 +61,7 @@ fn fee_rate_update_works() {
         .checked_mul_dec_ceil(OLD_FEE_RATE)
         .unwrap();
     let _owner_usdc_balance = suite
-        .query_balance(&accounts.owner, USDC.clone())
+        .query_balance(&accounts.owner, USDC_DENOM.clone())
         .should_succeed_and_equal(owner_usdc_balance.checked_sub(fee).unwrap());
 
     // --------------------------------- tx 3 ----------------------------------
@@ -79,6 +76,6 @@ fn fee_rate_update_works() {
         .checked_mul_dec_ceil(NEW_FEE_RATE)
         .unwrap();
     let _user_usdc_balance = suite
-        .query_balance(&accounts.user1, USDC.clone())
+        .query_balance(&accounts.user1, USDC_DENOM.clone())
         .should_succeed_and_equal(user_usdc_balance.checked_sub(fee).unwrap());
 }

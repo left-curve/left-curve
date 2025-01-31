@@ -2,7 +2,17 @@ use {
     crate::{TestAccount, TestAccounts},
     dango_app::ProposalPreparer,
     dango_genesis::{
-        build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisUser,
+        build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisConfig,
+        GenesisUser,
+    },
+    dango_types::{
+        constants::{
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
+            USDC_DENOM, WBTC_DENOM,
+        },
+        dex::{PairParams, PairUpdate},
+        lending::{InterestRateModel, MarketUpdates},
+        taxman,
     },
     grug::{
         btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Denom, Duration, HashExt,
@@ -15,7 +25,7 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
     std::{path::PathBuf, str::FromStr},
 };
 
@@ -77,10 +87,13 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
 ///
 /// Used for running tests that require an indexer.
 pub fn setup_test_with_indexer() -> (
-    TestSuiteWithIndexer,
-    TestAccounts,
-    Codes<ContractWrapper>,
-    Contracts,
+    (
+        TestSuiteWithIndexer,
+        TestAccounts,
+        Codes<ContractWrapper>,
+        Contracts,
+    ),
+    Context,
 ) {
     let codes = build_rust_codes();
 
@@ -90,12 +103,17 @@ pub fn setup_test_with_indexer() -> (
         .build()
         .unwrap();
 
-    setup_suite_with_db_and_vm(
-        MemDb::new(),
-        RustVm::new(),
-        codes,
-        ProposalPreparer::new(),
-        indexer,
+    let indexer_context = indexer.context.clone();
+
+    (
+        setup_suite_with_db_and_vm(
+            MemDb::new(),
+            RustVm::new(),
+            codes,
+            ProposalPreparer::new(),
+            indexer,
+        ),
+        indexer_context,
     )
 }
 
@@ -199,103 +217,141 @@ where
     let user8 = TestAccount::new_from_private_key("user8", USER8_PRIVATE_KEY);
     let user9 = TestAccount::new_from_private_key("user9", USER9_PRIVATE_KEY);
 
-    let (genesis_state, contracts, addresses) = build_genesis(
-        codes.clone(),
-        btree_map! {
+    let (genesis_state, contracts, addresses) = build_genesis(GenesisConfig {
+        codes: codes.clone(),
+        users: btree_map! {
             owner.username.clone() => GenesisUser {
                 key: owner.key(),
                 key_hash: owner.key_hash(),
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000,
                 },
             },
             user1.username.clone() => GenesisUser {
                 key: user1.key(),
                 key_hash: user1.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
-                    "uatom" => 100_000_000_000_000,
-                    "uosmo" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                     // In reality, it's not possible that anyone has Hyperlane
                     // synth tokens in genesis. We add this just for testing purpose.
-                    "hyp/ethereum/ether" => 100_000_000_000_000,
-                    "hyp/bitcoin/sat"    => 100_000_000_000_000,
+                    WBTC_DENOM.clone() => 100_000_000_000_000,
+                    ETH_DENOM.clone()  => 100_000_000_000_000,
                 }
             },
             user2.username.clone() => GenesisUser {
                 key: user2.key(),
                 key_hash: user2.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user3.username.clone() => GenesisUser {
                 key: user3.key(),
                 key_hash: user3.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user4.username.clone() => GenesisUser {
                 key: user4.key(),
                 key_hash: user4.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user5.username.clone() => GenesisUser {
                 key: user5.key(),
                 key_hash: user5.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user6.username.clone() => GenesisUser {
                 key: user6.key(),
                 key_hash: user6.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user7.username.clone() => GenesisUser {
                 key: user7.key(),
                 key_hash: user7.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user8.username.clone() => GenesisUser {
                 key: user8.key(),
                 key_hash: user8.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user9.username.clone() => GenesisUser {
                 key: user9.key(),
                 key_hash: user9.key_hash(),
                 balances: coins! {
-                    "udng"  => 100_000_000_000_000,
-                    "uusdc" => 100_000_000_000_000,
+                    DANGO_DENOM.clone() => 100_000_000_000_000,
+                    USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
         },
-        &owner.username,
-        Denom::from_str(FEE_DENOM).unwrap(),
-        FEE_RATE,
-        Duration::from_seconds(7 * 24 * 60 * 60),
-    )
+        owner: owner.username.clone(),
+        fee_cfg: taxman::Config {
+            fee_denom: Denom::from_str(FEE_DENOM).unwrap(),
+            fee_rate: FEE_RATE,
+        },
+        max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
+        metadatas: btree_map! {},
+        pairs: vec![
+            PairUpdate {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: BTC_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+            PairUpdate {
+                base_denom: SOL_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {},
+            },
+        ],
+        markets: btree_map! {
+            USDC_DENOM.clone() => MarketUpdates {
+                interest_rate_model: Some(InterestRateModel::default()),
+            },
+            WBTC_DENOM.clone() => MarketUpdates {
+                interest_rate_model: Some(InterestRateModel::default()),
+            },
+        },
+        price_sources: PYTH_PRICE_SOURCES.clone(),
+        unlocking_cliff: Duration::from_weeks(4 * 9),
+        unlocking_period: Duration::from_weeks(4 * 27),
+        wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+        hyperlane_local_domain: 88888888,
+        hyperlane_ism_validator_sets: btree_map! {},
+        warp_routes: btree_map! {},
+    })
     .unwrap();
 
     let suite = grug::TestSuite::new_with_db_vm_indexer_and_pp(

@@ -1,4 +1,5 @@
 use {
+    crate::{BalanceTracker, InstantiateOutcome, UploadAndInstantiateOutcome, UploadOutcome},
     grug_app::{
         App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
         ProposalPreparer, Vm,
@@ -9,104 +10,12 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, BlockOutcome, CheckTxOutcome, Coins, Config,
         Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, Query, QueryResponse, ResultExt, Signer, StdError, Tx, TxError, TxOutcome,
-        TxSuccess, UnsignedTx,
+        Querier, Query, QueryResponse, Signer, StdError, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
+    std::collections::BTreeMap,
 };
-
-// ------------------------------- UploadOutcome -------------------------------
-
-#[must_use = "`UploadOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
-pub struct UploadOutcome {
-    code_hash: Hash256,
-    outcome: TxOutcome,
-}
-
-pub struct UploadOutcomeSuccess {
-    pub code_hash: Hash256,
-    pub outcome: TxSuccess,
-}
-
-impl ResultExt for UploadOutcome {
-    type Error = TxError;
-    type Success = UploadOutcomeSuccess;
-
-    fn should_succeed(self) -> Self::Success {
-        UploadOutcomeSuccess {
-            code_hash: self.code_hash,
-            outcome: self.outcome.should_succeed(),
-        }
-    }
-
-    fn should_fail(self) -> Self::Error {
-        self.outcome.should_fail()
-    }
-}
-
-// ---------------------------- InstantiateOutcome -----------------------------
-
-#[must_use = "`InstantiateOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
-pub struct InstantiateOutcome {
-    address: Addr,
-    outcome: TxOutcome,
-}
-
-pub struct InstantiateOutcomeSuccess {
-    pub address: Addr,
-    pub outcome: TxSuccess,
-}
-
-impl ResultExt for InstantiateOutcome {
-    type Error = TxError;
-    type Success = InstantiateOutcomeSuccess;
-
-    fn should_succeed(self) -> Self::Success {
-        InstantiateOutcomeSuccess {
-            address: self.address,
-            outcome: self.outcome.should_succeed(),
-        }
-    }
-
-    fn should_fail(self) -> Self::Error {
-        self.outcome.should_fail()
-    }
-}
-
-// ------------------------ UploadAndInstantiateOutcome ------------------------
-
-#[must_use = "`UploadAndInstantiateOutcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
-pub struct UploadAndInstantiateOutcome {
-    code_hash: Hash256,
-    address: Addr,
-    outcome: TxOutcome,
-}
-
-pub struct UploadAndInstantiateOutcomeSuccess {
-    pub address: Addr,
-    pub code_hash: Hash256,
-    pub outcome: TxSuccess,
-}
-
-impl ResultExt for UploadAndInstantiateOutcome {
-    type Error = TxError;
-    type Success = UploadAndInstantiateOutcomeSuccess;
-
-    fn should_succeed(self) -> Self::Success {
-        UploadAndInstantiateOutcomeSuccess {
-            address: self.address,
-            code_hash: self.code_hash,
-            outcome: self.outcome.should_succeed(),
-        }
-    }
-
-    fn should_fail(self) -> Self::Error {
-        self.outcome.should_fail()
-    }
-}
-
-// --------------------------------- TestSuite ---------------------------------
 
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
 where
@@ -126,6 +35,7 @@ where
     pub block_time: Duration,
     /// Transaction gas limit to use if user doesn't specify one.
     pub default_gas_limit: u64,
+    pub(crate) balances: BTreeMap<Addr, Coins>,
 }
 
 impl TestSuite {
@@ -269,6 +179,7 @@ where
             block: genesis_block,
             block_time,
             default_gas_limit,
+            balances: Default::default(),
         }
     }
 
@@ -729,5 +640,9 @@ where
                 false,
             )
             .map(|res| res.as_balances())
+    }
+
+    pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
+        BalanceTracker { suite: self }
     }
 }

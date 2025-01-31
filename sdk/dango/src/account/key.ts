@@ -1,6 +1,6 @@
-import { secp256k1CompressPubKey, sha256 } from "@left-curve/crypto";
-import { encodeHex, encodeUtf8 } from "@left-curve/encoding";
-import type { OneRequired, Prettify } from "@left-curve/types";
+import { secp256k1CompressPubKey, sha256 } from "@left-curve/sdk/crypto";
+import { encodeHex, encodeUtf8 } from "@left-curve/sdk/encoding";
+import type { OneRequired, Prettify } from "@left-curve/sdk/types";
 import type { KeyAlgoType, KeyHash } from "../types/key.js";
 import { KeyAlgo } from "../types/key.js";
 

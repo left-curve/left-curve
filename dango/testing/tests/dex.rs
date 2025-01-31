@@ -1,93 +1,44 @@
-//! Test cases from:
-//! <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
-
 use {
-    dango_testing::{setup_test_naive, TestSuite},
-    dango_types::dex::{self, Direction, OrderId, QueryOrdersRequest},
-    grug::{
-        btree_map, Addr, Addressable, Coins, Denom, Inner, Message, MultiplyFraction, NonEmpty,
-        QuerierExt, Signer, StdResult, Udec128, Uint128,
+    dango_testing::setup_test_naive,
+    dango_types::{
+        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
+        dex::{self, Direction, OrderId, QueryOrdersRequest},
     },
-    grug_app::NaiveProposalPreparer,
-    std::{collections::BTreeMap, str::FromStr, sync::LazyLock},
+    grug::{
+        btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
+        NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+    },
+    std::collections::BTreeMap,
     test_case::test_case,
 };
 
-static BASE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("udng").unwrap());
-static QUOTE_DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::from_str("uusdc").unwrap());
+#[test]
+fn cannot_submit_orders_in_non_existing_pairs() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
-enum BalanceChange {
-    Increased(u128),
-    Decreased(u128),
-    Unchanged,
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SubmitOrder {
+                base_denom: ATOM_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::new(100),
+                price: Udec128::new(1),
+            },
+            Coins::one(USDC_DENOM.clone(), 1).unwrap(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            ATOM_DENOM.clone(),
+            USDC_DENOM.clone()
+        ));
 }
 
-// TODO: this can be included in `TestSuite`.
-#[derive(Default)]
-struct BalanceTracker {
-    old_balances: BTreeMap<Addr, Coins>,
-}
-
-impl BalanceTracker {
-    pub fn record_balances<I>(&mut self, suite: &TestSuite<NaiveProposalPreparer>, accounts: I)
-    where
-        I: IntoIterator<Item = Addr>,
-    {
-        self.old_balances = accounts
-            .into_iter()
-            .map(|addr| (addr, suite.query_balances(&addr).unwrap()))
-            .collect();
-    }
-
-    pub fn assert(
-        &self,
-        suite: &TestSuite<NaiveProposalPreparer>,
-        account: Addr,
-        changes: BTreeMap<Denom, BalanceChange>,
-    ) {
-        let old_balances = self.old_balances.get(&account).unwrap();
-        let new_balances = suite.query_balances(&account).unwrap();
-
-        for (denom, change) in changes {
-            let old_balance = old_balances.amount_of(&denom);
-            let new_balance = new_balances.amount_of(&denom);
-            match change {
-                BalanceChange::Increased(diff) => {
-                    assert_eq!(
-                        new_balance,
-                        old_balance + Uint128::new(diff),
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {} + {}",
-                        account,
-                        denom,
-                        new_balance,
-                        old_balance,
-                        diff
-                    );
-                },
-                BalanceChange::Decreased(diff) => {
-                    assert_eq!(
-                        new_balance,
-                        old_balance - Uint128::new(diff),
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {} - {}",
-                        account,
-                        denom,
-                        new_balance,
-                        old_balance,
-                        diff
-                    );
-                },
-                BalanceChange::Unchanged => {
-                    assert_eq!(
-                        new_balance, old_balance,
-                        "incorrect balance! account: {}, denom: {}, amount: {} != {}",
-                        account, denom, new_balance, old_balance
-                    );
-                },
-            }
-        }
-    }
-}
-
+// Test cases from:
+// https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better
+//
 // --------------------------------- example 1 ---------------------------------
 #[test_case(
     vec![
@@ -104,28 +55,28 @@ impl BalanceTracker {
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(200),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(200),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(200),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(200),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 1"
@@ -146,28 +97,28 @@ impl BalanceTracker {
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 2"
@@ -190,32 +141,32 @@ impl BalanceTracker {
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(175),
+            DANGO_DENOM.clone() => BalanceChange::Increased(10),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(175),
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(5),   // half filled
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(188), // -200 deposit, +12 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(5),   // half filled
+            USDC_DENOM.clone()  => BalanceChange::Decreased(188), // -200 deposit, +12 refund
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(175),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(175),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
         !6 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(5),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(88), // -150 deposit, +62 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(5),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(88), // -150 deposit, +62 refund
         },
     };
     "example 3"
@@ -237,28 +188,28 @@ impl BalanceTracker {
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(20),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(450), // -600 deposit, +150 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(20),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(450), // -600 deposit, +150 refund
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(225),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(225),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(225),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(225),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Unchanged,
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Unchanged,
         },
     };
     "example 4"
@@ -280,28 +231,28 @@ impl BalanceTracker {
     },
     btree_map! {
         !0 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Increased(25),
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(688), // -750 deposit, +62 refund
+            DANGO_DENOM.clone() => BalanceChange::Increased(25),
+            USDC_DENOM.clone()  => BalanceChange::Decreased(688), // -750 deposit, +62 refund
         },
         !1 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(200),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(200),
         },
         !2 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Unchanged,
-            QUOTE_DENOM.clone() => BalanceChange::Decreased(100),
+            DANGO_DENOM.clone() => BalanceChange::Unchanged,
+            USDC_DENOM.clone()  => BalanceChange::Decreased(100),
         },
         3 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(275),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(275),
         },
         4 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(275),
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(275),
         },
         5 => btree_map! {
-            BASE_DENOM.clone()  => BalanceChange::Decreased(10),
-            QUOTE_DENOM.clone() => BalanceChange::Increased(137), // refund: floor(5 * 27.5) = 137
+            DANGO_DENOM.clone() => BalanceChange::Decreased(10),
+            USDC_DENOM.clone()  => BalanceChange::Increased(137), // refund: floor(5 * 27.5) = 137
         },
     };
     "example 5"
@@ -315,7 +266,6 @@ fn dex_works(
     balance_changes: BTreeMap<OrderId, BTreeMap<Denom, BalanceChange>>,
 ) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
-    let mut tracker = BalanceTracker::default();
 
     // Find which accounts will submit the orders, so we can track their balances.
     let users_by_order_id = orders_to_submit
@@ -332,7 +282,9 @@ fn dex_works(
         .collect::<BTreeMap<_, _>>();
 
     // Track the users' balances.
-    tracker.record_balances(&suite, users_by_order_id.values().copied());
+    suite
+        .balances()
+        .record_many(users_by_order_id.values().copied());
 
     // Submit the orders in a single block.
     let txs = orders_to_submit
@@ -345,16 +297,16 @@ fn dex_works(
             let funds = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(QUOTE_DENOM.clone(), quote_amount).unwrap()
+                    Coins::one(USDC_DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(BASE_DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coins::one(DANGO_DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::SubmitOrder {
-                    base_denom: BASE_DENOM.clone(),
-                    quote_denom: QUOTE_DENOM.clone(),
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
                     direction,
                     amount,
                     price,
@@ -366,11 +318,22 @@ fn dex_works(
         })
         .collect::<StdResult<Vec<_>>>()
         .unwrap();
-    suite.make_block(txs);
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
 
     // Check the users' balances should have changed correctly.
     for (order_id, changes) in balance_changes {
-        tracker.assert(&suite, users_by_order_id[&order_id], changes);
+        suite
+            .balances()
+            .should_change(users_by_order_id[&order_id], changes);
     }
 
     // Check the remaining unfilled orders.

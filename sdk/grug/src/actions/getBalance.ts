@@ -1,4 +1,4 @@
-import type { Address, Chain, Client, Denom, Signer, Transport } from "@left-curve/types";
+import type { Address, Chain, Client, Denom, Signer, Transport } from "../types/index.js";
 import { queryApp } from "./queryApp.js";
 
 export type GetBalanceParameters = {

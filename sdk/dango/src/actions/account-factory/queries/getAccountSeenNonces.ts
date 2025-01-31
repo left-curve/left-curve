@@ -1,5 +1,5 @@
 import { queryWasmSmart } from "@left-curve/sdk";
-import type { Address, Chain, Client, Signer, Transport } from "@left-curve/types";
+import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
 
 export type GetAccountSeenNoncesParameters = {
   address: Address;

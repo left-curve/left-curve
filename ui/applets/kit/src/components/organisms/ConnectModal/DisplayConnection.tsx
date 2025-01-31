@@ -1,7 +1,7 @@
 "use client";
 
+import { wait } from "@left-curve/dango/utils";
 import { useChainId } from "@left-curve/store-react";
-import { wait } from "@left-curve/utils";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { BackArrowIcon, Button, WalletIcon } from "../../";

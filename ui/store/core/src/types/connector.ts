@@ -1,4 +1,4 @@
-import type { ChainId, Prettify, Transport, UID } from "@left-curve/types";
+import type { ChainId, Prettify, Transport, UID } from "@left-curve/dango/types";
 import type { Emitter, EventData } from "./emitter.js";
 
 import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";

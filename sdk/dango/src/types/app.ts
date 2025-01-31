@@ -1,4 +1,4 @@
-import type { Address } from "@left-curve/types";
+import type { Address } from "@left-curve/sdk/types";
 
 export type AppConfig = {
   addresses: {

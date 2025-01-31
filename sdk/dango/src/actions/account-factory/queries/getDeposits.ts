@@ -1,5 +1,5 @@
 import { getAppConfig, queryWasmSmart } from "@left-curve/sdk";
-import type { Address, Chain, Client, Coins, Signer, Transport } from "@left-curve/types";
+import type { Address, Chain, Client, Coins, Signer, Transport } from "@left-curve/sdk/types";
 import type { AppConfig } from "../../../types/index.js";
 
 export type GetDepositsParameters = {

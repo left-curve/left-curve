@@ -1,5 +1,9 @@
-import type { AnyCoin, CoinGeckoId, Denom, Funds, Prettify } from "@left-curve/types";
-import { type CurrencyFormatterOptions, formatCurrency, formatUnits } from "@left-curve/utils";
+import type { AnyCoin, CoinGeckoId, Denom, Funds, Prettify } from "@left-curve/dango/types";
+import {
+  type CurrencyFormatterOptions,
+  formatCurrency,
+  formatUnits,
+} from "@left-curve/dango/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 

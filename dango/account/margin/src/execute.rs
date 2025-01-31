@@ -220,7 +220,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     Ok(Response::new()
         .add_message(repay_msg)
         .add_message(send_msg)
-        .add_event("liquidate", Liquidate {
+        .add_event(Liquidate {
             liquidation_denom,
             repay_coins,
             refunds,
