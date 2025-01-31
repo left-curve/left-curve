@@ -265,20 +265,6 @@ fn setup_margin_test_env(
         CollateralPower::new(Udec128::new_percent(100)).unwrap(),
     );
 
-    // Add lending/borrowing market for BTC
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.lending,
-            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
-                WBTC_DENOM.clone() => MarketUpdates {
-                    interest_rate_model: Some(InterestRateModel::default()),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
     // Deposit some btc to the lending pool
     suite
         .execute(
