@@ -56,7 +56,7 @@ pub const USER9_PRIVATE_KEY: [u8; 32] =
 pub const FEE_DENOM: &str = "uusdc";
 pub const FEE_RATE: Udec128 = Udec128::ZERO;
 
-pub const ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
+pub static ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
     LazyLock::new(|| coins! { USDC_DENOM.clone() => 10_000_000 });
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =

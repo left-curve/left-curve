@@ -145,6 +145,7 @@ where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
+    #[allow(clippy::redundant_closure_call)]
     let chain_id = catch_event! {
         {
           CHAIN_ID.load(&storage).map_err(Into::into)

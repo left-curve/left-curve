@@ -122,7 +122,7 @@ where
     }
 }
 
-impl<'a, DB, VM, PP, ID, O> DerefMut for HyperlaneTestSuite<DB, VM, PP, ID, O>
+impl<DB, VM, PP, ID, O> DerefMut for HyperlaneTestSuite<DB, VM, PP, ID, O>
 where
     DB: Db,
     VM: Vm,
@@ -146,7 +146,7 @@ where
     suite: &'a mut HyperlaneTestSuite<DB, VM, PP, ID, O>,
 }
 
-impl<'a, DB, VM, PP, ID, O> HyperlaneHelper<'a, DB, VM, PP, ID, O>
+impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O>
 where
     DB: Db,
     VM: Vm + Clone + 'static,

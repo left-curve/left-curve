@@ -214,9 +214,9 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     let is_recipient_existing = ctx.querier.query_contract(msg.to).is_ok();
 
     for coin in &msg.coins {
-        decrease_balance(ctx.storage, &msg.from, &coin.denom, *coin.amount)?;
+        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
         if is_recipient_existing {
-            increase_balance(ctx.storage, &msg.to, &coin.denom, *coin.amount)?;
+            increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
         }
     }
 

@@ -42,7 +42,7 @@ const PK_USER9: [u8; 33] =
     hex!("0230f93baa8e1dbe40a928144ec2144eed902c94b835420a6af4aafd2e88cb7b52");
 
 // TODO: duplicate this in testing/src/setup.rs
-pub const ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
+pub static ACCOUNT_FACTORY_MINIMUM_DEPOSIT: LazyLock<Coins> =
     LazyLock::new(|| coins! { USDC_DENOM.clone() => 10_000_000 });
 
 fn main() {
