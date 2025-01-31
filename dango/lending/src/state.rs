@@ -8,7 +8,7 @@ use {
 /// borrowable asset.
 pub const MARKETS: Map<&Denom, Market> = Map::new("market");
 
-/// The debts of all margin accounts. The key is a tuple of the address of the
-/// margin account and the denom of the debt. The value is the amount of debt
-/// scaled by the borrow index.
+/// The debts of all margin accounts. The key is a the address of the
+/// margin account. The value is a BTreeMap of the denom of the debt and the
+/// amount of debt scaled by the borrow index.
 pub const DEBTS: Map<Addr, BTreeMap<Denom, Udec128>> = Map::new("debt");
