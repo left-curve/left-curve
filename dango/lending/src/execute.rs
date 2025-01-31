@@ -92,8 +92,12 @@ fn update_markets(
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of LP tokens to mint
-    let (lp_tokens, markets) =
-        query_preview_deposit(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
+    let (lp_tokens, markets) = query_preview_deposit(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.funds.clone(),
+    )?;
 
     // Save the updated markets
     for (denom, market) in markets {
@@ -122,8 +126,12 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Immutably update markets and compute the amount of underlying coins to withdraw
-    let (withdrawn, markets) =
-        query_preview_withdraw(ctx.storage, ctx.block.timestamp, ctx.funds.clone())?;
+    let (withdrawn, markets) = query_preview_withdraw(
+        ctx.storage,
+        &ctx.querier,
+        ctx.block.timestamp,
+        ctx.funds.clone(),
+    )?;
 
     // Save the updated markets
     for (denom, market) in markets {
@@ -173,7 +181,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         // Update the market state
         let market = MARKETS
             .load(ctx.storage, &coin.denom)?
-            .update_indices(ctx.block.timestamp)?;
+            .update_indices(&ctx.querier, ctx.block.timestamp)?;
 
         // Update the sender's liabilities
         let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
@@ -207,7 +215,7 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         // Update the market indices
         let market = MARKETS
             .load(ctx.storage, &coin.denom)?
-            .update_indices(ctx.block.timestamp)?;
+            .update_indices(&ctx.querier, ctx.block.timestamp)?;
 
         // Calculated the users real debt
         let scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();

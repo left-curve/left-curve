@@ -30,7 +30,7 @@ pub trait MarginQuerier {
 impl<Q> MarginQuerier for Q
 where
     Q: QuerierExt,
-    Q::Error: From<StdError>,
+    Q::Error: From<StdError> + Send + Sync + std::error::Error + 'static,
     anyhow::Error: From<Q::Error>,
 {
     fn query_health(
@@ -53,7 +53,7 @@ where
             // Query the market for the denom.
             let market = self
                 .query_wasm_path(app_cfg.addresses.lending, MARKETS.path(denom))?
-                .update_indices(current_time)?;
+                .update_indices(self, current_time)?;
 
             // Calculate the real debt.
             let debt = market.calculate_debt(*scaled_debt)?;

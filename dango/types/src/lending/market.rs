@@ -1,8 +1,8 @@
 use {
     anyhow::ensure,
     grug::{
-        Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Timestamp, Udec128,
-        Uint128,
+        Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Querier, QuerierExt,
+        QuerierWrapper, StdError, Timestamp, Udec128, Uint128,
     },
 };
 
@@ -21,10 +21,6 @@ pub struct Market {
     /// The total amount of coins borrowed from this market scaled by the
     /// borrow index.
     pub total_borrowed_scaled: Udec128,
-    /// The total amount of coins supplied to this market scaled by the
-    /// supply index. This is stored as a Uint128 rather than a Udec128 because
-    /// we mint LP tokens in integer amounts.
-    pub total_supplied_scaled: Uint128,
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
@@ -43,7 +39,6 @@ impl Market {
             supply_lp_denom,
             interest_rate_model,
             total_borrowed_scaled: Udec128::ZERO,
-            total_supplied_scaled: Uint128::ZERO,
             borrow_index: Udec128::ONE,
             supply_index: Udec128::ONE,
             last_update_time: Timestamp::ZERO,
@@ -52,9 +47,12 @@ impl Market {
     }
 
     /// Computes the utilization rate of this market.
-    pub fn utilization_rate(&self) -> anyhow::Result<Udec128> {
+    pub fn utilization_rate<E>(&self, querier: &dyn Querier<Error = E>) -> anyhow::Result<Udec128>
+    where
+        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+    {
         let total_borrowed = self.total_borrowed()?;
-        let total_supplied = self.total_supplied()?;
+        let total_supplied = self.total_supplied(querier)?;
 
         if total_supplied.is_zero() {
             return Ok(Udec128::ZERO);
@@ -74,7 +72,14 @@ impl Market {
 
     /// Immutably updates the indices of this market and returns the new market
     /// state.
-    pub fn update_indices(&self, current_time: Timestamp) -> anyhow::Result<Self> {
+    pub fn update_indices<E>(
+        &self,
+        querier: &dyn Querier<Error = E>,
+        current_time: Timestamp,
+    ) -> anyhow::Result<Self>
+    where
+        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+    {
         ensure!(
             current_time >= self.last_update_time,
             "last update time is in the future"
@@ -82,7 +87,7 @@ impl Market {
 
         // If there is no supply or borrow or last update time is equal to the
         // current time, then there is no interest to accrue
-        if self.total_supplied_scaled.is_zero()
+        if self.total_supplied(querier)?.is_zero()
             || self.total_borrowed_scaled.is_zero()
             || current_time == self.last_update_time
         {
@@ -90,7 +95,7 @@ impl Market {
         }
 
         // Calculate interest rates
-        let utilization_rate = self.utilization_rate()?;
+        let utilization_rate = self.utilization_rate(querier)?;
         let rates = self.interest_rate_model.calculate_rates(utilization_rate)?;
 
         // Update the indices
@@ -117,28 +122,9 @@ impl Market {
 
         // Return the new market state
         new_market
-            .add_supplied(protocol_fee_scaled)?
             .set_supply_index(supply_index)
             .set_last_update_time(current_time)
             .add_pending_protocol_fee(protocol_fee_scaled)
-    }
-
-    /// Immutably adds the given amount to the scaled total supplied and returns
-    /// the new market state.
-    pub fn add_supplied(&self, amount_scaled: Uint128) -> anyhow::Result<Self> {
-        Ok(Self {
-            total_supplied_scaled: self.total_supplied_scaled.checked_add(amount_scaled)?,
-            ..self.clone()
-        })
-    }
-
-    /// Immutably deducts the given amount from the scaled total supplied and
-    /// returns the new market state.
-    pub fn deduct_supplied(&self, amount_scaled: Uint128) -> anyhow::Result<Self> {
-        Ok(Self {
-            total_supplied_scaled: self.total_supplied_scaled.checked_sub(amount_scaled)?,
-            ..self.clone()
-        })
     }
 
     /// Immutably adds the given amount to the scaled total borrowed and returns
@@ -224,10 +210,14 @@ impl Market {
     }
 
     /// Returns the total amount of coins supplied to this market.
-    pub fn total_supplied(&self) -> anyhow::Result<Uint128> {
-        Ok(self
-            .total_supplied_scaled
-            .checked_mul_dec(self.supply_index)?)
+    pub fn total_supplied<E>(&self, querier: &dyn Querier<Error = E>) -> anyhow::Result<Uint128>
+    where
+        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+    {
+        let wrapper = QuerierWrapper::new(querier);
+        let total_lp_supply = wrapper.query_supply(self.supply_lp_denom.clone())?;
+        let scaled_total_supply = total_lp_supply.checked_add(self.pending_protocol_fee_scaled)?;
+        Ok(scaled_total_supply.checked_mul_dec(self.supply_index)?)
     }
 
     /// Returns the total amount of coins borrowed from this market.

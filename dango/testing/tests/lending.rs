@@ -728,7 +728,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rate = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate().unwrap())
+        .calculate_rates(market.utilization_rate(suite).unwrap())
         .unwrap();
 
     // Assert that the supply interest rate is zero (since no one has borrowed yet)
@@ -803,7 +803,7 @@ fn interest_rate_model_works(
     // Compute interest rates
     let interest_rates = market
         .interest_rate_model
-        .calculate_rates(market.utilization_rate().unwrap())
+        .calculate_rates(market.utilization_rate(suite).unwrap())
         .unwrap();
 
     // Assert that the all interest rates are non-zero
@@ -867,9 +867,9 @@ fn interest_rate_model_works(
             denom: USDC.clone(),
         })
         .should_succeed()
-        .update_indices(time)
+        .update_indices(suite, time)
         .unwrap();
-    let total_supply = market.total_supplied().unwrap();
+    let total_supply = market.total_supplied(suite).unwrap();
     let total_borrowed = market.total_borrowed().unwrap();
 
     let supply_increase = total_supply - Uint128::from(deposit_amount);
@@ -1025,6 +1025,6 @@ fn interest_rate_model_works(
         .should_succeed();
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
-    assert_eq!(market.total_supplied_scaled, Uint128::ZERO);
+    assert_eq!(market.total_supplied(suite).unwrap(), Uint128::ZERO);
     assert_eq!(market.total_borrowed_scaled, Udec128::ZERO);
 }
