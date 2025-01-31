@@ -5,6 +5,7 @@ use {
         entity, error,
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
+        pubsub::MemoryPubSub,
         Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
@@ -132,7 +133,10 @@ where
 
         Ok(NonBlockingIndexer {
             indexer_path,
-            context: Context { db },
+            context: Context {
+                db,
+                pubsub: Arc::new(MemoryPubSub::new(100)),
+            },
             handle: self.handle,
             blocks: Default::default(),
             indexing: false,
@@ -154,7 +158,6 @@ where
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-#[derive(Debug)]
 pub struct NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
@@ -285,10 +288,15 @@ where
 
         let last_indexed_block_height = match last_indexed_block_height {
             Some(height) => height as u64,
-            None => 1, // happens when you index since genesis
+            None => 0, // happens when you index since genesis
         };
 
-        for block_height in last_indexed_block_height..=latest_block_height {
+        let next_block_height = last_indexed_block_height + 1;
+        if next_block_height >= latest_block_height {
+            return Ok(());
+        }
+
+        for block_height in next_block_height..=latest_block_height {
             let block_filename = self.block_filename(block_height);
 
             let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
@@ -469,7 +477,7 @@ where
             }
             db.commit().await?;
 
-            hooks.post_indexing(context, block_to_index).await.map_err(|e| {
+            hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
 
@@ -493,6 +501,8 @@ where
             }
 
             Self::remove_or_fail(blocks, &block_height)?;
+
+            context.pubsub.publish_block_minted(block_height)?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");

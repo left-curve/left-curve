@@ -9,6 +9,7 @@ use {
     grug_db_disk::DiskDb,
     grug_types::HashExt,
     grug_vm_hybrid::HybridVm,
+    indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, time},
     tower::ServiceBuilder,
@@ -55,12 +56,11 @@ impl StartCmd {
                 .with_dir(app_dir.indexer_dir())
                 .build()
                 .expect("Can't create indexer");
-
             if self.indexer_httpd_enabled {
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(self.indexer_database_url.clone()),
+                    Self::run_httpd_server(indexer.context.clone().into()),
                     self.run_with_indexer(app_dir, indexer)
                 )?;
 
@@ -74,9 +74,12 @@ impl StartCmd {
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, database_url, config_app, build_schema)
-            .await?;
+    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
+        if let Err(err) =
+            indexer_httpd::server::run_server(None, None, context, config_app, build_schema).await
+        {
+            tracing::error!("Failed to run HTTP server: {:?}", err);
+        }
 
         Ok(())
     }
@@ -115,6 +118,7 @@ impl StartCmd {
             codes.taxman.to_bytes().hash256(),
             codes.vesting.to_bytes().hash256(),
             codes.warp.to_bytes().hash256(),
+            codes.dex.to_bytes().hash256(),
         ]);
 
         let app = App::new(

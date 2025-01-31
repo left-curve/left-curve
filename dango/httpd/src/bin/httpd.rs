@@ -1,7 +1,7 @@
 use {
     clap::Parser,
     dango_httpd::{graphql::build_schema, server::config_app},
-    indexer_httpd::{error::Error, server::run_server},
+    indexer_httpd::{context::Context, error::Error, server::run_server},
     tracing_subscriber::EnvFilter,
 };
 
@@ -26,10 +26,12 @@ async fn main() -> Result<(), Error> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    let context = Context::new(Some(cli.indexer_database_url)).await?;
+
     run_server(
         Some(&cli.ip),
         Some(cli.port),
-        cli.indexer_database_url,
+        context,
         config_app,
         build_schema,
     )

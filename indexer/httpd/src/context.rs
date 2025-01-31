@@ -1,8 +1,6 @@
 use {
-    crate::{
-        error::Error,
-        pubsub::{MemoryPubSub, PubSub},
-    },
+    crate::error::Error,
+    indexer_sql::pubsub::{MemoryPubSub, PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
 };
@@ -17,7 +15,7 @@ impl From<indexer_sql::Context> for Context {
     fn from(ctx: indexer_sql::Context) -> Self {
         Self {
             db: ctx.db,
-            pubsub: Arc::new(MemoryPubSub::new(100)),
+            pubsub: ctx.pubsub,
         }
     }
 }
@@ -64,6 +62,17 @@ impl Context {
         //.max_lifetime(Duration::from_secs(20))
         .sqlx_logging(false);
 
-        Database::connect(opt).await
+        match Database::connect(opt).await {
+            Ok(db) => {
+                #[cfg(feature = "tracing")]
+                tracing::info!("Connected to database: {}", database_url);
+                Ok(db)
+            },
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to connect to database {}: {:?}", database_url, e);
+                Err(e)
+            },
+        }
     }
 }

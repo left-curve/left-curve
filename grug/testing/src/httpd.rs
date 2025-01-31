@@ -98,12 +98,12 @@ where
     let graphql_response = actix_web::test::call_and_read_body(&app, request).await;
 
     // When I need to debug the response
-    // println!("text response: \n{:#?}", graphql_response);
+    println!("text response: \n{:#?}", graphql_response);
 
     let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
 
     // When I need to debug the response
-    // println!("GraphQLResponse: {:#?}", graphql_response);
+    println!("GraphQLResponse: {:#?}", graphql_response);
 
     if let Some(data) = graphql_response.data.remove(request_body.name) {
         Ok(GraphQLCustomResponse {
@@ -113,6 +113,57 @@ where
     } else {
         Err(anyhow!("can't find {} in response", request_body.name))
     }
+}
+
+use {
+    actix_http::ws,
+    actix_web::web::Bytes,
+    futures_util::{SinkExt as _, StreamExt as _},
+};
+
+pub async fn call_ws_graphql<R>(
+    app: App<
+        impl ServiceFactory<
+                ServiceRequest,
+                Response = ServiceResponse<impl MessageBody>,
+                Config = (),
+                InitError = (),
+                Error = actix_web::Error,
+            > + 'static,
+    >,
+    request_body: GraphQLCustomRequest<'_>,
+) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+where
+    R: serde::de::DeserializeOwned,
+{
+    // let mut srv = actix_test::start(|| app);
+
+    todo!()
+    // let app = actix_web::test::init_service(app).await;
+
+    // let request = actix_web::test::TestRequest::post()
+    //     .uri("/graphql")
+    //     .set_json(&request_body)
+    //     .to_request();
+
+    // let graphql_response = actix_web::test::ws_connect(&app, request).await;
+
+    // // When I need to debug the response
+    // println!("text response: \n{:#?}", graphql_response);
+
+    // let mut graphql_response: GraphQLResponse = serde_json::from_slice(&graphql_response)?;
+
+    // // When I need to debug the response
+    // println!("GraphQLResponse: {:#?}", graphql_response);
+
+    // if let Some(data) = graphql_response.data.remove(request_body.name) {
+    //     Ok(GraphQLCustomResponse {
+    //         data: serde_json::from_value(data)?,
+    //         errors: graphql_response.errors,
+    //     })
+    // } else {
+    //     Err(anyhow!("can't find {} in response", request_body.name))
+    // }
 }
 
 pub fn build_actix_app<G>(

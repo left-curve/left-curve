@@ -1,6 +1,7 @@
 use {
     clap::Parser,
     indexer_httpd::{
+        context::Context,
         error::Error,
         graphql::build_schema,
         server::{config_app, run_server},
@@ -29,10 +30,12 @@ async fn main() -> Result<(), Error> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    let context = Context::new(Some(cli.indexer_database_url)).await?;
+
     run_server(
         Some(&cli.ip),
         Some(cli.port),
-        cli.indexer_database_url,
+        context,
         config_app,
         build_schema,
     )

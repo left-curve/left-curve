@@ -1,8 +1,8 @@
 use {
     assertor::*,
     grug_testing::{
-        build_app_service, call_graphql, setup_tracing_subscriber, GraphQLCustomRequest,
-        PaginatedResponse, TestAccounts, TestBuilder,
+        build_app_service, call_graphql, call_ws_graphql, setup_tracing_subscriber,
+        GraphQLCustomRequest, PaginatedResponse, TestAccounts, TestBuilder,
     },
     grug_types::{self, Coins, Denom, ResultExt},
     indexer_httpd::{
@@ -229,6 +229,47 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges[0].node.sender_addr)
                     .is_equal_to(accounts["sender"].address.to_string());
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
+    let (httpd_context, _) = create_block().await?;
+
+    let graphql_query = r#"
+      subscription Block {
+        block {
+          blockHeight
+          createdAt
+          hash
+          appHash
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "block",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let response = call_ws_graphql::<Block>(app, request_body).await?;
+
+                // assert_that!(response.data.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
             })

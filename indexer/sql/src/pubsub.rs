@@ -1,5 +1,5 @@
 use {
-    crate::error::Error,
+    crate::error::IndexerError,
     std::pin::Pin,
     tokio::sync::broadcast,
     tokio_stream::{wrappers::BroadcastStream, Stream, StreamExt},
@@ -23,7 +23,7 @@ impl PubSub for MemoryPubSub {
         Box::pin(BroadcastStream::new(rx).filter_map(|res| res.ok()))
     }
 
-    fn publish_block_minted(&self, block_height: u64) -> Result<usize, Error> {
+    fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError> {
         // NOTE: discarding the error as it happens if no receivers are connected
         // There is no way to know if there are any receivers connected without RACE conditions
         Ok(self.sender.send(block_height).unwrap_or_default())
@@ -32,5 +32,5 @@ impl PubSub for MemoryPubSub {
 
 pub trait PubSub {
     fn subscribe_block_minted(&self) -> Pin<Box<dyn Stream<Item = u64> + Send + '_>>;
-    fn publish_block_minted(&self, block_height: u64) -> Result<usize, Error>;
+    fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError>;
 }

@@ -1,11 +1,14 @@
 use {
+    crate::pubsub::PubSub,
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
+    std::sync::Arc,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Context {
     pub db: DatabaseConnection,
+    pub pubsub: Arc<dyn PubSub + Send + Sync>,
 }
 
 impl Context {
@@ -30,6 +33,17 @@ impl Context {
         //.max_lifetime(Duration::from_secs(20))
         .sqlx_logging(false);
 
-        Database::connect(opt).await
+        match Database::connect(opt).await {
+            Ok(db) => {
+                #[cfg(feature = "tracing")]
+                tracing::info!("Connected to database: {}", database_url);
+                Ok(db)
+            },
+            Err(e) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to connect to database {}: {:?}", database_url, e);
+                Err(e)
+            },
+        }
     }
 }
