@@ -115,14 +115,14 @@ where
     }
 }
 
-use {
-    actix_http::ws,
-    actix_web::web::Bytes,
-    futures_util::{SinkExt as _, StreamExt as _},
-};
+// use {
+//     actix_http::ws,
+//     actix_web::web::Bytes,
+//     futures_util::{SinkExt as _, StreamExt as _},
+// };
 
 pub async fn call_ws_graphql<R>(
-    app: App<
+    _app: App<
         impl ServiceFactory<
                 ServiceRequest,
                 Response = ServiceResponse<impl MessageBody>,
@@ -131,7 +131,7 @@ pub async fn call_ws_graphql<R>(
                 Error = actix_web::Error,
             > + 'static,
     >,
-    request_body: GraphQLCustomRequest<'_>,
+    _request_body: GraphQLCustomRequest<'_>,
 ) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
 where
     R: serde::de::DeserializeOwned,
