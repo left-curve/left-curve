@@ -7,7 +7,7 @@ use {
     std::sync::Arc,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,

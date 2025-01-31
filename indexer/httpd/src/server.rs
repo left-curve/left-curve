@@ -38,7 +38,10 @@ where
     tokio::task::spawn(async move {
         let mut block_height = 1;
         loop {
-            pubsub.publish_new_block(block_height);
+            if let Err(_err) = pubsub.publish_block_minted(block_height) {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to publish block minted event: {:?}", _err);
+            }
             tokio::time::sleep(Duration::from_millis(100)).await;
             block_height += 1;
         }

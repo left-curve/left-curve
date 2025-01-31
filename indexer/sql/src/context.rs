@@ -23,12 +23,12 @@ impl Context {
         database_url: &str,
     ) -> Result<DatabaseConnection, sea_orm::DbErr> {
         let mut opt = ConnectOptions::new(database_url.to_owned());
-        opt.max_connections(10);
+        opt.max_connections(10)
         // .min_connections(5)
         //.connect_timeout(Duration::from_secs(settings.timeout))
         //.idle_timeout(Duration::from_secs(8))
         //.max_lifetime(Duration::from_secs(20))
-        //.sqlx_logging(settings.logging);
+        .sqlx_logging(false);
 
         Database::connect(opt).await
     }

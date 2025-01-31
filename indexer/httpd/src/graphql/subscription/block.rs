@@ -11,12 +11,15 @@ pub struct BlockSubscription;
 
 #[Subscription]
 impl BlockSubscription {
-    async fn blocks<'a>(&self, ctx: &Context<'a>) -> Result<impl Stream<Item = Block> + 'a> {
+    async fn block<'a>(&self, ctx: &Context<'a>) -> Result<impl Stream<Item = Block> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.pubsub.block_minted().map(|block_height| Block {
-            block_height,
-            ..Default::default()
-        }))
+        Ok(app_ctx
+            .pubsub
+            .subscribe_block_minted()
+            .map(|block_height| Block {
+                block_height,
+                ..Default::default()
+            }))
     }
 }

@@ -3045,13 +3045,16 @@ dependencies = [
  "async-graphql",
  "async-graphql-actix-web",
  "chrono",
+ "clap",
  "dango-indexer-sql",
  "indexer-httpd",
  "indexer-sql",
  "sea-orm",
  "serde",
  "thiserror 2.0.9",
+ "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
