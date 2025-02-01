@@ -201,7 +201,7 @@ The \textbf{xyk} invariant, proposed by Martin Köppelmann,\supercite{xykamm} ha
 Marginal price can be found as:
 
 \begin{equation}
-  p_{\mathrm{m}} = \frac{y}{x}
+  p_{\mathrm{m}} (x, y) = \frac{y}{x}
 \end{equation}
 
 It's easy to solve that for the \texttt{BUY} side:
@@ -224,7 +224,7 @@ For the \texttt{SELL} side:
   \label{fig:1}
 \end{figure}
 
-We can see the pool puts liquidity roughly evenly over a wide range of prices. This capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{m}}$.
+We can see the pool puts liquidity roughly evenly over a wide range of prices. This is capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{m}}$.
 
 Additionally, this invariant is susceptible to LVR, as $p_{\mathrm{m}}$ does not adjust in response to the change of price in CEXs.
 
@@ -236,7 +236,7 @@ The Solidly invariant, conceived by Andre Cronje\supercite{andrecronjetwitter} a
   f(x, y) = x^3 y + x y^3 = K
 \end{equation}
 
-This formula assumes the two assets have the same price. In case they're not the same price, and we have an oracle feed indicating that one unit of $x$ is equivalent in value to $R$ units of $y$, the formula can be updated to:
+This formula assumes the two assets have the same price. In case they're not the same price, and we have an oracle feed indicating that one unit of $x$ is equivalent in value to $R$ units of $y$, the formula can be modified to:
 
 \begin{equation}
   f(x, y) = x^3 \left( \frac{y}{R} \right) + x \left( \frac{y}{R} \right)^3
@@ -245,7 +245,7 @@ This formula assumes the two assets have the same price. In case they're not the
 The marginal price is:
 
 \begin{equation}
-  p_{\mathrm{m}}(x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 x y^2}
+  p_{\mathrm{m}} (x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 x y^2}
 \end{equation}
 
 For convenience, let's denote:
