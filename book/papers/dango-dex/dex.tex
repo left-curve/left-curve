@@ -20,58 +20,9 @@
 \usepackage[symbol]{footmisc}
 \usepackage{tabu}
 \usepackage{color}
-\usepackage{listings}
+\usepackage{nicefrac}
 
 \addbibresource{\jobname.bib}
-
-% syntax highlighting for Rust:
-% https://www.reddit.com/r/rust/comments/f7ocdx/rust_the_bookstyle_syntax_highlighting_for_latex/
-\definecolor{GrayCodeBlock}{RGB}{241,241,241}
-\definecolor{BlackText}{RGB}{110,107,94}
-\definecolor{RedTypename}{RGB}{182,86,17}
-\definecolor{GreenString}{RGB}{96,172,57}
-\definecolor{PurpleKeyword}{RGB}{184,84,212}
-\definecolor{GrayComment}{RGB}{170,170,170}
-\definecolor{GoldDocumentation}{RGB}{180,165,45}
-\lstdefinelanguage{rust}
-{
-    columns=fullflexible,
-    keepspaces=true,
-    frame=single,
-    framesep=0pt,
-    framerule=0pt,
-    framexleftmargin=10pt,
-    framexrightmargin=10pt,
-    framextopmargin=10pt,
-    framexbottommargin=10pt,
-    xleftmargin=10pt,
-    xrightmargin=10pt,
-    backgroundcolor=\color{GrayCodeBlock},
-    basicstyle=\ttfamily\color{BlackText},
-    keywords={
-        true,false,
-        unsafe,async,await,move,
-        use,pub,crate,super,self,mod,
-        struct,enum,fn,const,static,let,mut,ref,type,impl,dyn,trait,where,as,
-        break,continue,if,else,while,for,loop,match,return,yield,in
-    },
-    keywordstyle=\color{PurpleKeyword},
-    ndkeywords={
-        bool,u8,u16,u32,u64,u128,i8,i16,i32,i64,i128,char,str,
-        Self,Option,Some,None,Result,Ok,Err,String,Box,Vec,Rc,Arc,Cell,RefCell,HashMap,BTreeMap,
-        macro_rules
-    },
-    ndkeywordstyle=\color{RedTypename},
-    comment=[l][\color{GrayComment}\slshape]{//},
-    morecomment=[s][\color{GrayComment}\slshape]{/*}{*/},
-    morecomment=[l][\color{GoldDocumentation}\slshape]{///},
-    morecomment=[s][\color{GoldDocumentation}\slshape]{/*!}{*/},
-    morecomment=[l][\color{GoldDocumentation}\slshape]{//!},
-    morecomment=[s][\color{RedTypename}]{\#![}{]},
-    morecomment=[s][\color{RedTypename}]{\#[}{]},
-    stringstyle=\color{GreenString},
-    string=[b]"
-}
 
 \title{Dango DEX}
 
@@ -100,11 +51,11 @@ This paper is laid out as follows: 1) identifying the problems in today's DeFi e
 
 In traditional finance (TradFi) markets, \textbf{limit order book} (LOB) is the primary venue for trading. A limit order consists of the quantity of asset the trader wishes to buy or sell, and a limit price at which or better the trade must be executed.
 
-\textbf{Market makers} (MMs) facilitate trades by strategically placing orders below and above the prevailing market price. E.g., suppose Apple stock (AAPL) is trading at \$200. An MM may place a BUY order at \$199.5 and a SELL order at \$200.5. The \$1 difference is known as the \textbf{spread}. If a trader sells AAPL to the MM by taking the said BUY order, then another trader buys AAPL by taking the said SELL order, the MM has made \$1. This is typically described as the MM ``making money on the spread''.
+\textbf{Market makers} (MMs) facilitate trades by strategically placing orders below and above the prevailing market price. E.g., suppose Apple stock (AAPL) is trading at \$200. An MM may place a \texttt{BUY} order at \$199.5 and a \texttt{SELL} order at \$200.5. The \$1 difference is known as the \textbf{spread}. If a trader sells AAPL to the MM by taking the said \texttt{BUY} order, then another trader buys AAPL by taking the said \texttt{SELL} order, the MM has made \$1. This is typically described as the MM ``making money on the spread''.
 
-MMs bet the stock's price goes side ways, i.e. there is roughly the same buy and sell volume. If the market only goes one way, the MM accumulates one side of the inventory, which is the underperforming side. E.g., if there is consistently more sellers of AAPL than buyers, the MM's BUY orders get consistently picked up more often than his SELL orders do, he would accumuate a large inventory of AAPL, an asset that's going down in price. He would underperform the trading strategy that simply holds the initial inventory without market making. This is known as the \textbf{inventory risk} which is rooted in the asset's price volatility. MMs usually use \textbf{hedging} to mitigate this risk.
+MMs bet the stock's price goes side ways, i.e. there is roughly the same buy and sell volume. If the market only goes one way, the MM accumulates one side of the inventory, which is the underperforming side. E.g., if there is consistently more sellers of AAPL than buyers, the MM's \texttt{BUY} orders get consistently picked up more often than his \texttt{SELL} orders do, he would accumuate a large inventory of AAPL, an asset that's going down in price. He would underperform the trading strategy that simply holds the initial inventory without market making. This is known as the \textbf{inventory risk} which is rooted in the asset's price volatility. MMs usually use \textbf{hedging} to mitigate this risk.
 
-Another major risk faced by MMs comes from \textbf{information asymmetry}. Suppose Apple releases a better-than-expected earnings report, causing the ``fair value'' of its stock to jump to \$300. However, the MM is still placing orders around the \textbf{stale price} of \$200, either because he isn't aware of the news or is slow to update the quotes. An \textbf{informed trader} or \textbf{high frequency trader} (HFT) is one who is well informed on the news and is able to execute trades faster. The NFT is able to pick up the MM's SELL order at \$200.5 and immediately resell the stock for \$300, pocketing the arbitrage gain. The MM loses value because he has sold the stock at a much lower-than-market price. Both MMs and HFTs invest significant amount of resources to improve their execution speed in an ``arms race''.\supercite{frequentbatchauctions} This is a very high level of sophistication that makes market making inaccessible to most retail investors.
+Another major risk faced by MMs comes from \textbf{information asymmetry}. Suppose Apple releases a better-than-expected earnings report, causing the ``fair value'' of its stock to jump to \$300. However, the MM is still placing orders around the \textbf{stale price} of \$200, either because he isn't aware of the news or is slow to update the quotes. An \textbf{informed trader} or \textbf{high frequency trader} (HFT) is one who is well informed on the news and is able to execute trades faster. The NFT is able to pick up the MM's \texttt{SELL} order at \$200.5 and immediately resell the stock for \$300, pocketing the arbitrage gain. The MM loses value because he has sold the stock at a much lower-than-market price. Both MMs and HFTs invest significant amount of resources to improve their execution speed in an ``arms race''.\supercite{frequentbatchauctions} This is a very high level of sophistication that makes market making inaccessible to most retail investors.
 
 \subsection{DeFi}
 
@@ -113,19 +64,19 @@ Maintaining a LOB and executing orders is computationally costly. For this reaso
 A CFMM, instead of maintaining a book of limit orders, maintains a pool of liquidity and quotes prices based on a predefined \textbf{invariant}. An invariant is a function $f(x, y)$ that yields the same value before and after a trade, where $x$ and $y$ are the quantities of the \textbf{base asset} and the \textbf{quote asset}, respectively (known as the pool's \textbf{reserves}):
 
 \begin{equation}
-  f(x, y) = K \ (\mathrm{constant})
+  f(x, y) = \mathrm{constant}
 \end{equation}
 
 Suppose a pool contains base asset $\mathtt{A}$ and quote asset $\mathtt{B}$ of reserves $A$ and $B$, respectively, and a trader wishes to swap $a$ amount of $\mathtt{A}$ into $\mathtt{B}$. The pool would determine the output amount $b$ by solving the equation:
 
 \begin{equation}
-  f(A, B) = f(A + a, B - b) = K
+  f(A, B) = f(A + a, B - b)
 \end{equation}
 
 Similarly, a swap from $b$ amount of $\mathtt{B}$ into $\mathtt{A}$ will have its output amount $a$ determined by:
 
 \begin{equation}
-  f(A, B) = f(A - a, B + b) = K
+  f(A, B) = f(A - a, B + b)
 \end{equation}
 
 Note that this doesn't consider trading fees. Since there is no such thing as ``spread'' in CFMMs as in LOBs, the pool makes money for its \textbf{liquidity providers} (LPs) by charging a fee on each trade. Specifically, a small portion of the trade's output is deducted and injected into the pool. The value of $K$ slightly increases as a result. As such, $K$ can be considered as a measurement of how much liquidity there is in the pool, regardless of the asset prices.
@@ -169,109 +120,117 @@ We propose solving the above problems as follows:
         \end{itemize}
 \end{itemize}
 
-First, let's discuss how to incorporate a passive CFMM pool into a LOB. Let's start with the simplest form of CFMM invariants, the \textbf{xyk invariant}.
+First, let's discuss how to incorporate a passive CFMM pool into a LOB.
 
-\subsection{Passive liquidity on a LOB following the xyk invariant}
+\subsection{Passive liquidity on a LOB}
 
-The xyk invariant, proposed by Martin Köppelmann,\supercite{xykamm} has the form:
-
-\begin{equation}
-  f(x, y) = x \cdot y = K
-\end{equation}
-
-How would the pool place orders in a LOB, following this invariant? Let's start with the BUY side. Suppose the pool has reserves $x = A$ and $y = B$. It places a BUY order, offering $b_{\mathrm{bid}}$ units of the quote asset $\mathtt{B}$ in exchange for $a_{\mathrm{bid}}$ units of the base asset $\mathtt{A}$, at price $p$. The invariant must hold:
+First, we introduce the concept of \textbf{marginal price}, $p_{\mathrm{m}}$. This is the price (defined as the units of quote asset that is equivalent in value as one unit of base asset) one gets if swapping an infinitesimal amount of base asset into the quote asset. It can be evaluated as:
 
 \begin{equation}
-  A B = (A + a_{\mathrm{bid}}) (B - b_{\mathrm{bid}})
+  p_{\mathrm{m}} = - \frac{\mathrm{d}y}{\mathrm{d}x} = \frac{\frac{\partial f}{\partial x}}{\frac{\partial f}{\partial y}}
 \end{equation}
 
-By definition:
+Our passive liquidity pool will place \texttt{BUY} orders at prices below $p_{\mathrm{m}}$, \texttt{SELL} orders above $p_{\mathrm{m}}$, and no order at exactly $p_{\mathrm{m}}$.
+
+Let us consider the \texttt{BUY} side first. Suppose the pool has reserves $A$ units of base asset and $B$ units of quote asset. Consider a swap that inputs $a$ units of base asset and outputs $b$ units of quote asset. The swap must follow the invariant:
 
 \begin{equation}
-  p = \frac{b_{\mathrm{bid}}}{a_{\mathrm{bid}}}
+  f(A, B) = f(A + a, B - b)
 \end{equation}
 
-Putting these together, we can easily solve:
+We say this swap is executed at price $p = \frac{b}{a} < p_{\mathrm{m}}$.
+
+We intrepret this as follows: the pool is willing to buy $a$ units of the base asset from counterparty traders at price $p$. In the context of LOB, this means the pool would put a cumulative \texttt{BUY} demand of quantity $a$ from $p_{\mathrm{m}}$ to $p$.
+
+In reality, price is not continuous; the pool can only put orders at discrete \textbf{ticks}. Denote \textbf{tick size} as $\Delta p$, and the $n$-th tick below $p_{\mathrm{m}}$ as $p_n$:
 
 \begin{equation}
-  a_{\mathrm{bid}} = -A + \frac{B}{p}
+  p_n = p_{\mathrm{m}} - n \Delta p \ \ (n = 0, 1, 2, \dots)
 \end{equation}
 
-Similarly, on the SELL side, we have:
+If we find the pool places a cumulative \texttt{BUY} demand of quantity $a_n$ at price $p_n$, and quantity $a_{n-1}$ at price $p_{n-1}$, then obviously the order to be put at price $p_n$ is:
 
 \begin{equation}
-  A B = (A - a_{\mathrm{ask}}) (B + b_{\mathrm{ask}})
+  \Delta a_n = a_n - a_{n-1}
 \end{equation}
+
+With $a_0 = 0$, we can iteratively work out $\Delta a_n$ for all $n = 1, 2, 3, \dots$; see \hyperref[alg:1]{Algorithm 1}.
+
+\begin{algorithm}
+  \caption{Determine \texttt{BUY} order sizes at ticks $p_n$, $n = 1, 2, 3, \dots$}
+  \label{alg:1}
+  \begin{algorithmic}
+    \State $p_0 \gets p_{\mathrm{m}}$
+    \State $a_0 \gets 0$
+    \State $\Delta a_0 \gets 0$
+    \For{n = 1, 2, 3, \dots}
+    \State $p_n \gets p_{n-1} - \Delta t$
+    \State $a_n \gets a: f(A, B) = f(A + a, b - p_n a)$ \Comment{Solve the invariant equation}
+    \State $\Delta a_n \gets a_n - a_{n-1}$
+    \EndFor
+    \State \Return $[p_1, p_2, \dots]$, $[a_1, a_2, \dots]$, $[\Delta a_1, \Delta a_2, \dots]$
+  \end{algorithmic}
+\end{algorithm}
+
+For the \texttt{SELL} side, the procedure is similar; \hyperref[alg:2]{Algorithm 2}.
+
+\begin{algorithm}
+  \caption{Determine \texttt{SELL} order sizes at ticks $p_n$, $n = 1, 2, 3, \dots$}
+  \label{alg:2}
+  \begin{algorithmic}
+    \State $p_0 \gets p_{\mathrm{m}}$
+    \State $a_0 \gets 0$
+    \State $\Delta a_0 \gets 0$
+    \For{n = 1, 2, 3, \dots}
+    \State $p_n \gets p_{n-1} + \Delta t$
+    \State $a_n \gets a: f(A, B) = f(A - a, b + p_n a)$ \Comment{Solve the invariant equation}
+    \State $\Delta a_n \gets a_n + a_{n-1}$
+    \EndFor
+    \State \Return $[p_1, p_2, \dots]$, $[a_1, a_2, \dots]$, $[\Delta a_1, \Delta a_2, \dots]$
+  \end{algorithmic}
+\end{algorithm}
+
+\subsection{Xyk}
+
+The \textbf{xyk} invariant, proposed by Martin Köppelmann,\supercite{xykamm} has the form:
 
 \begin{equation}
-  p = \frac{b_{\mathrm{ask}}}{a_{\mathrm{ask}}}
+  f(x, y) = xy
 \end{equation}
+
+Marginal price can be found as:
 
 \begin{equation}
-  a_{\mathrm{ask}} = A - \frac{B}{p}
+  p_{\mathrm{m}} = \frac{y}{x}
 \end{equation}
 
-It's immediately obvious that in both cases, if $p = \frac{B}{A}$, then $a = 0$. This is a special price, at which the pool does not offer to buy or sell in any amount, we denote as the \textbf{marginal price} $p_{\mathrm{m}}$. In the most general case, $p_{\mathrm{m}}$ is \textit{the price at which the trade swapping an infinitesimal amount of base asset into the quote asset is executed}:
+It's easy to solve that for the \texttt{BUY} side:
 
 \begin{equation}
-  p_{\mathrm{m}}(x, y) = - \frac{\mathrm{d}y}{\mathrm{d}x}
+  a = -A + \frac{B}{p}
 \end{equation}
 
-Since $x$ and $y$ follows $f(x, y) = K$, using the chain rule of multivariant functions, we can get:
+For the \texttt{SELL} side:
 
 \begin{equation}
-  p_{\mathrm{m}}(x, y) = \frac{\frac{\partial f}{\partial x}}{\frac{\partial f}{\partial y}}
+  a = A - \frac{B}{p}
 \end{equation}
 
-For the xyk invariant specifically, this is:
-
-\begin{equation}
-  p_{\mathrm{m}}(x, y) = \frac{y}{x}
-\end{equation}
-
-Intuitively, $p_{\mathrm{m}}$ is the ``inherit'' price mplied by its reserves. The pool will place orders around this price.
-
-At any price $p < p_{\mathrm{m}}$, $a_{\mathrm{bid}} > 0$. This can be understood as the pool offering to buy $a_{\mathrm{bid}}$ amount of the base asset between prices $p$ and $p_{\mathrm{m}}$.
-
-Of course, prices LOBs are discret, separated by \textbf{ticks}. Let's say the tick size is $\Delta p$. Consider the price one tick above $p$, $p' = p + \Delta p$:
-
-\begin{equation}
-  a'_{\mathrm{bid}} = -A + \frac{B}{p'}
-\end{equation}
-
-\begin{equation}
-  \Delta a_{\mathrm{bid}} = a_{\mathrm{bid}} - a'_{\mathrm{bid}} = B \left(\frac{1}{p} - \frac{1}{p'} \right) = B \frac{\Delta p}{p (p + \Delta p)}
-\end{equation}
-
-This is the quantity of BUY order that the pool will place at price $p$.
-
-Similarly, one the SELL side, for two prices $p' = p - \Delta p$ and $p' > p_{\mathrm{m}}$:
-
-\begin{equation}
-  \Delta a_{\mathrm{ask}} = a_{\mathrm{ask}} - a'_{\mathrm{ask}} = B \left(\frac{1}{p} - \frac{1}{p'} \right) = B \frac{\Delta p}{p (p - \Delta p)}
-\end{equation}
-
-\subsubsection{Example}
-
-Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset USD of quantity $B = 200$. marginal price $p_{\mathrm{m}} = 200$. \hyperref[fig:1]{Figure 1} plots the order sizes $\Delta a_{\mathrm{bid}}$, $\Delta a_{\mathrm{ask}}$ as well as cumulative BUY/SELL demand agianst price $p$.
+\textbf{Example.} Consider a pool containing base asset SOL of quantity $A = 1$ and quote asset USD of quantity $B = 200$. marginal price $p_{\mathrm{m}} = 200$. Following \hyperref[alg:1]{Algorithms 1} and \hyperref[alg:2]{2} we can work out the order sizes in relation to tick price ($\Delta a_n$--$p_n$) and cumulative order depth ($a_n$--$p_n$), plotted in \hyperref[fig:1]{Figure 1}.
 
 \begin{figure}
   \includegraphics[width=\textwidth]{1-xyk.png}
-  \caption{Order size and depth following the xyk invariant}
+  \caption{Order size and depth following the xyk invariant. $A = 1$, $B = 200$, $\Delta p = 0.1$.}
   \label{fig:1}
 \end{figure}
 
-\subsubsection{Bried summary so far}
-
-We have established the concept of marginal price $p_{\mathrm{m}}$, and a way to derive BUY/SELL order size $\Delta a_{\mathrm{bid}}$ and $\Delta a_{\mathrm{ask}}$ in relation to a given price $p$.
-
-Looking at the order depth chart of the xyk invariant, it puts liquidity roughly evenly over a wide range of prices. This in capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{m}}$.
+We can see the pool puts liquidity roughly evenly over a wide range of prices. This capital inefficient; ideally, we want to concentrate the liquidity in the region close to $p_{\mathrm{m}}$.
 
 Additionally, this invariant is susceptible to LVR, as $p_{\mathrm{m}}$ does not adjust in response to the change of price in CEXs.
 
-\subsection{Passive liquidity on a LOB following the Solidly invariant}
+\subsection{Solidly}
 
-The Solidly invariant, conceived by Andre Cronje\supercite{andrecronjetwitter} and popularized by Velodrome\supercite{velodrome} and its forks,\supercite{aerodrome} has the form:
+The Solidly invariant, conceived by Andre Cronje\supercite{andrecronjetwitter} and popularized by Velodrome and its forks,\supercite{velodrome,aerodrome} has the form:
 
 \begin{equation}
   f(x, y) = x^3 y + x y^3 = K
@@ -286,104 +245,100 @@ This formula assumes the two assets have the same price. In case they're not the
 The marginal price is:
 
 \begin{equation}
-  p_{\mathrm{m}}(x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 R x y^2}
-\end{equation}
-
-Let's derive $a_{\mathrm{bid}}$ the same way as we did for the xyk pool. Suppose the pool as reserves $A$ and $B$ prior to the swap:
-
-\begin{equation}
-  f(A, B) = A^3 \left( \frac{B}{R} \right) + A \left( \frac{B}{R} \right)^3 = K
-\end{equation}
-
-On the BUY side, a trader inputs $a_{\mathrm{bid}}$ units of base asset, receives $b_{\mathrm{bid}}$ units of quote asset. The trade executes at the price:
-
-\begin{equation}
-  p = \frac{b_{\mathrm{bid}}}{a_{\mathrm{bid}}}
+  p_{\mathrm{m}}(x, y) = \frac{3 R^2 x^2 y + y^3}{R^2 x^3 + 3 x y^2}
 \end{equation}
 
 For convenience, let's denote:
 
 \begin{equation}
-  \alpha = A + a_{\mathrm{bid}}
+  \alpha = A + a
 \end{equation}
 
 \begin{equation}
-  \beta = \frac{B - b_{\mathrm{bid}}}{R} = \frac{B - p a_{\mathrm{bid}}}{R}
+  \beta = \frac{B - p a}{R}
 \end{equation}
 
 Essentially, $\alpha$ is the pool's base asset reserve after the trade, $\beta$ is the quote asset reserve after the trade, adjusted for the oracle price.
 
-The invariant must also hold after the trade:
+The invariant equation:
 
 \begin{equation}
-  f(A + a_{\mathrm{bid}}, B - b_{\mathrm{bid}}) = \alpha^3 \beta + \alpha \beta^3 = K
+  f(A, B) = f(A + a, B - p a) = \alpha^3 \beta + \alpha \beta^3
 \end{equation}
 
-This is a 4th-degree (quartic) equation, so finding a closed form solution is not feasible. Instead, we solve it by \textbf{Newton's method}. Define:
+This is a 4th-degree (quartic) equation, so finding a closed form solution is not feasible. Instead, we solve it using \textbf{Newton's method}. Define:
 
 \begin{equation}
-  g(a_{\mathrm{bid}}) = \alpha^3 \beta + \alpha \beta^3 - K
+  g(a) = \alpha^3 \beta + \alpha \beta^3 - f(A, B)
 \end{equation}
 
-We must solve for $a_{\mathrm{bid}}$ such that $g(a_{\mathrm{bid}}) = 0$. This can be done by:
+\begin{equation}
+  g'(a) = -\frac{p}{R} \alpha^3 + a \alpha^2 \beta - \frac{3p}{R} \alpha \beta^2 + \beta^3
+\end{equation}
+
+We solve for $a$ such that $g(a) = 0$ following \hyperref[alg:3]{Algorithm 3}.
 
 \begin{algorithm}
-  \caption{Newton's method for solving $g(a_{\mathrm{bid}}) = 0$}
+  \caption{Newton's method for solving $g(a) = 0$}
+  \label{alg:3}
   \begin{algorithmic}
     \State $a_0 \gets A$
-    \For{$n = 1, 2, 3, \dots$}
-    \State $a_n \gets a_{n-1} - \frac{g(a_{n-1})}{g'(a_{n-1})}$
+    \For{$i = 1, 2, 3, \dots$}
+    \State $a_i \gets a_{i-1} - \frac{g(a_{i-1})}{g'(a_{i-1})}$
     \If{converge}
-    \State return $a_n$ as the solution for $a_{\mathrm{bid}}$
+    \State \Return $a_i$ as the solution
     \EndIf
     \EndFor
   \end{algorithmic}
 \end{algorithm}
 
-where
+The choice of the initial value $a_0$ is important. This is because $g(a) = 0$ has a trivial solution of $a = 0$, which corresponding to not placing an order at all. Instead, we want to find the non-trivial solution of $a > 0$. Emprically, choosing $a_0 = A$ always gives us the intended solution.
+
+For the \texttt{SELL} side:
 
 \begin{equation}
-  g'(a_{\mathrm{bid}}) = -\frac{p}{R} \alpha^3 + a \alpha^2 \beta - \frac{3p}{R} \alpha \beta^2 + \beta^3
-\end{equation}
-
-The choice of the initial value $a_0$ is important. This is because $g(a_{\mathrm{bid}}) = 0$ has a trivial solution of $a_{\mathrm{bid}} = 0$, which corresponding to not placing an order at all. Instead, we want to find the non-trivial solution of $a_{\mathrm{bid}} > 0$. Emprically, choosing $a_0 = A$ always gives us the intended solution.
-
-For the SELL side, we do exactly the same, except for:
-
-\begin{equation}
-  \alpha = A - a_{\mathrm{ask}}
+  \alpha = A - a
 \end{equation}
 
 \begin{equation}
-  \beta = \frac{B + b_{\mathrm{ask}}}{R} = \frac{B + p a_{\mathrm{ask}}}{R}
+  \beta = \frac{B + p a}{R}
 \end{equation}
 
 \begin{equation}
-  g'(a_{\mathrm{ask}}) = \frac{p}{R} \alpha^3 - a \alpha^2 \beta + \frac{3p}{R} \alpha \beta^2 - \beta^3
+  g(a) = \alpha^3 \beta + \alpha \beta^3 - f(A, B)
 \end{equation}
 
-\subsubsection{Example}
+\begin{equation}
+  g'(a) = \frac{p}{R} \alpha^3 - a \alpha^2 \beta + \frac{3p}{R} \alpha \beta^2 - \beta^3
+\end{equation}
 
-Following the same example of SOL-USD pool in the previous discussions, assuming oracle price $R = 200$ (USD per SOL), the liquidity depth can be computed and plotted in \hyperref[fig:2]{Figure 2}.
+\textbf{Example.} Following the same example of SOL-USD pool in the previous discussions, assuming oracle price $R = 200$ (USD per SOL), the liquidity depth can be computed and plotted in \hyperref[fig:2]{Figure 2}. It's obvious that liquidity is now indeed concentrated around the marginal price.
 
 \begin{figure}
   \includegraphics[width=\textwidth]{2-solidly.png}
-  \caption{Order size and depth following the Solidly invariant}
+  \caption{Order size and depth following the Solidly invariant. $A = 1$, $B = 200$, $\Delta p = 0.1$, $R = 200$.}
   \label{fig:2}
 \end{figure}
 
-It's obvious that liquidity is now indeed concentrated around the marginal price.
+In general, however, $R$ does not match exactly the composition of the pool reserves. In TradFi, MMs typically respond to this by adjusting the spread.\supercite{avellanedastoikov} Consider the situation where SOL appreciates to $R = 210$, a 5\% deviation from the pool's reserve composition of 1:200. In this case, a TradFi MM would \textit{increase} the bid spread and \textit{decrease} the ask spread. Thus, there is a higher probability the asks are picked up by noise traders, such that the MM offloads SOL and intakes USD, trending towards a rougly 1:1 ratio for value of the two assets.
 
-In general, however, $R$ does not match exactly the composition of assets in the pool. In order to mitigate LVR, we need $p_{\mathrm{m}}$ to closely track $R$. \hyperref[fig:3]{Figure 3} plots the deviation of $p_{\mathrm{m}}$ from $R$ against $R$.
+How will our passive liquidity pool respond to this situation? Let's plot it in \hyperref[fig:3]{Figure 3}. As we see, the pool keeps the same spread on each side, but on the \texttt{SELL} side a bigger order size. This indicates the pool has a similar tendency of offloading SOL and intaking USD in this situation.
 
 \begin{figure}
   \centering
-  \includegraphics[width=4.5in]{3-solidly-pool-price-vs-oracle.png}
-  \caption{Deviation of marginal price from oracle price}
+  \includegraphics[width=\textwidth]{3-solidly-price-jump.png}
+  \caption{Order size and depth following the Solidly invariant. $A = 1$, $B = 200$, $\Delta p = 0.1$, $R = 210$.}
   \label{fig:3}
 \end{figure}
 
-As seen, the deviation does not exceed 0.003\% when oracle price jumps less than \textasciitilde 5\%. As such, we believe the pool is not ssusceptible to LVR, given that the oracle price's latency is sufficient low to reflect the true asset price.
+\subsection{Parameterization}
+
+In the above formulation of the passive liquidity pool, the pool places orders every tick, starting one tick above and below $p_{\mathrm{m}}$. This can be customized by introducing two additional parameters:
+
+\begin{itemize}
+  \item \textbf{Cadence}: The pool can instead place an order every $N$ ticks. Alternatively, it can place orders more densely when close to $p_{\mathrm{m}}$, but more loosely when farther away. Either way, there will be fewer orders overall, reducing computational cost.
+  \item \textbf{Spread}: The pool can place orders a few ticks further away from $p_{\mathrm{m}}$. A bigger spread may improve the pool's profitability. We may also consider adjusting the spreads in response to inventory inbalance.\supercite{avellanedastoikov}
+\end{itemize}
 
 \subsection{Minimizing LVR with oracle-imformed CFMM}
 
@@ -396,7 +351,7 @@ In order for the passive liquidity pool to provide accurate quotes, it's importa
 
 For the oracle, we propose using Pyth Laser,\supercite{pythlaser} which provides ultra fast price feeds with 1 millisecond updates. Each block, the proposer fetches the prices and submit them onchain in a transaction on the very top of the block.
 
-To ensure the passive liquidity pool has priority in updating quotes, we utilize a technique which we dub \textbf{virtual order book}. Instead of physically placing orders, the pool constructs a virtual order book, based on its asset reserves and oracle price, prior to any order being matched. The matching engine then combines the real, physical order book with the virtual book before performing matching. See \hyperref[sec:appendixa]{Appendix A} for code snippets demonstrating this idea.
+To ensure the passive liquidity pool has priority in updating quotes, we utilize a technique which we dub \textbf{virtual order book}. Instead of physically placing orders, the pool constructs a virtual order book, based on its asset reserves and oracle price, prior to any order being matched. The matching engine then combines the real, physical order book with the virtual book before performing matching.
 
 \subsection{Mitigating MEV with frequent batch auctions}
 
@@ -432,7 +387,10 @@ There are two notable elements in this:
 
 \section{Conclusion}
 
-\tabulinesep=3mm
+We have identified, analyzed the causes of, and proposed Dango DEX as a solution to three main problems of today's decentralized exchanges:
+
+\vskip 2.6px
+\tabulinesep=2mm
 \newcolumntype{Y}{>{\RaggedRight}X[m]} % avoid hyphenation when wrapping words in tabularx
 \begin{tabu} to \textwidth {YYY}
   \toprule
@@ -451,205 +409,6 @@ There are two notable elements in this:
   Private mempool; frequent sealed-bid batch auctions at uniform prices                                                                                   \\
   \bottomrule
 \end{tabu}
-
-\pagebreak
-\appendix
-\section{Suggested implementation}
-\label{sec:appendixa}
-
-We suggest performing FBA at the frequency of once per block. Research suggests the optimal frequency for FBA is 0.2--0.9 second;\supercite{optimalspeed} we suggest picking a block time within this range.
-
-The specific algorithm for matching the orders is described below, in Rust pseudocode.
-
-First, we define the following types:
-
-\begin{lstlisting}[language=rust]
-enum Direction {
-    Bid,
-    Ask,
-}
-
-struct Order {
-    /// The order's limit price.
-    pub price: Decimal,
-    /// The quantity of that's not yet filled, measured in the base asset.
-    pub quantity: Uint128,
-}
-\end{lstlisting}
-
-Second, the DEX contract must be capable of iterating over orders in the book following the \textbf{price-time priority}. That is, orders with better prices (for BUY orders, the higher; for SELL orders, the lower) come first; for orders with the same price, the older ones come first. We abstract this as a Rust iterator type:
-
-\begin{lstlisting}[language=rust]
-type OrderIterator<'a> = Box<dyn Iterator<Item = Order> + 'a>;
-\end{lstlisting}
-
-Third, the passive liquidity pool must implement the following trait:
-
-\begin{lstlisting}[language=rust]
-trait LiquidityPool {
-    /// Return an iterator over the BUY orders that the passive liquidity pool
-    /// would place in the order book following its CFMM invariant, given the
-    /// latest oracle price.
-    fn get_bids<'a>(&'a self, oracle_price: Decimal) -> OrderIterator<'a>;
-
-    /// Similarly, return an iterator over SELL orders.
-    fn get_asks<'a>(&'a self, oracle_price: Decimal) -> OrderIterator<'a>;
-}
-\end{lstlisting}
-
-When matching orders, we work with two order books: a ``\textbf{physical}'' book that contains orders submitted by users, and a ``\textbf{virtual}'' book that contains orders that the passive liquidity pool would place.
-
-We must match orders from the two books at the same time. For this we can use a the following merged iterator:
-
-\begin{lstlisting}[language=rust]
-struct MergedIterator {
-    a: Peekable<Item = Order>,
-    b: Peekable<Item = Order>,
-    direction: Direction,
-}
-
-impl MergedIterator {
-    pub fn new<A, B>(a: A, b: B) -> Self
-    where
-        A: Iterator<Item = Order>,
-        B: Iterator<Item = Order>,
-    {
-        Self {
-            a: a.peekable(),
-            b: b.peekable(),
-        }
-    }
-}
-
-impl Iterator<Item = Order> for MergedIterator {
-    fn next(&mut self) -> Option<Order> {
-        match (self.a.peek(), self.b.peek()) => {
-            // Both iterators have orders left. Return the one with the better
-            // price. If prices are the same, we arbitrarily choose the order in B.
-            (Some(a), Some(b)) => {
-                match self.direction {
-                    Direction::Bid if a.price > b.price
-                    | Direction::Ask if a.price < b.price => a.next(),
-                    _ => b.next(),
-                }
-            },
-            // A still has orders, but B has run out. Return the next order in A.
-            (Some(_a), None) => a.next(),
-            // B still has orders, but A has run out. Return the next order in B.
-            (None, Some(_b)) => a.next(),
-            // Both iterators have run out of orders. We're done.
-            (None, None) => None,
-        }
-    }
-}
-\end{lstlisting}
-
-The DEX smart contract prepares iterators over orders in the two books, and combine them using \texttt{MergedIterator}:
-
-\begin{lstlisting}[language=rust]
-let physical_bid_iter: OrderIterator = /* ... */;
-let physical_ask_iter: OrderIterator = /* ... */;
-
-let virtual_bid_iter: OrderIterator = /* ... */;
-let virtual_bid_iter: OrderIterator = /* ... */;
-
-// Use the virtual book iterators as the B in MergedIterator, such that
-// orders from the passive liquidity pool is prioritized.
-let bid_iter = MergedIterator::new(physical_bid_iter, physical_ask_iter);
-let ask_iter = MergedIterator::new(virtual_bid_iter, virtual_bid_iter);
-\end{lstlisting}
-
-Then, we use the following function to find the clearing price:
-
-\begin{lstlisting}[language=rust]
-struct MatchingOutcome {
-    /// The range of prices that results in the maximal volume.
-    /// The clearing price can be chosen as any value within this range.
-    /// It's up to the caller to make the choice.
-    range: Option<(Decimal, Decimal)>,
-    /// The maximal volume.
-    volume: Uint128,
-    /// Lists of BUY and SELL orders that have found a match.
-    bids: Vec<Order>,
-    asks: Vec<Order>,
-}
-
-fn clear_orders(
-    mut bid_iter: OrderIterator, mut ask_iter: OrderIterator,
-) -> MatchingOutcome {
-    let mut maybe_bid = bids.next();
-    let mut bids = Vec::new();
-    let mut bid_is_new = true;
-    let mut bid_volume = Uint128::ZERO;
-    let mut maybe_ask = asks.next();
-    let mut asks = Vec::new();
-    let mut ask_is_new = true;
-    let mut ask_volume = Uint128::ZERO;
-    let mut range = None;
-
-    loop {
-        // If we run out of orders on either side, then we're done.
-        let (Some(bid), Some(ask)) = (maybe_bid, maybe_ask) else {
-            break;
-        }
-
-        // If the prices don't cross, then we're done.
-        if bid.price < ask.price {
-            break;
-        }
-
-        range = Some((ask.price, bid.price));
-
-        if bid_is_new {
-            bids.push(bid);
-            bid_volume += bid.quantity;
-        }
-
-        if ask_is_new {
-            asks.push(ask);
-            ask_volume += ask.quantity;
-        }
-
-        if bid_volume <= ask_volume {
-            bid = bid_iter.next();
-            bid_is_new = true;
-        } else {
-            bid_is_new = false;
-        }
-
-        if ask_volume <= bid_volume {
-            ask = ask_iter.next();
-            ask_is_new = true;
-        } else {
-            ask_is_new = false;
-        }
-    }
-
-    let volume = bid_volume.min(ask_volume);
-
-    MatchingOutcome { range, volume, bids, asks }
-}
-\end{lstlisting}
-
-Once we have the clearing price, clearing the orders is trivial (which involves updating the order state in the book and refund assets to traders) so we don't discuss them here.
-
-\subsection{Customizations}
-
-In the above formulation of the passive liquidity pool, the pool places orders every tick, starting one tick above and below $p_{\mathrm{m}}$. This can be customized by introducing two additional parameters:
-
-\begin{itemize}
-  \item \textbf{Cadence}: The pool can instead place an order every $N$ ticks. Alternatively, it can place orders more densely when close to $p_{\mathrm{m}}$, but more loosely when farther away. Either way, there will be fewer orders overall, reducing computational cost.
-  \item \textbf{Spread}: The pool can place orders a few ticks further away from $p_{\mathrm{m}}$. A bigger spread may improve the pool's profitability.The spread can either be defined as constant values, or calculated dynamically based on marketing conditions, following models such as the one proposed by Avellaneda and Stoikov.\supercite{avellanedastoikov}
-\end{itemize}
-
-\subsection{Dango's custom smart contract VM}
-
-We recognize the above is challenging to implement in legacy virtual machines (VMs) such as the EVM, due to:
-
-\begin{itemize}
-  \item In EVM, smart contract actions need to be triggered via transactions. This means each block must have a txn at the very beginning of the block to update the oracle price, and another one at the end of the block to trigger order matching. During periods of high traffic, it can be difficult to get txns into the block, not to mention ensuring they are located at the beginning and end of the block. The only way to achieve this is to utilize a centralized block builder, which introduced additional trust assumptions.\\ \\ Dango's custom smart contract VM, Grug,\supercite{grug} allows validators to submit oracle updates via Tendermint's ABCI++ API, at the top of every block. Additionally, it automatically triggers order matching via end-of-block cronjobs.\\
-  \item EVM does not support iterating keys in its \texttt{mapping} data structures. This is because in EVM, the state of each contract is a hash map. Since the map keys are hashed, they are essentially randomized and thus cannot be iterated.\\ \\ In Grug, contract states are B-tree maps which support iteration.
-\end{itemize}
 
 \printbibliography
 
