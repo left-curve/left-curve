@@ -8,7 +8,10 @@ use {
         HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse, Signer, StdError,
         Tx, TxOutcome, UnsignedTx,
     },
-    serde::{de::DeserializeOwned, ser::Serialize},
+    serde::{
+        de::{self, DeserializeOwned},
+        ser::Serialize,
+    },
     std::{any::type_name, collections::BTreeMap, ops::Deref},
     tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{
@@ -334,6 +337,7 @@ impl Client {
 
 /// A client for interacting with a Grug chain via Tendermint RPC, with the
 /// additional capability of signing transactions.
+#[derive(Debug, Clone)]
 pub struct SigningClient {
     inner: Client,
     chain_id: String,
