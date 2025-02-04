@@ -130,8 +130,9 @@ where
 }
 
 /// Calls a GraphQL subscription and returns a stream
-pub async fn call_ws_graphql_stream(
+pub async fn call_ws_graphql_stream<F, A, B>(
     context: Context,
+    app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
 ) -> Result<
     (
@@ -140,8 +141,20 @@ pub async fn call_ws_graphql_stream(
         Framed<BoxedSocket, ws::Codec>,
     ),
     anyhow::Error,
-> {
-    let srv = actix_test::start(move || build_app_service(context.clone()));
+>
+where
+    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    A: ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<B>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    B: MessageBody + 'static,
+{
+    // let srv = actix_test::start(move || build_app_service(context.clone()));
+    let srv = actix_test::start(move || app_builder(context.clone()));
 
     let (ws, mut framed) = Client::new()
         .ws(srv.url("/graphql"))
@@ -188,15 +201,25 @@ pub async fn call_ws_graphql_stream(
 }
 
 /// Calls a GraphQL subscription and returns the first response.
-pub async fn call_ws_graphql<R>(
+pub async fn call_ws_graphql<F, A, B, R>(
     context: Context,
+    app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
 ) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
 where
     R: serde::de::DeserializeOwned,
+    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    A: ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<B>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    B: MessageBody + 'static,
 {
     let name = request_body.name;
-    let (_srv, _ws, framed) = call_ws_graphql_stream(context, request_body).await?;
+    let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
     let (_, response) = parse_graphql_subscription_response(framed, name).await?;
     Ok(response)
 }
@@ -211,7 +234,13 @@ where
 {
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
+            // When I need to debug the response
+            // println!("text response: \n{}", str::from_utf8(&text)?);
+
             let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
+
+            // When I need to debug the response
+            // println!("response: \n{:#?}", graphql_response);
 
             if let Some(data) = graphql_response.payload.data.remove(name) {
                 Ok((framed, GraphQLCustomResponse {

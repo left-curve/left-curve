@@ -301,7 +301,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
                 let (_srv, _ws, framed) =
-                    call_ws_graphql_stream(httpd_context, request_body).await?;
+                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
                 let (framed, response) =
