@@ -197,14 +197,15 @@ where
 {
     let name = request_body.name;
     let (_srv, _ws, framed) = call_ws_graphql_stream(context, request_body).await?;
-    parse_graphql_subscription_response(framed, name).await
+    let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+    Ok(response)
 }
 
 /// Parses a GraphQL subscription response.
 pub async fn parse_graphql_subscription_response<R>(
     mut framed: Framed<BoxedSocket, ws::Codec>,
     name: &str,
-) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+) -> Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>), anyhow::Error>
 where
     R: serde::de::DeserializeOwned,
 {
@@ -213,17 +214,22 @@ where
             let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
 
             if let Some(data) = graphql_response.payload.data.remove(name) {
-                Ok(GraphQLCustomResponse {
+                Ok((framed, GraphQLCustomResponse {
                     data: serde_json::from_value(data)?,
                     errors: graphql_response.payload.errors,
-                })
+                }))
             } else {
                 Err(anyhow!("can't find {} in response", name))
             }
         },
+        Some(Ok(ws::Frame::Ping(ping))) => {
+            framed.send(ws::Message::Pong(ping)).await?;
+            Err(anyhow::anyhow!("Received ping"))
+        },
         Some(Err(e)) => Err(e.into()),
         None => Err(anyhow::anyhow!("Connection closed unexpectedly")),
-        _ => Err(anyhow::anyhow!("Unexpected message type")),
+
+        res => Err(anyhow::anyhow!("Unexpected message type: {:?}", res)),
     }
 }
 

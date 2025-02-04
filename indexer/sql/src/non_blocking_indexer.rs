@@ -247,6 +247,16 @@ where
 
             sleep(Duration::from_millis(100));
         }
+
+        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        if !blocks.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                "indexer wait_for_finish ended, still has {} blocks: {:?}",
+                blocks.len(),
+                blocks.keys()
+            );
+        }
     }
 }
 
