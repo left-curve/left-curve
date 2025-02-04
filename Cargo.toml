@@ -58,6 +58,7 @@ version       = "0.0.0"
 
 [workspace.dependencies]
 actix                   = "0.13"
+actix-codec             = "0.5"
 actix-files             = "0"
 actix-http              = "3"
 actix-multipart         = "0.10"
@@ -70,6 +71,7 @@ assertor                = { version = "0.0", git = "https://github.com/google/as
 async-graphql-actix-web = "7.0"
 async-std               = { version = "1", features = ["attributes", "tokio1"] }
 async-trait             = "0"
+awc                     = "3"
 base64                  = "0.22"
 bip32                   = "0.5"
 blake2                  = "0.10"

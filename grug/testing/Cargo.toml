@@ -10,12 +10,14 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+actix-codec        = { workspace = true }
 actix-http         = { workspace = true }
 actix-test         = { workspace = true }
 actix-web          = { workspace = true }
 anyhow             = { workspace = true }
 assertor           = { workspace = true }
 async-graphql      = { workspace = true }
+awc                = { workspace = true }
 futures-util       = { workspace = true }
 grug-app           = { workspace = true, features = ["tracing"] }
 grug-crypto        = { workspace = true }

@@ -25,30 +25,31 @@ impl TransferSubscription {
             .map(Into::into)
             .collect();
 
-        Ok(
-            once(async { Some(last_transfers) })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .then(move |block_height| {
-                            let db = app_ctx.db.clone();
-                            async move {
-                                entity::transfers::Entity::find()
-                                    .filter(
-                                        entity::transfers::Column::BlockHeight.eq(block_height as i64)
-                                    )
-                                    .order_by_asc(entity::transfers::Column::Idx)
-                                    .all(&db)
-                                    .await
-                                    .ok() // turn Result into Option
-                                    .map(|transfers| {
-                                        transfers.into_iter().map(Into::into).collect::<Vec<Transfer>>()
-                                    })
-                            }
-                        }),
-                )
-                .filter_map(|maybe_transfers| async move { maybe_transfers }),
-        )
+        Ok(once(async { Some(last_transfers) })
+            .chain(
+                app_ctx
+                    .pubsub
+                    .subscribe_block_minted()
+                    .then(move |block_height| {
+                        let db = app_ctx.db.clone();
+                        async move {
+                            entity::transfers::Entity::find()
+                                .filter(
+                                    entity::transfers::Column::BlockHeight.eq(block_height as i64),
+                                )
+                                .order_by_asc(entity::transfers::Column::Idx)
+                                .all(&db)
+                                .await
+                                .ok()
+                                .map(|transfers| {
+                                    transfers
+                                        .into_iter()
+                                        .map(Into::into)
+                                        .collect::<Vec<Transfer>>()
+                                })
+                        }
+                    }),
+            )
+            .filter_map(|maybe_transfers| async move { maybe_transfers }))
     }
 }
