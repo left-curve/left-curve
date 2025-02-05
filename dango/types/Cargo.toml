@@ -26,5 +26,4 @@ serde_json                 = { workspace = true }
 thiserror                  = { workspace = true }
 
 [dev-dependencies]
-plotters = { workspace = true }
-tokio    = { workspace = true }
+tokio = { workspace = true }

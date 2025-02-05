@@ -117,7 +117,7 @@ impl Default for InterestRateModel {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug::ResultExt, plotters::prelude::*};
+    use {super::*, grug::ResultExt};
 
     #[test]
     fn test_default_params() {
@@ -176,84 +176,5 @@ mod tests {
         InterestRateModel::default()
             .calculate_rates(Udec128::new_percent(110))
             .should_fail_with_error("invalid utilization rate");
-    }
-
-    #[test]
-    fn plot_rates() {
-        let model = InterestRateModel::default();
-
-        match model {
-            InterestRateModel::DualSlope { .. } => {
-                let root = BitMapBackend::new("rates.png", (1024, 768)).into_drawing_area();
-                root.fill(&WHITE).unwrap();
-
-                let mut chart = ChartBuilder::on(&root)
-                    .caption("Interest Rates", ("sans-serif", 25))
-                    .x_label_area_size(50)
-                    .y_label_area_size(50)
-                    .build_cartesian_2d(0f32..100f32, 0f32..100f32)
-                    .unwrap();
-
-                chart
-                    .configure_mesh()
-                    .x_desc("Utilization (%)")
-                    .y_desc("Interest Rate (%)")
-                    .draw()
-                    .unwrap();
-
-                // Borrow rate line
-                chart
-                    .draw_series(LineSeries::new(
-                        (0..100).map(|x| {
-                            (
-                                x as f32,
-                                model
-                                    .calculate_rates(Udec128::new_percent(x as u128))
-                                    .unwrap()
-                                    .borrow_rate
-                                    .to_string()
-                                    .parse::<f32>()
-                                    .unwrap()
-                                    * 100.0,
-                            )
-                        }),
-                        &RED,
-                    ))
-                    .unwrap()
-                    .label("Borrow Rate")
-                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
-
-                // Deposit rate line
-                chart
-                    .draw_series(LineSeries::new(
-                        (0..100).map(|x| {
-                            (
-                                x as f32,
-                                model
-                                    .calculate_rates(Udec128::new_percent(x as u128))
-                                    .unwrap()
-                                    .deposit_rate
-                                    .to_string()
-                                    .parse::<f32>()
-                                    .unwrap()
-                                    * 100.0,
-                            )
-                        }),
-                        &BLUE,
-                    ))
-                    .unwrap()
-                    .label("Deposit Rate")
-                    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
-
-                chart
-                    .configure_series_labels()
-                    .background_style(WHITE.mix(0.8))
-                    .border_style(BLACK)
-                    .draw()
-                    .unwrap();
-
-                root.present().unwrap();
-            },
-        }
     }
 }
