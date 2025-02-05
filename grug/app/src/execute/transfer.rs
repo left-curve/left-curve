@@ -3,7 +3,9 @@ use {
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_update_event,
         catch_event, AppError, EventResult, GasTracker, Vm, CHAIN_ID, CONFIG, CONTRACTS,
     },
-    grug_types::{Addr, BankMsg, BlockInfo, Context, EvtGuest, EvtTransfer, MsgTransfer, Storage},
+    grug_types::{
+        Addr, BankMsg, BlockInfo, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer, Storage,
+    },
 };
 
 pub fn do_transfer<VM>(
@@ -110,16 +112,20 @@ where
     }
 
     if do_receive {
-        catch_and_update_event! {
-            _do_receive(
-                vm,
-                storage,
-                gas_tracker,
-                block,
-                msg_depth,
-                msg,
-            ),
-            evt => receive_guest
+        // If recipient does not exist, skip the `_do_receive` call.
+        if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, msg.to) {
+            catch_and_update_event! {
+                _do_receive(
+                    vm,
+                    storage,
+                    gas_tracker,
+                    block,
+                    msg_depth,
+                    msg,
+                    contract_info.code_hash,
+                ),
+                evt => receive_guest
+            }
         }
     };
 
@@ -133,17 +139,16 @@ fn _do_receive<VM>(
     block: BlockInfo,
     msg_depth: usize,
     msg: BankMsg,
+    code_hash: Hash256,
 ) -> EventResult<EvtGuest>
 where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let (code_hash, chain_id) = catch_event! {
+    #[allow(clippy::redundant_closure_call)]
+    let chain_id = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, msg.to)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
-
-            Ok((code_hash, chain_id))
+            CHAIN_ID.load(&storage).map_err(Into::into)
         },
         EvtGuest::base(msg.to, "receive")
     };

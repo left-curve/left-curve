@@ -71,6 +71,11 @@ impl Coins {
         self.0.is_empty()
     }
 
+    /// Return true if the `Coins` is non empty, false otherwise.
+    pub fn is_non_empty(&self) -> bool {
+        !self.0.is_empty()
+    }
+
     /// Return the number of coins.
     pub fn len(&self) -> usize {
         self.0.len()
