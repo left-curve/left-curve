@@ -108,6 +108,7 @@ fn main() {
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
         },
+        account_factory_minimum_deposit: coins! { USDC_DENOM.clone() => 10_000_000 },
         owner: Username::from_str("owner").unwrap(),
         fee_cfg: taxman::Config {
             fee_denom: USDC_DENOM.clone(),

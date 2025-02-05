@@ -1,15 +1,15 @@
 use {
-    dango_testing::{setup_test_naive, Factory, TestAccount},
+    dango_bank::ORPHANED_TRANSFERS,
+    dango_testing::{setup_test_naive, Factory, HyperlaneTestSuite, TestAccount},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, Username},
+        account_factory::{self, Account, AccountParams, NewUserSalt, Username},
         auth::Key,
         constants::USDC_DENOM,
-        ibc,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coins, Hash256, HashExt, Json, Message, NonEmpty,
-        QuerierExt, ResultExt, Tx, Uint128,
+        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message,
+        NonEmpty, QuerierExt, ResultExt, StdError, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -17,7 +17,8 @@ use {
 
 #[test]
 fn user_onboarding() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (suite, accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
     // Create a new key offchain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
@@ -26,19 +27,11 @@ fn user_onboarding() {
         true,
     );
 
-    // User makes an initial deposit. The relayer delivers the packet.
-    // The funds is held inside the IBC transfer contract because the recipient
-    // account doesn't exist yet.
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.ibc_transfer,
-            &ibc::transfer::ExecuteMsg::ReceiveTransfer {
-                recipient: user.address(),
-            },
-            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-        )
-        .should_succeed();
+    // Make the initial deposit.
+    suite.hyperlane().recieve_transfer_mock(
+        user.address(),
+        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
+    );
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -87,14 +80,15 @@ fn user_onboarding() {
     // User's account should have been created with the correct token balance.
     suite
         .query_balance(&user, USDC_DENOM.clone())
-        .should_succeed_and_equal(Uint128::new(123));
+        .should_succeed_and_equal(Uint128::new(10_000_000));
 }
 
 /// Attempt to register a username twice.
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_existing_user() {
-    let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
+    let (suite, accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
     // First, we onboard a user normally.
     let tx = {
@@ -106,16 +100,10 @@ fn onboarding_existing_user() {
         );
 
         // Make the initial deposit.
-        suite
-            .execute(
-                &mut accounts.user1,
-                contracts.ibc_transfer,
-                &ibc::transfer::ExecuteMsg::ReceiveTransfer {
-                    recipient: user.address(),
-                },
-                Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-            )
-            .should_succeed();
+        suite.hyperlane().recieve_transfer_mock(
+            user.address(),
+            Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
+        );
 
         // Send the register user message with account factory.
         let tx = Tx {
@@ -150,7 +138,8 @@ fn onboarding_existing_user() {
 /// The transaction should fail `CheckTx` and be rejected from entering mempool.
 #[test]
 fn onboarding_without_deposit() {
-    let (suite, _, codes, contracts) = setup_test_naive();
+    let (suite, accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
 
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
@@ -160,24 +149,50 @@ fn onboarding_without_deposit() {
 
     // Send the register user transaction without making a deposit first.
     // Should fail during `CheckTx` with "data not found" error.
+    let tx = Tx {
+        sender: contracts.account_factory,
+        gas_limit: 1_000_000,
+        msgs: NonEmpty::new_unchecked(vec![Message::execute(
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+            },
+            Coins::new(),
+        )
+        .unwrap()]),
+        data: Json::null(),
+        credential: Json::null(),
+    };
+
     suite
-        .check_tx(Tx {
-            sender: contracts.account_factory,
-            gas_limit: 1_000_000,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                },
-                Coins::new(),
-            )
-            .unwrap()]),
-            data: Json::null(),
-            credential: Json::null(),
-        })
-        .should_fail_with_error("data not found!");
+        .check_tx(tx.clone())
+        .should_fail_with_error(StdError::data_not_found::<Coins>(
+            ORPHANED_TRANSFERS
+                .path((contracts.warp, user.address()))
+                .storage_key(),
+        ));
+
+    // Make a deposit but not enough.
+    suite.hyperlane().recieve_transfer_mock(
+        user.address(),
+        Coin::new(USDC_DENOM.clone(), 7_000_000).unwrap(),
+    );
+
+    // Try again, should fail.
+    suite
+        .check_tx(tx.clone())
+        .should_fail_with_error("minumum deposit not satisfied");
+
+    // Make a deposit of the minimum amount.
+    suite.hyperlane().recieve_transfer_mock(
+        user.address(),
+        Coin::new(USDC_DENOM.clone(), 3_000_000).unwrap(),
+    );
+
+    // Try again, should succeed.
+    suite.check_tx(tx).should_succeed();
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
@@ -215,6 +230,10 @@ fn false_factory_tx(
         true,
     );
 
+    let username = false_username.unwrap_or_else(|| user.username.clone());
+    let key = false_key.unwrap_or(user.first_key());
+    let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
+
     // A malicious block builder sends a register user tx with falsified
     // username, key, or key hash.
     //
@@ -229,13 +248,30 @@ fn false_factory_tx(
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    username: false_username.unwrap_or_else(|| user.username.clone()),
-                    key: false_key.unwrap_or(user.first_key()),
-                    key_hash: false_key_hash.unwrap_or(user.first_key_hash()),
+                    username: username.clone(),
+                    key,
+                    key_hash,
                 },
                 Coins::new(),
             )
             .unwrap(),
         )
-        .should_fail_with_error("data not found!");
+        .should_fail_with_error({
+            let false_address = Addr::derive(
+                contracts.account_factory,
+                codes.account_spot.to_bytes().hash256(),
+                &NewUserSalt {
+                    username: &username,
+                    key,
+                    key_hash,
+                }
+                .into_bytes(),
+            );
+
+            StdError::data_not_found::<Coins>(
+                ORPHANED_TRANSFERS
+                    .path((contracts.warp, false_address))
+                    .storage_key(),
+            )
+        });
 }

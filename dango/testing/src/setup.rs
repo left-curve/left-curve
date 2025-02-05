@@ -1,5 +1,5 @@
 use {
-    crate::{TestAccount, TestAccounts},
+    crate::{TestAccount, TestAccounts, MOCK_LOCAL_DOMAIN},
     dango_app::ProposalPreparer,
     dango_genesis::{
         build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisConfig,
@@ -15,7 +15,7 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Denom, Duration, HashExt,
+        btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Duration, HashExt,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
@@ -26,7 +26,7 @@ use {
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
     indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
-    std::{path::PathBuf, str::FromStr},
+    std::path::PathBuf,
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -52,9 +52,6 @@ pub const USER8_PRIVATE_KEY: [u8; 32] =
     hex!("ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9");
 pub const USER9_PRIVATE_KEY: [u8; 32] =
     hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
-
-pub const FEE_DENOM: &str = "uusdc";
-pub const FEE_RATE: Udec128 = Udec128::ZERO;
 
 pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
     grug::TestSuite<DB, VM, PP, ID>;
@@ -160,7 +157,6 @@ pub fn setup_benchmark_hybrid(
         codes.account_safe.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
-        codes.ibc_transfer.to_bytes().hash256(),
         codes.lending.to_bytes().hash256(),
         codes.oracle.to_bytes().hash256(),
         codes.taxman.to_bytes().hash256(),
@@ -307,10 +303,11 @@ where
                 },
             },
         },
+        account_factory_minimum_deposit: coins! { USDC_DENOM.clone() => 10_000_000 },
         owner: owner.username.clone(),
         fee_cfg: taxman::Config {
-            fee_denom: Denom::from_str(FEE_DENOM).unwrap(),
-            fee_rate: FEE_RATE,
+            fee_denom: USDC_DENOM.clone(),
+            fee_rate: Udec128::ZERO,
         },
         max_orphan_age: Duration::from_seconds(7 * 24 * 60 * 60),
         metadatas: btree_map! {},
@@ -344,7 +341,7 @@ where
         unlocking_cliff: Duration::from_weeks(4 * 9),
         unlocking_period: Duration::from_weeks(4 * 27),
         wormhole_guardian_sets: GUARDIAN_SETS.clone(),
-        hyperlane_local_domain: 88888888,
+        hyperlane_local_domain: MOCK_LOCAL_DOMAIN,
         hyperlane_ism_validator_sets: btree_map! {},
         warp_routes: btree_map! {},
     })
