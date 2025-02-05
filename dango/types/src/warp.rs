@@ -8,7 +8,7 @@ use {
         recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
         Addr32,
     },
-    std::sync::LazyLock,
+    std::{collections::BTreeMap, sync::LazyLock},
 };
 
 /// The namespace that synthetic tokens will be minted under. The bank contract
@@ -27,13 +27,13 @@ use {
 /// - `hyp/sol/bonk`
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hyp"));
 
-/// The namespace used for alloyed tokens.
+/// The subnamespace used for alloyed tokens.
 ///
 /// E.g.,
 ///
-/// - `alloy/eth`
-/// - `alloy/usdc`
-pub static ALLOY_NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("alloy"));
+/// - `hyp/all/eth`
+/// - `hyp/all/usdc`
+pub static ALLOY_SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("all"));
 
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]
@@ -127,10 +127,10 @@ pub enum ExecuteMsg {
         route: Route,
     },
     /// Register an alloyed token.
-    RegisterAlloy {
-        base_denom: Denom,
-        alloyed_denom: Denom,
+    SetAlloy {
+        underlying_denom: Denom,
         destination_domain: Domain,
+        alloyed_denom: Denom,
     },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
@@ -153,6 +153,15 @@ pub enum QueryMsg {
         start_after: Option<QueryRoutesPageParam>,
         limit: Option<u32>,
     },
+    /// Query the alloyed denom corresponding to an underlying denom.
+    #[returns(Denom)]
+    Alloy { underlying_denom: Denom },
+    /// Enumerate all alloyed denoms.
+    #[returns(BTreeMap<Denom, Denom>)]
+    Alloys {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
     /// Required Hyperlane recipient interface.
     #[returns(RecipientQueryResponse)]
     Recipient(RecipientQuery),
@@ -169,15 +178,6 @@ pub struct QueryRoutesResponseItem {
     pub denom: Denom,
     pub destination_domain: Domain,
     pub route: Route,
-}
-
-// ----------------------------------- types -----------------------------------
-
-#[grug::derive(Serde, Borsh)]
-
-pub struct Alloyed {
-    pub alloyed_denom: Denom,
-    pub destination_domain: Domain,
 }
 
 // ---------------------------------- events -----------------------------------

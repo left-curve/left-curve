@@ -178,6 +178,11 @@ impl Denom {
         }
     }
 
+    /// Return whether the denom is prefixed with the given parts.
+    pub fn starts_with(&self, parts: &[Part]) -> bool {
+        self.0.starts_with(parts)
+    }
+
     /// Prepend a slice of parts to the beginning of the denom.
     ///
     /// Fails if the new denom is too long.

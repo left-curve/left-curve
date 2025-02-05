@@ -1,11 +1,11 @@
 use {
-    crate::{ALLOYED, MAILBOX, REVERSE_ROUTES, ROUTES},
+    crate::{ALLOYED, MAILBOX, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         warp::{
             Alloyed, ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote,
-            NAMESPACE,
+            ALLOY_SUBNAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -39,16 +39,16 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             destination_domain,
             route,
         } => set_route(ctx, denom, destination_domain, route),
+        ExecuteMsg::SetAlloy {
+            underlying_denom,
+            alloyed_denom,
+            destination_domain,
+        } => set_alloy(ctx, underlying_denom, destination_domain, alloyed_denom),
         ExecuteMsg::Recipient(RecipientMsg::Handle {
             origin_domain,
             sender,
             body,
         }) => handle(ctx, origin_domain, sender, body),
-        ExecuteMsg::RegisterAlloy {
-            base_denom,
-            alloyed_denom,
-            destination_domain,
-        } => register_alloy(ctx, base_denom, alloyed_denom, destination_domain),
     }
 }
 
@@ -71,6 +71,36 @@ fn set_route(
 }
 
 #[inline]
+fn set_alloy(
+    ctx: MutableCtx,
+    underlying_denom: Denom,
+    destination_domain: Domain,
+    alloyed_denom: Denom,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only chain owner can call `set_alloy`"
+    );
+
+    ensure!(
+        alloyed_denom.starts_with(&[NAMESPACE.clone(), ALLOY_SUBNAMESPACE.clone()]),
+        "alloyed denom must start with `{}/{}`",
+        NAMESPACE.as_ref(),
+        ALLOY_SUBNAMESPACE.as_ref()
+    );
+
+    ALLOYED.save(ctx.storage, underlying_denom, &alloyed_denom)?;
+
+    REVERSE_ALLOYS.save(
+        ctx.storage,
+        (&alloyed_denom, destination_domain),
+        &underlying_denom,
+    )?;
+
+    Ok(Response::new())
+}
+
+#[inline]
 fn transfer_remote(
     ctx: MutableCtx,
     destination_domain: Domain,
@@ -79,17 +109,16 @@ fn transfer_remote(
 ) -> anyhow::Result<Response> {
     // Sender must attach exactly one token.
     let token = ctx.funds.into_one_coin()?;
-
     let bank = ctx.querier.query_bank()?;
 
-    // Check if the token is alloyed
-    let (mut token, brun_alloyed_msg) = if let Some((base_denom, _)) = ALLOYED
+    // Check if the token is alloyed.
+    let (mut token, burn_alloy_msg) = if let Some((base_denom, _)) = ALLOYED
         .idx
         .alloyed_domain
         .may_load(ctx.storage, (token.denom.clone(), destination_domain))?
     {
-        // Burn the alloy token
-        let brun_alloyed_msg = Message::execute(
+        // Burn the alloy token.
+        let burn_alloy_msg = Message::execute(
             bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
@@ -99,9 +128,7 @@ fn transfer_remote(
             Coins::new(),
         )?;
 
-        let base_token = Coin::new(base_denom, token.amount)?;
-
-        (base_token, Some(brun_alloyed_msg))
+        (Coin::new(base_denom, token.amount)?, Some(burn_alloy_msg))
     } else {
         (token, None)
     };
@@ -135,7 +162,7 @@ fn transfer_remote(
         } else {
             None
         })
-        .may_add_message(brun_alloyed_msg)
+        .may_add_message(burn_alloyed_msg)
         .add_message(Message::execute(
             MAILBOX.load(ctx.storage)?,
             &mailbox::ExecuteMsg::Dispatch {
@@ -192,11 +219,11 @@ fn handle(
     let denom = REVERSE_ROUTES.load(ctx.storage, (origin_domain, sender))?;
     let bank = ctx.querier.query_bank()?;
 
-    // Check if the denom is alloyed
-    let (denom, mint_base_denom_msg) =
+    // Check if the denom is alloyed.
+    let (denom, mint_underlying_msg) =
         if let Some(alloyed) = ALLOYED.may_load(ctx.storage, denom.clone())? {
-            // Mint the base denom to the wrapper
-            let mint_msg = Message::execute(
+            // Mint the base denom to the wrapper.
+            let msg = Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
                     to: ctx.contract,
@@ -205,7 +232,7 @@ fn handle(
                 },
                 Coins::new(),
             )?;
-            (alloyed.alloyed_denom, Some(mint_msg))
+            (alloyed.alloyed_denom, Some(msg))
         } else {
             (denom, None)
         };
@@ -230,36 +257,10 @@ fn handle(
                 amount: body.amount,
             })?
         })
-        .may_add_message(mint_base_denom_msg)
+        .may_add_message(mint_underlying_msg)
         .add_event(Handle {
             recipient: body.recipient,
             token: denom,
             amount: body.amount,
         })?)
-}
-
-fn register_alloy(
-    ctx: MutableCtx,
-    base_denom: Denom,
-    alloyed_denom: Denom,
-    destination_domain: Domain,
-) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "only chain owner can call `register_alloy`"
-    );
-
-    ensure!(
-        alloyed_denom.namespace() == Some(&NAMESPACE),
-        "alloyed_denom must be in the `hyp` namespace"
-    );
-
-    let alloyed = Alloyed {
-        alloyed_denom,
-        destination_domain,
-    };
-
-    ALLOYED.save(ctx.storage, base_denom, &alloyed)?;
-
-    Ok(Response::new())
 }

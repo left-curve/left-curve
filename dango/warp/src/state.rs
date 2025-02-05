@@ -1,29 +1,37 @@
 use {
-    dango_types::warp::{Alloyed, Route},
-    grug::{Addr, Denom, IndexedMap, Item, Map, UniqueIndex},
+    dango_types::warp::Route,
+    grug::{Addr, Denom, Item, Map},
     hyperlane_types::{mailbox::Domain, Addr32},
 };
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");
 
 // (denom, destination_domain) => (recipient, withdrawal_fee)
+//
+// Used for outbound.
 pub const ROUTES: Map<(&Denom, Domain), Route> = Map::new("route");
 
 // (destination_domain, sender) => denom
-pub const REVERSE_ROUTES: Map<(Domain, Addr32), Denom> = Map::new("collateral");
+//
+// Used for inbound.
+//
+// `sender` means the Warp contract address on the destination domain.
+pub const REVERSE_ROUTES: Map<(Domain, Addr32), Denom> = Map::new("reverse_route");
 
-/// underlay_denom => alloyed
-pub const ALLOYED: IndexedMap<Denom, Alloyed, AlloyedIndex> =
-    IndexedMap::new("alloyed", AlloyedIndex {
-        alloyed_domain: UniqueIndex::new(
-            |_, alloyed| (alloyed.alloyed_denom.clone(), alloyed.destination_domain),
-            "alloyed",
-            "alloyed__domain",
-        ),
-    });
+// (underlying_denom, destination_domain) => alloyed_denom
+//
+// E.g.
+// - hyp/eth/usdc => hyp/all/eth
+// - hyp/sol/usdc => hyp/all/eth
+//
+// Used for inbound.
+pub const ALLOYS: Map<&Denom, Denom> = Map::new("alloy");
 
-#[grug::index_list(Denom, Alloyed)]
-pub struct AlloyedIndex<'a> {
-    /// (alloyed_denom, destination_domain) => alloyed
-    pub alloyed_domain: UniqueIndex<'a, Denom, (Denom, Domain), Alloyed>,
-}
+// (alloyed_denom, destination_domain) => underlying_denom
+//
+// E.g.
+// - (hyp/all/eth, eth) => hyp/eth/usdc
+// - (hyp/all/sol, sol) => hyp/sol/usdc
+//
+// Used for outbound.
+pub const REVERSE_ALLOYS: Map<(&Denom, Domain), Denom> = Map::new("reverse_alloy");
