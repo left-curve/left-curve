@@ -1,10 +1,9 @@
 use {
-    crate::{DEBTS, MARKETS},
-    anyhow::bail,
-    dango_types::lending::{Market, QueryMsg, NAMESPACE, SUBNAMESPACE},
+    crate::{calculate_deposit, calculate_withdraw, DEBTS, MARKETS},
+    dango_types::lending::{Market, QueryMsg},
     grug::{
-        Addr, Bound, Coin, Coins, Denom, ImmutableCtx, Inner, Json, JsonSerExt, Number, Order,
-        QuerierWrapper, StdResult, Storage, Timestamp, Udec128,
+        Addr, Bound, Coin, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
+        StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };
@@ -37,12 +36,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::PreviewDeposit { underlying } => {
-            let (coins, ..) =
+            let lp_tokens =
                 query_preview_deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, underlying)?;
-            coins.to_json_value()
+            lp_tokens.to_json_value()
         },
         QueryMsg::PreviewWithdraw { lp_tokens } => {
-            let (coins, ..) =
+            let coins =
                 query_preview_withdraw(ctx.storage, &ctx.querier, ctx.block.timestamp, lp_tokens)?;
             coins.to_json_value()
         },
@@ -117,61 +116,22 @@ fn query_debts(
         .collect()
 }
 
-pub fn query_preview_deposit(
+fn query_preview_deposit(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
     timestamp: Timestamp,
     underlying: Coins,
-) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
-    let mut lp_tokens = Coins::new();
-    let mut markets = BTreeMap::new();
-
-    for coin in underlying {
-        // Get market and update the market indices
-        let market = MARKETS
-            .load(storage, &coin.denom)?
-            .update_indices(querier, timestamp)?;
-
-        // Compute the amount of LP tokens to mint
-        let supply_index = market.supply_index;
-        let amount_scaled = Udec128::new(coin.amount.into_inner())
-            .checked_div(supply_index)?
-            .into_int();
-
-        lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
-        markets.insert(coin.denom, market);
-    }
-
-    Ok((lp_tokens, markets))
+) -> anyhow::Result<Coins> {
+    let (lp_tokens, ..) = calculate_deposit(storage, querier, timestamp, underlying)?;
+    Ok(lp_tokens)
 }
 
-pub fn query_preview_withdraw(
+fn query_preview_withdraw(
     storage: &dyn Storage,
     querier: &QuerierWrapper,
     timestamp: Timestamp,
     lp_tokens: Coins,
-) -> anyhow::Result<(Coins, BTreeMap<Denom, Market>)> {
-    let mut withdrawn = Coins::new();
-    let mut markets = BTreeMap::new();
-
-    for coin in lp_tokens {
-        let Some(underlying_denom) = coin.denom.strip(&[&NAMESPACE, &SUBNAMESPACE]) else {
-            bail!("not a lending pool token: {}", coin.denom)
-        };
-
-        // Update the market indices
-        let market = MARKETS
-            .load(storage, &underlying_denom)?
-            .update_indices(querier, timestamp)?;
-
-        // Compute the amount of underlying coins to withdraw
-        let underlying_amount = Udec128::new(coin.amount.into_inner())
-            .checked_mul(market.supply_index)?
-            .into_int();
-
-        withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
-        markets.insert(underlying_denom, market);
-    }
-
-    Ok((withdrawn, markets))
+) -> anyhow::Result<Coins> {
+    let (coins, ..) = calculate_withdraw(storage, querier, timestamp, lp_tokens)?;
+    Ok(coins)
 }
