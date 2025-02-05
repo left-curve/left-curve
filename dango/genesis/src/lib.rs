@@ -5,7 +5,7 @@ use {
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
         dex::{self, PairUpdate},
-        lending::{self, MarketUpdates},
+        lending::{self, InterestRateModel},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting, warp,
     },
@@ -85,7 +85,7 @@ pub struct GenesisConfig<T> {
     /// Initial Dango DEX trading pairs.
     pub pairs: Vec<PairUpdate>,
     /// Initial Dango lending markets.
-    pub markets: BTreeMap<Denom, MarketUpdates>,
+    pub markets: BTreeMap<Denom, InterestRateModel>,
     /// Oracle price sources.
     pub price_sources: BTreeMap<Denom, PriceSource>,
     /// Cliff for Dango token unlocking.
