@@ -275,7 +275,7 @@ fn non_margin_accounts_cant_borrow() {
             &lending::ExecuteMsg::Borrow(Coins::new()),
             Coins::new(),
         )
-        .should_fail_with_error("Only margin accounts can borrow");
+        .should_fail_with_error("only margin accounts can borrow");
 }
 
 #[test]
