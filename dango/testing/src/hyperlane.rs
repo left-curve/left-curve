@@ -5,8 +5,8 @@ use {
         warp::{self, QueryRouteRequest, Route, TokenMessage},
     },
     grug::{
-        Addr, Coin, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
-        QuerierExt, ResultExt, Signer, TestSuite, TxOutcome, Uint128,
+        btree_map, Addr, Coin, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner,
+        NumberConst, QuerierExt, ResultExt, Signer, TestSuite, TxOutcome, Uint128,
     },
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Shared, Vm},
     grug_crypto::Identity256,
@@ -18,7 +18,7 @@ use {
     },
     k256::ecdsa::SigningKey,
     std::{
-        collections::BTreeSet,
+        collections::{BTreeMap, BTreeSet},
         ops::{Deref, DerefMut},
     },
 };
@@ -35,7 +35,7 @@ pub const MOCK_REMOTE_ROUTE: Route = Route {
     fee: Uint128::ZERO,
 };
 
-pub struct HyperlaneTestSuite<DB, VM, PP, ID, O>
+pub struct HyperlaneTestSuite<DB, VM, PP, ID, O, VS = BTreeMap<Domain, MockValidatorSet>>
 where
     DB: Db,
     VM: Vm,
@@ -44,7 +44,7 @@ where
     O: Signer,
 {
     suite: TestSuite<DB, VM, PP, ID>,
-    val_set: MockValidatorSet,
+    val_sets: VS,
     owner: Shared<O>,
 }
 
@@ -60,55 +60,86 @@ where
     pub fn new(
         mut suite: TestSuite<DB, VM, PP, ID>,
         mut owner: O,
-        size: usize,
-        threshold: usize,
-        remote_domain: Domain,
-    ) -> (Self, Shared<O>) {
-        let mock_validator_set = MockValidatorSet::new_random(size);
+        val_sets: BTreeMap<Domain, (usize, usize)>,
+    ) -> (HyperlaneTestSuite<DB, VM, PP, ID, O>, Shared<O>) {
+        let val_sets = val_sets
+            .into_iter()
+            .map(|(domain, (size, threshold))| {
+                let mock_validator_set = MockValidatorSet::new_random(size);
 
-        let ism = suite
-            .query_app_config::<AppConfig>()
-            .should_succeed()
-            .addresses
-            .hyperlane
-            .ism;
+                let ism = suite
+                    .query_app_config::<AppConfig>()
+                    .should_succeed()
+                    .addresses
+                    .hyperlane
+                    .ism;
 
-        // Set validators at the ISM.
-        suite
-            .execute(
-                &mut owner,
-                ism,
-                &isms::multisig::ExecuteMsg::SetValidators {
-                    domain: remote_domain,
-                    threshold: threshold as u32,
-                    validators: mock_validator_set.addresses.clone(),
-                },
-                Coins::new(),
-            )
-            .should_succeed();
+                // Set validators at the ISM.
+                suite
+                    .execute(
+                        &mut owner,
+                        ism,
+                        &isms::multisig::ExecuteMsg::SetValidators {
+                            domain,
+                            threshold: threshold as u32,
+                            validators: mock_validator_set.addresses.clone(),
+                        },
+                        Coins::new(),
+                    )
+                    .should_succeed();
+
+                (domain, mock_validator_set)
+            })
+            .collect();
 
         let owner = Shared::new(owner);
 
         (
-            Self {
+            HyperlaneTestSuite {
                 suite,
-                val_set: mock_validator_set,
+                val_sets,
                 owner: owner.clone(),
             },
             owner,
         )
     }
 
-    pub fn new_mocked(suite: TestSuite<DB, VM, PP, ID>, owner: O) -> (Self, Shared<O>) {
-        Self::new(suite, owner, 3, 2, MOCK_REMOTE_DOMAIN)
-    }
+    pub fn new_mocked(
+        suite: TestSuite<DB, VM, PP, ID>,
+        owner: O,
+    ) -> (
+        HyperlaneTestSuite<DB, VM, PP, ID, O, MockValidatorSet>,
+        Shared<O>,
+    ) {
+        // Self::new(suite, owner, 3, 2, MOCK_REMOTE_DOMAIN)
 
-    pub fn hyperlane(&mut self) -> HyperlaneHelper<DB, VM, PP, ID, O> {
+        let (mut suite, owner) = Self::new(suite, owner, btree_map! {MOCK_REMOTE_DOMAIN => (3, 2)});
+
+        let suite = HyperlaneTestSuite {
+            suite: suite.suite,
+            val_sets: suite.val_sets.pop_last().unwrap().1,
+            owner: suite.owner,
+        };
+
+        (suite, owner)
+    }
+}
+
+impl<DB, VM, PP, ID, O, VS> HyperlaneTestSuite<DB, VM, PP, ID, O, VS>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+    O: Signer,
+{
+    pub fn hyperlane(&mut self) -> HyperlaneHelper<DB, VM, PP, ID, O, VS> {
         HyperlaneHelper { suite: self }
     }
 }
 
-impl<DB, VM, PP, ID, O> Deref for HyperlaneTestSuite<DB, VM, PP, ID, O>
+impl<DB, VM, PP, ID, O, VS> Deref for HyperlaneTestSuite<DB, VM, PP, ID, O, VS>
 where
     DB: Db,
     VM: Vm,
@@ -123,7 +154,7 @@ where
     }
 }
 
-impl<DB, VM, PP, ID, O> DerefMut for HyperlaneTestSuite<DB, VM, PP, ID, O>
+impl<DB, VM, PP, ID, O, VS> DerefMut for HyperlaneTestSuite<DB, VM, PP, ID, O, VS>
 where
     DB: Db,
     VM: Vm,
@@ -136,7 +167,7 @@ where
     }
 }
 
-pub struct HyperlaneHelper<'a, DB, VM, PP, ID, O>
+pub struct HyperlaneHelper<'a, DB, VM, PP, ID, O, VS = BTreeMap<Domain, MockValidatorSet>>
 where
     DB: Db,
     VM: Vm,
@@ -144,10 +175,12 @@ where
     ID: Indexer,
     O: Signer,
 {
-    suite: &'a mut HyperlaneTestSuite<DB, VM, PP, ID, O>,
+    suite: &'a mut HyperlaneTestSuite<DB, VM, PP, ID, O, VS>,
 }
 
-impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O>
+// Shared
+
+impl<DB, VM, PP, ID, O, VS> HyperlaneHelper<'_, DB, VM, PP, ID, O, VS>
 where
     DB: Db,
     VM: Vm + Clone + 'static,
@@ -156,11 +189,44 @@ where
     O: Signer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    pub fn receive_transfer(
+    fn addresses(&self) -> AppAddresses {
+        self.suite
+            .query_app_config::<AppConfig>()
+            .should_succeed()
+            .addresses
+    }
+
+    fn create_msg(
+        &self,
+        origin_domain: Domain,
+        sender: Addr32,
+        recipient: Addr32,
+        body: HexBinary,
+        val_set: MockValidatorSet,
+    ) -> (HexBinary, HexBinary) {
+        let raw_message = Message {
+            version: MAILBOX_VERSION,
+            nonce: 0,
+            origin_domain,
+            sender,
+            destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
+            recipient,
+            body,
+        }
+        .encode();
+
+        let message_id = raw_message.keccak256();
+        let raw_metadata = val_set.sign(message_id, origin_domain).encode();
+
+        (raw_message, raw_metadata)
+    }
+
+    fn do_receive_transfer(
         &mut self,
         domain: Domain,
         to: Addr,
         coin: Coin,
+        val_set: MockValidatorSet,
     ) -> ReceiveTransferResponse {
         let addresses = self.addresses();
 
@@ -182,6 +248,7 @@ where
                 metadata: HexBinary::default(),
             }
             .encode(),
+            val_set,
         );
 
         let shared_owner = self.suite.owner.clone();
@@ -202,25 +269,7 @@ where
         ReceiveTransferResponse::new(raw_metadata, raw_message)
     }
 
-    pub fn recieve_transfer_mock(&mut self, to: Addr, coin: Coin) {
-        let addresses = self.addresses();
-
-        if self
-            .suite
-            .query_wasm_smart(addresses.warp, QueryRouteRequest {
-                denom: coin.denom.clone(),
-                destination_domain: MOCK_REMOTE_DOMAIN,
-            })
-            .is_err()
-        {
-            self.set_route(coin.denom.clone(), MOCK_REMOTE_DOMAIN, MOCK_REMOTE_ROUTE)
-                .should_succeed();
-        }
-
-        self.receive_transfer(MOCK_REMOTE_DOMAIN, to, coin);
-    }
-
-    pub fn send_transfer(
+    fn do_send_transfer(
         &mut self,
         sender: &mut dyn Signer,
         domain: Domain,
@@ -240,7 +289,7 @@ where
         )
     }
 
-    pub fn set_route(
+    fn do_set_route(
         &mut self,
         denom: Denom,
         destination_domain: Domain,
@@ -267,43 +316,88 @@ where
             Coins::new(),
         )
     }
+}
 
-    fn create_msg(
+// Non mocked
+
+impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    O: Signer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    pub fn receive_transfer(
         &mut self,
-        origin_domain: Domain,
-        sender: Addr32,
-        recipient: Addr32,
-        body: HexBinary,
-    ) -> (HexBinary, HexBinary) {
-        let raw_message = Message {
-            version: MAILBOX_VERSION,
-            nonce: 0,
-            origin_domain,
-            sender,
-            destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
-            recipient,
-            body,
-        }
-        .encode();
-
-        let message_id = raw_message.keccak256();
-        let raw_metadata = self.suite.val_set.sign(message_id).encode();
-
-        (raw_message, raw_metadata)
+        domain: Domain,
+        to: Addr,
+        coin: Coin,
+    ) -> ReceiveTransferResponse {
+        let val_set = self.suite.val_sets.get(&domain).unwrap().clone();
+        self.do_receive_transfer(domain, to, coin, val_set)
     }
 
-    fn addresses(&self) -> AppAddresses {
-        self.suite
-            .query_app_config::<AppConfig>()
-            .should_succeed()
-            .addresses
+    pub fn send_transfer(
+        &mut self,
+        sender: &mut dyn Signer,
+        domain: Domain,
+        to: Addr32,
+        coin: Coin,
+    ) -> TxOutcome {
+        self.do_send_transfer(sender, domain, to, coin)
+    }
+
+    pub fn set_route(
+        &mut self,
+        denom: Denom,
+        destination_domain: Domain,
+        route: Route,
+    ) -> TxOutcome {
+        self.do_set_route(denom, destination_domain, route)
     }
 }
 
-struct MockValidatorSet {
+// Mocked
+
+impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O, MockValidatorSet>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    O: Signer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    pub fn recieve_transfer(&mut self, to: Addr, coin: Coin) {
+        let addresses = self.addresses();
+
+        if self
+            .suite
+            .query_wasm_smart(addresses.warp, QueryRouteRequest {
+                denom: coin.denom.clone(),
+                destination_domain: MOCK_REMOTE_DOMAIN,
+            })
+            .is_err()
+        {
+            self.do_set_route(coin.denom.clone(), MOCK_REMOTE_DOMAIN, MOCK_REMOTE_ROUTE)
+                .should_succeed();
+        }
+
+        self.do_receive_transfer(MOCK_REMOTE_DOMAIN, to, coin, self.suite.val_sets.clone());
+    }
+
+    pub fn send_transfer(&mut self, sender: &mut dyn Signer, to: Addr32, coin: Coin) -> TxOutcome {
+        self.do_send_transfer(sender, MOCK_REMOTE_DOMAIN, to, coin)
+    }
+}
+
+#[derive(Clone)]
+pub struct MockValidatorSet {
     secrets: Vec<SigningKey>,
     addresses: BTreeSet<HexByteArray<20>>,
-    merkle_tree: IncrementalMerkleTree,
+    merkle_tree: Shared<IncrementalMerkleTree>,
 }
 
 impl MockValidatorSet {
@@ -323,22 +417,18 @@ impl MockValidatorSet {
         Self {
             secrets,
             addresses,
-            merkle_tree: IncrementalMerkleTree::default(),
+            merkle_tree: Shared::new(IncrementalMerkleTree::default()),
         }
     }
 
-    pub fn sign(&mut self, message_id: Hash256) -> Metadata {
-        self.merkle_tree.insert(message_id).unwrap();
+    pub fn sign(&self, message_id: Hash256, origin_domain: Domain) -> Metadata {
+        self.merkle_tree.write_access().insert(message_id).unwrap();
 
-        let merkle_root = self.merkle_tree.root();
-        let merkle_index = (self.merkle_tree.count - 1) as u32;
+        let merkle_root = self.merkle_tree.read_access().root();
+        let merkle_index = (self.merkle_tree.read_access().count - 1) as u32;
 
         let multisig_hash = eip191_hash(multisig_hash(
-            domain_hash(
-                MOCK_REMOTE_DOMAIN,
-                MOCK_REMOTE_MERKLE_TREE,
-                HYPERLANE_DOMAIN_KEY,
-            ),
+            domain_hash(origin_domain, MOCK_REMOTE_MERKLE_TREE, HYPERLANE_DOMAIN_KEY),
             merkle_root,
             merkle_index,
             message_id,
