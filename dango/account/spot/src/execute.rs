@@ -1,10 +1,12 @@
+#[cfg(debug_assertions)]
+use grug::ResultExt;
 use {
     anyhow::ensure,
     dango_auth::authenticate_tx,
     dango_types::{account::spot::InstantiateMsg, bank, DangoQuerier},
     grug::{
-        AuthCtx, AuthResponse, Coins, Message, MutableCtx, QuerierExt, Response, ResultExt,
-        StdResult, SubMessage, SubMsgResult, SudoCtx, Tx,
+        AuthCtx, AuthResponse, Coins, Message, MutableCtx, QuerierExt, Response, StdResult,
+        SubMessage, SubMsgResult, SudoCtx, Tx,
     },
 };
 
