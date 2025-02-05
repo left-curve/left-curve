@@ -1,5 +1,6 @@
+mod core;
 mod execute;
 mod query;
 mod state;
 
-pub use {execute::*, query::*, state::*};
+pub use {core::*, execute::*, query::*, state::*};
