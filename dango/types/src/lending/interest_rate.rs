@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
-use grug::{
-    Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
-    ZeroInclusiveOneInclusive,
+use {
+    anyhow::anyhow,
+    grug::{
+        Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
+        ZeroInclusiveOneInclusive,
+    },
 };
 
 /// Defines different interest rate models (calculates how much interest is paid
@@ -62,7 +65,7 @@ impl InterestRateModel {
                 reserve_factor,
             } => {
                 if utilization > Udec128::new_percent(100) {
-                    return Err(anyhow::anyhow!("invalid utilization rate"));
+                    return Err(anyhow!("invalid utilization rate"));
                 }
 
                 // Calculate borrow rate
@@ -114,7 +117,7 @@ impl Default for InterestRateModel {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, plotters::prelude::*};
+    use {super::*, grug::ResultExt, plotters::prelude::*};
 
     #[test]
     fn test_default_params() {
@@ -170,10 +173,9 @@ mod tests {
 
     #[test]
     fn test_invalid_utilization() {
-        let model = InterestRateModel::default();
-        assert!(model
+        InterestRateModel::default()
             .calculate_rates(Udec128::new_percent(110))
-            .is_err_and(|e| { e.to_string().contains("invalid utilization rate") }));
+            .should_fail_with_error("invalid utilization rate");
     }
 
     #[test]

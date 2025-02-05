@@ -1,13 +1,14 @@
 use {
+    crate::lending::InterestRateModel,
     anyhow::ensure,
     grug::{
         Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Querier, QuerierExt,
         QuerierWrapper, StdError, Timestamp, Udec128, Uint128,
     },
+    std::error::Error,
 };
 
-use super::InterestRateModel;
-
+/// Seconds in a year, assuming 365 days.
 pub const SECONDS_PER_YEAR: u32 = 31536000;
 
 /// Configurations and state of a market.
@@ -49,7 +50,7 @@ impl Market {
     /// Computes the utilization rate of this market.
     pub fn utilization_rate<E>(&self, querier: &dyn Querier<Error = E>) -> anyhow::Result<Udec128>
     where
-        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+        E: From<StdError> + Error + Send + Sync + 'static,
     {
         let total_borrowed = self.total_borrowed()?;
         let total_supplied = self.total_supplied(querier)?;
@@ -78,7 +79,7 @@ impl Market {
         current_time: Timestamp,
     ) -> anyhow::Result<Self>
     where
-        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+        E: From<StdError> + Error + Send + Sync + 'static,
     {
         ensure!(
             current_time >= self.last_update_time,
@@ -212,7 +213,7 @@ impl Market {
     /// Returns the total amount of coins supplied to this market.
     pub fn total_supplied<E>(&self, querier: &dyn Querier<Error = E>) -> anyhow::Result<Uint128>
     where
-        E: From<StdError> + Send + Sync + std::error::Error + 'static,
+        E: From<StdError> + Error + Send + Sync + 'static,
     {
         let wrapper = QuerierWrapper::new(querier);
         let total_lp_supply = wrapper.query_supply(self.supply_lp_denom.clone())?;

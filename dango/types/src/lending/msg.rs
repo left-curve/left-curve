@@ -33,12 +33,7 @@ pub enum ExecuteMsg {
     /// Sender must be a margin account.
     Repay {},
     /// Claim pending protocol fees for a range of denoms.
-    ClaimPendingProtocolFees {
-        /// The denom to start after.
-        start_after_denom: Option<Denom>,
-        /// The maximum number of denoms to claim fees for.
-        limit: Option<u32>,
-    },
+    ClaimPendingProtocolFees {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

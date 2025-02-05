@@ -976,10 +976,7 @@ fn interest_rate_model_works(
         .execute(
             &mut accounts.owner,
             contracts.lending,
-            &lending::ExecuteMsg::ClaimPendingProtocolFees {
-                start_after_denom: None,
-                limit: None,
-            },
+            &lending::ExecuteMsg::ClaimPendingProtocolFees {},
             Coins::new(),
         )
         .should_succeed();

@@ -6,6 +6,7 @@ use {
         Addr, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
         StorageQuerier, Timestamp, Udec128,
     },
+    std::error::Error,
 };
 
 /// Margin account query methods.
@@ -30,7 +31,7 @@ pub trait MarginQuerier {
 impl<Q> MarginQuerier for Q
 where
     Q: QuerierExt,
-    Q::Error: From<StdError> + Send + Sync + std::error::Error + 'static,
+    Q::Error: From<StdError> + Error + Send + Sync + 'static,
     anyhow::Error: From<Q::Error>,
 {
     fn query_health(

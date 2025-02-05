@@ -1,6 +1,6 @@
 use {
     crate::{query_preview_deposit, query_preview_withdraw, DEBTS, MARKETS},
-    anyhow::{anyhow, ensure, Ok},
+    anyhow::{anyhow, ensure},
     dango_account_factory::ACCOUNTS,
     dango_types::{
         bank,
@@ -8,8 +8,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        Bound, Coin, Coins, Denom, Inner, Message, MutableCtx, Number, Order, QuerierExt, Response,
-        StdResult, StorageQuerier, Udec128,
+        Coin, Coins, Denom, Message, MutableCtx, Number, Order, QuerierExt, Response, StdResult,
+        StorageQuerier,
     },
     std::collections::BTreeMap,
 };
@@ -42,10 +42,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Withdraw {} => withdraw(ctx),
         ExecuteMsg::Borrow(coins) => borrow(ctx, coins),
         ExecuteMsg::Repay {} => repay(ctx),
-        ExecuteMsg::ClaimPendingProtocolFees {
-            start_after_denom,
-            limit,
-        } => claim_pending_protocol_fees(ctx, start_after_denom, limit),
+        ExecuteMsg::ClaimPendingProtocolFees {} => claim_pending_protocol_fees(ctx),
     }
 }
 
@@ -60,9 +57,7 @@ fn update_markets(
     );
 
     for (denom, updates) in updates {
-        let market = MARKETS.may_load(ctx.storage, &denom)?;
-
-        if let Some(market) = market {
+        if let Some(market) = MARKETS.may_load(ctx.storage, &denom)? {
             if let Some(interest_rate_model) = updates.interest_rate_model {
                 MARKETS.save(
                     ctx.storage,
@@ -91,7 +86,7 @@ fn update_markets(
 }
 
 fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
-    // Immutably update markets and compute the amount of LP tokens to mint
+    // Immutably update markets and compute the amount of LP tokens to mint.
     let (lp_tokens, markets) = query_preview_deposit(
         ctx.storage,
         &ctx.querier,
@@ -99,12 +94,12 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         ctx.funds.clone(),
     )?;
 
-    // Save the updated markets
+    // Save the updated markets.
     for (denom, market) in markets {
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
-    // Mint the LP tokens to the sender
+    // Mint the LP tokens to the sender.
     let bank = ctx.querier.query_bank()?;
     let msgs = lp_tokens
         .into_iter()
@@ -138,7 +133,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
         MARKETS.save(ctx.storage, &denom, &market)?;
     }
 
-    // Burn the LP tokens
+    // Burn the LP tokens.
     let bank = ctx.querier.query_bank()?;
     let msgs = ctx
         .funds
@@ -171,7 +166,7 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
             .query_wasm_path(account_factory, &ACCOUNTS.path(ctx.sender))?
             .params
             .is_margin(),
-        "Only margin accounts can borrow and repay"
+        "only margin accounts can borrow and repay"
     );
 
     // Load the sender's debts
@@ -185,8 +180,10 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
 
         // Update the sender's liabilities
         let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
-        let new_scaled_debt =
-            Udec128::new(coin.amount.into_inner()).checked_div(market.borrow_index)?;
+        let new_scaled_debt = coin
+            .amount
+            .checked_into_dec()?
+            .checked_div(market.borrow_index)?;
         let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
         scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
 
@@ -232,8 +229,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         };
 
         // Update the sender's liabilities
-        let repaid_debt_scaled =
-            Udec128::new(repaid.into_inner()).checked_div(market.borrow_index)?;
+        let repaid_debt_scaled = repaid
+            .checked_into_dec()?
+            .checked_div(market.borrow_index)?;
         scaled_debts.insert(
             coin.denom.clone(),
             scaled_debt.saturating_sub(repaid_debt_scaled),
@@ -241,9 +239,11 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Deduct the repaid scaled debt and save the updated market state
         let debt_after = debt.checked_sub(repaid)?;
-        let debt_after_scaled =
-            Udec128::new(debt_after.into_inner()).checked_div(market.borrow_index)?;
+        let debt_after_scaled = debt_after
+            .checked_into_dec()?
+            .checked_div(market.borrow_index)?;
         let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
+
         MARKETS.save(
             ctx.storage,
             &coin.denom,
@@ -257,23 +257,13 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     Ok(Response::new().add_message(Message::transfer(ctx.sender, refunds)?))
 }
 
-const DEFAULT_LIMIT: u32 = 30;
-
-fn claim_pending_protocol_fees(
-    ctx: MutableCtx,
-    start_after_denom: Option<Denom>,
-    limit: Option<u32>,
-) -> anyhow::Result<Response> {
+fn claim_pending_protocol_fees(ctx: MutableCtx) -> anyhow::Result<Response> {
     let bank = ctx.querier.query_bank()?;
     let owner = ctx.querier.query_owner()?;
 
-    let start = start_after_denom.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_LIMIT) as usize;
-
     let (msgs, markets) = MARKETS
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|res| {
+        .range(ctx.storage, None, None, Order::Ascending)
+        .map(|res| -> anyhow::Result<_> {
             let (denom, market) = res?;
             let market = market.update_indices(&ctx.querier, ctx.block.timestamp)?;
             Ok((

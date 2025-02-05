@@ -47,7 +47,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             coins.to_json_value()
         },
     }
-    .map_err(|err| anyhow::anyhow!(err))
+    .map_err(Into::into)
 }
 
 fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
@@ -83,6 +83,7 @@ fn query_debt(
         let debt = market.calculate_debt(scaled_debt)?;
         debts.insert(Coin::new(denom, debt)?)?;
     }
+
     Ok(debts)
 }
 
