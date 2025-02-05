@@ -44,8 +44,8 @@ where
     O: Signer,
 {
     suite: TestSuite<DB, VM, PP, ID>,
-    val_sets: VS,
     owner: Shared<O>,
+    validator_sets: VS,
 }
 
 impl<DB, VM, PP, ID, O> HyperlaneTestSuite<DB, VM, PP, ID, O>
@@ -60,19 +60,19 @@ where
     pub fn new(
         mut suite: TestSuite<DB, VM, PP, ID>,
         mut owner: O,
-        val_sets: BTreeMap<Domain, (usize, usize)>,
+        validator_sets: BTreeMap<Domain, (usize, usize)>,
     ) -> (HyperlaneTestSuite<DB, VM, PP, ID, O>, Shared<O>) {
-        let val_sets = val_sets
+        let ism = suite
+            .query_app_config::<AppConfig>()
+            .should_succeed()
+            .addresses
+            .hyperlane
+            .ism;
+
+        let validator_sets = validator_sets
             .into_iter()
             .map(|(domain, (size, threshold))| {
                 let mock_validator_set = MockValidatorSet::new_random(size);
-
-                let ism = suite
-                    .query_app_config::<AppConfig>()
-                    .should_succeed()
-                    .addresses
-                    .hyperlane
-                    .ism;
 
                 // Set validators at the ISM.
                 suite
@@ -97,8 +97,8 @@ where
         (
             HyperlaneTestSuite {
                 suite,
-                val_sets,
                 owner: owner.clone(),
+                validator_sets,
             },
             owner,
         )
@@ -115,14 +115,13 @@ where
         HyperlaneTestSuite<DB, VM, PP, ID, O, MockValidatorSet>,
         Shared<O>,
     ) {
-        // Self::new(suite, owner, 3, 2, MOCK_REMOTE_DOMAIN)
-
-        let (mut suite, owner) = Self::new(suite, owner, btree_map! {MOCK_REMOTE_DOMAIN => (3, 2)});
+        let (mut suite, owner) =
+            Self::new(suite, owner, btree_map! { MOCK_REMOTE_DOMAIN => (3, 2) });
 
         let suite = HyperlaneTestSuite {
             suite: suite.suite,
-            val_sets: suite.val_sets.pop_last().unwrap().1,
             owner: suite.owner,
+            validator_sets: suite.validator_sets.pop_last().unwrap().1,
         };
 
         (suite, owner)
@@ -206,7 +205,7 @@ where
         sender: Addr32,
         recipient: Addr32,
         body: HexBinary,
-        val_set: MockValidatorSet,
+        validator_set: MockValidatorSet,
     ) -> (HexBinary, HexBinary) {
         let raw_message = Message {
             version: MAILBOX_VERSION,
@@ -220,7 +219,7 @@ where
         .encode();
 
         let message_id = raw_message.keccak256();
-        let raw_metadata = val_set.sign(message_id, origin_domain).encode();
+        let raw_metadata = validator_set.sign(message_id, origin_domain).encode();
 
         (raw_message, raw_metadata)
     }
@@ -230,7 +229,7 @@ where
         domain: Domain,
         to: Addr,
         coin: Coin,
-        val_set: MockValidatorSet,
+        validator_set: MockValidatorSet,
     ) -> ReceiveTransferResponse {
         let addresses = self.addresses();
 
@@ -252,7 +251,7 @@ where
                 metadata: HexBinary::default(),
             }
             .encode(),
-            val_set,
+            validator_set,
         );
 
         let shared_owner = self.suite.owner.clone();
@@ -339,8 +338,8 @@ where
         to: Addr,
         coin: Coin,
     ) -> ReceiveTransferResponse {
-        let val_set = self.suite.val_sets.get(&domain).unwrap().clone();
-        self.do_receive_transfer(domain, to, coin, val_set)
+        let validator_set = self.suite.validator_sets.get(&domain).unwrap().clone();
+        self.do_receive_transfer(domain, to, coin, validator_set)
     }
 
     pub fn send_transfer(
@@ -389,7 +388,12 @@ where
                 .should_succeed();
         }
 
-        self.do_receive_transfer(MOCK_REMOTE_DOMAIN, to, coin, self.suite.val_sets.clone());
+        self.do_receive_transfer(
+            MOCK_REMOTE_DOMAIN,
+            to,
+            coin,
+            self.suite.validator_sets.clone(),
+        );
     }
 
     pub fn send_transfer(&mut self, sender: &mut dyn Signer, to: Addr32, coin: Coin) -> TxOutcome {

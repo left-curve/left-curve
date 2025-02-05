@@ -11,7 +11,7 @@ use {
     dango_warp::ROUTES,
     grug::{
         btree_map, Addr, Addressable, BalanceChange, Coin, Coins, Denom, HashExt, HexBinary,
-        NumberConst, QuerierExt, ResultExt, StdError, Uint128,
+        MathError, NumberConst, QuerierExt, ResultExt, StdError, Uint128,
     },
     hyperlane_types::{
         addr32,
@@ -228,7 +228,7 @@ fn receive_release_collateral() {
     let (mut suite, ..) = HyperlaneTestSuite::new(
         suite,
         accounts.owner,
-        btree_map! {MOCK_REMOTE_DOMAIN => (3, 2)},
+        btree_map! { MOCK_REMOTE_DOMAIN => (3, 2) },
     );
 
     // Set the route.
@@ -355,8 +355,6 @@ fn alloy() {
 
     // Receive some tokens.
     {
-        // suite.balances().record(accounts.user1.address());
-
         suite
             .balances()
             .record_many([accounts.user1.address(), contracts.warp.address()]);
@@ -504,7 +502,7 @@ fn alloy() {
                 Addr::mock(2).into(),
                 Coin::new(alloyed_usdc_denom.clone(), 35).unwrap(),
             )
-            .should_fail_with_error("subtraction overflow: 30 - 35");
+            .should_fail_with_error(MathError::overflow_sub::<u128>(30, 35));
     }
 
     // Send 75 alloyed_usdc to sol.
