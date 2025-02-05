@@ -1,5 +1,5 @@
 use {
-    super::{Market, MarketUpdates},
+    super::{InterestRateModel, Market, MarketUpdates},
     grug::{Addr, Coins, Denom, Part},
     std::{collections::BTreeMap, sync::LazyLock},
 };
@@ -13,7 +13,7 @@ pub static SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub markets: BTreeMap<Denom, MarketUpdates>,
+    pub markets: BTreeMap<Denom, InterestRateModel>,
 }
 
 #[grug::derive(Serde)]

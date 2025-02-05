@@ -16,11 +16,7 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (denom, updates) in msg.markets {
-        let interest_rate_model = updates
-            .interest_rate_model
-            .ok_or_else(|| anyhow!("interest rate model is required for market {}", denom))?;
-
+    for (denom, interest_rate_model) in msg.markets {
         MARKETS.save(
             ctx.storage,
             &denom,

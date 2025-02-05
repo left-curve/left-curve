@@ -11,7 +11,7 @@ use {
             USDC_DENOM, WBTC_DENOM,
         },
         dex::{PairParams, PairUpdate},
-        lending::{InterestRateModel, MarketUpdates},
+        lending::InterestRateModel,
         taxman,
     },
     grug::{
@@ -334,12 +334,8 @@ where
             },
         ],
         markets: btree_map! {
-            USDC_DENOM.clone() => MarketUpdates {
-                interest_rate_model: Some(InterestRateModel::default()),
-            },
-            WBTC_DENOM.clone() => MarketUpdates {
-                interest_rate_model: Some(InterestRateModel::default()),
-            },
+            USDC_DENOM.clone() => InterestRateModel::default(),
+            WBTC_DENOM.clone() => InterestRateModel::default(),
         },
         price_sources: PYTH_PRICE_SOURCES.clone(),
         unlocking_cliff: Duration::from_weeks(4 * 9),

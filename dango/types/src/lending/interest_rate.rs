@@ -1,11 +1,10 @@
-use std::fmt::Display;
-
 use {
     anyhow::anyhow,
     grug::{
         Bounded, NumberConst, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive,
         ZeroInclusiveOneInclusive,
     },
+    std::fmt::Display,
 };
 
 /// Defines different interest rate models (calculates how much interest is paid
