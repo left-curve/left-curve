@@ -411,6 +411,7 @@ fn alloy() {
             Coin::new(sol_usdc_denom.clone(), 75).unwrap(),
         );
 
+        // Verify balances.
         suite
             .balances()
             .should_change(accounts.user1.address(), btree_map! {
@@ -419,7 +420,6 @@ fn alloy() {
                 alloyed_usdc_denom.clone() => BalanceChange::Increased(125),
             });
 
-        // Check if the warp contract has the correct balances.
         suite
             .balances()
             .should_change(contracts.warp.address(), btree_map! {
@@ -444,7 +444,7 @@ fn alloy() {
 
         let recipient: Addr32 = Addr::mock(2).into();
 
-        // Send 20 alloyed to eth
+        // Send 20 alloyed to eth.
         suite
             .hyperlane()
             .send_transfer(
@@ -479,13 +479,13 @@ fn alloy() {
             .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
             .should_succeed_and_equal(tree);
 
+        // Verify balances.
         suite
             .balances()
             .should_change(accounts.user1.address(), btree_map! {
                 alloyed_usdc_denom.clone() => BalanceChange::Decreased(20),
             });
 
-        // Check if the warp contract has the correct balances.
         suite
             .balances()
             .should_change(contracts.warp.address(), btree_map! {
@@ -619,7 +619,7 @@ fn alloy() {
                 eth_usdc_denom.clone() => BalanceChange::Decreased(100),
             });
 
-        // No changes for the user1.
+        // No changes on warp balances.
         suite
             .balances()
             .should_change(contracts.warp.address(), btree_map! {
