@@ -1,17 +1,9 @@
-use std::collections::BTreeMap;
-
-use grug::{Coin, Inner, Number, Udec128};
-
-use crate::MARKETS;
-
 use {
+    crate::MARKETS,
     anyhow::bail,
-    dango_types::lending::{NAMESPACE, SUBNAMESPACE},
-};
-
-use {
-    dango_types::lending::Market,
-    grug::{Coins, Denom, QuerierWrapper, Storage, Timestamp},
+    dango_types::lending::{Market, NAMESPACE, SUBNAMESPACE},
+    grug::{Coin, Coins, Denom, Inner, Number, QuerierWrapper, Storage, Timestamp, Udec128},
+    std::collections::BTreeMap,
 };
 
 /// Calculates the amount of LP tokens to mint for a deposit.

@@ -114,6 +114,8 @@ impl Default for InterestRateModel {
     }
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {super::*, grug::ResultExt};
