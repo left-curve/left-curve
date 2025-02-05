@@ -25,16 +25,12 @@ pub struct InstantiateMsg {
     /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
     pub users: BTreeMap<Username, (Hash256, Key)>,
+    /// The minimum deposit required to onboard a user.
+    pub minimum_deposit: Coins,
 }
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Make an initial deposit, prior to registering a username.
-    ///
-    /// This the first of the two-step user onboarding process.
-    ///
-    /// This method can only be invoked by the IBC transfer contract.
-    Deposit { recipient: Addr },
     /// Create a new user, following an initial deposit.
     ///
     /// This is the second of the two-step user onboarding process.
@@ -64,15 +60,6 @@ pub enum QueryMsg {
     #[returns(BTreeMap<AccountType, Hash256>)]
     CodeHashes {
         start_after: Option<AccountType>,
-        limit: Option<u32>,
-    },
-    /// Query unclaimed deposit for the given address.
-    #[returns(Coins)]
-    Deposit { recipient: Addr },
-    /// Enumerate all unclaimed deposits.
-    #[returns(BTreeMap<Addr, Coins>)]
-    Deposits {
-        start_after: Option<Addr>,
         limit: Option<u32>,
     },
     /// Query a key by its hash associated to a username.

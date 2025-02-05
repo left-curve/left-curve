@@ -22,8 +22,10 @@ colored_json       = { workspace = true }
 dango-app          = { workspace = true }
 dango-client       = { workspace = true }
 dango-genesis      = { workspace = true }
+dango-httpd        = { workspace = true }
 dango-types        = { workspace = true }
 dialoguer          = { workspace = true }
+futures            = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-client        = { workspace = true }
 grug-db-disk       = { workspace = true }
@@ -32,6 +34,7 @@ grug-types         = { workspace = true }
 grug-vm-hybrid     = { workspace = true }
 hex                = { workspace = true }
 home               = { workspace = true }
+indexer-httpd      = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }
 rand               = { workspace = true }
 serde              = { workspace = true }

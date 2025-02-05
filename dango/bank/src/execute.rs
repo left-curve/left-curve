@@ -1,10 +1,10 @@
 use {
-    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
     anyhow::{bail, ensure},
     dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
     grug::{
-        Addr, BankMsg, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part, QuerierExt,
-        Response, StdResult, Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Coin, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::{BTreeMap, HashMap},
 };
@@ -63,6 +63,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
         ExecuteMsg::BatchTransfer(transfers) => batch_transfer(ctx, transfers),
+        ExecuteMsg::RecoverTransfer { sender, recipient } => {
+            recover_transfer(ctx, sender, recipient)
+        },
     }
 }
 
@@ -98,7 +101,16 @@ fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Res
     ensure_namespace_owner(&ctx, &denom)?;
 
     increase_supply(ctx.storage, &denom, amount)?;
-    increase_balance(ctx.storage, &to, &denom, amount)?;
+
+    if ctx.querier.query_contract(to).is_ok() {
+        increase_balance(ctx.storage, &to, &denom, amount)?;
+    } else {
+        ORPHANED_TRANSFERS.may_update(ctx.storage, (ctx.sender, to), |coins| {
+            let mut coins = coins.unwrap_or_default();
+            coins.insert(Coin::new(denom, amount)?)?;
+            Ok::<_, StdError>(coins)
+        })?;
+    }
 
     Ok(Response::new())
 }
@@ -165,11 +177,36 @@ fn batch_transfer(ctx: MutableCtx, transfers: BTreeMap<Addr, Coins>) -> anyhow::
     Ok(Response::new())
 }
 
+fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == sender || ctx.sender == recipient,
+        "only the sender or the recipient can recover an orphaned transfer"
+    );
+
+    for coin in ORPHANED_TRANSFERS.take(ctx.storage, (sender, recipient))? {
+        increase_balance(ctx.storage, &ctx.sender, &coin.denom, coin.amount)?;
+    }
+
+    Ok(Response::new())
+}
+
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    for coin in msg.coins {
-        decrease_balance(ctx.storage, &msg.from, &coin.denom, coin.amount)?;
-        increase_balance(ctx.storage, &msg.to, &coin.denom, coin.amount)?;
+    let recipient_exists = ctx.querier.query_contract(msg.to).is_ok();
+
+    for coin in &msg.coins {
+        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+        if recipient_exists {
+            increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
+        }
+    }
+
+    if !recipient_exists {
+        ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, msg.to), |coins| {
+            let mut coins = coins.unwrap_or_default();
+            coins.insert_many(msg.coins)?;
+            Ok::<_, StdError>(coins)
+        })?;
     }
 
     Ok(Response::new())

@@ -1,20 +1,44 @@
-//! Test cases from:
-//! <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
-
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{DANGO_DENOM, USDC_DENOM},
+        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
         dex::{self, Direction, OrderId, QueryOrdersRequest},
     },
     grug::{
         btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
-        NonEmpty, QuerierExt, Signer, StdResult, Udec128, Uint128,
+        NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
     },
     std::collections::BTreeMap,
     test_case::test_case,
 };
 
+#[test]
+fn cannot_submit_orders_in_non_existing_pairs() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SubmitOrder {
+                base_denom: ATOM_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::new(100),
+                price: Udec128::new(1),
+            },
+            Coins::one(USDC_DENOM.clone(), 1).unwrap(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            ATOM_DENOM.clone(),
+            USDC_DENOM.clone()
+        ));
+}
+
+// Test cases from:
+// https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better
+//
 // --------------------------------- example 1 ---------------------------------
 #[test_case(
     vec![
@@ -294,7 +318,16 @@ fn dex_works(
         })
         .collect::<StdResult<Vec<_>>>()
         .unwrap();
-    suite.make_block(txs);
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
 
     // Check the users' balances should have changed correctly.
     for (order_id, changes) in balance_changes {

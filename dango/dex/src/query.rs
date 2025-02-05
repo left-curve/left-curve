@@ -1,7 +1,8 @@
 use {
-    crate::ORDERS,
+    crate::{ORDERS, PAIRS},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, QueryMsg,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, Pair, PairParams,
+        PairUpdate, QueryMsg,
     },
     grug::{
         Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
@@ -14,6 +15,17 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
+        QueryMsg::Pair {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_pair(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::Pairs { start_after, limit } => {
+            let res = query_pairs(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
         QueryMsg::Order { order_id } => {
             let res = query_order(ctx, order_id)?;
             res.to_json_value()
@@ -40,6 +52,36 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
     }
+}
+
+#[inline]
+fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<PairParams> {
+    PAIRS.load(ctx.storage, (&base_denom, &quote_denom))
+}
+
+#[inline]
+fn query_pairs(
+    ctx: ImmutableCtx,
+    start_after: Option<Pair>,
+    limit: Option<u32>,
+) -> StdResult<Vec<PairUpdate>> {
+    let start = start_after
+        .as_ref()
+        .map(|p| Bound::Exclusive((&p.base_denom, &p.quote_denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    PAIRS
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((base_denom, quote_denom), params) = res?;
+            Ok(PairUpdate {
+                base_denom,
+                quote_denom,
+                params,
+            })
+        })
+        .collect()
 }
 
 #[inline]

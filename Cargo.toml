@@ -9,7 +9,7 @@ members = [
   "dango/client",
   "dango/dex",
   "dango/genesis",
-  "dango/ibc-transfer",
+  "dango/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
   "dango/lending",
@@ -35,9 +35,10 @@ members = [
   "grug/testing",
   "grug/types",
   "grug/vm/*",
-  "hyperlane/grug/hooks/*",
-  "hyperlane/grug/isms/*",
-  "hyperlane/grug/mailbox",
+  "hyperlane/hooks/*",
+  "hyperlane/isms/*",
+  "hyperlane/mailbox",
+  "hyperlane/va",
   "indexer/*",
 ]
 resolver = "2"
@@ -55,75 +56,82 @@ rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
-aes-gcm            = "0.10"
-alloy              = "0.8"
-anyhow             = "1"
-assertor           = { version = "0.0", git = "https://github.com/google/assertor" }
-async-std          = { version = "1", features = ["attributes", "tokio1"] }
-async-trait        = "0"
-base64             = "0.22"
-bip32              = "0.5"
-blake2             = "0.10"
-blake3             = "1"
-bnum               = "0.12"
-borsh              = "1"
-byteorder          = "1"
-chrono             = "0.4"
-clap               = "4"
-clru               = "0.6"
-colored            = "2"
-colored_json       = "5"
-criterion          = "0.5"
-data-encoding      = "2"
-dialoguer          = "0.11"
-digest             = "0.10"
-dotenvy            = "0.15"
-dyn-clone          = "1"
-ed25519-dalek      = "2"
-elsa               = "1"
-glob               = "0.3"
-hex                = "0.4"
-hex-literal        = "0.4"
-home               = "0.5"
-ics23              = "0.12"
-k256               = "0.13"
-lzma-rs            = "0.3"
-p256               = "0.13"
-paste              = "1"
-pbkdf2             = "0.12"
-proc-macro2        = "1"
-proptest           = "1"
-prost              = "0.13"
-pyth-sdk           = "0.8.0"
-pythnet-sdk        = "2"
-quote              = "1"
-rand               = "0.8"
-reqwest            = "0.12"
-ripemd             = "0.1"
-rocksdb            = "0.23"
-serde              = "1"
-serde_json         = "1"
-serde_with         = "3"
-sha2               = "0.10"
-sha3               = "0.10"
-signature          = "2"
-strum              = "0.26"
-strum_macros       = "0.26"
-syn                = "2"
-tempfile           = "3"
-tendermint         = "0.40"
-tendermint-rpc     = "0.40"
-test-case          = "3"
-thiserror          = "2"
-tokio              = { version = "1", features = ["full"] }
-toml               = "0.8"
-tower              = "0.5"
-tower-abci         = "0.18"
-tracing            = "0.1"
-tracing-subscriber = "0.3"
-uuid               = { version = "1", features = ["serde", "v4"] }
-wasmer             = "5"
-wasmer-middlewares = "5"
+actix                   = "0.13"
+actix-files             = "0"
+actix-web               = "4"
+aes-gcm                 = "0.10"
+alloy                   = "0.11"
+anyhow                  = "1"
+assertor                = { version = "0.0", git = "https://github.com/google/assertor" }
+async-graphql-actix-web = "7.0"
+async-std               = { version = "1", features = ["attributes", "tokio1"] }
+async-trait             = "0"
+base64                  = "0.22"
+bip32                   = "0.5"
+blake2                  = "0.10"
+blake3                  = "1"
+bnum                    = "0.12"
+borsh                   = "1"
+byteorder               = "1"
+chrono                  = "0.4"
+clap                    = "4"
+clru                    = "0.6"
+colored                 = "3"
+colored_json            = "5"
+criterion               = "0.5"
+data-encoding           = "2"
+dialoguer               = "0.11"
+digest                  = "0.10"
+dyn-clone               = "1"
+ed25519-dalek           = "2"
+elsa                    = "1"
+futures                 = "0.3"
+glob                    = "0.3"
+hex                     = "0.4"
+hex-literal             = "0.4"
+home                    = "0.5"
+ics23                   = "0.12"
+k256                    = "0.13"
+lzma-rs                 = "0.3"
+num_cpus                = "1"
+p256                    = "0.13"
+paste                   = "1"
+pbkdf2                  = "0.12"
+proc-macro2             = "1"
+proptest                = "1"
+prost                   = "0.13"
+pyth-sdk                = "0.8.0"
+pythnet-sdk             = "2"
+quote                   = "1"
+rand                    = "0.8" # Can't use 0.9 because RustCrypto libraries still depend on 0.8
+reqwest                 = "0.12"
+ripemd                  = "0.1"
+rocksdb                 = "0.23"
+serde                   = "1"
+serde_json              = "1"
+serde_with              = "3"
+sha2                    = "0.10"
+sha3                    = "0.10"
+signature               = "2"
+strum                   = "0.26"
+strum_macros            = "0.26"
+syn                     = "2"
+tempfile                = "3"
+tendermint              = "0.40"
+tendermint-rpc          = "0.40"
+tera                    = "1"
+test-case               = "3"
+thiserror               = "2"
+tokio                   = { version = "1", features = ["full"] }
+toml                    = "0.8"
+tower                   = "0.5"
+tower-abci              = "0.19"
+tracing                 = "0.1"
+tracing-actix-web       = "0.7"
+tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid                    = { version = "1", features = ["serde", "v4"] }
+wasmer                  = "5"
+wasmer-middlewares      = "5"
 
 # Grug packages
 grug              = { path = "grug/std" }
@@ -160,6 +168,7 @@ dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
 dango-dex                   = { path = "dango/dex" }
 dango-genesis               = { path = "dango/genesis" }
+dango-httpd                 = { path = "dango/httpd" }
 dango-ibc-transfer          = { path = "dango/ibc-transfer" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
@@ -174,15 +183,33 @@ dango-warp                  = { path = "dango/warp" }
 
 # Indexer packages
 indexer-disk-saver    = { path = "indexer/disk-saver" }
+indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 
 # Hyperlane packages
-hyperlane-fee     = { path = "hyperlane/grug/hooks/fee" }
-hyperlane-ism     = { path = "hyperlane/grug/isms/multisig" }
-hyperlane-mailbox = { path = "hyperlane/grug/mailbox" }
-hyperlane-merkle  = { path = "hyperlane/grug/hooks/merkle" }
-hyperlane-types   = { path = "hyperlane/grug/types" }
+hyperlane-fee     = { path = "hyperlane/hooks/fee" }
+hyperlane-ism     = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox = { path = "hyperlane/mailbox" }
+hyperlane-merkle  = { path = "hyperlane/hooks/merkle" }
+hyperlane-types   = { path = "hyperlane/types" }
+hyperlane-va      = { path = "hyperlane/va" }
+
+[workspace.dependencies.async-graphql]
+features = [
+  "apollo_persisted_queries",
+  "apollo_tracing",
+  "chrono",
+  "dataloader",
+  "decimal",
+  "log",
+  "opentelemetry",
+  "tracing",
+  "unblock",
+  "url",
+  "uuid",
+]
+version = "7.0"
 
 [workspace.dependencies.sea-orm]
 features = [

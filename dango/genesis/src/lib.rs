@@ -3,8 +3,8 @@ use {
         account_factory::{self, AccountType, NewUserSalt, Username},
         auth::Key,
         bank,
-        config::{AppAddresses, AppConfig},
-        dex, ibc,
+        config::{AppAddresses, AppConfig, Hyperlane},
+        dex::{self, PairUpdate},
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting, warp,
@@ -18,7 +18,7 @@ use {
         hooks,
         isms::{self, multisig::ValidatorSet},
         mailbox::{self, Domain},
-        Addr32,
+        va, Addr32,
     },
     serde::Serialize,
     std::{collections::BTreeMap, fs, io, path::Path},
@@ -34,7 +34,6 @@ pub struct Contracts {
     pub bank: Addr,
     pub dex: Addr,
     pub hyperlane: Hyperlane<Addr>,
-    pub ibc_transfer: Addr,
     pub lending: Addr,
     pub oracle: Addr,
     pub taxman: Addr,
@@ -51,21 +50,11 @@ pub struct Codes<T> {
     pub bank: T,
     pub dex: T,
     pub hyperlane: Hyperlane<T>,
-    pub ibc_transfer: T,
     pub lending: T,
     pub oracle: T,
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
-}
-
-#[grug::derive(Serde)]
-#[derive(Copy)]
-pub struct Hyperlane<T> {
-    pub fee: T,
-    pub ism: T,
-    pub mailbox: T,
-    pub merkle: T,
 }
 
 pub struct GenesisUser {
@@ -80,6 +69,8 @@ pub struct GenesisConfig<T> {
     /// Initial users and their balances.
     /// For each genesis user will be created a spot account.
     pub users: BTreeMap<Username, GenesisUser>,
+    /// The minimum deposit required to onboard a user.
+    pub account_factory_minimum_deposit: Coins,
     /// A username whose genesis spot account is to be appointed as the owner.
     /// We expect to transfer ownership to a multisig account afterwards.
     pub owner: Username,
@@ -91,6 +82,8 @@ pub struct GenesisConfig<T> {
     pub max_orphan_age: Duration,
     /// Metadata of tokens.
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
+    /// Initial Dango DEX trading pairs.
+    pub pairs: Vec<PairUpdate>,
     /// Initial Dango lending markets.
     pub markets: BTreeMap<Denom, MarketUpdates>,
     /// Oracle price sources.
@@ -137,6 +130,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_authenticate(Box::new(dango_account_spot::authenticate))
         .with_receive(Box::new(dango_account_spot::receive))
         .with_query(Box::new(dango_account_spot::query))
+        .with_reply(Box::new(dango_account_spot::reply))
         .build();
 
     let bank = ContractBuilder::new(Box::new(dango_bank::instantiate))
@@ -172,8 +166,9 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(hyperlane_merkle::query))
         .build();
 
-    let ibc_transfer = ContractBuilder::new(Box::new(dango_ibc_transfer::instantiate))
-        .with_execute(Box::new(dango_ibc_transfer::execute))
+    let va = ContractBuilder::new(Box::new(hyperlane_va::instantiate))
+        .with_execute(Box::new(hyperlane_va::execute))
+        .with_query(Box::new(hyperlane_va::query))
         .build();
 
     let oracle = ContractBuilder::new(Box::new(dango_oracle::instantiate))
@@ -216,8 +211,8 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
             ism,
             mailbox,
             merkle,
+            va,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -241,7 +236,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
     let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
-    let ibc_transfer = fs::read(artifacts_dir.join("dango_ibc_transfer.wasm"))?;
+    let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
     let taxman = fs::read(artifacts_dir.join("dango_taxman.wasm"))?;
@@ -260,8 +255,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
             ism,
             mailbox,
             merkle,
+            va,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -275,10 +270,12 @@ pub fn build_genesis<T>(
     GenesisConfig {
         codes,
         users: genesis_users,
+        account_factory_minimum_deposit,
         owner,
         fee_cfg,
         max_orphan_age,
         metadatas,
+        pairs,
         markets,
         price_sources,
         unlocking_cliff,
@@ -306,7 +303,7 @@ where
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
     let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
-    let ibc_transfer_code_hash = upload(&mut msgs, codes.ibc_transfer);
+    let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
     let taxman_code_hash = upload(&mut msgs, codes.taxman);
@@ -329,6 +326,7 @@ where
                 AccountType::Spot   => account_spot_code_hash,
             },
             users,
+            minimum_deposit: account_factory_minimum_deposit,
         },
         "dango/account_factory",
         "dango/account_factory",
@@ -412,20 +410,20 @@ where
     )
     .should_succeed_and_equal(mailbox);
 
-    // Instantiate the IBC transfer contract.
-    let ibc_transfer = instantiate(
+    // Instantiate Hyperlane validator announce.
+    let va = instantiate(
         &mut msgs,
-        ibc_transfer_code_hash,
-        &ibc::transfer::InstantiateMsg {},
-        "dango/ibc_transfer",
-        "dango/ibc_transfer",
+        hyperlane_va_code_hash,
+        &va::InstantiateMsg { mailbox },
+        "hyperlane/va",
+        "hyperlane/va",
     )?;
 
     // Instantiate the DEX contract.
     let dex = instantiate(
         &mut msgs,
         dex_code_hash,
-        &dex::InstantiateMsg {},
+        &dex::InstantiateMsg { pairs },
         "dango/dex",
         "dango/dex",
     )?;
@@ -459,7 +457,6 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
-                ibc::transfer::NAMESPACE.clone() => ibc_transfer,
                 lending::NAMESPACE.clone()       => lending,
                 warp::NAMESPACE.clone()          => warp,
                 warp::ALLOY_NAMESPACE.clone()    => warp,
@@ -511,8 +508,8 @@ where
             ism,
             mailbox,
             merkle,
+            va,
         },
-        ibc_transfer,
         lending,
         oracle,
         taxman,
@@ -538,9 +535,16 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
-            ibc_transfer,
+            hyperlane: Hyperlane {
+                fee,
+                ism,
+                mailbox,
+                merkle,
+                va,
+            },
             lending,
             oracle,
+            warp,
         },
         ..Default::default()
     };

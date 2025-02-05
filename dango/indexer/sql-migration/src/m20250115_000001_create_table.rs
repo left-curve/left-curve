@@ -26,6 +26,7 @@ impl MigrationTrait for Migration {
                     .table(Transfer::Table)
                     .if_not_exists()
                     .col(pk_uuid(Transfer::Id))
+                    .col(integer(Transfer::Idx))
                     .col(date_time(Transfer::CreatedAt))
                     .col(
                         ColumnDef::new(Transfer::BlockHeight)
