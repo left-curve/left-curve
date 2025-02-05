@@ -104,6 +104,10 @@ where
         )
     }
 
+    /// Create a new mocked HyperlaneTestSuite.
+    ///
+    /// The mocked version use mocked domain, simplifying the call of the functions
+    /// where is tested only vs a single domain.
     pub fn new_mocked(
         suite: TestSuite<DB, VM, PP, ID>,
         owner: O,
@@ -178,7 +182,7 @@ where
     suite: &'a mut HyperlaneTestSuite<DB, VM, PP, ID, O, VS>,
 }
 
-// Shared
+// ----------------------------------- Shared ----------------------------------
 
 impl<DB, VM, PP, ID, O, VS> HyperlaneHelper<'_, DB, VM, PP, ID, O, VS>
 where
@@ -318,7 +322,7 @@ where
     }
 }
 
-// Non mocked
+// -------------------------------- Non mocked ---------------------------------
 
 impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O>
 where
@@ -359,7 +363,7 @@ where
     }
 }
 
-// Mocked
+// ---------------------------------- Mocked -----------------------------------
 
 impl<DB, VM, PP, ID, O> HyperlaneHelper<'_, DB, VM, PP, ID, O, MockValidatorSet>
 where
