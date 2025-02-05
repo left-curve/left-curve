@@ -1,10 +1,10 @@
 use {
-    crate::{ALLOYED, MAILBOX, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
+    crate::{ALLOYS, MAILBOX, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         warp::{
-            Alloyed, ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote,
+            ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote,
             ALLOY_SUBNAMESPACE, NAMESPACE,
         },
     },
@@ -89,7 +89,7 @@ fn set_alloy(
         ALLOY_SUBNAMESPACE.as_ref()
     );
 
-    ALLOYED.save(ctx.storage, underlying_denom, &alloyed_denom)?;
+    ALLOYS.save(ctx.storage, &underlying_denom, &alloyed_denom)?;
 
     REVERSE_ALLOYS.save(
         ctx.storage,
@@ -112,10 +112,8 @@ fn transfer_remote(
     let bank = ctx.querier.query_bank()?;
 
     // Check if the token is alloyed.
-    let (mut token, burn_alloy_msg) = if let Some((base_denom, _)) = ALLOYED
-        .idx
-        .alloyed_domain
-        .may_load(ctx.storage, (token.denom.clone(), destination_domain))?
+    let (mut token, burn_alloy_msg) = if let Some(base_denom) =
+        REVERSE_ALLOYS.may_load(ctx.storage, (&token.denom, destination_domain))?
     {
         // Burn the alloy token.
         let burn_alloy_msg = Message::execute(
@@ -162,7 +160,7 @@ fn transfer_remote(
         } else {
             None
         })
-        .may_add_message(burn_alloyed_msg)
+        .may_add_message(burn_alloy_msg)
         .add_message(Message::execute(
             MAILBOX.load(ctx.storage)?,
             &mailbox::ExecuteMsg::Dispatch {
@@ -221,7 +219,7 @@ fn handle(
 
     // Check if the denom is alloyed.
     let (denom, mint_underlying_msg) =
-        if let Some(alloyed) = ALLOYED.may_load(ctx.storage, denom.clone())? {
+        if let Some(alloy_denom) = ALLOYS.may_load(ctx.storage, &denom)? {
             // Mint the base denom to the wrapper.
             let msg = Message::execute(
                 bank,
@@ -232,7 +230,7 @@ fn handle(
                 },
                 Coins::new(),
             )?;
-            (alloyed.alloyed_denom, Some(msg))
+            (alloy_denom, Some(msg))
         } else {
             (denom, None)
         };
@@ -251,7 +249,6 @@ fn handle(
                 Coins::new(),
             )?
         } else {
-            // TODO: check whether the recipient exists; if not, register it at account factory.
             Message::transfer(body.recipient.try_into()?, Coin {
                 denom: denom.clone(),
                 amount: body.amount,
