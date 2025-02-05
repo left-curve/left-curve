@@ -457,9 +457,8 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
-                lending::NAMESPACE.clone()       => lending,
-                warp::NAMESPACE.clone()          => warp,
-                warp::ALLOY_NAMESPACE.clone()    => warp,
+                lending::NAMESPACE.clone() => lending,
+                warp::NAMESPACE.clone()    => warp,
             },
             metadatas,
         },

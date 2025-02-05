@@ -10,8 +10,8 @@ use {
     },
     dango_warp::ROUTES,
     grug::{
-        Addressable, Coin, Coins, HashExt, HexBinary, NumberConst, QuerierExt, ResultExt, StdError,
-        Uint128,
+        btree_map, Addr, Addressable, BalanceChange, Coin, Coins, Denom, HashExt, HexBinary,
+        MathError, NumberConst, QuerierExt, ResultExt, StdError, Uint128,
     },
     hyperlane_types::{
         addr32,
@@ -20,6 +20,7 @@ use {
         Addr32, IncrementalMerkleTree,
     },
     sea_orm::EntityTrait,
+    std::{ops::DerefMut, str::FromStr},
 };
 
 const MOCK_ROUTE: Route = Route {
@@ -224,7 +225,11 @@ fn send_burning_synth() {
 #[test]
 fn receive_release_collateral() {
     let (suite, mut accounts, _, contracts) = setup_test();
-    let (mut suite, ..) = HyperlaneTestSuite::new(suite, accounts.owner, 3, 2, MOCK_REMOTE_DOMAIN);
+    let (mut suite, ..) = HyperlaneTestSuite::new(
+        suite,
+        accounts.owner,
+        btree_map! { MOCK_REMOTE_DOMAIN => (3, 2) },
+    );
 
     // Set the route.
     suite
@@ -275,7 +280,11 @@ fn receive_release_collateral() {
 #[test]
 fn receive_minting_synth() {
     let (suite, accounts, _, contracts) = setup_test();
-    let (mut suite, ..) = HyperlaneTestSuite::new(suite, accounts.owner, 3, 2, MOCK_REMOTE_DOMAIN);
+    let (mut suite, ..) = HyperlaneTestSuite::new(
+        suite,
+        accounts.owner,
+        btree_map! {MOCK_REMOTE_DOMAIN => (3, 2)},
+    );
 
     // Set the route.
     suite
@@ -305,4 +314,314 @@ fn receive_minting_synth() {
     suite
         .query_balance(&accounts.user1, SOL_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(88));
+}
+
+#[test]
+fn alloy() {
+    let (suite, mut accounts, _, contracts) = setup_test();
+
+    let eth_domain = 10;
+    let sol_domain = 20;
+
+    let sol_usdc_denom = Denom::from_str("hyp/sol/usdc").unwrap();
+    let eth_usdc_denom = Denom::from_str("hyp/eth/usdc").unwrap();
+
+    let eth_usdc_recipient = Addr::mock(1).into();
+    let sol_usdc_recipient = Addr::mock(2).into();
+
+    let alloyed_usdc_denom = Denom::from_str("hyp/all/usdc").unwrap();
+
+    let (mut suite, owner) = HyperlaneTestSuite::new(suite, accounts.owner, btree_map! {
+        eth_domain => (3, 2),
+        sol_domain => (3, 2),
+    });
+
+    // Set the route.
+    for (domain, denom, route) in [
+        (eth_domain, &eth_usdc_denom, Route {
+            address: eth_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+        (sol_domain, &sol_usdc_denom, Route {
+            address: sol_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+    ] {
+        suite
+            .hyperlane()
+            .set_route(denom.clone(), domain, route)
+            .should_succeed();
+    }
+
+    // Receive some tokens.
+    {
+        suite
+            .balances()
+            .record_many([accounts.user1.address(), contracts.warp.address()]);
+
+        suite.hyperlane().receive_transfer(
+            eth_domain,
+            accounts.user1.address(),
+            Coin::new(eth_usdc_denom.clone(), 100).unwrap(),
+        );
+
+        suite.hyperlane().receive_transfer(
+            sol_domain,
+            accounts.user1.address(),
+            Coin::new(sol_usdc_denom.clone(), 200).unwrap(),
+        );
+
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(100),
+                sol_usdc_denom.clone() => BalanceChange::Increased(200),
+            });
+    }
+
+    // Register Alloy.
+    for (domain, denom) in [(eth_domain, &eth_usdc_denom), (sol_domain, &sol_usdc_denom)] {
+        suite
+            .execute(
+                owner.write_access().deref_mut(),
+                contracts.warp,
+                &warp::ExecuteMsg::SetAlloy {
+                    underlying_denom: denom.clone(),
+                    destination_domain: domain,
+                    alloyed_denom: alloyed_usdc_denom.clone(),
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Receive more tokens. Now they should be alloyed.
+    {
+        suite.hyperlane().receive_transfer(
+            eth_domain,
+            accounts.user1.address(),
+            Coin::new(eth_usdc_denom.clone(), 50).unwrap(),
+        );
+
+        suite.hyperlane().receive_transfer(
+            sol_domain,
+            accounts.user1.address(),
+            Coin::new(sol_usdc_denom.clone(), 75).unwrap(),
+        );
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(100),
+                sol_usdc_denom.clone() => BalanceChange::Increased(200),
+                alloyed_usdc_denom.clone() => BalanceChange::Increased(125),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(50),
+                sol_usdc_denom.clone() => BalanceChange::Increased(75),
+            });
+    }
+
+    // Recap the balances of user1.
+    // eth_usdc => 100
+    // sol_usdc => 200
+    // alloyed_usdc => 125 | 50 from eth, 75 from sol
+
+    // Send 20 alloyed_usdc to eth.
+    {
+        suite.balances().refresh_all();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        let recipient: Addr32 = Addr::mock(2).into();
+
+        // Send 20 alloyed to eth.
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                recipient,
+                Coin::new(alloyed_usdc_denom.clone(), 20).unwrap(),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient,
+            amount: Uint128::new(20),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 0,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: eth_domain,
+            recipient: eth_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                alloyed_usdc_denom.clone() => BalanceChange::Decreased(20),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Decreased(20),
+            });
+    }
+
+    // 20 alloyed_usdc has been sent via eth.
+    // Try sent 35 more. This should fail (30 left).
+    {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                Addr::mock(2).into(),
+                Coin::new(alloyed_usdc_denom.clone(), 35).unwrap(),
+            )
+            .should_fail_with_error(MathError::overflow_sub::<u128>(30, 35));
+    }
+
+    // Send 75 alloyed_usdc to sol.
+    {
+        suite.balances().refresh_all();
+
+        let recipient: Addr32 = Addr::mock(2).into();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        // Send all sol_usdc.
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                sol_domain,
+                recipient,
+                Coin::new(alloyed_usdc_denom.clone(), 75).unwrap(),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient,
+            amount: Uint128::new(75),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 1,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: sol_domain,
+            recipient: sol_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                alloyed_usdc_denom.clone() => BalanceChange::Decreased(75),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                sol_usdc_denom.clone() => BalanceChange::Decreased(75),
+            });
+    }
+
+    // Send 100 eth_usdc to eth.
+    {
+        suite.balances().refresh_all();
+
+        let recipient: Addr32 = Addr::mock(2).into();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                Addr::mock(2).into(),
+                Coin::new(eth_usdc_denom.clone(), 100).unwrap(),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient,
+            amount: Uint128::new(100),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 2,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: eth_domain,
+            recipient: eth_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Decreased(100),
+            });
+
+        // No changes on warp balances.
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Unchanged,
+            });
+    }
 }

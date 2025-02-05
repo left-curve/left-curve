@@ -28,7 +28,7 @@ fn user_onboarding() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().recieve_transfer_mock(
+    suite.hyperlane().recieve_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
     );
@@ -100,7 +100,7 @@ fn onboarding_existing_user() {
         );
 
         // Make the initial deposit.
-        suite.hyperlane().recieve_transfer_mock(
+        suite.hyperlane().recieve_transfer(
             user.address(),
             Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
         );
@@ -175,7 +175,7 @@ fn onboarding_without_deposit() {
         ));
 
     // Make a deposit but not enough.
-    suite.hyperlane().recieve_transfer_mock(
+    suite.hyperlane().recieve_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 7_000_000).unwrap(),
     );
@@ -186,7 +186,7 @@ fn onboarding_without_deposit() {
         .should_fail_with_error("minumum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
-    suite.hyperlane().recieve_transfer_mock(
+    suite.hyperlane().recieve_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 3_000_000).unwrap(),
     );
