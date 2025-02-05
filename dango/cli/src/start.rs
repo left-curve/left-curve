@@ -104,6 +104,7 @@ impl StartCmd {
             codes.account_safe.to_bytes().hash256(),
             codes.account_spot.to_bytes().hash256(),
             codes.bank.to_bytes().hash256(),
+            codes.dex.to_bytes().hash256(),
             codes.hyperlane.fee.to_bytes().hash256(),
             codes.hyperlane.ism.to_bytes().hash256(),
             codes.hyperlane.mailbox.to_bytes().hash256(),
