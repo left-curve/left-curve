@@ -23,14 +23,14 @@ use {
     },
 };
 
-const MOCK_REMOTE_MERKLE_TREE: Addr32 =
+pub const MOCK_LOCAL_DOMAIN: Domain = 88888888;
+
+pub const MOCK_REMOTE_DOMAIN: Domain = 123;
+
+pub const MOCK_REMOTE_MERKLE_TREE: Addr32 =
     addr32!("0000000000000000000000000000000000000000000000000000000000000002");
 
-const MOCK_REMOTE_DOMAIN: Domain = 123;
-
-const MOCK_LOCAL_DOMAIN: Domain = 88888888;
-
-const MOCK_REMOTE_ROUTE: Route = Route {
+pub const MOCK_REMOTE_ROUTE: Route = Route {
     address: addr32!("0000000000000000000000000000000000000000000000000000000000000000"),
     fee: Uint128::ZERO,
 };
@@ -70,6 +70,7 @@ where
             .query_app_config::<AppConfig>()
             .should_succeed()
             .addresses
+            .hyperlane
             .ism;
 
         // Set validators at the ISM.
@@ -189,7 +190,7 @@ where
         self.suite
             .execute(
                 owner.deref_mut(),
-                addresses.mailbox,
+                addresses.hyperlane.mailbox,
                 &mailbox::ExecuteMsg::Process {
                     raw_message: raw_message.clone(),
                     raw_metadata: raw_metadata.clone(),

@@ -3,8 +3,8 @@ use {
     dango_auth::authenticate_tx,
     dango_types::{account::spot::InstantiateMsg, bank, DangoQuerier},
     grug::{
-        AuthCtx, AuthResponse, Coins, Message, MutableCtx, QuerierExt, Response, StdResult,
-        SubMessage, SubMsgResult, SudoCtx, Tx,
+        AuthCtx, AuthResponse, Coins, Message, MutableCtx, QuerierExt, Response, ResultExt,
+        StdResult, SubMessage, SubMsgResult, SudoCtx, Tx,
     },
 };
 
@@ -17,20 +17,20 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     );
 
     Ok(
-        Response::new().may_add_submessage(if msg.at_least.is_non_empty() {
+        Response::new().may_add_submessage(if msg.minimum_deposit.is_non_empty() {
             let bank_addr = ctx.querier.query_bank()?;
             let warp = ctx.querier.query_warp()?;
 
             Some(SubMessage::reply_on_success(
                 Message::execute(
                     bank_addr,
-                    &bank::ExecuteMsg::ClaimPendingTransfer {
+                    &bank::ExecuteMsg::RecoverTransfer {
                         sender: warp,
                         recipient: ctx.contract,
                     },
                     Coins::default(),
                 )?,
-                &msg.at_least,
+                &msg.minimum_deposit,
             )?)
         } else {
             None
@@ -52,14 +52,17 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn reply(ctx: SudoCtx, minimum_amount: Coins, _res: SubMsgResult) -> anyhow::Result<Response> {
+pub fn reply(ctx: SudoCtx, minimum_deposit: Coins, _res: SubMsgResult) -> anyhow::Result<Response> {
+    #[cfg(debug_assertions)]
+    _res.should_succeed();
+
     let balances = ctx.querier.query_balances(ctx.contract, None, None)?;
 
     ensure!(
-        minimum_amount
+        minimum_deposit
             .into_iter()
-            .any(|minimum_coin| balances.amount_of(&minimum_coin.denom) >= minimum_coin.amount),
-        "minumum required amount not met"
+            .any(|coin| balances.amount_of(&coin.denom) >= coin.amount),
+        "minumum deposit not satisfied!"
     );
 
     Ok(Response::new())

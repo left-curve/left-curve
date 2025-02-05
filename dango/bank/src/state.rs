@@ -11,5 +11,5 @@ pub const SUPPLIES: Map<&Denom, Uint128> = Map::new("supply");
 
 pub const BALANCES: Map<(&Addr, &Denom), Uint128> = Map::new("balance");
 
-// (recipient, sender) -> coins
-pub const NON_EXISTING_DEPOSITS: Map<(&Addr, &Addr), Coins> = Map::new("non_existing_deposit");
+// (sender, recipient) -> coins
+pub const ORPHANED_TRANSFERS: Map<(Addr, Addr), Coins> = Map::new("orphaned_deposit");

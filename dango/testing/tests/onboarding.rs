@@ -1,14 +1,15 @@
 use {
+    dango_bank::ORPHANED_TRANSFERS,
     dango_testing::{setup_test_naive, Factory, HyperlaneTestSuite, TestAccount},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, Username},
+        account_factory::{self, Account, AccountParams, NewUserSalt, Username},
         auth::Key,
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message, NonEmpty,
-        QuerierExt, ResultExt, Tx, Uint128,
+        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message,
+        NonEmpty, QuerierExt, ResultExt, StdError, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -164,9 +165,14 @@ fn onboarding_without_deposit() {
         data: Json::null(),
         credential: Json::null(),
     };
+
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error("no pending transfer found");
+        .should_fail_with_error(StdError::data_not_found::<Coins>(
+            ORPHANED_TRANSFERS
+                .path((contracts.warp, user.address()))
+                .storage_key(),
+        ));
 
     // Make a deposit but not enough.
     suite.hyperlane().recieve_transfer_mock(
@@ -177,7 +183,7 @@ fn onboarding_without_deposit() {
     // Try again, should fail.
     suite
         .check_tx(tx.clone())
-        .should_fail_with_error("minumum required amount not met");
+        .should_fail_with_error("minumum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
     suite.hyperlane().recieve_transfer_mock(
@@ -224,6 +230,10 @@ fn false_factory_tx(
         true,
     );
 
+    let username = false_username.unwrap_or_else(|| user.username.clone());
+    let key = false_key.unwrap_or(user.first_key());
+    let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
+
     // A malicious block builder sends a register user tx with falsified
     // username, key, or key hash.
     //
@@ -238,13 +248,30 @@ fn false_factory_tx(
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    username: false_username.unwrap_or_else(|| user.username.clone()),
-                    key: false_key.unwrap_or(user.first_key()),
-                    key_hash: false_key_hash.unwrap_or(user.first_key_hash()),
+                    username: username.clone(),
+                    key,
+                    key_hash,
                 },
                 Coins::new(),
             )
             .unwrap(),
         )
-        .should_fail_with_error("no pending transfer found");
+        .should_fail_with_error({
+            let false_address = Addr::derive(
+                contracts.account_factory,
+                codes.account_spot.to_bytes().hash256(),
+                &NewUserSalt {
+                    username: &username,
+                    key,
+                    key_hash,
+                }
+                .into_bytes(),
+            );
+
+            StdError::data_not_found::<Coins>(
+                ORPHANED_TRANSFERS
+                    .path((contracts.warp, false_address))
+                    .storage_key(),
+            )
+        });
 }

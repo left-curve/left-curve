@@ -10,5 +10,5 @@ pub enum QueryMsg {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub at_least: Coins,
+    pub minimum_deposit: Coins,
 }

@@ -23,25 +23,22 @@ macro_rules! try_add_subevent {
             })),
             EventResult::Err { event, error } => {
                 $events.push(EventStatus::NestedFailed(SubEvent {
-                        event: $submsg_event,
-                        reply: Some(EventStatus::Failed {
-                            event,
-                            error: error.to_string(),
-                        }),
-                    })
-                );
+                    event: $submsg_event,
+                    reply: Some(EventStatus::Failed {
+                        event,
+                        error: error.to_string(),
+                    }),
+                }));
                 return EventResult::NestedErr {
                     event: $events,
                     error,
                 };
             },
             EventResult::NestedErr { event, error } => {
-                $events.push(EventStatus::NestedFailed(
-                    SubEvent {
-                        event: $submsg_event,
-                        reply: Some(EventStatus::NestedFailed(event)),
-                    },
-                ));
+                $events.push(EventStatus::NestedFailed(SubEvent {
+                    event: $submsg_event,
+                    reply: Some(EventStatus::NestedFailed(event)),
+                }));
                 return EventResult::NestedErr {
                     event: $events,
                     error,

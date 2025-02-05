@@ -27,17 +27,11 @@ pub enum ExecuteMsg {
     /// 5. before-send hooks.
     ///
     /// We may implement some of these in the future.
-    GrantNamespace {
-        namespace: Part,
-        owner: Addr,
-    },
+    GrantNamespace { namespace: Part, owner: Addr },
     /// Set metadata of a denom.
     /// Can only be called by the namespace owner, or the chain owner in case of
     /// top-level denoms.
-    SetMetadata {
-        denom: Denom,
-        metadata: Metadata,
-    },
+    SetMetadata { denom: Denom, metadata: Metadata },
     /// Mint tokens of the specified amount to a recipient.
     /// Can only be called by the namespace owner.
     Mint {
@@ -65,11 +59,8 @@ pub enum ExecuteMsg {
     },
     /// Transfer coins to multiple recipients at once.
     BatchTransfer(BTreeMap<Addr, Coins>),
-
-    ClaimPendingTransfer {
-        sender: Addr,
-        recipient: Addr,
-    },
+    /// Retrieve funds sent to a non-existing recipient.
+    RecoverTransfer { sender: Addr, recipient: Addr },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -92,6 +83,7 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
+    // TODO: add query methods for orphaned transfers
 }
 
 #[grug::derive(Serde, Borsh)]

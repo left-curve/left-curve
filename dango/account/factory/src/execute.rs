@@ -27,7 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .into_iter()
         .map(|(username, (key_hash, key))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            // claim msg can be ignored
+            // Minimum deposit is not required for genesis users.
             onboard_new_user(
                 ctx.storage,
                 ctx.contract,
@@ -183,18 +183,16 @@ fn onboard_new_user(
     ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
 
     // Create the message to instantiate this account.
-    let init_msg = Message::instantiate(
+    Message::instantiate(
         code_hash,
         &account::spot::InstantiateMsg {
-            at_least: minimum_receive,
+            minimum_deposit: minimum_receive,
         },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
         Coins::default(),
-    )?;
-
-    Ok(init_msg)
+    )
 }
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {
@@ -248,7 +246,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     Ok(Response::new().add_message(Message::instantiate(
         code_hash,
         &account::spot::InstantiateMsg {
-            at_least: Coins::default(),
+            minimum_deposit: Coins::default(),
         },
         salt,
         Some(format!("dango/account/{}/{}", account.params.ty(), index)),

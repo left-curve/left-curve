@@ -112,7 +112,7 @@ where
     }
 
     if do_receive {
-        // If recipient is not existing, skip call `_do_receive`
+        // If recipient does not exist, skip the `_do_receive` call.
         if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, msg.to) {
             catch_and_update_event! {
                 _do_receive(
@@ -139,7 +139,7 @@ fn _do_receive<VM>(
     block: BlockInfo,
     msg_depth: usize,
     msg: BankMsg,
-    recipient_code_hash: Hash256,
+    code_hash: Hash256,
 ) -> EventResult<EvtGuest>
 where
     VM: Vm + Clone + 'static,
@@ -148,7 +148,7 @@ where
     #[allow(clippy::redundant_closure_call)]
     let chain_id = catch_event! {
         {
-          CHAIN_ID.load(&storage).map_err(Into::into)
+            CHAIN_ID.load(&storage).map_err(Into::into)
         },
         EvtGuest::base(msg.to, "receive")
     };
@@ -170,7 +170,7 @@ where
         0,
         true,
         "receive",
-        recipient_code_hash,
+        code_hash,
         &ctx,
     )
 }

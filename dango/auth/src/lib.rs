@@ -586,7 +586,6 @@ mod tests {
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
                     account_factory: ACCOUNT_FACTORY,
-                    // Address below don't matter for this test.
                     ..Default::default()
                 },
                 collateral_powers: btree_map! {},

@@ -1,6 +1,9 @@
 use {
     assertor::*,
-    dango_testing::{setup_test, setup_test_with_indexer, HyperlaneTestSuite},
+    dango_testing::{
+        setup_test, setup_test_with_indexer, HyperlaneTestSuite, MOCK_LOCAL_DOMAIN,
+        MOCK_REMOTE_DOMAIN,
+    },
     dango_types::{
         constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
         warp::{self, Route, TokenMessage},
@@ -13,7 +16,7 @@ use {
     hyperlane_types::{
         addr32,
         hooks::merkle,
-        mailbox::{self, Domain, Message, MAILBOX_VERSION},
+        mailbox::{self, Message, MAILBOX_VERSION},
         Addr32, IncrementalMerkleTree,
     },
     sea_orm::EntityTrait,
@@ -26,10 +29,6 @@ const MOCK_ROUTE: Route = Route {
 
 const MOCK_RECIPIENT: Addr32 =
     addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-
-const MOCK_REMOTE_DOMAIN: Domain = 123;
-
-const MOCK_LOCAL_DOMAIN: Domain = 88888888;
 
 #[test]
 fn send_escrowing_collateral() {

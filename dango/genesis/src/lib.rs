@@ -3,7 +3,7 @@ use {
         account_factory::{self, AccountType, NewUserSalt, Username},
         auth::Key,
         bank,
-        config::{AppAddresses, AppConfig},
+        config::{AppAddresses, AppConfig, Hyperlane},
         dex::{self, PairUpdate},
         lending::{self, MarketUpdates},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
@@ -55,16 +55,6 @@ pub struct Codes<T> {
     pub taxman: T,
     pub vesting: T,
     pub warp: T,
-}
-
-#[grug::derive(Serde)]
-#[derive(Copy)]
-pub struct Hyperlane<T> {
-    pub fee: T,
-    pub ism: T,
-    pub mailbox: T,
-    pub merkle: T,
-    pub va: T,
 }
 
 pub struct GenesisUser {
@@ -545,11 +535,16 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
+            hyperlane: Hyperlane {
+                fee,
+                ism,
+                mailbox,
+                merkle,
+                va,
+            },
             lending,
             oracle,
             warp,
-            mailbox,
-            ism,
         },
         ..Default::default()
     };
