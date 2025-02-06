@@ -1,6 +1,6 @@
 use {
     crate::account_factory::Username,
-    grug::{Addr, Binary, ByteArray, Hash256, Message, NonEmpty, Timestamp},
+    grug::{Addr, Binary, ByteArray, Message, NonEmpty, Timestamp},
 };
 
 /// A number that included in each transaction's sign doc for the purpose of
@@ -31,16 +31,8 @@ pub enum Signature {
 
 #[grug::derive(Serde)]
 pub enum Credential {
-    Standard(StandardCredential),
+    Standard(Signature),
     Session(SessionCredential),
-}
-
-#[grug::derive(Serde)]
-pub struct StandardCredential {
-    /// Identifies the key which the user used to sign this transaction.
-    pub key_hash: Hash256,
-    /// Signature of the `SignDoc` or `SessionInfo` by the user private key.
-    pub signature: Signature,
 }
 
 #[grug::derive(Serde)]
@@ -50,7 +42,7 @@ pub struct SessionCredential {
     /// Signature of the `SignDoc` by the session key.
     pub session_signature: ByteArray<64>,
     /// Signatures of the `SessionInfo` by the user key.
-    pub authorization: StandardCredential,
+    pub authorization: Signature,
 }
 
 #[grug::derive(Serde)]

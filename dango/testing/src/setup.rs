@@ -217,8 +217,7 @@ where
         codes: codes.clone(),
         users: btree_map! {
             owner.username.clone() => GenesisUser {
-                key: owner.key(),
-                key_hash: owner.key_hash(),
+                key: owner.pk,
                 // Some of the tests depend on the number of tokens, so careful
                 // when changing these. They may break tests...
                 balances: coins! {
@@ -227,8 +226,7 @@ where
                 },
             },
             user1.username.clone() => GenesisUser {
-                key: user1.key(),
-                key_hash: user1.key_hash(),
+                key: user1.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
@@ -239,64 +237,56 @@ where
                 }
             },
             user2.username.clone() => GenesisUser {
-                key: user2.key(),
-                key_hash: user2.key_hash(),
+                key: user2.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user3.username.clone() => GenesisUser {
-                key: user3.key(),
-                key_hash: user3.key_hash(),
+                key: user3.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user4.username.clone() => GenesisUser {
-                key: user4.key(),
-                key_hash: user4.key_hash(),
+                key: user4.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user5.username.clone() => GenesisUser {
-                key: user5.key(),
-                key_hash: user5.key_hash(),
+                key: user5.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user6.username.clone() => GenesisUser {
-                key: user6.key(),
-                key_hash: user6.key_hash(),
+                key: user6.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user7.username.clone() => GenesisUser {
-                key: user7.key(),
-                key_hash: user7.key_hash(),
+                key: user7.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user8.username.clone() => GenesisUser {
-                key: user8.key(),
-                key_hash: user8.key_hash(),
+                key: user8.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
                 },
             },
             user9.username.clone() => GenesisUser {
-                key: user9.key(),
-                key_hash: user9.key_hash(),
+                key: user9.pk,
                 balances: coins! {
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,

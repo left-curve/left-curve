@@ -59,7 +59,6 @@ pub struct Codes<T> {
 
 pub struct GenesisUser {
     pub key: Key,
-    pub key_hash: Hash256,
     pub balances: Coins,
 }
 
@@ -313,7 +312,7 @@ where
     // Instantiate account factory.
     let users = genesis_users
         .iter()
-        .map(|(username, user)| (username.clone(), (user.key_hash, user.key)))
+        .map(|(username, user)| (username.clone(), user.key))
         .collect();
 
     let account_factory = instantiate(
@@ -339,7 +338,6 @@ where
             let salt = NewUserSalt {
                 username,
                 key: user.key,
-                key_hash: user.key_hash,
             }
             .into_bytes();
             let address = Addr::derive(account_factory, account_spot_code_hash, &salt);

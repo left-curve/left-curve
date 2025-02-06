@@ -1,5 +1,4 @@
 use {
-    dango_account_factory::KEYS,
     dango_genesis::Contracts,
     dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
@@ -11,13 +10,11 @@ use {
             self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
             Username,
         },
-        auth::Key,
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
-        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer,
-        StdError, Uint128,
+        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, HashExt, Inner,
+        JsonSerExt, Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer, Uint128,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -375,39 +372,24 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
     // Since attacker doesn't actual know the member's private key, the tx will
     // be signed by accounts.user4's private key.
     //
-    // There are a few variables to consider:
+    // There are two variables to consider:
     //
     // - the `voter` field in `ExecuteMsg::Vote`
     // - the `username` field in the metadata
-    // - the `key_hash` field in the metadata
     //
-    // We test all 2**3 = 8 combinations.
-    for (voter, username, key_hash, error) in [
+    // We test all 2**2 = 4 combinations.
+    for (voter, username, error) in [
         // First, in `dango_account_safe::authenticate`, the contract checks the
         // voter in the execute message matches the username in the metadata.
         // If not the same, the tx already fails here.
         (
             accounts.user4.username.clone(),
             accounts.user2.username.clone(),
-            accounts.user4.first_key_hash(),
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            accounts.user4.username.clone(),
-            accounts.user2.username.clone(),
-            accounts.user2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         (
             accounts.user2.username.clone(),
             accounts.user4.username.clone(),
-            accounts.user4.first_key_hash(),
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            accounts.user2.username.clone(),
-            accounts.user4.username.clone(),
-            accounts.user2.first_key_hash(),
             "can't vote with a different username".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
@@ -416,16 +398,6 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
         (
             accounts.user4.username.clone(),
             accounts.user4.username.clone(),
-            accounts.user4.first_key_hash(),
-            format!(
-                "voter `{}` is not eligible to vote in this proposal",
-                accounts.user4.username
-            ),
-        ),
-        (
-            accounts.user4.username.clone(),
-            accounts.user4.username.clone(),
-            accounts.user2.first_key_hash(),
             format!(
                 "voter `{}` is not eligible to vote in this proposal",
                 accounts.user4.username
@@ -435,16 +407,6 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
         (
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
-            accounts.user4.first_key_hash(),
-            {
-                let path = KEYS.path((&accounts.user2.username, accounts.user4.first_key_hash()));
-                StdError::data_not_found::<Key>(path.storage_key()).to_string()
-            },
-        ),
-        (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
-            accounts.user2.first_key_hash(),
             "signature is unauthentic".to_string(),
         ),
     ] {
@@ -454,7 +416,6 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             &accounts.user4,
             voter,
             username,
-            key_hash,
             error,
         );
     }
@@ -496,40 +457,23 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
         .should_succeed();
 
     // `user3`, who is a member but already voted, attempts to vote again by
-    // impersonating `user1`.
-    for (voter, username, key_hash, nonce, error) in [
+    // impersonating `user2`.
+    for (voter, username, nonce, error) in [
         (
             accounts.user3.username.clone(),
             accounts.user2.username.clone(),
-            accounts.user3.first_key_hash(),
-            2,
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            accounts.user3.username.clone(),
-            accounts.user2.username.clone(),
-            accounts.user2.first_key_hash(),
             2,
             "can't vote with a different username".to_string(),
         ),
         (
             accounts.user2.username.clone(),
             accounts.user3.username.clone(),
-            accounts.user3.first_key_hash(),
-            2,
-            "can't vote with a different username".to_string(),
-        ),
-        (
-            accounts.user2.username.clone(),
-            accounts.user3.username.clone(),
-            accounts.user2.first_key_hash(),
             2,
             "can't vote with a different username".to_string(),
         ),
         (
             accounts.user3.username.clone(),
             accounts.user3.username.clone(),
-            accounts.user3.first_key_hash(),
             2,
             format!(
                 "user `{}` has already voted in this proposal",
@@ -539,29 +483,8 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
         // The previous test passes `authenticate`, but fails in `execute`, so
         // the nonce should be incremented.
         (
-            accounts.user3.username.clone(),
-            accounts.user3.username.clone(),
-            accounts.user2.first_key_hash(),
-            3,
-            {
-                let path = KEYS.path((&accounts.user3.username, accounts.user2.first_key_hash()));
-                StdError::data_not_found::<Key>(path.storage_key()).to_string()
-            },
-        ),
-        (
             accounts.user2.username.clone(),
             accounts.user2.username.clone(),
-            accounts.user3.first_key_hash(),
-            3,
-            {
-                let path = KEYS.path((&accounts.user2.username, accounts.user3.first_key_hash()));
-                StdError::data_not_found::<Key>(path.storage_key()).to_string()
-            },
-        ),
-        (
-            accounts.user2.username.clone(),
-            accounts.user2.username.clone(),
-            accounts.user2.first_key_hash(),
             3,
             "signature is unauthentic".to_string(),
         ),
@@ -572,7 +495,6 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
             &accounts.user3,
             voter,
             username,
-            key_hash,
             error,
         );
     }
@@ -587,8 +509,6 @@ fn unauthorized_voting_via_impersonation<'a>(
     voter: Username,
     // The username that the attacker will put in the metadata.
     username: Username,
-    // The key hash that the attacker will put in the metadata.
-    key_hash: Hash256,
     // The expected error
     error: String,
 ) {
@@ -618,17 +538,6 @@ fn unauthorized_voting_via_impersonation<'a>(
         "username".to_string(),
         username.to_json_value().unwrap().into_inner(),
     );
-
-    tx.credential
-        .as_object_mut()
-        .and_then(|obj| obj.get_mut("standard"))
-        .and_then(|val| val.as_object_mut())
-        .map(|standard| {
-            standard.insert(
-                "key_hash".to_string(),
-                key_hash.to_json_value().unwrap().into_inner(),
-            )
-        });
 
     suite.send_transaction(tx).should_fail_with_error(error);
 }

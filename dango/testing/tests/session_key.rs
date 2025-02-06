@@ -15,7 +15,6 @@ mod session_account {
         dango_testing::{create_signature, generate_random_key, TestAccount},
         dango_types::auth::{
             Credential, Metadata, SessionCredential, SessionInfo, SignDoc, Signature,
-            StandardCredential,
         },
         grug::{
             Addr, Addressable, ByteArray, Defined, JsonSerExt, Message, NonEmpty, Signer,
@@ -98,7 +97,7 @@ mod session_account {
 
             let session_buffer = SessionInfoBuffer {
                 session_info,
-                sign_info_signature: credential.signature,
+                sign_info_signature: credential,
             };
 
             Ok(SessionAccount {
@@ -159,10 +158,7 @@ mod session_account {
                 data: data.clone(),
             };
 
-            let standard_credential = StandardCredential {
-                key_hash: self.sign_with(),
-                signature: self.session_buffer.inner().sign_info_signature.clone(),
-            };
+            let standard_credential = self.session_buffer.inner().sign_info_signature.clone();
 
             let session_signature = create_signature(&self.session_sk, &sign_doc.to_json_vec()?);
 

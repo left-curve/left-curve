@@ -12,7 +12,7 @@ pub const CODE_HASHES: Map<AccountType, Hash256> = Map::new("hash");
 
 pub const NEXT_ACCOUNT_INDEX: Counter<AccountIndex> = Counter::new("index", 0, 1);
 
-pub const KEYS: Map<(&Username, Hash256), Key> = Map::new("key");
+pub const KEYS: Map<&Username, Key> = Map::new("key");
 
 pub const ACCOUNTS: Map<Addr, Account> = Map::new("account");
 

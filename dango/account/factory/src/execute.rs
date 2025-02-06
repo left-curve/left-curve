@@ -10,8 +10,8 @@ use {
         auth::Key,
     },
     grug::{
-        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
-        MsgExecute, MutableCtx, Op, Order, Response, StdResult, Storage, Tx,
+        Addr, AuthCtx, AuthMode, AuthResponse, Coins, Inner, JsonDeExt, Message, MsgExecute,
+        MutableCtx, Response, StdResult, Storage, Tx,
     },
 };
 
@@ -25,17 +25,10 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     let instantiate_msgs = msg
         .users
         .into_iter()
-        .map(|(username, (key_hash, key))| {
-            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
+        .map(|(username, key)| {
+            KEYS.save(ctx.storage, &username, &key)?;
             // Minimum deposit is not required for genesis users.
-            onboard_new_user(
-                ctx.storage,
-                ctx.contract,
-                username,
-                key,
-                key_hash,
-                Coins::default(),
-            )
+            onboard_new_user(ctx.storage, ctx.contract, username, key, Coins::default())
         })
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -103,38 +96,22 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::RegisterUser {
-            username,
-            key,
-            key_hash,
-        } => register_user(ctx, username, key, key_hash),
+        ExecuteMsg::RegisterUser { username, key } => register_user(ctx, username, key),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
-        ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
+        ExecuteMsg::ConfigureKey { new_key } => configure_key(ctx, new_key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
 }
 
-fn register_user(
-    ctx: MutableCtx,
-    username: Username,
-    key: Key,
-    key_hash: Hash256,
-) -> anyhow::Result<Response> {
+fn register_user(ctx: MutableCtx, username: Username, key: Key) -> anyhow::Result<Response> {
     // The username must not already exist.
-    // We ensure this by asserting there isn't any key already associated with
-    // this username, since any existing username necessarily has at least one
-    // key associated with it. (However, this key isn't necessarily index 1.)
-    if KEYS
-        .prefix(&username)
-        .keys(ctx.storage, None, None, Order::Ascending)
-        .next()
-        .is_some()
-    {
-        bail!("username `{}` already exists", username);
-    }
+    ensure!(
+        KEYS.may_load(ctx.storage, &username)?.is_none(),
+        "username `{username}` already exists"
+    );
 
     // Save the key.
-    KEYS.save(ctx.storage, (&username, key_hash), &key)?;
+    KEYS.save(ctx.storage, &username, &key)?;
 
     let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
 
@@ -143,7 +120,6 @@ fn register_user(
         ctx.contract,
         username,
         key,
-        key_hash,
         minimum_deposit,
     )?))
 }
@@ -155,8 +131,7 @@ fn onboard_new_user(
     factory: Addr,
     username: Username,
     key: Key,
-    key_hash: Hash256,
-    minimum_receive: Coins,
+    minimum_deposit: Coins,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -168,7 +143,6 @@ fn onboard_new_user(
     let salt = NewUserSalt {
         username: &username,
         key,
-        key_hash,
     }
     .into_bytes();
 
@@ -185,9 +159,7 @@ fn onboard_new_user(
     // Create the message to instantiate this account.
     Message::instantiate(
         code_hash,
-        &account::spot::InstantiateMsg {
-            minimum_deposit: minimum_receive,
-        },
+        &account::spot::InstantiateMsg { minimum_deposit },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
@@ -255,13 +227,10 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
+fn configure_key(ctx: MutableCtx, new_key: Key) -> anyhow::Result<Response> {
     let username = get_username_by_address(ctx.storage, ctx.sender)?;
 
-    match key {
-        Op::Insert(key) => KEYS.save(ctx.storage, (&username, key_hash), &key)?,
-        Op::Delete => KEYS.remove(ctx.storage, (&username, key_hash)),
-    }
+    KEYS.save(ctx.storage, &username, &new_key)?;
 
     Ok(Response::new())
 }

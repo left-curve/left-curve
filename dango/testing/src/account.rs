@@ -6,12 +6,11 @@ use {
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
             QueryNextAccountIndexRequest, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, SignDoc, Signature},
     },
     grug::{
-        btree_map, Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Tx, Undefined,
-        UnsignedTx,
+        Addr, Addressable, Coins, Defined, Duration, Hash256, Json, JsonSerExt, MaybeDefined,
+        Message, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -69,18 +68,15 @@ impl TestAccounts {
 // ------------------------------- test account --------------------------------
 
 #[derive(Debug)]
-pub struct TestAccount<
-    T: MaybeDefined<Addr> = Defined<Addr>,
-    K = BTreeMap<Hash256, (SigningKey, Key)>,
-> {
+pub struct TestAccount<T: MaybeDefined<Addr> = Defined<Addr>> {
     pub username: Username,
     pub nonce: u32,
-    keys: K,
-    sign_with: Hash256,
+    pub sk: SigningKey, // sk = signing key or secret key
+    pub pk: Key,        // pk = public key
     address: T,
 }
 
-impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
+impl TestAccount<Undefined<Addr>> {
     pub fn new_random(username: &str) -> Self {
         let sk = SigningKey::random(&mut OsRng);
 
@@ -102,15 +98,13 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             .to_vec()
             .try_into()
             .unwrap();
-        let key = Key::Secp256k1(pk);
-        let key_hash = pk.hash256();
 
         Self {
             username,
             nonce: 0,
             address: Undefined::new(),
-            keys: (sk, key),
-            sign_with: key_hash,
+            sk,
+            pk: Key::Secp256k1(pk),
         }
     }
 
@@ -123,8 +117,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         let salt = if new_user_salt {
             NewUserSalt {
                 username: &self.username,
-                key: self.keys.1,
-                key_hash: self.sign_with,
+                key: self.pk,
             }
             .into_bytes()
         } else {
@@ -137,8 +130,8 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             username: self.username,
             nonce: self.nonce,
             address: Defined::new(address),
-            keys: btree_map!(self.sign_with => self.keys),
-            sign_with: self.sign_with,
+            sk: self.sk,
+            pk: self.pk,
         }
     }
 
@@ -147,8 +140,8 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             address: Defined::new(addresses[&self.username]),
             username: self.username,
             nonce: self.nonce,
-            keys: btree_map! { self.sign_with => self.keys },
-            sign_with: self.sign_with,
+            sk: self.sk,
+            pk: self.pk,
         }
     }
 }
@@ -187,14 +180,10 @@ where
         Ok((data, Credential::Standard(standard_credential)))
     }
 
-    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> StandardCredential {
-        let sk = &self.keys.get(&self.sign_with).unwrap().0;
-        let signature = create_signature(sk, sign_bytes);
+    pub fn create_standard_credential(&self, sign_bytes: &[u8]) -> Signature {
+        let signature = create_signature(&self.sk, sign_bytes);
 
-        StandardCredential {
-            key_hash: self.sign_with,
-            signature: Signature::Secp256k1(signature),
-        }
+        Signature::Secp256k1(signature)
     }
 }
 
@@ -254,43 +243,9 @@ where
             username: self.username.clone(),
             nonce: 0,
             address: Defined::new(address),
-            keys: self.keys.clone(),
-            sign_with: self.sign_with,
+            sk: self.sk.clone(),
+            pk: self.pk,
         })
-    }
-}
-
-impl<T> TestAccount<T, (SigningKey, Key)>
-where
-    T: MaybeDefined<Addr>,
-{
-    pub fn key(&self) -> Key {
-        self.keys.1
-    }
-
-    pub fn key_hash(&self) -> Hash256 {
-        self.sign_with
-    }
-}
-
-impl<T> TestAccount<T>
-where
-    T: MaybeDefined<Addr>,
-{
-    pub fn first_key(&self) -> Key {
-        self.keys.iter().next().unwrap().1 .1
-    }
-
-    pub fn first_key_hash(&self) -> Hash256 {
-        *self.keys.keys().next().unwrap()
-    }
-
-    pub fn keys(&self) -> &BTreeMap<Hash256, (SigningKey, Key)> {
-        &self.keys
-    }
-
-    pub fn sign_with(&self) -> Hash256 {
-        self.sign_with
     }
 }
 

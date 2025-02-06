@@ -4,11 +4,11 @@ use {
     dango_types::{
         account::spot,
         account_factory::Username,
-        auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature},
     },
     grug::{
-        Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, Inner, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
+        Addr, Addressable, ByteArray, Client, Defined, HashExt, Inner, JsonSerExt, MaybeDefined,
+        Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
     std::{collections::BTreeSet, str::FromStr},
 };
@@ -24,7 +24,6 @@ where
     pub username: Username,
     pub address: Addr,
     pub key: Key,
-    pub key_hash: Hash256,
     pub nonce: T,
     sk: SigningKey,
 }
@@ -37,7 +36,6 @@ impl SingleSigner<Undefined<u32>> {
             username,
             address,
             key: Key::Secp256k1(ByteArray::from_inner(sk.public_key())),
-            key_hash: sk.public_key().hash256(),
             nonce: Undefined::new(),
             sk,
         })
@@ -68,7 +66,6 @@ impl SingleSigner<Undefined<u32>> {
             username: self.username,
             address: self.address,
             key: self.key,
-            key_hash: self.key_hash,
             nonce: Defined::new(nonce),
             sk: self.sk,
         }
@@ -90,7 +87,6 @@ impl SingleSigner<Undefined<u32>> {
             username: self.username,
             address: self.address,
             key: self.key,
-            key_hash: self.key_hash,
             nonce: Defined::new(nonce),
             sk: self.sk,
         })
@@ -151,10 +147,8 @@ impl Signer for SingleSigner<Defined<u32>> {
         .hash256()
         .into_inner();
 
-        let credential = Credential::Standard(StandardCredential {
-            key_hash: self.key_hash,
-            signature: Signature::Secp256k1(self.sk.sign_digest(sign_doc).into()),
-        });
+        let credential =
+            Credential::Standard(Signature::Secp256k1(self.sk.sign_digest(sign_doc).into()));
 
         Ok(Tx {
             sender: self.address,
@@ -205,8 +199,7 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&username, address))
                     .unwrap();
-                KEYS.save(storage, (&username, signer.key_hash), &signer.key)
-                    .unwrap();
+                KEYS.save(storage, &username, &signer.key).unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {

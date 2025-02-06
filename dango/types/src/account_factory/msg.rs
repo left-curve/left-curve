@@ -4,27 +4,17 @@ use {
         account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
         auth::Key,
     },
-    grug::{Addr, Coins, Hash256, Op},
+    grug::{Addr, Coins, Hash256},
     std::collections::BTreeMap,
 };
-
-/// Information about a user. Used in query response.
-#[grug::derive(Serde)]
-pub struct User {
-    /// Keys associated with this user, indexes by hashes.
-    pub keys: BTreeMap<Hash256, Key>,
-    /// Accounts associated with this user, indexes by addresses.
-    pub accounts: BTreeMap<Addr, Account>,
-}
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     /// Code hash to be associated with each account type.
     pub code_hashes: BTreeMap<AccountType, Hash256>,
     /// Users with associated key to set up during genesis.
-    /// Each genesis user is to be associated with exactly one key.
     /// A spot account will be created for each genesis user.
-    pub users: BTreeMap<Username, (Hash256, Key)>,
+    pub users: BTreeMap<Username, Key>,
     /// The minimum deposit required to onboard a user.
     pub minimum_deposit: Coins,
 }
@@ -34,15 +24,14 @@ pub enum ExecuteMsg {
     /// Create a new user, following an initial deposit.
     ///
     /// This is the second of the two-step user onboarding process.
-    RegisterUser {
-        username: Username,
-        key: Key,
-        key_hash: Hash256,
-    },
+    RegisterUser { username: Username, key: Key },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
-    /// Configure a key for a username.
-    ConfigureKey { key_hash: Hash256, key: Op<Key> },
+    /// Change the key associated with a username.
+    ConfigureKey {
+        new_key: Key,
+        // TODO: require a signature from a new key to authorize this change?
+    },
     /// Update a Safe account's parameters.
     ConfigureSafe { updates: ParamUpdates },
 }
@@ -62,18 +51,15 @@ pub enum QueryMsg {
         start_after: Option<AccountType>,
         limit: Option<u32>,
     },
-    /// Query a key by its hash associated to a username.
+    /// Query a key associated with a username.
     #[returns(Key)]
-    Key { hash: Hash256, username: Username },
-    /// Enumerate all keys.
-    #[returns(Vec<QueryKeyResponseItem>)]
+    Key { username: Username },
+    /// Enumerate all keys associated with all usernames.
+    #[returns(BTreeMap<Username, Key>)]
     Keys {
-        start_after: Option<QueryKeyPaginateParam>,
+        start_after: Option<Username>,
         limit: Option<u32>,
     },
-    /// Find all keys associated with a user.
-    #[returns(BTreeMap<Hash256, Key>)]
-    KeysByUser { username: Username },
     /// Query parameters of an account by address.
     #[returns(Account)]
     Account { address: Addr },
@@ -86,20 +72,4 @@ pub enum QueryMsg {
     /// Find all accounts associated with a user.
     #[returns(BTreeMap<Addr, Account>)]
     AccountsByUser { username: Username },
-    /// Query a single user by username.
-    #[returns(User)]
-    User { username: Username },
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyPaginateParam {
-    pub username: Username,
-    pub key_hash: Hash256,
-}
-
-#[grug::derive(Serde)]
-pub struct QueryKeyResponseItem {
-    pub username: Username,
-    pub key_hash: Hash256,
-    pub key: Key,
 }

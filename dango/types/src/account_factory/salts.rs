@@ -3,7 +3,7 @@ use {
         account_factory::{AccountIndex, Username},
         auth::Key,
     },
-    grug::{Binary, Hash256},
+    grug::Binary,
 };
 
 // ------------------------------- new user salt -------------------------------
@@ -15,53 +15,48 @@ use {
 /// string in the format: `{username}/account/{index}`.
 ///
 /// The first ever account of a user needs a special salt, because it must
-/// encode the user's username, key, and key hash, such that these cannot be
-/// tempered with via frontrunning by a malicious block builder. Check the docs
-/// on the user onboarding flow for more details.
+/// encode the user's username and key, such that these cannot be tempered with
+/// via frontrunning by a malicious block builder. Check the docs on the user
+/// onboarding flow for more details.
 #[derive(Debug, Clone, Copy)]
 pub struct NewUserSalt<'a> {
     pub username: &'a Username,
     pub key: Key,
-    pub key_hash: Hash256,
 }
 
 impl NewUserSalt<'_> {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := len(username) || username || key_hash || key_tag || key
+    /// bytes := len(username) || username || key_tag || key
     /// ```
     ///
     /// `username` needs to be length-prefixed, because usernames can be of
     /// variable lengths, so we need to know the length to know where the
     /// username ends and where `hey_hash` starts.
     ///
-    /// `key_hash` doesn't need a length prefix because it's of fixed length.
-    ///
     /// `key_tag` is a single byte identifying the key's type:
     /// - `0` for Secp256r1
     /// - `1` for Secp256k1
     /// - `2` for Ed25519
-    pub fn into_bytes(self) -> [u8; 82] {
+    pub fn into_bytes(self) -> [u8; 50] {
         // Maximum possible length for the bytes:
         // - len(username): 1
         // - username: 15
-        // - key_hash: 32
         // - key_tag: 1
         // - key: 33
-        // Total: 82 bytes.
-        let mut bytes = [0; 82];
+        // Total: 50 bytes.
+        let mut bytes = [0; 50];
         bytes[0] = self.username.len();
         bytes[1..1 + self.username.len() as usize].copy_from_slice(self.username.as_ref());
-        bytes[16..48].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {
-                bytes[48] = 0;
-                bytes[49..82].copy_from_slice(&pk);
+                bytes[16] = 0;
+                bytes[17..50].copy_from_slice(&pk);
             },
             Key::Secp256k1(pk) => {
-                bytes[48] = 1;
-                bytes[49..82].copy_from_slice(&pk);
+                bytes[16] = 1;
+                bytes[17..50].copy_from_slice(&pk);
             },
         }
         bytes

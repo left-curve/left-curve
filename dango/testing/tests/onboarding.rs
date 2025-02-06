@@ -8,8 +8,8 @@ use {
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message,
-        NonEmpty, QuerierExt, ResultExt, StdError, Tx, Uint128,
+        btree_map, Addr, Addressable, ByteArray, Coin, Coins, HashExt, Json, Message, NonEmpty,
+        QuerierExt, ResultExt, StdError, Tx, Uint128,
     },
     std::str::FromStr,
     test_case::test_case,
@@ -42,8 +42,7 @@ fn user_onboarding() {
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
                 username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
+                key: user.pk,
             },
             Coins::new(),
         )
@@ -53,11 +52,11 @@ fn user_onboarding() {
     suite
         .query_wasm_smart(
             contracts.account_factory,
-            account_factory::QueryKeysByUserRequest {
+            account_factory::QueryKeyRequest {
                 username: user.username.clone(),
             },
         )
-        .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
+        .should_succeed_and_equal(user.pk);
 
     // The user's account info should have been recorded in account factory.
     // Note: a user's first ever account is always a spot account.
@@ -113,8 +112,7 @@ fn onboarding_existing_user() {
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
+                    key: user.pk,
                 },
                 Coins::new(),
             )
@@ -156,8 +154,7 @@ fn onboarding_without_deposit() {
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
                 username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
+                key: user.pk,
             },
             Coins::new(),
         )
@@ -196,31 +193,19 @@ fn onboarding_without_deposit() {
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's username,
-/// key, or key hash. Should fail because the derived deposit address won't match.
+/// false transaction that substitutes the legitimate transaction's username or
+/// key. Should fail because the derived deposit address won't match.
 #[test_case(
     Some(Username::from_str("bad").unwrap()),
-    None,
     None;
     "false username"
 )]
 #[test_case(
     None,
-    Some(Key::Secp256k1(ByteArray::from([0; 33]))),
-    None;
+    Some(Key::Secp256k1(ByteArray::from([0; 33])));
     "false key"
 )]
-#[test_case(
-    None,
-    None,
-    Some(Hash256::from_inner([0; 32]));
-    "false key hash"
-)]
-fn false_factory_tx(
-    false_username: Option<Username>,
-    false_key: Option<Key>,
-    false_key_hash: Option<Hash256>,
-) {
+fn false_factory_tx(false_username: Option<Username>, false_key: Option<Key>) {
     let (mut suite, _, codes, contracts) = setup_test_naive();
 
     // User makes the deposit normally.
@@ -231,11 +216,10 @@ fn false_factory_tx(
     );
 
     let username = false_username.unwrap_or_else(|| user.username.clone());
-    let key = false_key.unwrap_or(user.first_key());
-    let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
+    let key = false_key.unwrap_or(user.pk);
 
     // A malicious block builder sends a register user tx with falsified
-    // username, key, or key hash.
+    // username or key.
     //
     // Should fail with "data not found" error, because it be different deposit
     // address for which no deposit is found.
@@ -250,7 +234,6 @@ fn false_factory_tx(
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: username.clone(),
                     key,
-                    key_hash,
                 },
                 Coins::new(),
             )
@@ -263,7 +246,6 @@ fn false_factory_tx(
                 &NewUserSalt {
                     username: &username,
                     key,
-                    key_hash,
                 }
                 .into_bytes(),
             );

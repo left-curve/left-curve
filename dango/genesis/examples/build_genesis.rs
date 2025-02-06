@@ -10,9 +10,7 @@ use {
         dex::{PairParams, PairUpdate},
         taxman,
     },
-    grug::{
-        btree_map, coins, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
-    },
+    grug::{btree_map, coins, Coins, Duration, Inner, Json, JsonDeExt, JsonSerExt, Udec128},
     hex_literal::hex,
     home::home_dir,
     std::{env, fs, str::FromStr},
@@ -56,7 +54,6 @@ fn main() {
         users: btree_map! {
             Username::from_str("owner").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_OWNER.into()),
-                key_hash: PK_OWNER.hash256(),
                 balances: coins! {
                     DANGO_DENOM.clone() => 30_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000_000,
@@ -64,47 +61,38 @@ fn main() {
             },
             Username::from_str("user1").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER1.into()),
-                key_hash: PK_USER1.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user2").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER2.into()),
-                key_hash: PK_USER2.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user3").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER3.into()),
-                key_hash: PK_USER3.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user4").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER4.into()),
-                key_hash: PK_USER4.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user5").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER5.into()),
-                key_hash: PK_USER5.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user6").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER6.into()),
-                key_hash: PK_USER6.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user7").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER7.into()),
-                key_hash: PK_USER7.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user8").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER8.into()),
-                key_hash: PK_USER8.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
             Username::from_str("user9").unwrap() => GenesisUser {
                 key: Key::Secp256k1(PK_USER9.into()),
-                key_hash: PK_USER9.hash256(),
                 balances: coins! { USDC_DENOM.clone() => 100_000_000_000_000 },
             },
         },

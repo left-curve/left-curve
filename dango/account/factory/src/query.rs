@@ -1,10 +1,7 @@
 use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
-        account_factory::{
-            Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
-            QueryMsg, User, Username,
-        },
+        account_factory::{Account, AccountIndex, AccountType, QueryMsg, Username},
         auth::Key,
     },
     grug::{Addr, Bound, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
@@ -28,16 +25,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_code_hashes(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
-        QueryMsg::Key { hash, username } => {
-            let res = query_key(ctx.storage, hash, username)?;
+        QueryMsg::Key { username } => {
+            let res = query_key(ctx.storage, username)?;
             res.to_json_value()
         },
         QueryMsg::Keys { start_after, limit } => {
             let res = query_keys(ctx.storage, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::KeysByUser { username } => {
-            let res = query_keys_by_user(ctx.storage, &username)?;
             res.to_json_value()
         },
         QueryMsg::Account { address } => {
@@ -50,10 +43,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::AccountsByUser { username } => {
             let res = query_accounts_by_user(ctx.storage, &username)?;
-            res.to_json_value()
-        },
-        QueryMsg::User { username } => {
-            let res = query_user(ctx.storage, username)?;
             res.to_json_value()
         },
     }
@@ -82,39 +71,20 @@ fn query_code_hashes(
         .collect()
 }
 
-fn query_key(storage: &dyn Storage, hash: Hash256, username: Username) -> StdResult<Key> {
-    KEYS.load(storage, (&username, hash))
+fn query_key(storage: &dyn Storage, username: Username) -> StdResult<Key> {
+    KEYS.load(storage, &username)
 }
 
 fn query_keys(
     storage: &dyn Storage,
-    start_after: Option<QueryKeyPaginateParam>,
+    start_after: Option<Username>,
     limit: Option<u32>,
-) -> StdResult<Vec<QueryKeyResponseItem>> {
-    let start = start_after
-        .as_ref()
-        .map(|param| Bound::Exclusive((&param.username, param.key_hash)));
+) -> StdResult<BTreeMap<Username, Key>> {
+    let start = start_after.as_ref().map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     KEYS.range(storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|res| {
-            let ((username, key_hash), key) = res?;
-            Ok(QueryKeyResponseItem {
-                username,
-                key_hash,
-                key,
-            })
-        })
-        .collect()
-}
-
-fn query_keys_by_user(
-    storage: &dyn Storage,
-    username: &Username,
-) -> StdResult<BTreeMap<Hash256, Key>> {
-    KEYS.prefix(username)
-        .range(storage, None, None, Order::Ascending)
         .collect()
 }
 
@@ -149,11 +119,4 @@ fn query_accounts_by_user(
             Ok((address, account))
         })
         .collect()
-}
-
-fn query_user(storage: &dyn Storage, username: Username) -> StdResult<User> {
-    let keys = query_keys_by_user(storage, &username)?;
-    let accounts = query_accounts_by_user(storage, &username)?;
-
-    Ok(User { keys, accounts })
 }
