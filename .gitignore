@@ -18,6 +18,7 @@ target/
 **/node_modules
 **/tsconfig.tsbuildinfo
 **/build
+!ui/portal/app/.eas/build/
 **/.turbo
 
 # SDK
@@ -29,6 +30,7 @@ sdk/docs
 next-env.d.ts
 *storybook.log
 **/storybook-static
+**/.expo
 
 # Envs
 **/.env

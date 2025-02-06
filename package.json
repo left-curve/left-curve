@@ -3,7 +3,7 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "pnpm": ">=9.0.0",
-    "node": ">=18.0.0"
+    "node": ">=21.0.0"
   },
   "scripts": {
     "turbo": "turbo",
@@ -23,6 +23,7 @@
     "build:graph": "turbo build --graph=build-graph.png",
     "build:portal-web": "turbo build -F @left-curve/portal-web",
     "build:website": "pnpm -F @left-curve/dango-website build:cf",
+    "build:kit": "turbo build -F @left-curve/applets-kit",
     "storybook": "pnpm -F applets-kit sb:dev",
     "dango": "pnpm -F dango",
     "grug": "pnpm -F grug",
