@@ -1,5 +1,5 @@
 use {
-    dango_types::warp::Route,
+    dango_types::warp::{RateLimit, Route},
     grug::{Addr, Denom, Item, Map},
     hyperlane_types::{mailbox::Domain, Addr32},
 };
@@ -35,3 +35,5 @@ pub const ALLOYS: Map<&Denom, Denom> = Map::new("alloy");
 //
 // Used for outbound.
 pub const REVERSE_ALLOYS: Map<(&Denom, Domain), Denom> = Map::new("reverse_alloy");
+
+pub const RATE_LIMIT: Map<&Denom, RateLimit> = Map::new("rate_limit");

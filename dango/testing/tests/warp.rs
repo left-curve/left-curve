@@ -65,6 +65,7 @@ fn send_escrowing_collateral() {
                 denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )
@@ -163,6 +164,7 @@ fn send_burning_synth() {
                 denom: ETH_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
+                rate_limit: None,
             },
             Coins::new(),
         )
