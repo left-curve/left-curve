@@ -197,6 +197,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     let warp = ContractBuilder::new(Box::new(dango_warp::instantiate))
         .with_execute(Box::new(dango_warp::execute))
         .with_query(Box::new(dango_warp::query))
+        .with_cron_execute(Box::new(dango_warp::cron_execute))
         .build();
 
     Codes {
@@ -526,7 +527,10 @@ where
         bank,
         taxman,
         // Important: DEX cronjob is to be invoked at end of every block.
-        cronjobs: btree_map! { dex => Duration::ZERO },
+        cronjobs: btree_map! {
+            dex => Duration::ZERO,
+            warp => Duration::from_days(1),
+        },
         permissions,
         max_orphan_age,
     };

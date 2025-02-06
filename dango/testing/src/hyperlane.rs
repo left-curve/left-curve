@@ -209,7 +209,7 @@ where
     ) -> (HexBinary, HexBinary) {
         let raw_message = Message {
             version: MAILBOX_VERSION,
-            nonce: 0,
+            nonce: validator_set.next_nonce(),
             origin_domain,
             sender,
             destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
@@ -407,6 +407,7 @@ pub struct MockValidatorSet {
     secrets: Vec<SigningKey>,
     addresses: BTreeSet<HexByteArray<20>>,
     merkle_tree: Shared<IncrementalMerkleTree>,
+    nonce: Shared<u32>,
 }
 
 impl MockValidatorSet {
@@ -427,6 +428,7 @@ impl MockValidatorSet {
             secrets,
             addresses,
             merkle_tree: Shared::new(IncrementalMerkleTree::default()),
+            nonce: Shared::new(0),
         }
     }
 
@@ -464,6 +466,11 @@ impl MockValidatorSet {
             merkle_index,
             signatures,
         }
+    }
+
+    pub fn next_nonce(&self) -> u32 {
+        *self.nonce.write_access() += 1;
+        *self.nonce.read_access()
     }
 }
 

@@ -86,30 +86,17 @@ pub struct Route {
     pub fee: Uint128,
 }
 
-#[grug::derive(Serde)]
-pub struct RateLimitConfig {
-    pub min_remaining: Uint128,
-    pub supply_share: SupplyShare,
-}
-
 // -------------------------------- rate-limit ---------------------------------
 
-#[grug::derive(Serde, Borsh)]
-pub struct RateLimit {
-    pub min_remaining: Uint128,
-    pub supply_share: SupplyShare,
-    pub remaining: Uint128,
-}
-
 #[grug::derive(Serde)]
-pub struct SupplyShareBound;
+pub struct RateLimitBound;
 
-impl Bounds<Udec128> for SupplyShareBound {
+impl Bounds<Udec128> for RateLimitBound {
     const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
     const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
 }
 
-pub type SupplyShare = Bounded<Udec128, SupplyShareBound>;
+pub type RateLimit = Bounded<Udec128, RateLimitBound>;
 
 // --------------------------------- messages ----------------------------------
 
@@ -151,7 +138,7 @@ pub enum ExecuteMsg {
         denom: Denom,
         destination_domain: Domain,
         route: Route,
-        rate_limit: Option<RateLimitConfig>,
+        rate_limit: Option<RateLimit>,
     },
     /// Register an alloyed token.
     SetAlloy {
@@ -160,10 +147,7 @@ pub enum ExecuteMsg {
         alloyed_denom: Denom,
     },
     /// Set the rate limit for a Denom.
-    SetRateLimit {
-        denom: Denom,
-        rate_limit: RateLimitConfig,
-    },
+    SetRateLimit { denom: Denom, rate_limit: RateLimit },
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
 }

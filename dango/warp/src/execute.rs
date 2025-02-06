@@ -1,11 +1,11 @@
 use {
-    crate::{ALLOYS, MAILBOX, RATE_LIMIT, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
+    crate::{ALLOYS, MAILBOX, OUTBOUND_QUOTAS, RATE_LIMIT, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, RateLimit, RateLimitConfig, Route, TokenMessage,
-            TransferRemote, ALLOY_SUBNAMESPACE, NAMESPACE,
+            ExecuteMsg, Handle, InstantiateMsg, RateLimit, Route, TokenMessage, TransferRemote,
+            ALLOY_SUBNAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -17,7 +17,6 @@ use {
         recipients::RecipientMsg,
         Addr32,
     },
-    std::cmp::max,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -69,10 +68,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         // Need to collect here because the iterator lock the ctx.storage.
         .collect::<StdResult<Vec<_>>>()?
     {
-        set_rate_limit(ctx.storage, &ctx.querier, None, denom, RateLimitConfig {
-            min_remaining: rate_limit.min_remaining,
-            supply_share: rate_limit.supply_share,
-        })?;
+        update_outbound_quota(ctx.storage, &ctx.querier, denom, rate_limit)?;
     }
 
     Ok(Response::new())
@@ -84,7 +80,7 @@ fn set_route(
     denom: Denom,
     destination_domain: Domain,
     route: Route,
-    rate_limit: Option<RateLimitConfig>,
+    rate_limit: Option<RateLimit>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
@@ -137,7 +133,7 @@ fn set_rate_limit(
     querier: &QuerierWrapper,
     sender: Option<Addr>,
     denom: Denom,
-    rate_limit: RateLimitConfig,
+    rate_limit: RateLimit,
 ) -> anyhow::Result<Response> {
     if let Some(owner) = sender {
         ensure!(
@@ -146,22 +142,27 @@ fn set_rate_limit(
         );
     }
 
-    let supply = querier.query_supply(denom.clone())?;
+    RATE_LIMIT.save(storage, &denom, &rate_limit)?;
 
-    let remaining = max(
-        supply.checked_mul_dec_floor(*rate_limit.supply_share.inner())?,
-        rate_limit.min_remaining,
-    );
+    update_outbound_quota(storage, querier, denom, rate_limit)
+}
 
-    RATE_LIMIT.save(storage, &denom, &RateLimit {
-        remaining,
-        min_remaining: rate_limit.min_remaining,
-        supply_share: rate_limit.supply_share,
-    })?;
+#[inline]
+
+fn update_outbound_quota(
+    storage: &mut dyn Storage,
+    querier: &QuerierWrapper,
+    denom: Denom,
+    rate_limit: RateLimit,
+) -> anyhow::Result<Response> {
+    let limit = querier
+        .query_supply(denom.clone())?
+        .checked_mul_dec_floor(*rate_limit.inner())?;
+
+    OUTBOUND_QUOTAS.save(storage, &denom, &limit)?;
 
     Ok(Response::new())
 }
-
 #[inline]
 fn transfer_remote(
     ctx: MutableCtx,
@@ -205,19 +206,12 @@ fn transfer_remote(
     })?;
 
     // Check if the rate limit is reached.
-    if let Some(mut rate_limit) = RATE_LIMIT.may_load(ctx.storage, &token.denom)? {
-        rate_limit
-            .remaining
+    if let Some(mut remaining) = OUTBOUND_QUOTAS.may_load(ctx.storage, &token.denom)? {
+        remaining
             .checked_sub_assign(token.amount)
-            .map_err(|_| {
-                anyhow!(
-                    "rate limit reached: {} < {}",
-                    rate_limit.remaining,
-                    token.amount
-                )
-            })?;
+            .map_err(|_| anyhow!("rate limit reached: {} < {}", remaining, token.amount))?;
 
-        RATE_LIMIT.save(ctx.storage, &token.denom, &rate_limit)?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &token.denom, &remaining)?;
     }
 
     Ok(Response::new()
@@ -314,10 +308,10 @@ fn handle(
         };
 
     // Increase the rate limit remaining.
-    if let Some(mut rate_limit) = RATE_LIMIT.may_load(ctx.storage, &denom)? {
-        rate_limit.remaining.checked_add_assign(body.amount)?;
+    if let Some(mut remaining) = OUTBOUND_QUOTAS.may_load(ctx.storage, &denom)? {
+        remaining.checked_add_assign(body.amount)?;
 
-        RATE_LIMIT.save(ctx.storage, &denom, &rate_limit)?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &remaining)?;
     }
 
     Ok(Response::new()
