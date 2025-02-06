@@ -123,9 +123,45 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
     let httpd_context: Context = indexer_context.clone().into();
 
-    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+    // Copied from benchmarks.rs
+    let msgs = vec![Message::execute(
+        contracts.account_factory,
+        &account_factory::ExecuteMsg::RegisterAccount {
+            params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+        },
+        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+    )?];
+
+    suite
+        .send_messages_with_gas(
+            &mut accounts.user1,
+            50_000_000,
+            NonEmpty::new_unchecked(msgs),
+        )
+        .should_succeed();
+
+    let graphql_query = r#"
+      subscription Transfer {
+        transfers {
+          blockHeight
+          fromAddress
+          toAddress
+          amount
+          denom
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "transfers",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
 
     // Can't call this from LocalSet so using channels instead.
+    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
             // Copied from benchmarks.rs
@@ -147,52 +183,11 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 )
                 .should_succeed();
 
-            // if idx == 1 {
-            //     // Enabling this here will cause the test to hang
-            //     suite.app.indexer.wait_for_finish();
-            // }
+            // Enabling this here will cause the test to hang
+            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
-
-    crate_block_tx.send(1).await?;
-
-    // Copied from benchmarks.rs
-    // let msgs = vec![Message::execute(
-    //     contracts.account_factory,
-    //     &account_factory::ExecuteMsg::RegisterAccount {
-    //         params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
-    //     },
-    //     Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
-    // )?];
-
-    // suite
-    //     .send_messages_with_gas(
-    //         &mut accounts.user1,
-    //         50_000_000,
-    //         NonEmpty::new_unchecked(msgs),
-    //     )
-    //     .should_succeed();
-
-    let graphql_query = r#"
-      subscription Transfer {
-        transfers {
-          blockHeight
-          fromAddress
-          toAddress
-          amount
-          denom
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transfers",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let local_set = tokio::task::LocalSet::new();
 
     local_set
         .run_until(async {
