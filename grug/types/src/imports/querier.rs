@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdError, StdResult,
+        QueryRequest, QueryResponse, StdError,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -164,20 +164,20 @@ where
 ///
 /// We have to do this because `&dyn Querier` itself doesn't implement `Querier`,
 /// so given a `&dyn Querier` you aren't able to access the `QuerierExt` methods.
-pub struct QuerierWrapper<'a> {
-    inner: &'a dyn Querier<Error = StdError>,
+pub struct QuerierWrapper<'a, E = StdError> {
+    inner: &'a dyn Querier<Error = E>,
 }
 
-impl Querier for QuerierWrapper<'_> {
-    type Error = StdError;
+impl<E> Querier for QuerierWrapper<'_, E> {
+    type Error = E;
 
-    fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
+    fn query_chain(&self, req: Query) -> Result<QueryResponse, Self::Error> {
         self.inner.query_chain(req)
     }
 }
 
-impl<'a> QuerierWrapper<'a> {
-    pub fn new(inner: &'a dyn Querier<Error = StdError>) -> Self {
+impl<'a, E> QuerierWrapper<'a, E> {
+    pub fn new(inner: &'a dyn Querier<Error = E>) -> Self {
         Self { inner }
     }
 }

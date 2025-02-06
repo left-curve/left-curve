@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
@@ -7,9 +7,7 @@ use {
         },
         auth::Key,
     },
-    grug::{
-        Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
-    },
+    grug::{Addr, Bound, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
 };
 
@@ -28,14 +26,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::CodeHashes { start_after, limit } => {
             let res = query_code_hashes(ctx.storage, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::Deposit { recipient } => {
-            let res = query_deposit(ctx, recipient)?;
-            res.to_json_value()
-        },
-        QueryMsg::Deposits { start_after, limit } => {
-            let res = query_deposits(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Key { hash, username } => {
@@ -88,24 +78,6 @@ fn query_code_hashes(
 
     CODE_HASHES
         .range(storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
-}
-
-fn query_deposit(ctx: ImmutableCtx, recipient: Addr) -> StdResult<Option<Coins>> {
-    DEPOSITS.may_load(ctx.storage, &recipient)
-}
-
-fn query_deposits(
-    ctx: ImmutableCtx,
-    start_after: Option<Addr>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, Coins>> {
-    let start = start_after.as_ref().map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    DEPOSITS
-        .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .collect()
 }

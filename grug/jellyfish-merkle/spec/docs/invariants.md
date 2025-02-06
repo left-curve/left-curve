@@ -562,7 +562,10 @@ This inserts a line break that is not rendered in the markdown
 
 ### Operations are properly applied
 
-TODO: describe
+This invariant tracks that the operations that were applied on the tree actually succeeded. It takes the last batch of operations and checks the following for each of them:
+
+- If operation was `Insert(value)`, the leaf should be present in the tree with the inserted value
+- If operation was `Delete`, the leaf should not be present in the tree
 
 _Status:_ TRUE
 

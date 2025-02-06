@@ -18,6 +18,6 @@ export const devnet = /*#__PURE__*/ defineChain({
     },
   },
   rpcUrls: {
-    default: { http: ["https://devnet-rpc.dango.zone/"] },
+    default: { http: ["https://devnet-rpc.dango.exchange/"] },
   },
 });
