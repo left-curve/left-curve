@@ -85,3 +85,8 @@ export { Pig2 } from "./icons/emoji/Pig2";
 export { Temple } from "./icons/emoji/Temple";
 export { Wizard } from "./icons/emoji/Wizard";
 export { type EmojiName, Emoji } from "./atoms/Emoji";
+
+export { IconAddCross } from "./icons/IconAddCross";
+export { IconBell } from "./icons/IconBell";
+export { IconSearch } from "./icons/IconSearch";
+export { IconUser } from "./icons/IconUser";

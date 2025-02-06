@@ -22,6 +22,7 @@ import type {
   UsePublicClientReturnType,
 } from "@left-curve/store-react";
 import { useEffect } from "react";
+import { OverviewRoute } from "./pages/overview";
 
 export const AppRoute = createRoute({
   id: "app-layout",
@@ -52,10 +53,12 @@ export const AppRoute = createRoute({
 
 export const AppRouteWithChildren = AppRoute.addChildren([
   AccountsRoute,
-  createRoute({
+  OverviewRoute,
+
+  /*   createRoute({
     getParentRoute: () => AppRoute,
     path: "/",
-  }),
+  }), */
 
   createRoute({
     getParentRoute: () => AppRoute,

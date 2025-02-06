@@ -3,11 +3,11 @@ import { Header } from "./Header";
 
 export const AppLayout: React.FC<PropsWithChildren> = ({ children }) => {
   return (
-    <div className="flex flex-col min-h-screen w-full h-full bg-surface-off-white-200 relative scrollbar-none items-center justify-center">
+    <div className="flex flex-col min-h-screen w-full h-full bg-[#FFFCF6] relative scrollbar-none items-center justify-center">
       <img
-        src="/images/background.png"
+        src="/images/union.png"
         alt="bg-image"
-        className="object-cover drag-none select-none h-[80vh] absolute top-[15%] left-1/2 transform -translate-x-1/2 z-0 blur-2xl opacity-40"
+        className="drag-none select-none h-[20vh] w-full absolute top-0 z-0"
       />
 
       <Header />

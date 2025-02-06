@@ -7,13 +7,88 @@ export const tailwindConfig: Partial<Config> = {
     extend: {
       backgroundImage: {
         "gradient-container": "linear-gradient(156.47deg, #FFF2E299 23.72%, #C4B7BA99 128.44%)",
+        "account-card-red":
+          "linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)",
+        "account-card-green":
+          "linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%)",
+      },
+      boxShadow: {
+        "card-shadow":
+          "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
+        "account-card":
+          "0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5)",
+        "btn-shadow-gradient":
+          "0px 4px 6px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.04), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
       },
       colors: {
+        rice: {
+          25: "#FFF9F0",
+          50: "#FFF3E1",
+          100: "#F2E2B8",
+          200: "#EDD69A",
+          300: "#E3BD66",
+          400: "#DCA543",
+          500: "#D4882C",
+          600: "#BB6A24",
+          700: "#9C4D21",
+          800: "#7F3E21",
+          900: "#69331E",
+          950: "#3C190C",
+        },
+        brown: {
+          50: "#F5F4F1",
+          100: "#E6E4DB",
+          200: "#CFC9B9",
+          300: "#B3AA91",
+          400: "#9D8F72",
+          500: "#8E7F64",
+          600: "#7A6954",
+          700: "#625346",
+          800: "#55473E",
+          900: "#4A3F39",
+          950: "#302723",
+        },
+        blue: {
+          50: "#F7F8FB",
+          100: "#F0F1F7",
+          200: "#E2E3F2",
+          300: "#CBCBE7",
+          400: "#A9A8D5",
+          500: "#918CC6",
+          600: "#7B71B6",
+          700: "#6A5FA2",
+          800: "#584F88",
+          900: "#494270",
+          950: "#2E2A4B",
+        },
+        "red-bean": {
+          50: "#FEF1F1",
+          100: "#FEE6E8",
+          200: "#FCCFD4",
+          300: "#F9A9B2",
+          400: "#F57589",
+          500: "#ED4561",
+          600: "#DD365B",
+          700: "#B81941",
+          800: "#9A183D",
+          900: "#811839",
+          950: "#49081B",
+        },
+        "green-bean": {
+          50: "#F9F8EC",
+          100: "#F1F0D6",
+          200: "#E5E4B1",
+          300: "#D2D184",
+          400: "#BDBF5C",
+          500: "#AFB244",
+          600: "#7E822E",
+          700: "#606427",
+          800: "#4D5024",
+          900: "#424522",
+          950: "#22250E",
+        },
         purple: {
           600: "#A38590",
-        },
-        green: {
-          600: "#71847A",
         },
         gradient: {
           start: "#7EE7A8",
@@ -122,8 +197,8 @@ export const tailwindConfig: Partial<Config> = {
         "3xl": "1925px",
       },
       borderRadius: {
-        small: "8px",
-        medium: "12px",
+        small: "12px",
+        medium: "20px",
         large: "14px",
       },
       fontFamily: {
