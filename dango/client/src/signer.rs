@@ -17,6 +17,7 @@ pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
 /// Utility for signing transactions in the format by Dango's single-signature
 /// accounts, i.e. spot and margin accounts.
+#[derive(Debug)]
 pub struct SingleSigner<T>
 where
     T: MaybeDefined<u32>,
