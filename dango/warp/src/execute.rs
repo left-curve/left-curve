@@ -162,12 +162,16 @@ fn transfer_remote(
     })?;
 
     // Check if the rate limit is reached.
-    if let Some(mut remaining) = OUTBOUND_QUOTAS.may_load(ctx.storage, &token.denom)? {
-        remaining
-            .checked_sub_assign(token.amount)
-            .map_err(|_| anyhow!("rate limit reached: {} < {}", remaining, token.amount))?;
+    if let Some(mut quota) = OUTBOUND_QUOTAS.may_load(ctx.storage, &token.denom)? {
+        quota.checked_sub_assign(token.amount).map_err(|_| {
+            anyhow!(
+                "withdrawal rate limit reached: {} < {}",
+                quota,
+                token.amount
+            )
+        })?;
 
-        OUTBOUND_QUOTAS.save(ctx.storage, &token.denom, &remaining)?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &token.denom, &quota)?;
     }
 
     Ok(Response::new()
@@ -263,11 +267,11 @@ fn handle(
             (denom, None)
         };
 
-    // Increase the rate limit remaining.
-    if let Some(mut remaining) = OUTBOUND_QUOTAS.may_load(ctx.storage, &denom)? {
-        remaining.checked_add_assign(body.amount)?;
+    // Increase the remaining outbound quota.
+    if let Some(mut quota) = OUTBOUND_QUOTAS.may_load(ctx.storage, &denom)? {
+        quota.checked_add_assign(body.amount)?;
 
-        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &remaining)?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
     }
 
     Ok(Response::new()
