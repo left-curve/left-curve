@@ -42,6 +42,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = RecipientQueryResponse::InterchainSecurityModule(ism);
             res.to_json_value()
         },
+        _ => todo!(),
     }
 }
 

@@ -1,7 +1,7 @@
 use {
     assertor::*,
     dango_testing::{
-        setup_test, setup_test_with_indexer, HyperlaneTestSuite, MOCK_LOCAL_DOMAIN,
+        setup_test, setup_test_with_indexer, HyperlaneTestSuite, TestSuite, MOCK_LOCAL_DOMAIN,
         MOCK_REMOTE_DOMAIN,
     },
     dango_types::{
@@ -65,7 +65,6 @@ fn send_escrowing_collateral() {
                 denom: DANGO_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
-                rate_limit: None,
             },
             Coins::new(),
         )
@@ -164,7 +163,6 @@ fn send_burning_synth() {
                 denom: ETH_DENOM.clone(),
                 destination_domain: MOCK_REMOTE_DOMAIN,
                 route: MOCK_ROUTE,
-                rate_limit: None,
             },
             Coins::new(),
         )
@@ -692,22 +690,20 @@ fn rate_limit() {
     // Set rate limit.
     // osmo_usdc => 10%
     // sol_usdc => 20%
-    for (denom, rate_limit) in [
-        (&osmo_usdc_denom, Udec128::new_percent(10)),
-        (&sol_usdc_denom, Udec128::new_percent(20)),
-    ] {
-        suite
-            .execute(
-                owner.write_access().deref_mut(),
-                contracts.warp,
-                &warp::ExecuteMsg::SetRateLimit {
-                    denom: denom.clone(),
-                    rate_limit: RateLimit::new_unchecked(rate_limit),
-                },
-                Coins::default(),
-            )
-            .should_succeed();
-    }
+    suite
+        .execute(
+            owner.write_access().deref_mut(),
+            contracts.warp,
+            &warp::ExecuteMsg::SetRateLimits(btree_map! {
+                osmo_usdc_denom.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+                sol_usdc_denom.clone()  => RateLimit::new_unchecked(Udec128::new_percent(20)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Make 1 day pass letting the cron job to reset the rate limits.
+    advance_to_next_day(&mut suite);
 
     // Try send back exact tokens to don't trigger rate limit.
     // osmo_usdc => 100 * 0.1 = 10
@@ -764,11 +760,7 @@ fn rate_limit() {
     }
 
     // Make 1 day pass letting the cron job to reset the rate limits.
-    {
-        suite.block_time = Duration::from_days(1);
-        suite.make_empty_block().cron_outcomes;
-        suite.block_time = Duration::ZERO;
-    }
+    advance_to_next_day(&mut suite);
 
     // The supply on chain now are:
     // osmo_usdc => 100 - 10 = 90
@@ -858,11 +850,7 @@ fn rate_limit() {
     }
 
     // Make 1 day pass letting the cron job to reset the rate limits.
-    {
-        suite.block_time = Duration::from_days(1);
-        suite.make_empty_block().cron_outcomes;
-        suite.block_time = Duration::ZERO;
-    }
+    advance_to_next_day(&mut suite);
 
     // The supply on chain now are:
     // osmo_usdc => 100 + 100 = 200
@@ -915,6 +903,12 @@ fn rate_limit() {
             )
             .should_fail_with_error("rate limit reached: 0 < 1");
     }
+}
+
+fn advance_to_next_day(suite: &mut TestSuite) {
+    suite.block_time = Duration::from_days(1);
+    suite.make_empty_block();
+    suite.block_time = Duration::ZERO;
 }
 
 fn coin(denom: &Denom, amount: u128) -> Coin {

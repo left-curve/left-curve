@@ -1,8 +1,8 @@
 use {
     anyhow::ensure,
     grug::{
-        Addr, Bound, Bounded, Bounds, Bytable, Denom, HexBinary, Inner, NextNumber, NumberConst,
-        Part, PrevNumber, Udec128, Uint128, Uint256,
+        Addr, Bounded, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Udec128,
+        Uint128, Uint256, ZeroInclusiveOneExclusive,
     },
     hyperlane_types::{
         mailbox::Domain,
@@ -86,17 +86,7 @@ pub struct Route {
     pub fee: Uint128,
 }
 
-// -------------------------------- rate-limit ---------------------------------
-
-#[grug::derive(Serde)]
-pub struct RateLimitBound;
-
-impl Bounds<Udec128> for RateLimitBound {
-    const MAX: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ONE));
-    const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
-}
-
-pub type RateLimit = Bounded<Udec128, RateLimitBound>;
+pub type RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>;
 
 // --------------------------------- messages ----------------------------------
 
@@ -138,7 +128,6 @@ pub enum ExecuteMsg {
         denom: Denom,
         destination_domain: Domain,
         route: Route,
-        rate_limit: Option<RateLimit>,
     },
     /// Register an alloyed token.
     SetAlloy {
@@ -146,8 +135,8 @@ pub enum ExecuteMsg {
         destination_domain: Domain,
         alloyed_denom: Denom,
     },
-    /// Set the rate limit for a Denom.
-    SetRateLimit { denom: Denom, rate_limit: RateLimit },
+    /// Set withdraw rate limits.
+    SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
 }
@@ -157,6 +146,9 @@ pub enum QueryMsg {
     /// Query the address of the mailbox contract.
     #[returns(Addr)]
     Mailbox {},
+    /// Query withdraw rate limits.
+    #[returns(BTreeMap<Denom, RateLimit>)]
+    RateLimits {},
     /// Query the recipient contract for a token on a destination domain.
     #[returns(Route)]
     Route {
@@ -175,6 +167,15 @@ pub enum QueryMsg {
     /// Enumerate all alloyed denoms.
     #[returns(BTreeMap<Denom, Denom>)]
     Alloys {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
+    /// Query the remaining outbound quota for a denom.
+    #[returns(Uint128)]
+    OutboundQuota { denom: Denom },
+    /// Enumerate all outbound quotas.
+    #[returns(BTreeMap<Denom, Uint128>)]
+    OutboundQuotas {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },

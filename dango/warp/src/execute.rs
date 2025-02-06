@@ -1,5 +1,7 @@
 use {
-    crate::{ALLOYS, MAILBOX, OUTBOUND_QUOTAS, RATE_LIMIT, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
+    crate::{
+        ALLOYS, MAILBOX, OUTBOUND_QUOTAS, RATE_LIMITS, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES,
+    },
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
@@ -9,14 +11,15 @@ use {
         },
     },
     grug::{
-        Addr, Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
-        Number, QuerierExt, QuerierWrapper, Response, StdResult, Storage, SudoCtx,
+        Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
+        Number, QuerierExt, Response, StdResult, SudoCtx,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
         recipients::RecipientMsg,
         Addr32,
     },
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -38,21 +41,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             destination_domain,
             route,
-            rate_limit,
-        } => set_route(ctx, denom, destination_domain, route, rate_limit),
+        } => set_route(ctx, denom, destination_domain, route),
         ExecuteMsg::SetAlloy {
             underlying_denom,
             alloyed_denom,
             destination_domain,
         } => set_alloy(ctx, underlying_denom, destination_domain, alloyed_denom),
-
-        ExecuteMsg::SetRateLimit { denom, rate_limit } => set_rate_limit(
-            ctx.storage,
-            &ctx.querier,
-            Some(ctx.sender),
-            denom,
-            rate_limit,
-        ),
+        ExecuteMsg::SetRateLimits(limits) => set_rate_limits(ctx, limits),
         ExecuteMsg::Recipient(RecipientMsg::Handle {
             origin_domain,
             sender,
@@ -61,26 +56,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    for (denom, rate_limit) in RATE_LIMIT
-        .range(ctx.storage, None, None, grug::Order::Ascending)
-        // Need to collect here because the iterator lock the ctx.storage.
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        update_outbound_quota(ctx.storage, &ctx.querier, denom, rate_limit)?;
-    }
-
-    Ok(Response::new())
-}
-
 #[inline]
 fn set_route(
     ctx: MutableCtx,
     denom: Denom,
     destination_domain: Domain,
     route: Route,
-    rate_limit: Option<RateLimit>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
@@ -90,11 +71,7 @@ fn set_route(
     ROUTES.save(ctx.storage, (&denom, destination_domain), &route)?;
     REVERSE_ROUTES.save(ctx.storage, (destination_domain, route.address), &denom)?;
 
-    if let Some(rate_limit) = rate_limit {
-        set_rate_limit(ctx.storage, &ctx.querier, None, denom, rate_limit)
-    } else {
-        Ok(Response::new())
-    }
+    Ok(Response::new())
 }
 
 #[inline]
@@ -128,41 +105,20 @@ fn set_alloy(
 }
 
 #[inline]
-fn set_rate_limit(
-    storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    sender: Option<Addr>,
-    denom: Denom,
-    rate_limit: RateLimit,
+fn set_rate_limits(
+    ctx: MutableCtx,
+    limits: BTreeMap<Denom, RateLimit>,
 ) -> anyhow::Result<Response> {
-    if let Some(owner) = sender {
-        ensure!(
-            owner == querier.query_owner()?,
-            "only chain owner can call `set_rate_limit`"
-        );
-    }
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only chain owner can call `set_rate_limits`"
+    );
 
-    RATE_LIMIT.save(storage, &denom, &rate_limit)?;
-
-    update_outbound_quota(storage, querier, denom, rate_limit)
-}
-
-#[inline]
-
-fn update_outbound_quota(
-    storage: &mut dyn Storage,
-    querier: &QuerierWrapper,
-    denom: Denom,
-    rate_limit: RateLimit,
-) -> anyhow::Result<Response> {
-    let limit = querier
-        .query_supply(denom.clone())?
-        .checked_mul_dec_floor(*rate_limit.inner())?;
-
-    OUTBOUND_QUOTAS.save(storage, &denom, &limit)?;
+    RATE_LIMITS.save(ctx.storage, &limits)?;
 
     Ok(Response::new())
 }
+
 #[inline]
 fn transfer_remote(
     ctx: MutableCtx,
@@ -339,4 +295,19 @@ fn handle(
             token: denom,
             amount: body.amount,
         })?)
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+    // Clear the quotas for the previous 24-hour window.
+    OUTBOUND_QUOTAS.clear(ctx.storage, None, None);
+
+    // Set quotes for the next 24-hour window.
+    for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
+        let supply = ctx.querier.query_supply(denom.clone())?;
+        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
+    }
+
+    Ok(Response::new())
 }
