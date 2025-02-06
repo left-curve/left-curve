@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "prebuild": "expo prebuild",
-    "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web"
+    "eas-build-post-install": "cd ../../../ && pnpm build:kit",
+    "build:android": "eas build -p android -e development",
+    "dev:android": "eas build:run -p android -e development --latest && expo start --android",
+    "build:ios": "eas build -p ios -e development",
+    "dev:ios": "eas build:run -p ios -e development --latest && expo start --ios",
+    "dev": "expo start"
   },
   "dependencies": {
     "expo": "~52.0.26",

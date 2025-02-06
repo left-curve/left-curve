@@ -4,7 +4,11 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "node": "22.7.0"
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
       "credentialsSource": "remote",
@@ -13,12 +17,14 @@
       }
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
       "ios": {
         "enterpriseProvisioning": "universal"
       }
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
       "distribution": "store",
       "android": {
