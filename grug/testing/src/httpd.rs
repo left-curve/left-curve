@@ -153,7 +153,6 @@ where
         > + 'static,
     B: MessageBody + 'static,
 {
-    // let srv = actix_test::start(move || build_app_service(context.clone()));
     let srv = actix_test::start(move || app_builder(context.clone()));
 
     let (ws, mut framed) = Client::new()

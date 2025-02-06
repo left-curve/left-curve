@@ -13,7 +13,6 @@ pub async fn run_server<CA, GS>(
     ip: Option<&str>,
     port: Option<u16>,
     context: Context,
-    // database_url: String,
     config_app: CA,
     build_schema: fn(Context) -> GS,
 ) -> Result<(), Error>
@@ -30,27 +29,10 @@ where
         .unwrap_or(8080);
     let ip = ip.unwrap_or("0.0.0.0");
 
-    // let context = Context::new(Some(database_url)).await?;
     let graphql_schema = build_schema(context.clone());
-
-    // Generate fake pubsub events
-    // let pubsub = context.pubsub.clone();
-    // tokio::task::spawn(async move {
-    //     let mut block_height = 1;
-    //     loop {
-    //         if let Err(_err) = pubsub.publish_block_minted(block_height) {
-    //             #[cfg(feature = "tracing")]
-    //             tracing::error!("Failed to publish block minted event: {:?}", _err);
-    //         }
-    //         tokio::time::sleep(Duration::from_millis(100)).await;
-    //         block_height += 1;
-    //     }
-    // });
-    //
 
     #[cfg(feature = "tracing")]
     tracing::info!("Starting indexer httpd server at {}:{}", ip, port);
-    println!("Starting indexer httpd server at {}:{}", ip, port);
 
     HttpServer::new(move || {
         let app = App::new().wrap(Logger::default()).wrap(Compress::default());
