@@ -22,7 +22,6 @@ dependencies = [
  "actix-rt",
  "actix_derive",
  "bitflags 2.8.0",
- "bitflags 2.8.0",
  "bytes",
  "crossbeam-channel",
  "futures-core",
@@ -244,7 +243,7 @@ dependencies = [
  "impl-more",
  "pin-project-lite",
  "tokio",
- "tokio-util 0.7.13",
+ "tokio-util",
  "tracing",
 ]
 
@@ -3222,6 +3221,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "thiserror 2.0.11",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -4421,7 +4421,9 @@ dependencies = [
  "anyhow",
  "assertor",
  "async-graphql",
+ "awc",
  "borsh 1.5.5",
+ "futures-util",
  "grug-app",
  "grug-crypto",
  "grug-db-memory",

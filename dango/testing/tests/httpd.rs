@@ -127,7 +127,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
     // Can't call this from LocalSet so using channels instead.
     tokio::spawn(async move {
-        while let Some(idx) = rx.recv().await {
+        while let Some(_idx) = rx.recv().await {
             // Copied from benchmarks.rs
             let msgs = vec![Message::execute(
                 contracts.account_factory,
