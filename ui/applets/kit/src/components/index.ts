@@ -72,6 +72,7 @@ export { CopyCheckIcon } from "./icons/CopyCheck";
 export { ConnectorIcon } from "./icons/Connector";
 export { CrossIcon } from "./icons/Cross";
 export { IconChevronRight } from "./icons/IconChevronRight";
+export { DangoDotsIcon } from "./icons/DangoDots";
 
 export { Ants } from "./icons/emoji/Ants";
 export { Factory1 } from "./icons/emoji/Factory1";

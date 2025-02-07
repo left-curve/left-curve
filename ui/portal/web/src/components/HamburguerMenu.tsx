@@ -1,12 +1,13 @@
 import {
   BellIcon,
-  ConnectorIcon,
+  DangoDotsIcon,
   Hamburger,
   ProfileIcon,
   type VisibleRef,
   twMerge,
   useClickAway,
 } from "@left-curve/applets-kit";
+import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 
@@ -20,6 +21,7 @@ interface Props {
 export const HamburgerMenu = forwardRef<VisibleRef, Props>(
   ({ isOpen, openAccountMenu, menuNotificationsRef, onClose }, ref) => {
     const [showOptions, setShowOptions] = useState(false);
+    const navigate = useNavigate();
     const menuRef = useRef<HTMLDivElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -50,7 +52,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
           )}
           onClick={() => [setShowOptions(!showOptions), openAccountMenu()]}
         >
-          <ProfileIcon className="h-6 w-6 text-surface-green-400" />
+          <ProfileIcon className="h-6 w-6 text-rice-700" />
         </div>
         <div
           className={twMerge(
@@ -65,7 +67,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
             menuNotificationsRef.current?.changeVisibility(true),
           ]}
         >
-          <BellIcon className="h-5 w-5 text-surface-green-400" />
+          <BellIcon className="h-5 w-5 text-rice-700" />
         </div>
         <div
           className={twMerge(
@@ -75,9 +77,9 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
                 showOptions,
             },
           )}
-          onClick={() => [setShowOptions(!showOptions)]}
+          onClick={() => [setShowOptions(!showOptions), navigate({ to: "/" })]}
         >
-          <ConnectorIcon className="h-6 w-6 text-surface-green-400" />
+          <DangoDotsIcon className="h-6 w-6 text-rice-700" />
         </div>
         {/* //[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A]
         bg-rice-100 text-rice-700 border-[1px] border-solid

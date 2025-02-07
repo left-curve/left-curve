@@ -1,4 +1,4 @@
-import { IconBell, IconUser, type VisibleRef, twMerge } from "@left-curve/applets-kit";
+import { IconBell, IconUser, ProfileIcon, type VisibleRef, twMerge } from "@left-curve/applets-kit";
 
 import { useRef, useState } from "react";
 
@@ -57,14 +57,14 @@ export const Header: React.FC = () => {
               type="button"
               className="[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] bg-rice-100 text-rice-700 border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)] p-[10px] rounded-[14px]"
             >
-              <IconBell className="w-6 h-6" />
+              <IconBell className="w-6 h-6 text-rice-700" />
             </button>
             <button
               type="button"
               onClick={() => setShowAccountMenu(!showAccountMenu)}
               className="[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] bg-rice-100 text-rice-700 border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)] p-[10px] pr-4 rounded-[14px] flex gap-2"
             >
-              <IconUser className="w-6 h-6" />
+              <ProfileIcon className="w-6 h-6" />
               <span className="italic font-exposure font-bold">Spot #1</span>
             </button>
             <AccountMenu
