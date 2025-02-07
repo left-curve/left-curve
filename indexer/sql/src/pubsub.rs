@@ -112,6 +112,7 @@ mod tests {
         tokio_stream::StreamExt,
     };
 
+    #[ignore]
     #[tokio::test]
     async fn test_postgres_pubsub() -> anyhow::Result<()> {
         let pool = sqlx::PgPool::connect("postgres://postgres@localhost/grug_dev").await?;
