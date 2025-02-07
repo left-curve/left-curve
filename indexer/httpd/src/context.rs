@@ -1,6 +1,6 @@
 use {
     crate::error::Error,
-    indexer_sql::pubsub::{MemoryPubSub, PubSub},
+    indexer_sql::pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
 };
@@ -21,21 +21,21 @@ impl From<indexer_sql::Context> for Context {
 }
 
 impl Context {
-    pub fn new_with_database_connection(db: DatabaseConnection) -> Self {
-        Self {
-            db,
-            pubsub: Arc::new(MemoryPubSub::new(100)),
-        }
-    }
-
+    /// Create a new context with a database connection, will use postgres pubsub if the database is postgres
     pub async fn new(database_url: Option<String>) -> Result<Self, Error> {
-        let db = match database_url {
-            Some(database_url) => Self::connect_db_with_url(&database_url).await?,
-            None => Self::connect_db().await?,
-        };
+        if let Some(database_url) = database_url {
+            let db = Self::connect_db_with_url(&database_url).await?;
+            if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+                let pool = db.get_postgres_connection_pool();
+                return Ok(Self {
+                    db: db.clone(),
+                    pubsub: Arc::new(PostgresPubSub::new(pool.clone())),
+                });
+            }
+        }
 
         Ok(Self {
-            db,
+            db: Self::connect_db().await?,
             pubsub: Arc::new(MemoryPubSub::new(100)),
         })
     }

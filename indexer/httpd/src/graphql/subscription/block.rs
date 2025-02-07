@@ -25,6 +25,7 @@ impl BlockSubscription {
                 app_ctx
                     .pubsub
                     .subscribe_block_minted()
+                    .await?
                     .then(move |block_height| {
                         let db = app_ctx.db.clone();
                         async move {

@@ -54,6 +54,7 @@ impl StartCmd {
                 .with_keep_blocks(self.indexer_keep_blocks)
                 .with_database_url(&self.indexer_database_url)
                 .with_dir(app_dir.indexer_dir())
+                .with_sqlx_pubsub()
                 .build()
                 .expect("Can't create indexer");
             if self.indexer_httpd_enabled {

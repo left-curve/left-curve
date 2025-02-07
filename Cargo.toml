@@ -69,6 +69,7 @@ anyhow                  = "1"
 assertor                = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web = "7.0"
 async-std               = { version = "1", features = ["attributes", "tokio1"] }
+async-stream            = "0"
 async-trait             = "0"
 awc                     = "3"
 base64                  = "0.22"
@@ -119,6 +120,7 @@ serde_with              = "3"
 sha2                    = "0.10"
 sha3                    = "0.10"
 signature               = "2"
+sqlx                    = "0"
 strum                   = "0.26"
 strum_macros            = "0.26"
 syn                     = "2"
@@ -221,6 +223,7 @@ version = "7.0"
 [workspace.dependencies.sea-orm]
 features = [
   "runtime-tokio-rustls",
+  "sea-orm-internal",
   "sqlx-postgres",
   "sqlx-sqlite",
   "with-bigdecimal",

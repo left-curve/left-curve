@@ -5,12 +5,12 @@ use {
         entity, error,
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
-        pubsub::MemoryPubSub,
+        pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
         Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::TransactionTrait,
+    sea_orm::{DatabaseConnection, TransactionTrait},
     std::{
         collections::HashMap,
         future::Future,
@@ -31,6 +31,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H 
     indexer_path: P,
     keep_blocks: bool,
     hooks: H,
+    pubsub: PubSubType,
 }
 
 impl Default for IndexerBuilder {
@@ -41,6 +42,7 @@ impl Default for IndexerBuilder {
             indexer_path: Undefined::default(),
             keep_blocks: false,
             hooks: NullHooks,
+            pubsub: PubSubType::Memory,
         }
     }
 }
@@ -56,6 +58,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_url: Defined::new(db_url.to_string()),
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -72,6 +75,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -82,6 +86,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 }
@@ -97,6 +102,20 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks,
+            pubsub: self.pubsub,
+        }
+    }
+}
+
+impl<DB, P, H> IndexerBuilder<DB, P, H> {
+    pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
+        IndexerBuilder {
+            handle: self.handle,
+            db_url: self.db_url,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
+            pubsub: PubSubType::Postgres,
         }
     }
 }
@@ -117,6 +136,7 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -131,12 +151,26 @@ where
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
 
+        let mut context = Context {
+            db: db.clone(),
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        };
+
+        match self.pubsub {
+            PubSubType::Postgres => self.handle.block_on(async {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
+                }
+            }),
+
+            PubSubType::Memory => {},
+        }
+
         Ok(NonBlockingIndexer {
             indexer_path,
-            context: Context {
-                db,
-                pubsub: Arc::new(MemoryPubSub::new(100)),
-            },
+            context,
             handle: self.handle,
             blocks: Default::default(),
             indexing: false,
@@ -512,7 +546,7 @@ where
 
             Self::remove_or_fail(blocks, &block_height)?;
 
-            context.pubsub.publish_block_minted(block_height)?;
+            context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");
