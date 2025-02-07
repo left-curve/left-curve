@@ -71,6 +71,7 @@ export { XCircleIcon } from "./icons/XCircle";
 export { CopyCheckIcon } from "./icons/CopyCheck";
 export { ConnectorIcon } from "./icons/Connector";
 export { CrossIcon } from "./icons/Cross";
+export { IconChevronRight } from "./icons/IconChevronRight";
 
 export { Ants } from "./icons/emoji/Ants";
 export { Factory1 } from "./icons/emoji/Factory1";

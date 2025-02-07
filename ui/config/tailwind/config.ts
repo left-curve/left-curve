@@ -21,6 +21,26 @@ export const tailwindConfig: Partial<Config> = {
           "0px 4px 6px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.04), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
       },
       colors: {
+        gray: {
+          25: "#FAFAFA",
+          50: "#F5F4F4",
+          100: "#EAE9E9",
+          200: "#D6D4D3",
+          300: "#ACA9A7",
+          400: "#837D7B",
+          500: "#6E6865",
+          600: "#59524F",
+          700: "#463D39",
+          800: "#302723",
+          900: "#2E2421",
+        },
+        white: {
+          DEFAULT: "#FFFFFF",
+          100: "#FFFCF6",
+          200: "#FFFBF0",
+          300: "#FFF9E5",
+          400: "#FFF3CC",
+        },
         rice: {
           25: "#FFF9F0",
           50: "#FFF3E1",

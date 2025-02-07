@@ -1,41 +1,19 @@
-import {
-  CommandBar,
-  IconBell,
-  IconUser,
-  MenuAccounts,
-  MenuConnections,
-  MenuNotifications,
-  type VisibleRef,
-  twMerge,
-} from "@left-curve/applets-kit";
+import { IconBell, IconUser, type VisibleRef, twMerge } from "@left-curve/applets-kit";
 
-import { AccountType } from "@left-curve/dango/types";
+import { useRef, useState } from "react";
 
-import { useEffect, useRef, useState } from "react";
-
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { IconSearch } from "../../../../applets/kit/src/components/icons/IconSearch";
-import { applets } from "../../applets";
+import { IconSearch } from "@left-curve/applets-kit";
+import { Link } from "@tanstack/react-router";
+import { AccountMenu } from "./AccountMenu";
 import { HamburgerMenu } from "./HamburguerMenu";
 
 export const Header: React.FC = () => {
-  const navigate = useNavigate({ from: "." });
   const [showCommandBar, setShowCommandBar] = useState(false);
 
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+
   const hamburgerRef = useRef<VisibleRef>(null);
-  const menuAccountsRef = useRef<VisibleRef>(null);
-  const menuConnectionsRef = useRef<VisibleRef>(null);
   const menuNotificationsRef = useRef<VisibleRef>(null);
-
-  const search = useSearch({ strict: false });
-  const { showAccounts } = search;
-
-  useEffect(() => {
-    if (showAccounts) {
-      menuAccountsRef.current?.changeVisibility(true);
-      navigate({ search: () => ({}) });
-    }
-  }, [showAccounts]);
 
   return (
     <>
@@ -58,13 +36,6 @@ export const Header: React.FC = () => {
               },
             )}
           >
-            {/* <CommandBar
-              applets={applets}
-              action={({ path }) => navigate({ to: path, from: "/" })}
-              changeVisibility={setShowCommandBar}
-              isVisible={showCommandBar}
-              hamburgerRef={hamburgerRef}
-            /> */}
             <div className="bg-rice-25 [box-shadow:0px_2px_6px_0px_#C7C2B666] rounded-small w-full px-5 py-2 flex items-center gap-1">
               <IconSearch />
               <input
@@ -77,8 +48,7 @@ export const Header: React.FC = () => {
               ref={hamburgerRef}
               isOpen={showCommandBar}
               onClose={() => setShowCommandBar(false)}
-              menuAccountsRef={menuAccountsRef}
-              menuConnectionsRef={menuConnectionsRef}
+              openAccountMenu={() => setShowAccountMenu(true)}
               menuNotificationsRef={menuNotificationsRef}
             />
           </div>
@@ -91,22 +61,17 @@ export const Header: React.FC = () => {
             </button>
             <button
               type="button"
+              onClick={() => setShowAccountMenu(!showAccountMenu)}
               className="[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] bg-rice-100 text-rice-700 border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)] p-[10px] pr-4 rounded-[14px] flex gap-2"
             >
               <IconUser className="w-6 h-6" />
               <span className="italic font-exposure font-bold">Spot #1</span>
             </button>
-            {/* <MenuNotifications ref={menuNotificationsRef} />
-            <MenuAccounts
-              ref={menuAccountsRef}
-              manageAction={(account) => navigate({ to: `/accounts?address=${account.address}` })}
-              images={{
-                [AccountType.Spot]: "/images/avatars/spot.svg",
-                [AccountType.Margin]: "/images/avatars/margin.svg",
-                [AccountType.Safe]: "/images/avatars/safe.svg",
-              }}
+            <AccountMenu
+              showAccountMenu={showAccountMenu}
+              setShowAccountMenu={setShowAccountMenu}
             />
-            <MenuConnections ref={menuConnectionsRef} /> */}
+            {/* <MenuNotifications ref={menuNotificationsRef} />*/}
           </div>
         </div>
       </header>

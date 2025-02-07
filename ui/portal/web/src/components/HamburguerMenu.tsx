@@ -13,13 +13,12 @@ import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 interface Props {
   isOpen?: boolean;
   onClose?: () => void;
-  menuAccountsRef: React.RefObject<VisibleRef>;
+  openAccountMenu: () => void;
   menuNotificationsRef: React.RefObject<VisibleRef>;
-  menuConnectionsRef: React.RefObject<VisibleRef>;
 }
 
 export const HamburgerMenu = forwardRef<VisibleRef, Props>(
-  ({ isOpen, menuAccountsRef, menuNotificationsRef, menuConnectionsRef, onClose }, ref) => {
+  ({ isOpen, openAccountMenu, menuNotificationsRef, onClose }, ref) => {
     const [showOptions, setShowOptions] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +28,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
     }));
 
     useClickAway(menuRef, () => setShowOptions(false));
-    // className=""
+
     return (
       <div
         ref={menuRef}
@@ -49,10 +48,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
                 showOptions,
             },
           )}
-          onClick={() => [
-            setShowOptions(!showOptions),
-            menuAccountsRef.current?.changeVisibility(true),
-          ]}
+          onClick={() => [setShowOptions(!showOptions), openAccountMenu()]}
         >
           <ProfileIcon className="h-6 w-6 text-surface-green-400" />
         </div>
@@ -79,10 +75,7 @@ export const HamburgerMenu = forwardRef<VisibleRef, Props>(
                 showOptions,
             },
           )}
-          onClick={() => [
-            setShowOptions(!showOptions),
-            menuConnectionsRef.current?.changeVisibility(true),
-          ]}
+          onClick={() => [setShowOptions(!showOptions)]}
         >
           <ConnectorIcon className="h-6 w-6 text-surface-green-400" />
         </div>
