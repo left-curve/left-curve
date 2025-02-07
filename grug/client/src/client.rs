@@ -8,10 +8,7 @@ use {
         HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse, Signer, StdError,
         Tx, TxOutcome, UnsignedTx,
     },
-    serde::{
-        de::{self, DeserializeOwned},
-        ser::Serialize,
-    },
+    serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap, ops::Deref},
     tendermint::{block::Height, Hash as TmHash},
     tendermint_rpc::{
@@ -369,12 +366,15 @@ impl SigningClient {
     /// terminal prompt for confirmation.
     ///
     /// If you need the prompt confirmation, use `send_message_with_confirmation`.
-    pub async fn send_message(
+    pub async fn send_message<S>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         msg: Message,
         gas_opt: GasOption,
-    ) -> anyhow::Result<tx_sync::Response> {
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        S: Signer,
+    {
         self.send_messages(signer, NonEmpty::new_unchecked(vec![msg]), gas_opt)
             .await
     }
@@ -383,14 +383,16 @@ impl SigningClient {
     /// terminal prompt for confirmation.
     ///
     /// Returns `None` if the prompt is denied.
-    pub async fn send_message_with_confirmation(
+    pub async fn send_message_with_confirmation<S>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         msg: Message,
         gas_opt: GasOption,
-
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
-    ) -> anyhow::Result<Option<tx_sync::Response>> {
+    ) -> anyhow::Result<Option<tx_sync::Response>>
+    where
+        S: Signer,
+    {
         self.send_messages_with_confirmation(
             signer,
             NonEmpty::new_unchecked(vec![msg]),
@@ -404,12 +406,15 @@ impl SigningClient {
     /// without terminal prompt for confirmation.
     ///
     /// If you need the prompt confirmation, use `send_messages_with_confirmation`.
-    pub async fn send_messages(
+    pub async fn send_messages<S>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
-    ) -> anyhow::Result<tx_sync::Response> {
+    ) -> anyhow::Result<tx_sync::Response>
+    where
+        S: Signer,
+    {
         self.send_messages_with_confirmation(signer, msgs, gas_opt, no_confirmation)
             .await
             .map(Option::unwrap)
@@ -419,14 +424,16 @@ impl SigningClient {
     /// terminal prompt for confirmation.
     ///
     /// Returns `None` if the prompt is denied.
-    pub async fn send_messages_with_confirmation(
+    pub async fn send_messages_with_confirmation<S>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         msgs: NonEmpty<Vec<Message>>,
         gas_opt: GasOption,
-
         confirm_fn: fn(&Tx) -> anyhow::Result<bool>,
-    ) -> anyhow::Result<Option<tx_sync::Response>> {
+    ) -> anyhow::Result<Option<tx_sync::Response>>
+    where
+        S: Signer,
+    {
         // If gas limit is not provided, simulate
         let gas_limit = match gas_opt {
             GasOption::Simulate {
@@ -455,14 +462,15 @@ impl SigningClient {
     }
 
     /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
-    pub async fn configure<T>(
+    pub async fn configure<S, T>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         new_cfg: Option<Config>,
         new_app_cfg: Option<T>,
         gas_opt: GasOption,
     ) -> anyhow::Result<tx_sync::Response>
     where
+        S: Signer,
         T: Serialize,
     {
         let msg = Message::configure(new_cfg, new_app_cfg)?;
@@ -470,14 +478,15 @@ impl SigningClient {
     }
 
     /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
-    pub async fn transfer<C>(
+    pub async fn transfer<S, C>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         to: Addr,
         coins: C,
         gas_opt: GasOption,
     ) -> anyhow::Result<tx_sync::Response>
     where
+        S: Signer,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
@@ -486,13 +495,14 @@ impl SigningClient {
     }
 
     /// Send a transaction with a single [`Message::Upload`](grug_types::Message::Upload).
-    pub async fn upload<B>(
+    pub async fn upload<S, B>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         code: B,
         gas_opt: GasOption,
     ) -> anyhow::Result<tx_sync::Response>
     where
+        S: Signer,
         B: Into<Binary>,
     {
         let msg = Message::upload(code);
@@ -502,22 +512,23 @@ impl SigningClient {
     /// Send a transaction with a single [`Message::Instantiate`](grug_types::Message::Instantiate).
     ///
     /// Return the deployed contract's address.
-    pub async fn instantiate<M, S, C, T>(
+    pub async fn instantiate<S, M, SA, C>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         code_hash: Hash256,
         msg: &M,
-        salt: S,
+        salt: SA,
         label: Option<&str>,
         funds: C,
         gas_opt: GasOption,
         admin_opt: AdminOption,
     ) -> anyhow::Result<(Addr, tx_sync::Response)>
     where
+        S: Signer,
         M: Serialize,
-        S: Into<Binary>,
+        SA: Into<Binary>,
         C: TryInto<Coins>,
-        T: Signer,
+
         StdError: From<C::Error>,
     {
         let salt = salt.into();
@@ -534,23 +545,23 @@ impl SigningClient {
     /// with the code in one go.
     ///
     /// Return the code hash, and the deployed contract's address.
-    pub async fn upload_and_instantiate<M, B, S, C, T>(
+    pub async fn upload_and_instantiate<S, M, B, SA, C>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         code: B,
         msg: &M,
-        salt: S,
+        salt: SA,
         label: Option<&str>,
         funds: C,
         gas_opt: GasOption,
         admin_opt: AdminOption,
     ) -> anyhow::Result<(Hash256, Addr, tx_sync::Response)>
     where
+        S: Signer,
         M: Serialize,
         B: Into<Binary>,
-        S: Into<Binary>,
+        SA: Into<Binary>,
         C: TryInto<Coins>,
-        T: Signer,
         StdError: From<C::Error>,
     {
         let code = code.into();
@@ -569,18 +580,18 @@ impl SigningClient {
     }
 
     /// Send a transaction with a single [`Message::Execute`](grug_types::Message::Execute).
-    pub async fn execute<M, C, S>(
+    pub async fn execute<S, M, C>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         contract: Addr,
         msg: &M,
         funds: C,
         gas_opt: GasOption,
     ) -> anyhow::Result<tx_sync::Response>
     where
+        S: Signer,
         M: Serialize,
         C: TryInto<Coins>,
-        S: Signer,
         StdError: From<C::Error>,
     {
         let msg = Message::execute(contract, msg, funds)?;
@@ -588,17 +599,17 @@ impl SigningClient {
     }
 
     /// Send a transaction with a single [`Message::Migrate`](grug_types::Message::Migrate).
-    pub async fn migrate<M, S>(
+    pub async fn migrate<S, M>(
         &self,
-        signer: &mut dyn Signer,
+        signer: &mut S,
         contract: Addr,
         new_code_hash: Hash256,
         msg: &M,
         gas_opt: GasOption,
     ) -> anyhow::Result<tx_sync::Response>
     where
-        M: Serialize,
         S: Signer,
+        M: Serialize,
     {
         let msg = Message::migrate(contract, new_code_hash, msg)?;
         self.send_message(signer, msg, gas_opt).await
