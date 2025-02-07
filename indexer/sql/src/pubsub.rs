@@ -112,10 +112,9 @@ mod tests {
         tokio_stream::StreamExt,
     };
 
-    #[ignore]
     #[tokio::test]
     async fn test_postgres_pubsub() -> anyhow::Result<()> {
-        let pool = sqlx::PgPool::connect("postgres://postgres@localhost/grug_dev").await?;
+        let pool = sqlx::PgPool::connect("postgres://postgres@postgres/grug_test").await?;
 
         let pubsub = PostgresPubSub::new(pool.clone());
         let pubsub_clone = pubsub.clone();
@@ -151,7 +150,7 @@ mod tests {
     #[tokio::test]
     async fn foobar() -> anyhow::Result<()> {
         let pool = PgPoolOptions::new()
-            .connect("postgres://postgres@localhost/grug_dev")
+            .connect("postgres://postgres@postgres/grug_test")
             .await?;
 
         // Start listening on a channel
