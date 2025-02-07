@@ -136,9 +136,9 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Calculate the maximum debt that can be repaid based on the balance of the
     // chosen collateral.
-    let collateral_price = ctx
-        .querier
-        .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
+    let collateral_price =
+        ctx.querier
+            .query_price(app_cfg.addresses.oracle, &liquidation_denom, None)?;
     let liquidation_collateral_value =
         collateral_price.value_of_unit_amount(collaterals.amount_of(&liquidation_denom))?;
     let mrd_from_chosen_collateral =
@@ -165,7 +165,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         let debt_amount = debts.amount_of(&coin.denom);
         let price = ctx
             .querier
-            .query_price(app_cfg.addresses.oracle, &coin.denom)?;
+            .query_price(app_cfg.addresses.oracle, &coin.denom, None)?;
         let debt_value = price.value_of_unit_amount(debt_amount)?;
 
         let max_repay_for_denom = if repaid_debt_value.checked_add(debt_value)? > debt_repay_value {

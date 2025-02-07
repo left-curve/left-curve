@@ -11,8 +11,8 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         constants::{USDC_DENOM, WBTC_DENOM},
-        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest},
-        oracle::{self, PrecisionedPrice, PrecisionlessPrice},
+        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
+        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
         btree_map, coins, Addr, Addressable, Binary, Coins, ContractEvent, Denom, Inner, IsZero,
@@ -226,7 +226,6 @@ fn margin_account_creation() {
 /// - deposits some USDC into the lending pool
 /// - whitelists USDC as collateral at 100% power
 /// - whitelists WBTC as collatearal at 80% power
-/// - borrows from the margin account
 fn setup_margin_test_env(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -588,6 +587,84 @@ fn liquidation_works_with_multiple_debt_denoms() {
         "0.0001",
     )
     .unwrap();
+}
+
+#[test]
+fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
+
+    // Send some USDC to the margin account as collateral (needed to cover interest from borrowing)
+    suite
+        .transfer(
+            &mut accounts.user1,
+            margin_account.address(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Borrow some USDC with the margin account
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to deposit 100 USDC into the lending pool, should fail since it's not listed as collateral yet
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap(),
+        )
+        .should_fail_with_error("this action would make account undercollateralized!");
+
+    // Query market for USDC
+    let market = suite
+        .query_wasm_smart(contracts.lending, QueryMarketRequest {
+            denom: USDC_DENOM.clone(),
+        })
+        .unwrap();
+
+    // List the LP token as collateral at 100% power
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        market.supply_lp_denom.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Register price source for LP token
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                market.supply_lp_denom.clone() => PriceSource::LendingLP {},
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to deposit 100 USDC into the lending pool, should succeed
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Query LP token balance
+    let lp_balance = suite
+        .query_balance(&margin_account.address(), market.supply_lp_denom.clone())
+        .unwrap();
+    assert!(lp_balance.is_non_zero());
 }
 
 #[derive(Debug, Clone)]
@@ -1013,7 +1090,7 @@ proptest! {
         let liquidator_worth_before = liquidator_balances_before
             .clone()
             .into_iter().map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1036,7 +1113,7 @@ proptest! {
         let liquidator_worth_after = liquidator_balances_after
             .into_iter()
             .map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1062,7 +1139,7 @@ proptest! {
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
         let claimed_collateral_value = suite
-            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom)
+            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom, None)
             .unwrap()
             .value_of_unit_amount(claimed_collateral_amount)
             .unwrap();

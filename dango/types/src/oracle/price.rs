@@ -44,6 +44,20 @@ impl PrecisionlessPrice {
 }
 
 impl PrecisionedPrice {
+    pub fn new(
+        humanized_price: Udec128,
+        humanized_ema: Udec128,
+        timestamp: u64,
+        precision: u8,
+    ) -> Self {
+        Self {
+            humanized_price,
+            humanized_ema,
+            timestamp,
+            precision: Defined::new(precision),
+        }
+    }
+
     /// Returns the number of decimal places of the token that is used to
     /// convert the price from its smallest unit to a humanized form. E.g.
     /// 1 ATOM is 10^6 uatom, so the precision is 6.

@@ -1,6 +1,6 @@
 use {
-    crate::oracle::{PrecisionedPrice, PrecisionlessPrice, PythId},
-    grug::{Map, Storage, Udec128},
+    crate::oracle::{PrecisionlessPrice, PythId},
+    grug::{Map, Udec128},
 };
 
 pub const PRICES: Map<PythId, PrecisionlessPrice> = Map::new("price");
@@ -27,24 +27,6 @@ pub enum PriceSource {
         /// is 10^6 uatom, so the precision is 6.
         precision: u8,
     },
-}
-
-impl PriceSource {
-    /// Directly loads the price for the price source from the storage.
-    pub fn get_price(&self, storage: &dyn Storage) -> anyhow::Result<PrecisionedPrice> {
-        match self {
-            Self::Fixed {
-                humanized_price: price,
-                precision,
-                timestamp,
-            } => {
-                let price = PrecisionlessPrice::new(*price, *price, *timestamp);
-                Ok(price.with_precision(*precision))
-            },
-            Self::Pyth { id, precision } => {
-                let price = PRICES.load(storage, *id)?;
-                Ok(price.with_precision(*precision))
-            },
-        }
-    }
+    /// A price source for an LP token of the lending pool.
+    LendingLP {},
 }
