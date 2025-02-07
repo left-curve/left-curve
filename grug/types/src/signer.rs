@@ -12,7 +12,7 @@ impl Addressable for Addr {
 }
 
 /// Represents an object that can sign transactions in a synchronous manner.
-pub trait Signer: Addressable {
+pub trait Signer: Addressable + Send + Sync {
     /// Generate an unsigned transaction with the approapriate metadata.
     fn unsigned_transaction(
         &self,
