@@ -61,7 +61,7 @@ where
             debts.insert(Coin::new(denom.clone(), debt)?)?;
 
             // Calculate the value of the debt.
-            let price = self.query_price(app_cfg.addresses.oracle, denom)?;
+            let price = self.query_price(app_cfg.addresses.oracle, denom, None)?;
             let value = price.value_of_unit_amount(debt)?;
 
             total_debt_value.checked_add_assign(value)?;
@@ -86,7 +86,7 @@ where
                 continue;
             }
 
-            let price = self.query_price(app_cfg.addresses.oracle, &denom)?;
+            let price = self.query_price(app_cfg.addresses.oracle, &denom, None)?;
             let value = price.value_of_unit_amount(collateral_balance)?;
             let adjusted_value = value.checked_mul(power.into_inner())?;
 
