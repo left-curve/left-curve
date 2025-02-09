@@ -9,7 +9,7 @@ use {
         web::ServiceConfig,
         App,
     },
-    anyhow::anyhow,
+    anyhow::{anyhow, bail, ensure},
     awc::BoxedSocket,
     core::str,
     futures_util::{sink::SinkExt, stream::StreamExt},
@@ -170,13 +170,14 @@ where
     // Wait for connection_ack
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
-            if text != json!({ "type": "connection_ack" }).to_string() {
-                return Err(anyhow!("unexpected connection response: {text:?}"));
-            }
+            ensure!(
+                text == json!({ "type": "connection_ack" }).to_string(),
+                "unexpected connection response: {text:?}"
+            );
         },
         Some(Err(e)) => return Err(e.into()),
-        None => return Err(anyhow!("connection closed unexpectedly")),
-        _ => return Err(anyhow!("unexpected message type")),
+        None => bail!("connection closed unexpectedly"),
+        _ => bail!("unexpected message type"),
     }
 
     let request_id = uuid::Uuid::new_v4();
