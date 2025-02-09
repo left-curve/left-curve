@@ -66,11 +66,13 @@ impl Context {
             Ok(db) => {
                 #[cfg(feature = "tracing")]
                 tracing::info!("Connected to database: {}", database_url);
+
                 Ok(db)
             },
             Err(e) => {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to connect to database {}: {:?}", database_url, e);
+
                 Err(e)
             },
         }

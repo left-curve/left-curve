@@ -79,7 +79,7 @@ impl StartCmd {
         if let Err(err) =
             indexer_httpd::server::run_server(None, None, context, config_app, build_schema).await
         {
-            tracing::error!("Failed to run HTTP server: {:?}", err);
+            tracing::error!("Failed to run HTTP server: {err:?}");
         }
 
         Ok(())
@@ -119,7 +119,6 @@ impl StartCmd {
             codes.taxman.to_bytes().hash256(),
             codes.vesting.to_bytes().hash256(),
             codes.warp.to_bytes().hash256(),
-            codes.dex.to_bytes().hash256(),
         ]);
 
         let app = App::new(

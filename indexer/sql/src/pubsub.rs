@@ -69,12 +69,13 @@ impl PubSub for PostgresPubSub {
                                 }
                             }
                         }
-                    }
+                    },
                     Err(e) => {
                         #[cfg(feature = "tracing")]
-                        tracing::error!("Error receiving notification: {:?}", e);
+                        tracing::error!("Error receiving notification: {e:?}");
+
                         break;
-                    }
+                    },
                 }
             }
         };
@@ -97,6 +98,7 @@ pub trait PubSub {
     async fn subscribe_block_minted(
         &self,
     ) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>, IndexerError>;
+
     async fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError>;
 }
 
@@ -105,10 +107,12 @@ pub enum PubSubType {
     Postgres,
 }
 
+// ----------------------------------- tests -----------------------------------
+
 #[cfg(test)]
 mod tests {
     use {
-        super::*, anyhow, assertor::*, sqlx::postgres::PgPoolOptions, std::time::Duration,
+        super::*, assertor::*, sqlx::postgres::PgPoolOptions, std::time::Duration,
         tokio_stream::StreamExt,
     };
 
@@ -126,6 +130,7 @@ mod tests {
                     pubsub.publish_block_minted(idx).await?;
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
+
                 anyhow::Ok(())
             });
         }
@@ -146,7 +151,7 @@ mod tests {
         Ok(())
     }
 
-    /// A test that demonstrates how to use postgres pubsub
+    /// A test that demonstrates how to use postgres pubsub.
     #[ignore]
     #[tokio::test]
     async fn foobar() -> anyhow::Result<()> {
@@ -175,10 +180,10 @@ mod tests {
         for _ in 1..=3 {
             tokio::select! {
                 notification = listener.recv() => {
-                    println!("Got notification: {:?}", notification);
+                    println!("Got notification: {notification:?}");
                 }
                 _ = tokio::time::sleep(Duration::from_secs(2)) => {
-                    println!("timeout waiting");
+                    println!("Timeout waiting");
                 }
             }
         }

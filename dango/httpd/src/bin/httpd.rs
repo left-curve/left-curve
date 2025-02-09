@@ -35,7 +35,5 @@ async fn main() -> Result<(), Error> {
         config_app,
         build_schema,
     )
-    .await?;
-
-    Ok(())
+    .await
 }

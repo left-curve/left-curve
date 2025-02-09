@@ -32,7 +32,7 @@ where
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
-    tracing::info!("Starting indexer httpd server at {}:{}", ip, port);
+    tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
         let app = App::new().wrap(Logger::default()).wrap(Compress::default());

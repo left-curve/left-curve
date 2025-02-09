@@ -209,7 +209,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
                 crate_block_tx.send(2).await.unwrap();
 
-                // 2st response
+                // 2nd response
                 let (framed, response) =
                     parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
 
@@ -237,9 +237,7 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 fn build_actix_app(

@@ -15,31 +15,31 @@ use {
     futures_util::{sink::SinkExt, stream::StreamExt},
     indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     sea_orm::sqlx::types::uuid,
-    serde::Deserialize,
+    serde::{de::DeserializeOwned, Deserialize, Serialize},
     serde_json::json,
     std::collections::HashMap,
 };
 
-#[derive(serde::Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,
     pub query: &'a str,
     pub variables: serde_json::Map<String, serde_json::Value>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GraphQLResponse {
     pub data: HashMap<String, serde_json::Value>,
     pub errors: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GraphQLSubscriptionResponse {
     pub id: String,
     pub payload: GraphQLResponse,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GraphQLCustomResponse<R> {
     pub data: R,
     pub errors: Option<Vec<serde_json::Value>>,
@@ -98,9 +98,9 @@ pub async fn call_graphql<R>(
             > + 'static,
     >,
     request_body: GraphQLCustomRequest<'_>,
-) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
-    R: serde::de::DeserializeOwned,
+    R: DeserializeOwned,
 {
     let app = actix_web::test::init_service(app).await;
 
@@ -134,14 +134,11 @@ pub async fn call_ws_graphql_stream<F, A, B>(
     context: Context,
     app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
-) -> Result<
-    (
-        TestServer,
-        awc::ClientResponse,
-        Framed<BoxedSocket, ws::Codec>,
-    ),
-    anyhow::Error,
->
+) -> anyhow::Result<(
+    TestServer,
+    awc::ClientResponse,
+    Framed<BoxedSocket, ws::Codec>,
+)>
 where
     F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
     A: ServiceFactory<
@@ -160,7 +157,7 @@ where
         .header("sec-websocket-protocol", "graphql-transport-ws")
         .connect()
         .await
-        .map_err(|e| anyhow::anyhow!("failed to connect to websocket 1: {}", e))?;
+        .map_err(|e| anyhow!("failed to connect to websocket 1: {e}"))?;
 
     framed
         .send(ws::Message::Text(
@@ -174,15 +171,12 @@ where
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
             if text != json!({ "type": "connection_ack" }).to_string() {
-                return Err(anyhow::anyhow!(
-                    "Unexpected connection response: {:?}",
-                    text
-                ));
+                return Err(anyhow!("unexpected connection response: {text:?}"));
             }
         },
         Some(Err(e)) => return Err(e.into()),
-        None => return Err(anyhow::anyhow!("Connection closed unexpectedly")),
-        _ => return Err(anyhow::anyhow!("Unexpected message type")),
+        None => return Err(anyhow!("connection closed unexpectedly")),
+        _ => return Err(anyhow!("unexpected message type")),
     }
 
     let request_id = uuid::Uuid::new_v4();
@@ -204,9 +198,9 @@ pub async fn call_ws_graphql<F, A, B, R>(
     context: Context,
     app_builder: F,
     request_body: GraphQLCustomRequest<'_>,
-) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
-    R: serde::de::DeserializeOwned,
+    R: DeserializeOwned,
     F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
     A: ServiceFactory<
             ServiceRequest,
@@ -227,9 +221,9 @@ where
 pub async fn parse_graphql_subscription_response<R>(
     mut framed: Framed<BoxedSocket, ws::Codec>,
     name: &str,
-) -> Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>), anyhow::Error>
+) -> anyhow::Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>)>
 where
-    R: serde::de::DeserializeOwned,
+    R: DeserializeOwned,
 {
     match framed.next().await {
         Some(Ok(ws::Frame::Text(text))) => {
@@ -247,17 +241,16 @@ where
                     errors: graphql_response.payload.errors,
                 }))
             } else {
-                Err(anyhow!("can't find {} in response", name))
+                Err(anyhow!("can't find {name} in response"))
             }
         },
         Some(Ok(ws::Frame::Ping(ping))) => {
             framed.send(ws::Message::Pong(ping)).await?;
-            Err(anyhow::anyhow!("Received ping"))
+            Err(anyhow!("received ping"))
         },
         Some(Err(e)) => Err(e.into()),
-        None => Err(anyhow::anyhow!("Connection closed unexpectedly")),
-
-        res => Err(anyhow::anyhow!("Unexpected message type: {:?}", res)),
+        None => Err(anyhow!("connection closed unexpectedly")),
+        res => Err(anyhow!("unexpected message type: {res:?}")),
     }
 }
 

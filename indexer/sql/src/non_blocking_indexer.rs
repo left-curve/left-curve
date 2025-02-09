@@ -164,7 +164,6 @@ where
                     context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
                 }
             }),
-
             PubSubType::Memory => {},
         }
 
