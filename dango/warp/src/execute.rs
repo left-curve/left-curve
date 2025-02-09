@@ -1,22 +1,25 @@
 use {
-    crate::{ALLOYS, MAILBOX, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES},
+    crate::{
+        ALLOYS, MAILBOX, OUTBOUND_QUOTAS, RATE_LIMITS, REVERSE_ALLOYS, REVERSE_ROUTES, ROUTES,
+    },
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, Route, TokenMessage, TransferRemote,
+            ExecuteMsg, Handle, InstantiateMsg, RateLimit, Route, TokenMessage, TransferRemote,
             ALLOY_SUBNAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Coin, Coins, Denom, HexBinary, IsZero, Message, MutableCtx, Number, QuerierExt, Response,
-        StdResult,
+        Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
+        Number, QuerierExt, Response, StdResult, SudoCtx,
     },
     hyperlane_types::{
         mailbox::{self, Domain},
         recipients::RecipientMsg,
         Addr32,
     },
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -44,6 +47,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             alloyed_denom,
             destination_domain,
         } => set_alloy(ctx, underlying_denom, destination_domain, alloyed_denom),
+        ExecuteMsg::SetRateLimits(limits) => set_rate_limits(ctx, limits),
         ExecuteMsg::Recipient(RecipientMsg::Handle {
             origin_domain,
             sender,
@@ -101,6 +105,21 @@ fn set_alloy(
 }
 
 #[inline]
+fn set_rate_limits(
+    ctx: MutableCtx,
+    limits: BTreeMap<Denom, RateLimit>,
+) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only chain owner can call `set_rate_limits`"
+    );
+
+    RATE_LIMITS.save(ctx.storage, &limits)?;
+
+    Ok(Response::new())
+}
+
+#[inline]
 fn transfer_remote(
     ctx: MutableCtx,
     destination_domain: Domain,
@@ -141,6 +160,19 @@ fn transfer_remote(
             route.fee
         )
     })?;
+
+    // Check if the rate limit is reached.
+    if let Some(mut quota) = OUTBOUND_QUOTAS.may_load(ctx.storage, &token.denom)? {
+        quota.checked_sub_assign(token.amount).map_err(|_| {
+            anyhow!(
+                "withdrawal rate limit reached: {} < {}",
+                quota,
+                token.amount
+            )
+        })?;
+
+        OUTBOUND_QUOTAS.save(ctx.storage, &token.denom, &quota)?;
+    }
 
     Ok(Response::new()
         // If the token is collateral, then escrow it (no need to do anything).
@@ -235,6 +267,13 @@ fn handle(
             (denom, None)
         };
 
+    // Increase the remaining outbound quota.
+    if let Some(mut quota) = OUTBOUND_QUOTAS.may_load(ctx.storage, &denom)? {
+        quota.checked_add_assign(body.amount)?;
+
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
+    }
+
     Ok(Response::new()
         // If the denom is synthetic, then mint the token.
         // Otherwise, if it's a collateral, then release the collateral.
@@ -260,4 +299,19 @@ fn handle(
             token: denom,
             amount: body.amount,
         })?)
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+    // Clear the quotas for the previous 24-hour window.
+    OUTBOUND_QUOTAS.clear(ctx.storage, None, None);
+
+    // Set quotes for the next 24-hour window.
+    for (denom, limit) in RATE_LIMITS.load(ctx.storage)? {
+        let supply = ctx.querier.query_supply(denom.clone())?;
+        let quota = supply.checked_mul_dec_floor(limit.into_inner())?;
+        OUTBOUND_QUOTAS.save(ctx.storage, &denom, &quota)?;
+    }
+
+    Ok(Response::new())
 }
