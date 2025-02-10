@@ -30,19 +30,19 @@ export const Hamburger: React.FC<ComponentPropsWithoutRef<"button"> & Props> = (
         >
           <div
             className={twMerge(
-              "bg-typography-black-300 h-[2px] w-4 rounded-3xl transform transition-all duration-200 origin-left",
+              "bg-rice-700 h-[2px] w-4 rounded-3xl transform transition-all duration-200 origin-left",
               { "translate-x-10": isOpen },
             )}
           />
           <div
             className={twMerge(
-              "bg-typography-black-300 h-[2px] w-4 rounded-3xl transform transition-all duration-200 delay-75",
+              "bg-rice-700 h-[2px] w-4 rounded-3xl transform transition-all duration-200 delay-75",
               { "translate-x-10": isOpen },
             )}
           />
           <div
             className={twMerge(
-              "bg-typography-black-300 h-[2px] w-4 rounded-3xl transform transition-all duration-200 origin-left delay-150",
+              "bg-rice-700 h-[2px] w-4 rounded-3xl transform transition-all duration-200 origin-left delay-150",
               { "translate-x-10": isOpen },
             )}
           />

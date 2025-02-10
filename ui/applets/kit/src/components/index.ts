@@ -71,6 +71,8 @@ export { XCircleIcon } from "./icons/XCircle";
 export { CopyCheckIcon } from "./icons/CopyCheck";
 export { ConnectorIcon } from "./icons/Connector";
 export { CrossIcon } from "./icons/Cross";
+export { IconChevronRight } from "./icons/IconChevronRight";
+export { DangoDotsIcon } from "./icons/DangoDots";
 
 export { Ants } from "./icons/emoji/Ants";
 export { Factory1 } from "./icons/emoji/Factory1";
@@ -85,3 +87,8 @@ export { Pig2 } from "./icons/emoji/Pig2";
 export { Temple } from "./icons/emoji/Temple";
 export { Wizard } from "./icons/emoji/Wizard";
 export { type EmojiName, Emoji } from "./atoms/Emoji";
+
+export { IconAddCross } from "./icons/IconAddCross";
+export { IconBell } from "./icons/IconBell";
+export { IconSearch } from "./icons/IconSearch";
+export { IconUser } from "./icons/IconUser";
