@@ -8,7 +8,7 @@ use {
         btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
         NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
     },
-    std::collections::BTreeMap,
+    std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
 };
 
@@ -347,4 +347,128 @@ fn dex_works(
         .map(|(order_id, order)| (order_id, order.remaining.into_inner()))
         .collect::<BTreeMap<_, _>>();
     assert_eq!(orders, remaining_orders);
+}
+
+#[test]
+fn cancel_order() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Record the user's balance
+    suite.balances().record(accounts.user1.address());
+
+    // Add order to the order book
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SubmitOrder {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::new(100),
+                price: Udec128::new(1),
+            },
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Cancel the order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::CancelOrders {
+                order_ids: BTreeSet::from([!0]),
+            },
+            Coins::one(DANGO_DENOM.clone(), 1).unwrap(),
+        )
+        .should_succeed();
+
+    // Check that the user balance has not changed
+    assert_eq!(
+        suite
+            .balances()
+            .changes(accounts.user1.address())
+            .get(&USDC_DENOM)
+            .unwrap(),
+        &BalanceChange::Unchanged
+    );
+
+    // Check that order does not exist
+    let orders = suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .unwrap();
+    assert!(orders.is_empty())
+}
+
+#[test]
+fn submit_and_cancel_order_in_same_block() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Record the user's balance
+    suite.balances().record(accounts.user1.address());
+
+    // Build and sign a transaction with two messages: submit an order and cancel the order
+    let submit_order_msg = Message::execute(
+        contracts.dex,
+        &dex::ExecuteMsg::SubmitOrder {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+    )
+    .unwrap();
+
+    let cancel_order_msg = Message::execute(
+        contracts.dex,
+        &dex::ExecuteMsg::CancelOrders {
+            order_ids: BTreeSet::from([!0]),
+        },
+        Coins::new(),
+    )
+    .unwrap();
+
+    // Create a transaction with both messages
+    let tx = accounts
+        .user1
+        .sign_transaction(
+            NonEmpty::new_unchecked(vec![submit_order_msg, cancel_order_msg]),
+            &suite.chain_id,
+            100_000,
+        )
+        .unwrap();
+
+    // Execute the transaction in a block
+    suite
+        .make_block(vec![tx])
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Check that the user balance has changed only by the gas fees
+    assert_eq!(
+        suite
+            .balances()
+            .changes(accounts.user1.address())
+            .get(&DANGO_DENOM)
+            .unwrap(),
+        &BalanceChange::Unchanged
+    );
+
+    // Check that order does not exist
+    let orders = suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .unwrap();
+    assert!(orders.is_empty())
 }
