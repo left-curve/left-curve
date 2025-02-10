@@ -1,4 +1,4 @@
-use {std::io, thiserror::Error};
+use {sea_orm::sqlx, std::io, thiserror::Error};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -7,4 +7,7 @@ pub enum Error {
 
     #[error(transparent)]
     SeaOrm(#[from] sea_orm::DbErr),
+
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 }

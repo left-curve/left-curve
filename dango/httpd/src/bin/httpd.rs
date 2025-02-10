@@ -1,11 +1,7 @@
 use {
     clap::Parser,
-    indexer_httpd::{
-        context::Context,
-        error::Error,
-        graphql::build_schema,
-        server::{config_app, run_server},
-    },
+    dango_httpd::{graphql::build_schema, server::config_app},
+    indexer_httpd::{context::Context, error::Error, server::run_server},
     tracing_subscriber::EnvFilter,
 };
 
@@ -39,7 +35,5 @@ async fn main() -> Result<(), Error> {
         config_app,
         build_schema,
     )
-    .await?;
-
-    Ok(())
+    .await
 }

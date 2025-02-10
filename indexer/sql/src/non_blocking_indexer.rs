@@ -5,11 +5,12 @@ use {
         entity, error,
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
+        pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
         Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
-    sea_orm::TransactionTrait,
+    sea_orm::{DatabaseConnection, TransactionTrait},
     std::{
         collections::HashMap,
         future::Future,
@@ -30,6 +31,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H 
     indexer_path: P,
     keep_blocks: bool,
     hooks: H,
+    pubsub: PubSubType,
 }
 
 impl Default for IndexerBuilder {
@@ -40,6 +42,7 @@ impl Default for IndexerBuilder {
             indexer_path: Undefined::default(),
             keep_blocks: false,
             hooks: NullHooks,
+            pubsub: PubSubType::Memory,
         }
     }
 }
@@ -55,6 +58,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_url: Defined::new(db_url.to_string()),
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -71,6 +75,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -81,6 +86,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_url: self.db_url,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 }
@@ -96,6 +102,20 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             hooks,
+            pubsub: self.pubsub,
+        }
+    }
+}
+
+impl<DB, P, H> IndexerBuilder<DB, P, H> {
+    pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P, H> {
+        IndexerBuilder {
+            handle: self.handle,
+            db_url: self.db_url,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            hooks: self.hooks,
+            pubsub: PubSubType::Postgres,
         }
     }
 }
@@ -116,6 +136,7 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             hooks: self.hooks,
+            pubsub: self.pubsub,
         }
     }
 
@@ -130,9 +151,25 @@ where
         let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
         indexer_path.create_dirs_if_needed()?;
 
+        let mut context = Context {
+            db: db.clone(),
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        };
+
+        match self.pubsub {
+            PubSubType::Postgres => self.handle.block_on(async {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
+                }
+            }),
+            PubSubType::Memory => {},
+        }
+
         Ok(NonBlockingIndexer {
             indexer_path,
-            context: Context { db },
+            context,
             handle: self.handle,
             blocks: Default::default(),
             indexing: false,
@@ -154,7 +191,6 @@ where
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-#[derive(Debug)]
 pub struct NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
@@ -244,6 +280,16 @@ where
 
             sleep(Duration::from_millis(100));
         }
+
+        let blocks = self.blocks.lock().expect("Can't lock blocks");
+        if !blocks.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                "indexer wait_for_finish ended, still has {} blocks: {:?}",
+                blocks.len(),
+                blocks.keys()
+            );
+        }
     }
 }
 
@@ -285,10 +331,15 @@ where
 
         let last_indexed_block_height = match last_indexed_block_height {
             Some(height) => height as u64,
-            None => 1, // happens when you index since genesis
+            None => 0, // happens when you index since genesis
         };
 
-        for block_height in last_indexed_block_height..=latest_block_height {
+        let next_block_height = last_indexed_block_height + 1;
+        if latest_block_height > next_block_height {
+            return Ok(());
+        }
+
+        for block_height in next_block_height..=latest_block_height {
             let block_filename = self.block_filename(block_height);
 
             let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
@@ -469,7 +520,7 @@ where
             }
             db.commit().await?;
 
-            hooks.post_indexing(context, block_to_index).await.map_err(|e| {
+            hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(block_height, error = e.to_string(), "post_indexing hooks failed");
 
@@ -493,6 +544,8 @@ where
             }
 
             Self::remove_or_fail(blocks, &block_height)?;
+
+            context.pubsub.publish_block_minted(block_height).await?;
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height = block_height, "post_indexing finished");

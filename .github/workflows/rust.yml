@@ -26,25 +26,20 @@ on:
 
 jobs:
   test:
-    name: Test
+    name: Test + Lint
     runs-on: self-hosted
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Run tests
-        run: cargo test --all-features
-        env:
-          RUST_BACKTRACE: 1
-
-  lint:
-    name: Lint
-    runs-on: self-hosted
+    env:
+      PGDATABASE: grug_test
+    # services:
+    #   postgres:
+    #     image: postgres
+    #     env:
+    #       POSTGRES_PASSWORD: postgres
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -54,6 +49,15 @@ jobs:
         with:
           toolchain: stable
           components: clippy
+
+      # - name: Create database
+      #   run: |
+      #     createdb -U postgres -h postgres "$PGDATABASE"
+
+      - name: Run tests
+        run: cargo test --all-features
+        env:
+          RUST_BACKTRACE: 1
 
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings

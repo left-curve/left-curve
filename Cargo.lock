@@ -117,6 +117,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-http-test"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061d27c2a6fea968fdaca0961ff429d23a4ec878c4f68f5d08626663ade69c80"
+dependencies = [
+ "actix-codec",
+ "actix-rt",
+ "actix-server",
+ "actix-service",
+ "actix-tls",
+ "actix-utils",
+ "awc",
+ "bytes",
+ "futures-core",
+ "http 0.2.12",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "slab",
+ "socket2",
+ "tokio",
+]
+
+[[package]]
 name = "actix-macros"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -147,6 +172,7 @@ version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24eda4e2a6e042aa4e55ac438a2ae052d3b5da0ecf83d7411e1a368946925208"
 dependencies = [
+ "actix-macros",
  "futures-core",
  "tokio",
 ]
@@ -177,6 +203,48 @@ dependencies = [
  "futures-core",
  "paste",
  "pin-project-lite",
+]
+
+[[package]]
+name = "actix-test"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "439022b5a7b5dac10798465029a9566e8e0cca7a6014541ed277b695691fac5f"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-http-test",
+ "actix-rt",
+ "actix-service",
+ "actix-utils",
+ "actix-web",
+ "awc",
+ "futures-core",
+ "futures-util",
+ "log",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+]
+
+[[package]]
+name = "actix-tls"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac453898d866cdbecdbc2334fe1738c747b4eba14a677261f2b768ba05329389"
+dependencies = [
+ "actix-rt",
+ "actix-service",
+ "actix-utils",
+ "futures-core",
+ "http 0.2.12",
+ "http 1.2.0",
+ "impl-more",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -1551,6 +1619,39 @@ name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
+
+[[package]]
+name = "awc"
+version = "3.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79049b2461279b886e46f1107efc347ebecc7b88d74d023dda010551a124967b"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-rt",
+ "actix-service",
+ "actix-tls",
+ "actix-utils",
+ "base64 0.22.1",
+ "bytes",
+ "cfg-if",
+ "cookie",
+ "derive_more 0.99.19",
+ "futures-core",
+ "futures-util",
+ "h2 0.3.26",
+ "http 0.2.12",
+ "itoa",
+ "log",
+ "mime",
+ "percent-encoding",
+ "pin-project-lite",
+ "rand",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+]
 
 [[package]]
 name = "aws-credential-types"
@@ -3113,13 +3214,16 @@ dependencies = [
  "async-graphql",
  "async-graphql-actix-web",
  "chrono",
+ "clap",
  "dango-indexer-sql",
  "indexer-httpd",
  "indexer-sql",
  "sea-orm",
  "serde",
  "thiserror 2.0.11",
+ "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -4310,11 +4414,16 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-test",
  "actix-web",
  "anyhow",
  "assertor",
  "async-graphql",
+ "awc",
  "borsh 1.5.5",
+ "futures-util",
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
@@ -5171,8 +5280,10 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
+ "async-stream",
  "async-trait",
  "borsh 1.5.5",
+ "futures",
  "grug-app",
  "grug-math",
  "grug-types",
@@ -5181,11 +5292,13 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+ "sqlx",
  "strum",
  "strum_macros",
  "tempfile",
  "thiserror 2.0.11",
  "tokio",
+ "tokio-stream",
  "tracing",
  "uuid",
 ]

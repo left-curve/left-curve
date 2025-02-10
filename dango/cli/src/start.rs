@@ -9,6 +9,7 @@ use {
     grug_db_disk::DiskDb,
     grug_types::HashExt,
     grug_vm_hybrid::HybridVm,
+    indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, time},
     tower::ServiceBuilder,
@@ -53,14 +54,14 @@ impl StartCmd {
                 .with_keep_blocks(self.indexer_keep_blocks)
                 .with_database_url(&self.indexer_database_url)
                 .with_dir(app_dir.indexer_dir())
+                .with_sqlx_pubsub()
                 .build()
                 .expect("Can't create indexer");
-
             if self.indexer_httpd_enabled {
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(self.indexer_database_url.clone()),
+                    Self::run_httpd_server(indexer.context.clone().into()),
                     self.run_with_indexer(app_dir, indexer)
                 )?;
 
@@ -74,11 +75,13 @@ impl StartCmd {
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(database_url: String) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, database_url, config_app, build_schema)
-            .await?;
-
-        Ok(())
+    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run HTTP server: {err:?}");
+                err.into()
+            })
     }
 
     async fn run_with_indexer<ID>(

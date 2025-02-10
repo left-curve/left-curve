@@ -43,6 +43,9 @@ pub enum IndexerError {
 
     #[error("parse error: {0}")]
     Parse(#[from] std::num::ParseIntError),
+
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
 }
 
 impl From<IndexerError> for AppError {
