@@ -192,7 +192,7 @@ where
                     .tx_outcomes
                     .into_iter()
                     .map(into_tm_tx_result)
-                    .collect();
+                    .collect::<AppResult<_>>()?;
 
                 Ok(response::FinalizeBlock {
                     app_hash: into_tm_app_hash(outcome.app_hash),
@@ -330,22 +330,24 @@ fn from_tm_hash(bytes: Hash) -> Hash256 {
     }
 }
 
-fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
+fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
     match outcome.result {
-        GenericResult::Ok(_) => ExecTxResult {
+        GenericResult::Ok(_) => Ok(ExecTxResult {
             code: Code::Ok,
+            data: outcome.events.to_json_vec()?.into(),
             gas_wanted: outcome.gas_limit as i64,
             gas_used: outcome.gas_used as i64,
             ..Default::default()
-        },
-        GenericResult::Err(err) => ExecTxResult {
+        }),
+        GenericResult::Err(err) => Ok(ExecTxResult {
             code: into_tm_code_error(1),
+            data: outcome.events.to_json_vec()?.into(),
             codespace: "tx".to_string(),
             log: err,
             gas_wanted: outcome.gas_limit as i64,
             gas_used: outcome.gas_used as i64,
             ..Default::default()
-        },
+        }),
     }
 }
 
