@@ -131,7 +131,7 @@ mod tests {
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
 
-                anyhow::Ok(())
+                Ok::<_, anyhow::Error>(())
             });
         }
 

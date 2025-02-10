@@ -47,7 +47,7 @@ async fn create_block() -> anyhow::Result<(
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            grug_types::Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())?,
+            grug_types::Message::transfer(to, Coins::one(denom.clone(), 2_000)?)?,
         )
         .should_succeed();
 
@@ -283,7 +283,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     2000,
                     grug_types::Message::transfer(
                         to,
-                        Coins::one(Denom::from_str("ugrug")?, 2_000).unwrap(),
+                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
                     )?,
                 )
                 .should_succeed();
@@ -309,7 +309,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 assert_that!(response.data.block_height).is_equal_to(1);
 
-                crate_block_tx.send(2).await.unwrap();
+                crate_block_tx.send(2).await?;
 
                 // 2st response
                 let (framed, response) =
@@ -317,7 +317,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
 
                 assert_that!(response.data.block_height).is_equal_to(2);
 
-                crate_block_tx.send(3).await.unwrap();
+                crate_block_tx.send(3).await?;
 
                 // 3rd response
                 let (_, response) =
