@@ -1,6 +1,6 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
     anyhow::ensure,
@@ -127,9 +127,7 @@ fn submit_order(
         order_id = !order_id;
     }
 
-    NEW_ORDER_COUNTS.increment(ctx.storage, (&base_denom, &quote_denom))?;
-
-    ORDERS.save(
+    INCOMING_ORDERS.save(
         ctx.storage,
         (
             (base_denom.clone(), quote_denom.clone()),
@@ -209,14 +207,16 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
 
-    // Find all pairs that have received new orders during the block.
-    let pairs = NEW_ORDER_COUNTS
-        .current_range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let (pair, _) = res?;
-            Ok(pair)
-        })
+    // Add all incoming orders to the orders map and clear the incoming orders map.
+    let mut pairs = BTreeSet::new();
+    let incoming_orders = INCOMING_ORDERS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
+    for (key, order) in incoming_orders {
+        ORDERS.save(ctx.storage, key.clone(), &order)?;
+        pairs.insert(key.0);
+    }
+    INCOMING_ORDERS.clear(ctx.storage, None, None);
 
     // Loop through the pairs, match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
@@ -229,9 +229,6 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             &mut refunds,
         )?;
     }
-
-    // Reset the order counters for the next block.
-    NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
     Ok(Response::new()
         .add_message({
