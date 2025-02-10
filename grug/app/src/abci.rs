@@ -331,24 +331,19 @@ fn from_tm_hash(bytes: Hash) -> Hash256 {
 }
 
 fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
-    match outcome.result {
-        GenericResult::Ok(_) => Ok(ExecTxResult {
-            code: Code::Ok,
-            data: outcome.events.to_json_vec()?.into(),
-            gas_wanted: outcome.gas_limit as i64,
-            gas_used: outcome.gas_used as i64,
-            ..Default::default()
-        }),
-        GenericResult::Err(err) => Ok(ExecTxResult {
-            code: into_tm_code_error(1),
-            data: outcome.events.to_json_vec()?.into(),
-            codespace: "tx".to_string(),
-            log: err,
-            gas_wanted: outcome.gas_limit as i64,
-            gas_used: outcome.gas_used as i64,
-            ..Default::default()
-        }),
-    }
+    Ok(ExecTxResult {
+        code: if outcome.result.is_ok() {
+            Code::Ok
+        } else {
+            into_tm_code_error(1)
+        },
+        data: outcome.events.to_json_vec()?.into(),
+        codespace: "tx".to_string(),
+        log: outcome.result.to_json_string()?,
+        gas_wanted: outcome.gas_limit as i64,
+        gas_used: outcome.gas_used as i64,
+        ..Default::default()
+    })
 }
 
 fn into_tm_app_hash(hash: Hash256) -> AppHash {
