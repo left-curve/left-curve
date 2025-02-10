@@ -1,17 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 
-import { IconAddCross, twMerge } from '@left-curve/applets-kit'
-import { motion } from 'framer-motion'
+import { IconAddCross, twMerge } from "@left-curve/applets-kit";
+import { motion } from "framer-motion";
 
-export const Route = createFileRoute('/(app)/_app/')({
+export const Route = createFileRoute("/(app)/_app/")({
   component: OverviewComponent,
-})
+});
 
 function OverviewComponent() {
-  const [tableActive, setTableActive] = useState<'Assets' | 'Earn' | 'Pools'>(
-    'Assets',
-  )
+  const [tableActive, setTableActive] = useState<"Assets" | "Earn" | "Pools">("Assets");
   return (
     <div className="w-full  md:max-w-[76rem] mx-auto flex flex-col gap-8 p-4">
       {/* first component */}
@@ -25,9 +23,7 @@ function OverviewComponent() {
           />
           <div className="flex gap-1">
             <div className="flex flex-col">
-              <p className="font-exposure text-base italic font-medium">
-                Spot #123,456
-              </p>
+              <p className="font-exposure text-base italic font-medium">Spot #123,456</p>
               <p className="text-xs text-neutral-500">0x6caf...FE09</p>
             </div>
             {/* badge component */}
@@ -45,10 +41,7 @@ function OverviewComponent() {
           <div className="hidden md:flex flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] rounded-small p-4 gap-4 w-full">
             <div className="flex items-center justify-between w-full">
               <p className="text-base font-bold">Assets</p>
-              <a
-                href="/"
-                className="font-exposure italic text-blue-500 font-medium"
-              >
+              <a href="/" className="font-exposure italic text-blue-500 font-medium">
                 View all
               </a>
             </div>
@@ -67,7 +60,7 @@ function OverviewComponent() {
                       <p className="text-gray-500">$124.05</p>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -94,31 +87,19 @@ function OverviewComponent() {
         {/* applets items */}
         <div className="flex flex-col items-center gap-2">
           <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-green-bean-50 rounded-small p-[10px]">
-            <img
-              src="/images/applets/swap.svg"
-              alt=""
-              className="w-full h-full"
-            />
+            <img src="/images/applets/swap.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Swap</p>
         </div>
         <div className="flex flex-col items-center gap-2">
           <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-red-bean-50 rounded-small p-[10px]">
-            <img
-              src="/images/applets/earn.svg"
-              alt=""
-              className="w-full h-full"
-            />
+            <img src="/images/applets/earn.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Earn</p>
         </div>
         <div className="flex flex-col items-center gap-2">
           <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-rice-50 rounded-small p-[10px]">
-            <img
-              src="/images/applets/multisig.svg"
-              alt=""
-              className="w-full h-full"
-            />
+            <img src="/images/applets/multisig.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Multisig</p>
         </div>
@@ -177,7 +158,7 @@ function OverviewComponent() {
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </div>
@@ -185,8 +166,8 @@ function OverviewComponent() {
       <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-medium w-full p-4 gap-4">
         {/* button components */}
         <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-small">
-          {Array.from(['Assets', 'Earn', 'Pools']).map((e, i) => {
-            const isActive = e === tableActive
+          {Array.from(["Assets", "Earn", "Pools"]).map((e, i) => {
+            const isActive = e === tableActive;
             return (
               <motion.li
                 className="relative transition-all flex items-center justify-center py-2 px-4 cursor-pointer"
@@ -195,8 +176,8 @@ function OverviewComponent() {
               >
                 <p
                   className={twMerge(
-                    'italic font-medium font-exposure transition-all relative z-10',
-                    isActive ? 'text-black' : 'text-gray-300',
+                    "italic font-medium font-exposure transition-all relative z-10",
+                    isActive ? "text-black" : "text-gray-300",
                   )}
                 >
                   {e}
@@ -208,7 +189,7 @@ function OverviewComponent() {
                   />
                 ) : null}
               </motion.li>
-            )
+            );
           })}
         </motion.ul>
         {/*  table component */}
@@ -217,18 +198,14 @@ function OverviewComponent() {
             {/* Header */}
             <thead>
               <tr className=" text-[#717680] font-semibold text-xs">
-                <th className="text-start rounded-l-xl p-4 bg-green-bean-100">
-                  Vault
-                </th>
+                <th className="text-start rounded-l-xl p-4 bg-green-bean-100">Vault</th>
                 <th className="text-end bg-green-bean-100 p-4">Type</th>
                 <th className="text-end bg-green-bean-100 p-4">APR</th>
                 <th className="text-end bg-green-bean-100 p-4">
                   <p className="min-w-fit">Liquidity Available</p>
                 </th>
                 <th className="text-end bg-green-bean-100 p-4">TVL</th>
-                <th className="text-end rounded-r-xl bg-green-bean-100 p-4">
-                  Risk Level
-                </th>
+                <th className="text-end rounded-r-xl bg-green-bean-100 p-4">Risk Level</th>
               </tr>
             </thead>
             {/* <div className="grid grid-cols-6 gap-4 p-4 rounded-small bg-green-bean-100 text-[#717680] font-semibold">
@@ -246,10 +223,7 @@ function OverviewComponent() {
             <tbody>
               {Array.from([1, 2, 3, 4, 5]).map((e) => {
                 return (
-                  <tr
-                    className="p-4 border-b border-b-gray-100"
-                    key={`row-${e}`}
-                  >
+                  <tr className="p-4 border-b border-b-gray-100" key={`row-${e}`}>
                     <td className="p-4">
                       <div className="flex gap-2 text-lg">
                         <div className="flex">
@@ -275,19 +249,13 @@ function OverviewComponent() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center justify-end">
-                        17.72%
-                      </div>
+                      <div className="flex items-center justify-end">17.72%</div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center justify-end">
-                        15.63%
-                      </div>
+                      <div className="flex items-center justify-end">15.63%</div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center justify-end">
-                        15.63%
-                      </div>
+                      <div className="flex items-center justify-end">15.63%</div>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end">Low</div>
@@ -324,7 +292,7 @@ function OverviewComponent() {
                     <div className="flex items-center justify-end">15.63%</div>
                     <div className="flex items-center justify-end">Low</div>
                   </div> */
-                )
+                );
               })}
             </tbody>
           </table>
@@ -338,5 +306,5 @@ function OverviewComponent() {
         </button>
       </div>
     </div>
-  )
+  );
 }

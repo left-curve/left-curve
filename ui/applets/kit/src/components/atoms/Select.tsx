@@ -5,7 +5,7 @@ import { type ReactElement, cloneElement, useMemo, useRef } from "react";
 import { useClickAway } from "react-use";
 
 import { type VariantProps, tv } from "tailwind-variants";
-import { ArrowSelectorIcon } from "../icons/ArrowSelector";
+import { IconChevronDown } from "../icons/IconChevronDown";
 import { ListBox } from "./Listbox";
 
 export { Item } from "@react-stately/collections";
@@ -29,7 +29,7 @@ export interface SelectProps<T extends object = object>
 
 export function Select<T extends object>(props: SelectProps<T>) {
   const {
-    selectorIcon: Icon = <ArrowSelectorIcon />,
+    selectorIcon: Icon = <IconChevronDown />,
     placeholder,
     color = "default",
     classNames,
@@ -93,14 +93,14 @@ export function Select<T extends object>(props: SelectProps<T>) {
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-full transition-all shadow-sm duration-500",
+    base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500",
     listboxWrapper:
-      "h-0 py-0 px-4 scroll-py-6 max-h-64 w-full transition-all overflow-hidden duration-500",
+      "h-0 py-0 px-1 scroll-py-4 max-h-64 w-full transition-all overflow-hidden duration-500",
     listbox: "",
     value: ["text-foreground-500", "font-normal", "w-full", "text-left", "rtl:text-right"],
-    selectorIcon: "w-5 h-5 transition-all duration-300",
+    selectorIcon: "min-w-[20px] min-h-[20px] transition-all duration-300",
     trigger:
-      "w-full inline-flex tap-highlight-transparent flex-row items-center px-6 py-3 gap-3 outline-none",
+      "w-full inline-flex tap-highlight-transparent flex-row items-center px-4 py-3 gap-3 outline-none shadow-card-shadow",
   },
   variants: {
     color: {
@@ -133,8 +133,8 @@ const selectVariants = tv({
     },
     isOpen: {
       true: {
-        base: "rounded-t-xl rounded-b-none",
-        listboxWrapper: "h-48 z-30 py-4",
+        base: "rounded-t-xl rounded-b-none shadow-none",
+        listboxWrapper: "max-h-[12rem] h-fit z-30 pb-3",
       },
     },
   },
@@ -147,17 +147,18 @@ const selectVariants = tv({
       color: "default",
       class: {
         trigger: "border-x-2 border-t-2 border-transparent",
-        base: "bg-surface-rose-300 text-typography-rose-600 hover:bg-surface-rose-400",
-        listboxWrapper: "bg-surface-rose-300",
+        base: "bg-rice-50 hover:bg-rice-100",
+        button: "bg-rice-50",
+        listboxWrapper: "bg-rice-50",
       },
     },
     {
       isOpen: true,
       color: "default",
       class: {
-        trigger: "border-surface-rose-400 rounded-b-none",
-        base: "hover:bg-surface-rose-300",
-        listboxWrapper: "border-x-2 border-b-2 border-surface-rose-400",
+        trigger: "rounded-b-none",
+        base: "hover:bg-rice-50",
+        listboxWrapper: "",
       },
     },
     {

@@ -11,6 +11,7 @@ export { Select, Item as SelectItem } from "./atoms/Select";
 export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
 export { QRCode } from "./atoms/QRCode";
 export { Hamburger } from "./atoms/Hamburger";
+export { Address } from "./atoms/Address";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Molecules                                 */
@@ -73,6 +74,8 @@ export { ConnectorIcon } from "./icons/Connector";
 export { CrossIcon } from "./icons/Cross";
 export { IconChevronRight } from "./icons/IconChevronRight";
 export { DangoDotsIcon } from "./icons/DangoDots";
+export { IconChevronDown } from "./icons/IconChevronDown";
+export { IconGear } from "./icons/IconGear";
 
 export { Ants } from "./icons/emoji/Ants";
 export { Factory1 } from "./icons/emoji/Factory1";
