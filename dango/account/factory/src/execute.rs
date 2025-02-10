@@ -25,13 +25,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     let instantiate_msgs = msg
         .users
         .into_iter()
-        .map(|(username, (key_hash, key))| {
+        .enumerate()
+        .map(|(nonce, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
             // Minimum deposit is not required for genesis users.
             onboard_new_user(
                 ctx.storage,
                 ctx.contract,
                 username,
+                nonce as u32,
                 key,
                 key_hash,
                 Coins::default(),
@@ -107,7 +109,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             key,
             key_hash,
-        } => register_user(ctx, username, key, key_hash),
+            nonce,
+        } => register_user(ctx, username, nonce, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
@@ -117,6 +120,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn register_user(
     ctx: MutableCtx,
     username: Username,
+    nonce: u32,
     key: Key,
     key_hash: Hash256,
 ) -> anyhow::Result<Response> {
@@ -142,6 +146,7 @@ fn register_user(
         ctx.storage,
         ctx.contract,
         username,
+        nonce,
         key,
         key_hash,
         minimum_deposit,
@@ -154,6 +159,7 @@ fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
+    nonce: u32,
     key: Key,
     key_hash: Hash256,
     minimum_receive: Coins,
@@ -166,9 +172,9 @@ fn onboard_new_user(
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
 
     let salt = NewUserSalt {
-        username: &username,
         key,
         key_hash,
+        nonce,
     }
     .into_bytes();
 
