@@ -76,14 +76,12 @@ impl StartCmd {
 
     /// Run the HTTP server
     async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
-        match indexer_httpd::server::run_server(None, None, context, config_app, build_schema).await
-        {
-            Ok(()) => Ok(()),
-            Err(err) => {
+        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
+            .await
+            .map_err(|err| {
                 tracing::error!("Failed to run HTTP server: {err:?}");
-                Err(err.into())
-            },
-        }
+                err.into()
+            })
     }
 
     async fn run_with_indexer<ID>(
