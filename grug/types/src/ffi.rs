@@ -1,4 +1,4 @@
-use crate::{Event, JsonSerExt};
+use crate::Event;
 
 /// Result of which the error is a string.
 ///
@@ -31,13 +31,4 @@ where
     fn into_generic_result(self) -> GenericResult<T> {
         self.map_err(|e| e.to_string())
     }
-}
-
-#[test]
-fn generic_result_print() {
-    let result: GenericResult<()> = Err("something bad happens".to_string());
-    println!("{}", result.to_json_string().unwrap());
-
-    let result: GenericResult<()> = Ok(());
-    println!("{}", result.to_json_string().unwrap());
 }
