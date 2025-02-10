@@ -3,9 +3,9 @@ import { useState } from "react";
 
 import {
   Address,
-  CopyIcon,
   IconAddCross,
-  IconUser,
+  IconCopy,
+  IconTrash,
   Select,
   SelectItem,
   twMerge,
@@ -82,7 +82,7 @@ export const Route = createFileRoute("/(app)/_app/settings")({
         </div>
         {/* second element */}
         <div className="rounded-medium bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
-          <div className="flex flex-col md:flex-wrap gap-4 items-start justify-between">
+          <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
             <div className="flex flex-col gap-1 max-w-lg">
               <h3 className="text-lg font-bold">Key Management </h3>
               <p className="text-gray-500 text-sm">
@@ -114,8 +114,8 @@ export const Route = createFileRoute("/(app)/_app/settings")({
                     <p className="text-gray-500 text-sm">Metamask Wallet</p>
                   </div>
                   <div className="flex gap-1">
-                    <CopyIcon className="w-5 h-5" />
-                    <IconUser className="w-5 h-5" />
+                    <IconCopy className="w-5 h-5" />
+                    <IconTrash className="w-5 h-5" />
                   </div>
                 </div>
               </div>

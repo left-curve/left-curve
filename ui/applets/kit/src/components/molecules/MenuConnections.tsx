@@ -8,7 +8,7 @@ import { useClickAway } from "react-use";
 import { truncateAddress } from "@left-curve/dango/utils";
 import { twMerge } from "../../utils";
 
-import { Button, CopyCheckIcon, CopyIcon, ProfileIcon, WalletIcon } from "../";
+import { Button, CopyCheckIcon, IconCopy, ProfileIcon, WalletIcon } from "../";
 import type { VisibleRef } from "../../types";
 import { CrossIcon } from "../icons/Cross";
 
@@ -16,7 +16,7 @@ export const MenuConnections = forwardRef<VisibleRef>((props, ref) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [showMenu, setShowMenu] = useState(false);
-  const [copyIcon, setCopyIcon] = useState(<CopyIcon className="w-6 h-6" />);
+  const [copyIcon, setCopyIcon] = useState(<IconCopy className="w-6 h-6" />);
 
   const { connector, account } = useAccount();
   const { disconnect } = useDisconnect();
@@ -35,7 +35,7 @@ export const MenuConnections = forwardRef<VisibleRef>((props, ref) => {
     if (!account) return;
     navigator.clipboard.writeText(account.address);
     setCopyIcon(<CopyCheckIcon className="w-6 h-6" />);
-    setTimeout(() => setCopyIcon(<CopyIcon className="w-6 h-6" />), 1000);
+    setTimeout(() => setCopyIcon(<IconCopy className="w-6 h-6" />), 1000);
   };
 
   if (!connector || !account) return null;
