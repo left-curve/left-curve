@@ -331,14 +331,16 @@ fn from_tm_hash(bytes: Hash) -> Hash256 {
 }
 
 fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
+    let (code, codespace) = if outcome.result.is_ok() {
+        (Code::Ok, "")
+    } else {
+        (into_tm_code_error(1), "tx")
+    };
+
     Ok(ExecTxResult {
-        code: if outcome.result.is_ok() {
-            Code::Ok
-        } else {
-            into_tm_code_error(1)
-        },
+        code,
         data: outcome.events.to_json_vec()?.into(),
-        codespace: "tx".to_string(),
+        codespace: codespace.to_string(),
         log: outcome.result.to_json_string()?,
         gas_wanted: outcome.gas_limit as i64,
         gas_used: outcome.gas_used as i64,
