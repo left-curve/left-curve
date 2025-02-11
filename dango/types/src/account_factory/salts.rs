@@ -17,7 +17,7 @@ use {
 /// on the user onboarding flow for more details.
 #[derive(Debug, Clone, Copy)]
 pub struct NewUserSalt {
-    pub nonce: u32,
+    pub secret: u32,
     pub key: Key,
     pub key_hash: Hash256,
 }
@@ -26,10 +26,10 @@ impl NewUserSalt {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := nonce (in big_endian) || key_hash || key_tag || key
+    /// bytes := secret (in big_endian) || key_hash || key_tag || key
     /// ```
     ///
-    /// `nonce` is provided externally.
+    /// `secret` is provided externally.
     ///
     /// `key_hash` doesn't need a length prefix because it's of fixed length.
     ///
@@ -38,13 +38,13 @@ impl NewUserSalt {
     /// - `1` for Secp256k1
     pub fn into_bytes(self) -> [u8; 70] {
         // Maximum possible length for the bytes:
-        // - nonce: 4
+        // - secret: 4
         // - key_hash: 32
         // - key_tag: 1
         // - key: 33
         // Total: 70 bytes.
         let mut bytes = [0; 70];
-        bytes[0..4].copy_from_slice(&self.nonce.to_be_bytes());
+        bytes[0..4].copy_from_slice(&self.secret.to_be_bytes());
         bytes[4..36].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {

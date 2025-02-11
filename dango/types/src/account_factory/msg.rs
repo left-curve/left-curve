@@ -35,7 +35,7 @@ pub enum ExecuteMsg {
     ///
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
-        nonce: u32,
+        secret: u32,
         username: Username,
         key: Key,
         key_hash: Hash256,

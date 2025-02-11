@@ -336,9 +336,9 @@ where
     let addresses = genesis_users
         .iter()
         .enumerate()
-        .map(|(nonce, (username, user))| {
+        .map(|(secret, (username, user))| {
             let salt = NewUserSalt {
-                nonce: nonce as u32,
+                secret: secret as u32,
                 key: user.key,
                 key_hash: user.key_hash,
             }

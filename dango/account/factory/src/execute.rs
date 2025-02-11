@@ -26,14 +26,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .users
         .into_iter()
         .enumerate()
-        .map(|(nonce, (username, (key_hash, key)))| {
+        .map(|(secret, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
             // Minimum deposit is not required for genesis users.
             onboard_new_user(
                 ctx.storage,
                 ctx.contract,
                 username,
-                nonce as u32,
+                secret as u32,
                 key,
                 key_hash,
                 Coins::default(),
@@ -109,8 +109,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             key,
             key_hash,
-            nonce,
-        } => register_user(ctx, username, nonce, key, key_hash),
+            secret,
+        } => register_user(ctx, username, secret, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
@@ -120,7 +120,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn register_user(
     ctx: MutableCtx,
     username: Username,
-    nonce: u32,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
 ) -> anyhow::Result<Response> {
@@ -146,7 +146,7 @@ fn register_user(
         ctx.storage,
         ctx.contract,
         username,
-        nonce,
+        secret,
         key,
         key_hash,
         minimum_deposit,
@@ -159,7 +159,7 @@ fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
-    nonce: u32,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
     minimum_receive: Coins,
@@ -174,7 +174,7 @@ fn onboard_new_user(
     let salt = NewUserSalt {
         key,
         key_hash,
-        nonce,
+        secret,
     }
     .into_bytes();
 

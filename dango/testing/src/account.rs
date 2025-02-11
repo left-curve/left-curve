@@ -117,13 +117,13 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn predict_address(
         self,
         factory: Addr,
-        nonce: u32,
+        secret: u32,
         spot_code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount {
         let salt = if new_user_salt {
             NewUserSalt {
-                nonce,
+                secret,
                 key: self.keys.1,
                 key_hash: self.sign_with,
             }

@@ -41,7 +41,7 @@ fn user_onboarding() {
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                nonce: 0,
+                secret: 0,
                 username: user.username.clone(),
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
@@ -117,7 +117,7 @@ fn onboarding_existing_user() {
                     username: user.username.clone(),
                     key: user.first_key(),
                     key_hash: user.first_key_hash(),
-                    nonce: 10,
+                    secret: 10,
                 },
                 Coins::new(),
             )
@@ -159,7 +159,7 @@ fn onboarding_without_deposit() {
         msgs: NonEmpty::new_unchecked(vec![Message::execute(
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
-                nonce: 3,
+                secret: 3,
                 username: user.username.clone(),
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
@@ -201,13 +201,13 @@ fn onboarding_without_deposit() {
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's nonce,
+/// false transaction that substitutes the legitimate transaction's secret,
 /// key, or key hash. Should fail because the derived deposit address won't match.
 #[test_case(
     Some(5),
     None,
     None;
-    "false nonce"
+    "false secret"
 )]
 #[test_case(
     None,
@@ -222,7 +222,7 @@ fn onboarding_without_deposit() {
     "false key hash"
 )]
 fn false_factory_tx(
-    false_nonce: Option<u32>,
+    false_secret: Option<u32>,
     false_key: Option<Key>,
     false_key_hash: Option<Hash256>,
 ) {
@@ -236,12 +236,12 @@ fn false_factory_tx(
         true,
     );
 
-    let nonce = false_nonce.unwrap_or(2);
+    let secret = false_secret.unwrap_or(2);
     let key = false_key.unwrap_or(user.first_key());
     let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
 
     // A malicious block builder sends a register user tx with falsified
-    // nonce, key, or key hash.
+    // secret, key, or key hash.
     //
     // Should fail with "data not found" error, because it be different deposit
     // address for which no deposit is found.
@@ -255,7 +255,7 @@ fn false_factory_tx(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
                     username: user.username.clone(),
-                    nonce,
+                    secret,
                     key,
                     key_hash,
                 },
@@ -268,7 +268,7 @@ fn false_factory_tx(
                 contracts.account_factory,
                 codes.account_spot.to_bytes().hash256(),
                 &NewUserSalt {
-                    nonce,
+                    secret,
                     key,
                     key_hash,
                 }
