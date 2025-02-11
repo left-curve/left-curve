@@ -163,6 +163,8 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
     let mut events = Vec::new();
 
     for order_id in order_ids {
+        // First try to load from resting orders, then from incoming orders storage.
+        // If found in neither or both through an error
         let (((base_denom, quote_denom), direction, price, _), order) = match (
             ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
             INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
