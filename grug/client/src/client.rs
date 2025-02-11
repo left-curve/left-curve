@@ -5,8 +5,8 @@ use {
     grug_math::Inner,
     grug_types::{
         Addr, Binary, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult, Hash256,
-        HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryResponse, Signer, StdError,
-        Tx, TxOutcome, UnsignedTx,
+        HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty, Query, QueryRequest, QueryResponse,
+        Signer, StdError, Tx, TxOutcome, UnsignedTx,
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap, ops::Deref},
@@ -281,22 +281,22 @@ impl Client {
             .map(|res| res.as_wasm_raw())
     }
 
-    /// Call the contract's query entry point with the given message.
-    pub async fn query_wasm_smart<M, R>(
+    pub async fn query_wasm_smart<R>(
         &self,
         contract: Addr,
-        msg: &M,
+        req: R,
         height: Option<u64>,
-    ) -> anyhow::Result<R>
+    ) -> anyhow::Result<R::Response>
     where
-        M: Serialize,
-        R: DeserializeOwned,
+        R: QueryRequest,
+        R::Message: Serialize,
+        R::Response: DeserializeOwned,
     {
-        self.query_app(&Query::wasm_smart(contract, msg)?, height)
-            .await?
-            .as_wasm_smart()
-            .deserialize_json()
-            .map_err(Into::into)
+        let msg = R::Message::from(req);
+
+        self.query_app(&Query::wasm_smart(contract, &msg)?, height)
+            .await
+            .and_then(|res| res.as_wasm_smart().deserialize_json().map_err(Into::into))
     }
 
     /// Simulate the gas usage of a transaction.

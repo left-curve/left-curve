@@ -10,7 +10,7 @@ use {
         Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, Inner, JsonSerExt,
         MaybeDefined, Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
-    std::{collections::BTreeSet, str::FromStr},
+    std::str::FromStr,
 };
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
@@ -36,11 +36,7 @@ where
 {
     pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
         let nonce = client
-            .query_wasm_smart::<_, BTreeSet<Nonce>>(
-                self.address,
-                &spot::QueryMsg::SeenNonces {},
-                None,
-            )
+            .query_wasm_smart(self.address, spot::QuerySeenNoncesRequest {}, None)
             .await?
             .last()
             .map(|newest_nonce| newest_nonce + 1)
