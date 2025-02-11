@@ -3,7 +3,7 @@ use {
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
-    anyhow::ensure,
+    anyhow::{anyhow, ensure},
     dango_types::{
         bank,
         dex::{
@@ -129,17 +129,20 @@ fn submit_order(
 
     INCOMING_ORDERS.save(
         ctx.storage,
-        (
-            (base_denom.clone(), quote_denom.clone()),
-            direction,
-            price,
-            order_id,
+        order_id,
+        &(
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                direction,
+                price,
+                order_id,
+            ),
+            Order {
+                user: ctx.sender,
+                amount,
+                remaining: amount,
+            },
         ),
-        &Order {
-            user: ctx.sender,
-            amount,
-            remaining: amount,
-        },
     )?;
 
     Ok(Response::new().add_event(OrderSubmitted {
@@ -160,8 +163,25 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
     let mut events = Vec::new();
 
     for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        // First try to load from resting orders, then from incoming orders storage.
+        // If found in neither or both through an error
+        let (((base_denom, quote_denom), direction, price, _), order) = match (
+            ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
+            INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
+        ) {
+            (Some(x), None) => {
+                ORDERS.remove(ctx.storage, x.0.clone())?;
+                x
+            },
+            (None, Some(x)) => {
+                INCOMING_ORDERS.remove(ctx.storage, order_id);
+                x
+            },
+            (None, None) => return Err(anyhow!("order with id {order_id} not found")),
+            (Some(_), Some(_)) => {
+                return Err(anyhow!("order with id {order_id} found in both maps"))
+            },
+        };
 
         ensure!(
             ctx.sender == order.user,
@@ -186,11 +206,6 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         })?);
 
         refunds.insert(refund)?;
-
-        ORDERS.remove(
-            ctx.storage,
-            ((base_denom, quote_denom), direction, price, order_id),
-        )?;
     }
 
     Ok(Response::new()
@@ -212,9 +227,9 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let incoming_orders = INCOMING_ORDERS
         .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?;
-    for (key, order) in incoming_orders {
-        ORDERS.save(ctx.storage, key.clone(), &order)?;
-        pairs.insert(key.0);
+    for (_, (order_key, order)) in incoming_orders {
+        ORDERS.save(ctx.storage, order_key.clone(), &order)?;
+        pairs.insert(order_key.0);
     }
     INCOMING_ORDERS.clear(ctx.storage, None, None);
 

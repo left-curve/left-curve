@@ -12,7 +12,7 @@ pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("ord
     order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
 });
 
-pub const INCOMING_ORDERS: Map<OrderKey, Order> = Map::new("incoming_orders");
+pub const INCOMING_ORDERS: Map<OrderId, (OrderKey, Order)> = Map::new("incoming_orders");
 
 /// Type of the keys under which orders are stored in the contract storage.
 ///
