@@ -337,7 +337,7 @@ impl Client {
 #[derive(Debug, Clone)]
 pub struct SigningClient {
     inner: Client,
-    chain_id: String,
+    pub chain_id: String,
 }
 
 impl Deref for SigningClient {
