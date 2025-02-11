@@ -214,12 +214,7 @@ where
 
                 Ok(response::FinalizeBlock {
                     app_hash: into_tm_app_hash(outcome.app_hash),
-                    // We don't return events to Tendermint (perhaps with the
-                    // exception of IBC events which may be needed by relayers).
-                    // Instead we use `BlockOutcome` which is provided to the
-                    // indexer.
-                    // In the future, we may switch to another consensus engine
-                    // such as Malachite which doesn't deal with events at all.
+                    // `events` field is used for cron events.
                     events: cron_events,
                     tx_results,
                     // We haven't implemented any mechanism to alter the
