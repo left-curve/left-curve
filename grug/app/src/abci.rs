@@ -14,7 +14,7 @@ use {
         task::{Context, Poll},
     },
     tendermint::{
-        abci::{request, response, types::ExecTxResult, Code},
+        abci::{self, request, response, types::ExecTxResult, Code},
         block::Height,
         merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
@@ -194,6 +194,24 @@ where
                     .map(into_tm_tx_result)
                     .collect::<AppResult<_>>()?;
 
+                let cron_events = outcome
+                    .cron_outcomes
+                    .into_iter()
+                    .enumerate()
+                    .map(|(id, cron)| {
+                        Ok(abci::Event {
+                            kind: format!("cron-{}", id),
+                            attributes: vec![abci::EventAttribute::V037(
+                                abci::v0_37::EventAttribute {
+                                    key: format!("cron-{}", id),
+                                    value: cron.to_json_string()?,
+                                    index: false,
+                                },
+                            )],
+                        })
+                    })
+                    .collect::<AppResult<_>>()?;
+
                 Ok(response::FinalizeBlock {
                     app_hash: into_tm_app_hash(outcome.app_hash),
                     // We don't return events to Tendermint (perhaps with the
@@ -202,7 +220,7 @@ where
                     // indexer.
                     // In the future, we may switch to another consensus engine
                     // such as Malachite which doesn't deal with events at all.
-                    events: vec![],
+                    events: cron_events,
                     tx_results,
                     // We haven't implemented any mechanism to alter the
                     // validator set or consensus params yet.
