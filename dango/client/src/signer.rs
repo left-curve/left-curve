@@ -30,6 +30,26 @@ where
     sk: SigningKey,
 }
 
+impl<T> SingleSigner<T>
+where
+    T: MaybeDefined<u32>,
+{
+    pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
+        let nonce = client
+            .query_wasm_smart::<_, BTreeSet<Nonce>>(
+                self.address,
+                &spot::QueryMsg::SeenNonces {},
+                None,
+            )
+            .await?
+            .last()
+            .map(|newest_nonce| newest_nonce + 1)
+            .unwrap_or(0);
+
+        Ok(nonce)
+    }
+}
+
 impl SingleSigner<Undefined<u32>> {
     pub fn new(username: &str, address: Addr, sk: SigningKey) -> anyhow::Result<Self> {
         let username = Username::from_str(username)?;
@@ -76,16 +96,7 @@ impl SingleSigner<Undefined<u32>> {
     }
 
     pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
-        let nonce = client
-            .query_wasm_smart::<_, BTreeSet<Nonce>>(
-                self.address,
-                &spot::QueryMsg::SeenNonces {},
-                None,
-            )
-            .await?
-            .last()
-            .map(|newest_nonce| newest_nonce + 1)
-            .unwrap_or(0);
+        let nonce = self.query_next_nonce(client).await?;
 
         Ok(SingleSigner {
             username: self.username,
@@ -95,6 +106,15 @@ impl SingleSigner<Undefined<u32>> {
             nonce: Defined::new(nonce),
             sk: self.sk,
         })
+    }
+}
+
+impl SingleSigner<Defined<u32>> {
+    pub async fn update_nonce(&mut self, client: &Client) -> anyhow::Result<()> {
+        let nonce = self.query_next_nonce(client).await?;
+
+        self.nonce = Defined::new(nonce);
+        Ok(())
     }
 }
 
