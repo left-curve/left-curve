@@ -1,7 +1,7 @@
 use {
     dango_testing::{generate_random_key, setup_test},
     grug::{
-        btree_set, Addr, Addressable, Coins, ContractEvent, HashExt, HexByteArray, Inner,
+        btree_set, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner,
         JsonDeExt, QuerierExt, ResultExt, SearchEvent,
     },
     grug_crypto::Identity256,
@@ -97,7 +97,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()
@@ -185,7 +185,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()
@@ -236,7 +236,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()

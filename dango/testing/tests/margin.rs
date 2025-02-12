@@ -15,7 +15,7 @@ use {
         oracle::{self, PrecisionedPrice, PrecisionlessPrice},
     },
     grug::{
-        btree_map, coins, Addr, Addressable, Binary, Coins, ContractEvent, Denom, JsonDeExt,
+        btree_map, coins, Addr, Addressable, Binary, Coins, CheckedContractEvent, Denom, JsonDeExt,
         JsonSerExt, Message, MsgConfigure, NextNumber, NonEmpty, Number, NumberConst, PrevNumber,
         QuerierExt, ResultExt, SearchEvent, Udec128, Uint128,
     },
@@ -1050,7 +1050,7 @@ proptest! {
         // Check liquidation bonus
         let config = suite.query_app_config::<AppConfig>().unwrap();
         let liquidation_event = res.events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|e| e.ty == "liquidate")
             .take()
             .one()
