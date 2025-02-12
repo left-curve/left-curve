@@ -110,12 +110,7 @@ pub enum QueryMsg {
 
 #[grug::derive(Serde)]
 #[grug::event("mailbox_dispatch")]
-pub struct Dispatch {
-    pub sender: Addr32,
-    pub destination_domain: Domain,
-    pub recipient: Addr32,
-    pub message: HexBinary,
-}
+pub struct Dispatch(pub Message);
 
 #[grug::derive(Serde)]
 #[grug::event("mailbox_dispatch_id")]
