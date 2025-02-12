@@ -2,11 +2,12 @@ use {
     dango_testing::setup_test_naive,
     dango_types::{
         constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, Direction, OrderId, QueryOrdersRequest},
+        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest},
     },
     grug::{
         btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -464,4 +465,53 @@ fn submit_and_cancel_order_in_same_block() {
             limit: None,
         })
         .should_succeed_and(BTreeMap::is_empty);
+}
+
+#[test]
+fn only_owner_can_create_passive_pool() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            Coins::one(USDC_DENOM.clone(), 1).unwrap(),
+        )
+        .should_fail_with_error("Only the owner can create a passive pool");
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            Coins::one(USDC_DENOM.clone(), 1).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
+            lp_denom,
+        })
+        .should_succeed_and_equal(Pool {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            curve_type: CurveInvariant::Xyk,
+            reserves: Coins::new(),
+            swap_fee: Udec128::ZERO,
+        });
 }
