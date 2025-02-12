@@ -1,4 +1,11 @@
-import { IconBell, IconUser, ProfileIcon, type VisibleRef, twMerge } from "@left-curve/applets-kit";
+import {
+  IconBell,
+  IconGear,
+  IconUser,
+  ProfileIcon,
+  type VisibleRef,
+  twMerge,
+} from "@left-curve/applets-kit";
 
 import { useRef, useState } from "react";
 
@@ -17,7 +24,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky bottom-0 left-0 bg-transparent z-50 w-full p-4 ">
+      <header className="sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full p-4 backdrop-blur-sm">
         <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto">
           <Link to="/" className="w-fit">
             <img
@@ -53,6 +60,13 @@ export const Header: React.FC = () => {
             />
           </div>
           <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
+            <Link
+              type="button"
+              className="[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] bg-rice-100 text-rice-700 border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)] p-[10px] rounded-[14px]"
+              to="/settings"
+            >
+              <IconGear className="w-6 h-6 text-rice-700" />
+            </Link>
             <button
               type="button"
               className="[box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] bg-rice-100 text-rice-700 border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)] p-[10px] rounded-[14px]"

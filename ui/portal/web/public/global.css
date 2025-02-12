@@ -12,6 +12,11 @@ body,
   align-items: center;
 }
 
+body {
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+
 .header {
   width: 200%;
   mask-position: bottom center;

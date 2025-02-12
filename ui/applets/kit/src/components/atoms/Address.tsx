@@ -6,7 +6,7 @@ type Props = {
   children?: string;
 };
 
-const Address: React.FC<Props & ComponentPropsWithoutRef<"p">> = ({
+export const Address: React.FC<Props & ComponentPropsWithoutRef<"p">> = ({
   children,
   address,
   className,
