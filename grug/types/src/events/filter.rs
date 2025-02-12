@@ -1,4 +1,5 @@
 use {
+    super::EventId,
     crate::{
         AsVariant, Defined, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
         FlatEventStatusDiscriminants, MaybeDefined, Undefined,
@@ -105,7 +106,7 @@ where
 {
     /// Takes the events that match the filter.
     pub fn take(self) -> FilterResult<FilteredEvent<F>> {
-        let events = self
+        let events: Vec<FilteredEvent<F>> = self
             .events
             .into_iter()
             .filter_map(|event| {
@@ -133,6 +134,7 @@ where
                 }
 
                 maybe_event.map(|typed_event| FilteredEvent {
+                    id: event.id,
                     commitment_status: event.commitment_status,
                     event_status: event.event_status,
                     event: typed_event,
@@ -146,6 +148,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilteredEvent<T> {
+    pub id: EventId,
     pub commitment_status: FlatCommitmentStatus,
     pub event_status: FlatEventStatus,
     pub event: T,
