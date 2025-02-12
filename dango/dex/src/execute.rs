@@ -1,22 +1,26 @@
 use {
     crate::{
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
-        NEXT_ORDER_ID, ORDERS, PAIRS,
+        LP_DENOMS, NEXT_ORDER_ID, ORDERS, PAIRS, POOLS,
     },
     anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
-            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
+            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Pool, LP_NAMESPACE,
+            NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128,
+        Addr, Coin, Coins, ContractEvent, Denom, EventName, Inner, Message, MultiplyFraction,
+        MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt, Response, StdResult,
+        Storage, SudoCtx, Udec128, Uint128,
     },
-    std::collections::{BTreeMap, BTreeSet},
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        str::FromStr,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -37,6 +41,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
             batch_update_pairs(ctx, updates)
         },
+        ExecuteMsg::CreatePassivePool {
+            base_denom,
+            quote_denom,
+            curve_type,
+            lp_denom,
+            swap_fee,
+        } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
         ExecuteMsg::SubmitOrder {
             base_denom,
             quote_denom,
@@ -66,6 +77,49 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     }
 
     Ok(Response::new().add_subevents(events))
+}
+
+#[inline]
+fn create_passive_pool(
+    ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    curve_type: CurveInvariant,
+    lp_denom: Denom,
+    swap_fee: Udec128,
+) -> anyhow::Result<Response> {
+    // Only the owner can create a passive pool
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "Only the owner can create a passive pool"
+    );
+
+    // Ensure the pool doesn't already exist
+    ensure!(
+        !POOLS.has(ctx.storage, &lp_denom),
+        "Pool already exists for pair ({base_denom}, {quote_denom})"
+    );
+
+    // Ensure the LP token denom is valid
+    let parts = lp_denom.inner();
+    ensure!(
+        parts.len() == 3 && parts[0] == *NAMESPACE && parts[1] == *LP_NAMESPACE,
+        "invalid LP token denom"
+    );
+
+    // Save the LP token denom
+    LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
+
+    // Create the pool
+    POOLS.save(ctx.storage, &lp_denom, &Pool {
+        base_denom,
+        quote_denom,
+        curve_type,
+        reserves: Coins::new(),
+        swap_fee,
+    })?;
+
+    Ok(Response::new())
 }
 
 #[inline]
