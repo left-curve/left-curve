@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Spinner } from "./Spinner";
 
 const meta: Meta<typeof Spinner> = {
-  title: "Design System/Atoms/Spinner",
+  title: "Design System/Foundation/Spinner",
   component: Spinner,
   argTypes: {
     color: {
