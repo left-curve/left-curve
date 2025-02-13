@@ -638,7 +638,7 @@ fn provide_liquidity(
         // record the dex balance
         suite.balances().record(contracts.dex.address());
 
-        let funds: Coins = funds.clone().try_into().unwrap();
+        // Execute provide liquidity
         suite
             .execute(
                 user,

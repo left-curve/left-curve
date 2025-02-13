@@ -17,10 +17,7 @@ use {
         MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt, Response, StdResult,
         Storage, SudoCtx, Udec128, Uint128,
     },
-    std::{
-        collections::{BTreeMap, BTreeSet},
-        str::FromStr,
-    },
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
