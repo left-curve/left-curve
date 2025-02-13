@@ -172,9 +172,15 @@ pub enum ExecuteMsg {
         price: Udec128,
     },
     /// Cancel one or more orders by IDs.
-    CancelOrders { order_ids: BTreeSet<OrderId> },
-    /// Provide passive liquidity to a pair.
-    ProvideLiquidity { lp_denom: Denom },
+    CancelOrders {
+        order_ids: BTreeSet<OrderId>,
+    },
+    // Provide passive liquidity to a pair.
+    ProvideLiquidity {
+        lp_denom: Denom,
+    },
+    // Withdraw passive liquidity from a pair.
+    WithdrawLiquidity {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

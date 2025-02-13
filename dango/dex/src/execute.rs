@@ -57,6 +57,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
+        ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
     }
 }
 
@@ -372,6 +373,54 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
         .add_message(mint_msg))
 }
 
+/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
+/// The underlying assets will be returned to the sender.
+#[inline]
+fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let sent_lp_tokens = ctx.funds.clone().into_one_coin()?;
+
+    // Query the LP token supply
+    let lp_supply = ctx.querier.query_supply(sent_lp_tokens.denom.clone())?;
+
+    // Load the pool
+    let mut pool = POOLS.load(ctx.storage, &sent_lp_tokens.denom)?;
+
+    // Calculate the amount of each asset to return
+    let ratio = Udec128::checked_from_ratio(sent_lp_tokens.amount, lp_supply)?;
+    let coins_to_return: Coins = pool
+        .reserves
+        .clone()
+        .into_iter()
+        .map(|c| Coin {
+            denom: c.denom.clone(),
+            amount: c.amount.checked_mul_dec_floor(ratio).unwrap(),
+        })
+        .collect::<Vec<Coin>>()
+        .try_into()?;
+
+    // Update the pool reserves
+    pool.reserves.deduct_many(coins_to_return.clone())?;
+    POOLS.save(ctx.storage, &sent_lp_tokens.denom, &pool)?;
+
+    // Create burn message
+    let bank = ctx.querier.query_bank()?;
+    let burn_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Burn {
+            from: ctx.contract,
+            denom: sent_lp_tokens.denom,
+            amount: sent_lp_tokens.amount,
+        },
+        Coins::new(), // No funds needed for burning
+    )?;
+
+    // Create transfer message
+    let transfer_msg = Message::transfer(ctx.sender, coins_to_return)?;
+
+    Ok(Response::default()
+        .add_message(burn_msg)
+        .add_message(transfer_msg))
+}
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
