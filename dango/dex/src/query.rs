@@ -1,8 +1,8 @@
 use {
-    crate::{ORDERS, PAIRS},
+    crate::{LP_DENOMS, ORDERS, PAIRS, POOLS},
     dango_types::dex::{
         OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, Pair, PairParams,
-        PairUpdate, QueryMsg,
+        PairUpdate, Pool, QueryMsg,
     },
     grug::{
         Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
@@ -49,6 +49,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             limit,
         } => {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::PassivePool { lp_denom } => {
+            let res = query_passive_pool(ctx, lp_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::LpDenom {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_lp_denom(ctx, base_denom, quote_denom)?;
             res.to_json_value()
         },
     }
@@ -148,4 +159,14 @@ fn query_orders_by_user(
     _limit: Option<u32>,
 ) -> StdResult<BTreeMap<OrderId, OrdersByUserResponse>> {
     todo!();
+}
+
+#[inline]
+fn query_passive_pool(ctx: ImmutableCtx, lp_denom: Denom) -> StdResult<Pool> {
+    POOLS.load(ctx.storage, &lp_denom)
+}
+
+#[inline]
+fn query_lp_denom(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<Denom> {
+    LP_DENOMS.load(ctx.storage, (&base_denom, &quote_denom))
 }
