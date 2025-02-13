@@ -25,7 +25,7 @@ impl TendermintMutation {
         #[graphql(desc = "The base64 encoded transaction to broadcast")] tx: String,
     ) -> Result<TxSyncResponse, Error> {
         let client = get_http_client();
-        let tx_bytes = STANDARD.decode(&tx)?;
+        let tx_bytes = STANDARD.decode(tx)?;
 
         Ok(client.broadcast_tx_sync(tx_bytes).await?.into())
     }
@@ -36,7 +36,7 @@ impl TendermintMutation {
         #[graphql(desc = "The base64 encoded transaction to broadcast")] tx: String,
     ) -> Result<TxAsyncResponse, Error> {
         let client = get_http_client();
-        let tx_bytes = STANDARD.decode(&tx)?;
+        let tx_bytes = STANDARD.decode(tx)?;
 
         Ok(client.broadcast_tx_async(tx_bytes).await?.into())
     }
@@ -47,7 +47,7 @@ impl TendermintMutation {
         #[graphql(desc = "The base64 encoded transaction to broadcast")] tx: String,
     ) -> Result<TxCommitResponse, Error> {
         let client = get_http_client();
-        let tx_bytes = STANDARD.decode(&tx)?;
+        let tx_bytes = STANDARD.decode(tx)?;
 
         Ok(client.broadcast_tx_commit(tx_bytes).await?.into())
     }

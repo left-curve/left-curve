@@ -1,5 +1,6 @@
 use {
     async_graphql::SimpleObject,
+    base64::{engine::general_purpose::STANDARD, Engine},
     tendermint_rpc::endpoint::{
         abci_query,
         broadcast::{tx_async, tx_commit, tx_sync},
@@ -9,7 +10,7 @@ use {
 #[derive(SimpleObject)]
 pub struct TxSyncResponse {
     pub code: u32,
-    pub data: Vec<u8>,
+    pub data: String,
     pub log: String,
     pub hash: String,
 }
@@ -18,7 +19,7 @@ impl From<tx_sync::Response> for TxSyncResponse {
     fn from(resp: tx_sync::Response) -> Self {
         TxSyncResponse {
             code: resp.code.value(),
-            data: resp.data.into(),
+            data: STANDARD.encode(resp.data),
             log: resp.log,
             hash: resp.hash.to_string(),
         }
@@ -29,7 +30,7 @@ impl From<tx_sync::Response> for TxSyncResponse {
 pub struct TxAsyncResponse {
     pub codespace: String,
     pub code: u32,
-    pub data: Vec<u8>,
+    pub data: String,
     pub log: String,
     pub hash: String,
 }
@@ -39,7 +40,7 @@ impl From<tx_async::Response> for TxAsyncResponse {
         TxAsyncResponse {
             codespace: resp.codespace,
             code: resp.code.value(),
-            data: resp.data.into(),
+            data: STANDARD.encode(resp.data),
             log: resp.log,
             hash: resp.hash.to_string(),
         }
@@ -63,12 +64,12 @@ impl From<tx_commit::Response> for TxCommitResponse {
 
 #[derive(SimpleObject)]
 pub struct AbciQuery {
-    pub log: String,
     pub code: u32,
+    pub log: String,
     pub info: String,
     pub index: i64,
-    pub key: Vec<u8>,
-    pub value: Vec<u8>,
+    pub key: String,
+    pub value: String,
     pub height: u64,
     pub codespace: String,
 }
@@ -80,8 +81,8 @@ impl From<abci_query::AbciQuery> for AbciQuery {
             code: query.code.into(),
             info: query.info,
             index: query.index,
-            key: query.key,
-            value: query.value,
+            key: STANDARD.encode(query.key),
+            value: STANDARD.encode(query.value),
             height: query.height.into(),
             codespace: query.codespace,
         }
