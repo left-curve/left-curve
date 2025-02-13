@@ -92,7 +92,6 @@ const buttonVariants = tv(
     },
     defaultVariants: {
       size: "md",
-      color: "red",
       variant: "primary",
       fullWidth: false,
       isDisabled: false,
