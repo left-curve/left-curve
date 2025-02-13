@@ -1,14 +1,17 @@
 use {
-    crate::{DEBTS, MARKETS},
+    crate::{calculate_deposit, calculate_withdraw, DEBTS, MARKETS},
     dango_types::lending::{Market, QueryMsg},
-    grug::{Addr, Bound, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
+    grug::{
+        Addr, Bound, Coin, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
+        StdResult, Storage, Timestamp,
+    },
     std::collections::BTreeMap,
 };
 
 const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Market { denom } => {
             let res = query_market(ctx.storage, denom)?;
@@ -19,14 +22,31 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::Debt { account } => {
-            let res = query_debt(ctx.storage, account)?;
+            let res = query_debt(ctx.storage, &ctx.querier, ctx.block.timestamp, account)?;
             res.to_json_value()
         },
         QueryMsg::Debts { start_after, limit } => {
-            let res = query_debts(ctx.storage, start_after, limit)?;
+            let res = query_debts(
+                ctx.storage,
+                &ctx.querier,
+                ctx.block.timestamp,
+                start_after,
+                limit,
+            )?;
             res.to_json_value()
         },
+        QueryMsg::PreviewDeposit { underlying } => {
+            let lp_tokens =
+                query_preview_deposit(ctx.storage, &ctx.querier, ctx.block.timestamp, underlying)?;
+            lp_tokens.to_json_value()
+        },
+        QueryMsg::PreviewWithdraw { lp_tokens } => {
+            let coins =
+                query_preview_withdraw(ctx.storage, &ctx.querier, ctx.block.timestamp, lp_tokens)?;
+            coins.to_json_value()
+        },
     }
+    .map_err(Into::into)
 }
 
 fn query_market(storage: &dyn Storage, denom: Denom) -> StdResult<Market> {
@@ -47,20 +67,71 @@ fn query_markets(
         .collect()
 }
 
-fn query_debt(storage: &dyn Storage, account: Addr) -> StdResult<Coins> {
-    DEBTS.load(storage, account)
+fn query_debt(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    timestamp: Timestamp,
+    account: Addr,
+) -> anyhow::Result<Coins> {
+    let scaled_debts = DEBTS.load(storage, account)?;
+    let mut debts = Coins::new();
+    for (denom, scaled_debt) in scaled_debts {
+        let market = MARKETS
+            .load(storage, &denom)?
+            .update_indices(querier, timestamp)?;
+        let debt = market.calculate_debt(scaled_debt)?;
+        debts.insert(Coin::new(denom, debt)?)?;
+    }
+
+    Ok(debts)
 }
 
 fn query_debts(
     storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    timestamp: Timestamp,
     start_after: Option<Addr>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<Addr, Coins>> {
+) -> anyhow::Result<BTreeMap<Addr, Coins>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     DEBTS
         .range(storage, start, None, Order::Ascending)
         .take(limit as usize)
+        .map(|res| {
+            let (account, scaled_debts) = res?;
+            let debts = scaled_debts
+                .iter()
+                .map(|(denom, scaled_debt)| {
+                    let market = MARKETS
+                        .load(storage, denom)?
+                        .update_indices(querier, timestamp)?;
+                    let debt = market.calculate_debt(*scaled_debt)?;
+                    Ok(Coin::new(denom.clone(), debt)?)
+                })
+                .collect::<Result<Vec<Coin>, anyhow::Error>>()?;
+            Ok((account, Coins::try_from(debts)?))
+        })
         .collect()
+}
+
+fn query_preview_deposit(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    timestamp: Timestamp,
+    underlying: Coins,
+) -> anyhow::Result<Coins> {
+    let (lp_tokens, ..) = calculate_deposit(storage, querier, timestamp, underlying)?;
+    Ok(lp_tokens)
+}
+
+fn query_preview_withdraw(
+    storage: &dyn Storage,
+    querier: &QuerierWrapper,
+    timestamp: Timestamp,
+    lp_tokens: Coins,
+) -> anyhow::Result<Coins> {
+    let (coins, ..) = calculate_withdraw(storage, querier, timestamp, lp_tokens)?;
+    Ok(coins)
 }

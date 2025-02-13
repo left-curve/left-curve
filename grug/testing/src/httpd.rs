@@ -1,4 +1,7 @@
 use {
+    actix_codec::Framed,
+    actix_http::ws,
+    actix_test::{Client, TestServer},
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
@@ -6,26 +9,37 @@ use {
         web::ServiceConfig,
         App,
     },
-    anyhow::anyhow,
+    anyhow::{anyhow, bail, ensure},
+    awc::BoxedSocket,
+    core::str,
+    futures_util::{sink::SinkExt, stream::StreamExt},
     indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
-    serde::Deserialize,
+    sea_orm::sqlx::types::uuid,
+    serde::{de::DeserializeOwned, Deserialize, Serialize},
+    serde_json::json,
     std::collections::HashMap,
 };
 
-#[derive(serde::Serialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct GraphQLCustomRequest<'a> {
     pub name: &'a str,
     pub query: &'a str,
     pub variables: serde_json::Map<String, serde_json::Value>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct GraphQLResponse {
     pub data: HashMap<String, serde_json::Value>,
     pub errors: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(serde::Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
+pub struct GraphQLSubscriptionResponse {
+    pub id: String,
+    pub payload: GraphQLResponse,
+}
+
+#[derive(Deserialize, Debug)]
 pub struct GraphQLCustomResponse<R> {
     pub data: R,
     pub errors: Option<Vec<serde_json::Value>>,
@@ -84,9 +98,9 @@ pub async fn call_graphql<R>(
             > + 'static,
     >,
     request_body: GraphQLCustomRequest<'_>,
-) -> Result<GraphQLCustomResponse<R>, anyhow::Error>
+) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
-    R: serde::de::DeserializeOwned,
+    R: DeserializeOwned,
 {
     let app = actix_web::test::init_service(app).await;
 
@@ -112,6 +126,132 @@ where
         })
     } else {
         Err(anyhow!("can't find {} in response", request_body.name))
+    }
+}
+
+/// Calls a GraphQL subscription and returns a stream
+pub async fn call_ws_graphql_stream<F, A, B>(
+    context: Context,
+    app_builder: F,
+    request_body: GraphQLCustomRequest<'_>,
+) -> anyhow::Result<(
+    TestServer,
+    awc::ClientResponse,
+    Framed<BoxedSocket, ws::Codec>,
+)>
+where
+    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    A: ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<B>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    B: MessageBody + 'static,
+{
+    let srv = actix_test::start(move || app_builder(context.clone()));
+
+    let (ws, mut framed) = Client::new()
+        .ws(srv.url("/graphql"))
+        .header("sec-websocket-protocol", "graphql-transport-ws")
+        .connect()
+        .await
+        .map_err(|e| anyhow!("failed to connect to websocket 1: {e}"))?;
+
+    framed
+        .send(ws::Message::Text(
+            json!({"type": "connection_init", "payload": {}})
+                .to_string()
+                .into(),
+        ))
+        .await?;
+
+    // Wait for connection_ack
+    match framed.next().await {
+        Some(Ok(ws::Frame::Text(text))) => {
+            ensure!(
+                text == json!({ "type": "connection_ack" }).to_string(),
+                "unexpected connection response: {text:?}"
+            );
+        },
+        Some(Err(e)) => return Err(e.into()),
+        None => bail!("connection closed unexpectedly"),
+        _ => bail!("unexpected message type"),
+    }
+
+    let request_id = uuid::Uuid::new_v4();
+    let request_body_json = json!({
+        "id": request_id,
+        "type": "subscribe",
+        "payload": request_body
+    });
+
+    framed
+        .send(ws::Message::Text(request_body_json.to_string().into()))
+        .await?;
+
+    Ok((srv, ws, framed))
+}
+
+/// Calls a GraphQL subscription and returns the first response.
+pub async fn call_ws_graphql<F, A, B, R>(
+    context: Context,
+    app_builder: F,
+    request_body: GraphQLCustomRequest<'_>,
+) -> anyhow::Result<GraphQLCustomResponse<R>>
+where
+    R: DeserializeOwned,
+    F: Fn(Context) -> App<A> + Clone + Send + Sync + 'static,
+    A: ServiceFactory<
+            ServiceRequest,
+            Response = ServiceResponse<B>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
+    B: MessageBody + 'static,
+{
+    let name = request_body.name;
+    let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
+    let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+    Ok(response)
+}
+
+/// Parses a GraphQL subscription response.
+pub async fn parse_graphql_subscription_response<R>(
+    mut framed: Framed<BoxedSocket, ws::Codec>,
+    name: &str,
+) -> anyhow::Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>)>
+where
+    R: DeserializeOwned,
+{
+    match framed.next().await {
+        Some(Ok(ws::Frame::Text(text))) => {
+            // When I need to debug the response
+            // println!("text response: \n{}", str::from_utf8(&text)?);
+
+            let mut graphql_response: GraphQLSubscriptionResponse = serde_json::from_slice(&text)?;
+
+            // When I need to debug the response
+            // println!("response: \n{:#?}", graphql_response);
+
+            if let Some(data) = graphql_response.payload.data.remove(name) {
+                Ok((framed, GraphQLCustomResponse {
+                    data: serde_json::from_value(data)?,
+                    errors: graphql_response.payload.errors,
+                }))
+            } else {
+                Err(anyhow!("can't find {name} in response"))
+            }
+        },
+        Some(Ok(ws::Frame::Ping(ping))) => {
+            framed.send(ws::Message::Pong(ping)).await?;
+            Err(anyhow!("received ping"))
+        },
+        Some(Err(e)) => Err(e.into()),
+        None => Err(anyhow!("connection closed unexpectedly")),
+        res => Err(anyhow!("unexpected message type: {res:?}")),
     }
 }
 

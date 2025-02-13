@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, DEPOSITS, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
         account::{self, multi, single},
@@ -8,7 +8,6 @@ use {
             Username,
         },
         auth::Key,
-        DangoQuerier,
     },
     grug::{
         Addr, AuthCtx, AuthMode, AuthResponse, Coins, Hash256, Inner, JsonDeExt, Message,
@@ -28,9 +27,19 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         .into_iter()
         .map(|(username, (key_hash, key))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            onboard_new_user(ctx.storage, ctx.contract, username, key, key_hash, false)
+            // Minimum deposit is not required for genesis users.
+            onboard_new_user(
+                ctx.storage,
+                ctx.contract,
+                username,
+                key,
+                key_hash,
+                Coins::default(),
+            )
         })
         .collect::<StdResult<Vec<_>>>()?;
+
+    MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
     Ok(Response::new().add_messages(instantiate_msgs))
 }
@@ -94,7 +103,6 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Deposit { recipient } => deposit(ctx, recipient),
         ExecuteMsg::RegisterUser {
             username,
             key,
@@ -104,29 +112,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
     }
-}
-
-fn deposit(ctx: MutableCtx, recipient: Addr) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_ibc_transfer()?,
-        "only IBC transfer contract can make deposits"
-    );
-
-    // 1. If someone makes a depsoit twice, then we simply merge the deposits.
-    // 2. We trust the IBC transfer contract is implemented correctly and won't
-    // make empty deposits.
-    DEPOSITS.may_update(ctx.storage, &recipient, |maybe_deposit| -> StdResult<_> {
-        if let Some(mut existing_deposit) = maybe_deposit {
-            for coin in ctx.funds {
-                existing_deposit.insert(coin)?;
-            }
-            Ok(existing_deposit)
-        } else {
-            Ok(ctx.funds)
-        }
-    })?;
-
-    Ok(Response::new())
 }
 
 fn register_user(
@@ -151,13 +136,15 @@ fn register_user(
     // Save the key.
     KEYS.save(ctx.storage, (&username, key_hash), &key)?;
 
+    let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
+
     Ok(Response::new().add_message(onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
         key,
         key_hash,
-        true,
+        minimum_deposit,
     )?))
 }
 
@@ -169,7 +156,7 @@ fn onboard_new_user(
     username: Username,
     key: Key,
     key_hash: Hash256,
-    must_have_deposit: bool,
+    minimum_receive: Coins,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -187,12 +174,6 @@ fn onboard_new_user(
 
     let address = Addr::derive(factory, code_hash, &salt);
 
-    let funds = if must_have_deposit {
-        DEPOSITS.take(storage, &address)?
-    } else {
-        Coins::new()
-    };
-
     let account = Account {
         index,
         params: AccountParams::Spot(single::Params::new(username.clone())),
@@ -204,11 +185,13 @@ fn onboard_new_user(
     // Create the message to instantiate this account.
     Message::instantiate(
         code_hash,
-        &account::InstantiateMsg {},
+        &account::spot::InstantiateMsg {
+            minimum_deposit: minimum_receive,
+        },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
-        funds,
+        Coins::default(),
     )
 }
 
@@ -262,7 +245,9 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
 
     Ok(Response::new().add_message(Message::instantiate(
         code_hash,
-        &account::InstantiateMsg {},
+        &account::spot::InstantiateMsg {
+            minimum_deposit: Coins::default(),
+        },
         salt,
         Some(format!("dango/account/{}/{}", account.params.ty(), index)),
         Some(ctx.contract),

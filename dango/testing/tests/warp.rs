@@ -1,26 +1,26 @@
 use {
     assertor::*,
-    dango_testing::{generate_random_key, setup_test, setup_test_with_indexer},
+    dango_testing::{
+        setup_test, setup_test_with_indexer, HyperlaneTestSuite, TestSuite, MOCK_LOCAL_DOMAIN,
+        MOCK_REMOTE_DOMAIN,
+    },
     dango_types::{
         constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
-        warp::{self, Route, TokenMessage},
+        warp::{self, RateLimit, Route, TokenMessage},
     },
     dango_warp::ROUTES,
     grug::{
-        Addressable, Coins, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
-        QuerierExt, ResultExt, StdError, Uint128,
+        btree_map, Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, HashExt,
+        HexBinary, MathError, NumberConst, QuerierExt, ResultExt, StdError, Udec128, Uint128,
     },
-    grug_crypto::Identity256,
     hyperlane_types::{
-        addr32, domain_hash, eip191_hash,
+        addr32,
         hooks::merkle,
-        isms::{self, multisig::Metadata, HYPERLANE_DOMAIN_KEY},
-        mailbox::{self, Domain, Message, MAILBOX_VERSION},
-        multisig_hash, Addr32, IncrementalMerkleTree,
+        mailbox::{self, Message, MAILBOX_VERSION},
+        Addr32, IncrementalMerkleTree,
     },
-    k256::ecdsa::SigningKey,
     sea_orm::EntityTrait,
-    std::collections::BTreeSet,
+    std::{ops::DerefMut, str::FromStr},
 };
 
 const MOCK_ROUTE: Route = Route {
@@ -30,81 +30,6 @@ const MOCK_ROUTE: Route = Route {
 
 const MOCK_RECIPIENT: Addr32 =
     addr32!("0000000000000000000000000000000000000000000000000000000000000001");
-
-const MOCK_REMOTE_MERKLE_TREE: Addr32 =
-    addr32!("0000000000000000000000000000000000000000000000000000000000000002");
-
-const MOCK_REMOTE_DOMAIN: Domain = 123;
-
-const MOCK_LOCAL_DOMAIN: Domain = 88888888;
-
-struct MockValidatorSet {
-    secrets: Vec<SigningKey>,
-    addresses: BTreeSet<HexByteArray<20>>,
-    merkle_tree: IncrementalMerkleTree,
-}
-
-impl MockValidatorSet {
-    pub fn new_random(size: usize) -> Self {
-        let (secrets, addresses) = (0..size)
-            .map(|_| {
-                let (sk, _) = generate_random_key();
-                // We need the _uncompressed_ pubkey for deriving Ethereum address.
-                let pk = sk.verifying_key().to_encoded_point(false).to_bytes();
-                let pk_hash = (&pk[1..]).keccak256();
-                let address = &pk_hash[12..];
-
-                (sk, HexByteArray::from_inner(address.try_into().unwrap()))
-            })
-            .unzip();
-
-        Self {
-            secrets,
-            addresses,
-            merkle_tree: IncrementalMerkleTree::default(),
-        }
-    }
-
-    pub fn sign(&mut self, message_id: Hash256) -> Metadata {
-        self.merkle_tree.insert(message_id).unwrap();
-
-        let merkle_root = self.merkle_tree.root();
-        let merkle_index = (self.merkle_tree.count - 1) as u32;
-
-        let multisig_hash = eip191_hash(multisig_hash(
-            domain_hash(
-                MOCK_REMOTE_DOMAIN,
-                MOCK_REMOTE_MERKLE_TREE,
-                HYPERLANE_DOMAIN_KEY,
-            ),
-            merkle_root,
-            merkle_index,
-            message_id,
-        ));
-
-        let signatures = self
-            .secrets
-            .iter()
-            .map(|sk| {
-                let (signature, recovery_id) = sk
-                    .sign_digest_recoverable(Identity256::from(multisig_hash.into_inner()))
-                    .unwrap();
-
-                let mut packed = [0u8; 65];
-                packed[..64].copy_from_slice(&signature.to_bytes());
-                packed[64] = recovery_id.to_byte() + 27;
-                HexByteArray::from_inner(packed)
-            })
-            .collect();
-
-        Metadata {
-            origin_merkle_tree: MOCK_REMOTE_MERKLE_TREE,
-            merkle_root,
-            merkle_index,
-            signatures,
-        }
-    }
-}
 
 #[test]
 fn send_escrowing_collateral() {
@@ -299,82 +224,39 @@ fn send_burning_synth() {
 
 #[test]
 fn receive_release_collateral() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-    let mut mock_validator_set = MockValidatorSet::new_random(3);
-
-    // Set validators at the ISM.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.hyperlane.ism,
-            &isms::multisig::ExecuteMsg::SetValidators {
-                domain: MOCK_REMOTE_DOMAIN,
-                threshold: 2,
-                validators: mock_validator_set.addresses.clone(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    let (suite, mut accounts, _, contracts) = setup_test();
+    let (mut suite, ..) = HyperlaneTestSuite::new(
+        suite,
+        accounts.owner,
+        btree_map! { MOCK_REMOTE_DOMAIN => (3, 2) },
+    );
 
     // Set the route.
     suite
-        .execute(
-            &mut accounts.owner,
-            contracts.warp,
-            &warp::ExecuteMsg::SetRoute {
-                denom: DANGO_DENOM.clone(),
-                destination_domain: MOCK_REMOTE_DOMAIN,
-                route: MOCK_ROUTE,
-            },
-            Coins::new(),
-        )
+        .hyperlane()
+        .set_route(DANGO_DENOM.clone(), MOCK_REMOTE_DOMAIN, MOCK_ROUTE)
         .should_succeed();
 
     // Send some tokens so that we have something to release.
     suite
-        .execute(
+        .hyperlane()
+        .send_transfer(
             &mut accounts.user1,
-            contracts.warp,
-            &warp::ExecuteMsg::TransferRemote {
-                destination_domain: MOCK_REMOTE_DOMAIN,
-                recipient: MOCK_RECIPIENT,
-                metadata: None,
-            },
-            Coins::one(DANGO_DENOM.clone(), 125).unwrap(),
+            MOCK_REMOTE_DOMAIN,
+            MOCK_RECIPIENT,
+            coin(&DANGO_DENOM, 125),
         )
         .should_succeed();
 
     // Now, receive a message from the origin domain.
-    let raw_message = Message {
-        version: MAILBOX_VERSION,
-        nonce: 0,
-        origin_domain: MOCK_REMOTE_DOMAIN,
-        sender: MOCK_ROUTE.address,
-        destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
-        recipient: contracts.warp.into(),
-        body: TokenMessage {
-            recipient: accounts.user1.address().into(),
-            amount: Uint128::new(88),
-            metadata: HexBinary::default(),
-        }
-        .encode(),
-    }
-    .encode();
-
-    let message_id = raw_message.keccak256();
-    let raw_metadata = mock_validator_set.sign(message_id).encode();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.hyperlane.mailbox,
-            &mailbox::ExecuteMsg::Process {
-                raw_message: raw_message.clone(),
-                raw_metadata,
-            },
-            Coins::new(),
+    let message_id = suite
+        .hyperlane()
+        .receive_transfer(
+            MOCK_REMOTE_DOMAIN,
+            accounts.user1.address(),
+            coin(&DANGO_DENOM, 88),
         )
-        .should_succeed();
+        .message_id;
 
     // The message should have been recorded as received.
     suite
@@ -397,78 +279,34 @@ fn receive_release_collateral() {
 
 #[test]
 fn receive_minting_synth() {
-    let (mut suite, mut accounts, _, contracts) = setup_test();
-    let mut mock_validator_set = MockValidatorSet::new_random(3);
-
-    let origin_domain = 123;
-
-    // Set validators at the ISM.
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.hyperlane.ism,
-            &isms::multisig::ExecuteMsg::SetValidators {
-                domain: MOCK_REMOTE_DOMAIN,
-                threshold: 2,
-                validators: mock_validator_set.addresses.clone(),
-            },
-            Coins::new(),
-        )
-        .should_succeed();
+    let (suite, accounts, _, contracts) = setup_test();
+    let (mut suite, ..) = HyperlaneTestSuite::new(
+        suite,
+        accounts.owner,
+        btree_map! {MOCK_REMOTE_DOMAIN => (3, 2)},
+    );
 
     // Set the route.
     suite
-        .execute(
-            &mut accounts.owner,
-            contracts.warp,
-            &warp::ExecuteMsg::SetRoute {
-                denom: SOL_DENOM.clone(),
-                destination_domain: origin_domain,
-                route: MOCK_ROUTE,
-            },
-            Coins::new(),
-        )
+        .hyperlane()
+        .set_route(SOL_DENOM.clone(), MOCK_REMOTE_DOMAIN, MOCK_ROUTE)
         .should_succeed();
 
     // Now, receive a message from the origin domain.
-    let raw_message = Message {
-        version: MAILBOX_VERSION,
-        nonce: 0,
-        origin_domain,
-        sender: MOCK_ROUTE.address,
-        destination_domain: MOCK_LOCAL_DOMAIN, // this should be our local domain
-        recipient: contracts.warp.into(),
-        body: TokenMessage {
-            recipient: accounts.user1.address().into(),
-            amount: Uint128::new(88),
-            metadata: HexBinary::default(),
-        }
-        .encode(),
-    }
-    .encode();
-
-    let message_id = raw_message.keccak256();
-    let raw_metadata = mock_validator_set.sign(message_id).encode();
-
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.hyperlane.mailbox,
-            &mailbox::ExecuteMsg::Process {
-                raw_message: raw_message.clone(),
-                raw_metadata,
-            },
-            Coins::new(),
+    let message_id = suite
+        .hyperlane()
+        .receive_transfer(
+            MOCK_REMOTE_DOMAIN,
+            accounts.user1.address(),
+            coin(&SOL_DENOM, 88),
         )
-        .should_succeed();
+        .message_id;
 
     // The message should have been recorded as received.
     suite
         .query_wasm_smart(
             contracts.hyperlane.mailbox,
-            mailbox::QueryDeliveredRequest {
-                message_id: raw_message.keccak256(),
-            },
+            mailbox::QueryDeliveredRequest { message_id },
         )
         .should_succeed_and_equal(true);
 
@@ -476,4 +314,603 @@ fn receive_minting_synth() {
     suite
         .query_balance(&accounts.user1, SOL_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(88));
+}
+
+#[test]
+fn alloy() {
+    let (suite, mut accounts, _, contracts) = setup_test();
+
+    let eth_domain = 10;
+    let sol_domain = 20;
+
+    let eth_usdc_recipient = Addr::mock(1).into();
+    let sol_usdc_recipient = Addr::mock(2).into();
+    let mock_remote_user = Addr::mock(3).into();
+
+    let sol_usdc_denom = Denom::from_str("hyp/sol/usdc").unwrap();
+    let eth_usdc_denom = Denom::from_str("hyp/eth/usdc").unwrap();
+
+    let alloyed_usdc_denom = Denom::from_str("hyp/all/usdc").unwrap();
+
+    let (mut suite, owner) = HyperlaneTestSuite::new(suite, accounts.owner, btree_map! {
+        eth_domain => (3, 2),
+        sol_domain => (3, 2),
+    });
+
+    // Set the route.
+    for (domain, denom, route) in [
+        (eth_domain, &eth_usdc_denom, Route {
+            address: eth_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+        (sol_domain, &sol_usdc_denom, Route {
+            address: sol_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+    ] {
+        suite
+            .hyperlane()
+            .set_route(denom.clone(), domain, route)
+            .should_succeed();
+    }
+
+    // Receive some tokens.
+    {
+        suite
+            .balances()
+            .record_many([accounts.user1.address(), contracts.warp.address()]);
+
+        suite.hyperlane().receive_transfer(
+            eth_domain,
+            accounts.user1.address(),
+            coin(&eth_usdc_denom, 100),
+        );
+
+        suite.hyperlane().receive_transfer(
+            sol_domain,
+            accounts.user1.address(),
+            coin(&sol_usdc_denom, 200),
+        );
+
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(100),
+                sol_usdc_denom.clone() => BalanceChange::Increased(200),
+            });
+    }
+
+    // Register Alloy.
+    for (domain, denom) in [(eth_domain, &eth_usdc_denom), (sol_domain, &sol_usdc_denom)] {
+        suite
+            .execute(
+                owner.write_access().deref_mut(),
+                contracts.warp,
+                &warp::ExecuteMsg::SetAlloy {
+                    underlying_denom: denom.clone(),
+                    destination_domain: domain,
+                    alloyed_denom: alloyed_usdc_denom.clone(),
+                },
+                Coins::new(),
+            )
+            .should_succeed();
+    }
+
+    // Receive more tokens. Now they should be alloyed.
+    {
+        suite.hyperlane().receive_transfer(
+            eth_domain,
+            accounts.user1.address(),
+            coin(&eth_usdc_denom, 50),
+        );
+
+        suite.hyperlane().receive_transfer(
+            sol_domain,
+            accounts.user1.address(),
+            coin(&sol_usdc_denom, 75),
+        );
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(100),
+                sol_usdc_denom.clone() => BalanceChange::Increased(200),
+                alloyed_usdc_denom.clone() => BalanceChange::Increased(125),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Increased(50),
+                sol_usdc_denom.clone() => BalanceChange::Increased(75),
+            });
+    }
+
+    // Recap the balances of user1.
+    // eth_usdc => 100
+    // sol_usdc => 200
+    // alloyed_usdc => 125 | 50 from eth, 75 from sol
+
+    // Send 20 alloyed_usdc to eth.
+    {
+        suite.balances().refresh_all();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        // Send 20 alloyed to eth.
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                mock_remote_user,
+                coin(&alloyed_usdc_denom, 20),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient: mock_remote_user,
+            amount: Uint128::new(20),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 0,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: eth_domain,
+            recipient: eth_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                alloyed_usdc_denom.clone() => BalanceChange::Decreased(20),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Decreased(20),
+            });
+    }
+
+    // 20 alloyed_usdc has been sent via eth.
+    // Try sent 35 more. This should fail (30 left).
+    {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                Addr::mock(2).into(),
+                coin(&alloyed_usdc_denom, 35),
+            )
+            .should_fail_with_error(MathError::overflow_sub::<u128>(30, 35));
+    }
+
+    // Send 75 alloyed_usdc to sol.
+    {
+        suite.balances().refresh_all();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        // Send all sol_usdc.
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                sol_domain,
+                mock_remote_user,
+                coin(&alloyed_usdc_denom, 75),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient: mock_remote_user,
+            amount: Uint128::new(75),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 1,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: sol_domain,
+            recipient: sol_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                alloyed_usdc_denom.clone() => BalanceChange::Decreased(75),
+            });
+
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                sol_usdc_denom.clone() => BalanceChange::Decreased(75),
+            });
+    }
+
+    // Send 100 eth_usdc to eth.
+    {
+        suite.balances().refresh_all();
+
+        // Get the current merkle tree.
+        let mut tree = suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed();
+
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                eth_domain,
+                mock_remote_user,
+                coin(&eth_usdc_denom, 100),
+            )
+            .should_succeed();
+
+        // Insert the message into the tree.
+        let token_msg = TokenMessage {
+            recipient: mock_remote_user,
+            amount: Uint128::new(100),
+            metadata: Default::default(),
+        };
+
+        let msg = Message {
+            version: MAILBOX_VERSION,
+            nonce: 2,
+            origin_domain: MOCK_LOCAL_DOMAIN,
+            sender: contracts.warp.into(),
+            destination_domain: eth_domain,
+            recipient: eth_usdc_recipient,
+            body: token_msg.encode(),
+        };
+
+        tree.insert(msg.encode().keccak256()).unwrap();
+
+        // Check if the merkle tree has been updated.
+        suite
+            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .should_succeed_and_equal(tree);
+
+        // Verify balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Decreased(100),
+            });
+
+        // No changes on warp balances.
+        suite
+            .balances()
+            .should_change(contracts.warp.address(), btree_map! {
+                eth_usdc_denom.clone() => BalanceChange::Unchanged,
+            });
+    }
+}
+
+#[test]
+fn rate_limit() {
+    let (mut suite, mut accounts, _, contracts) = setup_test();
+
+    suite.block_time = Duration::ZERO;
+
+    let osmo_domain = 10;
+    let sol_domain = 20;
+
+    let osmo_usdc_recipient = Addr::mock(1).into();
+    let sol_usdc_recipient = Addr::mock(2).into();
+    let mock_remote_user = Addr::mock(3).into();
+
+    let sol_usdc_denom = Denom::from_str("hyp/sol/usdc").unwrap();
+    let osmo_usdc_denom = Denom::from_str("hyp/osmo/usdc").unwrap();
+
+    let alloyed_usdc_denom = Denom::from_str("hyp/all/usdc").unwrap();
+
+    let (mut suite, owner) = HyperlaneTestSuite::new(suite, accounts.owner, btree_map! {
+        osmo_domain => (3, 2),
+        sol_domain => (3, 2),
+    });
+
+    // Set the route.
+    for (domain, denom, route) in [
+        (osmo_domain, &osmo_usdc_denom, Route {
+            address: osmo_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+        (sol_domain, &sol_usdc_denom, Route {
+            address: sol_usdc_recipient,
+            fee: Uint128::ZERO,
+        }),
+    ] {
+        suite
+            .hyperlane()
+            .set_route(denom.clone(), domain, route)
+            .should_succeed();
+    }
+
+    suite.balances().record(accounts.user1.address());
+
+    // Receive some tokens.
+    // osmo_usdc => 100
+    // sol_usdc => 200
+    {
+        for (domain, denom, amount) in [
+            (osmo_domain, &osmo_usdc_denom, 100),
+            (sol_domain, &sol_usdc_denom, 200),
+        ] {
+            suite.hyperlane().receive_transfer(
+                domain,
+                accounts.user1.address(),
+                coin(denom, amount),
+            );
+        }
+
+        // Check balances.
+        suite
+            .balances()
+            .should_change(accounts.user1.address(), btree_map! {
+                osmo_usdc_denom.clone() => BalanceChange::Increased(100),
+                sol_usdc_denom.clone() => BalanceChange::Increased(200),
+            });
+    }
+
+    // Set rate limit.
+    // osmo_usdc => 10%
+    // sol_usdc => 20%
+    suite
+        .execute(
+            owner.write_access().deref_mut(),
+            contracts.warp,
+            &warp::ExecuteMsg::SetRateLimits(btree_map! {
+                osmo_usdc_denom.clone() => RateLimit::new_unchecked(Udec128::new_percent(10)),
+                sol_usdc_denom.clone()  => RateLimit::new_unchecked(Udec128::new_percent(20)),
+            }),
+            Coins::default(),
+        )
+        .should_succeed();
+
+    // Make 1 day pass letting the cron job to reset the rate limits.
+    advance_to_next_day(&mut suite);
+
+    // Try send back exact tokens to don't trigger rate limit.
+    // osmo_usdc => 100 * 0.1 = 10
+    // sol_usdc => 200 * 0.2 = 40
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 10),
+        (sol_domain, &sol_usdc_denom, 40),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_succeed();
+    }
+
+    // Trigger the rate limit sending 1 more token.
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 1),
+        (sol_domain, &sol_usdc_denom, 1),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_fail_with_error("rate limit reached: 0 < 1");
+    }
+
+    // Receive more tokens increase rate limit and allow to send them back.
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 100),
+        (sol_domain, &sol_usdc_denom, 200),
+    ] {
+        suite
+            .hyperlane()
+            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
+
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_succeed();
+    }
+
+    // Make 1 day pass letting the cron job to reset the rate limits.
+    advance_to_next_day(&mut suite);
+
+    // The supply on chain now are:
+    // osmo_usdc => 100 - 10 = 90
+    // sol_usdc => 200 - 40 = 160
+
+    // New limits are:
+    // osmo_usdc => 90 * 0.1 = 9
+    // sol_usdc => 160 * 0.2 = 32
+
+    // Try send them back.
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 9),
+        (sol_domain, &sol_usdc_denom, 32),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_succeed();
+    }
+
+    // Trigger the rate limit sending 1 more token.
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 1),
+        (sol_domain, &sol_usdc_denom, 1),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_fail_with_error("rate limit reached: 0 < 1");
+    }
+
+    // Receive some tokens to reset back the supply to:
+    // osmo_usdc => 100
+    // sol_usdc => 200
+    for (domain, denom, amount, should_be) in [
+        (osmo_domain, &osmo_usdc_denom, 10 + 9, 100),
+        (sol_domain, &sol_usdc_denom, 40 + 32, 200),
+    ] {
+        suite
+            .hyperlane()
+            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
+
+        suite
+            .query_supply(denom.clone())
+            .should_succeed_and_equal(Uint128::new(should_be));
+    }
+
+    // Create alloy token
+    for (domain, denom) in [
+        (osmo_domain, &osmo_usdc_denom),
+        (sol_domain, &sol_usdc_denom),
+    ] {
+        suite
+            .execute(
+                owner.write_access().deref_mut(),
+                contracts.warp,
+                &warp::ExecuteMsg::SetAlloy {
+                    underlying_denom: denom.clone(),
+                    destination_domain: domain,
+                    alloyed_denom: alloyed_usdc_denom.clone(),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+    }
+
+    // Receive some tokens. they should be minted as alloyed:
+    // osmo_usdc => 100
+    // sol_usdc  => 200
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 100),
+        (sol_domain, &sol_usdc_denom, 200),
+    ] {
+        suite
+            .hyperlane()
+            .receive_transfer(domain, accounts.user1.address(), coin(denom, amount));
+    }
+
+    // Make 1 day pass letting the cron job to reset the rate limits.
+    advance_to_next_day(&mut suite);
+
+    // The supply on chain now are:
+    // osmo_usdc => 100 + 100 = 200
+    // sol_usdc  => 200 + 200 = 400
+
+    // Send the alloyed tokens.
+    for (domain, denom, amount) in [
+        (osmo_domain, &alloyed_usdc_denom, 20),
+        (sol_domain, &alloyed_usdc_denom, 80),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_succeed();
+    }
+
+    // Send 1 more tokens to trigger the rate limit.
+    for (domain, denom, amount) in [
+        (osmo_domain, &alloyed_usdc_denom, 1),
+        (sol_domain, &alloyed_usdc_denom, 1),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_fail_with_error("rate limit reached: 0 < 1");
+    }
+
+    // Try send 1 of the underlying tokens. Rate limit should be triggered.
+    for (domain, denom, amount) in [
+        (osmo_domain, &osmo_usdc_denom, 1),
+        (sol_domain, &sol_usdc_denom, 1),
+    ] {
+        suite
+            .hyperlane()
+            .send_transfer(
+                &mut accounts.user1,
+                domain,
+                mock_remote_user,
+                coin(denom, amount),
+            )
+            .should_fail_with_error("rate limit reached: 0 < 1");
+    }
+}
+
+fn advance_to_next_day(suite: &mut TestSuite) {
+    suite.block_time = Duration::from_days(1);
+    suite.make_empty_block();
+    suite.block_time = Duration::ZERO;
+}
+
+fn coin(denom: &Denom, amount: u128) -> Coin {
+    Coin::new(denom.clone(), amount).unwrap()
 }

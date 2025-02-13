@@ -28,28 +28,6 @@ pub struct AppConfig {
     pub target_utilization_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }
 
-/// Addresses of relevant Dango contracts.
-#[grug::derive(Serde)]
-pub struct AppAddresses {
-    pub account_factory: Addr,
-    pub ibc_transfer: Addr,
-    pub lending: Addr,
-    pub oracle: Addr,
-}
-
-// Default implementation that can be used in tests when the addresses are not
-// needed.
-impl Default for AppAddresses {
-    fn default() -> Self {
-        AppAddresses {
-            account_factory: Addr::mock(0),
-            ibc_transfer: Addr::mock(0),
-            lending: Addr::mock(0),
-            oracle: Addr::mock(0),
-        }
-    }
-}
-
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
@@ -58,6 +36,52 @@ impl Default for AppConfig {
             target_utilization_rate: Bounded::new(Udec128::new_percent(90)).unwrap(),
             min_liquidation_bonus: Bounded::new(Udec128::new_percent(2)).unwrap(),
             max_liquidation_bonus: Bounded::new(Udec128::new_percent(20)).unwrap(),
+        }
+    }
+}
+
+/// Addresses of relevant Dango contracts.
+#[grug::derive(Serde)]
+pub struct AppAddresses {
+    pub account_factory: Addr,
+    pub hyperlane: Hyperlane<Addr>,
+    pub lending: Addr,
+    pub oracle: Addr,
+    pub warp: Addr,
+}
+
+// Default implementation that can be used in tests when the addresses are not
+// needed.
+impl Default for AppAddresses {
+    fn default() -> Self {
+        AppAddresses {
+            account_factory: Addr::mock(0),
+            hyperlane: Hyperlane::default(),
+            lending: Addr::mock(0),
+            oracle: Addr::mock(0),
+            warp: Addr::mock(0),
+        }
+    }
+}
+
+#[grug::derive(Serde)]
+#[derive(Copy)]
+pub struct Hyperlane<T> {
+    pub fee: T,
+    pub ism: T,
+    pub mailbox: T,
+    pub merkle: T,
+    pub va: T,
+}
+
+impl Default for Hyperlane<Addr> {
+    fn default() -> Self {
+        Hyperlane {
+            fee: Addr::mock(0),
+            ism: Addr::mock(0),
+            mailbox: Addr::mock(0),
+            merkle: Addr::mock(0),
+            va: Addr::mock(0),
         }
     }
 }

@@ -1,18 +1,28 @@
 use {
     assertor::*,
+    grug_app::NaiveProposalPreparer,
+    grug_db_memory::MemDb,
     grug_testing::{
-        build_app_service, call_graphql, setup_tracing_subscriber, GraphQLCustomRequest,
-        PaginatedResponse, TestAccounts, TestBuilder,
+        build_app_service, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response, setup_tracing_subscriber, GraphQLCustomRequest,
+        PaginatedResponse, TestAccounts, TestBuilder, TestSuite,
     },
     grug_types::{self, Coins, Denom, ResultExt},
+    grug_vm_rust::RustVm,
     indexer_httpd::{
         context::Context,
         graphql::types::{block::Block, message::Message, transaction::Transaction},
     },
+    indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
     std::str::FromStr,
+    tokio::sync::mpsc,
 };
 
-async fn create_block() -> anyhow::Result<(Context, TestAccounts)> {
+async fn create_block() -> anyhow::Result<(
+    Context,
+    TestSuite<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer<NullHooks>>,
+    TestAccounts,
+)> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
     let denom = Denom::from_str("ugrug")?;
@@ -37,19 +47,19 @@ async fn create_block() -> anyhow::Result<(Context, TestAccounts)> {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            grug_types::Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())?,
+            grug_types::Message::transfer(to, Coins::one(denom.clone(), 2_000)?)?,
         )
         .should_succeed();
 
     // Force the runtime to wait for the async indexer task to finish
     suite.app.indexer.wait_for_finish();
 
-    Ok((httpd_context, accounts))
+    Ok((httpd_context, suite, accounts))
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_block() -> anyhow::Result<()> {
-    let (httpd_context, _) = create_block().await?;
+    let (httpd_context, ..) = create_block().await?;
 
     let graphql_query = r#"
       query Block($height: Int!) {
@@ -97,7 +107,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_blocks() -> anyhow::Result<()> {
-    let (httpd_context, _) = create_block().await?;
+    let (httpd_context, ..) = create_block().await?;
 
     let graphql_query = r#"
     query Blocks {
@@ -143,7 +153,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transactions() -> anyhow::Result<()> {
-    let (httpd_context, accounts) = create_block().await?;
+    let (httpd_context, _, accounts) = create_block().await?;
 
     let graphql_query = r#"
     query Transactions {
@@ -192,7 +202,7 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_messages() -> anyhow::Result<()> {
-    let (httpd_context, accounts) = create_block().await?;
+    let (httpd_context, _, accounts) = create_block().await?;
 
     let graphql_query = r#"
     query Messages {
@@ -229,6 +239,91 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges[0].node.sender_addr)
                     .is_equal_to(accounts["sender"].address.to_string());
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
+    let (httpd_context, mut suite, mut accounts) = create_block().await?;
+
+    let graphql_query = r#"
+      subscription Block {
+        block {
+          blockHeight
+          createdAt
+          hash
+          appHash
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "block",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+
+    // Can't call this from LocalSet so using channels instead.
+    tokio::spawn(async move {
+        while rx.recv().await.is_some() {
+            let to = accounts["owner"].address;
+
+            suite
+                .send_message_with_gas(
+                    &mut accounts["sender"],
+                    2000,
+                    grug_types::Message::transfer(
+                        to,
+                        Coins::one(Denom::from_str("ugrug")?, 2_000)?,
+                    )?,
+                )
+                .should_succeed();
+
+            // Enabling this here will cause the test to hang
+            // suite.app.indexer.wait_for_finish();
+        }
+        Ok::<(), anyhow::Error>(())
+    });
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let name = request_body.name;
+                let (_srv, _ws, framed) =
+                    call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
+
+                // 1st response is always the existing last block
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+
+                assert_that!(response.data.block_height).is_equal_to(1);
+
+                crate_block_tx.send(2).await?;
+
+                // 2st response
+                let (framed, response) =
+                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+
+                assert_that!(response.data.block_height).is_equal_to(2);
+
+                crate_block_tx.send(3).await?;
+
+                // 3rd response
+                let (_, response) =
+                    parse_graphql_subscription_response::<Block>(framed, name).await?;
+
+                assert_that!(response.data.block_height).is_equal_to(3);
 
                 Ok::<(), anyhow::Error>(())
             })

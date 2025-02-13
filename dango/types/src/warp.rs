@@ -1,14 +1,15 @@
 use {
     anyhow::ensure,
     grug::{
-        Addr, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Uint128, Uint256,
+        Addr, Bounded, Bytable, Denom, HexBinary, Inner, NextNumber, Part, PrevNumber, Udec128,
+        Uint128, Uint256, ZeroInclusiveOneExclusive,
     },
     hyperlane_types::{
         mailbox::Domain,
         recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
         Addr32,
     },
-    std::sync::LazyLock,
+    std::{collections::BTreeMap, sync::LazyLock},
 };
 
 /// The namespace that synthetic tokens will be minted under. The bank contract
@@ -27,13 +28,13 @@ use {
 /// - `hyp/sol/bonk`
 pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("hyp"));
 
-/// The namespace used for alloyed tokens.
+/// The subnamespace used for alloyed tokens.
 ///
 /// E.g.,
 ///
-/// - `alloy/eth`
-/// - `alloy/usdc`
-pub static ALLOY_NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("alloy"));
+/// - `hyp/all/eth`
+/// - `hyp/all/usdc`
+pub static ALLOY_SUBNAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("all"));
 
 /// The message to be sent via Hyperlane mailbox.
 #[derive(Debug)]
@@ -85,6 +86,8 @@ pub struct Route {
     pub fee: Uint128,
 }
 
+pub type RateLimit = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
@@ -126,6 +129,14 @@ pub enum ExecuteMsg {
         destination_domain: Domain,
         route: Route,
     },
+    /// Register an alloyed token.
+    SetAlloy {
+        underlying_denom: Denom,
+        destination_domain: Domain,
+        alloyed_denom: Denom,
+    },
+    /// Set withdraw rate limits.
+    SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Required Hyperlane recipient interface.
     Recipient(RecipientMsg),
 }
@@ -135,6 +146,9 @@ pub enum QueryMsg {
     /// Query the address of the mailbox contract.
     #[returns(Addr)]
     Mailbox {},
+    /// Query withdraw rate limits.
+    #[returns(BTreeMap<Denom, RateLimit>)]
+    RateLimits {},
     /// Query the recipient contract for a token on a destination domain.
     #[returns(Route)]
     Route {
@@ -145,6 +159,24 @@ pub enum QueryMsg {
     #[returns(Vec<QueryRoutesResponseItem>)]
     Routes {
         start_after: Option<QueryRoutesPageParam>,
+        limit: Option<u32>,
+    },
+    /// Query the alloyed denom corresponding to an underlying denom.
+    #[returns(Denom)]
+    Alloy { underlying_denom: Denom },
+    /// Enumerate all alloyed denoms.
+    #[returns(BTreeMap<Denom, Denom>)]
+    Alloys {
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    },
+    /// Query the remaining outbound quota for a denom.
+    #[returns(Uint128)]
+    OutboundQuota { denom: Denom },
+    /// Enumerate all outbound quotas.
+    #[returns(BTreeMap<Denom, Uint128>)]
+    OutboundQuotas {
+        start_after: Option<Denom>,
         limit: Option<u32>,
     },
     /// Required Hyperlane recipient interface.

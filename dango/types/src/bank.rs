@@ -59,6 +59,8 @@ pub enum ExecuteMsg {
     },
     /// Transfer coins to multiple recipients at once.
     BatchTransfer(BTreeMap<Addr, Coins>),
+    /// Retrieve funds sent to a non-existing recipient.
+    RecoverTransfer { sender: Addr, recipient: Addr },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -81,6 +83,7 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
+    // TODO: add query methods for orphaned transfers
 }
 
 #[grug::derive(Serde, Borsh)]

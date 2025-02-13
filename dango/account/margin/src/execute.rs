@@ -45,7 +45,9 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health = ctx.querier.query_health(ctx.contract, None)?;
+    let health = ctx
+        .querier
+        .query_health(ctx.contract, ctx.block.timestamp, None)?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
@@ -80,7 +82,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         ..
     } = ctx
         .querier
-        .query_health(ctx.contract, Some(ctx.funds.clone()))?;
+        .query_health(ctx.contract, ctx.block.timestamp, Some(ctx.funds.clone()))?;
 
     // Ensure account is undercollateralized
     ensure!(

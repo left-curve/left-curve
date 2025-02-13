@@ -173,7 +173,7 @@ impl ResultExt for CheckTxOutcome {
     fn should_succeed(self) -> Self::Success {
         match self.result {
             Ok(_) => (),
-            Err(_) => panic!("expecting success, got error"),
+            Err(err) => panic!("expecting success, got error: {err}"),
         }
     }
 

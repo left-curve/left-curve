@@ -7,5 +7,6 @@ pub mod error;
 pub mod hooks;
 mod indexer_path;
 pub mod non_blocking_indexer;
+pub mod pubsub;
 
 pub use context::Context;
