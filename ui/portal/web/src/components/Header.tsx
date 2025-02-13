@@ -43,11 +43,11 @@ export const Header: React.FC = () => {
               },
             )}
           >
-            <div className="bg-rice-25 [box-shadow:0px_2px_6px_0px_#C7C2B666] rounded-small w-full px-5 py-2 flex items-center gap-1">
+            <div className="bg-rice-25 [box-shadow:0px_2px_6px_0px_#C7C2B666] rounded-md w-full px-5 py-2 flex items-center gap-1">
               <IconSearch />
               <input
                 placeholder="Search for apps"
-                className="bg-transparent pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
+                className="bg-rice-25 pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
               />
             </div>
 

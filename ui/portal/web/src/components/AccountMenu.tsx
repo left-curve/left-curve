@@ -35,7 +35,7 @@ export const AccountMenu: React.FC<Props> = ({ showAccountMenu, setShowAccountMe
         <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-2xl border border-gray-100">
           <div className="p-4 w-full flex items-center flex-col gap-5">
             {/* card component */}
-            <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-small flex flex-col justify-between p-4">
+            <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-md flex flex-col justify-between p-4">
               <img
                 src="/images/account-card/dog.svg"
                 alt="account-card-dog"
