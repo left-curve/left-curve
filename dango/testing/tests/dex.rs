@@ -5,7 +5,7 @@ use {
         dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest},
     },
     grug::{
-        btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
+        btree_map, coins, Addressable, BalanceChange, Coin, Coins, Denom, Inner, Message,
         MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
         Uint128,
     },
@@ -514,4 +514,188 @@ fn only_owner_can_create_passive_pool() {
             reserves: Coins::new(),
             swap_fee: Udec128::ZERO,
         });
+}
+
+#[test_case(
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        }
+    ],
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        }
+    ],
+    vec![Uint128::new(10000)] ; "single provision"
+)]
+#[test_case(
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        }
+    ],
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        }
+    ],
+    vec![Uint128::new(10000), Uint128::new(10000)] ; "two provisions second at same ratio"
+)]
+#[test_case(
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 50,
+            USDC_DENOM.clone()  => 50,
+        }
+    ],
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 50,
+            USDC_DENOM.clone()  => 50,
+        }
+    ],
+    vec![Uint128::new(10000), Uint128::new(5000)] ; "two provisions second at half ratio")]
+#[test_case(
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 50,
+        }
+    ],
+    vec![
+        coins! {
+            DANGO_DENOM.clone() => 100,
+            USDC_DENOM.clone()  => 100,
+        },
+        coins! {
+            DANGO_DENOM.clone() => 50,
+            USDC_DENOM.clone()  => 50,
+        }
+    ],
+    vec![Uint128::new(10000), Uint128::new(5000)] ; "two provisions second at different ratio")]
+fn provide_liquidity(
+    provisions: Vec<Coins>,
+    expected_used_funds: Vec<Coins>,
+    expected_lp_balances: Vec<Uint128>,
+) {
+    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Record the users initial balances.
+    suite
+        .balances()
+        .record_many(accounts.users().map(|user| user.address()));
+
+    // Create a passive pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Execute all the provisions.
+    let mut expected_pool_balances = Coins::new();
+    for (((funds, expected_funds_used), expected_lp_balance), user) in provisions
+        .iter()
+        .zip(expected_used_funds)
+        .zip(expected_lp_balances)
+        .zip(accounts.users_mut())
+    {
+        // record the dex balance
+        suite.balances().record(contracts.dex.address());
+
+        let funds: Coins = funds.clone().try_into().unwrap();
+        suite
+            .execute(
+                user,
+                contracts.dex,
+                &dex::ExecuteMsg::ProvideLiquidity {
+                    lp_denom: lp_denom.clone(),
+                },
+                funds.clone(),
+            )
+            .should_succeed();
+
+        // Ensure that the dex balance has increased by the expected amount.
+        suite.balances().should_change(
+            contracts.dex.address(),
+            balance_changes_from_coins(expected_funds_used.clone(), Coins::new()),
+        );
+
+        // Ensure user's balance has decreased by the expected amount and that
+        // LP tokens have been minted.
+        suite.balances().should_change(
+            user.address(),
+            balance_changes_from_coins(
+                coins! { lp_denom.clone() => expected_lp_balance},
+                expected_funds_used.clone(),
+            ),
+        );
+
+        // Check that the reserves in pool object were updated correctly.
+        suite
+            .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
+                lp_denom: lp_denom.clone(),
+            })
+            .should_succeed_and_equal(Pool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                reserves: expected_pool_balances
+                    .insert_many(expected_funds_used)
+                    .unwrap()
+                    .clone(),
+                swap_fee: Udec128::ZERO,
+            });
+    }
+}
+
+fn balance_changes_from_coins(
+    increases: Coins,
+    decreases: Coins,
+) -> BTreeMap<Denom, BalanceChange> {
+    let mut changes: BTreeMap<Denom, BalanceChange> = increases
+        .into_iter()
+        .map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Increased(amount.into_inner()))
+        })
+        .collect();
+    changes.extend(decreases.into_iter().map(|Coin { denom, amount }| {
+        (denom.clone(), BalanceChange::Decreased(amount.into_inner()))
+    }));
+    changes
 }
