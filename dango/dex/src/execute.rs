@@ -56,6 +56,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
+        ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
     }
 }
 
@@ -276,6 +277,101 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         .add_message(Message::transfer(ctx.sender, refunds)?)
         .add_subevents(events))
 }
+
+/// Provide liquidity to a pool. The liquidity is provided in the same ratio as the
+/// current pool reserves. The required funds MUST be sent with the message. Any
+/// funds sent in excess of the required amount will be returned to the sender.
+#[inline]
+fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
+    // Get the funds from sent
+    let funds = &ctx.funds;
+
+    let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
+
+    // Ensure the funds are valid. They must only contain the base and quote denoms and must contain both
+    ensure!(
+        funds.len() == 2 && funds.has(&pool.base_denom) && funds.has(&pool.quote_denom),
+        "Invalid funds. Must send both coins in the pair. {:?}, {:?}",
+        funds,
+        pool.reserves
+    );
+
+    // Ensure the pair is registered
+    ensure!(
+        PAIRS.has(ctx.storage, (&pool.base_denom, &pool.quote_denom)),
+        "Pair not found."
+    );
+
+    // Query the LP token supply
+    let lp_supply = ctx.querier.query_supply(lp_denom.clone())?;
+
+    // Calculate the minimum ration of sent funds to the pool reserves
+    // TODO: Don't unwrap
+    let (funds_to_provide, lp_mint_amount) = match lp_supply {
+        Uint128::ZERO => (
+            funds.clone(),
+            funds
+                .clone()
+                .into_iter()
+                .fold(Uint128::ONE, |acc, c| acc * c.amount),
+        ),
+        _ => {
+            let min_ratio = funds
+                .into_iter()
+                .map(|c| {
+                    Udec128::checked_from_ratio(*c.amount, pool.reserves.amount_of(c.denom))
+                        .unwrap()
+                })
+                .min()
+                .unwrap();
+
+            // Ensure the minimum ratio is greater than 0
+            ensure!(
+                min_ratio > Udec128::new(0),
+                "Invalid funds. Must send both coins in the pair."
+            );
+
+            let funds_to_provide = pool
+                .reserves
+                .clone()
+                .into_iter()
+                .map(|c| Coin {
+                    denom: c.denom.clone(),
+                    amount: c.amount.checked_mul_dec_floor(min_ratio).unwrap(),
+                })
+                .collect::<Vec<Coin>>()
+                .try_into()?;
+            let lp_mint_amount = lp_supply.checked_mul_dec_floor(min_ratio)?;
+
+            (funds_to_provide, lp_mint_amount)
+        },
+    };
+
+    // Calculate funds to provide and funds to return
+    let mut funds_to_return = funds.clone();
+    funds_to_return.deduct_many(funds_to_provide.clone())?;
+
+    // Update the pool reserves
+    pool.reserves.insert_many(funds_to_provide)?;
+    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+    // Create mint message
+    let bank = ctx.querier.query_bank()?;
+    let mint_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Mint {
+            to: ctx.sender,
+            denom: lp_denom,
+            amount: lp_mint_amount,
+        },
+        Coins::new(), // No funds needed for minting
+    )?;
+
+    Ok(Response::default()
+        .add_message(Message::transfer(ctx.sender, funds_to_return)?)
+        .add_message(mint_msg))
+}
+
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
