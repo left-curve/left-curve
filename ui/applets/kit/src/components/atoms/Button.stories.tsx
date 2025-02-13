@@ -6,31 +6,38 @@ const meta: Meta<typeof Button> = {
   component: Button,
   argTypes: {
     variant: {
-      options: ["solid", "bordered", "light"],
+      options: ["primary", "secondary", "utility", "link"],
       control: { type: "select" },
       description: "The variant of the button.",
-    },
-    color: {
-      control: { type: "select" },
-      description: "The color of the button.",
-      options: ["none", "gray", "purple", "green", "rose", "sand"],
     },
     children: {
       control: { type: "text" },
       description: "This element could be a string or a React component.",
     },
+    radius: {
+      options: ["none", "sm", "md", "lg", "xl", "full"],
+      control: { type: "select" },
+      description: "The radius of the button.",
+    },
     size: {
-      options: ["sm", "lg"],
+      options: ["xs", "sm", "md", "lg", "xl"],
       control: { type: "select" },
       description: "The size of the button.",
+    },
+    fullWidth: {
+      control: { type: "boolean" },
     },
     isDisabled: {
       control: { type: "boolean" },
     },
   },
   args: {
-    variant: "solid",
-    size: "md",
+    fullWidth: false,
+    isDisabled: false,
+    variant: "primary",
+    children: "Button",
+    size: "lg",
+    radius: "lg",
   },
   parameters: {
     layout: "centered",
@@ -42,24 +49,22 @@ export default meta;
 
 type Store = StoryObj<typeof Button>;
 
-export const Default: Store = {
+export const Primary: Store = {};
+
+export const Secondary: Store = {
   args: {
-    children: "Button",
+    variant: "secondary",
   },
 };
 
-export const Bordered: Store = {
+export const Utility: Store = {
   args: {
-    variant: "bordered",
-    color: "purple",
-    children: "Button",
+    variant: "utility",
   },
 };
 
-export const Light: Store = {
+export const Link: Store = {
   args: {
-    variant: "light",
-    color: "rose",
-    children: "Button",
+    variant: "link",
   },
 };
