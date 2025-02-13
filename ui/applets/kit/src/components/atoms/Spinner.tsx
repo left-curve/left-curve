@@ -49,6 +49,11 @@ const spinner = tv({
   },
   variants: {
     size: {
+      xs: {
+        wrapper: "w-4 h-4",
+        circle1: "border-2",
+        circle2: "border-2",
+      },
       sm: {
         wrapper: "w-5 h-5",
         circle1: "border-2",
@@ -60,6 +65,11 @@ const spinner = tv({
         circle2: "border-[3px]",
       },
       lg: {
+        wrapper: "w-10 h-10",
+        circle1: "border-[3px]",
+        circle2: "border-[3px]",
+      },
+      xl: {
         wrapper: "w-10 h-10",
         circle1: "border-[3px]",
         circle2: "border-[3px]",
