@@ -15,33 +15,16 @@ export interface ButtonProps extends VariantProps<typeof buttonVariants> {
 
 export const Button = forwardRef<"button", ButtonProps>(
   (
-    {
-      as,
-      fullWidth,
-      variant,
-      color,
-      size,
-      radius,
-      isInGroup,
-      isDisabled,
-      isLoading,
-      isIconOnly,
-      className,
-      children,
-      ...props
-    },
+    { as, fullWidth, variant, size, radius, isDisabled, isLoading, className, children, ...props },
     ref,
   ) => {
     const Component = as ?? "button";
     const styles = buttonVariants({
       variant,
-      color,
       size,
       radius,
       fullWidth,
       isDisabled,
-      isInGroup,
-      isIconOnly,
     });
 
     const disabled = isDisabled || isLoading;
@@ -78,109 +61,109 @@ const buttonVariants = tv(
     ],
     variants: {
       variant: {
-        solid: "",
-        bordered: "border-2 bg-transparent",
-        light: "bg-transparent border-none",
-      },
-      color: {
-        none: "",
-        gray: "",
-        sand: "",
-        green: "",
-        rose: "",
-        purple: "",
+        primary:
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+        secondary:
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+        utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
+        link: "rounded-xl transition-all duration-300 w-fit",
       },
       size: {
-        sm: "px-12 py-2 h-[2rem] typography-button-s",
-        md: "px-12 py-3 h-[3rem] typography-button-l",
+        xs: "h-[25px] py-1 px-[6px] exposure-xs-italic text-xs gap-[2px]",
+        sm: "h-[32px] py-[6px] px-2 exposure-sm-italic gap-[2px]",
+        md: "h-[40px] py-[10px] px-3 exposure-sm-italic text-md gap-[4px]",
+        lg: "h-[44px] py-[11px] px-3 exposure-m-italic text-lg gap-[4px]",
+        xl: "h-[56px] py-[14px] px-4 exposure-l-italic text-h4 gap-[6px]",
       },
       radius: {
         none: "rounded-none",
-        sm: "rounded-small",
-        md: "rounded-medium",
-        lg: "rounded-large",
-        xl: "rounded-[48px]",
+        sm: "rounded-sm",
+        md: "rounded-md",
+        lg: "rounded-lg",
+        xl: "rounded-xl",
         full: "rounded-full",
       },
       fullWidth: {
         true: "w-full",
       },
       isDisabled: {
-        true: "opacity-disabled pointer-events-none cursor-not-allowed",
-      },
-      isInGroup: {
-        true: "[&:not(:first-child):not(:last-child)]:rounded-none",
-      },
-      isIconOnly: {
-        true: "px-0 !gap-0",
-        false: "[&>svg]:max-w-[theme(spacing.8)]",
+        true: "pointer-events-none cursor-not-allowed",
       },
     },
     defaultVariants: {
       size: "md",
-      radius: "xl",
-      color: "rose",
-      variant: "solid",
+      color: "red",
+      variant: "primary",
       fullWidth: false,
       isDisabled: false,
-      isInGroup: false,
     },
     compoundVariants: [
-      // variant / solid
       {
-        variant: "solid",
-        color: "rose",
-        class: "bg-surface-pink-200 hover:bg-surface-pink-300 text-surface-rose-200",
-      },
-      {
-        variant: "solid",
-        color: "gray",
+        variant: "primary",
         class:
-          "bg-surface-green-200 hover:bg-surface-green-300 focus:bg-surface-green-300 text-typography-black-300 not-italic font-diatype-rounded",
+          "bg-red-bean-400 hover:bg-red-bean-600 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
-        variant: "solid",
-        color: "purple",
-        class: "bg-surface-purple-200 hover:bg-surface-purple-300 text-typography-purple-400",
-      },
-      {
-        variant: "solid",
-        color: "green",
-        class: "bg-surface-green-300 hover:bg-surface-green-400 text-typography-green-400",
-      },
-      {
-        variant: "solid",
-        color: "sand",
-        class: "bg-surface-rose-200 hover:bg-surface-rose-300 text-typography-rose-500",
-      },
-      // variant / bordered
-      {
-        variant: "bordered",
-        color: "purple",
+        variant: "secondary",
         class:
-          "border-borders-purple-600 bg-surface-purple-100 hover:bg-surface-purple-300 text-typography-purple-400",
+          "bg-blue-50 hover:bg-blue-100 text-blue-500 focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
-      // variant / light
       {
-        variant: "light",
-        color: "rose",
-        class: "text-typography-purple-400 hover:text-typography-purple-500 ",
+        variant: "link",
+        class:
+          "bg-transparent hover:text-blue-600 text-blue-500 focus:bg-blue-50 focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
-      // variant / iconOnly
       {
-        isIconOnly: true,
+        variant: "link",
+        isDisabled: true,
+        class: "text-gray-200",
+      },
+      {
+        variant: "primary",
+        isDisabled: true,
+        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+      },
+      {
+        variant: "secondary",
+        isDisabled: true,
+        class:
+          "bg-blue-50 text-blue-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
+        variant: "utility",
+        class:
+          "bg-rice-100 hover:bg-rice-200 text-rice-700 focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+      },
+      {
+        variant: "utility",
+        isDisabled: true,
+        class:
+          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+      },
+      {
+        variant: ["utility", "link"],
+        size: "xs",
+        class: "rounded-xs",
+      },
+      {
+        variant: ["utility", "link"],
         size: "sm",
-        class: "min-w-8 w-8 h-8",
+        class: "rounded-sm",
       },
       {
-        isIconOnly: true,
+        variant: ["utility", "link"],
         size: "md",
-        class: "min-w-10 w-10 h-10",
+        class: "rounded-md",
       },
-      // variant / hover
       {
-        variant: ["solid", "bordered"],
-        class: "data-[hover=true]:opacity-hover",
+        variant: ["utility", "link"],
+        size: "lg",
+        class: "rounded-lg",
+      },
+      {
+        variant: ["utility", "link"],
+        size: "xl",
+        class: "rounded-xl",
       },
     ],
   },
