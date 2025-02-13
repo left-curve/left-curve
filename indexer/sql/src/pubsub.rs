@@ -154,7 +154,7 @@ mod tests {
     /// A test that demonstrates how to use postgres pubsub.
     #[ignore]
     #[tokio::test]
-    async fn foobar() -> anyhow::Result<()> {
+    async fn manual_psql_implementation() -> anyhow::Result<()> {
         let pool = PgPoolOptions::new()
             .connect("postgres://postgres@postgres/grug_test")
             .await?;
