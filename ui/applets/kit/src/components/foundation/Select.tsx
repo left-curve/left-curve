@@ -5,8 +5,8 @@ import { type ReactElement, cloneElement, useMemo, useRef } from "react";
 import { useClickAway } from "react-use";
 
 import { type VariantProps, tv } from "tailwind-variants";
-import { IconChevronDown } from "../icons/IconChevronDown";
 import { ListBox } from "./Listbox";
+import { IconChevronDown } from "./icons/IconChevronDown";
 
 export { Item } from "@react-stately/collections";
 

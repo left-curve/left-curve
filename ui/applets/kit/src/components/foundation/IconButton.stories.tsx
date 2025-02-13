@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { IconUser } from "../icons/IconUser";
 import { IconButton, type IconButtonProps } from "./IconButton";
+import { IconUser } from "./icons/IconUser";
 
 const meta: Meta<typeof IconButton> = {
-  title: "Design System/Atoms/IconButton",
+  title: "Design System/Foundation/IconButton",
   component: IconButton,
   argTypes: {
     variant: {

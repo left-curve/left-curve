@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Item, Select, type SelectProps } from "./Select";
 
 const meta: Meta<typeof Select> = {
-  title: "Design System/Atoms/Select",
+  title: "Design System/Foundation/Select",
   component: Select,
   argTypes: {
     color: {
