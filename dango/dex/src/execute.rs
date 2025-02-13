@@ -52,6 +52,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
+        ExecuteMsg::Swap { lp_denom } => swap(ctx, lp_denom),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
         ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
@@ -208,6 +209,33 @@ fn submit_order(
         amount,
         deposit,
     })?)
+}
+
+#[inline]
+// TODO: swap through multiple pools in a single message
+fn swap(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
+    // Load the pool
+    let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
+
+    // Get the offer
+    let offer = ctx.funds.into_one_coin()?;
+
+    // Ensure the offer is valid
+    ensure!(
+        pool.reserves.has(&offer.denom),
+        "pool does not have the offer denom"
+    );
+
+    // Calculate the out amount and update the pool reserves
+    let out = pool.swap_exact_amount_in(offer)?;
+
+    // Save the updated pool
+    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+    // Construct send message
+    let send_msg = Message::transfer(ctx.sender, Coins::try_from([out])?)?;
+
+    Ok(Response::default().add_message(send_msg))
 }
 
 #[inline]

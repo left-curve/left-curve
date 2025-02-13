@@ -173,6 +173,9 @@ pub enum ExecuteMsg {
     CancelOrders {
         order_ids: BTreeSet<OrderId>,
     },
+    Swap {
+        lp_denom: Denom,
+    },
     // Provide passive liquidity to a pair.
     ProvideLiquidity {
         lp_denom: Denom,
@@ -291,6 +294,36 @@ pub enum CurveInvariant {
     Xyk,
 }
 
+impl CurveInvariant {
+    pub fn solve_amount_out(
+        &self,
+        offer: Coin,
+        ask_denom: &Denom,
+        swap_fee: Udec128,
+        reserves: &Coins,
+    ) -> anyhow::Result<Uint128> {
+        ensure!(
+            reserves.has(&offer.denom) && reserves.has(ask_denom),
+            "invalid reserves"
+        );
+        match self {
+            CurveInvariant::Xyk => {
+                let a = reserves.amount_of(&offer.denom);
+                let b = reserves.amount_of(ask_denom);
+
+                // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
+                let amount_out =
+                    b - Int::ONE.checked_multiply_ratio_floor(a * b, a + offer.amount)?;
+
+                // Apply swap fee
+                let amount_out = amount_out.checked_mul_dec_floor(Udec128::ONE - swap_fee)?;
+
+                Ok(amount_out)
+            },
+        }
+    }
+}
+
 impl Display for CurveInvariant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -321,4 +354,39 @@ pub struct Pool {
     pub curve_type: CurveInvariant,
     pub reserves: Coins,
     pub swap_fee: Udec128,
+}
+
+impl Pool {
+    /// Swap an exact amount of an input token for an output token in the pool.
+    /// Mutates the pool reserves.
+    ///
+    /// Returns the amount of the output token received.
+    pub fn swap_exact_amount_in(&mut self, offer: Coin) -> anyhow::Result<Coin> {
+        // Find the ask denom
+        let ask_denom = if offer.denom == self.base_denom {
+            &self.quote_denom
+        } else {
+            &self.base_denom
+        };
+
+        // Calculate the out amount
+        let out_amount = self.curve_type.solve_amount_out(
+            offer.clone(),
+            ask_denom,
+            self.swap_fee,
+            &self.reserves,
+        )?;
+
+        // Calculate the ask
+        let ask = Coin {
+            denom: ask_denom.clone(),
+            amount: out_amount,
+        };
+
+        // Update the pool reserves
+        self.reserves.insert(offer)?;
+        self.reserves.deduct(ask.clone())?;
+
+        Ok(ask)
+    }
 }
