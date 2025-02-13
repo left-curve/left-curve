@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { IconAddCross, twMerge } from "@left-curve/applets-kit";
+import { Button, IconAddCross, twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/(app)/_app/")({
@@ -13,9 +13,9 @@ function OverviewComponent() {
   return (
     <div className="w-full  md:max-w-[76rem] mx-auto flex flex-col gap-8 p-4">
       {/* first component */}
-      <div className="rounded-medium bg-rice-50 shadow-card-shadow flex flex-col md:flex-row gap-4 w-full p-4 items-center md:items-start">
+      <div className="rounded-3xl bg-rice-50 shadow-card-shadow flex flex-col md:flex-row gap-4 w-full p-4 items-center md:items-start">
         {/* account card component */}
-        <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-small flex flex-col justify-between p-4">
+        <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-md flex flex-col justify-between p-4">
           <img
             src="/images/account-card/dog.svg"
             alt="account-card-dog"
@@ -23,7 +23,7 @@ function OverviewComponent() {
           />
           <div className="flex gap-1">
             <div className="flex flex-col">
-              <p className="font-exposure text-base italic font-medium">Spot #123,456</p>
+              <p className="exposure-m-italic">Spot #123,456</p>
               <p className="text-xs text-neutral-500">0x6caf...FE09</p>
             </div>
             {/* badge component */}
@@ -32,18 +32,18 @@ function OverviewComponent() {
             </div>
           </div>
           <div className="flex gap-2 items-center">
-            <p className="text-xl ">125.04M</p>
-            <p className="text-sm text-[#25B12A]">0.05%</p>
+            <p className="h4-regular">125.04M</p>
+            <p className="text-sm font-bold text-[#25B12A]">0.05%</p>
           </div>
         </div>
         <div className="w-full flex flex-col gap-4 items-center">
           {/*  assets component */}
-          <div className="hidden md:flex flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] rounded-small p-4 gap-4 w-full">
+          <div className="hidden md:flex flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] rounded-md p-4 gap-4 w-full">
             <div className="flex items-center justify-between w-full">
-              <p className="text-base font-bold">Assets</p>
-              <a href="/" className="font-exposure italic text-blue-500 font-medium">
+              <p className="text-md font-bold">Assets</p>
+              <Button as={Link} variant="link" size="xs">
                 View all
-              </a>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-4 items-center justify-between">
               {/* Assets item component */}
@@ -53,7 +53,7 @@ function OverviewComponent() {
                     <img
                       src="https://w7.pngwing.com/pngs/268/1013/png-transparent-ethereum-eth-hd-logo-thumbnail.png"
                       alt=""
-                      className="rounded-full h-7 w-7"
+                      className="rounded-xl h-7 w-7"
                     />
                     <div className="flex flex-col text-xs">
                       <p>Ethereum</p>
@@ -66,19 +66,12 @@ function OverviewComponent() {
           </div>
           {/*  buttons */}
           <div className="md:self-end flex gap-4 items-center justify-center w-full md:max-w-[256px]">
-            <button
-              type="button"
-              className="flex-1 w-full [box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.12)_8%,_rgba(46,_37,_33,_0.24)_100%)] bg-red-bean-400 px-4 py-2 rounded-full font-exposure text-red-bean-50 italic font-medium"
-            >
+            <Button fullWidth size="md">
               Fund
-            </button>
-            <button
-              type="button"
-              className="flex-1 w-full [box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)] bg-blue-50 px-4 py-2 rounded-full font-exposure
-            italic font-medium text-blue-500"
-            >
+            </Button>
+            <Button fullWidth variant="secondary" size="md">
               Send
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -86,31 +79,31 @@ function OverviewComponent() {
       <div className="flex gap-4 md:gap-8 items-start flex-wrap md:justify-start w-full">
         {/* applets items */}
         <div className="flex flex-col items-center gap-2">
-          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-green-bean-50 rounded-small p-[10px]">
+          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-green-bean-50 rounded-md p-[10px]">
             <img src="/images/applets/swap.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Swap</p>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-red-bean-50 rounded-small p-[10px]">
+          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-red-bean-50 rounded-md p-[10px]">
             <img src="/images/applets/earn.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Earn</p>
         </div>
         <div className="flex flex-col items-center gap-2">
-          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-rice-50 rounded-small p-[10px]">
+          <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-rice-50 rounded-md p-[10px]">
             <img src="/images/applets/multisig.svg" alt="" className="w-full h-full" />
           </div>
           <p className="text-sm font-bold">Multisig</p>
         </div>
         {/* add applets item */}
-        <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow border-[1.43px] border-rice-100 text-rice-100 rounded-small p-[10px] flex items-center justify-center">
+        <div className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow border-[1.43px] border-rice-100 text-rice-100 rounded-md p-[10px] flex items-center justify-center">
           <IconAddCross />
         </div>
       </div>
       {/* third component */}
-      <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-medium w-full">
-        <p className="text-2xl font-extrabold px-4 py-3">Top Yields</p>
+      <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-3xl w-full">
+        <p className="h3-heavy font-extrabold px-4 py-3">Top Yields</p>
 
         <div className="flex gap-6 w-full overflow-y-scroll p-4 scrollbar-none">
           {/*  strategy cards */}
@@ -163,9 +156,9 @@ function OverviewComponent() {
         </div>
       </div>
       {/* fourth component */}
-      <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-medium w-full p-4 gap-4">
+      <div className="bg-rice-25 shadow-card-shadow flex flex-col rounded-3xl w-full p-4 gap-4">
         {/* button components */}
-        <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-small">
+        <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-md">
           {Array.from(["Assets", "Earn", "Pools"]).map((e, i) => {
             const isActive = e === tableActive;
             return (
@@ -208,7 +201,7 @@ function OverviewComponent() {
                 <th className="text-end rounded-r-xl bg-green-bean-100 p-4">Risk Level</th>
               </tr>
             </thead>
-            {/* <div className="grid grid-cols-6 gap-4 p-4 rounded-small bg-green-bean-100 text-[#717680] font-semibold">
+            {/* <div className="grid grid-cols-6 gap-4 p-4 rounded-md bg-green-bean-100 text-[#717680] font-semibold">
               <p className="text-xs text-gray-500">Vault</p>
               <p className="text-xs text-gray-500 flex items-center justify-end">Type</p>
               <p className="text-xs text-gray-500 flex items-center justify-end">APR</p>
