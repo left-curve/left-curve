@@ -161,9 +161,22 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+    let orders = if order_ids.is_empty() {
+        ORDERS
+            .idx
+            .user
+            .prefix(ctx.sender)
+            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .collect::<StdResult<Vec<_>>>()?
+    } else {
+        order_ids
+            .iter()
+            .map(|order_id| ORDERS.idx.order_id.load(ctx.storage, *order_id))
+            .collect::<StdResult<Vec<_>>>()?
+    };
+
+    for order in orders {
+        let (((base_denom, quote_denom), direction, price, order_id), order) = order;
 
         ensure!(
             ctx.sender == order.user,
