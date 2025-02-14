@@ -1,7 +1,7 @@
 use {
     dango_account_factory::KEYS,
     dango_genesis::Contracts,
-    dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
+    dango_testing::{setup_test_naive, Multi, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
             multi::{self, QueryProposalRequest, QueryVoteRequest, Status, Vote},
@@ -22,12 +22,12 @@ use {
     grug_app::NaiveProposalPreparer,
 };
 
-// Create a Safe account with users 1-3 as members.
-fn setup_safe_test<'a>() -> (
+// Create a multi-signature account with users 1-3 as members.
+fn setup_multi_test<'a>() -> (
     TestSuite<NaiveProposalPreparer>,
     TestAccounts,
     Contracts,
-    Safe<'a>,
+    Multi<'a>,
     multi::Params,
 ) {
     let (mut suite, mut accounts, codes, contracts) = setup_test_naive();
@@ -40,7 +40,7 @@ fn setup_safe_test<'a>() -> (
         },
         voting_period: NonZero::new(Duration::from_seconds(30)).unwrap(),
         threshold: NonZero::new(2).unwrap(),
-        // For the purpose of this test, the Safe doesn't have a timelock.
+        // For the purpose of this test, the multisig doesn't have a timelock.
         timelock: None,
     };
 
@@ -49,19 +49,19 @@ fn setup_safe_test<'a>() -> (
             &mut accounts.user1,
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterAccount {
-                params: AccountParams::Safe(params.clone()),
+                params: AccountParams::Multi(params.clone()),
             },
-            // Fund the Safe with some tokens.
-            // The Safe will pay for gas fees, so it must have sufficient tokens.
+            // Fund the multisig with some tokens.
+            // The multisig will pay for gas fees, so it must have sufficient tokens.
             Coins::one(USDC_DENOM.clone(), 5_000_000).unwrap(),
         )
         .should_succeed();
 
-    let safe = Safe::new(Addr::derive(
+    let multi = Multi::new(Addr::derive(
         contracts.account_factory,
-        codes.account_safe.to_bytes().hash256(),
+        codes.account_multi.to_bytes().hash256(),
         Salt {
-            // We have 10 genesis users, indexed from 0, so the Safe's index
+            // We have 10 genesis users, indexed from 0, so the multisig's index
             // should be 10.
             index: 10,
         }
@@ -69,21 +69,21 @@ fn setup_safe_test<'a>() -> (
         .as_slice(),
     ));
 
-    (suite, accounts, contracts, safe, params)
+    (suite, accounts, contracts, multi, params)
 }
 
 #[test]
-fn safe_creation() {
-    let (suite, accounts, contracts, safe, params) = setup_safe_test();
+fn multi_creation() {
+    let (suite, accounts, contracts, multi, params) = setup_multi_test();
 
     // Query the account params.
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
-            address: safe.address(),
+            address: multi.address(),
         })
         .should_succeed_and_equal(Account {
             index: 10,
-            params: AccountParams::Safe(params.clone()),
+            params: AccountParams::Multi(params.clone()),
         });
 
     // The account should be been registered under each member's username.
@@ -98,36 +98,36 @@ fn safe_creation() {
             })
             .should_succeed_and_equal(btree_map! {
                 // Query response should include the user's own spot account as
-                // well as the Safe.
+                // well as the multisig.
                 member.address() => Account {
                     index,
                     params: AccountParams::Spot(single::Params::new(
                         member.username.clone()
                     )),
                 },
-                safe.address() => Account {
+                multi.address() => Account {
                     index: 10,
-                    params: AccountParams::Safe(params.clone()),
+                    params: AccountParams::Multi(params.clone()),
                 },
             });
     }
 
-    // The Safe should have received tokens.
+    // The multisig should have received tokens.
     suite
-        .query_balance(&safe, USDC_DENOM.clone())
+        .query_balance(&multi, USDC_DENOM.clone())
         .should_succeed_and_equal(Uint128::new(5_000_000));
 }
 
 #[test]
 fn proposal_passing_with_auto_execution() {
-    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     // Member 1 makes a proposal to transfer some tokens.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "send 123 uusdc to owner".to_string(),
                 description: None,
@@ -144,8 +144,8 @@ fn proposal_passing_with_auto_execution() {
     // Member 2 votes YES.
     suite
         .execute(
-            safe.with_signer(&accounts.user2),
-            safe_address,
+            multi.with_signer(&accounts.user2),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
                 voter: accounts.user2.username.clone(),
@@ -160,8 +160,8 @@ fn proposal_passing_with_auto_execution() {
     // The proposal should pass and execute.
     suite
         .execute(
-            safe.with_signer(&accounts.user3),
-            safe_address,
+            multi.with_signer(&accounts.user3),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
                 voter: accounts.user3.username.clone(),
@@ -174,7 +174,7 @@ fn proposal_passing_with_auto_execution() {
 
     // Proposal should be in the "executed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
+        .query_wasm_smart(multi.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| prop.status == Status::Executed);
 
     // Ensure the tokens have been delivered.
@@ -186,8 +186,8 @@ fn proposal_passing_with_auto_execution() {
 
 #[test]
 fn proposal_passing_with_manual_execution() {
-    let (mut suite, accounts, contracts, mut safe, mut params) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, contracts, mut multi, mut params) = setup_multi_test();
+    let multi_address = multi.address();
 
     // Member 1 makes a proposal to amend the members set,
     // adding a new member (`user4`) and removing one (`user3`).
@@ -206,14 +206,14 @@ fn proposal_passing_with_manual_execution() {
 
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "add user4 as member".to_string(),
                 description: None,
                 messages: vec![Message::execute(
                     contracts.account_factory,
-                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Safe(
+                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
                         updates.clone(),
                     )),
                     Coins::new(),
@@ -228,8 +228,8 @@ fn proposal_passing_with_manual_execution() {
     for member in [&accounts.user2, &accounts.user3] {
         suite
             .execute(
-                safe.with_signer(member),
-                safe_address,
+                multi.with_signer(member),
+                multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
                     voter: member.username.clone(),
@@ -243,14 +243,14 @@ fn proposal_passing_with_manual_execution() {
 
     // Proposal should be in the "passed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
+        .query_wasm_smart(multi.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| matches!(prop.status, Status::Passed { .. }));
 
     // Member 1 executes the proposal.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Execute { proposal_id: 1 },
             Coins::new(),
         )
@@ -258,7 +258,7 @@ fn proposal_passing_with_manual_execution() {
 
     // Proposal should now be in the "executed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
+        .query_wasm_smart(multi.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| prop.status == Status::Executed);
 
     // Ensure the params have been amended.
@@ -266,11 +266,11 @@ fn proposal_passing_with_manual_execution() {
 
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
-            address: safe.address(),
+            address: multi.address(),
         })
         .should_succeed_and_equal(Account {
             index: 10,
-            params: AccountParams::Safe(params),
+            params: AccountParams::Multi(params),
         });
 
     // The new member
@@ -278,26 +278,26 @@ fn proposal_passing_with_manual_execution() {
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
             username: accounts.user4.username.clone(),
         })
-        .should_succeed_and(|accounts| accounts.contains_key(&safe.address()));
+        .should_succeed_and(|accounts| accounts.contains_key(&multi.address()));
 
     // The removed member
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountsByUserRequest {
             username: accounts.user3.username.clone(),
         })
-        .should_succeed_and(|accounts| !accounts.contains_key(&safe.address()));
+        .should_succeed_and(|accounts| !accounts.contains_key(&multi.address()));
 }
 
 #[test]
 fn proposal_failing() {
-    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     // Member 1 makes a proposal.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -311,8 +311,8 @@ fn proposal_failing() {
     for member in [&accounts.user2, &accounts.user3] {
         suite
             .execute(
-                safe.with_signer(member),
-                safe_address,
+                multi.with_signer(member),
+                multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
                     voter: member.username.clone(),
@@ -326,15 +326,15 @@ fn proposal_failing() {
 
     // The proposal should be in the "failed" state.
     suite
-        .query_wasm_smart(safe.address(), QueryProposalRequest { proposal_id: 1 })
+        .query_wasm_smart(multi.address(), QueryProposalRequest { proposal_id: 1 })
         .should_succeed_and(|prop| prop.status == Status::Failed);
 
     // Attempting to execute the proposal should fail.
     suite
         .send_message(
-            safe.with_signer(&accounts.user1),
+            multi.with_signer(&accounts.user1),
             Message::execute(
-                safe_address,
+                multi_address,
                 &multi::ExecuteMsg::Execute { proposal_id: 1 },
                 Coins::new(),
             )
@@ -353,14 +353,14 @@ fn proposal_failing() {
 /// This test tests #1.
 #[test]
 fn unauthorized_voting_via_impersonation_by_a_non_member() {
-    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     // A member creates a proposal.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -383,7 +383,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
     //
     // We test all 2**3 = 8 combinations.
     for (voter, username, key_hash, error) in [
-        // First, in `dango_account_safe::authenticate`, the contract checks the
+        // First, in `dango_account_multi::authenticate`, the contract checks the
         // voter in the execute message matches the username in the metadata.
         // If not the same, the tx already fails here.
         (
@@ -411,8 +411,8 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
             "can't vote with a different username".to_string(),
         ),
         // Then, the contract calls `dango_auth::authenticate`. The method first
-        // checks the Safe is associated with the voter's username. That is, the
-        // voter is a member of the Safe.
+        // checks the multisig is associated with the voter's username. That is,
+        // the voter is a member of the multi.
         (
             accounts.user4.username.clone(),
             accounts.user4.username.clone(),
@@ -450,7 +450,7 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
     ] {
         unauthorized_voting_via_impersonation(
             &mut suite,
-            safe.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            multi.with_nonce(1), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
             &accounts.user4,
             voter,
             username,
@@ -463,14 +463,14 @@ fn unauthorized_voting_via_impersonation_by_a_non_member() {
 /// This tests the scenario #2 in authorized voting.
 #[test]
 fn unauthorized_voting_via_impersonation_by_a_member() {
-    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     // A member creates a proposal.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -483,8 +483,8 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
     // The attacker (`user3`) votes first.
     suite
         .execute(
-            safe.with_signer(&accounts.user3),
-            safe_address,
+            multi.with_signer(&accounts.user3),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
                 voter: accounts.user3.username.clone(),
@@ -568,7 +568,7 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
     ] {
         unauthorized_voting_via_impersonation(
             &mut suite,
-            safe.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increments? */
+            multi.with_nonce(nonce), /* TODO: nonce isn't incremented if auth fails... should we make sure it increment? */
             &accounts.user3,
             voter,
             username,
@@ -580,7 +580,7 @@ fn unauthorized_voting_via_impersonation_by_a_member() {
 
 fn unauthorized_voting_via_impersonation<'a>(
     suite: &mut TestSuite<NaiveProposalPreparer>,
-    safe: &mut Safe<'a>,
+    multi: &mut Multi<'a>,
     // An attacker who attempts to illegally vote by impersonating a member.
     attacker: &'a TestAccount,
     // The voter usrname that the attacker will put in the `ExecuteMsg::Vote`.
@@ -592,14 +592,14 @@ fn unauthorized_voting_via_impersonation<'a>(
     // The expected error
     error: String,
 ) {
-    let safe_address = safe.address();
+    let multi_address = multi.address();
 
     // Sign the tx with attacker's private key.
-    let mut tx = safe
+    let mut tx = multi
         .with_signer(attacker)
         .sign_transaction(
             NonEmpty::new_unchecked(vec![Message::execute(
-                safe_address,
+                multi_address,
                 &multi::ExecuteMsg::Vote {
                     proposal_id: 1,
                     voter,
@@ -633,44 +633,44 @@ fn unauthorized_voting_via_impersonation<'a>(
     suite.send_transaction(tx).should_fail_with_error(error);
 }
 
-/// Any action a Safe account does must be though a passed proposal. Attempting
-/// otherwise should be rejected.
+/// Any action a multisig account does must be though a passed proposal.
+/// Attempting otherwise should be rejected.
 #[test]
 fn unauthorized_messages() {
-    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
+    let (mut suite, accounts, contracts, mut multi, _) = setup_multi_test();
 
-    // Attempt to send a `MsgTransfer` from the Safe without a proposal.
+    // Attempt to send a `MsgTransfer` from the multisig without a proposal.
     // Should fail.
     suite
         .transfer(
-            safe.with_signer(&accounts.user1),
+            multi.with_signer(&accounts.user1),
             accounts.user1.address(),
             Coins::one(USDC_DENOM.clone(), 123).unwrap(),
         )
-        .should_fail_with_error("the only action a Safe account can do is to execute itself");
+        .should_fail_with_error("illegal action for a multi-signature account");
 
-    // Attempt to send a `MsgExecute` from the Safe where the contract being
-    // executed is not the Safe itself. Should fail with the same error.
+    // Attempt to send a `MsgExecute` from the multisig where the contract being
+    // executed is not the multisig itself. Should fail with the same error.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
+            multi.with_signer(&accounts.user1),
             contracts.lending,
             &Empty {}, // the message doesn't matter
             Coins::new(),
         )
-        .should_fail_with_error("the only action a Safe account can do is to execute itself");
+        .should_fail_with_error("illegal action for a multi-signature account");
 }
 
 /// When creating, voting for, or executing a proposal, the member must use the
-/// Safe account has the transaction's `sender`.
+/// multisig account has the transaction's `sender`.
 #[test]
 fn unauthorized_execute() {
-    let (mut suite, mut accounts, _, safe, _) = setup_safe_test();
+    let (mut suite, mut accounts, _, multi, _) = setup_multi_test();
 
     suite
         .execute(
             &mut accounts.user1,
-            safe.address(),
+            multi.address(),
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -678,7 +678,7 @@ fn unauthorized_execute() {
             },
             Coins::new(),
         )
-        .should_fail_with_error("only the Safe account itself can execute itself");
+        .should_fail_with_error("only the multisig account itself can execute itself");
 }
 
 /// Whether someone can vote in a proposal is determined by whether they were a
@@ -702,8 +702,8 @@ fn unauthorized_execute() {
 /// This transaction should be REJECT, despite the user IS a current member.
 #[test]
 fn vote_edge_cases() {
-    let (mut suite, accounts, contracts, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, contracts, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     // Member 1:
     // - makes a proposal;
@@ -714,8 +714,8 @@ fn vote_edge_cases() {
     // - vote in the second proposal with auto-execute.
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -727,14 +727,14 @@ fn vote_edge_cases() {
 
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "remove user3".to_string(),
                 description: None,
                 messages: vec![Message::execute(
                     contracts.account_factory,
-                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Safe(
+                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
                         multi::ParamUpdates {
                             members: ChangeSet::new_unchecked(
                                 btree_map! {
@@ -758,8 +758,8 @@ fn vote_edge_cases() {
 
     suite
         .execute(
-            safe.with_signer(&accounts.user1),
-            safe_address,
+            multi.with_signer(&accounts.user1),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 2,
                 voter: accounts.user1.username.clone(),
@@ -772,8 +772,8 @@ fn vote_edge_cases() {
 
     suite
         .execute(
-            safe.with_signer(&accounts.user2),
-            safe_address,
+            multi.with_signer(&accounts.user2),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 2,
                 voter: accounts.user2.username.clone(),
@@ -787,10 +787,10 @@ fn vote_edge_cases() {
     // Now, `user3` should no longer be a member, while `user4` should be one.
     suite
         .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
-            address: safe_address,
+            address: multi_address,
         })
         .should_succeed_and(|account| {
-            let members = account.params.clone().as_safe().members;
+            let members = account.params.clone().as_multi().members;
             !members.contains_key(&accounts.user3.username)
                 && members.contains_key(&accounts.user4.username)
         });
@@ -798,8 +798,8 @@ fn vote_edge_cases() {
     // `user3` attempts to vote in first proposal. Should be accepted!
     suite
         .execute(
-            safe.with_signer(&accounts.user3),
-            safe_address,
+            multi.with_signer(&accounts.user3),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
                 voter: accounts.user3.username.clone(),
@@ -812,7 +812,7 @@ fn vote_edge_cases() {
 
     // `user3`'s vote should have been recorded.
     suite
-        .query_wasm_smart(safe_address, QueryVoteRequest {
+        .query_wasm_smart(multi_address, QueryVoteRequest {
             proposal_id: 1,
             member: accounts.user3.username.clone(),
         })
@@ -821,8 +821,8 @@ fn vote_edge_cases() {
     // `user4` attempts to vote in the first proposal. Should be rejected!
     suite
         .execute(
-            safe.with_signer(&accounts.user4),
-            safe_address,
+            multi.with_signer(&accounts.user4),
+            multi_address,
             &multi::ExecuteMsg::Vote {
                 proposal_id: 1,
                 voter: accounts.user4.username.clone(),
@@ -838,7 +838,7 @@ fn vote_edge_cases() {
 
     // `user4`'s vote should NOT have been recorded.
     suite
-        .query_wasm_smart(safe_address, QueryVoteRequest {
+        .query_wasm_smart(multi_address, QueryVoteRequest {
             proposal_id: 1,
             member: accounts.user4.username.clone(),
         })
@@ -847,13 +847,13 @@ fn vote_edge_cases() {
 
 #[test]
 fn non_member_cannot_create_proposal() {
-    let (mut suite, accounts, _, mut safe, _) = setup_safe_test();
-    let safe_address = safe.address();
+    let (mut suite, accounts, _, mut multi, _) = setup_multi_test();
+    let multi_address = multi.address();
 
     suite
         .execute(
-            safe.with_signer(&accounts.user4), // not a member
-            safe_address,
+            multi.with_signer(&accounts.user4), // not a member
+            multi_address,
             &multi::ExecuteMsg::Propose {
                 title: "nothing".to_string(),
                 description: None,
@@ -863,6 +863,6 @@ fn non_member_cannot_create_proposal() {
         )
         .should_fail_with_error(format!(
             "account {} isn't associated with user `{}`",
-            safe_address, accounts.user4.username
+            multi_address, accounts.user4.username
         ));
 }

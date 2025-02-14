@@ -45,7 +45,7 @@ pub struct Contracts {
 pub struct Codes<T> {
     pub account_factory: T,
     pub account_margin: T,
-    pub account_safe: T,
+    pub account_multi: T,
     pub account_spot: T,
     pub bank: T,
     pub dex: T,
@@ -119,11 +119,11 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_account_margin::query))
         .build();
 
-    let account_safe = ContractBuilder::new(Box::new(dango_account_safe::instantiate))
-        .with_authenticate(Box::new(dango_account_safe::authenticate))
-        .with_receive(Box::new(dango_account_safe::receive))
-        .with_execute(Box::new(dango_account_safe::execute))
-        .with_query(Box::new(dango_account_safe::query))
+    let account_multi = ContractBuilder::new(Box::new(dango_account_multi::instantiate))
+        .with_authenticate(Box::new(dango_account_multi::authenticate))
+        .with_receive(Box::new(dango_account_multi::receive))
+        .with_execute(Box::new(dango_account_multi::execute))
+        .with_query(Box::new(dango_account_multi::query))
         .build();
 
     let account_spot = ContractBuilder::new(Box::new(dango_account_spot::instantiate))
@@ -203,7 +203,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     Codes {
         account_factory,
         account_margin,
-        account_safe,
+        account_multi,
         account_spot,
         bank,
         dex,
@@ -229,7 +229,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
 pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_factory = fs::read(artifacts_dir.join("dango_account_factory.wasm"))?;
     let account_margin = fs::read(artifacts_dir.join("dango_account_margin.wasm"))?;
-    let account_safe = fs::read(artifacts_dir.join("dango_account_safe.wasm"))?;
+    let account_multi = fs::read(artifacts_dir.join("dango_account_multi.wasm"))?;
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
@@ -247,7 +247,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     Ok(Codes {
         account_factory,
         account_margin,
-        account_safe,
+        account_multi,
         account_spot,
         bank,
         dex,
@@ -296,7 +296,7 @@ where
     // Upload all the codes and compute code hashes.
     let account_factory_code_hash = upload(&mut msgs, codes.account_factory);
     let account_margin_code_hash = upload(&mut msgs, codes.account_margin);
-    let account_safe_code_hash = upload(&mut msgs, codes.account_safe);
+    let account_multi_code_hash = upload(&mut msgs, codes.account_multi);
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
@@ -323,7 +323,7 @@ where
         &account_factory::InstantiateMsg {
             code_hashes: btree_map! {
                 AccountType::Margin => account_margin_code_hash,
-                AccountType::Safe   => account_safe_code_hash,
+                AccountType::Multi  => account_multi_code_hash,
                 AccountType::Spot   => account_spot_code_hash,
             },
             users,

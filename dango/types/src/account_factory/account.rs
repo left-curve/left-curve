@@ -33,7 +33,7 @@ pub enum AccountType {
     /// insolvent, and carrying out liquidations if necessary.
     Margin,
     /// A multi-signature account. Cannot borrow margin loans.
-    Safe,
+    Multi,
 }
 
 impl PrimaryKey for AccountType {
@@ -47,20 +47,19 @@ impl PrimaryKey for AccountType {
         let index = match self {
             AccountType::Spot => 0,
             AccountType::Margin => 1,
-            AccountType::Safe => 2,
+            AccountType::Multi => 2,
         };
         vec![RawKey::Fixed8([index])]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        let index = u8::from_be_bytes(bytes.try_into()?);
-        match index {
+        match u8::from_be_bytes(bytes.try_into()?) {
             0 => Ok(Self::Spot),
             1 => Ok(Self::Margin),
-            2 => Ok(Self::Safe),
-            _ => Err(StdError::deserialize::<Self, _>(
+            2 => Ok(Self::Multi),
+            i => Err(StdError::deserialize::<Self, _>(
                 "index",
-                format!("unknown account type index: {index}"),
+                format!("unknown account type index: {i}"),
             )),
         }
     }
@@ -71,7 +70,7 @@ impl Display for AccountType {
         match self {
             AccountType::Spot => write!(f, "spot"),
             AccountType::Margin => write!(f, "margin"),
-            AccountType::Safe => write!(f, "safe"),
+            AccountType::Multi => write!(f, "multi"),
         }
     }
 }
@@ -83,7 +82,7 @@ impl Display for AccountType {
 pub enum AccountParams {
     Spot(single::Params),
     Margin(single::Params),
-    Safe(multi::Params),
+    Multi(multi::Params),
 }
 
 macro_rules! generate_downcast {
@@ -112,14 +111,14 @@ impl AccountParams {
     generate_downcast! {
         Spot   => single::Params,
         Margin => single::Params,
-        Safe   => multi::Params,
+        Multi  => multi::Params,
     }
 
     pub fn ty(&self) -> AccountType {
         match self {
             AccountParams::Spot { .. } => AccountType::Spot,
             AccountParams::Margin { .. } => AccountType::Margin,
-            AccountParams::Safe(_) => AccountType::Safe,
+            AccountParams::Multi(_) => AccountType::Multi,
         }
     }
 }
@@ -131,13 +130,13 @@ impl AccountParams {
 /// Currently only multisig accounts support parameter updates.
 #[grug::derive(Serde)]
 pub enum AccountParamUpdates {
-    Safe(multi::ParamUpdates),
+    Multi(multi::ParamUpdates),
 }
 
 impl AccountParamUpdates {
     pub fn ty(&self) -> AccountType {
         match self {
-            AccountParamUpdates::Safe(_) => AccountType::Safe,
+            AccountParamUpdates::Multi(_) => AccountType::Multi,
         }
     }
 }

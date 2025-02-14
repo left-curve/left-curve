@@ -207,8 +207,8 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Basic validations of the account.
     // - For single signature accounts (spot and margin), one can only register
     //   accounts for themself. They cannot register account for another user.
-    // - For multisig accounts (Safe), ensure voting threshold isn't greater
-    //   than total voting power.
+    // - For multisig accounts, ensure voting threshold isn't greater than total
+    //   voting power.
     match &params {
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ensure!(
@@ -216,7 +216,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                 "can't register account for another user"
             );
         },
-        AccountParams::Safe(params) => {
+        AccountParams::Multi(params) => {
             ensure!(
                 params.threshold.into_inner() <= params.total_power(),
                 "threshold can't be greater than total power"
@@ -244,7 +244,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ACCOUNTS_BY_USER.insert(ctx.storage, (&params.owner, address))?;
         },
-        AccountParams::Safe(params) => {
+        AccountParams::Multi(params) => {
             for member in params.members.keys() {
                 ACCOUNTS_BY_USER.insert(ctx.storage, (member, address))?;
             }
@@ -290,7 +290,7 @@ fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Resu
     let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
 
     match (&mut account.params, updates) {
-        (AccountParams::Safe(params), AccountParamUpdates::Safe(updates)) => {
+        (AccountParams::Multi(params), AccountParamUpdates::Multi(updates)) => {
             ensure!(
                 params.threshold.into_inner() <= params.total_power(),
                 "threshold can't be greater than total power"
