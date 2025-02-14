@@ -13,6 +13,7 @@ export { AccountCard } from "./foundation/AccountCard";
 export { Table } from "./foundation/table/Table";
 export { Tabs } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
+export { Input } from "./foundation/Input";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -36,9 +37,16 @@ export { ConnectorIcon } from "./foundation/icons/Connector";
 export { CrossIcon } from "./foundation/icons/Cross";
 export { IconChevronRight } from "./foundation/icons/IconChevronRight";
 export { DangoDotsIcon } from "./foundation/icons/DangoDots";
+
 export { IconChevronDown } from "./foundation/icons/IconChevronDown";
 export { IconGear } from "./foundation/icons/IconGear";
 export { IconTrash } from "./foundation/icons/IconTrash";
+export { IconAddCross } from "./foundation/icons/IconAddCross";
+export { IconBell } from "./foundation/icons/IconBell";
+export { IconSearch } from "./foundation/icons/IconSearch";
+export { IconUser } from "./foundation/icons/IconUser";
+
+/* ---------------------------------- Emojis -------------------------------- */
 
 export { Ants } from "./foundation/icons/emoji/Ants";
 export { Factory1 } from "./foundation/icons/emoji/Factory1";
@@ -54,10 +62,9 @@ export { Temple } from "./foundation/icons/emoji/Temple";
 export { Wizard } from "./foundation/icons/emoji/Wizard";
 export { type EmojiName, Emoji } from "./foundation/Emoji";
 
-export { IconAddCross } from "./foundation/icons/IconAddCross";
-export { IconBell } from "./foundation/icons/IconBell";
-export { IconSearch } from "./foundation/icons/IconSearch";
-export { IconUser } from "./foundation/icons/IconUser";
+/* ---------------------------------- Chars --------------------------------- */
+
+export { Birdo } from "./foundation/chars/Birdo";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Dashboard                                 */
