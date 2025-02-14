@@ -182,6 +182,28 @@ where
         Box::new(iter)
     }
 
+    // TODO: this isn't very optimized because we can `range_bounds` function
+    // twice, once in `self.range`, once in `self.clear`. Optimize this to only
+    // call it once.
+    pub fn drain(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> StdResult<Vec<(K::Output, T)>>
+    where
+        K: Clone,
+    {
+        let data = self
+            .range(storage, min.clone(), max.clone(), order)
+            .collect();
+
+        self.clear(storage, min, max);
+
+        data
+    }
+
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
         let (min, max) = range_bounds(&self.namespace, min, max);
         storage.remove_range(Some(&min), Some(&max))

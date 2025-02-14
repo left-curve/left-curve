@@ -219,6 +219,19 @@ where
         self.no_prefix().values(storage, min, max, order)
     }
 
+    pub fn drain(
+        &self,
+        storage: &mut dyn Storage,
+        min: Option<Bound<K>>,
+        max: Option<Bound<K>>,
+        order: Order,
+    ) -> StdResult<Vec<(K::Output, T)>>
+    where
+        K: Clone,
+    {
+        self.no_prefix().drain(storage, min, max, order)
+    }
+
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {
         self.no_prefix().clear(storage, min, max)
     }
