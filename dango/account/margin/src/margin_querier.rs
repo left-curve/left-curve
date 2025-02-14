@@ -1,10 +1,14 @@
 use {
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
-    dango_types::{account::margin::HealthResponse, config::AppConfig},
+    dango_types::{
+        account::margin::HealthResponse,
+        config::AppConfig,
+        dex::{Direction, QueryOrdersByUserRequest},
+    },
     grug::{
-        Addr, Coin, Coins, Inner, IsZero, Number, NumberConst, QuerierExt, StdError,
-        StorageQuerier, Timestamp, Udec128,
+        Addr, Coin, Coins, Inner, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
+        StdError, StorageQuerier, Timestamp, Udec128,
     },
     std::error::Error,
 };
@@ -73,11 +77,13 @@ where
         let mut total_adjusted_collateral_value = Udec128::ZERO;
         let mut collaterals = Coins::new();
 
-        for (denom, power) in app_cfg.collateral_powers {
+        // Iterate over the collateral powers and add the collateral value to the
+        // total collateral value.
+        for (denom, power) in &app_cfg.collateral_powers {
             let mut collateral_balance = self.query_balance(account, denom.clone())?;
 
             if let Some(discount_collateral) = discount_collateral.as_ref() {
-                collateral_balance.checked_sub_assign(discount_collateral.amount_of(&denom))?;
+                collateral_balance.checked_sub_assign(discount_collateral.amount_of(denom))?;
             }
 
             // As an optimization, don't query the price if the collateral balance
@@ -86,13 +92,66 @@ where
                 continue;
             }
 
-            let price = self.query_price(app_cfg.addresses.oracle, &denom, None)?;
+            let price = self.query_price(app_cfg.addresses.oracle, denom, None)?;
             let value = price.value_of_unit_amount(collateral_balance)?;
-            let adjusted_value = value.checked_mul(power.into_inner())?;
+            let adjusted_value = value.checked_mul(power.clone().into_inner())?;
 
-            collaterals.insert(Coin::new(denom, collateral_balance)?)?;
+            collaterals.insert(Coin::new(denom.clone(), collateral_balance)?)?;
             total_collateral_value.checked_add_assign(value)?;
             total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
+        }
+
+        // Iterate over the user's limit orders and add the order value to the
+        // total collateral value.
+        let mut limit_order_collaterals = Coins::new();
+        let mut limit_order_outputs = Coins::new();
+        let orders = self.query_wasm_smart(app_cfg.addresses.dex, QueryOrdersByUserRequest {
+            user: account,
+            start_after: None,
+            limit: None,
+        })?;
+        for (_, res) in orders {
+            // Get asset locked in the order and the asset that would be returned
+            // if the order was filled.
+            let (deposited, returned) = match res.direction {
+                Direction::Bid => (
+                    Coin::new(
+                        res.quote_denom.clone(),
+                        res.remaining.checked_mul_dec_ceil(res.price)?,
+                    )?,
+                    Coin::new(res.base_denom.clone(), res.remaining)?,
+                ),
+                Direction::Ask => (
+                    Coin::new(res.base_denom.clone(), res.remaining)?,
+                    Coin::new(
+                        res.quote_denom.clone(),
+                        res.remaining.checked_mul_dec_floor(res.price)?,
+                    )?,
+                ),
+            };
+            let deposited_price =
+                self.query_price(app_cfg.addresses.oracle, &deposited.denom, None)?;
+            let returned_price =
+                self.query_price(app_cfg.addresses.oracle, &returned.denom, None)?;
+            let deposited_value = deposited_price.value_of_unit_amount(deposited.amount)?;
+            let returned_value = returned_price.value_of_unit_amount(returned.amount)?;
+
+            let min_value = std::cmp::min(deposited_value, returned_value);
+
+            let collateral_power =
+                app_cfg
+                    .collateral_powers
+                    .get(&deposited.denom)
+                    .ok_or(anyhow::anyhow!(
+                        "collateral power for denom {} not found",
+                        deposited.denom
+                    ))?;
+            let adjusted_value = min_value.checked_mul(collateral_power.clone().into_inner())?;
+
+            total_collateral_value.checked_add_assign(min_value)?;
+            total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
+            limit_order_collaterals.insert(deposited)?;
+            limit_order_outputs.insert(returned)?;
         }
 
         // Calculate the utilization rate.
@@ -116,6 +175,8 @@ where
             total_adjusted_collateral_value,
             debts,
             collaterals,
+            limit_order_collaterals,
+            limit_order_outputs,
         })
     }
 }
