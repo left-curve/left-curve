@@ -303,8 +303,7 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
     // Query the LP token supply
     let lp_supply = ctx.querier.query_supply(lp_denom.clone())?;
 
-    // Calculate the minimum ration of sent funds to the pool reserves
-    // TODO: Don't unwrap
+    // Calculate the funds to provide and the amount of LP tokens to mint
     let (funds_to_provide, lp_mint_amount) = match lp_supply {
         Uint128::ZERO => (
             funds.clone(),
@@ -314,6 +313,7 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
                 .fold(Uint128::ONE, |acc, c| acc * c.amount),
         ),
         _ => {
+            // Calculate the minimum ratio of sent funds to the pool reserves
             let min_ratio = funds
                 .into_iter()
                 .map(|c| {
@@ -321,23 +321,27 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
                         .unwrap()
                 })
                 .min()
-                .unwrap();
+                .unwrap_or(Udec128::ZERO);
 
             // Ensure the minimum ratio is greater than 0
             ensure!(
-                min_ratio > Udec128::new(0),
+                min_ratio > Udec128::ZERO,
                 "Invalid funds. Must send both coins in the pair."
             );
 
+            // The funds to use in the provision are the pool reserves scaled by the minimum ratio.
+            // This ensures that the provision is made in the same ratio as the pool reserves.
             let funds_to_provide = pool
                 .reserves
                 .clone()
                 .into_iter()
-                .map(|c| Coin {
-                    denom: c.denom.clone(),
-                    amount: c.amount.checked_mul_dec_floor(min_ratio).unwrap(),
+                .map(|c| {
+                    Ok(Coin {
+                        denom: c.denom.clone(),
+                        amount: c.amount.checked_mul_dec_floor(min_ratio)?,
+                    })
                 })
-                .collect::<Vec<Coin>>()
+                .collect::<StdResult<Vec<Coin>>>()?
                 .try_into()?;
             let lp_mint_amount = lp_supply.checked_mul_dec_floor(min_ratio)?;
 
@@ -346,8 +350,7 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
     };
 
     // Calculate funds to provide and funds to return
-    let mut funds_to_return = funds.clone();
-    funds_to_return.deduct_many(funds_to_provide.clone())?;
+    let funds_to_return = funds.clone().deduct_many(funds_to_provide.clone())?.clone();
 
     // Update the pool reserves
     pool.reserves.insert_many(funds_to_provide)?;
