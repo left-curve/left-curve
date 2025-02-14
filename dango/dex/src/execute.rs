@@ -3,7 +3,7 @@ use {
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
-    anyhow::{anyhow, ensure},
+    anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
@@ -169,18 +169,16 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
             INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
         ) {
-            (Some(x), None) => {
-                ORDERS.remove(ctx.storage, x.0.clone())?;
-                x
+            (Some((order_key, order)), None) => {
+                ORDERS.remove(ctx.storage, order_key.clone())?;
+                (order_key, order)
             },
-            (None, Some(x)) => {
+            (None, Some((order_key, order))) => {
                 INCOMING_ORDERS.remove(ctx.storage, order_id);
-                x
+                (order_key, order)
             },
-            (None, None) => return Err(anyhow!("order with id {order_id} not found")),
-            (Some(_), Some(_)) => {
-                return Err(anyhow!("order with id {order_id} found in both maps"))
-            },
+            (None, None) => bail!("order with id `{order_id}` not found"),
+            (Some(_), Some(_)) => bail!("order with id `{order_id}` found in both maps"),
         };
 
         ensure!(
@@ -223,19 +221,18 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut refunds = BTreeMap::new();
 
     // Add all incoming orders to the orders map and clear the incoming orders map.
-    let mut pairs = BTreeSet::new();
-    let incoming_orders = INCOMING_ORDERS
-        .range(ctx.storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?;
-    for (_, (order_key, order)) in incoming_orders {
-        ORDERS.save(ctx.storage, order_key.clone(), &order)?;
-        pairs.insert(order_key.0);
+    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None, grug::Order::Ascending)?;
+    for (_, (order_key, order)) in incoming_orders.iter() {
+        ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
-    INCOMING_ORDERS.clear(ctx.storage, None, None);
 
     // Loop through the pairs, match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in pairs {
+    let pairs_with_new_orders = incoming_orders
+        .into_iter()
+        .map(|(_, ((pair, ..), _))| pair)
+        .collect::<BTreeSet<_>>();
+    for (base_denom, quote_denom) in pairs_with_new_orders {
         clear_orders_of_pair(
             ctx.storage,
             base_denom,

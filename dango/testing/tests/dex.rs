@@ -5,8 +5,8 @@ use {
         dex::{self, Direction, OrderId, QueryOrdersRequest},
     },
     grug::{
-        btree_map, Addressable, BalanceChange, Coins, Denom, Inner, Message, MultiplyFraction,
-        NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+        btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
+        MultiplyFraction, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -368,7 +368,9 @@ fn cancel_order() {
                 amount: Uint128::new(100),
                 price: Udec128::new(1),
             },
-            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+            grug::coins! {
+                USDC_DENOM.clone() => 100
+            },
         )
         .should_succeed();
 
@@ -380,28 +382,23 @@ fn cancel_order() {
             &dex::ExecuteMsg::CancelOrders {
                 order_ids: BTreeSet::from([!0]),
             },
-            Coins::one(DANGO_DENOM.clone(), 1).unwrap(),
+            coins! { DANGO_DENOM.clone() => 1 },
         )
         .should_succeed();
 
     // Check that the user balance has not changed
-    assert_eq!(
-        suite
-            .balances()
-            .changes(accounts.user1.address())
-            .get(&USDC_DENOM)
-            .unwrap(),
-        &BalanceChange::Unchanged
+    suite.balances().should_change(
+        accounts.user1.address(),
+        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
     );
 
     // Check that order does not exist
-    let orders = suite
+    suite
         .query_wasm_smart(contracts.dex, QueryOrdersRequest {
             start_after: None,
             limit: None,
         })
-        .unwrap();
-    assert!(orders.is_empty())
+        .should_succeed_and(BTreeMap::is_empty);
 }
 
 #[test]
@@ -421,7 +418,7 @@ fn submit_and_cancel_order_in_same_block() {
             amount: Uint128::new(100),
             price: Udec128::new(1),
         },
-        Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+        coins! { USDC_DENOM.clone() => 100 },
     )
     .unwrap();
 
