@@ -29,7 +29,6 @@ grug-mock-taxman   = { workspace = true, features = ["library"] }
 grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
 indexer-httpd      = { workspace = true }
-indexer-sql        = { workspace = true, features = ["tracing"] }
 k256               = { workspace = true }
 rand               = { workspace = true }
 sea-orm            = { workspace = true }
@@ -42,6 +41,7 @@ tracing-subscriber = { workspace = true }
 [dev-dependencies]
 borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-storage = { workspace = true }
+indexer-sql  = { workspace = true, features = ["tracing"] }
 prost        = { workspace = true }
 reqwest      = { workspace = true, features = ["blocking", "json"] }
 test-case    = { workspace = true }
