@@ -538,6 +538,7 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
+            dex,
             hyperlane: Hyperlane {
                 fee,
                 ism,
