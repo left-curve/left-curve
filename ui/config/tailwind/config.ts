@@ -5,6 +5,7 @@ import plugin from "tailwindcss/plugin";
 export const tailwindConfig: Partial<Config> = {
   theme: {
     colors: {
+      transparent: "transparent",
       gray: {
         25: "#FAFAFA",
         50: "#F5F4F4",
@@ -91,6 +92,10 @@ export const tailwindConfig: Partial<Config> = {
         900: "#424522",
         950: "#22250E",
       },
+      error: {
+        25: "#FFFBFA",
+        500: "#F04438",
+      },
     },
     boxShadow: {
       "card-shadow": "0px 1px 6px rgba(214, 201, 181, 0.4), 0px 4px 13px rgba(232, 219, 211, 0.5)",
@@ -99,6 +104,7 @@ export const tailwindConfig: Partial<Config> = {
         "0px 4px 6px rgba(0, 0, 0, 0.04), 0px 4px 6px rgba(0, 0, 0, 0.04), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48)",
       "btn-shadow-disabled":
         "0px -1px 3px -2px var(rgba(0,0,0,0.7)) inset, 0px 2px 3px -1px var(rgba(255,255,255,0.7)) inset, 0px 1px 1px -0.5px var(rgba(0,0,0,0.4))",
+      "input-shadow": "0px 1px 3px 0px #2E25210A inset, 0px 2px 6px 0px #C7C2B666",
     },
     borderRadius: {
       xs: "8px",
