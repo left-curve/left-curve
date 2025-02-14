@@ -104,7 +104,7 @@ impl StartCmd {
         let vm = HybridVm::new(self.wasm_cache_capacity, [
             codes.account_factory.to_bytes().hash256(),
             codes.account_margin.to_bytes().hash256(),
-            codes.account_safe.to_bytes().hash256(),
+            codes.account_multi.to_bytes().hash256(),
             codes.account_spot.to_bytes().hash256(),
             codes.bank.to_bytes().hash256(),
             codes.dex.to_bytes().hash256(),

@@ -25,7 +25,7 @@ pub const MAX_SEEN_NONCES: usize = 20;
 
 /// The most recent nonces that have been used to send transactions.
 ///
-/// All three account types (spot, margin, Safe) stores their nonces in this
+/// All three account types (spot, margin, multi) stores their nonces in this
 /// same storage slot.
 pub const SEEN_NONCES: Item<BTreeSet<Nonce>> = Item::new("seen_nonces");
 
@@ -82,8 +82,8 @@ pub fn authenticate_tx(
 /// Compared to [`authenticate_tx`](crate::authenticate_tx), this function skips
 /// the part of verifying the username.
 ///
-/// This is intended for the multi-signature (Safe) account, where we ensure the
-/// username is associated with the Safe _at the time a proposal was created_,
+/// This is intended for the multi-signature accounts, where we ensure the
+/// username is associated with the multisig _at the time a proposal was created_,
 /// instead of _now_.
 pub fn verify_nonce_and_signature(
     ctx: AuthCtx,
