@@ -238,10 +238,16 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }
 
+    // Find all the unique pairs that have received new orders in the block.
+    let pairs = incoming_orders
+        .into_values()
+        .map(|((pair, ..), _)| pair)
+        .collect::<BTreeSet<_>>();
+
     // Loop through the pairs that have received new orders in the block.
     // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (_, (((base_denom, quote_denom), ..), _)) in incoming_orders.into_iter() {
+    for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
             ctx.storage,
             base_denom,
