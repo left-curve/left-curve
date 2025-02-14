@@ -1,7 +1,8 @@
 use {
     crate::{
-        account::multi::ParamUpdates,
-        account_factory::{Account, AccountIndex, AccountParams, AccountType, Username},
+        account_factory::{
+            Account, AccountIndex, AccountParamUpdates, AccountParams, AccountType, Username,
+        },
         auth::Key,
     },
     grug::{Addr, Coins, Hash256, Op},
@@ -36,15 +37,16 @@ pub enum ExecuteMsg {
     /// This is the second of the two-step user onboarding process.
     RegisterUser {
         username: Username,
+        secret: u32,
         key: Key,
         key_hash: Hash256,
     },
     /// Register a new account for an existing user.
     RegisterAccount { params: AccountParams },
-    /// Configure a key for a username.
-    ConfigureKey { key_hash: Hash256, key: Op<Key> },
-    /// Update a Safe account's parameters.
-    ConfigureSafe { updates: ParamUpdates },
+    /// Associate a new or disassociate an existing key with a username.
+    UpdateKey { key_hash: Hash256, key: Op<Key> },
+    /// Update an account's parameters.
+    UpdateAccount(AccountParamUpdates),
 }
 
 #[grug::derive(Serde, QueryRequest)]

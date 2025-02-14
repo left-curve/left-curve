@@ -1,8 +1,5 @@
 use {
-    crate::{
-        account_factory::{AccountIndex, Username},
-        auth::Key,
-    },
+    crate::{account_factory::AccountIndex, auth::Key},
     grug::{Binary, Hash256},
 };
 
@@ -19,49 +16,44 @@ use {
 /// tempered with via frontrunning by a malicious block builder. Check the docs
 /// on the user onboarding flow for more details.
 #[derive(Debug, Clone, Copy)]
-pub struct NewUserSalt<'a> {
-    pub username: &'a Username,
+pub struct NewUserSalt {
+    pub secret: u32,
     pub key: Key,
     pub key_hash: Hash256,
 }
 
-impl NewUserSalt<'_> {
+impl NewUserSalt {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := len(username) || username || key_hash || key_tag || key
+    /// bytes := secret (in big endian) || key_hash || key_tag || key
     /// ```
     ///
-    /// `username` needs to be length-prefixed, because usernames can be of
-    /// variable lengths, so we need to know the length to know where the
-    /// username ends and where `hey_hash` starts.
+    /// `secret` is provided externally.
     ///
     /// `key_hash` doesn't need a length prefix because it's of fixed length.
     ///
     /// `key_tag` is a single byte identifying the key's type:
     /// - `0` for Secp256r1
     /// - `1` for Secp256k1
-    /// - `2` for Ed25519
-    pub fn into_bytes(self) -> [u8; 82] {
+    pub fn into_bytes(self) -> [u8; 70] {
         // Maximum possible length for the bytes:
-        // - len(username): 1
-        // - username: 15
+        // - secret: 4
         // - key_hash: 32
         // - key_tag: 1
         // - key: 33
-        // Total: 82 bytes.
-        let mut bytes = [0; 82];
-        bytes[0] = self.username.len();
-        bytes[1..1 + self.username.len() as usize].copy_from_slice(self.username.as_ref());
-        bytes[16..48].copy_from_slice(&self.key_hash);
+        // Total: 70 bytes.
+        let mut bytes = [0; 70];
+        bytes[0..4].copy_from_slice(&self.secret.to_be_bytes());
+        bytes[4..36].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {
-                bytes[48] = 0;
-                bytes[49..82].copy_from_slice(&pk);
+                bytes[36] = 0;
+                bytes[37..70].copy_from_slice(&pk);
             },
             Key::Secp256k1(pk) => {
-                bytes[48] = 1;
-                bytes[49..82].copy_from_slice(&pk);
+                bytes[36] = 1;
+                bytes[37..70].copy_from_slice(&pk);
             },
         }
         bytes
@@ -70,8 +62,8 @@ impl NewUserSalt<'_> {
 
 // Implement `Into<Binary>` trait, so that `NewUserSalt` can be used in the
 // `Message::instantiate` method.
-impl<'a> From<NewUserSalt<'a>> for Binary {
-    fn from(salt: NewUserSalt<'a>) -> Self {
+impl From<NewUserSalt> for Binary {
+    fn from(salt: NewUserSalt) -> Self {
         salt.into_bytes().into()
     }
 }

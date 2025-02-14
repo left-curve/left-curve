@@ -154,7 +154,7 @@ pub fn setup_benchmark_hybrid(
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
         codes.account_margin.to_bytes().hash256(),
-        codes.account_safe.to_bytes().hash256(),
+        codes.account_multi.to_bytes().hash256(),
         codes.account_spot.to_bytes().hash256(),
         codes.bank.to_bytes().hash256(),
         codes.lending.to_bytes().hash256(),

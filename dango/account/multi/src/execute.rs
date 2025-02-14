@@ -33,7 +33,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
     let metadata: Metadata = tx.data.clone().deserialize_json()?;
     let mut has_non_voting = false;
 
-    // The only type of transaction a Safe account is allowed to emit is to
+    // The only type of transaction a multisig account is allowed to emit is to
     // execute itself. Everything else needs to be done through proposals.
     // Additionally, if the action is proposing or voting, the proposer/voter's
     // username must match the transaction signer's username.
@@ -74,7 +74,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                     },
                 }
             },
-            _ => bail!("the only action a Safe account can do is to execute itself"),
+            _ => bail!("illegal action for a multi-signature account"),
         }
     }
 
@@ -98,7 +98,7 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.contract,
-        "only the Safe account itself can execute itself"
+        "only the multisig account itself can execute itself"
     );
 
     match msg {
@@ -125,21 +125,21 @@ fn propose(
 ) -> anyhow::Result<Response> {
     let account_factory = ctx.querier.query_account_factory()?;
 
-    // Query the Safe's parameters from the account factory.
+    // Query the multisig's parameters from the account factory.
     //
-    // These params can change at any time (via the Safe executing the factory's
-    // `configure_safe` method).
+    // These params can change at any time (via the multisig executing the
+    // factory's `update_account` method).
     //
     // As such, we always use the params _at the time of the proposal's creation_
-    // for tallying the proposal. Changes made to the Safe's params _after_ the
-    // proposal's creation has no effect on it.
+    // for tallying the proposal. Changes made to the multisig's params _after_
+    // the proposal's creation has no effect on it.
     let params = ctx
         .querier
         .query_wasm_smart(account_factory, QueryAccountRequest {
             address: ctx.contract,
         })?
         .params
-        .as_safe();
+        .as_multi();
 
     let proposal = Proposal {
         title,
@@ -302,8 +302,8 @@ mod tests {
     /// Address of the account factory for use in the following tests.
     const ACCOUNT_FACTORY: Addr = Addr::mock(254);
 
-    /// Address of the Safe for use in the following tests.
-    const SAFE: Addr = Addr::mock(255);
+    /// Address of the multisig for use in the following tests.
+    const MULTI: Addr = Addr::mock(255);
 
     #[test]
     fn only_factory_can_instantiate() {
@@ -319,7 +319,7 @@ mod tests {
 
         let mut ctx = MockContext::new()
             .with_querier(querier)
-            .with_contract(SAFE)
+            .with_contract(MULTI)
             .with_sender(Addr::mock(123))
             .with_funds(Coins::new());
 
@@ -345,7 +345,7 @@ mod tests {
         let member3 = Username::from_str("member3").unwrap();
         let chain_id = String::from("test");
 
-        // Create a Safe with 3 signers.
+        // Create a multisig with 3 signers.
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -357,20 +357,20 @@ mod tests {
             .unwrap()
             .with_raw_contract_storage(ACCOUNT_FACTORY, |storage| {
                 for member in [&member1, &member2, &member3] {
-                    ACCOUNTS_BY_USER.insert(storage, (member, SAFE)).unwrap();
+                    ACCOUNTS_BY_USER.insert(storage, (member, MULTI)).unwrap();
                 }
             });
 
         let mut ctx = MockContext::new()
             .with_querier(querier)
-            .with_contract(SAFE)
+            .with_contract(MULTI)
             .with_mode(AuthMode::Finalize);
 
         // A member sends a tx, but it's doing something other than executing
-        // the Safe itself. Should fail.
+        // the multisig itself. Should fail.
         {
             let res = authenticate(ctx.as_auth(), Tx {
-                sender: SAFE,
+                sender: MULTI,
                 gas_limit: 1_000_000,
                 msgs: NonEmpty::new_unchecked(vec![Message::transfer(
                     Addr::mock(123),
@@ -390,17 +390,17 @@ mod tests {
 
             assert!(res.is_err_and(|err| err
                 .to_string()
-                .contains("the only action a Safe account can do is to execute itself")));
+                .contains("illegal action for a multi-signature account")));
         }
 
-        // A member sends a tx, it's executing the Safe itself to vote in a
+        // A member sends a tx, it's executing the multisig itself to vote in a
         // proposal, but voting with a different username. Should fail.
         {
             let res = authenticate(ctx.as_auth(), Tx {
-                sender: SAFE,
+                sender: MULTI,
                 gas_limit: 1_000_000,
                 msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                    SAFE,
+                    MULTI,
                     &multi::ExecuteMsg::Vote {
                         proposal_id: 1,
                         voter: member2,
@@ -458,10 +458,10 @@ mod tests {
             .unwrap()
             .with_smart_query_handler(move |contract, data| {
                 match (contract, data.deserialize_json().unwrap()) {
-                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: SAFE }) => {
+                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: MULTI }) => {
                         Account {
                             index: 12345,
-                            params: AccountParams::Safe(params_clone.clone()),
+                            params: AccountParams::Multi(params_clone.clone()),
                         }
                         .to_json_value()
                         .into_generic_result()
@@ -472,8 +472,8 @@ mod tests {
 
         let mut ctx = MockContext::new()
             .with_querier(querier)
-            .with_contract(SAFE)
-            .with_sender(SAFE)
+            .with_contract(MULTI)
+            .with_sender(MULTI)
             .with_funds(Coins::new());
 
         // Create the 1st proposal.
@@ -497,11 +497,11 @@ mod tests {
         ctx.update_querier(|querier| {
             querier.update_smart_query_handler(move |contract, data| {
                 match (contract, data.deserialize_json().unwrap()) {
-                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: SAFE }) => {
+                    (ACCOUNT_FACTORY, account_factory::QueryMsg::Account { address: MULTI }) => {
                         Account {
                             index: 12345,
                             // Use the updated params here!
-                            params: AccountParams::Safe(params.clone()),
+                            params: AccountParams::Multi(params.clone()),
                         }
                         .to_json_value()
                         .into_generic_result()
@@ -570,7 +570,7 @@ mod tests {
     ) {
         let mut ctx = MockContext::new()
             .with_block_timestamp(Timestamp::from_seconds(300))
-            .with_sender(SAFE)
+            .with_sender(MULTI)
             .with_funds(Coins::new());
 
         let voter = Username::from_str("member").unwrap();
@@ -744,7 +744,7 @@ mod tests {
             .sum();
 
         let mut ctx = MockContext::new()
-            .with_sender(SAFE)
+            .with_sender(MULTI)
             .with_funds(Coins::new());
 
         let proposal_id = 123;
@@ -837,7 +837,7 @@ mod tests {
     fn executing(status: Status, expect: GenericResult<Response>) {
         let mut ctx = MockContext::new()
             .with_block_timestamp(Timestamp::from_seconds(200))
-            .with_sender(SAFE)
+            .with_sender(MULTI)
             .with_funds(Coins::new());
 
         let proposal_id = 123;

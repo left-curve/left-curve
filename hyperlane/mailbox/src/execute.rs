@@ -129,8 +129,7 @@ fn process(
 
     ensure!(
         message.version == MAILBOX_VERSION,
-        "incorrect mailbox version! expecting: {}, found: {}",
-        MAILBOX_VERSION,
+        "incorrect mailbox version! expecting: {MAILBOX_VERSION}, found: {}",
         message.version
     );
 
@@ -143,8 +142,7 @@ fn process(
 
     ensure!(
         !DELIVERIES.has(ctx.storage, message_id),
-        "message has already been delivered! message id: {}",
-        message_id
+        "message has already been delivered! message id: {message_id}",
     );
 
     // Query the recipient's ISM.
