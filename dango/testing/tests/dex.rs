@@ -387,10 +387,11 @@ fn cancel_order() {
         .should_succeed();
 
     // Check that the user balance has not changed
-    suite.balances().should_change(
-        accounts.user1.address(),
-        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
-    );
+    suite
+        .balances()
+        .should_change(accounts.user1.address(), btree_map! {
+            USDC_DENOM.clone() => BalanceChange::Unchanged
+        });
 
     // Check that order does not exist
     suite
@@ -451,21 +452,17 @@ fn submit_and_cancel_order_in_same_block() {
         });
 
     // Check that the user balance has changed only by the gas fees
-    assert_eq!(
-        suite
-            .balances()
-            .changes(accounts.user1.address())
-            .get(&DANGO_DENOM)
-            .unwrap(),
-        &BalanceChange::Unchanged
-    );
+    suite
+        .balances()
+        .should_change(accounts.user1.address(), btree_map! {
+            DANGO_DENOM.clone() => BalanceChange::Unchanged
+        });
 
     // Check that order does not exist
-    let orders = suite
+    suite
         .query_wasm_smart(contracts.dex, QueryOrdersRequest {
             start_after: None,
             limit: None,
         })
-        .unwrap();
-    assert!(orders.is_empty())
+        .should_succeed_and(BTreeMap::is_empty);
 }
