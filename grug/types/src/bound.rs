@@ -10,6 +10,7 @@ use {
 };
 
 /// A limit for a value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound<T> {
     Inclusive(T),
     Exclusive(T),

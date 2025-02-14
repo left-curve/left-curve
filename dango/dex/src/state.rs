@@ -1,23 +1,18 @@
 use {
     dango_types::dex::{Direction, OrderId, PairParams},
-    grug::{Addr, Counter, Counters, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
+    grug::{Addr, Counter, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
 };
 
 // (base_denom, quote_denom) => params
 pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
-
-/// The number of new orders that each trading pair has received during the
-/// current block.
-///
-/// At the end of the block, we perform order matching for all pairs that have
-/// received new orders.
-pub const NEW_ORDER_COUNTS: Counters<(&Denom, &Denom), u32> = Counters::new("order_count", 0, 1);
 
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
 
 pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("order", OrderIndex {
     order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
 });
+
+pub const INCOMING_ORDERS: Map<OrderId, (OrderKey, Order)> = Map::new("incoming_orders");
 
 /// Type of the keys under which orders are stored in the contract storage.
 ///
