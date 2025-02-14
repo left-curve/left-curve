@@ -187,7 +187,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             // Order is found in both maps. This should never happen, indicating
             // a serious bug. We panic and halt the chain for investigation.
             (Some(_), Some(_)) => {
-                unreachable!("order with id `{order_id}` found in both maps")
+                unreachable!("order with id `{order_id}` found in both maps");
             },
         };
 
