@@ -387,11 +387,10 @@ fn cancel_order() {
         .should_succeed();
 
     // Check that the user balance has not changed
-    suite
-        .balances()
-        .should_change(accounts.user1.address(), btree_map! {
-            USDC_DENOM.clone() => BalanceChange::Unchanged
-        });
+    suite.balances().should_change(
+        accounts.user1.address(),
+        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    );
 
     // Check that order does not exist
     suite
