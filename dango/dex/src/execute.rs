@@ -1,9 +1,9 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
@@ -127,21 +127,22 @@ fn submit_order(
         order_id = !order_id;
     }
 
-    NEW_ORDER_COUNTS.increment(ctx.storage, (&base_denom, &quote_denom))?;
-
-    ORDERS.save(
+    INCOMING_ORDERS.save(
         ctx.storage,
-        (
-            (base_denom.clone(), quote_denom.clone()),
-            direction,
-            price,
-            order_id,
+        order_id,
+        &(
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                direction,
+                price,
+                order_id,
+            ),
+            Order {
+                user: ctx.sender,
+                amount,
+                remaining: amount,
+            },
         ),
-        &Order {
-            user: ctx.sender,
-            amount,
-            remaining: amount,
-        },
     )?;
 
     Ok(Response::new().add_event(OrderSubmitted {
@@ -162,8 +163,33 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
     let mut events = Vec::new();
 
     for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        let (((base_denom, quote_denom), direction, price, _), order) = match (
+            ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
+            INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
+        ) {
+            // If the order is in the persistent storage, then remove it from
+            // there.
+            (Some((order_key, order)), None) => {
+                ORDERS.remove(ctx.storage, order_key.clone())?;
+                (order_key, order)
+            },
+            // If the order is in the incoming orders map, then remove it from
+            // there. This should be rare, as the trader would need to submit
+            // then remove the order in the same block.
+            (None, Some((order_key, order))) => {
+                INCOMING_ORDERS.remove(ctx.storage, order_id);
+                (order_key, order)
+            },
+            // Order is not found in either place, error.
+            (None, None) => {
+                bail!("order with id `{order_id}` not found");
+            },
+            // Order is found in both maps. This should never happen, indicating
+            // a serious bug. We panic and halt the chain for investigation.
+            (Some(_), Some(_)) => {
+                unreachable!("order with id `{order_id}` found in both maps")
+            },
+        };
 
         ensure!(
             ctx.sender == order.user,
@@ -188,11 +214,6 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         })?);
 
         refunds.insert(refund)?;
-
-        ORDERS.remove(
-            ctx.storage,
-            ((base_denom, quote_denom), direction, price, order_id),
-        )?;
     }
 
     Ok(Response::new()
@@ -209,18 +230,18 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
 
-    // Find all pairs that have received new orders during the block.
-    let pairs = NEW_ORDER_COUNTS
-        .current_range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let (pair, _) = res?;
-            Ok(pair)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
+    // Collect incoming orders and clear the temporary storage.
+    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
-    // Loop through the pairs, match and clear the orders for each of them.
+    // Add incoming orders to the persistent storage.
+    for (order_key, order) in incoming_orders.values() {
+        ORDERS.save(ctx.storage, order_key.clone(), order)?;
+    }
+
+    // Loop through the pairs that have received new orders in the block.
+    // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in pairs {
+    for (_, (((base_denom, quote_denom), ..), _)) in incoming_orders.into_iter() {
         clear_orders_of_pair(
             ctx.storage,
             base_denom,
@@ -229,9 +250,6 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             &mut refunds,
         )?;
     }
-
-    // Reset the order counters for the next block.
-    NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
     Ok(Response::new()
         .add_message({
