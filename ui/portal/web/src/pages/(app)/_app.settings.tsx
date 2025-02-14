@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
-  Address,
   IconAddCross,
   IconCopy,
   IconTrash,
   Select,
   SelectItem,
+  TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
@@ -106,9 +106,9 @@ export const Route = createFileRoute("/(app)/_app/settings")({
               >
                 <div className="flex items-start justify-between w-full gap-8">
                   <div className="min-w-0">
-                    <Address
+                    <TruncateText
                       className="text-gray-700 font-bold"
-                      address="0x6caf21cd9f6D4c6eF7CF32539690B79665abFE09"
+                      text="0x6caf21cd9f6D4c6eF7CF32539690B79665abFE09"
                     />
 
                     <p className="text-gray-500 text-sm">Metamask Wallet</p>

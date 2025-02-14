@@ -244,85 +244,85 @@ export const tailwindConfig: Partial<Config> = {
           lineHeight: "24px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-lg-regular": {
+        ".diatype-lg-regular": {
           fontWeight: "400",
           fontSize: "18px",
           lineHeight: "25.2px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-lg-medium": {
+        ".diatype-lg-medium": {
           fontWeight: "500",
           fontSize: "18px",
           lineHeight: "25.2px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-lg-bold": {
+        ".diatype-lg-bold": {
           fontWeight: "700",
           fontSize: "18px",
           lineHeight: "25.2px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-lg-heavy": {
+        ".diatype-lg-heavy": {
           fontWeight: "800",
           fontSize: "18px",
           lineHeight: "25.2px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-m-regular": {
+        ".diatype-m-regular": {
           fontWeight: "400",
           fontSize: "16px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-m-medium": {
+        ".diatype-m-medium": {
           fontWeight: "500",
           fontSize: "16px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-m-bold": {
+        ".diatype-m-bold": {
           fontWeight: "700",
           fontSize: "16px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-m-heavy": {
+        ".diatype-m-heavy": {
           fontWeight: "800",
           fontSize: "16px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-sm-regular": {
+        ".diatype-sm-regular": {
           fontWeight: "400",
           fontSize: "14px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-sm-medium": {
+        ".diatype-sm-medium": {
           fontWeight: "500",
           fontSize: "14px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-sm-bold": {
+        ".diatype-sm-bold": {
           fontWeight: "700",
           fontSize: "14px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-sm-heavy": {
+        ".diatype-sm-heavy": {
           fontWeight: "700",
           fontSize: "14px",
           lineHeight: "22.4px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-xs-medium": {
+        ".diatype-xs-medium": {
           fontWeight: "500",
           fontSize: "12px",
           lineHeight: "16.8px",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
-        ".text-xs-bold": {
+        ".diatype-xs-bold": {
           fontWeight: "700",
           fontSize: "12px",
           lineHeight: "16.8px",

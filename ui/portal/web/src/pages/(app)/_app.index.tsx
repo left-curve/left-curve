@@ -5,12 +5,53 @@ import {
   AccountCard,
   Button,
   IconAddCross,
+  PoolTable,
   StrategyCard,
-  Table,
-  twMerge,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
-import { motion } from "framer-motion";
+
+const mockDataTable = [
+  {
+    vault: "ETH-USD",
+    type: "Lending",
+    apr: "17.72%",
+    liquidity: "15.63%",
+    tvl: "15.63%",
+    risk: "Low",
+  },
+  {
+    vault: "ETH-USD",
+    type: "Lending",
+    apr: "17.72%",
+    liquidity: "15.63%",
+    tvl: "15.63%",
+    risk: "Low",
+  },
+  {
+    vault: "ETH-USD",
+    type: "Lending",
+    apr: "17.72%",
+    liquidity: "15.63%",
+    tvl: "15.63%",
+    risk: "Low",
+  },
+  {
+    vault: "ETH-USD",
+    type: "Lending",
+    apr: "17.72%",
+    liquidity: "15.63%",
+    tvl: "15.63%",
+    risk: "Low",
+  },
+  {
+    vault: "ETH-USD",
+    type: "Lending",
+    apr: "17.72%",
+    liquidity: "15.63%",
+    tvl: "15.63%",
+    risk: "Low",
+  },
+];
 
 export const Route = createFileRoute("/(app)/_app/")({
   component: OverviewComponent,
@@ -18,7 +59,6 @@ export const Route = createFileRoute("/(app)/_app/")({
 
 function OverviewComponent() {
   const { account } = useAccount();
-  const [tableActive, setTableActive] = useState<"Assets" | "Earn" | "Pools">("Assets");
   return (
     <div className="w-full  md:max-w-[76rem] mx-auto flex flex-col gap-8 p-4">
       <div className="rounded-3xl bg-rice-50 shadow-card-shadow flex flex-col md:flex-row gap-4 w-full p-4 items-center md:items-start">
@@ -99,42 +139,7 @@ function OverviewComponent() {
         </div>
       </div>
 
-      <Table
-        topContent={
-          <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-md">
-            {Array.from(["Assets", "Earn", "Pools"]).map((e, i) => {
-              const isActive = e === tableActive;
-              return (
-                <motion.li
-                  className="relative transition-all flex items-center justify-center py-2 px-4 cursor-pointer"
-                  key={`navLink-${e}`}
-                  onClick={() => setTableActive(e as any)}
-                >
-                  <p
-                    className={twMerge(
-                      "italic font-medium font-exposure transition-all relative z-10",
-                      isActive ? "text-black" : "text-gray-300",
-                    )}
-                  >
-                    {e}
-                  </p>
-                  {isActive ? (
-                    <motion.div
-                      className="w-full h-full rounded-[10px] bg-green-bean-50 absolute bottom-0 left-0 [box-shadow:0px_4px_6px_2px_#1919191F]"
-                      layoutId="active"
-                    />
-                  ) : null}
-                </motion.li>
-              );
-            })}
-          </motion.ul>
-        }
-        bottomContent={
-          <Button variant="secondary" className="self-center">
-            View All
-          </Button>
-        }
-      />
+      <PoolTable data={mockDataTable} />
     </div>
   );
 }
