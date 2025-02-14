@@ -2,10 +2,10 @@ use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
-        account::{self, multi, single},
+        account::{self, single},
         account_factory::{
-            Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
-            Username,
+            Account, AccountParamUpdates, AccountParams, AccountType, ExecuteMsg, InstantiateMsg,
+            NewUserSalt, Salt, Username,
         },
         auth::Key,
     },
@@ -22,16 +22,22 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         CODE_HASHES.save(ctx.storage, *account_type, code_hash)?;
     }
 
+    // During genesis:
+    // 1. We use an incremental number, which should equal the account's index,
+    //    as the secret.
+    // 2. Minimum deposit is not required.
     let instantiate_msgs = msg
         .users
         .into_iter()
-        .map(|(username, (key_hash, key))| {
+        .enumerate()
+        .map(|(secret, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            // Minimum deposit is not required for genesis users.
+
             onboard_new_user(
                 ctx.storage,
                 ctx.contract,
                 username,
+                secret as u32,
                 key,
                 key_hash,
                 Coins::default(),
@@ -107,16 +113,18 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             key,
             key_hash,
-        } => register_user(ctx, username, key, key_hash),
+            secret,
+        } => register_user(ctx, username, secret, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
-        ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
-        ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
+        ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
+        ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
     }
 }
 
 fn register_user(
     ctx: MutableCtx,
     username: Username,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
 ) -> anyhow::Result<Response> {
@@ -142,6 +150,7 @@ fn register_user(
         ctx.storage,
         ctx.contract,
         username,
+        secret,
         key,
         key_hash,
         minimum_deposit,
@@ -154,9 +163,10 @@ fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
-    minimum_receive: Coins,
+    minimum_deposit: Coins,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -166,9 +176,9 @@ fn onboard_new_user(
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
 
     let salt = NewUserSalt {
-        username: &username,
         key,
         key_hash,
+        secret,
     }
     .into_bytes();
 
@@ -185,9 +195,7 @@ fn onboard_new_user(
     // Create the message to instantiate this account.
     Message::instantiate(
         code_hash,
-        &account::spot::InstantiateMsg {
-            minimum_deposit: minimum_receive,
-        },
+        &account::spot::InstantiateMsg { minimum_deposit },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
@@ -199,8 +207,8 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     // Basic validations of the account.
     // - For single signature accounts (spot and margin), one can only register
     //   accounts for themself. They cannot register account for another user.
-    // - For multisig accounts (Safe), ensure voting threshold isn't greater
-    //   than total voting power.
+    // - For multisig accounts, ensure voting threshold isn't greater than total
+    //   voting power.
     match &params {
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ensure!(
@@ -208,7 +216,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
                 "can't register account for another user"
             );
         },
-        AccountParams::Safe(params) => {
+        AccountParams::Multi(params) => {
             ensure!(
                 params.threshold.into_inner() <= params.total_power(),
                 "threshold can't be greater than total power"
@@ -236,7 +244,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         AccountParams::Spot(params) | AccountParams::Margin(params) => {
             ACCOUNTS_BY_USER.insert(ctx.storage, (&params.owner, address))?;
         },
-        AccountParams::Safe(params) => {
+        AccountParams::Multi(params) => {
             for member in params.members.keys() {
                 ACCOUNTS_BY_USER.insert(ctx.storage, (member, address))?;
             }
@@ -255,51 +263,59 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
-    let username = get_username_by_address(ctx.storage, ctx.sender)?;
+fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
+    // The sender account must be a single signature account.
+    // Find the username associated with the account.
+    let username = match ACCOUNTS.load(ctx.storage, ctx.sender)? {
+        Account {
+            params: AccountParams::Spot(params) | AccountParams::Margin(params),
+            ..
+        } => params.owner,
+        _ => bail!("sender is not a single signature account"),
+    };
 
     match key {
-        Op::Insert(key) => KEYS.save(ctx.storage, (&username, key_hash), &key)?,
-        Op::Delete => KEYS.remove(ctx.storage, (&username, key_hash)),
+        Op::Insert(key) => {
+            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
+        },
+        Op::Delete => {
+            KEYS.remove(ctx.storage, (&username, key_hash));
+        },
     }
 
     Ok(Response::new())
 }
 
-fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
-    for member in updates.members.add().keys() {
-        ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
+    let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
+
+    match (&mut account.params, updates) {
+        (AccountParams::Multi(params), AccountParamUpdates::Multi(updates)) => {
+            ensure!(
+                params.threshold.into_inner() <= params.total_power(),
+                "threshold can't be greater than total power"
+            );
+
+            for member in updates.members.add().keys() {
+                ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+            }
+
+            for member in updates.members.remove() {
+                ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
+            }
+
+            params.apply_updates(updates);
+
+            ACCOUNTS.save(ctx.storage, ctx.sender, &account)?;
+        },
+        (params, updates) => {
+            bail!(
+                "account type ({}) and param update type ({}) don't match",
+                params.ty(),
+                updates.ty()
+            );
+        },
     }
-
-    for member in updates.members.remove() {
-        ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
-    }
-
-    ACCOUNTS.update(ctx.storage, ctx.sender, |mut account| {
-        match &mut account.params {
-            AccountParams::Safe(params) => {
-                params.apply_updates(updates);
-
-                ensure!(
-                    params.threshold.into_inner() <= params.total_power(),
-                    "threshold can't be greater than total power"
-                );
-            },
-            _ => bail!("account isn't a Safe"),
-        }
-
-        Ok(account)
-    })?;
 
     Ok(Response::new())
-}
-
-fn get_username_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Username> {
-    if let AccountParams::Margin(params) | AccountParams::Spot(params) =
-        ACCOUNTS.load(storage, address)?.params
-    {
-        Ok(params.owner)
-    } else {
-        bail!("account isn't a Spot or Margin account");
-    }
 }
