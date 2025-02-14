@@ -18,51 +18,7 @@ pub struct Account {
     pub params: AccountParams,
 }
 
-/// Parameters of an account.
-#[grug::derive(Serde, Borsh)]
-pub enum AccountParams {
-    Spot(single::Params),
-    Margin(single::Params),
-    Safe(multi::Params),
-}
-
-macro_rules! generate_downcast {
-    ($id:ident => $ret:ty) => {
-        paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
-                match self {
-                    AccountParams::$id(value) => value,
-                    _ => panic!("AccountParams is not {}", stringify!($id)),
-                }
-            }
-
-            pub fn [<is_$id:snake>](self) -> bool {
-                matches!(self, AccountParams::$id(_))
-            }
-        }
-    };
-    ($($id:ident => $ret:ty),+ $(,)?) => {
-        $(
-            generate_downcast!($id => $ret);
-        )+
-    };
-}
-
-impl AccountParams {
-    generate_downcast! {
-        Spot   => single::Params,
-        Margin => single::Params,
-        Safe   => multi::Params,
-    }
-
-    pub fn ty(&self) -> AccountType {
-        match self {
-            AccountParams::Spot { .. } => AccountType::Spot,
-            AccountParams::Margin { .. } => AccountType::Margin,
-            AccountParams::Safe(_) => AccountType::Safe,
-        }
-    }
-}
+// ----------------------------------- type ------------------------------------
 
 /// Types of accounts the protocol supports.
 #[grug::derive(Serde, Borsh)]
@@ -116,6 +72,72 @@ impl Display for AccountType {
             AccountType::Spot => write!(f, "spot"),
             AccountType::Margin => write!(f, "margin"),
             AccountType::Safe => write!(f, "safe"),
+        }
+    }
+}
+
+// ---------------------------------- params -----------------------------------
+
+/// Parameters of an account.
+#[grug::derive(Serde, Borsh)]
+pub enum AccountParams {
+    Spot(single::Params),
+    Margin(single::Params),
+    Safe(multi::Params),
+}
+
+macro_rules! generate_downcast {
+    ($id:ident => $ret:ty) => {
+        paste! {
+            pub fn [<as_$id:snake>](self) -> $ret {
+                match self {
+                    AccountParams::$id(value) => value,
+                    _ => panic!("AccountParams is not {}", stringify!($id)),
+                }
+            }
+
+            pub fn [<is_$id:snake>](self) -> bool {
+                matches!(self, AccountParams::$id(_))
+            }
+        }
+    };
+    ($($id:ident => $ret:ty),+ $(,)?) => {
+        $(
+            generate_downcast!($id => $ret);
+        )+
+    };
+}
+
+impl AccountParams {
+    generate_downcast! {
+        Spot   => single::Params,
+        Margin => single::Params,
+        Safe   => multi::Params,
+    }
+
+    pub fn ty(&self) -> AccountType {
+        match self {
+            AccountParams::Spot { .. } => AccountType::Spot,
+            AccountParams::Margin { .. } => AccountType::Margin,
+            AccountParams::Safe(_) => AccountType::Safe,
+        }
+    }
+}
+
+// ------------------------------- param updates -------------------------------
+
+/// Parameter updates to an account.
+///
+/// Currently only multisig accounts support parameter updates.
+#[grug::derive(Serde)]
+pub enum AccountParamUpdates {
+    Safe(multi::ParamUpdates),
+}
+
+impl AccountParamUpdates {
+    pub fn ty(&self) -> AccountType {
+        match self {
+            AccountParamUpdates::Safe(_) => AccountType::Safe,
         }
     }
 }

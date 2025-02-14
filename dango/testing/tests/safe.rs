@@ -4,12 +4,12 @@ use {
     dango_testing::{setup_test_naive, Safe, TestAccount, TestAccounts, TestSuite},
     dango_types::{
         account::{
-            multi::{self, ParamUpdates, QueryProposalRequest, QueryVoteRequest, Status, Vote},
+            multi::{self, QueryProposalRequest, QueryVoteRequest, Status, Vote},
             single,
         },
         account_factory::{
-            self, Account, AccountParams, QueryAccountRequest, QueryAccountsByUserRequest, Salt,
-            Username,
+            self, Account, AccountParamUpdates, AccountParams, QueryAccountRequest,
+            QueryAccountsByUserRequest, Salt, Username,
         },
         auth::Key,
         constants::USDC_DENOM,
@@ -191,7 +191,7 @@ fn proposal_passing_with_manual_execution() {
 
     // Member 1 makes a proposal to amend the members set,
     // adding a new member (`user4`) and removing one (`user3`).
-    let updates = ParamUpdates {
+    let updates = multi::ParamUpdates {
         members: ChangeSet::new_unchecked(
             btree_map! {
                 accounts.user4.username.clone() => NonZero::new(1).unwrap(),
@@ -213,9 +213,9 @@ fn proposal_passing_with_manual_execution() {
                 description: None,
                 messages: vec![Message::execute(
                     contracts.account_factory,
-                    &account_factory::ExecuteMsg::ConfigureSafe {
-                        updates: updates.clone(),
-                    },
+                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Safe(
+                        updates.clone(),
+                    )),
                     Coins::new(),
                 )
                 .unwrap()],
@@ -734,8 +734,8 @@ fn vote_edge_cases() {
                 description: None,
                 messages: vec![Message::execute(
                     contracts.account_factory,
-                    &account_factory::ExecuteMsg::ConfigureSafe {
-                        updates: ParamUpdates {
+                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Safe(
+                        multi::ParamUpdates {
                             members: ChangeSet::new_unchecked(
                                 btree_map! {
                                     accounts.user4.username.clone() => NonZero::new_unchecked(1),
@@ -747,7 +747,7 @@ fn vote_edge_cases() {
                             threshold: None,
                             voting_period: None,
                         },
-                    },
+                    )),
                     Coins::new(),
                 )
                 .unwrap()],

@@ -2,10 +2,10 @@ use {
     crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     anyhow::{bail, ensure},
     dango_types::{
-        account::{self, multi, single},
+        account::{self, single},
         account_factory::{
-            Account, AccountParams, AccountType, ExecuteMsg, InstantiateMsg, NewUserSalt, Salt,
-            Username,
+            Account, AccountParamUpdates, AccountParams, AccountType, ExecuteMsg, InstantiateMsg,
+            NewUserSalt, Salt, Username,
         },
         auth::Key,
     },
@@ -116,8 +116,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             secret,
         } => register_user(ctx, username, secret, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
-        ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
-        ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
+        ExecuteMsg::UpdateKey { key_hash, key } => update_key(ctx, key_hash, key),
+        ExecuteMsg::UpdateAccount(updates) => update_account(ctx, updates),
     }
 }
 
@@ -263,51 +263,59 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
     )?))
 }
 
-fn configure_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
-    let username = get_username_by_address(ctx.storage, ctx.sender)?;
+fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {
+    // The sender account must be a single signature account.
+    // Find the username associated with the account.
+    let username = match ACCOUNTS.load(ctx.storage, ctx.sender)? {
+        Account {
+            params: AccountParams::Spot(params) | AccountParams::Margin(params),
+            ..
+        } => params.owner,
+        _ => bail!("sender is not a single signature account"),
+    };
 
     match key {
-        Op::Insert(key) => KEYS.save(ctx.storage, (&username, key_hash), &key)?,
-        Op::Delete => KEYS.remove(ctx.storage, (&username, key_hash)),
+        Op::Insert(key) => {
+            KEYS.save(ctx.storage, (&username, key_hash), &key)?;
+        },
+        Op::Delete => {
+            KEYS.remove(ctx.storage, (&username, key_hash));
+        },
     }
 
     Ok(Response::new())
 }
 
-fn configure_safe(ctx: MutableCtx, updates: multi::ParamUpdates) -> anyhow::Result<Response> {
-    for member in updates.members.add().keys() {
-        ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
+    let mut account = ACCOUNTS.load(ctx.storage, ctx.sender)?;
+
+    match (&mut account.params, updates) {
+        (AccountParams::Safe(params), AccountParamUpdates::Safe(updates)) => {
+            ensure!(
+                params.threshold.into_inner() <= params.total_power(),
+                "threshold can't be greater than total power"
+            );
+
+            for member in updates.members.add().keys() {
+                ACCOUNTS_BY_USER.insert(ctx.storage, (member, ctx.sender))?;
+            }
+
+            for member in updates.members.remove() {
+                ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
+            }
+
+            params.apply_updates(updates);
+
+            ACCOUNTS.save(ctx.storage, ctx.sender, &account)?;
+        },
+        (params, updates) => {
+            bail!(
+                "account type ({}) and param update type ({}) don't match",
+                params.ty(),
+                updates.ty()
+            );
+        },
     }
-
-    for member in updates.members.remove() {
-        ACCOUNTS_BY_USER.remove(ctx.storage, (member, ctx.sender));
-    }
-
-    ACCOUNTS.update(ctx.storage, ctx.sender, |mut account| {
-        match &mut account.params {
-            AccountParams::Safe(params) => {
-                params.apply_updates(updates);
-
-                ensure!(
-                    params.threshold.into_inner() <= params.total_power(),
-                    "threshold can't be greater than total power"
-                );
-            },
-            _ => bail!("account isn't a Safe"),
-        }
-
-        Ok(account)
-    })?;
 
     Ok(Response::new())
-}
-
-fn get_username_by_address(storage: &dyn Storage, address: Addr) -> anyhow::Result<Username> {
-    if let AccountParams::Margin(params) | AccountParams::Spot(params) =
-        ACCOUNTS.load(storage, address)?.params
-    {
-        Ok(params.owner)
-    } else {
-        bail!("account isn't a Spot or Margin account");
-    }
 }
