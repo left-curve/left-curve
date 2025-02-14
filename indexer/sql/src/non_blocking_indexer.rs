@@ -8,14 +8,16 @@ use {
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
         Context,
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
+    grug_app::{Indexer, QueryApp, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
     sea_orm::{DatabaseConnection, TransactionTrait},
     std::{
+        cell::RefCell,
         collections::HashMap,
         future::Future,
         ops::Deref,
         path::PathBuf,
+        rc::{Rc, Weak},
         sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
@@ -32,6 +34,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>, H 
     keep_blocks: bool,
     hooks: H,
     pubsub: PubSubType,
+    grug_app: Option<Weak<RefCell<dyn QueryApp>>>,
 }
 
 impl Default for IndexerBuilder {
@@ -43,6 +46,7 @@ impl Default for IndexerBuilder {
             keep_blocks: false,
             hooks: NullHooks,
             pubsub: PubSubType::Memory,
+            grug_app: None,
         }
     }
 }
@@ -59,6 +63,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
+            grug_app: self.grug_app,
         }
     }
 
@@ -76,6 +81,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
+            grug_app: self.grug_app,
         }
     }
 
@@ -87,6 +93,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
+            grug_app: self.grug_app,
         }
     }
 }
@@ -103,6 +110,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             keep_blocks: self.keep_blocks,
             hooks,
             pubsub: self.pubsub,
+            grug_app: self.grug_app,
         }
     }
 }
@@ -116,6 +124,7 @@ impl<DB, P, H> IndexerBuilder<DB, P, H> {
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
             pubsub: PubSubType::Postgres,
+            grug_app: self.grug_app,
         }
     }
 }
@@ -137,6 +146,7 @@ where
             keep_blocks,
             hooks: self.hooks,
             pubsub: self.pubsub,
+            grug_app: self.grug_app,
         }
     }
 
@@ -175,6 +185,7 @@ where
             indexing: false,
             keep_blocks: self.keep_blocks,
             hooks: self.hooks,
+            grug_app: self.grug_app,
         })
     }
 }
@@ -205,6 +216,7 @@ where
     pub indexing: bool,
     keep_blocks: bool,
     hooks: H,
+    grug_app: Option<Weak<RefCell<dyn QueryApp>>>,
 }
 
 impl<H> NonBlockingIndexer<H>
@@ -554,6 +566,10 @@ where
         });
 
         Ok(())
+    }
+
+    fn set_grug_app(&mut self, grug_app: Weak<RefCell<dyn QueryApp>>) {
+        self.grug_app = Some(grug_app);
     }
 }
 

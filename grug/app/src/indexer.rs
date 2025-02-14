@@ -1,9 +1,11 @@
 use {
-    crate::{AppError, Indexer},
+    crate::{AppError, Indexer, QueryApp},
     grug_types::{Block, BlockOutcome},
     std::{
+        cell::RefCell,
         convert::Infallible,
         fmt::{self, Display},
+        rc::Weak,
     },
 };
 
@@ -37,6 +39,8 @@ impl Indexer for NullIndexer {
     fn post_indexing(&self, _block_height: u64) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    fn set_grug_app(&mut self, _grug_app: Weak<RefCell<dyn QueryApp>>) {}
 }
 
 /// An error type that is never encountered.

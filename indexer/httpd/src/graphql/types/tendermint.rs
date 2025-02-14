@@ -10,6 +10,7 @@ use {
 #[derive(SimpleObject)]
 pub struct TxSyncResponse {
     pub code: u32,
+    /// The base64 encoded data
     pub data: String,
     pub log: String,
     pub hash: String,
@@ -30,6 +31,7 @@ impl From<tx_sync::Response> for TxSyncResponse {
 pub struct TxAsyncResponse {
     pub codespace: String,
     pub code: u32,
+    /// The base64 encoded data
     pub data: String,
     pub log: String,
     pub hash: String,
@@ -68,7 +70,9 @@ pub struct AbciQuery {
     pub log: String,
     pub info: String,
     pub index: i64,
+    /// The base64 encoded key
     pub key: String,
+    /// The base64 encoded value
     pub value: String,
     pub height: u64,
     pub codespace: String,

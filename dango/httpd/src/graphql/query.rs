@@ -1,8 +1,8 @@
 use {
     async_graphql::MergedObject,
     indexer_httpd::graphql::query::{
-        block::BlockQuery, event::EventQuery, message::MessageQuery, tendermint::TendermintQuery,
-        transaction::TransactionQuery,
+        block::BlockQuery, event::EventQuery, grug::GrugQuery, message::MessageQuery,
+        tendermint::TendermintQuery, transaction::TransactionQuery,
     },
     transfer::TransferQuery,
 };
@@ -17,4 +17,5 @@ pub struct Query(
     EventQuery,
     TransferQuery,
     TendermintQuery,
+    GrugQuery,
 );

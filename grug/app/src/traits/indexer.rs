@@ -1,4 +1,8 @@
-use grug_types::{Block, BlockOutcome, Storage};
+use {
+    crate::QueryApp,
+    grug_types::{Block, BlockOutcome, Storage},
+    std::{cell::RefCell, rc::Weak},
+};
 
 /// This is the trait that the indexer must implement. It is used by the Grug core to index blocks
 pub trait Indexer {
@@ -23,4 +27,6 @@ pub trait Indexer {
 
     /// Called after indexing the block, allowing for DB transactions to be committed
     fn post_indexing(&self, block_height: u64) -> Result<(), Self::Error>;
+
+    fn set_grug_app(&mut self, grug_app: Weak<RefCell<dyn QueryApp>>);
 }

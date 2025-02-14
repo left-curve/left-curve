@@ -1,10 +1,11 @@
 use {
-    async_graphql::MergedObject, block::BlockQuery, event::EventQuery, message::MessageQuery,
-    tendermint::TendermintQuery, transaction::TransactionQuery,
+    async_graphql::MergedObject, block::BlockQuery, event::EventQuery, grug::GrugQuery,
+    message::MessageQuery, tendermint::TendermintQuery, transaction::TransactionQuery,
 };
 
 pub mod block;
 pub mod event;
+pub mod grug;
 pub mod message;
 pub mod tendermint;
 pub mod transaction;
@@ -16,4 +17,5 @@ pub struct Query(
     MessageQuery,
     EventQuery,
     TendermintQuery,
+    GrugQuery,
 );

@@ -63,6 +63,18 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     }
 }
 
+// impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
+// where
+//     ID: Indexer + Sync,
+//     DB: Sync,
+//     VM: Sync,
+//     PP: Sync,
+// {
+//     pub fn set_indexer_app(&self) {
+//         self.indexer.set_grug_app(Box::new(self.clone()));
+//     }
+// }
+
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where
     DB: Db,
@@ -626,6 +638,26 @@ where
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let req = raw_req.deserialize_json()?;
+        let res = self.do_query_app(req, height, prove)?;
+
+        Ok(res.to_json_vec()?)
+    }
+}
+
+pub trait QueryApp {
+    fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>>;
+}
+
+impl<DB, VM, PP, ID> QueryApp for App<DB, VM, PP, ID>
+where
+    DB: Db,
+    VM: Vm + Clone + 'static,
+    PP: ProposalPreparer,
+    ID: Indexer,
+    AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
+{
+    fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
         let req = raw_req.deserialize_json()?;
         let res = self.do_query_app(req, height, prove)?;
 
