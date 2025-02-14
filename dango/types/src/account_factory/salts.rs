@@ -26,7 +26,7 @@ impl NewUserSalt {
     /// Convert the salt to raw binary, as follows:
     ///
     /// ```plain
-    /// bytes := secret (in big_endian) || key_hash || key_tag || key
+    /// bytes := secret (in big endian) || key_hash || key_tag || key
     /// ```
     ///
     /// `secret` is provided externally.
