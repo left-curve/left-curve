@@ -1,7 +1,7 @@
 use {
     crate::{Borsh, Codec, Path, Prefix, PrefixBound, Prefixer, PrimaryKey, RawKey},
     grug_types::{Bound, Order, Record, StdError, StdResult, Storage},
-    std::marker::PhantomData,
+    std::{collections::BTreeMap, marker::PhantomData},
 };
 
 pub struct Map<'a, K, T, C = Borsh>
@@ -224,12 +224,12 @@ where
         storage: &mut dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
-        order: Order,
-    ) -> StdResult<Vec<(K::Output, T)>>
+    ) -> StdResult<BTreeMap<K::Output, T>>
     where
         K: Clone,
+        K::Output: Ord,
     {
-        self.no_prefix().drain(storage, min, max, order)
+        self.no_prefix().drain(storage, min, max)
     }
 
     pub fn clear(&self, storage: &mut dyn Storage, min: Option<Bound<K>>, max: Option<Bound<K>>) {

@@ -4,7 +4,7 @@ use {
         concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
         trim, Bound, Order, Record, StdResult, Storage,
     },
-    std::marker::PhantomData,
+    std::{collections::BTreeMap, marker::PhantomData},
 };
 
 pub struct Prefix<K, T, C>
@@ -190,13 +190,15 @@ where
         storage: &mut dyn Storage,
         min: Option<Bound<K>>,
         max: Option<Bound<K>>,
-        order: Order,
-    ) -> StdResult<Vec<(K::Output, T)>>
+    ) -> StdResult<BTreeMap<K::Output, T>>
     where
         K: Clone,
+        K::Output: Ord,
     {
+        // The iteration order here doesn't matter, because we're collecting the
+        // data into a `BTreeMap`, which naturally comes sorted.
         let data = self
-            .range(storage, min.clone(), max.clone(), order)
+            .range(storage, min.clone(), max.clone(), Order::Ascending)
             .collect();
 
         self.clear(storage, min, max);
