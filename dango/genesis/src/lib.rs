@@ -336,9 +336,10 @@ where
     // Derive the addresses of the genesis accounts that were just created.
     let addresses = genesis_users
         .iter()
-        .map(|(username, user)| {
+        .enumerate()
+        .map(|(secret, (username, user))| {
             let salt = NewUserSalt {
-                username,
+                secret: secret as u32,
                 key: user.key,
                 key_hash: user.key_hash,
             }

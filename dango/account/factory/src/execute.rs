@@ -22,16 +22,22 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         CODE_HASHES.save(ctx.storage, *account_type, code_hash)?;
     }
 
+    // During genesis:
+    // 1. We use an incremental number, which should equal the account's index,
+    //    as the secret.
+    // 2. Minimum deposit is not required.
     let instantiate_msgs = msg
         .users
         .into_iter()
-        .map(|(username, (key_hash, key))| {
+        .enumerate()
+        .map(|(secret, (username, (key_hash, key)))| {
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
-            // Minimum deposit is not required for genesis users.
+
             onboard_new_user(
                 ctx.storage,
                 ctx.contract,
                 username,
+                secret as u32,
                 key,
                 key_hash,
                 Coins::default(),
@@ -107,7 +113,8 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             username,
             key,
             key_hash,
-        } => register_user(ctx, username, key, key_hash),
+            secret,
+        } => register_user(ctx, username, secret, key, key_hash),
         ExecuteMsg::RegisterAccount { params } => register_account(ctx, params),
         ExecuteMsg::ConfigureKey { key_hash, key } => configure_key(ctx, key_hash, key),
         ExecuteMsg::ConfigureSafe { updates } => configure_safe(ctx, updates),
@@ -117,6 +124,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 fn register_user(
     ctx: MutableCtx,
     username: Username,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
 ) -> anyhow::Result<Response> {
@@ -142,6 +150,7 @@ fn register_user(
         ctx.storage,
         ctx.contract,
         username,
+        secret,
         key,
         key_hash,
         minimum_deposit,
@@ -154,9 +163,10 @@ fn onboard_new_user(
     storage: &mut dyn Storage,
     factory: Addr,
     username: Username,
+    secret: u32,
     key: Key,
     key_hash: Hash256,
-    minimum_receive: Coins,
+    minimum_deposit: Coins,
 ) -> StdResult<Message> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
@@ -166,9 +176,9 @@ fn onboard_new_user(
     let (index, _) = NEXT_ACCOUNT_INDEX.increment(storage)?;
 
     let salt = NewUserSalt {
-        username: &username,
         key,
         key_hash,
+        secret,
     }
     .into_bytes();
 
@@ -185,9 +195,7 @@ fn onboard_new_user(
     // Create the message to instantiate this account.
     Message::instantiate(
         code_hash,
-        &account::spot::InstantiateMsg {
-            minimum_deposit: minimum_receive,
-        },
+        &account::spot::InstantiateMsg { minimum_deposit },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
