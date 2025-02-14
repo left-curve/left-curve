@@ -3,6 +3,7 @@ import { type VariantProps, tv } from "tailwind-variants";
 
 export interface BadgeProps extends VariantProps<typeof badgeVariants> {
   text: string;
+  className?: string;
 }
 
 export const Badge: React.FC<BadgeProps> = ({ text, ...rest }) => {
@@ -10,7 +11,7 @@ export const Badge: React.FC<BadgeProps> = ({ text, ...rest }) => {
 };
 const badgeVariants = tv(
   {
-    base: ["rounded-[4px] text-xs-medium"],
+    base: ["rounded-[4px] diatype-xs-medium"],
     variants: {
       color: {
         blue: "bg-blue-100 text-blue-800 border-blue-200",

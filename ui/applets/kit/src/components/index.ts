@@ -7,9 +7,11 @@ export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
-export { Address } from "./foundation/Address";
+export { TruncateText } from "./foundation/TruncateText";
 export { AccountCard } from "./foundation/AccountCard";
-export { Table } from "./foundation/Table";
+export { Table } from "./foundation/table/Table";
+export { Tabs } from "./foundation/Tabs";
+export { PoolTable } from "./foundation/table/PoolTable";
 
 /* ---------------------------------- Icons --------------------------------- */
 

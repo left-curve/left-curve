@@ -1,6 +1,7 @@
 import { type Account, AccountType } from "@left-curve/dango/types";
 import type React from "react";
 import { Badge } from "./Badge";
+import TruncateText from "./TruncateText";
 
 interface Props {
   account: Account;
@@ -25,12 +26,17 @@ export const AccountCard: React.FC<Props> = ({ account, balance, balanceChange }
         alt="account-card-dog"
         className="absolute right-0 bottom-0"
       />
-      <div className="flex gap-1">
+      <div className="flex gap-4">
         <div className="flex flex-col">
-          <p className="exposure-m-italic">{name}</p>
-          <p className="text-xs text-neutral-500">{address}</p>
+          <p className="exposure-m-italic capitalize">{name}</p>
+          <TruncateText
+            text={address}
+            className="diatype-xs-medium text-gray-500"
+            start={4}
+            end={4}
+          />
         </div>
-        <Badge text={type} color={accountTypeBadgeColor[type]} />
+        <Badge text={type} color="blue" className="h-fit capitalize" />
       </div>
       <div className="flex gap-2 items-center">
         <p className="h4-regular">{balance}</p>
