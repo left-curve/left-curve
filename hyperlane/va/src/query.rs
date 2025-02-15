@@ -46,7 +46,7 @@ fn query_announced_validators(
 fn query_announced_storage_locations(
     ctx: ImmutableCtx,
     validators: BTreeSet<HexByteArray<20>>,
-) -> StdResult<BTreeMap<HexByteArray<20>, BTreeSet<String>>> {
+) -> StdResult<BTreeMap<HexByteArray<20>, Vec<String>>> {
     validators
         .into_iter()
         .map(|v| {

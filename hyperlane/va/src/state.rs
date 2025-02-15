@@ -1,8 +1,5 @@
-use {
-    grug::{Addr, HexByteArray, Item, Map},
-    std::collections::BTreeSet,
-};
+use grug::{Addr, HexByteArray, Item, Map};
 
 pub const MAILBOX: Item<Addr> = Item::new("mailbox");
 
-pub const STORAGE_LOCATIONS: Map<HexByteArray<20>, BTreeSet<String>> = Map::new("storage_location");
+pub const STORAGE_LOCATIONS: Map<HexByteArray<20>, Vec<String>> = Map::new("storage_location");

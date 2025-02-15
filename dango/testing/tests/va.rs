@@ -123,7 +123,7 @@ fn test_announce() {
         // Check that the validator was added to the storage locations.
         storage_locations_expected.insert(
             announcement.validator,
-            BTreeSet::from(["Test/Storage/Location".to_string()]),
+            Vec::from(["Test/Storage/Location".to_string()]),
         );
 
         suite
@@ -210,7 +210,7 @@ fn test_announce() {
         storage_locations_expected
             .get_mut(&announcement.validator)
             .unwrap()
-            .insert(announcement2.storage_location);
+            .push(announcement2.storage_location);
 
         suite
             .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
@@ -262,7 +262,7 @@ fn test_announce() {
         // Check that the storage location was added.
         storage_locations_expected.insert(
             announcement3.validator,
-            BTreeSet::from([announcement3.storage_location]),
+            Vec::from([announcement3.storage_location]),
         );
 
         suite

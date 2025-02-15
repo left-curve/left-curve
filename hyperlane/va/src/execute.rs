@@ -67,7 +67,9 @@ fn announce(
         validator,
         |maybe_storage_locations| -> StdResult<_> {
             let mut storage_locations = maybe_storage_locations.unwrap_or_default();
-            storage_locations.insert(storage_location.clone());
+            if !storage_locations.contains(&storage_location) {
+                storage_locations.push(storage_location.clone());
+            }
             Ok(storage_locations)
         },
     )?;
