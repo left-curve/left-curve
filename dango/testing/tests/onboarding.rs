@@ -3,7 +3,7 @@ use {
     dango_testing::{setup_test_naive, Factory, HyperlaneTestSuite, TestAccount},
     dango_types::{
         account::single,
-        account_factory::{self, Account, AccountParams, NewUserSalt, Username},
+        account_factory::{self, Account, AccountParams, NewUserSalt},
         auth::Key,
         constants::USDC_DENOM,
     },
@@ -11,7 +11,6 @@ use {
         btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message,
         NonEmpty, QuerierExt, ResultExt, StdError, Tx, Uint128,
     },
-    std::str::FromStr,
     test_case::test_case,
 };
 
@@ -23,6 +22,7 @@ fn user_onboarding() {
     // Create a new key offchain; then, predict what its address would be.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        0,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -41,6 +41,7 @@ fn user_onboarding() {
             &mut Factory::new(contracts.account_factory),
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
+                secret: 0,
                 username: user.username.clone(),
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
@@ -95,6 +96,7 @@ fn onboarding_existing_user() {
         // Generate the key and derive address for the user.
         let user = TestAccount::new_random("user").predict_address(
             contracts.account_factory,
+            10,
             codes.account_spot.to_bytes().hash256(),
             true,
         );
@@ -115,6 +117,7 @@ fn onboarding_existing_user() {
                     username: user.username.clone(),
                     key: user.first_key(),
                     key_hash: user.first_key_hash(),
+                    secret: 10,
                 },
                 Coins::new(),
             )
@@ -143,6 +146,7 @@ fn onboarding_without_deposit() {
 
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        3,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
@@ -155,6 +159,7 @@ fn onboarding_without_deposit() {
         msgs: NonEmpty::new_unchecked(vec![Message::execute(
             contracts.account_factory,
             &account_factory::ExecuteMsg::RegisterUser {
+                secret: 3,
                 username: user.username.clone(),
                 key: user.first_key(),
                 key_hash: user.first_key_hash(),
@@ -196,13 +201,13 @@ fn onboarding_without_deposit() {
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
-/// false transaction that substitutes the legitimate transaction's username,
+/// false transaction that substitutes the legitimate transaction's secret,
 /// key, or key hash. Should fail because the derived deposit address won't match.
 #[test_case(
-    Some(Username::from_str("bad").unwrap()),
+    Some(5),
     None,
     None;
-    "false username"
+    "false secret"
 )]
 #[test_case(
     None,
@@ -217,7 +222,7 @@ fn onboarding_without_deposit() {
     "false key hash"
 )]
 fn false_factory_tx(
-    false_username: Option<Username>,
+    false_secret: Option<u32>,
     false_key: Option<Key>,
     false_key_hash: Option<Hash256>,
 ) {
@@ -226,16 +231,17 @@ fn false_factory_tx(
     // User makes the deposit normally.
     let user = TestAccount::new_random("user").predict_address(
         contracts.account_factory,
+        2,
         codes.account_spot.to_bytes().hash256(),
         true,
     );
 
-    let username = false_username.unwrap_or_else(|| user.username.clone());
+    let secret = false_secret.unwrap_or(2);
     let key = false_key.unwrap_or(user.first_key());
     let key_hash = false_key_hash.unwrap_or(user.first_key_hash());
 
     // A malicious block builder sends a register user tx with falsified
-    // username, key, or key hash.
+    // secret, key, or key hash.
     //
     // Should fail with "data not found" error, because it be different deposit
     // address for which no deposit is found.
@@ -248,7 +254,8 @@ fn false_factory_tx(
             Message::execute(
                 contracts.account_factory,
                 &account_factory::ExecuteMsg::RegisterUser {
-                    username: username.clone(),
+                    username: user.username.clone(),
+                    secret,
                     key,
                     key_hash,
                 },
@@ -261,7 +268,7 @@ fn false_factory_tx(
                 contracts.account_factory,
                 codes.account_spot.to_bytes().hash256(),
                 &NewUserSalt {
-                    username: &username,
+                    secret,
                     key,
                     key_hash,
                 }

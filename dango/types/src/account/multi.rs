@@ -14,10 +14,10 @@ pub type ProposalId = u32;
 /// as two votes.
 pub type Power = u32;
 
-/// Parameters of a Safe.
+/// Parameters of a multi-signature account.
 #[grug::derive(Serde, Borsh)]
 pub struct Params {
-    /// Users who can votes in this Safe, and their respective voting power.
+    /// Users who can votes in this multisig, and their respective voting power.
     pub members: BTreeMap<Username, NonZero<Power>>,
     /// The period of time since a proposal's creation when votes can be casted.
     pub voting_period: NonZero<Duration>,
@@ -64,7 +64,7 @@ impl Params {
     }
 }
 
-/// A set of updates to be applied to a Safe.
+/// A set of updates to be applied to a multi-signature account.
 #[grug::derive(Serde)]
 pub struct ParamUpdates {
     pub members: ChangeSet<Username, NonZero<Power>>,
@@ -101,7 +101,7 @@ pub enum Status {
         /// Number of NO votes collected so far.
         no: Power,
     },
-    /// The proposal has received equal or more YES votes than the Safe's
+    /// The proposal has received equal or more YES votes than the multisig's
     /// threshold, and can be executed once the timelock (if any) is passed.
     Passed {
         /// The earliest time this proposal can be executed.
