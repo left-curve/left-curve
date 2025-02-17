@@ -1,6 +1,7 @@
 use {
-    async_graphql::{extensions, EmptyMutation, Schema},
-    indexer_httpd::context::Context,
+    async_graphql::{extensions, Schema},
+    indexer_httpd::{context::Context, graphql::mutation::Mutation},
+    query::Query,
     subscription::Subscription,
 };
 
@@ -8,12 +9,12 @@ pub mod query;
 pub mod subscription;
 pub mod types;
 
-pub(crate) type AppSchema = Schema<query::Query, EmptyMutation, Subscription>;
+pub(crate) type AppSchema = Schema<Query, Mutation, Subscription>;
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
     Schema::build(
-        query::Query::default(),
-        EmptyMutation,
+        Query::default(),
+        Mutation::default(),
         Subscription::default(),
     )
     .extension(extensions::Logger)
