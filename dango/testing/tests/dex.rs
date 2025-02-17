@@ -792,6 +792,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(1000000),
+            slippage: None,
         }
     ],
     coins! {
@@ -816,6 +817,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(1000000),
+            slippage: None,
         }
     ],
     coins! {
@@ -840,6 +842,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(1000000),
+            slippage: None,
         }
     ],
     coins! {
@@ -864,6 +867,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(1000000),
+            slippage: None,
         }
     ],
     coins! {
@@ -888,6 +892,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(500000),
+            slippage: None,
         }
     ],
     coins! {
@@ -912,6 +917,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(499500),
+            slippage: None,
         }
     ],
     coins! {
@@ -936,6 +942,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(1000000),
+            slippage: None,
         }
     ],
     coins! {
@@ -960,6 +967,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(500000),
+            slippage: None,
         }
     ],
     coins! {
@@ -984,6 +992,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(500000),
+            slippage: None,
         }
     ],
     coins! {
@@ -1008,12 +1017,14 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(500000),
+            slippage: None,
         },
         Swap {
             base_denom: USDC_DENOM.clone(),
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(500000),
+            slippage: None,
         }
     ],
     coins! {
@@ -1035,12 +1046,14 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(250000),
+            slippage: None,
         },
         Swap {
             base_denom: ETH_DENOM.clone(),
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Ask,
             amount: Uint128::new(750000),
+            slippage: None,
         }
     ],
     coins! {
@@ -1067,12 +1080,14 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(250000),
+            slippage: None,
         },
         Swap {
             base_denom: USDC_DENOM.clone(),
             quote_denom: ETH_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(250000),
+            slippage: None,
         }
     ],
     coins! {
