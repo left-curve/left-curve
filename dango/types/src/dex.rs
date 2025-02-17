@@ -344,7 +344,7 @@ impl CurveInvariant {
         reserves: &Coins,
     ) -> anyhow::Result<Uint128> {
         ensure!(
-            reserves.has(&offer_denom) && reserves.has(&ask.denom),
+            reserves.has(offer_denom) && reserves.has(&ask.denom),
             "invalid reserves"
         );
         ensure!(
@@ -353,7 +353,7 @@ impl CurveInvariant {
         );
         match self {
             CurveInvariant::Xyk => {
-                let a = reserves.amount_of(&offer_denom);
+                let a = reserves.amount_of(offer_denom);
                 let b = reserves.amount_of(&ask.denom);
 
                 // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
