@@ -221,23 +221,30 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
         // Read the LP token denom from the storage. If it is not found under
         // either (base_denom, quote_denom) or (quote_denom, base_denom), then
         // error.
-        let (base_denom, quote_denom) = swap.denoms();
-
-        let lp_denom = match LP_DENOMS.may_load(ctx.storage, (base_denom, quote_denom))? {
-            Some(denom) => denom,
-            None => LP_DENOMS.load(ctx.storage, (quote_denom, base_denom))?,
-        };
+        let lp_denom =
+            match LP_DENOMS.may_load(ctx.storage, (&swap.base_denom, &swap.quote_denom))? {
+                Some(denom) => denom,
+                None => LP_DENOMS.load(ctx.storage, (&swap.quote_denom, &swap.base_denom))?,
+            };
 
         // Load the pool
         let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
 
         // Calculate the out amount and update the pool reserves
-        let (offer, ask) = match swap {
-            Swap::SwapExactAmountIn { offer, ask_denom } => {
-                (offer.clone(), pool.swap_exact_amount_in(offer, &ask_denom)?)
+        let (offer, ask) = match swap.direction {
+            Direction::Ask => {
+                let offer = Coin::new(swap.base_denom, swap.amount)?;
+                (
+                    offer.clone(),
+                    pool.swap_exact_amount_in(offer, &swap.quote_denom)?,
+                )
             },
-            Swap::SwapExactAmountOut { ask, offer_denom } => {
-                (pool.swap_exact_amount_out(ask.clone(), &offer_denom)?, ask)
+            Direction::Bid => {
+                let ask = Coin::new(swap.base_denom, swap.amount)?;
+                (
+                    pool.swap_exact_amount_out(ask.clone(), &swap.quote_denom)?,
+                    ask,
+                )
             },
         };
 

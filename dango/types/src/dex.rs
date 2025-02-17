@@ -80,18 +80,11 @@ impl PrimaryKey for Direction {
 }
 
 #[grug::derive(Serde)]
-pub enum Swap {
-    SwapExactAmountIn { offer: Coin, ask_denom: Denom },
-    SwapExactAmountOut { ask: Coin, offer_denom: Denom },
-}
-
-impl Swap {
-    pub fn denoms(&self) -> (&Denom, &Denom) {
-        match self {
-            Swap::SwapExactAmountIn { offer, ask_denom } => (&offer.denom, ask_denom),
-            Swap::SwapExactAmountOut { ask, offer_denom } => (offer_denom, &ask.denom),
-        }
-    }
+pub struct Swap {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub amount: Uint128,
 }
 
 #[grug::derive(Serde)]

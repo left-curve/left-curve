@@ -787,12 +787,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(1000000),
-            },
-            ask_denom: USDC_DENOM.clone(),
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
         }
     ],
     coins! {
@@ -812,12 +811,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(1000000),
-            },
-            ask_denom: USDC_DENOM.clone(),
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
         }
     ],
     coins! {
@@ -837,12 +835,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(1000000),
-            },
-            ask_denom: USDC_DENOM.clone(),
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
         }
     ],
     coins! {
@@ -862,12 +859,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(1000000),
-            },
-            ask_denom: USDC_DENOM.clone(),
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
         }
     ],
     coins! {
@@ -887,12 +883,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(500000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
         }
     ],
     coins! {
@@ -912,12 +907,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(499500),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(499500),
         }
     ],
     coins! {
@@ -937,12 +931,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(1000000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(1000000),
         }
     ],
     coins! {
@@ -962,12 +955,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(500000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
         }
     ],
     coins! {
@@ -987,12 +979,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(500000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
         }
     ],
     coins! {
@@ -1012,20 +1003,18 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 1000000,
     },
     vec![
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(500000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
         },
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(500000),
-            },
-            ask_denom: ETH_DENOM.clone(),
-        },
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(500000),
+        }
     ],
     coins! {
         ETH_DENOM.clone() => 1000000,
@@ -1039,21 +1028,20 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         ETH_DENOM.clone() => 1000000,
         USDC_DENOM.clone() => 1000000,
     },
-    vec![ // Due to path independence, this should be equivalent to a single swap amount in of 1000000 ETH
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(250000),
-            },
-            ask_denom: USDC_DENOM.clone(),
+    vec![ 
+        // Due to path independence, this should be equivalent to a single swap amount in of 1000000 ETH
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(250000),
         },
-        Swap::SwapExactAmountIn {
-            offer: Coin {
-                denom: ETH_DENOM.clone(),
-                amount: Uint128::new(750000),
-            },
-            ask_denom: USDC_DENOM.clone(),
-        },
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(750000),
+        }
     ],
     coins! {
         ETH_DENOM.clone() => 1000000,
@@ -1074,20 +1062,18 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     vec![ 
         // Due to path independence, this should be equivalent to a single swap
         // amount out of 500000 USDC. Ends up using 1 more ETH due to rounding.
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(250000),
-            },
-            offer_denom: ETH_DENOM.clone(),
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(250000),
         },
-        Swap::SwapExactAmountOut {
-            ask: Coin {
-                denom: USDC_DENOM.clone(),
-                amount: Uint128::new(250000),
-            },
-            offer_denom: ETH_DENOM.clone(),
-        },
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(250000),
+        }
     ],
     coins! {
         ETH_DENOM.clone() => 1000001, // 1 more due to rounding
