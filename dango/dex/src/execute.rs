@@ -107,6 +107,9 @@ fn create_passive_pool(
         "invalid LP token denom"
     );
 
+    // Validate swap fee
+    ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
+
     // Save the LP token denom
     LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
 
