@@ -217,7 +217,6 @@ fn submit_order(
 #[inline]
 fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
     let mut funds = ctx.funds.clone();
-    let mut out_coins = Coins::new();
     for swap in swaps {
         // Read the LP token denom from the storage. If it is not found under
         // either (base_denom, quote_denom) or (quote_denom, base_denom), then
@@ -242,19 +241,20 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
             },
         };
 
-        // Deduct the offer from the funds
-        funds
-            .deduct(offer)
-            .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
-
         // Save the updated pool
         POOLS.save(ctx.storage, &lp_denom, &pool)?;
 
-        // Construct send message
-        out_coins.insert(ask)?;
+        // Deduct the offer and add the ask to the funds. The funds sent are mutated
+        // by the swap to reflect the user funds after the swap. This allows multiple
+        // swaps using the output of the previous swap as the input for the next swap.
+        funds
+            .deduct(offer)
+            .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
+        funds.insert(ask)?;
     }
 
-    Ok(Response::new().add_message(Message::transfer(ctx.sender, out_coins)?))
+    // Send back any unused funds together with proceeds from swaps
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, funds)?))
 }
 
 #[inline]
