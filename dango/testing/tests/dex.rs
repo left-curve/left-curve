@@ -796,7 +796,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     ],
     coins! {
         ETH_DENOM.clone() => 1000000,
-    }, 
+    },
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
@@ -820,7 +820,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     ],
     coins! {
         ETH_DENOM.clone() => 1000000,
-    }, 
+    },
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
@@ -844,7 +844,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     ],
     coins! {
         ETH_DENOM.clone() => 999999,
-    }, 
+    },
     coins! {
         ETH_DENOM.clone() => 999999,
     },
@@ -868,7 +868,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     ],
     coins! {
         ETH_DENOM.clone() => 2000000,
-    }, 
+    },
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
@@ -1028,7 +1028,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         ETH_DENOM.clone() => 1000000,
         USDC_DENOM.clone() => 1000000,
     },
-    vec![ 
+    vec![
         // Due to path independence, this should be equivalent to a single swap amount in of 1000000 ETH
         Swap {
             base_denom: ETH_DENOM.clone(),
@@ -1059,7 +1059,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         ETH_DENOM.clone() => 1000000,
         USDC_DENOM.clone() => 1000000,
     },
-    vec![ 
+    vec![
         // Due to path independence, this should be equivalent to a single swap
         // amount out of 500000 USDC. Ends up using 1 more ETH due to rounding.
         Swap {
@@ -1086,7 +1086,14 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 500000,
     } ; "multiple swaps two consecutive swap amount out"
 )]
-fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expected_funds_used: Coins, swap_fee: Udec128, expected_out: Coins) {
+fn batch_swap(
+    pool_liquidity: Coins,
+    swaps: Vec<Swap>,
+    swap_funds: Coins,
+    expected_funds_used: Coins,
+    swap_fee: Udec128,
+    expected_out: Coins,
+) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     let lp_denom = Denom::try_from("dex/lp/ethusdc").unwrap();
@@ -1124,8 +1131,6 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
         .balances()
         .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
 
-
-
     // User swaps
     suite
         .execute(
@@ -1139,40 +1144,34 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
     // Assert that the user's balances have changed as expected.
     suite.balances().should_change(
         accounts.user1.address(),
-        balance_changes_from_coins(
-            expected_out.clone(),
-            expected_funds_used.clone(),
-        ),
+        balance_changes_from_coins(expected_out.clone(), expected_funds_used.clone()),
     );
 
     // Assert that the dex balance has changed by the expected amount.
     suite.balances().should_change(
         contracts.dex.address(),
-        balance_changes_from_coins(
-            expected_funds_used.clone(),
-            expected_out.clone(),
-        ),
+        balance_changes_from_coins(expected_funds_used.clone(), expected_out.clone()),
     );
 
     // Query pool and assert that the reserves are updated correctly
-    let expected_pool_reserves = pool_liquidity.clone().deduct_many(expected_out).unwrap().insert_many(expected_funds_used).unwrap().clone();
-   
+    let expected_pool_reserves = pool_liquidity
+        .clone()
+        .deduct_many(expected_out)
+        .unwrap()
+        .insert_many(expected_funds_used)
+        .unwrap()
+        .clone();
+
     suite
         .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
             lp_denom: lp_denom.clone(),
         })
-        .should_succeed_and(|pool| {
-            pool.reserves
-                == expected_pool_reserves
-        });
+        .should_succeed_and(|pool| pool.reserves == expected_pool_reserves);
 }
-
 
 // TODO: test multiple pools
 #[test]
-fn batch_swap_multiple_pools() {
-
-}
+fn batch_swap_multiple_pools() {}
 
 fn balance_changes_from_coins(
     increases: Coins,

@@ -1,0 +1,2 @@
+
+- All suggestions must pass the linting checks. Linting is done with `just lint`.
