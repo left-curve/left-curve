@@ -1,7 +1,30 @@
 use {
-    grug::{Addr, Coin, Coins, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128},
-    std::collections::{BTreeMap, BTreeSet},
+    grug::{
+        Addr, Coin, Coins, Denom, Part, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128,
+    },
+    std::{
+        collections::{BTreeMap, BTreeSet},
+        fmt::Display,
+        str::FromStr,
+        sync::LazyLock,
+    },
 };
+
+/// The namespace used for dex.
+///
+/// E.g.,
+///
+/// - `dex/eth`
+/// - `dex/usdc`
+pub static NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("dex"));
+
+/// The subnamespace used for lp tokens for the passive pools.
+///
+/// E.g.,
+///
+/// - `dex/lp/ethusdc`
+/// - `dex/lp/btcusdc`
+pub static LP_NAMESPACE: LazyLock<Part> = LazyLock::new(|| Part::new_unchecked("lp"));
 
 // ----------------------------------- types -----------------------------------
 
@@ -119,6 +142,16 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     BatchUpdatePairs(Vec<PairUpdate>),
+    /// Create a new passive pool for a pair.
+    ///
+    /// Can only be called by the chain owner.
+    CreatePassivePool {
+        base_denom: Denom,
+        quote_denom: Denom,
+        curve_type: CurveInvariant,
+        lp_denom: Denom,
+        swap_fee: Udec128,
+    },
     /// Submit a new order.
     ///
     /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
@@ -137,7 +170,15 @@ pub enum ExecuteMsg {
         price: Udec128,
     },
     /// Cancel one or more orders by IDs.
-    CancelOrders { order_ids: BTreeSet<OrderId> },
+    CancelOrders {
+        order_ids: BTreeSet<OrderId>,
+    },
+    // Provide passive liquidity to a pair.
+    ProvideLiquidity {
+        lp_denom: Denom,
+    },
+    // Withdraw passive liquidity from a pair.
+    WithdrawLiquidity {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -177,6 +218,15 @@ pub enum QueryMsg {
         user: Addr,
         start_after: Option<OrderId>,
         limit: Option<u32>,
+    },
+    /// Query the passive pool for a pair.
+    #[returns(Pool)]
+    PassivePool { lp_denom: Denom },
+
+    #[returns(Denom)]
+    LpDenom {
+        base_denom: Denom,
+        quote_denom: Denom,
     },
 }
 
@@ -233,4 +283,42 @@ pub struct OrderFilled {
     pub fee: Option<Coin>,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
+}
+
+#[grug::derive(Serde, Borsh)]
+#[non_exhaustive]
+pub enum CurveInvariant {
+    Xyk,
+}
+
+impl Display for CurveInvariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            CurveInvariant::Xyk => "xyk",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for CurveInvariant {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> StdResult<Self> {
+        match s {
+            "xyk" => Ok(CurveInvariant::Xyk),
+            _ => Err(StdError::deserialize::<Self, _>(
+                "str",
+                "invalid curve type",
+            )),
+        }
+    }
+}
+
+#[grug::derive(Serde, Borsh)]
+pub struct Pool {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub curve_type: CurveInvariant,
+    pub reserves: Coins,
+    pub swap_fee: Udec128,
 }
