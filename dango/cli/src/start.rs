@@ -49,56 +49,7 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        if self.indexer_enabled {
-            let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(self.indexer_keep_blocks)
-                .with_database_url(&self.indexer_database_url)
-                .with_dir(app_dir.indexer_dir())
-                .with_sqlx_pubsub()
-                .build()
-                .expect("Can't create indexer");
-            if self.indexer_httpd_enabled {
-                // NOTE: If the httpd was heavily used, it would be better to
-                // run it in a separate tokio runtime.
-                tokio::try_join!(
-                    Self::run_httpd_server(indexer.context.clone().into()),
-                    self.run_with_indexer(app_dir, indexer)
-                )?;
-
-                Ok(())
-            } else {
-                self.run_with_indexer(app_dir, indexer).await
-            }
-        } else {
-            self.run_with_indexer(app_dir, NullIndexer).await
-        }
-    }
-
-    /// Run the HTTP server
-    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
-            .await
-            .map_err(|err| {
-                tracing::error!("Failed to run HTTP server: {err:?}");
-                err.into()
-            })
-    }
-
-    async fn run_with_indexer<ID>(
-        self,
-        app_dir: HomeDirectory,
-        mut indexer: ID,
-    ) -> anyhow::Result<()>
-    where
-        ID: Indexer + Send + 'static,
-        ID::Error: Debug,
-        AppError: From<ID::Error>,
-    {
         let db = DiskDb::open(app_dir.data_dir())?;
-
-        indexer
-            .start(&db.state_storage(None)?)
-            .expect("Can't start indexer");
 
         let codes = build_rust_codes();
         let vm = HybridVm::new(self.wasm_cache_capacity, [
@@ -120,6 +71,67 @@ impl StartCmd {
             codes.warp.to_bytes().hash256(),
         ]);
 
+        if self.indexer_enabled {
+            let indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_keep_blocks(self.indexer_keep_blocks)
+                .with_database_url(&self.indexer_database_url)
+                .with_dir(app_dir.indexer_dir())
+                .with_sqlx_pubsub()
+                .build()
+                .expect("Can't create indexer");
+
+            let app = App::new(
+                db.clone(),
+                vm.clone(),
+                ProposalPreparer::new(),
+                NullIndexer,
+                self.query_gas_limit,
+            );
+
+            if self.indexer_httpd_enabled {
+                let httpd_context = Context::new_from_indexer_context(indexer.context.clone(), app);
+
+                // NOTE: If the httpd was heavily used, it would be better to
+                // run it in a separate tokio runtime.
+                tokio::try_join!(
+                    Self::run_httpd_server(httpd_context),
+                    self.run_with_indexer(db, vm, indexer)
+                )?;
+
+                Ok(())
+            } else {
+                self.run_with_indexer(db, vm, indexer).await
+            }
+        } else {
+            self.run_with_indexer(db, vm, NullIndexer).await
+        }
+    }
+
+    /// Run the HTTP server
+    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run HTTP server: {err:?}");
+                err.into()
+            })
+    }
+
+    async fn run_with_indexer<ID>(
+        self,
+        db: DiskDb,
+        vm: HybridVm,
+        mut indexer: ID,
+    ) -> anyhow::Result<()>
+    where
+        ID: Indexer + Send + 'static,
+        ID::Error: Debug,
+        AppError: From<ID::Error>,
+    {
+        indexer
+            .start(&db.state_storage(None)?)
+            .expect("Can't start indexer");
+
         let app = App::new(
             db,
             vm,
@@ -127,6 +139,8 @@ impl StartCmd {
             indexer,
             self.query_gas_limit,
         );
+
+        // let app_clone = app.clone();
 
         // app.indexer.set_grug_app(Box::new(app.clone()));
 

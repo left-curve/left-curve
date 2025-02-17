@@ -5260,6 +5260,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "grug-app",
  "grug-types",
  "indexer-sql",
  "num_cpus",
