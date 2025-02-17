@@ -798,6 +798,9 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 1000000,
     }, 
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -820,6 +823,9 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 1000000,
     }, 
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     Udec128::new_permille(1),
     coins! {
         USDC_DENOM.clone() => 499500,
@@ -842,10 +848,38 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 999999,
     }, 
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
     } => panics "insufficient funds" ; "swap amount in insufficient funds"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(1000000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 2000000,
+    }, 
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in excessive funds reimbursed"
 )]
 #[test_case(
     coins! {
@@ -861,6 +895,9 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             offer_denom: ETH_DENOM.clone(),
         }
     ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
@@ -886,6 +923,9 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     Udec128::new_permille(1),
     coins! {
         USDC_DENOM.clone() => 499500,
@@ -908,18 +948,100 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     Udec128::new_permille(1),
     coins! {
         USDC_DENOM.clone() => 499500,
     } => panics "insufficient liquidity" ; "swap amount out insufficient liquidity"
 )]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(500000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "insufficient funds" ; "swap amount out insufficient funds"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(500000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 2000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out excessive funds reimbursed"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(500000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        },
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(500000),
+            },
+            ask_denom: ETH_DENOM.clone(),
+        },
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "multiple swaps swap amount out then swap back with swap amount in"
+)]
 // TODO: tests
-// - swap amount in excessive funds reimbursed
-// - swap amount out excessive funds reimbursed
-// - swap amount out insufficient funds
 // - multiple swaps with different pools
 // - multiple swaps with same pool
-fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, swap_fee: Udec128, expected_out: Coins) {
+fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expected_funds_used: Coins, swap_fee: Udec128, expected_out: Coins) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     let lp_denom = Denom::try_from("dex/lp/ethusdc").unwrap();
@@ -976,7 +1098,7 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, swap_f
         accounts.user1.address(),
         balance_changes_from_coins(
             expected_out.clone(),
-            swap_funds.clone(),
+            expected_funds_used.clone(),
         ),
     );
 
@@ -985,18 +1107,16 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, swap_f
     suite.balances().should_change(
         contracts.dex.address(),
         balance_changes_from_coins(
-            swap_funds.clone(),
+            expected_funds_used.clone(),
             expected_out.clone(),
         ),
     );
 
     println!("pool");
     // Query pool and assert that the reserves are updated correctly
-    let expected_pool_reserves = pool_liquidity.clone().deduct_many(expected_out)
-    .unwrap()
-    .insert_many(swap_funds)
-    .unwrap().clone();
-    println!("expected_pool_reserves {:?}", expected_pool_reserves);
+    let expected_pool_reserves = pool_liquidity.clone().deduct_many(expected_out).unwrap().insert_many(expected_funds_used).unwrap().clone();
+   
+   println!("expected_pool_reserves {:?}", expected_pool_reserves);
     suite
         .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
             lp_denom: lp_denom.clone(),
