@@ -14,7 +14,7 @@ use {
         graphql::types::{block::Block, message::Message, transaction::Transaction},
     },
     indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
-    std::str::FromStr,
+    std::{str::FromStr, sync::Arc},
     tokio::sync::mpsc,
 };
 
@@ -31,13 +31,15 @@ async fn create_block() -> anyhow::Result<(
         .with_memory_database()
         .build()?;
 
-    let httpd_context: Context = indexer.context.clone().into();
+    let context = indexer.context.clone();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000)?)
         .set_owner("owner")
         .build();
+
+    let httpd_context = Context::new(context, Arc::new(suite.app.clone()));
 
     let to = accounts["owner"].address;
 

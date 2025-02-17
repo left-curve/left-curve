@@ -1,6 +1,5 @@
 use {
-    crate::traits::QueryApp,
-    grug_app::{App, AppError, Db, Indexer, ProposalPreparer, Vm},
+    grug_app::QueryApp,
     indexer_sql::pubsub::PubSub,
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
@@ -14,47 +13,16 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new_from_indexer_context<DB, VM, PP, ID>(
-        ctx: indexer_sql::Context,
-        app: App<DB, VM, PP, ID>,
-    ) -> Self
-    where
-        DB: Db + Send + Sync + 'static,
-        VM: Vm + Clone + Send + Sync + 'static,
-        PP: ProposalPreparer + Send + Sync + 'static,
-        ID: Indexer + Send + Sync + 'static,
-        AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
-    {
+    pub fn new(ctx: indexer_sql::Context, grug_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
         Self {
             db: ctx.db,
             pubsub: ctx.pubsub,
-            grug_app: Arc::new(app),
+            grug_app,
         }
     }
 }
 
 impl Context {
-    ///// Create a new context with a database connection, will use postgres pubsub if the database is postgres
-    // pub async fn new(database_url: Option<String>) -> Result<Self, Error> {
-    //     if let Some(database_url) = database_url {
-    //         let db = Self::connect_db_with_url(&database_url).await?;
-    //         if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
-    //             let pool = db.get_postgres_connection_pool();
-    //             return Ok(Self {
-    //                 db: db.clone(),
-    //                 pubsub: Arc::new(PostgresPubSub::new(pool.clone())),
-    //                 // grug_app: todo!(),
-    //             });
-    //         }
-    //     }
-
-    //     Ok(Self {
-    //         db: Self::connect_db().await?,
-    //         pubsub: Arc::new(MemoryPubSub::new(100)),
-    //         // grug_app: todo!(),
-    //     })
-    // }
-
     pub async fn connect_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
         let database_url = "sqlite::memory:";
 

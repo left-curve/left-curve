@@ -1,5 +1,5 @@
 use {
-    grug_app::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
+    crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_types::{JsonDeExt, JsonSerExt},
 };
 
@@ -16,6 +16,7 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
+    /// Query the app, return a JSON String
     fn query_app(&self, raw_req: String, height: u64, prove: bool) -> AppResult<String> {
         let req = raw_req.deserialize_json()?;
         let res = self.do_query_app(req, height, prove)?;
@@ -23,6 +24,7 @@ where
         Ok(res.to_json_string()?)
     }
 
+    /// Simulate a transaction, return a JSON String
     fn simulate(&self, raw_unsigned_tx: String, height: u64, prove: bool) -> AppResult<String> {
         let res = self.do_simulate_raw(raw_unsigned_tx.as_bytes(), height, prove)?;
 

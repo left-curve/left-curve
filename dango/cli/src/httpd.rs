@@ -10,6 +10,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
+    std::sync::Arc,
 };
 
 #[derive(Parser)]
@@ -58,14 +59,14 @@ impl HttpdCmd {
             .expect("Can't create indexer context");
 
         let app = App::new(
-            db.clone(),
-            vm.clone(),
+            db,
+            vm,
             ProposalPreparer::new(),
             NullIndexer,
             self.query_gas_limit,
         );
 
-        let httpd_context = Context::new_from_indexer_context(context, app);
+        let httpd_context = Context::new(context, Arc::new(app));
 
         indexer_httpd::server::run_server(None, None, httpd_context, config_app, build_schema)
             .await?;

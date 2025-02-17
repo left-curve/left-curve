@@ -11,7 +11,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, time},
+    std::{fmt::Debug, sync::Arc, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -89,7 +89,7 @@ impl StartCmd {
             );
 
             if self.indexer_httpd_enabled {
-                let httpd_context = Context::new_from_indexer_context(indexer.context.clone(), app);
+                let httpd_context = Context::new(indexer.context.clone(), Arc::new(app));
 
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.

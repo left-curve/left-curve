@@ -18,15 +18,16 @@ use {
         btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Duration, HashExt,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
+    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
-    std::path::PathBuf,
+    indexer_httpd::context::Context,
+    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    std::{path::PathBuf, sync::Arc},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -102,16 +103,21 @@ pub fn setup_test_with_indexer() -> (
 
     let indexer_context = indexer.context.clone();
 
-    (
-        setup_suite_with_db_and_vm(
-            MemDb::new(),
-            RustVm::new(),
-            codes,
-            ProposalPreparer::new(),
-            indexer,
-        ),
-        indexer_context,
-    )
+    let db = MemDb::new();
+    let vm = RustVm::new();
+    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
+        db.clone(),
+        vm.clone(),
+        codes,
+        ProposalPreparer::new(),
+        indexer,
+    );
+
+    let indexer_app = App::new(db, vm, ProposalPreparer::new(), NullIndexer, u64::MAX);
+
+    let httpd_context = Context::new(indexer_context, Arc::new(indexer_app));
+
+    ((suite, accounts, codes, contracts), httpd_context)
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and

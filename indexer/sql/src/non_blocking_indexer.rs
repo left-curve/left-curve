@@ -235,7 +235,6 @@ where
     pub indexing: bool,
     keep_blocks: bool,
     hooks: H,
-    // grug_app: Option<Arc<dyn QueryApp>>,
 }
 
 impl<H> NonBlockingIndexer<H>
