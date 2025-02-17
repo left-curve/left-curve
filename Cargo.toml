@@ -168,7 +168,7 @@ grug-vm-wasm      = { path = "grug/vm/wasm" }
 # Dango packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
-dango-account-safe          = { path = "dango/account/safe" }
+dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
 dango-app                   = { path = "dango/app" }

@@ -3055,7 +3055,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-account-safe"
+name = "dango-account-multi"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -3182,7 +3182,7 @@ dependencies = [
  "bip32",
  "dango-account-factory",
  "dango-account-margin",
- "dango-account-safe",
+ "dango-account-multi",
  "dango-account-spot",
  "dango-bank",
  "dango-dex",
