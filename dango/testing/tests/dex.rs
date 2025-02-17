@@ -1101,6 +1101,159 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
         USDC_DENOM.clone() => 500000,
     } ; "multiple swaps two consecutive swap amount out"
 )]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in no fee minimum out not exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500001))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "slippage tolerance exceeded" ; "swap amount in no fee minimum out exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "maximum in is only supported for direction: bid" ; "swap amount in no fee maximum in"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out no fee maximum in not exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(999999))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "slippage tolerance exceeded" ; "swap amount out no fee maximum in exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "minimum out is only supported for direction: ask" ; "swap amount out no fee minimum out exceeded"
+)]
+// TODO: Tests
+// - Swap direction ask SlippageControl::PriceLimit
+// - Swap direction bid SlippageControl::PriceLimit
 fn batch_swap(
     pool_liquidity: Coins,
     swaps: Vec<Swap>,
