@@ -1030,17 +1030,76 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    Coins::new(),
+    Udec128::ZERO,
+    Coins::new() ; "multiple swaps swap amount out then swap back with swap amount in"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![ // Due to path independence, this should be equivalent to a single swap amount in of 1000000 ETH
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(250000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        },
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(750000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        },
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
-    } ; "multiple swaps swap amount out then swap back with swap amount in"
+    } ; "multiple swaps two consecutive swap amount in"
 )]
-// TODO: tests
-// - multiple swaps with different pools
-// - multiple swaps with same pool
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![ 
+        // Due to path independence, this should be equivalent to a single swap
+        // amount out of 500000 USDC. Ends up using 1 more ETH due to rounding.
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(250000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        },
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(250000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        },
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000001, // 1 more due to rounding
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000001, // 1 more due to rounding
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "multiple swaps two consecutive swap amount out"
+)]
 fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expected_funds_used: Coins, swap_fee: Udec128, expected_out: Coins) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
@@ -1080,7 +1139,6 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
         .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
 
 
-    println!("swap funds {:?}", swap_funds);
 
     // User swaps
     suite
@@ -1093,7 +1151,6 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
         .should_succeed();
 
     // Assert that the user's balances have changed as expected.
-    println!("user");
     suite.balances().should_change(
         accounts.user1.address(),
         balance_changes_from_coins(
@@ -1102,7 +1159,6 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
         ),
     );
 
-    println!("dex");
     // Assert that the dex balance has changed by the expected amount.
     suite.balances().should_change(
         contracts.dex.address(),
@@ -1112,11 +1168,9 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
         ),
     );
 
-    println!("pool");
     // Query pool and assert that the reserves are updated correctly
     let expected_pool_reserves = pool_liquidity.clone().deduct_many(expected_out).unwrap().insert_many(expected_funds_used).unwrap().clone();
    
-   println!("expected_pool_reserves {:?}", expected_pool_reserves);
     suite
         .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
             lp_denom: lp_denom.clone(),
@@ -1125,6 +1179,13 @@ fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, expect
             pool.reserves
                 == expected_pool_reserves
         });
+}
+
+
+// TODO: test multiple pools
+#[test]
+fn batch_swap_multiple_pools() {
+
 }
 
 fn balance_changes_from_coins(
