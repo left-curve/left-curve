@@ -1,8 +1,8 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest},
+        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM},
+        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest, Swap},
     },
     grug::{
         btree_map, coins, Addressable, BalanceChange, Coin, Coins, Denom, Inner, Message,
@@ -778,6 +778,232 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
                     .clone()
                     .deduct_many(expected_funds_returned)
                     .unwrap()
+        });
+}
+
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(1000000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    }, 
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in no fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(1000000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    }, 
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } ; "swap amount in with 0.1% fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountIn {
+            offer: Coin {
+                denom: ETH_DENOM.clone(),
+                amount: Uint128::new(1000000),
+            },
+            ask_denom: USDC_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    }, 
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "insufficient funds" ; "swap amount in insufficient funds"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(500000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out no fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(499500),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } ; "swap amount out 0.1% fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap::SwapExactAmountOut {
+            ask: Coin {
+                denom: USDC_DENOM.clone(),
+                amount: Uint128::new(1000000),
+            },
+            offer_denom: ETH_DENOM.clone(),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } => panics "insufficient liquidity" ; "swap amount out insufficient liquidity"
+)]
+// TODO: tests
+// - swap amount in excessive funds reimbursed
+// - swap amount out excessive funds reimbursed
+// - swap amount out insufficient funds
+// - multiple swaps with different pools
+// - multiple swaps with same pool
+fn batch_swap(pool_liquidity: Coins, swaps: Vec<Swap>, swap_funds: Coins, swap_fee: Udec128, expected_out: Coins) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/lp/ethusdc").unwrap();
+
+    // Create a passive pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // User 1 provides liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                lp_denom: lp_denom.clone(),
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    // Record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+
+    println!("swap funds {:?}", swap_funds);
+
+    // User swaps
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchSwap { swaps },
+            swap_funds.clone(),
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    println!("user");
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(
+            expected_out.clone(),
+            swap_funds.clone(),
+        ),
+    );
+
+    println!("dex");
+    // Assert that the dex balance has changed by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(
+            swap_funds.clone(),
+            expected_out.clone(),
+        ),
+    );
+
+    println!("pool");
+    // Query pool and assert that the reserves are updated correctly
+    let expected_pool_reserves = pool_liquidity.clone().deduct_many(expected_out)
+    .unwrap()
+    .insert_many(swap_funds)
+    .unwrap().clone();
+    println!("expected_pool_reserves {:?}", expected_pool_reserves);
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
+            lp_denom: lp_denom.clone(),
+        })
+        .should_succeed_and(|pool| {
+            pool.reserves
+                == expected_pool_reserves
         });
 }
 
