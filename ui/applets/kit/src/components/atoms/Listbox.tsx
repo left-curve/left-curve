@@ -16,7 +16,11 @@ export const ListBox: React.FC<ListBoxProps> = (props) => {
   const { listBoxProps } = useListBox(props, state, listBoxRef);
 
   return (
-    <ul {...listBoxProps} ref={listBoxRef} className="w-full max-h-72 overflow-auto outline-none">
+    <ul
+      {...listBoxProps}
+      ref={listBoxRef}
+      className="w-full max-h-72 overflow-auto outline-none gap-1 flex flex-col"
+    >
       {[...state.collection].map((item) => (
         <OptionBox key={item.key} item={item} state={state} color={color} />
       ))}

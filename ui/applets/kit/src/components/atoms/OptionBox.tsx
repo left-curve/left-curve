@@ -23,10 +23,10 @@ export const OptionBox: React.FC<OptionBoxProps> = ({ item, state, color }) => {
 };
 
 const optionVariants = tv({
-  base: "rounded-xl py-2 px-4 text-base outline-none cursor-pointer flex items-center justify-between",
+  base: "rounded-xl py-2 px-3 text-base outline-none cursor-pointer flex items-center justify-between transition-all",
   variants: {
     color: {
-      default: "text-typography-rose-600 bg-surface-rose-300 hover:bg-surface-rose-400",
+      default: "bg-rice-50 hover:bg-rice-100",
       white: "text-typography-black-200 bg-surface-off-white-200 hover:bg-surface-yellow-200",
     },
   },
