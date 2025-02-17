@@ -8,8 +8,8 @@ use {
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Pool, LP_NAMESPACE,
-            NAMESPACE,
+            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Pool, Swap,
+            LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -52,6 +52,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
+        ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
         ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
@@ -105,6 +106,9 @@ fn create_passive_pool(
         parts.len() == 3 && parts[0] == *NAMESPACE && parts[1] == *LP_NAMESPACE,
         "invalid LP token denom"
     );
+
+    // Validate swap fee
+    ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
 
     // Save the LP token denom
     LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
@@ -208,6 +212,56 @@ fn submit_order(
         amount,
         deposit,
     })?)
+}
+
+#[inline]
+fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
+    let mut funds = ctx.funds.clone();
+    for swap in swaps {
+        // Read the LP token denom from the storage. If it is not found under
+        // either (base_denom, quote_denom) or (quote_denom, base_denom), then
+        // error.
+        let lp_denom =
+            match LP_DENOMS.may_load(ctx.storage, (&swap.base_denom, &swap.quote_denom))? {
+                Some(denom) => denom,
+                None => LP_DENOMS.load(ctx.storage, (&swap.quote_denom, &swap.base_denom))?,
+            };
+
+        // Load the pool
+        let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
+
+        // Calculate the out amount and update the pool reserves
+        let (offer, ask) = match swap.direction {
+            Direction::Ask => {
+                let offer = Coin::new(swap.base_denom, swap.amount)?;
+                (
+                    offer.clone(),
+                    pool.swap_exact_amount_in(offer, &swap.quote_denom)?,
+                )
+            },
+            Direction::Bid => {
+                let ask = Coin::new(swap.base_denom, swap.amount)?;
+                (
+                    pool.swap_exact_amount_out(ask.clone(), &swap.quote_denom)?,
+                    ask,
+                )
+            },
+        };
+
+        // Save the updated pool
+        POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+        // Deduct the offer and add the ask to the funds. The funds sent are mutated
+        // by the swap to reflect the user funds after the swap. This allows multiple
+        // swaps using the output of the previous swap as the input for the next swap.
+        funds
+            .deduct(offer)
+            .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
+        funds.insert(ask)?;
+    }
+
+    // Send back any unused funds together with proceeds from swaps
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, funds)?))
 }
 
 #[inline]
