@@ -63,17 +63,22 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     }
 }
 
-// impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
-// where
-//     ID: Indexer + Sync,
-//     DB: Sync,
-//     VM: Sync,
-//     PP: Sync,
-// {
-//     pub fn set_indexer_app(&self) {
-//         self.indexer.set_grug_app(Box::new(self.clone()));
-//     }
-// }
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
+where
+    DB: Clone,
+    VM: Clone,
+    PP: Clone,
+{
+    pub fn clone_without_indexer(&self) -> App<DB, VM, PP, NullIndexer> {
+        App {
+            db: self.db.clone(),
+            vm: self.vm.clone(),
+            pp: self.pp.clone(),
+            indexer: NullIndexer,
+            query_gas_limit: self.query_gas_limit,
+        }
+    }
+}
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID>
 where

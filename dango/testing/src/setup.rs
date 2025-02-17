@@ -18,7 +18,7 @@ use {
         btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Duration, HashExt,
         NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
-    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
+    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
@@ -113,9 +113,7 @@ pub fn setup_test_with_indexer() -> (
         indexer,
     );
 
-    let indexer_app = App::new(db, vm, ProposalPreparer::new(), NullIndexer, u64::MAX);
-
-    let httpd_context = Context::new(indexer_context, Arc::new(indexer_app));
+    let httpd_context = Context::new(indexer_context, Arc::new(suite.app.clone_without_indexer()));
 
     ((suite, accounts, codes, contracts), httpd_context)
 }

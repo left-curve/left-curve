@@ -140,10 +140,6 @@ impl StartCmd {
             self.query_gas_limit,
         );
 
-        // let app_clone = app.clone();
-
-        // app.indexer.set_grug_app(Box::new(app.clone()));
-
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
         let mempool = ServiceBuilder::new()

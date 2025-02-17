@@ -39,7 +39,7 @@ async fn create_block() -> anyhow::Result<(
         .set_owner("owner")
         .build();
 
-    let httpd_context = Context::new(context, Arc::new(suite.app.clone()));
+    let httpd_context = Context::new(context, Arc::new(suite.app.clone_without_indexer()));
 
     let to = accounts["owner"].address;
 
