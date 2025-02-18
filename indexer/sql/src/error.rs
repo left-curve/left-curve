@@ -17,6 +17,9 @@ pub enum IndexerError {
     #[error("mutex poison error: {0}")]
     Poison(String),
 
+    #[error("runtime error: {0}")]
+    Runtime(String),
+
     #[error(transparent)]
     TryFromInt(#[from] std::num::TryFromIntError),
 
