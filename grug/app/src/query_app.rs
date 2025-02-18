@@ -26,7 +26,8 @@ where
 
     /// Simulate a transaction, return a JSON String
     fn simulate(&self, raw_unsigned_tx: String, height: u64, prove: bool) -> AppResult<String> {
-        let res = self.do_simulate_raw(raw_unsigned_tx.as_bytes(), height, prove)?;
+        let tx = raw_unsigned_tx.as_bytes().deserialize_json()?;
+        let res = self.do_simulate(tx, height, prove)?;
 
         Ok(res.to_json_string()?)
     }

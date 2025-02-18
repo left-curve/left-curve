@@ -5,7 +5,7 @@ pub struct GrugQuery {}
 
 #[Object]
 impl GrugQuery {
-    async fn grug_query(
+    async fn query_app(
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Request as JSON string")] request: String,
