@@ -1,5 +1,5 @@
 use {
-    crate::MarginQuerier,
+    crate::query_health,
     anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
@@ -45,9 +45,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health = ctx
-        .querier
-        .query_health(ctx.contract, ctx.block.timestamp, None)?;
+    let health = query_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
@@ -81,9 +79,12 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
         collaterals,
         limit_order_collaterals,
         ..
-    } = ctx
-        .querier
-        .query_health(ctx.contract, ctx.block.timestamp, Some(ctx.funds.clone()))?;
+    } = query_health(
+        &ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        Some(ctx.funds.clone()),
+    )?;
 
     // Ensure account is undercollateralized
     ensure!(
