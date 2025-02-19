@@ -49,7 +49,7 @@
       "import": "./build/crypto/index.js",
       "default": "./build/crypto/index.cjs"
     },
-     "./encoding": {
+    "./encoding": {
       "types": "./build/encoding/index.d.ts",
       "import": "./build/encoding/index.js",
       "default": "./build/encoding/index.cjs"
@@ -59,7 +59,7 @@
       "import": "./build/utils/index.js",
       "default": "./build/utils/index.cjs"
     },
-     "./types": {
+    "./types": {
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
@@ -95,12 +95,14 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "superjson": "^2.2.1",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.4.0",
     "@scure/bip32": "^1.4.0",
     "@scure/bip39": "^1.3.0",
-    "cbor-x": "^1.6.0"
+    "cbor-x": "^1.6.0",
+    "graphql": "^16.10.0",
+    "graphql-request": "^7.1.2",
+    "superjson": "^2.2.1"
   },
   "license": "TBD",
   "homepage": "https://grug.build",

@@ -1,5 +1,5 @@
 import { UrlRequiredError } from "../errors/transports.js";
-import { httpRpc } from "../rpc/httpClient.js";
+import { rpcClient } from "../http/rpcClient.js";
 import { createTransport } from "./createTransport.js";
 
 import { createBatchScheduler } from "../utils/scheduler.js";
@@ -9,7 +9,6 @@ import type {
   HttpRpcClientOptions,
   JsonRpcBatchOptions,
   JsonRpcRequest,
-  RequestFn,
   Transport,
 } from "../types/index.js";
 
@@ -61,42 +60,40 @@ export function http(_url_?: string | undefined, config: HttpTransportConfig = {
     const batch = _batch_ ? batchOptions : undefined;
     const timeout = _timeout_ ?? 10_000;
 
-    const rpcClient = httpRpc(url, {
+    const client = rpcClient(url, {
       fetchOptions,
       onRequest: onFetchRequest,
       onResponse: onFetchResponse,
       timeout,
     });
 
-    const request = (async ({ method, params }) => {
-      const body = { method, params };
-
-      const { schedule } = createBatchScheduler({
-        id: url,
-        wait: batchOptions.maxWait,
-        shouldSplitBatch(requests) {
-          return requests.length > batchOptions.maxSize;
-        },
-        fn: (body: JsonRpcRequest[]) => rpcClient.request({ body }),
-        sort: (a, b) => a.id - b.id,
-      });
-
-      const fn = async (body: JsonRpcRequest) =>
-        batch ? schedule(body) : [await rpcClient.request({ body })];
-
-      const [{ error, result }] = await fn(body as JsonRpcRequest);
-
-      if (error) {
-        throw new Error(error.message);
-      }
-      return result;
-    }) as RequestFn<CometBftRpcSchema>;
-
-    return createTransport({
+    return createTransport<"http">({
       type: "http",
       name,
       key,
-      request,
+      async request({ method, params }) {
+        const body = { method, params };
+
+        const { schedule } = createBatchScheduler({
+          id: url,
+          wait: batchOptions.maxWait,
+          shouldSplitBatch(requests) {
+            return requests.length > batchOptions.maxSize;
+          },
+          fn: (body: JsonRpcRequest[]) => client.request({ body }),
+          sort: (a, b) => a.id - b.id,
+        });
+
+        const fn = async (body: JsonRpcRequest) =>
+          batch ? schedule(body) : [await client.request({ body })];
+
+        const [{ error, result }] = await fn(body as JsonRpcRequest);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+        return result;
+      },
     });
   };
 }
