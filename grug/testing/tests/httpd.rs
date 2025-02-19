@@ -7,13 +7,14 @@ use {
         parse_graphql_subscription_response, setup_tracing_subscriber, GraphQLCustomRequest,
         PaginatedResponse, TestAccounts, TestBuilder, TestSuite,
     },
-    grug_types::{self, Coins, Denom, ResultExt},
+    grug_types::{self, Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
         context::Context,
         graphql::types::{block::Block, message::Message, transaction::Transaction},
     },
     indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
+    serde_json::json,
     std::{str::FromStr, sync::Arc},
     tokio::sync::mpsc,
 };
@@ -326,6 +327,53 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     parse_graphql_subscription_response::<Block>(framed, name).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(3);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await??;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_query_app() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let graphql_query = r#"
+    query QueryApp($request: String!, $height: Int!) {
+      queryApp(request: $request, height: $height)
+    }
+    "#;
+
+    let body_request =
+        grug_types::Query::AppConfig(grug_types::QueryAppConfigRequest {}).to_json_string()?;
+
+    let variables = json!({
+        "request": body_request,
+        "height": 1,
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let request_body = GraphQLCustomRequest {
+        name: "queryApp",
+        query: graphql_query,
+        variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let response = call_graphql::<String>(app, request_body).await?;
+
+                assert_that!(response.data.as_str()).is_equal_to("{\"app_config\":null}");
 
                 Ok::<(), anyhow::Error>(())
             })
