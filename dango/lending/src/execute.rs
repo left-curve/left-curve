@@ -8,8 +8,8 @@ use {
         DangoQuerier,
     },
     grug::{
-        Coin, Coins, Denom, Message, MutableCtx, Number, Order, QuerierExt, Response, StdResult,
-        StorageQuerier,
+        Coin, Coins, Denom, Message, MutableCtx, NextNumber, Number, Order, QuerierExt, Response,
+        StdResult, StorageQuerier,
     },
     std::collections::BTreeMap,
 };
@@ -178,8 +178,9 @@ fn borrow(ctx: MutableCtx, coins: Coins) -> anyhow::Result<Response> {
         let prev_scaled_debt = scaled_debts.get(&coin.denom).cloned().unwrap_or_default();
         let new_scaled_debt = coin
             .amount
+            .into_next()
             .checked_into_dec()?
-            .checked_div(market.borrow_index)?;
+            .checked_div(market.borrow_index.into_next())?;
         let added_scaled_debt = prev_scaled_debt.checked_add(new_scaled_debt)?;
         scaled_debts.insert(coin.denom.clone(), added_scaled_debt);
 
@@ -226,8 +227,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         // Update the sender's liabilities
         let repaid_debt_scaled = repaid
+            .into_next()
             .checked_into_dec()?
-            .checked_div(market.borrow_index)?;
+            .checked_div(market.borrow_index.into_next())?;
         scaled_debts.insert(
             coin.denom.clone(),
             scaled_debt.saturating_sub(repaid_debt_scaled),
@@ -236,8 +238,9 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
         // Deduct the repaid scaled debt and save the updated market state
         let debt_after = debt.checked_sub(repaid)?;
         let debt_after_scaled = debt_after
+            .into_next()
             .checked_into_dec()?
-            .checked_div(market.borrow_index)?;
+            .checked_div(market.borrow_index.into_next())?;
         let scaled_debt_diff = scaled_debt.checked_sub(debt_after_scaled)?;
 
         MARKETS.save(
