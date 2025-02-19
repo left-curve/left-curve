@@ -140,6 +140,34 @@ where
         }
     }
 
+    pub fn build_context(self) -> error::Result<Context> {
+        let db = match self.db_url.maybe_into_inner() {
+            Some(url) => self
+                .handle
+                .block_on(async { Context::connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { Context::connect_db().await }),
+        }?;
+
+        let mut context = Context {
+            db: db.clone(),
+            // This gets overwritten in the next match
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        };
+
+        match self.pubsub {
+            PubSubType::Postgres => self.handle.block_on(async {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
+                }
+            }),
+            PubSubType::Memory => {},
+        }
+
+        Ok(context)
+    }
+
     pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
@@ -153,6 +181,7 @@ where
 
         let mut context = Context {
             db: db.clone(),
+            // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
         };
 
@@ -191,6 +220,7 @@ where
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
+#[derive(Clone)]
 pub struct NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
@@ -572,9 +602,9 @@ where
 // ------------------------------- RuntimeHandler ------------------------------
 
 /// Wrapper around Tokio runtime to allow running in sync context
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RuntimeHandler {
-    pub runtime: Option<Runtime>,
+    pub runtime: Arc<Option<Runtime>>,
     handle: Handle,
 }
 
@@ -589,7 +619,10 @@ impl Default for RuntimeHandler {
                 (Some(runtime), handle)
             },
         };
-        Self { runtime, handle }
+        Self {
+            runtime: Arc::new(runtime),
+            handle,
+        }
     }
 }
 
