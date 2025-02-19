@@ -43,6 +43,7 @@ pub struct PostgresPubSub {
     pool: sqlx::PgPool,
 }
 
+// TODO: Use a tokio channel and connect with a single connection for all
 impl PostgresPubSub {
     pub fn new(pool: sqlx::PgPool) -> Self {
         Self { pool }

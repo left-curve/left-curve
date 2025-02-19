@@ -1,11 +1,15 @@
 use {
-    crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
-    grug_types::{JsonDeExt, JsonSerExt},
+    crate::{
+        App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm, CHAIN_ID, LAST_FINALIZED_BLOCK,
+    },
+    grug_types::{BlockInfo, JsonDeExt, JsonSerExt},
 };
 
 pub trait QueryApp {
     fn query_app(&self, raw_req: String, height: u64, prove: bool) -> AppResult<String>;
     fn simulate(&self, raw_unsigned_tx: String, height: u64, prove: bool) -> AppResult<String>;
+    fn last_block(&self) -> AppResult<BlockInfo>;
+    fn chain_id(&self) -> AppResult<String>;
 }
 
 impl<DB, VM, PP, ID> QueryApp for App<DB, VM, PP, ID>
@@ -30,5 +34,16 @@ where
         let res = self.do_simulate(tx, height, prove)?;
 
         Ok(res.to_json_string()?)
+    }
+
+    fn last_block(&self) -> AppResult<BlockInfo> {
+        let storage = self.db.state_storage(None)?;
+        Ok(LAST_FINALIZED_BLOCK.load(&storage)?)
+    }
+
+    fn chain_id(&self) -> AppResult<String> {
+        let storage = self.db.state_storage(None)?;
+        let chain_id = CHAIN_ID.load(&storage)?;
+        Ok(chain_id)
     }
 }
