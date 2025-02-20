@@ -23,6 +23,10 @@ pub struct HealthResponse {
     pub debts: Coins,
     /// All of the account's collateral balances.
     pub collaterals: Coins,
+    /// All of the account's collateral balances that are inside of limit orders.
+    pub limit_order_collaterals: Coins,
+    /// The coins that would be returned if the account's limit orders were to be filled.
+    pub limit_order_outputs: Coins,
 }
 
 #[grug::derive(Serde)]
@@ -48,7 +52,7 @@ pub enum QueryMsg {
 #[grug::derive(Serde)]
 #[grug::event("liquidate")]
 pub struct Liquidate {
-    pub liquidation_denom: Denom,
+    pub collateral_denom: Denom,
     pub repay_coins: Coins,
     pub refunds: Coins,
     pub repaid_debt_value: Udec128,
