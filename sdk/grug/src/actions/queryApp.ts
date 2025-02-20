@@ -28,7 +28,7 @@ export async function queryApp<
   const { query, height = 0 } = parameters;
 
   return await client.request({
-    method: "query",
+    method: "query_app",
     params: {
       height,
       prove: false,

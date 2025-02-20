@@ -38,7 +38,7 @@ export type GraphqlTransport = Transport<"http-grahpql", IndexerSchema>; /**
  * @param config {GraphqlTransportConfig} The configuration of the transport.
  * @returns The HTTP transport.
  */
-export function http(
+export function graphql(
   _url_?: string | undefined,
   config: GraphqlTransportConfig = {},
 ): GraphqlTransport {
@@ -74,7 +74,7 @@ export function http(
         const { method, params } = psd;
 
         switch (method) {
-          case "query": {
+          case "query_app": {
             const { query, height, prove } = params as IndexerSchema[0]["Parameters"];
             const document = gql`
             query queryApp($request: String!, $height: Int!, $prove: Boolean!) {
@@ -90,8 +90,26 @@ export function http(
 
             return JSON.parse(queryApp);
           }
+          case "query_status": {
+            const document = gql`
+            query {
+              queryStatus {
+                chainId
+                block {
+                  blockHeight
+                  createdAt
+                  hash
+                }
+              }
+            }
+          `;
+
+            const { queryStatus } = await client.request<{ queryStatus: string }>(document);
+
+            return queryStatus;
+          }
           case "simulate": {
-            const { tx, height, prove } = params as IndexerSchema[1]["Parameters"];
+            const { tx, height, prove } = params as IndexerSchema[2]["Parameters"];
             const document = gql`
             query simulate($tx: String!, $height: Int!, $prove: Boolean! = false)  {
               simulate(tx: $tx, height: $height, prove: $prove)
@@ -107,7 +125,7 @@ export function http(
             return JSON.parse(simulate);
           }
           case "broadcast": {
-            const { tx, mode } = params as IndexerSchema[2]["Parameters"];
+            const { tx, mode } = params as IndexerSchema[3]["Parameters"];
             const document = gql`
               mutation broadcastTxSync($tx: String!) {
                   broadcastTxSync(tx: $tx) {
@@ -118,7 +136,7 @@ export function http(
                   }
                 }
             `;
-            const response = await client.request<IndexerSchema[2]["ReturnType"]>(document, {
+            const response = await client.request<IndexerSchema[3]["ReturnType"]>(document, {
               tx: encodeBase64(serialize(tx)),
             });
 

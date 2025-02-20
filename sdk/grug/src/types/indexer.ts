@@ -1,18 +1,23 @@
 import type { TxData } from "./cometbft.js";
-import type { QueryRequest, QueryResponse } from "./queries.js";
+import type { ChainStatusResponse, QueryRequest, QueryResponse } from "./queries.js";
 import type { SimulateRequest } from "./simulate.js";
 import type { Tx, TxOutcome, UnsignedTx } from "./tx.js";
 import type { Prettify } from "./utils.js";
 
 export type IndexerSchema = [
   {
-    Method: "query";
+    Method: "query_app";
     Parameters: {
       query: QueryRequest;
       height: number;
       prove: boolean;
     };
     ReturnType: QueryResponse[keyof QueryRequest];
+  },
+  {
+    Method: "query_status";
+    Parameters: undefined;
+    ReturnType: ChainStatusResponse;
   },
   {
     Method: "simulate";

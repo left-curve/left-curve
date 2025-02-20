@@ -5,7 +5,7 @@ import type { MaybePromise } from "./utils.js";
 export type GraphqlClient = {
   readonly request: <response = unknown, variables = Json>(
     document: string,
-    variables: variables,
+    variables?: variables,
   ) => Promise<response>;
 };
 

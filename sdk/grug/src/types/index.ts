@@ -1,6 +1,6 @@
 export type {
   ChainConfigResponse,
-  ChainInfoResponse,
+  ChainStatusResponse,
   QueryContractRequest,
   QueryContractsRequest,
   QueryCodesRequest,

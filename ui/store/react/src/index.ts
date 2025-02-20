@@ -6,7 +6,7 @@ export {
   type DangoStoreProviderProps,
 } from "./context.js";
 
-export { devnet, http } from "@left-curve/dango";
+export { devnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Storage                                  */
