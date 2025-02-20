@@ -12,8 +12,8 @@ use {
         lending, DangoQuerier,
     },
     grug::{
-        btree_set, AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message,
-        MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128,
+        AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
+        Number, NumberConst, QuerierExt, Response, StdResult, Tx, Udec128,
     },
     std::cmp::{max, min},
 };
@@ -226,7 +226,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     let cancel_msg = Message::execute(
         app_cfg.addresses.dex,
         &dango_types::dex::ExecuteMsg::CancelOrders {
-            order_ids: btree_set! {},
+            order_ids: dango_types::dex::OrderIds::All,
         },
         Coins::new(),
     )?;

@@ -7,7 +7,7 @@ use {
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
+            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
             OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
         },
     },
@@ -158,12 +158,12 @@ fn submit_order(
 }
 
 #[inline]
-fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Result<Response> {
+fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    let orders: Vec<((OrderKey, Order), bool)> = if order_ids.is_empty() {
-        ORDERS
+    let orders: Vec<((OrderKey, Order), bool)> = match order_ids {
+        OrderIds::All => ORDERS
             .idx
             .user
             .prefix(ctx.sender)
@@ -175,23 +175,24 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
                     .range(ctx.storage, None, None, IterationOrder::Ascending)
                     .map(|order| Ok((order?.1, true))),
             )
-            .collect::<StdResult<Vec<_>>>()?
-    } else {
-        let mut orders = Vec::with_capacity(order_ids.len());
+            .collect::<StdResult<Vec<_>>>()?,
+        OrderIds::Some(order_ids) => {
+            let mut orders = Vec::with_capacity(order_ids.len());
 
-        for order_id in &order_ids {
-            if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, *order_id)? {
-                orders.push((order, false));
-            } else if let Some(order) =
-                INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, *order_id))?
-            {
-                orders.push((order, true));
-            } else {
-                bail!("order with id `{order_id}` not found");
+            for order_id in &order_ids {
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, *order_id)? {
+                    orders.push((order, false));
+                } else if let Some(order) =
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, *order_id))?
+                {
+                    orders.push((order, true));
+                } else {
+                    bail!("order with id `{order_id}` not found");
+                }
             }
-        }
 
-        orders
+            orders
+        },
     };
 
     for order in orders {
