@@ -116,7 +116,7 @@ pub fn query_health(
     for (_, res) in orders {
         // Get asset locked in the order and the asset that would be returned
         // if the order was filled.
-        let (deposited, returned) = match res.direction {
+        let (offer, ask) = match res.direction {
             Direction::Bid => (
                 Coin::new(
                     res.quote_denom.clone(),
@@ -133,33 +133,31 @@ pub fn query_health(
             ),
         };
 
-        let deposited_price =
-            querier.query_price(app_cfg.addresses.oracle, &deposited.denom, None)?;
-        let deposited_value = deposited_price.value_of_unit_amount(deposited.amount)?;
-        let deposited_collateral_power = app_cfg
+        let offer_price = querier.query_price(app_cfg.addresses.oracle, &offer.denom, None)?;
+        let offer_value = offer_price.value_of_unit_amount(offer.amount)?;
+        let offer_collateral_power = app_cfg
             .collateral_powers
-            .get(&deposited.denom)
+            .get(&offer.denom)
             .map(|x| x.clone().into_inner())
             .unwrap_or_else(|| Udec128::ZERO);
-        let deposited_adjusted_value = deposited_value.checked_mul(deposited_collateral_power)?;
+        let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power)?;
 
-        let returned_price =
-            querier.query_price(app_cfg.addresses.oracle, &returned.denom, None)?;
-        let returned_value = returned_price.value_of_unit_amount(returned.amount)?;
-        let returned_collateral_power = app_cfg
+        let ask_price = querier.query_price(app_cfg.addresses.oracle, &ask.denom, None)?;
+        let ask_value = ask_price.value_of_unit_amount(ask.amount)?;
+        let ask_collateral_power = app_cfg
             .collateral_powers
-            .get(&returned.denom)
+            .get(&ask.denom)
             .map(|x| x.clone().into_inner())
             .unwrap_or_else(|| Udec128::ZERO);
-        let returned_adjusted_value = returned_value.checked_mul(returned_collateral_power)?;
+        let ask_adjusted_value = ask_value.checked_mul(ask_collateral_power)?;
 
-        let min_value = min(deposited_value, returned_value);
-        let min_adjusted_value = min(deposited_adjusted_value, returned_adjusted_value);
+        let min_value = min(offer_value, ask_value);
+        let min_adjusted_value = min(offer_adjusted_value, ask_adjusted_value);
 
         total_collateral_value.checked_add_assign(min_value)?;
         total_adjusted_collateral_value.checked_add_assign(min_adjusted_value)?;
-        limit_order_collaterals.insert(deposited)?;
-        limit_order_outputs.insert(returned)?;
+        limit_order_collaterals.insert(offer)?;
+        limit_order_outputs.insert(ask)?;
     }
 
     // -------------------------- 4. Utilization rate --------------------------
