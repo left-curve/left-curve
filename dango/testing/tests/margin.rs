@@ -703,6 +703,14 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         6,
     );
 
+    // Set collateral power for DANGO at 100%
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        DANGO_DENOM.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
     // Create a limit order
     suite
         .execute(

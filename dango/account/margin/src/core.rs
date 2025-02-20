@@ -1,5 +1,4 @@
 use {
-    anyhow::anyhow,
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
@@ -136,21 +135,29 @@ pub fn query_health(
 
         let deposited_price =
             querier.query_price(app_cfg.addresses.oracle, &deposited.denom, None)?;
-        let returned_price =
-            querier.query_price(app_cfg.addresses.oracle, &returned.denom, None)?;
         let deposited_value = deposited_price.value_of_unit_amount(deposited.amount)?;
-        let returned_value = returned_price.value_of_unit_amount(returned.amount)?;
-
-        let min_value = min(deposited_value, returned_value);
-
-        let collateral_power = app_cfg
+        let deposited_collateral_power = app_cfg
             .collateral_powers
             .get(&deposited.denom)
-            .ok_or_else(|| anyhow!("collateral power for denom {} not found", deposited.denom))?;
-        let adjusted_value = min_value.checked_mul(collateral_power.clone().into_inner())?;
+            .map(|x| x.clone().into_inner())
+            .unwrap_or_else(|| Udec128::ZERO);
+        let deposited_adjusted_value = deposited_value.checked_mul(deposited_collateral_power)?;
+
+        let returned_price =
+            querier.query_price(app_cfg.addresses.oracle, &returned.denom, None)?;
+        let returned_value = returned_price.value_of_unit_amount(returned.amount)?;
+        let returned_collateral_power = app_cfg
+            .collateral_powers
+            .get(&returned.denom)
+            .map(|x| x.clone().into_inner())
+            .unwrap_or_else(|| Udec128::ZERO);
+        let returned_adjusted_value = returned_value.checked_mul(returned_collateral_power)?;
+
+        let min_value = min(deposited_value, returned_value);
+        let min_adjusted_value = min(deposited_adjusted_value, returned_adjusted_value);
 
         total_collateral_value.checked_add_assign(min_value)?;
-        total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
+        total_adjusted_collateral_value.checked_add_assign(min_adjusted_value)?;
         limit_order_collaterals.insert(deposited)?;
         limit_order_outputs.insert(returned)?;
     }
