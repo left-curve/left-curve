@@ -17,6 +17,7 @@ tracing = ["dep:tracing"]
 
 [dependencies]
 actix                   = { workspace = true }
+actix-cors              = { workspace = true }
 actix-files             = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }

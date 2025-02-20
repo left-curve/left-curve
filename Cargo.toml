@@ -58,6 +58,7 @@ version       = "0.0.0"
 [workspace.dependencies]
 actix                   = "0.13"
 actix-codec             = "0.5"
+actix-cors              = "0.7"
 actix-files             = "0"
 actix-http              = "3"
 actix-multipart         = "0.10"
