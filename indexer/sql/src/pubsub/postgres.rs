@@ -1,0 +1,90 @@
+use {
+    super::PubSub,
+    crate::error::IndexerError,
+    async_trait::async_trait,
+    sea_orm::sqlx::{self, postgres::PgListener},
+    std::pin::Pin,
+    tokio::sync::broadcast,
+    tokio_stream::{wrappers::BroadcastStream, Stream, StreamExt},
+};
+
+#[derive(Clone)]
+pub struct PostgresPubSub {
+    sender: broadcast::Sender<u64>,
+    pool: sqlx::PgPool,
+}
+
+impl PostgresPubSub {
+    pub async fn new(pool: sqlx::PgPool) -> Result<Self, IndexerError> {
+        let (sender, _) = broadcast::channel::<u64>(128);
+
+        let result = Self { sender, pool };
+
+        result.connect().await?;
+
+        Ok(result)
+    }
+
+    async fn connect(&self) -> Result<(), IndexerError> {
+        let sender = self.sender.clone();
+        let mut listener = PgListener::connect_with(&self.pool).await?;
+
+        tokio::spawn(async move {
+            loop {
+                if let Err(e) = listener.listen("blocks").await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!("Listen error: {e:?}");
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+
+                #[cfg(feature = "tracing")]
+                tracing::info!("Connected to PostgreSQL notifications");
+
+                loop {
+                    match listener.recv().await {
+                        Ok(notification) => {
+                            if let Ok(data) =
+                                serde_json::from_str::<serde_json::Value>(notification.payload())
+                            {
+                                if let Some(block_height) =
+                                    data.get("block_height").and_then(|v| v.as_u64())
+                                {
+                                    let _ = sender.send(block_height); // Ignore send errors
+                                }
+                            }
+                        },
+                        Err(e) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Notification error: {e:?}");
+                            break;
+                        },
+                    }
+                }
+            }
+        });
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl PubSub for PostgresPubSub {
+    async fn subscribe_block_minted(
+        &self,
+    ) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>, IndexerError> {
+        let rx = self.sender.subscribe();
+        Ok(Box::pin(
+            BroadcastStream::new(rx).filter_map(|res| res.ok()),
+        ))
+    }
+
+    async fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError> {
+        sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
+            .bind(block_height as i64)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(1)
+    }
+}
