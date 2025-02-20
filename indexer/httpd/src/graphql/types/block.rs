@@ -33,7 +33,7 @@ impl Block {}
 #[derive(SimpleObject)]
 pub struct BlockInfo {
     pub block_height: u64,
-    pub created_at: DateTime<Utc>,
+    pub timestamp: DateTime<Utc>,
     pub hash: String,
 }
 
@@ -43,13 +43,13 @@ impl From<grug_types::BlockInfo> for BlockInfo {
         let seconds = (epoch_millis / 1_000) as i64;
         let nanoseconds = ((epoch_millis % 1_000) * 1_000_000) as u32;
 
-        let created_at = sea_orm::sqlx::types::chrono::Utc
+        let timestamp = sea_orm::sqlx::types::chrono::Utc
             .timestamp_opt(seconds, nanoseconds)
             .single()
             .unwrap_or_default();
         Self {
             block_height: item.height,
-            created_at,
+            timestamp,
             hash: item.hash.to_string(),
         }
     }
