@@ -147,11 +147,13 @@ fn query_orders_by_user(
     start_after: Option<OrderId>,
     limit: Option<u32>,
 ) -> StdResult<BTreeMap<OrderId, OrdersByUserResponse>> {
-    let start = start_after.map(|order_id| {
-        let (((base_denom, quote_denom), direction, price, _), _) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id).unwrap();
-        Bound::Exclusive(((base_denom, quote_denom), direction, price, order_id))
-    });
+    let start = start_after
+        .map(|order_id| -> StdResult<_> {
+            let ((pair, direction, price, _), _) =
+                ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            Ok(Bound::Exclusive((pair, direction, price, order_id)))
+        })
+        .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     ORDERS

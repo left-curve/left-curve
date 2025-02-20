@@ -139,7 +139,7 @@ pub fn query_health(
             .collateral_powers
             .get(&offer.denom)
             .map(|x| x.clone().into_inner())
-            .unwrap_or_else(|| Udec128::ZERO);
+            .unwrap_or(Udec128::ZERO);
         let offer_adjusted_value = offer_value.checked_mul(offer_collateral_power)?;
 
         let ask_price = querier.query_price(app_cfg.addresses.oracle, &ask.denom, None)?;
@@ -148,7 +148,7 @@ pub fn query_health(
             .collateral_powers
             .get(&ask.denom)
             .map(|x| x.clone().into_inner())
-            .unwrap_or_else(|| Udec128::ZERO);
+            .unwrap_or(Udec128::ZERO);
         let ask_adjusted_value = ask_value.checked_mul(ask_collateral_power)?;
 
         let min_value = min(offer_value, ask_value);

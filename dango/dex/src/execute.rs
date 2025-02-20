@@ -1,7 +1,7 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, OrderKey,
-        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
+        NEXT_ORDER_ID, ORDERS, PAIRS,
     },
     anyhow::{bail, ensure},
     dango_types::{
@@ -162,7 +162,9 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    let orders: Vec<((OrderKey, Order), bool)> = match order_ids {
+    // First, collect all orders to be cancelled into memory.
+    let orders = match order_ids {
+        // Cancel all orders.
         OrderIds::All => ORDERS
             .idx
             .user
@@ -172,31 +174,31 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
             .chain(
                 INCOMING_ORDERS
                     .prefix(ctx.sender)
-                    .range(ctx.storage, None, None, IterationOrder::Ascending)
-                    .map(|order| Ok((order?.1, true))),
+                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .map(|order| Ok((order?, true))),
             )
             .collect::<StdResult<Vec<_>>>()?,
-        OrderIds::Some(order_ids) => {
-            let mut orders = Vec::with_capacity(order_ids.len());
-
-            for order_id in &order_ids {
-                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, *order_id)? {
-                    orders.push((order, false));
+        // Cancel selected orders.
+        OrderIds::Some(order_ids) => order_ids
+            .into_iter()
+            .map(|order_id| {
+                // First see if the order is the persistent storage. If not,
+                // check the transient storage.
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                    Ok((order, false))
                 } else if let Some(order) =
-                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, *order_id))?
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
                 {
-                    orders.push((order, true));
+                    Ok((order, true))
                 } else {
                     bail!("order with id `{order_id}` not found");
                 }
-            }
-
-            orders
-        },
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?,
     };
 
-    for order in orders {
-        let ((order_key, order), is_incoming) = order;
+    // Now, cancel the orders one by one.
+    for ((order_key, order), is_incoming) in orders {
         let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
         ensure!(
