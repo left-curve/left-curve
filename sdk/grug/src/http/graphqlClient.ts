@@ -38,19 +38,7 @@ export function graphqlClient(url: string, options: GraphqlClientOptions = {}): 
 
         if (onResponse) await onResponse(response);
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new HttpRequestError({
-            body: { body },
-            details: JSON.stringify(data.error) || response.statusText,
-            headers: response.headers,
-            status: response.status,
-            url,
-          });
-        }
-
-        return data;
+        return response;
       } catch (err) {
         if (err instanceof HttpRequestError) throw err;
         if (err instanceof TimeoutError) throw err;
@@ -69,7 +57,8 @@ export function graphqlClient(url: string, options: GraphqlClientOptions = {}): 
     ): Promise<response> {
       const response = await client.rawRequest(document, variables ?? {});
       if (response.errors) {
-        throw response.errors;
+        const [{ message }] = response.errors;
+        throw new Error(message);
       }
       return response.data as response;
     },

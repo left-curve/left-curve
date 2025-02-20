@@ -6,7 +6,16 @@ import { encodeBase64 } from "../encoding/base64.js";
 import { serialize } from "../encoding/binary.js";
 import { graphqlClient } from "../http/graphqlClient.js";
 
-import type { HttpRpcClientOptions, IndexerSchema, Transport } from "../types/index.js";
+import type {
+  ChainStatusResponse,
+  HttpRpcClientOptions,
+  IndexerSchema,
+  QueryResponse,
+  RequestFn,
+  Transport,
+} from "../types/index.js";
+import { recursiveTransform } from "../utils/mappers.js";
+import { camelToSnake, snakeToCamel } from "../utils/strings.js";
 
 export type GraphqlTransportConfig = {
   /**
@@ -66,32 +75,35 @@ export function graphql(
       timeout,
     });
 
-    return createTransport<"http-grahpql">({
-      type: "http-grahpql",
-      name,
-      key,
-      async request(psd) {
-        const { method, params } = psd;
-
-        switch (method) {
-          case "query_app": {
-            const { query, height, prove } = params as IndexerSchema[0]["Parameters"];
-            const document = gql`
+    const request = (async ({
+      method,
+      params,
+    }: {
+      method: IndexerSchema[number]["Method"];
+      params: IndexerSchema[number]["Parameters"];
+    }): Promise<IndexerSchema[number]["ReturnType"]> => {
+      switch (method) {
+        case "query_app": {
+          const { query, height, prove } = params as IndexerSchema[0]["Parameters"];
+          const document = gql`
             query queryApp($request: String!, $height: Int!, $prove: Boolean!) {
-              grugQuery(request: $request, height: $height, prove: $prove)
+              queryApp(request: $request, height: $height, prove: $prove)
             }
           `;
 
-            const { queryApp } = await client.request<{ queryApp: string }>(document, {
-              request: JSON.stringify(query),
-              height,
-              prove,
-            });
+          const { queryApp } = await client.request<{ queryApp: string }>(document, {
+            request: JSON.stringify(recursiveTransform({ query }, camelToSnake)),
+            height,
+            prove,
+          });
 
-            return JSON.parse(queryApp);
-          }
-          case "query_status": {
-            const document = gql`
+          return recursiveTransform<IndexerSchema[0]["ReturnType"]>(
+            JSON.parse(queryApp),
+            snakeToCamel,
+          );
+        }
+        case "query_status": {
+          const document = gql`
             query {
               queryStatus {
                 chainId
@@ -104,29 +116,34 @@ export function graphql(
             }
           `;
 
-            const { queryStatus } = await client.request<{ queryStatus: string }>(document);
+          const { queryStatus } = await client.request<{ queryStatus: ChainStatusResponse }>(
+            document,
+          );
 
-            return queryStatus;
-          }
-          case "simulate": {
-            const { tx, height, prove } = params as IndexerSchema[2]["Parameters"];
-            const document = gql`
+          return queryStatus as IndexerSchema[1]["ReturnType"];
+        }
+        case "simulate": {
+          const { tx, height, prove } = params as IndexerSchema[2]["Parameters"];
+          const document = gql`
             query simulate($tx: String!, $height: Int!, $prove: Boolean! = false)  {
               simulate(tx: $tx, height: $height, prove: $prove)
             }
           `;
 
-            const { simulate } = await client.request<{ simulate: string }>(document, {
-              tx: JSON.stringify(tx),
-              height,
-              prove,
-            });
+          const { simulate } = await client.request<{ simulate: string }>(document, {
+            tx: recursiveTransform(JSON.stringify(tx), camelToSnake),
+            height,
+            prove,
+          });
 
-            return JSON.parse(simulate);
-          }
-          case "broadcast": {
-            const { tx, mode } = params as IndexerSchema[3]["Parameters"];
-            const document = gql`
+          return recursiveTransform<IndexerSchema[2]["ReturnType"]>(
+            JSON.parse(simulate),
+            snakeToCamel,
+          );
+        }
+        case "broadcast": {
+          const { tx, mode } = params as IndexerSchema[3]["Parameters"];
+          const document = gql`
               mutation broadcastTxSync($tx: String!) {
                   broadcastTxSync(tx: $tx) {
                     hash
@@ -136,22 +153,28 @@ export function graphql(
                   }
                 }
             `;
-            const response = await client.request<IndexerSchema[3]["ReturnType"]>(document, {
-              tx: encodeBase64(serialize(tx)),
-            });
+          const response = await client.request<IndexerSchema[3]["ReturnType"]>(document, {
+            tx: encodeBase64(serialize(tx)),
+          });
 
-            const { code } = response;
+          const { code } = response;
 
-            if (code === 0) return response;
+          if (code === 0) return response;
 
-            throw new Error(
-              `failed to broadcast tx! codespace: ${response.codespace}, code: ${code}, log: ${response.log}`,
-            );
-          }
-          default:
-            throw new Error(`Method ${method} not supported`);
+          throw new Error(
+            `failed to broadcast tx! codespace: ${response.codespace}, code: ${code}, log: ${response.log}`,
+          );
         }
-      },
+        default:
+          throw new Error(`Method ${method} not supported`);
+      }
+    }) as RequestFn<IndexerSchema>;
+
+    return createTransport<"http-grahpql">({
+      type: "http-grahpql",
+      name,
+      key,
+      request,
     });
   };
 }
