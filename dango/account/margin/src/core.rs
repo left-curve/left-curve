@@ -1,15 +1,17 @@
 use {
+    anyhow::anyhow,
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
         account::margin::HealthResponse,
-        config::AppConfig,
         dex::{Direction, QueryOrdersByUserRequest},
+        DangoQuerier,
     },
     grug::{
         Addr, Coin, Coins, Inner, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,
         QuerierWrapper, StorageQuerier, Timestamp, Udec128,
     },
+    std::cmp::min,
 };
 
 /// Queries the health of the margin account.
@@ -27,7 +29,9 @@ pub fn query_health(
     current_time: Timestamp,
     discount_collateral: Option<Coins>,
 ) -> anyhow::Result<HealthResponse> {
-    let app_cfg: AppConfig = querier.query_app_config()?;
+    let app_cfg = querier.query_dango_config()?;
+
+    // ------------------------------- 1. Debts --------------------------------
 
     // Query all debts for the account.
     let scaled_debts = querier
@@ -37,6 +41,9 @@ pub fn query_health(
     // Calculate the total value of the debts.
     let mut debts = Coins::new();
     let mut total_debt_value = Udec128::ZERO;
+
+    // Iterate over the scaled debt amounts and add the debt value to the total
+    // debt value.
     for (denom, scaled_debt) in &scaled_debts {
         // Query the market for the denom.
         let market = querier
@@ -54,6 +61,8 @@ pub fn query_health(
         total_debt_value.checked_add_assign(value)?;
     }
 
+    // ---------------------------- 2. Collaterals -----------------------------
+
     // Calculate the total value of the account's collateral adjusted for the
     // collateral power.
     let mut total_collateral_value = Udec128::ZERO;
@@ -61,7 +70,7 @@ pub fn query_health(
     let mut collaterals = Coins::new();
 
     // Iterate over the collateral powers and add the collateral value to the
-    // total collateral value.
+    // total adjusted collateral value.
     for (denom, power) in &app_cfg.collateral_powers {
         let mut collateral_balance = querier.query_balance(account, denom.clone())?;
 
@@ -84,15 +93,27 @@ pub fn query_health(
         total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
     }
 
-    // Iterate over the user's limit orders and add the order value to the
-    // total collateral value.
+    // ---------------------------- 3. Limit Orders ----------------------------
+
+    // Add assets locked in limit orders to the total adjusted collateral value.
+    //
+    // For BUY orders, the user have transferred the quote asset to the DEX;
+    // conversely, for SELL orders, the user have transferred the base asset.
+    //
+    // The collateral value of a limit order is evaluated as either that of the
+    // input asset, or that of the output asset, whichever is smaller.
     let mut limit_order_collaterals = Coins::new();
     let mut limit_order_outputs = Coins::new();
+
+    // Query the user's open limit orders.
     let orders = querier.query_wasm_smart(app_cfg.addresses.dex, QueryOrdersByUserRequest {
         user: account,
         start_after: None,
         limit: None,
     })?;
+
+    // Iterate over the user's limit orders and add the order value to the
+    // total collateral value.
     for (_, res) in orders {
         // Get asset locked in the order and the asset that would be returned
         // if the order was filled.
@@ -112,6 +133,7 @@ pub fn query_health(
                 )?,
             ),
         };
+
         let deposited_price =
             querier.query_price(app_cfg.addresses.oracle, &deposited.denom, None)?;
         let returned_price =
@@ -119,16 +141,12 @@ pub fn query_health(
         let deposited_value = deposited_price.value_of_unit_amount(deposited.amount)?;
         let returned_value = returned_price.value_of_unit_amount(returned.amount)?;
 
-        let min_value = std::cmp::min(deposited_value, returned_value);
+        let min_value = min(deposited_value, returned_value);
 
-        let collateral_power =
-            app_cfg
-                .collateral_powers
-                .get(&deposited.denom)
-                .ok_or(anyhow::anyhow!(
-                    "collateral power for denom {} not found",
-                    deposited.denom
-                ))?;
+        let collateral_power = app_cfg
+            .collateral_powers
+            .get(&deposited.denom)
+            .ok_or_else(|| anyhow!("collateral power for denom {} not found", deposited.denom))?;
         let adjusted_value = min_value.checked_mul(collateral_power.clone().into_inner())?;
 
         total_collateral_value.checked_add_assign(min_value)?;
@@ -137,15 +155,16 @@ pub fn query_health(
         limit_order_outputs.insert(returned)?;
     }
 
+    // -------------------------- 4. Utilization rate --------------------------
+
     // Calculate the utilization rate.
     let utilization_rate = if total_debt_value.is_zero() {
-        // The account has no debt. Utilization is zero in this case,
-        // regardless of collateral value.
+        // The account has no debt. Utilization is zero in this case, regardless
+        // of collateral value.
         Udec128::ZERO
     } else if total_adjusted_collateral_value.is_zero() {
-        // The account has non-zero debt but zero collateral. This can
-        // happen if the account is liquidated. We set utilization to
-        // maximum.
+        // The account has non-zero debt but zero collateral. This can happen if
+        // the account is liquidated. We set utilization to maximum.
         Udec128::MAX
     } else {
         total_debt_value / total_adjusted_collateral_value

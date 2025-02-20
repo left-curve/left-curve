@@ -21,7 +21,12 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
-    std::{cmp::min, str::FromStr},
+    std::{
+        cmp::min,
+        fmt::Display,
+        ops::{Div, Sub},
+        str::FromStr,
+    },
 };
 
 /// An example Pyth VAA for an USDC price feed.
@@ -45,11 +50,7 @@ const WBTC_VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQNHHIXSITl1E5rklfcRJ+fTmdXaBHA1Rh
 /// Calculates the relative difference between two `Udec128` values.
 fn relative_difference<T>(a: T, b: T) -> T
 where
-    T: NumberConst
-        + Number
-        + std::cmp::PartialOrd
-        + std::ops::Sub<Output = T>
-        + std::ops::Div<Output = T>,
+    T: NumberConst + Number + PartialOrd + Sub<Output = T> + Div<Output = T>,
 {
     // Handle the case where both numbers are zero
     if a == T::ZERO && b == T::ZERO {
@@ -78,15 +79,10 @@ where
 /// relative difference.
 fn assert_approx_eq<T>(a: T, b: T, max_rel_diff: &str) -> Result<(), TestCaseError>
 where
-    T: NumberConst
-        + Number
-        + std::cmp::PartialOrd
-        + std::ops::Sub<Output = T>
-        + std::ops::Div<Output = T>
-        + std::fmt::Display,
+    T: NumberConst + Number + PartialOrd + Sub<Output = T> + Div<Output = T> + Display,
 {
-    let rel_diff: Udec128 =
-        Udec128::from_str(relative_difference(a, b).to_string().as_str()).unwrap();
+    let rel_diff = Udec128::from_str(relative_difference(a, b).to_string().as_str()).unwrap();
+
     prop_assert!(
         rel_diff <= Udec128::from_str(max_rel_diff).unwrap(),
         "assertion failed: values are not approximately equal\n  left: {}\n right: {}\n  max_rel_diff: {}\n  actual_rel_diff: {}",
@@ -660,7 +656,7 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
             &mut accounts.owner,
             contracts.oracle,
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                market.supply_lp_denom.clone() => PriceSource::LendingLP {},
+                market.supply_lp_denom.clone() => PriceSource::LendingLiquidity,
             }),
             Coins::new(),
         )

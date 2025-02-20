@@ -28,5 +28,5 @@ pub enum PriceSource {
         precision: u8,
     },
     /// A price source for an LP token of the lending pool.
-    LendingLP {},
+    LendingLiquidity,
 }
