@@ -222,6 +222,12 @@ pub enum QueryMsg {
     /// Query the passive pool for a pair.
     #[returns(Pool)]
     PassivePool { lp_denom: Denom },
+
+    #[returns(Denom)]
+    LpDenom {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
 }
 
 // ---------------------------------- events -----------------------------------

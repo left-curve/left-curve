@@ -55,6 +55,13 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_passive_pool(ctx, lp_denom)?;
             res.to_json_value()
         },
+        QueryMsg::LpDenom {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_lp_denom(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
     }
 }
 
@@ -157,4 +164,9 @@ fn query_orders_by_user(
 #[inline]
 fn query_passive_pool(ctx: ImmutableCtx, lp_denom: Denom) -> StdResult<Pool> {
     POOLS.load(ctx.storage, &lp_denom)
+}
+
+#[inline]
+fn query_lp_denom(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<Denom> {
+    LP_DENOMS.load(ctx.storage, (&base_denom, &quote_denom))
 }
