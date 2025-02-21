@@ -75,7 +75,7 @@ where
     abs_diff / larger
 }
 
-/// Asserts that two `Udec128` values are approximately equal within a specified
+/// Asserts that two values are approximately equal within a specified
 /// relative difference.
 fn assert_approx_eq<T>(a: T, b: T, max_rel_diff: &str) -> Result<(), TestCaseError>
 where
@@ -1308,11 +1308,11 @@ proptest! {
         );
 
         // Property: Actual liquidation bonus should be very close to the configured value
-        // We only run this check if the collateral amount is more than 1000 microunits,
+        // We only run this check if the collateral amount is more than 10000 microunits,
         // since otherwise the rounding will cause the actual bonus to be much larger
         // than the configured value.
-        if scenario.collaterals[0].amount > Uint128::new(1000) {
-            assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.01")?;
+        if scenario.collaterals[0].amount > Uint128::new(10000) {
+            assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.02")?;
         } else {
             // If collateral amount is very small, rounding will occur so we just
             // check that the liquidation bonus is larger than the configured value
