@@ -138,6 +138,13 @@ pub struct InstantiateMsg {
 }
 
 #[grug::derive(Serde)]
+/// A set of order IDs, either a specific set or all. Used to cancel orders.
+pub enum OrderIds {
+    Some(BTreeSet<OrderId>),
+    All,
+}
+
+#[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create new, or modify the parametes of existing, trading pairs.
     ///
@@ -174,7 +181,7 @@ pub enum ExecuteMsg {
     },
     /// Cancel one or more orders by IDs.
     CancelOrders {
-        order_ids: BTreeSet<OrderId>,
+        order_ids: OrderIds,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity

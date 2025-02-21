@@ -381,7 +381,7 @@ fn cancel_order() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::CancelOrders {
-                order_ids: BTreeSet::from([!0]),
+                order_ids: dex::OrderIds::Some(BTreeSet::from([!0])),
             },
             coins! { DANGO_DENOM.clone() => 1 },
         )
@@ -426,7 +426,7 @@ fn submit_and_cancel_order_in_same_block() {
     let cancel_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::CancelOrders {
-            order_ids: BTreeSet::from([!0]),
+            order_ids: dex::OrderIds::Some(BTreeSet::from([!0])),
         },
         Coins::new(),
     )
