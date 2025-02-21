@@ -53,7 +53,7 @@ export function http(_url_?: string | undefined, config: HttpTransportConfig = {
     onFetchResponse,
   } = config;
   return ({ chain } = {}) => {
-    const url = _url_ || chain?.rpcUrls.default.http[0];
+    const url = _url_ || chain?.urls.rpc;
     if (!url) throw new UrlRequiredError();
 
     const batchOptions = typeof _batch_ === "object" ? _batch_ : { maxSize: 20, maxWait: 20 };

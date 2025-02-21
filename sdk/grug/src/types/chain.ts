@@ -39,12 +39,9 @@ export type Chain<custom extends Json | undefined = Json | undefined> = {
   nativeCoin: NativeCoin;
 
   /**
-   * The RPC URLs for the chain.
+   * The URLs for the chain.
    */
-  rpcUrls: {
-    [key: string]: ChainRpcUrls;
-    default: ChainRpcUrls;
-  };
+  urls: ChainUrls;
 
   /**
    * Indicates if the chain is a testnet.
@@ -76,9 +73,10 @@ export type ChainFees = {
   baseFeeMultiplier: number;
 };
 
-type ChainRpcUrls = {
-  http: readonly string[];
-  webSocket?: readonly string[] | undefined;
+type ChainUrls = {
+  rpc?: string;
+  webSocket?: string;
+  indexer: string;
 };
 
 type BlockExplorer = {

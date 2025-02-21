@@ -555,9 +555,9 @@ importers:
 
   ui/workers/mock-ibc:
     dependencies:
-      '@left-curve/sdk':
+      '@left-curve/dango':
         specifier: workspace:^
-        version: link:../../../sdk/grug
+        version: link:../../../sdk/dango
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 'catalog:'

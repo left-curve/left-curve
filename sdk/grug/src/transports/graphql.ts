@@ -61,7 +61,7 @@ export function graphql(
     onFetchResponse,
   } = config;
   return ({ chain } = {}) => {
-    const url = _url_ || chain?.rpcUrls.default.http[0];
+    const url = _url_ || chain?.urls.indexer;
     if (!url) throw new UrlRequiredError();
 
     const batchOptions = typeof _batch_ === "object" ? _batch_ : { maxSize: 20, maxWait: 20 };
@@ -109,7 +109,7 @@ export function graphql(
                 chainId
                 block {
                   blockHeight
-                  createdAt
+                  timestamp
                   hash
                 }
               }

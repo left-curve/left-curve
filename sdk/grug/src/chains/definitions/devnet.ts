@@ -17,7 +17,7 @@ export const devnet = /*#__PURE__*/ defineChain({
       accountPage: "/${address}",
     },
   },
-  rpcUrls: {
-    default: { http: ["https://devnet-rpc.dango.exchange/"] },
+  urls: {
+    indexer: "https://devnet-rpc.dango.exchange/",
   },
 });

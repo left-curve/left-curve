@@ -94,7 +94,7 @@ export type QueryResponse =
 
 export type ChainStatusResponse = {
   chainId: string;
-  lastFinalizedBlock: BlockInfo;
+  block: BlockInfo;
 };
 
 export type CodeResponse = Code;
