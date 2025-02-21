@@ -1,13 +1,10 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{home_directory::HomeDirectory, start::vm},
     clap::Parser,
     dango_app::ProposalPreparer,
-    dango_genesis::build_rust_codes,
     dango_httpd::{graphql::build_schema, server::config_app},
     grug_app::{App, NullIndexer},
     grug_db_disk::DiskDb,
-    grug_types::HashExt,
-    grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::sync::Arc,
@@ -32,25 +29,7 @@ impl HttpdCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         let db = DiskDb::open(app_dir.data_dir())?;
 
-        let codes = build_rust_codes();
-        let vm = HybridVm::new(self.wasm_cache_capacity, [
-            codes.account_factory.to_bytes().hash256(),
-            codes.account_margin.to_bytes().hash256(),
-            // codes.account_safe.to_bytes().hash256(),
-            codes.account_spot.to_bytes().hash256(),
-            codes.bank.to_bytes().hash256(),
-            codes.dex.to_bytes().hash256(),
-            codes.hyperlane.fee.to_bytes().hash256(),
-            codes.hyperlane.ism.to_bytes().hash256(),
-            codes.hyperlane.mailbox.to_bytes().hash256(),
-            codes.hyperlane.merkle.to_bytes().hash256(),
-            codes.hyperlane.va.to_bytes().hash256(),
-            codes.lending.to_bytes().hash256(),
-            codes.oracle.to_bytes().hash256(),
-            codes.taxman.to_bytes().hash256(),
-            codes.vesting.to_bytes().hash256(),
-            codes.warp.to_bytes().hash256(),
-        ]);
+        let vm = vm(self.wasm_cache_capacity);
 
         let context = non_blocking_indexer::IndexerBuilder::default()
             .with_database_url(&self.indexer_database_url)

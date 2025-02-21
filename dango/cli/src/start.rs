@@ -51,25 +51,7 @@ impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         let db = DiskDb::open(app_dir.data_dir())?;
 
-        let codes = build_rust_codes();
-        let vm = HybridVm::new(self.wasm_cache_capacity, [
-            codes.account_factory.to_bytes().hash256(),
-            codes.account_margin.to_bytes().hash256(),
-            codes.account_multi.to_bytes().hash256(),
-            codes.account_spot.to_bytes().hash256(),
-            codes.bank.to_bytes().hash256(),
-            codes.dex.to_bytes().hash256(),
-            codes.hyperlane.fee.to_bytes().hash256(),
-            codes.hyperlane.ism.to_bytes().hash256(),
-            codes.hyperlane.mailbox.to_bytes().hash256(),
-            codes.hyperlane.merkle.to_bytes().hash256(),
-            codes.hyperlane.va.to_bytes().hash256(),
-            codes.lending.to_bytes().hash256(),
-            codes.oracle.to_bytes().hash256(),
-            codes.taxman.to_bytes().hash256(),
-            codes.vesting.to_bytes().hash256(),
-            codes.warp.to_bytes().hash256(),
-        ]);
+        let vm = vm(self.wasm_cache_capacity);
 
         if self.indexer_enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
@@ -164,4 +146,26 @@ impl StartCmd {
             .await
             .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
     }
+}
+
+pub fn vm(wasm_cache_capacity: usize) -> HybridVm {
+    let codes = build_rust_codes();
+    HybridVm::new(wasm_cache_capacity, [
+        codes.account_factory.to_bytes().hash256(),
+        codes.account_margin.to_bytes().hash256(),
+        codes.account_multi.to_bytes().hash256(),
+        codes.account_spot.to_bytes().hash256(),
+        codes.bank.to_bytes().hash256(),
+        codes.dex.to_bytes().hash256(),
+        codes.hyperlane.fee.to_bytes().hash256(),
+        codes.hyperlane.ism.to_bytes().hash256(),
+        codes.hyperlane.mailbox.to_bytes().hash256(),
+        codes.hyperlane.merkle.to_bytes().hash256(),
+        codes.hyperlane.va.to_bytes().hash256(),
+        codes.lending.to_bytes().hash256(),
+        codes.oracle.to_bytes().hash256(),
+        codes.taxman.to_bytes().hash256(),
+        codes.vesting.to_bytes().hash256(),
+        codes.warp.to_bytes().hash256(),
+    ])
 }

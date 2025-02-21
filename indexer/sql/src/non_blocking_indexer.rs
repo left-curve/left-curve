@@ -220,7 +220,6 @@ where
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-#[derive(Clone)]
 pub struct NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
@@ -602,9 +601,9 @@ where
 // ------------------------------- RuntimeHandler ------------------------------
 
 /// Wrapper around Tokio runtime to allow running in sync context
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct RuntimeHandler {
-    pub runtime: Arc<Option<Runtime>>,
+    pub runtime: Option<Runtime>,
     handle: Handle,
 }
 
@@ -619,10 +618,7 @@ impl Default for RuntimeHandler {
                 (Some(runtime), handle)
             },
         };
-        Self {
-            runtime: Arc::new(runtime),
-            handle,
-        }
+        Self { runtime, handle }
     }
 }
 

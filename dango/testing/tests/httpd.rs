@@ -24,7 +24,7 @@ use {
     tokio::sync::mpsc,
 };
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
@@ -106,7 +106,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
                     .collect::<Vec<_>>())
                 .is_equal_to(vec!["100000000", "100000000"]);
 
-                Ok::<_, anyhow::Error>(response)
+                Ok::<(), anyhow::Error>(())
             })
             .await
         })
