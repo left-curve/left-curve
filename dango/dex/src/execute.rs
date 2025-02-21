@@ -298,9 +298,6 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         .add_subevents(events))
 }
 
-/// Provide liquidity to a pool. The liquidity is provided in the same ratio as the
-/// current pool reserves. The required funds MUST be sent with the message. Any
-/// funds sent in excess of the required amount will be returned to the sender.
 #[inline]
 fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
     // Get the funds from sent

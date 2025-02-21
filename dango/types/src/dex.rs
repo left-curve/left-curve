@@ -176,11 +176,14 @@ pub enum ExecuteMsg {
     CancelOrders {
         order_ids: BTreeSet<OrderId>,
     },
-    /// Provide passive liquidity to a pair.
+    /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
+    /// equivalent to a swap to reach the pool ratio, followed by a liquidity
+    /// provision at pool ratio.
     ProvideLiquidity {
         lp_denom: Denom,
     },
-    // Withdraw passive liquidity from a pair.
+    // Withdraw passive liquidity from a pair. Withdrawal is always performed at
+    // the pool ratio.
     WithdrawLiquidity {},
 }
 
