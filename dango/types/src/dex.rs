@@ -79,6 +79,14 @@ impl PrimaryKey for Direction {
 }
 
 #[grug::derive(Serde)]
+pub struct Swap {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub amount: Uint128,
+}
+
+#[grug::derive(Serde)]
 pub struct Pair {
     pub base_denom: Denom,
     pub quote_denom: Denom,
@@ -182,6 +190,10 @@ pub enum ExecuteMsg {
     /// Cancel one or more orders by IDs.
     CancelOrders {
         order_ids: OrderIds,
+    },
+    /// Perform the swaps
+    BatchSwap {
+        swaps: Vec<Swap>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity

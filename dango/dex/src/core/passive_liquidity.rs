@@ -240,8 +240,8 @@ impl TradingFunction for CurveInvariant {
         );
         match self {
             CurveInvariant::Xyk => {
-                let a = reserves.first().amount.clone();
-                let b = reserves.second().amount.clone();
+                let a = reserves.amount_of(&coin_in.denom);
+                let b = reserves.amount_of(denom_out);
 
                 // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
                 // => amount_out = B - (A * B) / (A + offer.amount)

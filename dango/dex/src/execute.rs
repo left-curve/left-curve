@@ -8,7 +8,7 @@ use {
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE,
+            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Swap, LP_NAMESPACE,
             NAMESPACE,
         },
     },
@@ -52,6 +52,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             amount,
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
+        ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
         ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
@@ -235,6 +236,40 @@ fn submit_order(
 }
 
 #[inline]
+fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
+    let mut funds = ctx.funds.clone();
+    for swap in swaps {
+        // Read the LP token denom from the storage. If it is not found under
+        // either (base_denom, quote_denom) or (quote_denom, base_denom), then
+        // error.
+        let lp_denom =
+            match LP_DENOMS.may_load(ctx.storage, (&swap.base_denom, &swap.quote_denom))? {
+                Some(denom) => denom,
+                None => LP_DENOMS.load(ctx.storage, (&swap.quote_denom, &swap.base_denom))?,
+            };
+
+        // Load the pool
+        let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
+
+        // Calculate the out amount and update the pool reserves
+        let (offer, ask) = pool.swap(&swap)?;
+
+        // Save the updated pool
+        POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+        // Deduct the offer and add the ask to the funds. The funds sent are mutated
+        // by the swap to reflect the user funds after the swap. This allows multiple
+        // swaps using the output of the previous swap as the input for the next swap.
+        funds
+            .deduct(offer)
+            .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
+        funds.insert(ask)?;
+    }
+
+    // Send back any unused funds together with proceeds from swaps
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, funds)?))
+}
+
 fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
