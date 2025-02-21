@@ -404,9 +404,35 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
     assert!(lp_supply.is_non_zero(), "LP token supply is zero");
 
     // Calculate the funds to provide and the amount of LP tokens to mint
-    // Calculate the funds to provide and the amount of LP tokens to mint
-    let mint_ratio = pool.add_liquidity(funds)?;
+    let mint_ratio = pool.add_liquidity(funds.clone())?;
     let lp_mint_amount = lp_supply.checked_mul_dec_floor(mint_ratio)?;
+
+    // Apply swap fee to unbalanced provision
+    fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
+        if a > b {
+            a - b
+        } else {
+            b - a
+        }
+    }
+    let (a, b, reserves_a, reserves_b) = (
+        funds.first().amount.clone(),
+        funds.second().amount.clone(),
+        pool.reserves.first().amount.clone(),
+        pool.reserves.second().amount.clone(),
+    );
+    let sum_reserves = reserves_a.checked_add(reserves_b)?;
+    let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
+    let fee_rate = Udec128::checked_from_ratio(
+        abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
+        sum_reserves,
+    )?
+    .checked_mul(
+        pool.swap_fee
+            .checked_div(Udec128::checked_from_ratio(2, 1)?)?,
+    )?;
+    let lp_mint_amount_after_fees =
+        lp_mint_amount.checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
 
     // Save the updated pool
     POOLS.save(ctx.storage, &lp_denom, &pool)?;
@@ -418,7 +444,7 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
         &bank::ExecuteMsg::Mint {
             to: ctx.sender,
             denom: lp_denom,
-            amount: lp_mint_amount,
+            amount: lp_mint_amount_after_fees,
         },
         Coins::new(), // No funds needed for minting
     )?;
