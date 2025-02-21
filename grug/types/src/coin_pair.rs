@@ -1,5 +1,5 @@
 use {
-    crate::{Coin, CoinRef, CoinRefMut, Coins, StdError, StdResult},
+    crate::{Coin, CoinRef, CoinRefMut, Coins, Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{IsZero, MultiplyRatio, Number, Uint128},
     serde::{de, Serialize},
@@ -7,9 +7,6 @@ use {
 };
 
 /// A _sorted_ pair of coins of distinct denoms and possibly zero amounts.
-///
-/// Note: unlike [`Coins`](crate::Coins), which contains only coins of non-zero
-/// amounts, a `CoinPair` may contain zero amounts.
 #[derive(Serialize, BorshSerialize, Clone, Debug, PartialEq, Eq)]
 pub struct CoinPair([Coin; 2]);
 
@@ -154,6 +151,48 @@ impl CoinPair {
                 amount: amount2,
             },
         ]))
+    }
+
+    pub fn has(&self, denom: &Denom) -> bool {
+        self.first().denom == denom || self.second().denom == denom
+    }
+
+    pub fn amount_of(&self, denom: &Denom) -> Uint128 {
+        if self.first().denom == denom {
+            self.first().amount.clone()
+        } else {
+            self.second().amount.clone()
+        }
+    }
+
+    pub fn checked_add(&mut self, other: &Coin) -> StdResult<&mut Self> {
+        if self.first().denom == &other.denom {
+            self.first_mut().amount.checked_add_assign(other.amount)?;
+        } else if self.second().denom == &other.denom {
+            self.second_mut().amount.checked_add_assign(other.amount)?;
+        } else {
+            return Err(StdError::invalid_coins(format!(
+                "can't add coin {} to coin pair {:?}",
+                other, self
+            )));
+        }
+
+        Ok(self)
+    }
+
+    pub fn checked_sub(&mut self, other: &Coin) -> StdResult<&mut Self> {
+        if self.first().denom == &other.denom {
+            self.first_mut().amount.checked_sub_assign(other.amount)?;
+        } else if self.second().denom == &other.denom {
+            self.second_mut().amount.checked_sub_assign(other.amount)?;
+        } else {
+            return Err(StdError::invalid_coins(format!(
+                "can't subtract coin {} from coin pair {:?}",
+                other, self
+            )));
+        }
+
+        Ok(self)
     }
 }
 
