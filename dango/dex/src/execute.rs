@@ -8,8 +8,8 @@ use {
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Swap, LP_NAMESPACE,
-            NAMESPACE,
+            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, SlippageControl,
+            Swap, LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -253,6 +253,38 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
 
         // Calculate the out amount and update the pool reserves
         let (offer, ask) = pool.swap(&swap)?;
+
+        if let Some(slippage_control) = swap.slippage {
+            match slippage_control {
+                SlippageControl::MinimumOut(min_out) => {
+                    ensure!(
+                        swap.direction != Direction::Bid,
+                        "minimum out is only supported for direction: ask"
+                    );
+                    ensure!(ask.amount >= min_out, "slippage tolerance exceeded");
+                },
+                SlippageControl::MaximumIn(max_in) => {
+                    ensure!(
+                        swap.direction != Direction::Ask,
+                        "maximum in is only supported for direction: bid"
+                    );
+                    ensure!(offer.amount <= max_in, "slippage tolerance exceeded");
+                },
+                SlippageControl::PriceLimit(price_limit) => {
+                    let execution_price = Udec128::checked_from_ratio(ask.amount, offer.amount)?;
+                    match swap.direction {
+                        Direction::Bid => ensure!(
+                            execution_price <= price_limit,
+                            "slippage tolerance exceeded"
+                        ),
+                        Direction::Ask => ensure!(
+                            execution_price >= price_limit,
+                            "slippage tolerance exceeded"
+                        ),
+                    }
+                },
+            }
+        }
 
         // Save the updated pool
         POOLS.save(ctx.storage, &lp_denom, &pool)?;
