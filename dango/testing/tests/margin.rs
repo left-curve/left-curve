@@ -10,9 +10,9 @@ use {
         },
         account_factory::AccountParams,
         config::AppConfig,
-        constants::{USDC_DENOM, WBTC_DENOM},
-        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest},
-        oracle::{self, PrecisionedPrice, PrecisionlessPrice},
+        constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
+        lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
+        oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
         btree_map, coins, Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner,
@@ -22,7 +22,12 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
-    std::{cmp::min, str::FromStr},
+    std::{
+        cmp::min,
+        fmt::Display,
+        ops::{Div, Sub},
+        str::FromStr,
+    },
 };
 
 /// An example Pyth VAA for an USDC price feed.
@@ -44,10 +49,13 @@ const WBTC_VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neOb
 const WBTC_VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQNHHIXSITl1E5rklfcRJ+fTmdXaBHA1Rhpd4AKd6gpJbGvcVZT0bmi5p1aaw10oEkruufXhvmEDgtCE1WENpk0xAARVRgaUYTxGBqPnzyOD6flYdHgL21qD2wm4AwHw8WMNOR3yvLDjuRkPdKCUHLUbOuaiUPJzK7DqphslPmTtChyXAQba+OsLHO3tJP5mFTfp9C0+wYbFk5DaXLYo0dHpshKqkC0tzXFrxzwiFUJscJ/qO5YC/ELvSB7eOyyYACqdzwJ+AQi+TpwsCHYMqT/DgSC3R4Il8WVVwp9KByaoAwswCH4y1mCtaV/rkpDHbK9dA9hm1hsEhpt3706y0YgttJny7uqCAQrPJK5440aRWGWqAUOH9COAomYlwb/qS+GJPRu5WizFIkhlsFK1osJSnHD5hmyXL0y58IyznYIjSr23/7RwWu//AAtm1B5zLdF2QgpQOLn3GGO8XNsvyWTb78I9oh1PQxnM+Rg89ImtRNpcbB9bF7wL3/wFUlZuBQGkm6igEzwzn/MGAAweFo1G9Fi0U9O9TjkUwGAKu4vVjwyP7j7tUI1FaYvRSxgL8Xvsx6uGePebx1y8V6TPcbjVR7ElL6TdKkOoVYxkAQ0M2X/klMnTmnBEZP1uMv4uAirn5QtFPX+q0FRI2Vnd/mPc1hF1saZ7kxah9M+V/1uGTQACalJBcLDLLbIcugy4AA5pvhB/AMUhVT5ejOO8ivazNhNtRhyp21Qk/qVYk8dmkhA+QY7RdjTXuU8TQg8e9HPhCo1/pNvt3NCZIP/ylNPHAQ+YF5H8kAq8OVTZlGvI7WvE6TKNtu8O9TuSdgibj5M3xFfZWf2hZZjuugKHVCe9DI0T+TIcjlyvON6+PrETUwNgARCfgdbK0GZ/Rw2GxakrXnE65vyUfMzTY63S93XcVrNlvSpEJIWbS2hhvxFw45WEksxPko6UfMJPpTZKG3sIAb4jABG1t35Wbn+AJ0fkoBPQL5lbRJVBTtY4RgBwhQnFKb2BdH8kHFI2DZD1pH+563Z08/RBPCjN48GZZzitp9OvBx8hABJTX8Up7HtYhLbqQendITTU3L27cmrGzjYHM7lR7VBlCBV7ebLHD8gShmxcJrPWnCCbuk6BrGRsTU7dgtz46U7jAGdJxewAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFv/gqAUFVV1YAAAAAAArM0q4AACcQvH/JSE5oq9bhIvQg1VV414fW/SsBAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAjRZEA9pwAAAAKQIm7x////+AAAAABnScXsAAAAAGdJxewAAAjPg8DAoAAAAAKaCFQ0CwdL0pYZ6jFIksWRnD8Yx1WX4LYMrhe9/+Z0T3i7MarKAlss59jV+mt6A/kKK+jDSP/oJz8vRNcCi8ZBhb/Qe7dJHJxIUzii5JHD9ItZ66YI1350NAVkQOysOWecA2JNOP1cK9RCHretlbv//OPlp7zfi8yn/wOr2RxcXPaERgM9r95qX6ltsOq8F6ZA45dR5DLrkby3Ymn1z+pLBYQWSubgJD5s8LNiBGKhME1OtZozdQZ9ifYY4FxdYRqBeiGgfunKrCJYh9Ud6LA+Xl+hRui8fmq8VIhmsxaPpPg=";
 
 /// Calculates the relative difference between two `Udec128` values.
-fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
+fn relative_difference<T>(a: T, b: T) -> T
+where
+    T: NumberConst + Number + PartialOrd + Sub<Output = T> + Div<Output = T>,
+{
     // Handle the case where both numbers are zero
-    if a == Udec128::ZERO && b == Udec128::ZERO {
-        return Udec128::ZERO;
+    if a == T::ZERO && b == T::ZERO {
+        return T::ZERO;
     }
 
     // Calculate absolute difference
@@ -68,10 +76,13 @@ fn relative_difference(a: Udec128, b: Udec128) -> Udec128 {
     abs_diff / larger
 }
 
-/// Asserts that two `Udec128` values are approximately equal within a specified
+/// Asserts that two values are approximately equal within a specified
 /// relative difference.
-fn assert_approx_eq(a: Udec128, b: Udec128, max_rel_diff: &str) -> Result<(), TestCaseError> {
-    let rel_diff = relative_difference(a, b);
+fn assert_approx_eq<T>(a: T, b: T, max_rel_diff: &str) -> Result<(), TestCaseError>
+where
+    T: NumberConst + Number + PartialOrd + Sub<Output = T> + Div<Output = T> + Display,
+{
+    let rel_diff = Udec128::from_str(relative_difference(a, b).to_string().as_str()).unwrap();
 
     prop_assert!(
         rel_diff <= Udec128::from_str(max_rel_diff).unwrap(),
@@ -225,9 +236,9 @@ fn margin_account_creation() {
 /// - feeds the oracle with a price for USDC (~$1) and WBTC (~$71K)
 /// - creates a margin account
 /// - deposits some USDC into the lending pool
+/// - deposits some WBTC into the lending pool
 /// - whitelists USDC as collateral at 100% power
-/// - whitelists WBTC as collatearal at 80% power
-/// - borrows from the margin account
+/// - whitelists WBTC as collateral at 80% power
 fn setup_margin_test_env(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     accounts: &mut TestAccounts,
@@ -589,6 +600,226 @@ fn liquidation_works_with_multiple_debt_denoms() {
         "0.0001",
     )
     .unwrap();
+}
+
+#[test]
+fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
+
+    // Send some USDC to the margin account as collateral (needed to cover interest from borrowing)
+    suite
+        .transfer(
+            &mut accounts.user1,
+            margin_account.address(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Borrow some USDC with the margin account
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap()), // 1K USDC
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to deposit 100 USDC into the lending pool, should fail since it's not listed as collateral yet
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap(),
+        )
+        .should_fail_with_error("this action would make account undercollateralized!");
+
+    // Query market for USDC
+    let market = suite
+        .query_wasm_smart(contracts.lending, QueryMarketRequest {
+            denom: USDC_DENOM.clone(),
+        })
+        .unwrap();
+
+    // List the LP token as collateral at 100% power
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        market.supply_lp_denom.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Register price source for LP token
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                market.supply_lp_denom.clone() => PriceSource::LendingLiquidity,
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to deposit 100 USDC into the lending pool, should succeed
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC_DENOM.clone(), 1_000_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Query LP token balance
+    let lp_balance = suite
+        .query_balance(&margin_account.address(), market.supply_lp_denom.clone())
+        .unwrap();
+    assert!(lp_balance.is_non_zero());
+}
+
+#[test]
+fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
+
+    // Send some USDC to the margin account as collateral
+    suite
+        .transfer(
+            &mut accounts.user1,
+            margin_account.address(),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Register fixed price source for dango
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        DANGO_DENOM.clone(),
+        Udec128::ONE,
+        6,
+    );
+
+    // Set collateral power for DANGO at 100%
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        DANGO_DENOM.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Create a limit order
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.dex,
+            &dango_types::dex::ExecuteMsg::SubmitOrder {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: dango_types::dex::Direction::Bid,
+                amount: Uint128::new(100_000_000),
+                price: Udec128::ONE,
+            },
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Query account's health and ensure the limit order is counted as collateral
+    let health = suite
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .unwrap();
+    assert_eq!(
+        health.total_adjusted_collateral_value,
+        Udec128::from_str("100").unwrap(),
+    );
+    assert_eq!(
+        health.limit_order_collaterals,
+        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+    );
+    assert_eq!(
+        health.limit_order_outputs,
+        Coins::one(DANGO_DENOM.clone(), 100_000_000).unwrap(),
+    );
+    assert_eq!(health.collaterals, Coins::new());
+
+    // Borrow some WBTC with the margin account
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(WBTC_DENOM.clone(), 600_000).unwrap()), // 0.006 WBTC = 426 USD
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Feed the oracle price of WBTC to $96k to make the account undercollateralised
+    feed_oracle_price(&mut suite, &mut accounts, &contracts, WBTC_VAA_2);
+
+    // Query account's health to ensure it is undercollateralised
+    let health = suite
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .unwrap();
+    assert!(health.utilization_rate > Udec128::ONE);
+
+    // Check liquidator account's USDC and WBTC balance before
+    let usdc_balance_before = suite
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
+        .unwrap();
+    let wbtc_balance_before = suite
+        .query_balance(&accounts.user1.address(), WBTC_DENOM.clone())
+        .unwrap();
+
+    // Liquidate the margin account
+    suite
+        .execute(
+            &mut accounts.user1,
+            margin_account.address(),
+            &account::margin::ExecuteMsg::Liquidate {
+                collateral: USDC_DENOM.clone(),
+            },
+            Coins::one(WBTC_DENOM.clone(), 600_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Check liquidator account's USDC and WBTC balance after
+    let usdc_balance_after = suite
+        .query_balance(&accounts.user1.address(), USDC_DENOM.clone())
+        .unwrap();
+    let wbtc_balance_after = suite
+        .query_balance(&accounts.user1.address(), WBTC_DENOM.clone())
+        .unwrap();
+
+    // Ensure liquidator received the liquidated collateral and bonus
+    let wbtc_price = suite
+        .query_price(contracts.oracle.address(), &WBTC_DENOM, None)
+        .unwrap();
+    let liquidator_usdc_increase = usdc_balance_after.checked_sub(usdc_balance_before).unwrap();
+    let liquidator_wbtc_decrease = wbtc_balance_before.checked_sub(wbtc_balance_after).unwrap();
+    assert!(liquidator_usdc_increase > Uint128::new(95_000_000));
+    assert_approx_eq(
+        liquidator_wbtc_decrease,
+        wbtc_price
+            .unit_amount_from_value(Udec128::new(100))
+            .unwrap(),
+        "0.0001",
+    )
+    .unwrap();
+
+    // Query account's health to ensure it has been liquidated
+    let health = suite
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .unwrap();
+    assert!(health.limit_order_collaterals.is_empty());
+    assert!(health.limit_order_outputs.is_empty());
+    assert!(health.collaterals.amount_of(&USDC_DENOM) < Uint128::new(100)); // some dust left
+    assert_eq!(
+        health.debts.amount_of(&WBTC_DENOM),
+        Uint128::new(600_000) - liquidator_wbtc_decrease,
+    );
 }
 
 #[derive(Debug, Clone)]
@@ -1014,7 +1245,7 @@ proptest! {
         let liquidator_worth_before = liquidator_balances_before
             .clone()
             .into_iter().map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1037,7 +1268,7 @@ proptest! {
         let liquidator_worth_after = liquidator_balances_after
             .into_iter()
             .map(|coin| {
-                let price = suite.query_price(contracts.oracle, &coin.denom).unwrap();
+                let price = suite.query_price(contracts.oracle, &coin.denom, None).unwrap();
                 price.value_of_unit_amount(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
@@ -1063,7 +1294,7 @@ proptest! {
         let repaid_debt_value = liquidation_event.repaid_debt_value;
         let claimed_collateral_amount = liquidation_event.claimed_collateral_amount;
         let claimed_collateral_value = suite
-            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom)
+            .query_price(contracts.oracle, &scenario.collaterals[0].denom.denom, None)
             .unwrap()
             .value_of_unit_amount(claimed_collateral_amount)
             .unwrap();
@@ -1078,11 +1309,11 @@ proptest! {
         );
 
         // Property: Actual liquidation bonus should be very close to the configured value
-        // We only run this check if the collateral amount is more than 1000 microunits,
+        // We only run this check if the collateral amount is more than 10000 microunits,
         // since otherwise the rounding will cause the actual bonus to be much larger
         // than the configured value.
-        if scenario.collaterals[0].amount > Uint128::new(1000) {
-            assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.01")?;
+        if scenario.collaterals[0].amount > Uint128::new(10000) {
+            assert_approx_eq(liquidation_bonus, liquidation_bonus_from_event, "0.02")?;
         } else {
             // If collateral amount is very small, rounding will occur so we just
             // check that the liquidation bonus is larger than the configured value
