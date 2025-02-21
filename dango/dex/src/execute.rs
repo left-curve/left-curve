@@ -1,20 +1,21 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
-        NEXT_ORDER_ID, ORDERS, PAIRS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
+        INCOMING_ORDERS, LP_DENOMS, NEXT_ORDER_ID, ORDERS, PAIRS, POOLS,
     },
     anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
-            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
+            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, SlippageControl, Swap,
+            LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -37,6 +38,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
             batch_update_pairs(ctx, updates)
         },
+        ExecuteMsg::CreatePassivePool {
+            base_denom,
+            quote_denom,
+            curve_type,
+            lp_denom,
+            swap_fee,
+        } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
         ExecuteMsg::SubmitOrder {
             base_denom,
             quote_denom,
@@ -66,6 +74,73 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     }
 
     Ok(Response::new().add_subevents(events))
+}
+
+#[inline]
+fn create_passive_pool(
+    ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    curve_type: CurveInvariant,
+    lp_denom: Denom,
+    swap_fee: Udec128,
+) -> anyhow::Result<Response> {
+    // Only the owner can create a passive pool
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "Only the owner can create a passive pool"
+    );
+
+    // Ensure the pool doesn't already exist
+    ensure!(
+        !POOLS.has(ctx.storage, &lp_denom),
+        "Pool already exists for pair ({base_denom}, {quote_denom})"
+    );
+
+    // Ensure the LP token denom is valid
+    let parts = lp_denom.inner();
+    ensure!(
+        parts.len() == 3 && parts[0] == *NAMESPACE && parts[1] == *LP_NAMESPACE,
+        "invalid LP token denom"
+    );
+
+    // Validate swap fee
+    ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
+
+    // Ensure the funds contain only the base and quote denoms and contain both
+    ensure!(
+        ctx.funds.has(&base_denom) && ctx.funds.has(&quote_denom) && ctx.funds.len() == 2,
+        "Invalid funds. Must send only the base and quote denoms and both must be present."
+    );
+
+    // Save the LP token denom
+    LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
+
+    let (pool, initial_lp_supply) = PassiveLiquidityPool::initialize(
+        base_denom,
+        quote_denom,
+        ctx.funds.try_into()?,
+        curve_type,
+        swap_fee,
+    )?;
+
+    // Create the pool
+    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+    // Create mint message. Mint the initial LP token supply to the contract
+    // to ensure the pool is never emptied.
+    let bank = ctx.querier.query_bank()?;
+    let mint_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Mint {
+            to: ctx.contract,
+            denom: lp_denom,
+            amount: initial_lp_supply,
+        },
+        Coins::new(),
+    )?;
+
+    Ok(Response::new().add_message(mint_msg))
 }
 
 #[inline]
