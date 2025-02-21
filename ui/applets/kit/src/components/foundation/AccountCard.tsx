@@ -16,6 +16,7 @@ const accountTypeBadgeColor = {
 } as const;
 
 export const AccountCard: React.FC<Props> = ({ account, balance, balanceChange }) => {
+  if (!account) return null;
   const { address, type } = account;
   const name = `${account?.type} #${account?.index}`;
 

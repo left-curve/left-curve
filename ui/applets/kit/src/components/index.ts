@@ -3,6 +3,7 @@
 /* -------------------------------------------------------------------------- */
 
 export { Button, type ButtonProps } from "./foundation/Button";
+export { IconButton, type IconButtonProps } from "./foundation/IconButton";
 export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
