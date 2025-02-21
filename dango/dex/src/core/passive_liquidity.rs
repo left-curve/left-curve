@@ -1,10 +1,7 @@
 use {
     anyhow::ensure,
-    dango_types::dex::{CurveInvariant, Direction, Pool, Swap},
-    grug::{
-        Coin, CoinPair, Denom, Int, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
-    },
+    dango_types::dex::{CurveInvariant, Pool},
+    grug::{Coin, CoinPair, Denom, IsZero, Number, NumberConst, Udec128, Uint128},
 };
 
 pub trait PassiveLiquidityPool {
@@ -41,7 +38,6 @@ pub trait PassiveLiquidityPool {
 pub trait TradingFunction {
     /// Calculate the value of the trading invariant.
     fn invariant(&self, reserves: &CoinPair) -> anyhow::Result<Uint128>;
-
 }
 
 impl PassiveLiquidityPool for Pool {
@@ -104,11 +100,11 @@ impl PassiveLiquidityPool for Pool {
         self.reserves
             .checked_add(&Coin::new(
                 funds.first().denom.clone(),
-                funds.first().amount.clone(),
+                *funds.first().amount,
             )?)?
             .checked_add(&Coin::new(
                 funds.second().denom.clone(),
-                funds.second().amount.clone(),
+                *funds.second().amount,
             )?)?;
 
         // Compute the proportional increase in the invariant
@@ -138,15 +134,12 @@ impl PassiveLiquidityPool for Pool {
     ) -> anyhow::Result<CoinPair> {
         Ok(self.reserves.split(numerator, denominator)?)
     }
-
 }
 
 impl TradingFunction for CurveInvariant {
     fn invariant(&self, reserves: &CoinPair) -> anyhow::Result<Uint128> {
         match self {
-            CurveInvariant::Xyk => {
-                Ok(reserves.first().amount.clone() * reserves.second().amount.clone())
-            },
+            CurveInvariant::Xyk => Ok(*reserves.first().amount * *reserves.second().amount),
         }
     }
 }

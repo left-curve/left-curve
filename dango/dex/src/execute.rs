@@ -8,8 +8,8 @@ use {
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, SlippageControl, Swap,
-            LP_NAMESPACE, NAMESPACE,
+            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE,
+            NAMESPACE,
         },
     },
     grug::{
@@ -346,10 +346,10 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
         }
     }
     let (a, b, reserves_a, reserves_b) = (
-        funds.first().amount.clone(),
-        funds.second().amount.clone(),
-        pool.reserves.first().amount.clone(),
-        pool.reserves.second().amount.clone(),
+        *funds.first().amount,
+        *funds.second().amount,
+        *pool.reserves.first().amount,
+        *pool.reserves.second().amount,
     );
     let sum_reserves = reserves_a.checked_add(reserves_b)?;
     let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;

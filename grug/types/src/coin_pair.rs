@@ -159,9 +159,9 @@ impl CoinPair {
 
     pub fn amount_of(&self, denom: &Denom) -> Uint128 {
         if self.first().denom == denom {
-            self.first().amount.clone()
+            *self.first().amount
         } else {
-            self.second().amount.clone()
+            *self.second().amount
         }
     }
 

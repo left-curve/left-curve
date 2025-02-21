@@ -173,7 +173,10 @@ pub enum ExecuteMsg {
         price: Udec128,
     },
     /// Cancel one or more orders by IDs.
-    // Provide passive liquidity to a pair.
+    CancelOrders {
+        order_ids: BTreeSet<OrderId>,
+    },
+    /// Provide passive liquidity to a pair.
     ProvideLiquidity {
         lp_denom: Denom,
     },
