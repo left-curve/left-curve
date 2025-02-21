@@ -642,14 +642,14 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
 }
 
 #[test_case(
-    Uint128::new(10000),
+    Uint128::new(100),
     coins! {
         DANGO_DENOM.clone() => 100,
         USDC_DENOM.clone()  => 100,
     } ; "withdrawa all"
 )]
 #[test_case(
-    Uint128::new(5000),
+    Uint128::new(50),
     coins! {
         DANGO_DENOM.clone() => 50,
         USDC_DENOM.clone()  => 50,
@@ -661,6 +661,10 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
     let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
 
     // Create a passive pool.
+    let initial_funds = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
     suite
         .execute(
             &mut accounts.owner,
@@ -672,7 +676,7 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
                 lp_denom: lp_denom.clone(),
                 swap_fee: Udec128::ZERO,
             },
-            Coins::new(),
+            initial_funds.clone(),
         )
         .should_succeed();
 
@@ -730,9 +734,11 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
             lp_denom: lp_denom.clone(),
         })
         .should_succeed_and(|pool| {
-            pool.reserves
-                == *provided_funds
+            Coins::from(pool.reserves.clone())
+                == *initial_funds
                     .clone()
+                    .insert_many(provided_funds)
+                    .unwrap()
                     .deduct_many(expected_funds_returned)
                     .unwrap()
         });
