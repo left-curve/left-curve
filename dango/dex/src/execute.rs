@@ -53,6 +53,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
+        ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
     }
 }
 
@@ -295,6 +296,91 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         .add_message(Message::transfer(ctx.sender, refunds)?)
         .add_subevents(events))
 }
+
+/// Provide liquidity to a pool. The liquidity is provided in the same ratio as the
+/// current pool reserves. The required funds MUST be sent with the message. Any
+/// funds sent in excess of the required amount will be returned to the sender.
+#[inline]
+fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
+    // Get the funds from sent
+    let funds: CoinPair = ctx.funds.try_into()?;
+
+    let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
+
+    // Ensure the funds are valid. They must only contain the base and quote denoms and must contain both
+    ensure!(
+        funds.has(&pool.base_denom) || funds.has(&pool.quote_denom),
+        "Invalid funds. Must send at least one coin in the pair. Sent: {:?}, {:?}, {:?}",
+        funds,
+        pool.base_denom,
+        pool.quote_denom
+    );
+
+    // Ensure the pair is registered
+    ensure!(
+        PAIRS.has(ctx.storage, (&pool.base_denom, &pool.quote_denom)),
+        "Pair not found."
+    );
+
+    // Ensure the pool has reserves
+    ensure!(
+        pool.reserves.first().amount.is_non_zero() && pool.reserves.second().amount.is_non_zero(),
+        "Cannot add liquidity to pool with zero reserves"
+    );
+
+    // Query the LP token supply
+    let lp_supply = ctx.querier.query_supply(lp_denom.clone())?;
+    assert!(lp_supply.is_non_zero(), "LP token supply is zero");
+
+    // Calculate the funds to provide and the amount of LP tokens to mint
+    let mint_ratio = pool.add_liquidity(funds.clone())?;
+    let lp_mint_amount = lp_supply.checked_mul_dec_floor(mint_ratio)?;
+
+    // Apply swap fee to unbalanced provision
+    fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
+        if a > b {
+            a - b
+        } else {
+            b - a
+        }
+    }
+    let (a, b, reserves_a, reserves_b) = (
+        funds.first().amount.clone(),
+        funds.second().amount.clone(),
+        pool.reserves.first().amount.clone(),
+        pool.reserves.second().amount.clone(),
+    );
+    let sum_reserves = reserves_a.checked_add(reserves_b)?;
+    let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
+    let fee_rate = Udec128::checked_from_ratio(
+        abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
+        sum_reserves,
+    )?
+    .checked_mul(
+        pool.swap_fee
+            .checked_div(Udec128::checked_from_ratio(2, 1)?)?,
+    )?;
+    let lp_mint_amount_after_fees =
+        lp_mint_amount.checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
+
+    // Save the updated pool
+    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+    // Create mint message
+    let bank = ctx.querier.query_bank()?;
+    let mint_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Mint {
+            to: ctx.sender,
+            denom: lp_denom,
+            amount: lp_mint_amount_after_fees,
+        },
+        Coins::new(), // No funds needed for minting
+    )?;
+
+    Ok(Response::new().add_message(mint_msg))
+}
+
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
