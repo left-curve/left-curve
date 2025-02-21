@@ -313,7 +313,7 @@ pub fn secp256k1_pubkey_recover(
             Err(err) => (err.into_error_code(), 0),
         };
 
-    Ok(((error_code as u64) << 32 | (ptr as u64)))
+    Ok(((error_code as u64) << 32) | (ptr as u64))
 }
 
 pub fn ed25519_verify(
