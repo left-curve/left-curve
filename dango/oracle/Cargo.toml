@@ -19,6 +19,7 @@ library = []
 
 [dependencies]
 anyhow        = { workspace = true }
+dango-dex     = { workspace = true, features = ["library"] }
 dango-lending = { workspace = true, features = ["library"] }
 dango-types   = { workspace = true }
 grug          = { workspace = true }

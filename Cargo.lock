@@ -3275,6 +3275,7 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-dex",
  "dango-lending",
  "dango-types",
  "grug",

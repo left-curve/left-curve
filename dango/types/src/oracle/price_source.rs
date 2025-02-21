@@ -29,4 +29,6 @@ pub enum PriceSource {
     },
     /// A price source for an LP token of the lending pool.
     LendingLiquidity,
+    /// A price source for an lP token of a passive liquidity pool.
+    PassiveLiquidity,
 }

@@ -11,6 +11,7 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
+        dex::{self, CurveInvariant},
         lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
@@ -677,6 +678,111 @@ fn tokens_deposited_into_lending_pool_are_counted_as_collateral() {
         .query_balance(&margin_account.address(), market.supply_lp_denom.clone())
         .unwrap();
     assert!(lp_balance.is_non_zero());
+}
+
+#[test]
+fn tokens_deposited_into_passive_liquidity_pool_are_counted_as_collateral() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+    let mut margin_account = setup_margin_test_env(&mut suite, &mut accounts, &contracts);
+
+    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+
+    // Set collateral power for DANGO at 100%
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        DANGO_DENOM.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Register fixed price source for dango
+    register_fixed_price(
+        &mut suite,
+        &mut accounts,
+        &contracts,
+        DANGO_DENOM.clone(),
+        Udec128::ONE,
+        6,
+    );
+
+    // List the LP token as collateral at 100% power
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        lp_denom.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Register price source for LP token
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(
+                btree_map! { lp_denom.clone() => PriceSource::PassiveLiquidity, },
+            ),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Create a passive liquidity pool
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let funds = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+
+    // Send some USDC and DANGO to the margin account
+    suite
+        .transfer(&mut accounts.user1, margin_account.address(), funds.clone())
+        .should_succeed();
+
+    // Provide some liquidity
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                lp_denom: lp_denom.clone(),
+            },
+            funds,
+        )
+        .should_succeed();
+
+    // Query LP token balance
+    let lp_balance = suite
+        .query_balance(&margin_account.address(), lp_denom.clone())
+        .unwrap();
+    assert!(lp_balance.is_non_zero());
+
+    // Query account's health and ensure the LP token is counted as collateral
+    let health = suite
+        .query_wasm_smart(margin_account.address(), QueryHealthRequest {})
+        .unwrap();
+    assert_approx_eq(
+        health.total_adjusted_collateral_value,
+        Udec128::from_str("200").unwrap(),
+        "0.0001",
+    )
+    .unwrap();
+    assert_eq!(
+        health.collaterals,
+        coins! { lp_denom.clone() => lp_balance },
+    );
 }
 
 #[test]
