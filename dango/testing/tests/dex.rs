@@ -2,11 +2,12 @@ use {
     dango_testing::setup_test_naive,
     dango_types::{
         constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, Direction, OrderId, QueryOrdersRequest},
+        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest},
     },
     grug::{
-        btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+        btree_map, coins, Addressable, BalanceChange, Coin, CoinPair, Coins, Denom, Inner, Message,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -387,11 +388,10 @@ fn cancel_order() {
         .should_succeed();
 
     // Check that the user balance has not changed
-    suite
-        .balances()
-        .should_change(accounts.user1.address(), btree_map! {
-            USDC_DENOM.clone() => BalanceChange::Unchanged
-        });
+    suite.balances().should_change(
+        accounts.user1.address(),
+        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    );
 
     // Check that order does not exist
     suite
@@ -465,4 +465,71 @@ fn submit_and_cancel_order_in_same_block() {
             limit: None,
         })
         .should_succeed_and(BTreeMap::is_empty);
+}
+
+#[test]
+fn only_owner_can_create_passive_pool() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("Only the owner can create a passive pool");
+
+    suite.balances().record(contracts.dex.address());
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee: Udec128::ZERO,
+            },
+            coins! { USDC_DENOM.clone() => 100, DANGO_DENOM.clone() => 100 },
+        )
+        .should_succeed();
+
+    suite
+        .balances()
+        .should_change(contracts.dex.address(), btree_map! {
+            USDC_DENOM.clone() => BalanceChange::Increased(100),
+            DANGO_DENOM.clone() => BalanceChange::Increased(100),
+        });
+
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
+            lp_denom,
+        })
+        .should_succeed_and_equal(Pool {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            curve_type: CurveInvariant::Xyk,
+            reserves: CoinPair::new_unchecked(
+                Coin {
+                    denom: DANGO_DENOM.clone(),
+                    amount: Uint128::from(100),
+                },
+                Coin {
+                    denom: USDC_DENOM.clone(),
+                    amount: Uint128::from(100),
+                },
+            ),
+            swap_fee: Udec128::ZERO,
+        });
 }
