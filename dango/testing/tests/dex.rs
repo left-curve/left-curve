@@ -743,3 +743,19 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
                     .unwrap()
         });
 }
+
+fn balance_changes_from_coins(
+    increases: Coins,
+    decreases: Coins,
+) -> BTreeMap<Denom, BalanceChange> {
+    let mut changes: BTreeMap<Denom, BalanceChange> = increases
+        .into_iter()
+        .map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Increased(amount.into_inner()))
+        })
+        .collect();
+    changes.extend(decreases.into_iter().map(|Coin { denom, amount }| {
+        (denom.clone(), BalanceChange::Decreased(amount.into_inner()))
+    }));
+    changes
+}
