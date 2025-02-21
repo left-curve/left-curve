@@ -110,19 +110,40 @@ fn create_passive_pool(
     // Validate swap fee
     ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
 
+    // Ensure the funds contain only the base and quote denoms and contain both
+    ensure!(
+        ctx.funds.has(&base_denom) && ctx.funds.has(&quote_denom) && ctx.funds.len() == 2,
+        "Invalid funds. Must send only the base and quote denoms and both must be present."
+    );
+
     // Save the LP token denom
     LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
 
-    // Create the pool
-    POOLS.save(ctx.storage, &lp_denom, &Pool {
+    let (pool, initial_lp_supply) = PassiveLiquidityPool::initialize(
         base_denom,
         quote_denom,
+        ctx.funds.try_into()?,
         curve_type,
-        reserves: Coins::new(),
         swap_fee,
-    })?;
+    )?;
 
-    Ok(Response::new())
+    // Create the pool
+    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+
+    // Create mint message. Mint the initial LP token supply to the contract
+    // to ensure the pool is never emptied.
+    let bank = ctx.querier.query_bank()?;
+    let mint_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Mint {
+            to: ctx.contract,
+            denom: lp_denom,
+            amount: initial_lp_supply,
+        },
+        Coins::new(),
+    )?;
+
+    Ok(Response::new().add_message(mint_msg))
 }
 
 #[inline]
