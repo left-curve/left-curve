@@ -94,8 +94,6 @@ impl PassiveLiquidityPool for Pool {
 
         let invariant_before = self.curve_type.invariant(&self.reserves)?;
 
-        println!("invariant_before: {}", invariant_before);
-
         // Add the used funds to the pool reserves
         self.reserves
             .checked_add(&Coin::new(
@@ -111,9 +109,6 @@ impl PassiveLiquidityPool for Pool {
         let invariant_after = self.curve_type.invariant(&self.reserves)?;
         let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
 
-        println!("invariant_after: {}", invariant_after);
-        println!("invariant_ratio: {}", invariant_ratio);
-
         // Compute the mint ratio from the invariant ratio based on the curve type.
         // This ensures that an unbalances provision will be equivalent to a swap
         // followed by a balancedliquidity provision.
@@ -121,8 +116,6 @@ impl PassiveLiquidityPool for Pool {
             CurveInvariant::Xyk => invariant_ratio.checked_sqrt()?,
         }
         .checked_sub(Udec128::ONE)?;
-
-        println!("mint_ratio: {}", mint_ratio);
 
         Ok(mint_ratio)
     }

@@ -602,14 +602,12 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
         )
         .should_succeed();
 
-    println!("dex");
     // Ensure that the dex balance has increased by the expected amount.
     suite.balances().should_change(
         contracts.dex.address(),
         balance_changes_from_coins(provision.clone(), Coins::new()),
     );
 
-    println!("user");
     // Ensure user's balance has decreased by the expected amount and that
     // LP tokens have been minted.
     suite.balances().should_change(
@@ -620,8 +618,6 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
         ),
     );
 
-    println!("expected_pool_balances: {:?}", expected_pool_balances);
-    println!("funds: {:?}", provision);
     // Check that the reserves in pool object were updated correctly.
     suite
         .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
