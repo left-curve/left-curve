@@ -12,7 +12,9 @@ use {
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
     },
     grug_app::NaiveProposalPreparer,
+    indexer_disk_saver::persistence::DiskPersistence,
     pyth_sdk::PriceFeed,
+    sha2::{Digest, Sha256},
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
@@ -359,7 +361,7 @@ fn multiple_vaas() {
 }
 
 /// Return JSON string of the latest VAA from Pyth network.
-fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
+fn get_latest_vaas<I>(ids: I) -> anyhow::Result<Vec<Binary>>
 where
     I: IntoIterator,
     I::Item: ToString,
@@ -369,9 +371,29 @@ where
         .map(|id| ("ids[]", id.to_string()))
         .collect::<Vec<_>>();
 
-    reqwest::blocking::Client::new()
+    let filename = format!(
+        "{}/vaas_cache/{:x}",
+        std::env::var("CARGO_MANIFEST_DIR").unwrap(),
+        Sha256::digest(
+            ids.iter()
+                .map(|(_, v)| v.clone())
+                .collect::<Vec<_>>()
+                .join("__")
+        )
+    );
+
+    let cache_file = DiskPersistence::new(filename.into(), true);
+    if cache_file.exists() {
+        return Ok(cache_file.load::<Vec<Binary>>()?);
+    }
+
+    let data = reqwest::blocking::Client::new()
         .get(format!("{PYTH_URL}/api/latest_vaas"))
         .query(&ids)
         .send()?
-        .json()
+        .json()?;
+
+    cache_file.save(&data)?;
+
+    Ok(data)
 }
