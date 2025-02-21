@@ -1,8 +1,8 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest},
+        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM},
+        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest, Swap},
     },
     grug::{
         btree_map, coins, Addressable, BalanceChange, Coin, CoinPair, Coins, Denom, Inner, Message,
@@ -739,6 +739,554 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
                     .unwrap()
         });
 }
+
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in no fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } ; "swap amount in with 0.1% fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "insufficient funds" ; "swap amount in insufficient funds"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 2000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in excessive funds reimbursed"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out no fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(499500),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } ; "swap amount out 0.1% fee"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(1000000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::new_permille(1),
+    coins! {
+        USDC_DENOM.clone() => 499500,
+    } => panics "insufficient liquidity" ; "swap amount out insufficient liquidity"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    coins! {
+        ETH_DENOM.clone() => 999999,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "insufficient funds" ; "swap amount out insufficient funds"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 2000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out excessive funds reimbursed"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: None,
+        },
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(500000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Coins::new(),
+    Udec128::ZERO,
+    Coins::new() ; "multiple swaps swap amount out then swap back with swap amount in"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        // Due to path independence, this should be equivalent to a single swap amount in of 1000000 ETH
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(250000),
+            slippage: None,
+        },
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(750000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "multiple swaps two consecutive swap amount in"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        // Due to path independence, this should be equivalent to a single swap
+        // amount out of 500000 USDC. Ends up using 1 more ETH due to rounding.
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(250000),
+            slippage: None,
+        },
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(250000),
+            slippage: None,
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000001, // 1 more due to rounding
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000001, // 1 more due to rounding
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "multiple swaps two consecutive swap amount out"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount in no fee minimum out not exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500001))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "slippage tolerance exceeded" ; "swap amount in no fee minimum out exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: ETH_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Ask,
+            amount: Uint128::new(1000000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "maximum in is only supported for direction: bid" ; "swap amount in no fee maximum in"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } ; "swap amount out no fee maximum in not exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(999999))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "slippage tolerance exceeded" ; "swap amount out no fee maximum in exceeded"
+)]
+#[test_case(
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+        USDC_DENOM.clone() => 1000000,
+    },
+    vec![
+        Swap {
+            base_denom: USDC_DENOM.clone(),
+            quote_denom: ETH_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(500000),
+            slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
+        }
+    ],
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    Udec128::ZERO,
+    coins! {
+        USDC_DENOM.clone() => 500000,
+    } => panics "minimum out is only supported for direction: ask" ; "swap amount out no fee minimum out exceeded"
+)]
+// TODO: Tests
+// - Swap direction ask SlippageControl::PriceLimit
+// - Swap direction bid SlippageControl::PriceLimit
+fn batch_swap(
+    pool_liquidity: Coins,
+    swaps: Vec<Swap>,
+    swap_funds: Coins,
+    expected_funds_used: Coins,
+    swap_fee: Udec128,
+    expected_out: Coins,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/lp/ethusdc").unwrap();
+
+    // Create a passive pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::CreatePassivePool {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                curve_type: CurveInvariant::Xyk,
+                lp_denom: lp_denom.clone(),
+                swap_fee,
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    // Record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // User swaps
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchSwap { swaps },
+            swap_funds.clone(),
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(expected_out.clone(), expected_funds_used.clone()),
+    );
+
+    // Assert that the dex balance has changed by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(expected_funds_used.clone(), expected_out.clone()),
+    );
+
+    // Query pool and assert that the reserves are updated correctly
+    let expected_pool_reserves = pool_liquidity
+        .clone()
+        .deduct_many(expected_out)
+        .unwrap()
+        .insert_many(expected_funds_used)
+        .unwrap()
+        .clone();
+
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
+            lp_denom: lp_denom.clone(),
+        })
+        .should_succeed_and(|pool| Coins::from(pool.reserves.clone()) == expected_pool_reserves);
+}
+
+// TODO: test multiple pools
+#[test]
+fn batch_swap_multiple_pools() {}
 
 fn balance_changes_from_coins(
     increases: Coins,
