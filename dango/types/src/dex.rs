@@ -177,6 +177,8 @@ pub enum ExecuteMsg {
     ProvideLiquidity {
         lp_denom: Denom,
     },
+    // Withdraw passive liquidity from a pair.
+    WithdrawLiquidity {},
 }
 
 #[grug::derive(Serde, QueryRequest)]

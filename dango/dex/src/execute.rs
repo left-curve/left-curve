@@ -54,6 +54,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
+        ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
     }
 }
 
@@ -381,6 +382,43 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
     Ok(Response::new().add_message(mint_msg))
 }
 
+/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
+/// The underlying assets will be returned to the sender.
+#[inline]
+fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let sent_lp_tokens = ctx.funds.clone().into_one_coin()?;
+
+    // Query the LP token supply
+    let lp_supply = ctx.querier.query_supply(sent_lp_tokens.denom.clone())?;
+
+    // Load the pool
+    let mut pool = POOLS.load(ctx.storage, &sent_lp_tokens.denom)?;
+
+    // Calculate the amount of each asset to return
+    let coins_to_return = pool.remove_liquidity(sent_lp_tokens.amount, lp_supply)?;
+
+    // Save the updated pool
+    POOLS.save(ctx.storage, &sent_lp_tokens.denom, &pool)?;
+
+    // Create burn message
+    let bank = ctx.querier.query_bank()?;
+    let burn_msg = Message::execute(
+        bank,
+        &bank::ExecuteMsg::Burn {
+            from: ctx.contract,
+            denom: sent_lp_tokens.denom,
+            amount: sent_lp_tokens.amount,
+        },
+        Coins::new(), // No funds needed for burning
+    )?;
+
+    // Create transfer message
+    let transfer_msg = Message::transfer(ctx.sender, coins_to_return)?;
+
+    Ok(Response::default()
+        .add_message(burn_msg)
+        .add_message(transfer_msg))
+}
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
