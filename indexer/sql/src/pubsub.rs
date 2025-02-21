@@ -35,7 +35,10 @@ mod tests {
     #[ignore]
     #[tokio::test]
     async fn test_postgres_pubsub() -> anyhow::Result<()> {
-        let pool = sqlx::PgPool::connect("postgres://postgres@localhost/grug_test").await?;
+        let db_host = std::env::var("DB_HOST").unwrap_or("localhost".to_string());
+        let pool =
+            sqlx::PgPool::connect(format!("postgres://postgres@{db_host}/grug_test").as_str())
+                .await?;
 
         let pubsub = PostgresPubSub::new(pool.clone()).await?;
         let pubsub_clone = pubsub.clone();
