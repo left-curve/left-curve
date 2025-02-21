@@ -1,8 +1,7 @@
 use {
-    anyhow::ensure,
     grug::{
-        Addr, Coin, Coins, Denom, Int, MultiplyFraction, MultiplyRatio, NumberConst, Part,
-        PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, Denom, Part, PrimaryKey, RawKey, StdError, StdResult, Udec128,
+        Uint128,
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -166,7 +165,9 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     BatchUpdatePairs(Vec<PairUpdate>),
-    /// Create a new passive pool for a pair.
+    /// Create a new passive pool for a pair. Both the base and quote asset must
+    /// be sent with the message and will be used as initial reserves in the pool.
+    /// Errors if the (base_denom, quote_denom) pair does not exist.
     ///
     /// Can only be called by the chain owner.
     CreatePassivePool {
@@ -314,78 +315,8 @@ pub struct OrderFilled {
 }
 
 #[grug::derive(Serde, Borsh)]
-#[non_exhaustive]
 pub enum CurveInvariant {
     Xyk,
-}
-
-impl CurveInvariant {
-    pub fn solve_amount_out(
-        &self,
-        offer: Coin,
-        ask_denom: &Denom,
-        swap_fee: Udec128,
-        reserves: &Coins,
-    ) -> anyhow::Result<Uint128> {
-        ensure!(
-            reserves.has(&offer.denom) && reserves.has(ask_denom),
-            "invalid reserves"
-        );
-        match self {
-            CurveInvariant::Xyk => {
-                let a = reserves.amount_of(&offer.denom);
-                let b = reserves.amount_of(ask_denom);
-
-                // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
-                // => amount_out = B - (A * B) / (A + offer.amount)
-                // Round so that user takes the loss
-                let amount_out =
-                    b - Int::ONE.checked_multiply_ratio_ceil(a * b, a + offer.amount)?;
-
-                // Apply swap fee. Round so that user takes the loss
-                let amount_out = amount_out.checked_mul_dec_floor(Udec128::ONE - swap_fee)?;
-
-                Ok(amount_out)
-            },
-        }
-    }
-
-    pub fn solve_amount_in(
-        &self,
-        ask: Coin,
-        offer_denom: &Denom,
-        swap_fee: Udec128,
-        reserves: &Coins,
-    ) -> anyhow::Result<Uint128> {
-        ensure!(
-            reserves.has(offer_denom) && reserves.has(&ask.denom),
-            "invalid reserves"
-        );
-        ensure!(
-            reserves.amount_of(&ask.denom) > ask.amount,
-            "insufficient liquidity"
-        );
-        match self {
-            CurveInvariant::Xyk => {
-                let a = reserves.amount_of(offer_denom);
-                let b = reserves.amount_of(&ask.denom);
-
-                // Apply swap fee. In SwapExactIn we multiply ask by (1 - fee) to get the
-                // offer amount after fees. So in this case we need to divide ask by (1 - fee)
-                // to get the ask amount after fees. Round so that user takes the loss
-                let ask_amount_after_fee =
-                    ask.amount.checked_div_dec_ceil(Udec128::ONE - swap_fee)?;
-
-                // Solve A * B = (A + amount_in) * (B - ask.amount) for amount_in
-                // => amount_in = (A * B) / (B - ask.amount) - A
-                // Round so that user takes the loss
-                let amount_in =
-                    Int::ONE.checked_multiply_ratio_ceil(a * b, b - ask_amount_after_fee)? - a;
-
-                Ok(amount_in)
-            },
-        }
-    }
 }
 
 impl Display for CurveInvariant {
@@ -416,71 +347,6 @@ pub struct Pool {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub curve_type: CurveInvariant,
-    pub reserves: Coins,
+    pub reserves: CoinPair,
     pub swap_fee: Udec128,
-}
-
-impl Pool {
-    /// Swap an exact amount of an input token for an output token in the pool.
-    /// Mutates the pool reserves.
-    ///
-    /// Returns the amount of the output token received.
-    pub fn swap_exact_amount_in(&mut self, offer: Coin, ask_denom: &Denom) -> anyhow::Result<Coin> {
-        // Ensure the offer and ask  denom is valid
-        ensure!(
-            self.reserves.has(&offer.denom) && self.reserves.has(ask_denom),
-            "invalid reserves"
-        );
-
-        // Calculate the out amount
-        let out_amount = self.curve_type.solve_amount_out(
-            offer.clone(),
-            ask_denom,
-            self.swap_fee,
-            &self.reserves,
-        )?;
-        let ask = Coin {
-            denom: ask_denom.clone(),
-            amount: out_amount,
-        };
-
-        // Update the pool reserves
-        self.reserves.insert(offer)?;
-        self.reserves.deduct(ask.clone())?;
-
-        Ok(ask)
-    }
-
-    pub fn swap_exact_amount_out(
-        &mut self,
-        ask: Coin,
-        offer_denom: &Denom,
-    ) -> anyhow::Result<Coin> {
-        println!("swap_exact_amount_out {:?}", ask);
-        // Ensure the offer and ask  denom is valid
-        ensure!(
-            self.reserves.has(offer_denom) && self.reserves.has(&ask.denom),
-            "invalid reserves"
-        );
-
-        // Calculate the in amount
-        let in_amount = self.curve_type.solve_amount_in(
-            ask.clone(),
-            offer_denom,
-            self.swap_fee,
-            &self.reserves,
-        )?;
-        let offer = Coin {
-            denom: offer_denom.clone(),
-            amount: in_amount,
-        };
-
-        println!("offer {:?}", offer);
-        println!("reserves {:?}", self.reserves);
-        // Update the pool reserves
-        self.reserves.insert(offer.clone())?;
-        self.reserves.deduct(ask)?;
-
-        Ok(offer)
-    }
 }

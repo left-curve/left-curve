@@ -1,21 +1,21 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
-        LP_DENOMS, NEXT_ORDER_ID, ORDERS, PAIRS, POOLS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
+        INCOMING_ORDERS, LP_DENOMS, NEXT_ORDER_ID, ORDERS, PAIRS, POOLS,
     },
     anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, Pool, SlippageControl,
-            Swap, LP_NAMESPACE, NAMESPACE,
+            OrderId, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, SlippageControl, Swap,
+            LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, EventName, Inner, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt, Response, StdResult,
-        Storage, SudoCtx, Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt,
+        Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -231,22 +231,7 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
         let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
 
         // Calculate the out amount and update the pool reserves
-        let (offer, ask) = match swap.direction {
-            Direction::Ask => {
-                let offer = Coin::new(swap.base_denom, swap.amount)?;
-                (
-                    offer.clone(),
-                    pool.swap_exact_amount_in(offer, &swap.quote_denom)?,
-                )
-            },
-            Direction::Bid => {
-                let ask = Coin::new(swap.base_denom, swap.amount)?;
-                (
-                    pool.swap_exact_amount_out(ask.clone(), &swap.quote_denom)?,
-                    ask,
-                )
-            },
-        };
+        let (offer, ask) = pool.swap(&swap)?;
 
         if let Some(slippage_control) = swap.slippage {
             match slippage_control {
@@ -368,16 +353,17 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
 #[inline]
 fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
     // Get the funds from sent
-    let funds = &ctx.funds;
+    let funds: CoinPair = ctx.funds.try_into()?;
 
     let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
 
     // Ensure the funds are valid. They must only contain the base and quote denoms and must contain both
     ensure!(
-        funds.len() == 2 && funds.has(&pool.base_denom) && funds.has(&pool.quote_denom),
-        "Invalid funds. Must send both coins in the pair. {:?}, {:?}",
+        funds.has(&pool.base_denom) || funds.has(&pool.quote_denom),
+        "Invalid funds. Must send at least one coin in the pair. Sent: {:?}, {:?}, {:?}",
         funds,
-        pool.reserves
+        pool.base_denom,
+        pool.quote_denom
     );
 
     // Ensure the pair is registered
@@ -386,60 +372,22 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
         "Pair not found."
     );
 
+    // Ensure the pool has reserves
+    ensure!(
+        pool.reserves.first().amount.is_non_zero() && pool.reserves.second().amount.is_non_zero(),
+        "Cannot add liquidity to pool with zero reserves"
+    );
+
     // Query the LP token supply
     let lp_supply = ctx.querier.query_supply(lp_denom.clone())?;
+    assert!(lp_supply.is_non_zero(), "LP token supply is zero");
 
     // Calculate the funds to provide and the amount of LP tokens to mint
-    let (funds_to_provide, lp_mint_amount) = match lp_supply {
-        Uint128::ZERO => (
-            funds.clone(),
-            funds
-                .clone()
-                .into_iter()
-                .fold(Uint128::ONE, |acc, c| acc * c.amount),
-        ),
-        _ => {
-            // Calculate the minimum ratio of sent funds to the pool reserves
-            let min_ratio = funds
-                .into_iter()
-                .map(|c| {
-                    Udec128::checked_from_ratio(*c.amount, pool.reserves.amount_of(c.denom))
-                        .unwrap()
-                })
-                .min()
-                .unwrap_or(Udec128::ZERO);
+    // Calculate the funds to provide and the amount of LP tokens to mint
+    let mint_ratio = pool.add_liquidity(funds)?;
+    let lp_mint_amount = lp_supply.checked_mul_dec_floor(mint_ratio)?;
 
-            // Ensure the minimum ratio is greater than 0
-            ensure!(
-                min_ratio > Udec128::ZERO,
-                "Invalid funds. Must send both coins in the pair."
-            );
-
-            // The funds to use in the provision are the pool reserves scaled by the minimum ratio.
-            // This ensures that the provision is made in the same ratio as the pool reserves.
-            let funds_to_provide = pool
-                .reserves
-                .clone()
-                .into_iter()
-                .map(|c| {
-                    Ok(Coin {
-                        denom: c.denom.clone(),
-                        amount: c.amount.checked_mul_dec_floor(min_ratio)?,
-                    })
-                })
-                .collect::<StdResult<Vec<Coin>>>()?
-                .try_into()?;
-            let lp_mint_amount = lp_supply.checked_mul_dec_floor(min_ratio)?;
-
-            (funds_to_provide, lp_mint_amount)
-        },
-    };
-
-    // Calculate funds to provide and funds to return
-    let funds_to_return = funds.clone().deduct_many(funds_to_provide.clone())?.clone();
-
-    // Update the pool reserves
-    pool.reserves.insert_many(funds_to_provide)?;
+    // Save the updated pool
     POOLS.save(ctx.storage, &lp_denom, &pool)?;
 
     // Create mint message
@@ -454,9 +402,7 @@ fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Respons
         Coins::new(), // No funds needed for minting
     )?;
 
-    Ok(Response::default()
-        .add_message(Message::transfer(ctx.sender, funds_to_return)?)
-        .add_message(mint_msg))
+    Ok(Response::new().add_message(mint_msg))
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
@@ -472,20 +418,9 @@ fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut pool = POOLS.load(ctx.storage, &sent_lp_tokens.denom)?;
 
     // Calculate the amount of each asset to return
-    let ratio = Udec128::checked_from_ratio(sent_lp_tokens.amount, lp_supply)?;
-    let coins_to_return: Coins = pool
-        .reserves
-        .clone()
-        .into_iter()
-        .map(|c| Coin {
-            denom: c.denom.clone(),
-            amount: c.amount.checked_mul_dec_floor(ratio).unwrap(),
-        })
-        .collect::<Vec<Coin>>()
-        .try_into()?;
+    let coins_to_return = pool.remove_liquidity(sent_lp_tokens.amount, lp_supply)?;
 
-    // Update the pool reserves
-    pool.reserves.deduct_many(coins_to_return.clone())?;
+    // Save the updated pool
     POOLS.save(ctx.storage, &sent_lp_tokens.denom, &pool)?;
 
     // Create burn message

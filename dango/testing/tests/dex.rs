@@ -1334,7 +1334,7 @@ fn batch_swap(
         .query_wasm_smart(contracts.dex, dango_types::dex::QueryPassivePoolRequest {
             lp_denom: lp_denom.clone(),
         })
-        .should_succeed_and(|pool| pool.reserves == expected_pool_reserves);
+        .should_succeed_and(|pool| Coins::from(pool.reserves.clone()) == expected_pool_reserves);
 }
 
 // TODO: test multiple pools
