@@ -219,6 +219,9 @@ pub enum QueryMsg {
         start_after: Option<OrderId>,
         limit: Option<u32>,
     },
+    /// Query the passive pool for a pair.
+    #[returns(Pool)]
+    PassivePool { lp_denom: Denom },
 }
 
 // ---------------------------------- events -----------------------------------
