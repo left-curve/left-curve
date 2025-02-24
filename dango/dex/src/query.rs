@@ -131,13 +131,35 @@ fn query_orders(
 
 #[inline]
 fn query_orders_by_pair(
-    _ctx: ImmutableCtx,
-    _base_denom: Denom,
-    _quote_denom: Denom,
-    _start_after: Option<OrderId>,
-    _limit: Option<u32>,
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
 ) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
-    todo!();
+    let start = start_after
+        .map(|order_id| -> StdResult<_> {
+            let ((_, direction, price, _), _) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            Ok(Bound::Exclusive((direction, price, order_id)))
+        })
+        .transpose()?;
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORDERS
+        .prefix((base_denom, quote_denom))
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((direction, price, order_id), order) = res?;
+            Ok((order_id, OrdersByPairResponse {
+                user: order.user,
+                direction,
+                price,
+                amount: order.amount,
+                remaining: order.remaining,
+            }))
+        })
+        .collect::<StdResult<_>>()
 }
 
 #[inline]
