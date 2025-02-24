@@ -50,6 +50,16 @@ pub trait PassiveLiquidityPool {
     /// Returns a tuple of coins, where the first coin is the offer and the second
     /// coin is the ask.
     fn simulate_swap(&self, swap: &Swap) -> anyhow::Result<(Coin, Coin)>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// Returns a vec of orders to place on the orderbook.
+    /// TODO: add swap fee to the calculation
+    fn reflect_curve(&self) -> StdResult<Vec<OrderSubmissionInfo>>;
+
+    /// Returns the spot price of the pool at the current reserves, given as the number
+    /// of quote asset units per base asset unit.
+    fn spot_price(&self) -> StdResult<Udec128>;
 }
 
 pub trait TradingFunction {
@@ -75,19 +85,6 @@ pub trait TradingFunction {
         swap_fee: Udec128,
         reserves: &CoinPair,
     ) -> anyhow::Result<Coin>;
-
-    /// Reflect the curve onto the orderbook.
-    ///
-    /// Returns a vec of orders to place on the orderbook.
-    /// TODO: add swap fee to the calculation
-    fn reflect_curve(
-        &self,
-        reserves: &CoinPair,
-        base_denom: Denom,
-        quote_denom: Denom,
-        tick_size: Udec128,
-        order_depth: Uint128,
-    ) -> StdResult<Vec<OrderSubmissionInfo>>;
 }
 
 impl PassiveLiquidityPool for Pool {
@@ -237,6 +234,65 @@ impl PassiveLiquidityPool for Pool {
 
         Ok((coin_in, coin_out))
     }
+
+    fn reflect_curve(&self) -> StdResult<Vec<OrderSubmissionInfo>> {
+        let a = self.reserves.amount_of(&self.base_denom);
+        let b = self.reserves.amount_of(&self.quote_denom);
+
+        let price = self.spot_price()?;
+
+        let mut orders = Vec::with_capacity(2 * self.order_depth.into_inner() as usize);
+        let mut a_bid_prev = Uint128::ZERO;
+        let mut a_ask_prev = Uint128::ZERO;
+        for i in 0..(self.order_depth.into_inner() + 1) {
+            let delta_p = self
+                .tick_size
+                .checked_mul(Udec128::checked_from_ratio(i, Uint128::ONE)?)?;
+
+            // Calculate the price i ticks on the ask and bid side respectively
+            let price_ask = price.checked_add(delta_p)?;
+            let price_bid = price.checked_sub(delta_p)?;
+
+            // Calculate the amount of base that can be bought at the price
+            let (a_ask, a_bid) = match self.curve_type {
+                CurveInvariant::Xyk => {
+                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
+                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+                    (a_ask, a_bid)
+                },
+            };
+
+            orders.push(OrderSubmissionInfo {
+                base_denom: self.base_denom.clone(),
+                quote_denom: self.quote_denom.clone(),
+                direction: Direction::Bid,
+                amount: a_bid.checked_sub(a_bid_prev)?,
+                price: price_bid,
+            });
+
+            orders.push(OrderSubmissionInfo {
+                base_denom: self.base_denom.clone(),
+                quote_denom: self.quote_denom.clone(),
+                direction: Direction::Ask,
+                amount: a_ask.checked_sub(a_ask_prev)?,
+                price: price_ask,
+            });
+
+            a_bid_prev = a_bid;
+            a_ask_prev = a_ask;
+        }
+
+        Ok(orders)
+    }
+
+    fn spot_price(&self) -> StdResult<Udec128> {
+        let base_reserves = self.reserves.amount_of(&self.base_denom);
+        let quote_reserves = self.reserves.amount_of(&self.quote_denom);
+
+        match self.curve_type {
+            CurveInvariant::Xyk => Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?),
+        }
+    }
 }
 
 impl TradingFunction for CurveInvariant {
@@ -316,56 +372,6 @@ impl TradingFunction for CurveInvariant {
                     denom: denom_in.clone(),
                     amount: amount_in,
                 })
-            },
-        }
-    }
-
-    fn reflect_curve(
-        &self,
-        reserves: &CoinPair,
-        base_denom: Denom,
-        quote_denom: Denom,
-        tick_size: Udec128,
-        order_depth: Uint128,
-    ) -> StdResult<Vec<OrderSubmissionInfo>> {
-        match self {
-            CurveInvariant::Xyk => {
-                let a = reserves.amount_of(&quote_denom);
-                let b = reserves.amount_of(&base_denom);
-
-                let price = Udec128::checked_from_ratio(b, a)?;
-
-                let mut orders = Vec::with_capacity(2 * order_depth.into_inner() as usize);
-                for i in 0..order_depth.into_inner() {
-                    let delta_p =
-                        tick_size.checked_mul(Udec128::checked_from_ratio(i, Uint128::ONE)?)?;
-
-                    // Calculate the price i ticks on the ask and bid side respectively
-                    let price_ask = price.checked_add(delta_p)?;
-                    let price_bid = price.checked_sub(delta_p)?;
-
-                    // Calculate the amount of base that can be bought at the price
-                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
-                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
-
-                    orders.push(OrderSubmissionInfo {
-                        base_denom: base_denom.clone(),
-                        quote_denom: quote_denom.clone(),
-                        direction: Direction::Ask,
-                        amount: a_ask,
-                        price: price_ask,
-                    });
-
-                    orders.push(OrderSubmissionInfo {
-                        base_denom: base_denom.clone(),
-                        quote_denom: quote_denom.clone(),
-                        direction: Direction::Bid,
-                        amount: a_bid,
-                        price: price_bid,
-                    });
-                }
-
-                Ok(orders)
             },
         }
     }

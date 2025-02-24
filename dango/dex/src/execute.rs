@@ -582,9 +582,28 @@ fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
 /// Implemented according to:
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
+
+    // Cancel all orders owned by the contract
+    _cancel_orders(ctx.storage, ctx.contract, OrderIds::All)?;
+
+    // Loop through all passive pools and reflect the pools onto the orderbook
+    let pairs_with_pools = LP_DENOMS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    for (_, lp_denom) in pairs_with_pools {
+        let pool = POOLS.load(ctx.storage, &lp_denom)?;
+        let order_infos = pool.reflect_curve()?;
+
+        _batch_submit_orders(
+            ctx.storage,
+            ctx.contract,
+            pool.reserves.clone().into(),
+            order_infos,
+        )?;
+    }
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
