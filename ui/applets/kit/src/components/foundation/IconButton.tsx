@@ -58,6 +58,7 @@ const buttonVariants = tv(
       "relative",
       "inline-flex",
       "items-center",
+      "cursor-pointer",
       "justify-center",
       "box-border",
       "appearance-none",

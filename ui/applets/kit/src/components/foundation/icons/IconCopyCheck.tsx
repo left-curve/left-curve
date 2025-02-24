@@ -1,6 +1,6 @@
 import type React from "react";
 
-export const CopyCheckIcon: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
+export const IconCopyCheck: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...props }) => {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

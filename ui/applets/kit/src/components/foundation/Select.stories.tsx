@@ -5,16 +5,6 @@ const meta: Meta<typeof Select> = {
   title: "Design System/Foundation/Select",
   component: Select,
   argTypes: {
-    color: {
-      control: { type: "select" },
-      description: "The color of the Select.",
-      options: ["default"],
-    },
-    size: {
-      options: ["md", "lg"],
-      control: { type: "select" },
-      description: "The size of the Select.",
-    },
     isDisabled: {
       control: { type: "boolean" },
     },

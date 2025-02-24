@@ -5,10 +5,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import type React from "react";
 import { AuthOptions } from "../AuthOptions";
+import { useToast } from "../Toast";
 
 export const LoginCredentialStep: React.FC = () => {
   const connectors = useConnectors();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data, previousStep } = useWizard<{ username: string }>();
   const chainId = useChainId();
 
@@ -27,6 +29,10 @@ export const LoginCredentialStep: React.FC = () => {
         navigate({ to: "/" });
       } catch (err) {
         console.error(err);
+        toast.error({
+          title: "Error",
+          description: "Failed to connect to the selected credential.",
+        });
         // setData({ retry: true, username });
         previousStep();
       }

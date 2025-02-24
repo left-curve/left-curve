@@ -1,13 +1,18 @@
 import { useOption } from "@react-aria/listbox";
 import type { ListState } from "@react-stately/list";
 import type { Node } from "@react-types/shared";
+import { motion } from "framer-motion";
 import { useRef } from "react";
 import { type VariantProps, tv } from "tailwind-variants";
-
 export interface OptionBoxProps extends VariantProps<typeof optionVariants> {
   item: Node<unknown>;
   state: ListState<unknown>;
 }
+
+const childVariants = {
+  hidden: { opacity: 0, y: -10 },
+  visible: { opacity: 1, y: 0 },
+};
 
 export const OptionBox: React.FC<OptionBoxProps> = ({ item, state, color }) => {
   const ref = useRef<HTMLLIElement>(null);
@@ -16,9 +21,11 @@ export const OptionBox: React.FC<OptionBoxProps> = ({ item, state, color }) => {
   const styles = optionVariants({ color });
 
   return (
-    <li {...optionProps} ref={ref} className={styles}>
-      {item.rendered}
-    </li>
+    <motion.li variants={childVariants}>
+      <span {...optionProps} ref={ref} className={styles}>
+        {item.rendered}
+      </span>
+    </motion.li>
   );
 };
 

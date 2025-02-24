@@ -15,6 +15,7 @@ body,
 body {
   overflow-x: hidden;
   overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 .header {
