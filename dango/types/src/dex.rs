@@ -114,6 +114,13 @@ pub struct InstantiateMsg {
 }
 
 #[grug::derive(Serde)]
+/// A set of order IDs, either a specific set or all. Used to cancel orders.
+pub enum OrderIds {
+    Some(BTreeSet<OrderId>),
+    All,
+}
+
+#[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create new, or modify the parametes of existing, trading pairs.
     ///
@@ -137,7 +144,7 @@ pub enum ExecuteMsg {
         price: Udec128,
     },
     /// Cancel one or more orders by IDs.
-    CancelOrders { order_ids: BTreeSet<OrderId> },
+    CancelOrders { order_ids: OrderIds },
 }
 
 #[grug::derive(Serde, QueryRequest)]

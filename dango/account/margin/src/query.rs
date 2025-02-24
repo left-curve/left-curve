@@ -1,5 +1,5 @@
 use {
-    crate::MarginQuerier,
+    crate::core::query_health,
     dango_auth::query_seen_nonces,
     dango_types::account::margin::QueryMsg,
     grug::{ImmutableCtx, Json, JsonSerExt},
@@ -13,9 +13,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             res.to_json_value()
         },
         QueryMsg::Health {} => {
-            let res = ctx
-                .querier
-                .query_health(ctx.contract, ctx.block.timestamp, None)?;
+            let res = query_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
             res.to_json_value()
         },
     }

@@ -1,7 +1,7 @@
 use {
-    crate::{GUARDIAN_SETS, PRICE_SOURCES},
+    crate::{OracleQuerier, GUARDIAN_SETS, PRICE_SOURCES},
     dango_types::oracle::{GuardianSet, PrecisionedPrice, PriceSource, QueryMsg},
-    grug::{Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
 
@@ -38,9 +38,8 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
-    PRICE_SOURCES
-        .load(ctx.storage, &denom)?
-        .get_price(ctx.storage)
+    ctx.querier
+        .query_price(ctx.contract.address(), &denom, None)
 }
 
 fn query_prices(
@@ -56,7 +55,9 @@ fn query_prices(
         .take(limit)
         .map(|res| {
             let (denom, price_source) = res?;
-            let price = price_source.get_price(ctx.storage)?;
+            let price =
+                ctx.querier
+                    .query_price(ctx.contract.address(), &denom, Some(price_source))?;
             Ok((denom, price))
         })
         .collect()
