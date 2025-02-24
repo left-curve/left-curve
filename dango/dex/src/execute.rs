@@ -45,13 +45,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             lp_denom,
             swap_fee,
         } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
-        ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
-            base_denom,
-            quote_denom,
-            direction,
-            amount,
-            price,
-        }) => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
+        ExecuteMsg::BatchSubmitOrders(orders) => batch_submit_orders(ctx, orders),
         ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
@@ -147,20 +141,69 @@ fn create_passive_pool(
 }
 
 #[inline]
-fn submit_order(
+fn batch_submit_orders(
     ctx: MutableCtx,
+    orders: Vec<OrderSubmissionInfo>,
+) -> anyhow::Result<Response> {
+    let events = _batch_submit_orders(ctx.storage, ctx.sender, ctx.funds.clone(), orders)?;
+    Ok(Response::new().add_subevents(events))
+}
+
+/// Internal function to handle the submission of a batch of orders.
+fn _batch_submit_orders(
+    storage: &mut dyn Storage,
+    sender: Addr,
+    mut funds: Coins,
+    orders: Vec<OrderSubmissionInfo>,
+) -> anyhow::Result<Vec<ContractEvent>> {
+    let mut events = Vec::new();
+    for order in orders {
+        // Calculate the deposit from the order price and amount
+        let deposit = match order.direction {
+            Direction::Bid => Coin {
+                denom: order.quote_denom.clone(),
+                amount: order.amount.checked_mul_dec_ceil(order.price)?,
+            },
+            Direction::Ask => Coin {
+                denom: order.base_denom.clone(),
+                amount: order.amount,
+            },
+        };
+
+        // Deduct the deposit from the funds
+        funds.deduct(deposit.clone())?;
+
+        // Submit the order and add the event to the events vector
+        let event = submit_order(
+            storage,
+            sender,
+            deposit,
+            order.base_denom,
+            order.quote_denom,
+            order.direction,
+            order.amount,
+            order.price,
+        )?;
+        events.push(ContractEvent::new(OrderSubmitted::NAME, event)?);
+    }
+
+    Ok(events)
+}
+
+fn submit_order(
+    storage: &mut dyn Storage,
+    sender: Addr,
+    deposit: Coin,
     base_denom: Denom,
     quote_denom: Denom,
     direction: Direction,
     amount: Uint128,
     price: Udec128,
-) -> anyhow::Result<Response> {
+) -> anyhow::Result<OrderSubmitted> {
     ensure!(
-        PAIRS.has(ctx.storage, (&base_denom, &quote_denom)),
+        PAIRS.has(storage, (&base_denom, &quote_denom)),
         "pair not found with base `{base_denom}` and quote `{quote_denom}`"
     );
-
-    let deposit = ctx.funds.into_one_coin()?;
 
     match direction {
         Direction::Bid => {
@@ -197,7 +240,7 @@ fn submit_order(
         },
     }
 
-    let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
+    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
     // For BUY orders, invert the order ID. This is necessary for enforcing
     // price-time priority. See the docs on `OrderId` for details.
@@ -206,8 +249,8 @@ fn submit_order(
     }
 
     INCOMING_ORDERS.save(
-        ctx.storage,
-        (ctx.sender, order_id),
+        storage,
+        (sender, order_id),
         &(
             (
                 (base_denom.clone(), quote_denom.clone()),
@@ -216,23 +259,23 @@ fn submit_order(
                 order_id,
             ),
             Order {
-                user: ctx.sender,
+                user: sender,
                 amount,
                 remaining: amount,
             },
         ),
     )?;
 
-    Ok(Response::new().add_event(OrderSubmitted {
+    Ok(OrderSubmitted {
         order_id,
-        user: ctx.sender,
+        user: sender,
         base_denom,
         quote_denom,
         direction,
         price,
         amount,
         deposit,
-    })?)
+    })
 }
 
 #[inline]

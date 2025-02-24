@@ -193,7 +193,7 @@ pub enum ExecuteMsg {
         lp_denom: Denom,
         swap_fee: Udec128,
     },
-    /// Submit a new order.
+    /// Submit a batch of new orders.
     ///
     /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
     ///
@@ -203,7 +203,7 @@ pub enum ExecuteMsg {
     ///   ```plain
     ///   ceil(amount * price)
     ///   ```
-    SubmitOrder(OrderSubmissionInfo),
+    BatchSubmitOrders(Vec<OrderSubmissionInfo>),
     /// Cancel one or more orders by IDs.
     CancelOrders {
         order_ids: OrderIds,

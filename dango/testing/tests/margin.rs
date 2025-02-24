@@ -717,13 +717,13 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .execute(
             &mut margin_account,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
+            &dex::ExecuteMsg::BatchSubmitOrders(vec![OrderSubmissionInfo {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: dango_types::dex::Direction::Bid,
                 amount: Uint128::new(100_000_000),
                 price: Udec128::ONE,
-            }),
+            }]),
             Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
         )
         .should_succeed();

@@ -24,14 +24,14 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
+            &dex::ExecuteMsg::BatchSubmitOrders(vec![OrderSubmissionInfo {
                 base_denom: ATOM_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::new(100),
                 price: Udec128::new(1),
-            }),
-            Coins::one(USDC_DENOM.clone(), 1).unwrap(),
+            }]),
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
         )
         .should_fail_with_error(format!(
             "pair not found with base `{}` and quote `{}`",
@@ -308,13 +308,13 @@ fn dex_works(
 
             let msg = Message::execute(
                 contracts.dex,
-                &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
+                &dex::ExecuteMsg::BatchSubmitOrders(vec![OrderSubmissionInfo {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction,
                     amount,
                     price,
-                }),
+                }]),
                 funds,
             )?;
 
@@ -365,13 +365,13 @@ fn cancel_order() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
+            &dex::ExecuteMsg::BatchSubmitOrders(vec![OrderSubmissionInfo {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::new(100),
                 price: Udec128::new(1),
-            }),
+            }]),
             grug::coins! {
                 USDC_DENOM.clone() => 100
             },
@@ -415,13 +415,13 @@ fn submit_and_cancel_order_in_same_block() {
     // Build and sign a transaction with two messages: submit an order and cancel the order
     let submit_order_msg = Message::execute(
         contracts.dex,
-        &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
+        &dex::ExecuteMsg::BatchSubmitOrders(vec![OrderSubmissionInfo {
             base_denom: DANGO_DENOM.clone(),
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(100),
             price: Udec128::new(1),
-        }),
+        }]),
         coins! { USDC_DENOM.clone() => 100 },
     )
     .unwrap();
