@@ -17,7 +17,7 @@ export const LoginWrapper: React.FC<React.PropsWithChildren> = ({ children }) =>
       <div className="flex items-center justify-center flex-1">
         <ResizerContainer className="w-full max-w-[22.5rem]">{children}</ResizerContainer>
       </div>
-      <div className="h-full min-w-[720px] w-[720px] hidden xl:flex bg-[url('./images/frame-rounded.svg')] bg-no-repeat bg-cover bg-center items-center justify-center">
+      <div className="custom-width h-full min-w-[720px] w-[720px] hidden xl:flex bg-[url('./images/frame-rounded.svg')] bg-no-repeat bg-cover bg-center items-center justify-center">
         <Carousel>
           <div className="flex flex-col items-center justify-center gap-12">
             <Birdo className="max-w-[28.125rem] h-auto" />

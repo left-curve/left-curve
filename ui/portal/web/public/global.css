@@ -32,3 +32,10 @@ body {
     width: 100%;
   }
 }
+
+
+@media (min-height: 1000px) {
+  .custom-width {
+    width: calc(720px + (100vh - 1000px) * 0.8);
+  }
+}
