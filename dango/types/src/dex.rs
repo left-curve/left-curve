@@ -192,6 +192,8 @@ pub enum ExecuteMsg {
         curve_type: CurveInvariant,
         lp_denom: Denom,
         swap_fee: Udec128,
+        tick_size: Udec128,
+        order_depth: Uint128,
     },
     /// Submit a batch of new orders.
     ///
@@ -362,4 +364,6 @@ pub struct Pool {
     pub curve_type: CurveInvariant,
     pub reserves: CoinPair,
     pub swap_fee: Udec128,
+    pub tick_size: Udec128,
+    pub order_depth: Uint128,
 }

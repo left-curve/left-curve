@@ -486,6 +486,8 @@ fn only_owner_can_create_passive_pool() {
                 curve_type: CurveInvariant::Xyk,
                 lp_denom: lp_denom.clone(),
                 swap_fee: Udec128::ZERO,
+                tick_size: Udec128::ONE,
+                order_depth: Uint128::ONE,
             },
             Coins::new(),
         )
@@ -503,6 +505,8 @@ fn only_owner_can_create_passive_pool() {
                 curve_type: CurveInvariant::Xyk,
                 lp_denom: lp_denom.clone(),
                 swap_fee: Udec128::ZERO,
+                tick_size: Udec128::ONE,
+                order_depth: Uint128::ONE,
             },
             coins! { USDC_DENOM.clone() => 100, DANGO_DENOM.clone() => 100 },
         )
@@ -534,6 +538,8 @@ fn only_owner_can_create_passive_pool() {
                 },
             ),
             swap_fee: Udec128::ZERO,
+            tick_size: Udec128::ONE,
+            order_depth: Uint128::ONE,
         });
 }
 
@@ -582,6 +588,8 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
                 curve_type: CurveInvariant::Xyk,
                 lp_denom: lp_denom.clone(),
                 swap_fee: Udec128::ZERO,
+                tick_size: Udec128::ONE,
+                order_depth: Uint128::ONE,
             },
             initial_reserves.clone(),
         )
@@ -637,6 +645,8 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
                 .try_into()
                 .unwrap(),
             swap_fee: Udec128::ZERO,
+            tick_size: Udec128::ONE,
+            order_depth: Uint128::ONE,
         });
 }
 
@@ -674,6 +684,8 @@ fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) 
                 curve_type: CurveInvariant::Xyk,
                 lp_denom: lp_denom.clone(),
                 swap_fee: Udec128::ZERO,
+                tick_size: Udec128::ONE,
+                order_depth: Uint128::ONE,
             },
             initial_funds.clone(),
         )
@@ -1239,6 +1251,8 @@ fn batch_swap(
                 curve_type: CurveInvariant::Xyk,
                 lp_denom: lp_denom.clone(),
                 swap_fee,
+                tick_size: Udec128::ONE,
+                order_depth: Uint128::ONE,
             },
             pool_liquidity.clone(),
         )

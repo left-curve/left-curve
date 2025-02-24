@@ -1,9 +1,9 @@
 use {
     anyhow::ensure,
-    dango_types::dex::{CurveInvariant, Direction, Pool, Swap},
+    dango_types::dex::{CurveInvariant, Direction, OrderSubmissionInfo, Pool, Swap},
     grug::{
-        Coin, CoinPair, Denom, Int, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, Int, IsZero, MultiplyFraction, MultiplyRatio, Number,
+        NumberConst, StdResult, Udec128, Uint128,
     },
 };
 
@@ -17,6 +17,8 @@ pub trait PassiveLiquidityPool {
         reserves: CoinPair,
         curve_type: CurveInvariant,
         swap_fee: Udec128,
+        tick_size: Udec128,
+        order_depth: Uint128,
     ) -> anyhow::Result<(Box<Self>, Uint128)>;
 
     /// Provide liquidity to the pool. This function mutates the pool reserves.
@@ -73,6 +75,19 @@ pub trait TradingFunction {
         swap_fee: Udec128,
         reserves: &CoinPair,
     ) -> anyhow::Result<Coin>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// Returns a vec of orders to place on the orderbook.
+    /// TODO: add swap fee to the calculation
+    fn reflect_curve(
+        &self,
+        reserves: &CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        tick_size: Udec128,
+        order_depth: Uint128,
+    ) -> StdResult<Vec<OrderSubmissionInfo>>;
 }
 
 impl PassiveLiquidityPool for Pool {
@@ -82,6 +97,8 @@ impl PassiveLiquidityPool for Pool {
         reserves: CoinPair,
         curve_type: CurveInvariant,
         swap_fee: Udec128,
+        tick_size: Udec128,
+        order_depth: Uint128,
     ) -> anyhow::Result<(Box<Self>, Uint128)> {
         ensure!(
             reserves.first().amount.is_non_zero() && reserves.second().amount.is_non_zero(),
@@ -104,6 +121,8 @@ impl PassiveLiquidityPool for Pool {
                 reserves,
                 curve_type,
                 swap_fee,
+                tick_size,
+                order_depth,
             }),
             initial_lp_supply,
         ))
@@ -297,6 +316,56 @@ impl TradingFunction for CurveInvariant {
                     denom: denom_in.clone(),
                     amount: amount_in,
                 })
+            },
+        }
+    }
+
+    fn reflect_curve(
+        &self,
+        reserves: &CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        tick_size: Udec128,
+        order_depth: Uint128,
+    ) -> StdResult<Vec<OrderSubmissionInfo>> {
+        match self {
+            CurveInvariant::Xyk => {
+                let a = reserves.amount_of(&quote_denom);
+                let b = reserves.amount_of(&base_denom);
+
+                let price = Udec128::checked_from_ratio(b, a)?;
+
+                let mut orders = Vec::with_capacity(2 * order_depth.into_inner() as usize);
+                for i in 0..order_depth.into_inner() {
+                    let delta_p =
+                        tick_size.checked_mul(Udec128::checked_from_ratio(i, Uint128::ONE)?)?;
+
+                    // Calculate the price i ticks on the ask and bid side respectively
+                    let price_ask = price.checked_add(delta_p)?;
+                    let price_bid = price.checked_sub(delta_p)?;
+
+                    // Calculate the amount of base that can be bought at the price
+                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
+                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+
+                    orders.push(OrderSubmissionInfo {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                        direction: Direction::Ask,
+                        amount: a_ask,
+                        price: price_ask,
+                    });
+
+                    orders.push(OrderSubmissionInfo {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                        direction: Direction::Bid,
+                        amount: a_bid,
+                        price: price_bid,
+                    });
+                }
+
+                Ok(orders)
             },
         }
     }

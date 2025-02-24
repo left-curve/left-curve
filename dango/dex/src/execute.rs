@@ -44,7 +44,18 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             curve_type,
             lp_denom,
             swap_fee,
-        } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
+            tick_size,
+            order_depth,
+        } => create_passive_pool(
+            ctx,
+            base_denom,
+            quote_denom,
+            curve_type,
+            lp_denom,
+            swap_fee,
+            tick_size,
+            order_depth,
+        ),
         ExecuteMsg::BatchSubmitOrders(orders) => batch_submit_orders(ctx, orders),
         ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
@@ -81,6 +92,8 @@ fn create_passive_pool(
     curve_type: CurveInvariant,
     lp_denom: Denom,
     swap_fee: Udec128,
+    tick_size: Udec128,
+    order_depth: Uint128,
 ) -> anyhow::Result<Response> {
     // Only the owner can create a passive pool
     ensure!(
@@ -104,6 +117,18 @@ fn create_passive_pool(
     // Validate swap fee
     ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
 
+    // Validate tick size
+    ensure!(
+        tick_size > Udec128::ZERO,
+        "tick size must be greater than 0"
+    );
+
+    // Validate order depth
+    ensure!(
+        order_depth > Uint128::ZERO,
+        "order depth must be greater than 0"
+    );
+
     // Ensure the funds contain only the base and quote denoms and contain both
     ensure!(
         ctx.funds.has(&base_denom) && ctx.funds.has(&quote_denom) && ctx.funds.len() == 2,
@@ -119,6 +144,8 @@ fn create_passive_pool(
         ctx.funds.try_into()?,
         curve_type,
         swap_fee,
+        tick_size,
+        order_depth,
     )?;
 
     // Create the pool
