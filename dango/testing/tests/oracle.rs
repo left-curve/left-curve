@@ -361,6 +361,8 @@ fn multiple_vaas() {
 }
 
 /// Return JSON string of the latest VAA from Pyth network.
+///
+/// Attempt to load from cached local files. If not found, fetch from Pyth API.
 fn get_latest_vaas<I>(ids: I) -> anyhow::Result<Vec<Binary>>
 where
     I: IntoIterator,
@@ -372,7 +374,7 @@ where
         .collect::<Vec<_>>();
 
     let filename = format!(
-        "{}/vaas_cache/{:x}",
+        "{}/testdata/vaas_cache/{:x}",
         std::env::var("CARGO_MANIFEST_DIR").unwrap(),
         Sha256::digest(
             ids.iter()
