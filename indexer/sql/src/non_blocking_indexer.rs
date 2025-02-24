@@ -2,7 +2,8 @@ use {
     crate::{
         bail,
         block_to_index::BlockToIndex,
-        entity, error,
+        entity,
+        error::{self, IndexerError},
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
@@ -161,9 +162,11 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
                 }
-            }),
+
+                Ok::<(), IndexerError>(())
+            })?,
             PubSubType::Memory => {},
         }
 
