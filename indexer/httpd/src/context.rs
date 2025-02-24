@@ -29,7 +29,7 @@ impl Context {
                 let pool = db.get_postgres_connection_pool();
                 return Ok(Self {
                     db: db.clone(),
-                    pubsub: Arc::new(PostgresPubSub::new(pool.clone())),
+                    pubsub: Arc::new(PostgresPubSub::new(pool.clone()).await?),
                 });
             }
         }
