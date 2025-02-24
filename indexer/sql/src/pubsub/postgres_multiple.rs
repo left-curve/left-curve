@@ -1,8 +1,5 @@
 use {
-    crate::{
-        error::{IndexerError, Result},
-        pubsub::PubSub,
-    },
+    crate::{error::Result, pubsub::PubSub},
     async_stream::stream,
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},

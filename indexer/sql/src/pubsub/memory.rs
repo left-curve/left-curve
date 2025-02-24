@@ -1,8 +1,5 @@
 use {
-    crate::{
-        error::{IndexerError, Result},
-        pubsub::PubSub,
-    },
+    crate::{error::Result, pubsub::PubSub},
     async_trait::async_trait,
     std::pin::Pin,
     tokio::sync::broadcast,
