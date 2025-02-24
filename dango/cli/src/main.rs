@@ -1,6 +1,5 @@
 mod db;
 mod home_directory;
-mod httpd;
 mod keys;
 mod prompt;
 mod query;
@@ -15,7 +14,6 @@ use {
     anyhow::anyhow,
     clap::Parser,
     home::home_dir,
-    httpd::HttpdCmd,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
@@ -55,9 +53,6 @@ enum Command {
     /// Start the node
     Start(StartCmd),
 
-    /// Start the httpd daemon
-    Httpd(HttpdCmd),
-
     /// Send transactions
     #[command(next_display_order = None)]
     Tx(TxCmd),
@@ -87,6 +82,5 @@ async fn main() -> anyhow::Result<()> {
         Command::Query(cmd) => cmd.run().await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir.keys_dir()).await,
-        Command::Httpd(cmd) => cmd.run(app_dir).await,
     }
 }
