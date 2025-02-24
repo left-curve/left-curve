@@ -9,11 +9,13 @@ import {
   twMerge,
   useClickAway,
 } from "@left-curve/applets-kit";
+import { useAccount } from "@left-curve/store-react";
 import { useNavigate } from "@tanstack/react-router";
 import { forwardRef, useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
+  const { isConnected } = useAccount();
   const { setSidebarVisibility } = useApp();
   const [showOptions, setShowOptions] = useState(false);
   const navigate = useNavigate();
@@ -34,12 +36,17 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
         className={twMerge(
           "absolute",
           {
-            "translate-y-[-15.25rem] shadow-btn-shadow-gradient": showOptions,
+            "shadow-btn-shadow-gradient": showOptions,
+            "translate-y-[-15.25rem]": showOptions && isConnected,
+            "translate-y-[-11.25rem]": showOptions && !isConnected,
           },
           { "shadow-none": !showOptions },
         )}
         type="button"
-        onClick={() => [setShowOptions(!showOptions), setSidebarVisibility(true)]}
+        onClick={() => [
+          setShowOptions(!showOptions),
+          isConnected ? setSidebarVisibility(true) : navigate({ to: "/login" }),
+        ]}
       >
         <ProfileIcon className="h-6 w-6 " />
       </IconButton>
@@ -50,12 +57,14 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
         className={twMerge(
           "absolute",
           {
-            "translate-y-[-11.25rem] shadow-btn-shadow-gradient": showOptions,
+            "shadow-btn-shadow-gradient": showOptions,
+            "translate-y-[-11.25rem]": showOptions && isConnected,
+            hidden: showOptions && !isConnected,
           },
           { "shadow-none": !showOptions },
         )}
         type="button"
-        onClick={() => [setShowOptions(!showOptions)]}
+        onClick={() => [setShowOptions(!showOptions), navigate({ to: "/notifications" })]}
       >
         <BellIcon className="h-6 w-6 " />
       </IconButton>
