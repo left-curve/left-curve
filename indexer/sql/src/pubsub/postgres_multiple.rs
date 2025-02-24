@@ -1,6 +1,8 @@
 use {
-    super::PubSub,
-    crate::error::IndexerError,
+    crate::{
+        error::{IndexerError, Result},
+        pubsub::PubSub,
+    },
     async_stream::stream,
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},
@@ -21,9 +23,7 @@ impl PostgresPubSub {
 
 #[async_trait]
 impl PubSub for PostgresPubSub {
-    async fn subscribe_block_minted(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>, IndexerError> {
+    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let mut listener = PgListener::connect_with(&self.pool).await?;
 
         listener.listen("blocks").await?;
@@ -53,7 +53,7 @@ impl PubSub for PostgresPubSub {
         Ok(Box::pin(stream))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError> {
+    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
         sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
             .bind(block_height as i64)
             .execute(&self.pool)

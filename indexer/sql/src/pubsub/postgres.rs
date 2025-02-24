@@ -1,6 +1,8 @@
 use {
-    super::PubSub,
-    crate::error::IndexerError,
+    crate::{
+        error::{IndexerError, Result},
+        pubsub::PubSub,
+    },
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},
     std::pin::Pin,
@@ -15,7 +17,7 @@ pub struct PostgresPubSub {
 }
 
 impl PostgresPubSub {
-    pub async fn new(pool: sqlx::PgPool) -> Result<Self, IndexerError> {
+    pub async fn new(pool: sqlx::PgPool) -> Result<Self> {
         let (sender, _) = broadcast::channel::<u64>(128);
 
         let result = Self { sender, pool };
@@ -25,7 +27,7 @@ impl PostgresPubSub {
         Ok(result)
     }
 
-    async fn connect(&self) -> Result<(), IndexerError> {
+    async fn connect(&self) -> Result<()> {
         let sender = self.sender.clone();
         let mut listener = PgListener::connect_with(&self.pool).await?;
 
@@ -34,7 +36,9 @@ impl PostgresPubSub {
                 if let Err(e) = listener.listen("blocks").await {
                     #[cfg(feature = "tracing")]
                     tracing::error!("Listen error: {e:?}");
+
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
                     continue;
                 }
 
@@ -57,6 +61,7 @@ impl PostgresPubSub {
                         Err(e) => {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Notification error: {e:?}");
+
                             break;
                         },
                     }
@@ -70,16 +75,15 @@ impl PostgresPubSub {
 
 #[async_trait]
 impl PubSub for PostgresPubSub {
-    async fn subscribe_block_minted(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>, IndexerError> {
+    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let rx = self.sender.subscribe();
+
         Ok(Box::pin(
             BroadcastStream::new(rx).filter_map(|res| res.ok()),
         ))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError> {
+    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
         sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
             .bind(block_height as i64)
             .execute(&self.pool)
