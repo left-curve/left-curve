@@ -3,9 +3,11 @@ import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import { motion } from "framer-motion";
 import type React from "react";
 import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 import { AssetTab } from "./AssetTab";
 
 export const AccountMenuBody: React.FC = () => {
+  const { setSidebarVisibility } = useApp();
   const { account, connector } = useAccount();
   const [menuAccountActiveLink, setMenuAccountActiveLink] = useState<"Assets" | "Earn" | "Pools">(
     "Assets",
@@ -24,7 +26,10 @@ export const AccountMenuBody: React.FC = () => {
         <AccountCard
           account={account}
           balance={totalBalance}
-          logout={() => connector?.disconnect()}
+          logout={() => {
+            setSidebarVisibility(false);
+            connector?.disconnect();
+          }}
         />
         <div className="md:self-end flex gap-4 items-center justify-center w-full">
           <Button fullWidth size="md">

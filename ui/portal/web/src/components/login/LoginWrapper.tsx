@@ -1,7 +1,17 @@
 import { Birdo, Carousel, ResizerContainer } from "@left-curve/applets-kit";
+import { useAccount } from "@left-curve/store-react";
+import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
+import { useEffect } from "react";
 
 export const LoginWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
+  const { isConnected } = useAccount();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isConnected) navigate({ to: "/" });
+  }, []);
+
   return (
     <div className="h-screen w-screen flex items-center justify-center">
       <div className="flex items-center justify-center flex-1">
