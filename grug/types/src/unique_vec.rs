@@ -124,4 +124,13 @@ mod tests {
             .deserialize_json::<UniqueVec<u32>>()
             .should_fail_with_error("duplicate data found!");
     }
+
+    #[test]
+    fn unique_vec_try_push() {
+        let mut unique_vec = UniqueVec::new_unchecked(vec![1, 2, 3]);
+        unique_vec.try_push(4).should_succeed();
+        unique_vec
+            .try_push(3)
+            .should_fail_with_error("duplicate data found!");
+    }
 }
