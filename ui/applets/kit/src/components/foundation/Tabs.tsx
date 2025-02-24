@@ -61,7 +61,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
 export interface TabProps {
   title: string;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 export const Tab: React.FC<PropsWithChildren<TabProps>> = ({ isActive, title, children }) => {
