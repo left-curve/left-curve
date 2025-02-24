@@ -2,7 +2,10 @@ use {
     dango_testing::setup_test_naive,
     dango_types::{
         constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM},
-        dex::{self, CurveInvariant, Direction, OrderId, Pool, QueryOrdersRequest, Swap},
+        dex::{
+            self, CurveInvariant, Direction, OrderId, OrderSubmissionInfo, Pool,
+            QueryOrdersRequest, Swap,
+        },
     },
     grug::{
         btree_map, coins, Addressable, BalanceChange, Coin, CoinPair, Coins, Denom, Inner, Message,
@@ -21,13 +24,13 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder {
+            &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
                 base_denom: ATOM_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::new(100),
                 price: Udec128::new(1),
-            },
+            }),
             Coins::one(USDC_DENOM.clone(), 1).unwrap(),
         )
         .should_fail_with_error(format!(
@@ -305,13 +308,13 @@ fn dex_works(
 
             let msg = Message::execute(
                 contracts.dex,
-                &dex::ExecuteMsg::SubmitOrder {
+                &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction,
                     amount,
                     price,
-                },
+                }),
                 funds,
             )?;
 
@@ -362,13 +365,13 @@ fn cancel_order() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder {
+            &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
                 amount: Uint128::new(100),
                 price: Udec128::new(1),
-            },
+            }),
             grug::coins! {
                 USDC_DENOM.clone() => 100
             },
@@ -412,13 +415,13 @@ fn submit_and_cancel_order_in_same_block() {
     // Build and sign a transaction with two messages: submit an order and cancel the order
     let submit_order_msg = Message::execute(
         contracts.dex,
-        &dex::ExecuteMsg::SubmitOrder {
+        &dex::ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
             base_denom: DANGO_DENOM.clone(),
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Bid,
             amount: Uint128::new(100),
             price: Udec128::new(1),
-        },
+        }),
         coins! { USDC_DENOM.clone() => 100 },
     )
     .unwrap();

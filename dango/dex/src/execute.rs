@@ -8,8 +8,8 @@ use {
         bank,
         dex::{
             CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, SlippageControl,
-            Swap, LP_NAMESPACE, NAMESPACE,
+            OrderIds, OrderSubmissionInfo, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            SlippageControl, Swap, LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -45,13 +45,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             lp_denom,
             swap_fee,
         } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
-        ExecuteMsg::SubmitOrder {
+        ExecuteMsg::SubmitOrder(OrderSubmissionInfo {
             base_denom,
             quote_denom,
             direction,
             amount,
             price,
-        } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
+        }) => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
         ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),

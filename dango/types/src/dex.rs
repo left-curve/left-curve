@@ -167,6 +167,15 @@ pub enum OrderIds {
 }
 
 #[grug::derive(Serde)]
+pub struct OrderSubmissionInfo {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub price: Udec128,
+    pub amount: Uint128,
+}
+
+#[grug::derive(Serde)]
 pub enum ExecuteMsg {
     /// Create new, or modify the parametes of existing, trading pairs.
     ///
@@ -194,13 +203,7 @@ pub enum ExecuteMsg {
     ///   ```plain
     ///   ceil(amount * price)
     ///   ```
-    SubmitOrder {
-        base_denom: Denom,
-        quote_denom: Denom,
-        direction: Direction,
-        amount: Uint128,
-        price: Udec128,
-    },
+    SubmitOrder(OrderSubmissionInfo),
     /// Cancel one or more orders by IDs.
     CancelOrders {
         order_ids: OrderIds,
