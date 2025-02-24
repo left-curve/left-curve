@@ -38,7 +38,11 @@ export const LoginUsernameStep: React.FC = () => {
   return (
     <div className="flex items-center justify-center flex-col gap-8 px-4 lg:px-0">
       <div className="flex flex-col gap-7 items-center justify-center">
-        <img src="./images/dango.svg" alt="dango-logo" className="h-[24px]" />
+        <img
+          src="./favicon.svg"
+          alt="dango-logo"
+          className="h-12 rounded-full shadow-btn-shadow-gradient"
+        />
         <h1 className="h2-heavy">Log in</h1>
       </div>
       <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>

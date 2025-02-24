@@ -45,7 +45,11 @@ export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) =
           <div className="flex items-center justify-center gap-8 px-4 lg:px-0 flex-col">
             {/* Header */}
             <div className="flex flex-col gap-7 items-center justify-center">
-              <img src="./images/dango.svg" alt="dango-logo" className="h-[24px]" />
+              <img
+                src="./favicon.svg"
+                alt="dango-logo"
+                className="h-12 rounded-full shadow-btn-shadow-gradient"
+              />
               <div className="flex flex-col gap-3 items-center justify-center text-center">
                 <h1 className="h2-heavy">{title}</h1>
                 <p className="text-gray-500 diatype-m-medium">{subtitle}</p>

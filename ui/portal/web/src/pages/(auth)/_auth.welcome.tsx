@@ -10,7 +10,11 @@ function WelcomeComponent() {
     <div className="h-screen w-screen flex items-center justify-center flex-col-reverse gap-10 lg:gap-60 lg:flex-row p-4">
       <div className="bg-[url('./images/waves.svg')] w-full h-[3rem] bg-cover bg-no-repeat bg-bottom fixed top-0 left-0" />
       <div className="w-full flex flex-col gap-10 max-w-[366px]">
-        <img src="./images/dango.svg" alt="dango-logo" className="h-[24px]" />
+        <img
+          src="./favicon.svg rounded-full shadow-btn-shadow-gradient"
+          alt="dango-logo"
+          className="h-12"
+        />
         <div className="flex flex-col gap-6 items-center">
           <div className="flex flex-col gap-2 items-center justify-center text-center">
             <h1 className="display-heading-xl">Welcome to Dango</h1>

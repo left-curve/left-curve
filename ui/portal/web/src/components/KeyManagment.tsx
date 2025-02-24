@@ -25,13 +25,13 @@ export const KeyManagment: React.FC = () => {
   const { data: signingClient } = useSigningClient();
   const { showModal } = useApp();
 
-  if (status !== ConnectionStatus.Connected) return null;
-
   const { data: keys = [], isPending } = useQuery({
-    enabled: !!signingClient,
+    enabled: !!signingClient && !!username,
     queryKey: ["user_keys", username],
-    queryFn: async () => await signingClient?.getKeysByUsername({ username }),
+    queryFn: async () => await signingClient?.getKeysByUsername({ username: username as string }),
   });
+
+  if (status !== ConnectionStatus.Connected) return null;
 
   return (
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">

@@ -23,13 +23,13 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full p-4 backdrop-blur-sm">
+      <header className="fixed  max-w-[76rem] mx-auto lg:sticky bottom-0 lg:top-0 left-0 pbg-transparent z-50 w-full p-4 backdrop-blur-sm">
         <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto">
           <Link to="/" className="w-fit">
             <img
-              src="/images/dango.svg"
+              src="/favicon.svg"
               alt="dango logo"
-              className="h-8 order-1 cursor-pointer hidden lg:flex"
+              className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
             />
           </Link>
           <div
