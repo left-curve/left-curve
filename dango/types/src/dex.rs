@@ -79,6 +79,28 @@ impl PrimaryKey for Direction {
 }
 
 #[grug::derive(Serde)]
+pub struct Swap {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub amount: Uint128,
+    pub slippage: Option<SlippageControl>,
+}
+
+#[grug::derive(Serde)]
+pub enum SlippageControl {
+    /// Minimum amount out. Transaction will fail if the amount out is less than the
+    /// specified amount.
+    MinimumOut(Uint128),
+    /// Maximum amount in. Transaction will fail if the amount in is greater than the
+    /// specified amount.
+    MaximumIn(Uint128),
+    /// Price limit. Transaction will fail if the execution price is greater than the
+    /// specified price for a BUY order, or less than the specified price for a SELL order.
+    PriceLimit(Udec128),
+}
+
+#[grug::derive(Serde)]
 pub struct Pair {
     pub base_denom: Denom,
     pub quote_denom: Denom,
@@ -182,6 +204,10 @@ pub enum ExecuteMsg {
     /// Cancel one or more orders by IDs.
     CancelOrders {
         order_ids: OrderIds,
+    },
+    /// Perform the swaps
+    BatchSwap {
+        swaps: Vec<Swap>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity
