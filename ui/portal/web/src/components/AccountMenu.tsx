@@ -1,4 +1,4 @@
-import { IconChevronRight, twMerge, useClickAway } from "@left-curve/applets-kit";
+import { IconDoubleChevronRight, twMerge, useClickAway } from "@left-curve/applets-kit";
 import type React from "react";
 import { useRef, useState } from "react";
 
@@ -29,13 +29,13 @@ export const AccountMenu: React.FC<Props> = ({ showAccountMenu, setShowAccountMe
         className="text-gray-900 h-full py-6 flex justify-end w-[64px] hover:cursor-pointer pr-1"
         onClick={() => setShowAccountMenu(false)}
       >
-        <IconChevronRight />
+        <IconDoubleChevronRight />
       </div>
       <div className="pr-2 py-4 w-full">
         <div className="w-full bg-white-100 flex flex-col items-center h-full rounded-2xl border border-gray-100">
           <div className="p-4 w-full flex items-center flex-col gap-5">
             {/* card component */}
-            <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-small flex flex-col justify-between p-4">
+            <div className="shadow-account-card w-full max-w-[20.5rem] h-[9.75rem] bg-account-card-red relative overflow-hidden rounded-md flex flex-col justify-between p-4">
               <img
                 src="/images/account-card/dog.svg"
                 alt="account-card-dog"

@@ -2,12 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
-  Address,
   IconAddCross,
   IconCopy,
   IconTrash,
   Select,
   SelectItem,
+  TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
@@ -19,9 +19,9 @@ export const Route = createFileRoute("/(app)/_app/settings")({
       <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
         <h2 className="text-2xl font-extrabold font-exposure">Settings</h2>
         {/* first element */}
-        <div className="rounded-medium bg-rice-25 shadow-card-shadow flex flex-col w-full px-1">
+        <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-1">
           <h3 className="text-lg font-bold px-[10px] py-4">Display</h3>
-          <div className="flex items-center justify-between px-[10px] py-2 rounded-small">
+          <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
             <p>Language</p>
             <Select defaultSelectedKey="en">
               <SelectItem key="en" textValue="English">
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/(app)/_app/settings")({
               </SelectItem>
             </Select>
           </div>
-          <div className="flex items-center justify-between px-[10px] py-2 rounded-small">
+          <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
             <p>Number Format</p>
             <Select defaultSelectedKey="en">
               <SelectItem key="en" textValue="English">
@@ -43,13 +43,13 @@ export const Route = createFileRoute("/(app)/_app/settings")({
               </SelectItem>
             </Select>
           </div>
-          <div className="flex items-center justify-between px-[10px] py-4 rounded-small hover:bg-rice-50 transition-all cursor-pointer">
+          <div className="flex items-center justify-between px-[10px] py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer">
             <p>Connect to mobile</p>
           </div>
-          <div className="flex items-center justify-between px-[10px] py-2 rounded-small">
+          <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
             <p>Theme</p>
             {/* button components */}
-            <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-small">
+            <motion.ul className="flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-md">
               {Array.from(["System", "light", "moon"]).map((e, i) => {
                 const isActive = e === theme;
                 const Icon = e === "light" ? null : IconAddCross;
@@ -81,7 +81,7 @@ export const Route = createFileRoute("/(app)/_app/settings")({
           </div>
         </div>
         {/* second element */}
-        <div className="rounded-medium bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
+        <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
           <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
             <div className="flex flex-col gap-1 max-w-lg">
               <h3 className="text-lg font-bold">Key Management </h3>
@@ -106,9 +106,9 @@ export const Route = createFileRoute("/(app)/_app/settings")({
               >
                 <div className="flex items-start justify-between w-full gap-8">
                   <div className="min-w-0">
-                    <Address
+                    <TruncateText
                       className="text-gray-700 font-bold"
-                      address="0x6caf21cd9f6D4c6eF7CF32539690B79665abFE09"
+                      text="0x6caf21cd9f6D4c6eF7CF32539690B79665abFE09"
                     />
 
                     <p className="text-gray-500 text-sm">Metamask Wallet</p>
