@@ -54,22 +54,20 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
 
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        if (challenge) {
-          const signature = await provider.request({
-            method: "personal_sign",
-            params: [challenge, controllerAddress],
-          });
+        const signature = await provider.request({
+          method: "personal_sign",
+          params: [challenge, controllerAddress],
+        });
 
-          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
+        const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
-          const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
-          const keys = await getKeysByUsername(client, { username });
+        const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+        const keys = await getKeysByUsername(client, { username });
 
-          if (!keys[keyHash]) throw new Error("Not authorized");
-          _isAuthorized = true;
-        }
+        if (!keys[keyHash]) throw new Error("Not authorized");
+        _isAuthorized = true;
 
-        emitter.emit("connect", { accounts, chainId, username });
+        emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
         _isAuthorized = false;

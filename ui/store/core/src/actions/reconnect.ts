@@ -25,6 +25,7 @@ export async function reconnect<config extends Config>(
     username,
     accounts,
     account,
+    keyHash,
   } of config.state.connections.values()) {
     const connector = config.connectors.find(({ id }) => id === _connector_.id);
     const chain = config.chains.find(({ id }) => id === chainId);
@@ -37,6 +38,7 @@ export async function reconnect<config extends Config>(
       connector.emitter.on("disconnect", config._internal.events.disconnect);
       connectors.set(chainId, connector.uid);
       connections.set(connector.uid, {
+        keyHash,
         account,
         chainId,
         accounts,

@@ -1,4 +1,4 @@
-import type { ChainId, Prettify, Transport, UID } from "@left-curve/dango/types";
+import type { ChainId, KeyHash, Prettify, Transport, UID } from "@left-curve/dango/types";
 import type { Emitter, EventData } from "./emitter.js";
 
 import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";
@@ -23,6 +23,7 @@ export type Connection = {
   chainId: ChainId;
   account: Account;
   username: Username;
+  keyHash: KeyHash;
   accounts: readonly Account[];
   connector: Connector;
 };
@@ -41,11 +42,13 @@ export type ConnectorEventMap = {
     username: Username;
     accounts?: readonly Account[] | undefined;
     chainId?: string;
+    keyHash: KeyHash;
   };
   connect: {
     username: Username;
     accounts: readonly Account[];
     chainId: string;
+    keyHash: KeyHash;
   };
   disconnect: never;
   error: {
@@ -83,7 +86,7 @@ export type CreateConnectorFn<
       connect(parameters: {
         username: string;
         chainId: Chain["id"];
-        challenge?: string;
+        challenge: string;
       }): Promise<void>;
       disconnect(): Promise<void>;
       getAccounts(): Promise<readonly Account[]>;

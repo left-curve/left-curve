@@ -36,22 +36,20 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const client = await this.getClient();
 
-        if (challenge) {
-          const { credentialId } = await requestWebAuthnSignature({
-            challenge: encodeUtf8(challenge),
-            rpId: getRootDomain(window.location.hostname),
-            userVerification: "preferred",
-          });
+        const { credentialId } = await requestWebAuthnSignature({
+          challenge: encodeUtf8(challenge),
+          rpId: getRootDomain(window.location.hostname),
+          userVerification: "preferred",
+        });
 
-          const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
-          const keys = await getKeysByUsername(client, { username });
+        const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        const keys = await getKeysByUsername(client, { username });
 
-          if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
-          _isAuthorized = true;
-        }
+        if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
+        _isAuthorized = true;
 
         const accounts = await this.getAccounts();
-        emitter.emit("connect", { accounts, chainId, username });
+        emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
         _isAuthorized = false;
