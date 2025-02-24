@@ -55,7 +55,7 @@ export const HamburgerMenu = forwardRef<VisibleRef>((_props, ref) => {
           { "shadow-none": !showOptions },
         )}
         type="button"
-        onClick={() => [setShowOptions(!showOptions)]}
+        onClick={() => [setShowOptions(!showOptions), navigate({ to: "/notifications" })]}
       >
         <BellIcon className="h-6 w-6 " />
       </IconButton>

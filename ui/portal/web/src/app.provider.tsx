@@ -15,6 +15,8 @@ const queryClient = new QueryClient({
 type AppState = {
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
+  isNotificationMenuVisible: boolean;
+  setNotificationMenuVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, modalProps?: any) => void;
   hideModal: () => void;
   isModalVisible: boolean;
@@ -26,6 +28,7 @@ export const AppContext = createContext<AppState | null>(null);
 
 export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
+  const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [activeModal, setSelectedModal] = useState<string>();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalProps, setModalProps] = useState<Record<string, any>>({});
@@ -45,6 +48,8 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
           value={{
             isSidebarVisible,
             setSidebarVisibility,
+            isNotificationMenuVisible,
+            setNotificationMenuVisibility,
             showModal,
             hideModal,
             isModalVisible,

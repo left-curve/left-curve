@@ -10,16 +10,21 @@ import {
 import { IconSearch } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { HamburgerMenu } from "./HamburguerMenu";
+import { NotificationsMenu } from "./NotificationsMenu";
 import { AccountDesktopMenu } from "./menu/AccountDesktopMenu";
 import { AccountMobileMenu } from "./menu/AccountMobileMenu";
 
 export const Header: React.FC = () => {
   const { account, isConnected } = useAccount();
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, setNotificationMenuVisibility, isNotificationMenuVisible } =
+    useApp();
   const navigate = useNavigate();
   const isMd = useMediaQuery("md");
+
+  const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -56,7 +61,12 @@ export const Header: React.FC = () => {
             </Button>
 
             {isConnected ? (
-              <Button variant="utility" size="lg">
+              <Button
+                ref={buttonNotificationsRef}
+                variant="utility"
+                size="lg"
+                onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
+              >
                 <IconBell className="w-6 h-6 text-rice-700" />
               </Button>
             ) : null}
@@ -84,6 +94,7 @@ export const Header: React.FC = () => {
         </div>
       </header>
       {isMd ? <AccountDesktopMenu /> : <AccountMobileMenu />}
+      <NotificationsMenu buttonRef={buttonNotificationsRef} />
     </>
   );
 };
