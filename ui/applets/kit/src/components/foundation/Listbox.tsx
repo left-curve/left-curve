@@ -32,7 +32,6 @@ export const ListBox: React.FC<ListBoxProps> = (props) => {
   const { listBoxRef = ref, state, color } = props;
   const { listBoxProps } = useListBox(props, state, listBoxRef);
 
-  console.log([...state.collection].length);
   return (
     <motion.ul
       ref={listBoxRef}

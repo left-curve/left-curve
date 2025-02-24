@@ -62,8 +62,6 @@ export async function configureKey<transport extends Transport>(
     },
   };
 
-  console.log(typedData, configureKeyMsg, configureKeyMsg);
-
   return await execute(client, {
     contract: addresses.accountFactory,
     sender,
