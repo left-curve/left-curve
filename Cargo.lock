@@ -3290,6 +3290,7 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-lending",
  "dango-types",
  "grug",
  "pyth-sdk 0.8.0",

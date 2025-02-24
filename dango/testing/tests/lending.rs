@@ -16,7 +16,7 @@ use {
     grug::{
         btree_map, Addressable, Binary, Coins, Denom, Duration, JsonSerExt, Message, MsgConfigure,
         MsgTransfer, MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Sign, Udec128,
-        Uint128,
+        Udec256, Uint128,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -941,7 +941,7 @@ fn interest_rate_model_works(
         })
         .should_succeed();
     // Ensure that total borrowed is zero
-    assert_eq!(market.total_borrowed_scaled, Udec128::ZERO);
+    assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);
 
     // Check depositors USDC balance
     let depositor_usdc_balance_before = suite
@@ -1011,5 +1011,5 @@ fn interest_rate_model_works(
 
     // Ensure that total supply is equal to the protocol revenueand total borrowed are zero
     assert_eq!(market.total_supplied(suite).unwrap(), Uint128::ZERO);
-    assert_eq!(market.total_borrowed_scaled, Udec128::ZERO);
+    assert_eq!(market.total_borrowed_scaled, Udec256::ZERO);
 }

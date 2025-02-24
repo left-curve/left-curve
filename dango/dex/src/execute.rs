@@ -7,7 +7,7 @@ use {
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
+            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
             OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
         },
     },
@@ -129,7 +129,7 @@ fn submit_order(
 
     INCOMING_ORDERS.save(
         ctx.storage,
-        order_id,
+        (ctx.sender, order_id),
         &(
             (
                 (base_denom.clone(), quote_denom.clone()),
@@ -158,38 +158,48 @@ fn submit_order(
 }
 
 #[inline]
-fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Result<Response> {
+fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) = match (
-            ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
-            INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
-        ) {
-            // If the order is in the persistent storage, then remove it from
-            // there.
-            (Some((order_key, order)), None) => {
-                ORDERS.remove(ctx.storage, order_key.clone())?;
-                (order_key, order)
-            },
-            // If the order is in the incoming orders map, then remove it from
-            // there. This should be rare, as the trader would need to submit
-            // then remove the order in the same block.
-            (None, Some((order_key, order))) => {
-                INCOMING_ORDERS.remove(ctx.storage, order_id);
-                (order_key, order)
-            },
-            // Order is not found in either place, error.
-            (None, None) => {
-                bail!("order with id `{order_id}` not found");
-            },
-            // Order is found in both maps. This should never happen, indicating
-            // a serious bug. We panic and halt the chain for investigation.
-            (Some(_), Some(_)) => {
-                unreachable!("order with id `{order_id}` found in both maps");
-            },
-        };
+    // First, collect all orders to be cancelled into memory.
+    let orders = match order_ids {
+        // Cancel all orders.
+        OrderIds::All => ORDERS
+            .idx
+            .user
+            .prefix(ctx.sender)
+            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .map(|order| Ok((order?, false)))
+            .chain(
+                INCOMING_ORDERS
+                    .prefix(ctx.sender)
+                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .map(|order| Ok((order?, true))),
+            )
+            .collect::<StdResult<Vec<_>>>()?,
+        // Cancel selected orders.
+        OrderIds::Some(order_ids) => order_ids
+            .into_iter()
+            .map(|order_id| {
+                // First see if the order is the persistent storage. If not,
+                // check the transient storage.
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                    Ok((order, false))
+                } else if let Some(order) =
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
+                {
+                    Ok((order, true))
+                } else {
+                    bail!("order with id `{order_id}` not found");
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?,
+    };
+
+    // Now, cancel the orders one by one.
+    for ((order_key, order), is_incoming) in orders {
+        let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
         ensure!(
             ctx.sender == order.user,
@@ -199,7 +209,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         let refund = match direction {
             Direction::Bid => Coin {
                 denom: quote_denom.clone(),
-                amount: order.remaining.checked_mul_dec_floor(price)?,
+                amount: order.remaining.checked_mul_dec_floor(*price)?,
             },
             Direction::Ask => Coin {
                 denom: base_denom.clone(),
@@ -208,12 +218,19 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         };
 
         events.push(ContractEvent::new("order_canceled", OrderCanceled {
-            order_id,
+            order_id: *order_id,
             remaining: order.remaining,
             refund: refund.clone(),
         })?);
 
         refunds.insert(refund)?;
+
+        // Remove the order from storage
+        if is_incoming {
+            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
+        } else {
+            ORDERS.remove(ctx.storage, order_key)?;
+        }
     }
 
     Ok(Response::new()

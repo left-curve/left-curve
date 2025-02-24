@@ -142,10 +142,36 @@ fn query_orders_by_pair(
 
 #[inline]
 fn query_orders_by_user(
-    _ctx: ImmutableCtx,
-    _user: Addr,
-    _start_after: Option<OrderId>,
-    _limit: Option<u32>,
+    ctx: ImmutableCtx,
+    user: Addr,
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
 ) -> StdResult<BTreeMap<OrderId, OrdersByUserResponse>> {
-    todo!();
+    let start = start_after
+        .map(|order_id| -> StdResult<_> {
+            let ((pair, direction, price, _), _) =
+                ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            Ok(Bound::Exclusive((pair, direction, price, order_id)))
+        })
+        .transpose()?;
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORDERS
+        .idx
+        .user
+        .prefix(user)
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (((base_denom, quote_denom), direction, price, order_id), order) = res?;
+            Ok((order_id, OrdersByUserResponse {
+                base_denom,
+                quote_denom,
+                direction,
+                price,
+                amount: order.amount,
+                remaining: order.remaining,
+            }))
+        })
+        .collect()
 }
