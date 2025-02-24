@@ -150,6 +150,7 @@ impl StartCmd {
 
 pub fn vm(wasm_cache_capacity: usize) -> HybridVm {
     let codes = build_rust_codes();
+
     HybridVm::new(wasm_cache_capacity, [
         codes.account_factory.to_bytes().hash256(),
         codes.account_margin.to_bytes().hash256(),

@@ -28,7 +28,6 @@ pub struct HttpdCmd {
 impl HttpdCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         let db = DiskDb::open(app_dir.data_dir())?;
-
         let vm = vm(self.wasm_cache_capacity);
 
         let context = non_blocking_indexer::IndexerBuilder::default()

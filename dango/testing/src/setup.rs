@@ -105,6 +105,7 @@ pub fn setup_test_with_indexer() -> (
 
     let db = MemDb::new();
     let vm = RustVm::new();
+
     let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
         db.clone(),
         vm.clone(),

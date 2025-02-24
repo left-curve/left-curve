@@ -103,9 +103,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -113,18 +111,18 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
     let (httpd_context, ..) = create_block().await?;
 
     let graphql_query = r#"
-    query Blocks {
-      blocks {
-        nodes {
-          blockHeight
-          appHash
-          hash
-          createdAt
+      query Blocks {
+        blocks {
+          nodes {
+            blockHeight
+            appHash
+            hash
+            createdAt
+          }
+          edges { node { blockHeight appHash hash createdAt } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
-        edges { node { blockHeight appHash hash createdAt } cursor }
-        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
-    }
     "#;
 
     let request_body = GraphQLCustomRequest {
@@ -149,9 +147,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -159,18 +155,18 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
     let (httpd_context, _, accounts) = create_block().await?;
 
     let graphql_query = r#"
-    query Transactions {
-      transactions {
-        nodes {
-          blockHeight
-          sender
-          hash
-          hasSucceeded
+      query Transactions {
+        transactions {
+          nodes {
+            blockHeight
+            sender
+            hash
+            hasSucceeded
+          }
+          edges { node { blockHeight sender hash hasSucceeded } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
-        edges { node { blockHeight sender hash hasSucceeded } cursor }
-        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
-    }
     "#;
 
     let request_body = GraphQLCustomRequest {
@@ -198,9 +194,7 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -208,18 +202,18 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
     let (httpd_context, _, accounts) = create_block().await?;
 
     let graphql_query = r#"
-    query Messages {
-      messages {
-        nodes {
-          blockHeight
-          methodName
-          contractAddr
-          senderAddr
+      query Messages {
+        messages {
+          nodes {
+            blockHeight
+            methodName
+            contractAddr
+            senderAddr
+          }
+          edges { node { blockHeight methodName contractAddr senderAddr } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
-        edges { node { blockHeight methodName contractAddr senderAddr } cursor }
-        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
-    }
     "#;
 
     let request_body = GraphQLCustomRequest {
@@ -247,9 +241,7 @@ async fn graphql_returns_messages() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -332,9 +324,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -342,9 +332,9 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
     let (httpd_context, ..) = create_block().await?;
 
     let graphql_query = r#"
-    query QueryApp($request: String!, $height: Int!) {
-      queryApp(request: $request, height: $height)
-    }
+      query QueryApp($request: String!, $height: Int!) {
+        queryApp(request: $request, height: $height)
+      }
     "#;
 
     let body_request =
@@ -379,7 +369,5 @@ async fn graphql_returns_query_app() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }

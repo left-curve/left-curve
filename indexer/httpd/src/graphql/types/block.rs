@@ -47,6 +47,7 @@ impl From<grug_types::BlockInfo> for BlockInfo {
             .timestamp_opt(seconds, nanoseconds)
             .single()
             .unwrap_or_default();
+
         Self {
             block_height: item.height,
             timestamp,

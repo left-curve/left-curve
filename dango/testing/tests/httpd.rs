@@ -50,19 +50,19 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
-    query Transfers($block_height: Int!) {
-      transfers(blockHeight: $block_height) {
-        nodes {
-          blockHeight
-          fromAddress
-          toAddress
-          amount
-          denom
+      query Transfers($block_height: Int!) {
+        transfers(blockHeight: $block_height) {
+          nodes {
+            blockHeight
+            fromAddress
+            toAddress
+            amount
+            denom
+          }
+          edges { node { blockHeight fromAddress toAddress amount denom } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
-        edges { node { blockHeight fromAddress toAddress amount denom } cursor }
-        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
-    }
     "#;
 
     let variables = serde_json::json!({
@@ -110,9 +110,7 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
