@@ -108,6 +108,12 @@ export {
   registerUser,
 } from "./mutations/registerUser.js";
 
+export {
+  type ConfigureKeyParameters,
+  type ConfigureKeyReturnType,
+  configureKey,
+} from "./mutations/configureKey.js";
+
 /* -------------------------------------------------------------------------- */
 /*                               Builder Action                               */
 /* -------------------------------------------------------------------------- */

@@ -1,4 +1,12 @@
-import type { ChainId, KeyHash, Prettify, Transport, UID } from "@left-curve/dango/types";
+import type {
+  ChainId,
+  Key,
+  KeyHash,
+  OneRequired,
+  Prettify,
+  Transport,
+  UID,
+} from "@left-curve/dango/types";
 import type { Emitter, EventData } from "./emitter.js";
 
 import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";
@@ -83,12 +91,21 @@ export type CreateConnectorFn<
       readonly icon?: string;
       readonly rdns?: string;
       setup?(): Promise<void>;
-      connect(parameters: {
-        username: string;
-        chainId: Chain["id"];
-        challenge: string;
-      }): Promise<void>;
+      connect(
+        parameters: {
+          username: string;
+          chainId: Chain["id"];
+        } & OneRequired<
+          {
+            challenge: string;
+            keyHash: KeyHash;
+          },
+          "challenge",
+          "keyHash"
+        >,
+      ): Promise<void>;
       disconnect(): Promise<void>;
+      createNewKey(challenge?: string): Promise<{ keyHash: KeyHash; key: Key }>;
       getAccounts(): Promise<readonly Account[]>;
       getClient(): Promise<SignerClient<transport>>;
       isAuthorized(): Promise<boolean>;

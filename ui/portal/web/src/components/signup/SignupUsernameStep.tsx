@@ -82,7 +82,7 @@ export const SignupUsernameStep: React.FC = () => {
         await registerUser(client, { key, keyHash, username });
 
         await wait(1000);
-        await connector.connect({ username, chainId });
+        await connector.connect({ username, chainId, keyHash });
       } catch (err) {
         toast.error({ title: "Couldn't complete the request" });
         console.log(err);

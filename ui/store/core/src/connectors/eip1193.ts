@@ -44,7 +44,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       name,
       icon,
       type: "eip1193",
-      async connect({ username, chainId, challenge }) {
+      async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
         _username = username;
         _transport = transports[chainId];
 
@@ -52,16 +52,21 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const provider = await this.getProvider();
         const accounts = await this.getAccounts();
 
-        const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
+        const keyHash = await (async () => {
+          if (_keyHash_) return _keyHash_;
+          const c = challenge as string;
+          const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
 
-        const signature = await provider.request({
-          method: "personal_sign",
-          params: [challenge, controllerAddress],
-        });
+          const signature = await provider.request({
+            method: "personal_sign",
+            params: [c, controllerAddress],
+          });
 
-        const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
+          const pubKey = await secp256k1RecoverPubKey(ethHashMessage(c), signature, true);
 
-        const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+          return createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+        })();
+
         const keys = await getKeysByUsername(client, { username });
 
         if (!keys[keyHash]) throw new Error("Not authorized");
@@ -83,6 +88,22 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           });
         }
         return _client;
+      },
+      async createNewKey(challenge = "Please sign this message to confirm your identity.") {
+        const provider = await this.getProvider();
+
+        const [controllerAddress] = await provider.request({
+          method: "eth_requestAccounts",
+        });
+
+        const signature = await provider.request({
+          method: "personal_sign",
+          params: [challenge, controllerAddress],
+        });
+
+        const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
+        const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+        return { key: { secp256k1: encodeBase64(pubKey) }, keyHash };
       },
       async getKeyHash() {
         const provider = await this.getProvider();
