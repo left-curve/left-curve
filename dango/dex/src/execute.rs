@@ -373,6 +373,19 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
 }
 
 fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
+    let (refunds, events) = _cancel_orders(ctx.storage, ctx.sender, order_ids)?;
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, refunds)?)
+        .add_subevents(events))
+}
+
+/// Internal function to handle the cancellation of orders. This is used by both
+/// `cron_execute` and `cancel_orders`.
+fn _cancel_orders(
+    storage: &mut dyn Storage,
+    sender: Addr,
+    order_ids: OrderIds,
+) -> anyhow::Result<(Coins, Vec<ContractEvent>)> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
@@ -382,13 +395,13 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
         OrderIds::All => ORDERS
             .idx
             .user
-            .prefix(ctx.sender)
-            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .prefix(sender)
+            .range(storage, None, None, IterationOrder::Ascending)
             .map(|order| Ok((order?, false)))
             .chain(
                 INCOMING_ORDERS
-                    .prefix(ctx.sender)
-                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .prefix(sender)
+                    .values(storage, None, None, IterationOrder::Ascending)
                     .map(|order| Ok((order?, true))),
             )
             .collect::<StdResult<Vec<_>>>()?,
@@ -398,11 +411,9 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
             .map(|order_id| {
                 // First see if the order is the persistent storage. If not,
                 // check the transient storage.
-                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                if let Some(order) = ORDERS.idx.order_id.may_load(storage, order_id)? {
                     Ok((order, false))
-                } else if let Some(order) =
-                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
-                {
+                } else if let Some(order) = INCOMING_ORDERS.may_load(storage, (sender, order_id))? {
                     Ok((order, true))
                 } else {
                     bail!("order with id `{order_id}` not found");
@@ -415,10 +426,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
     for ((order_key, order), is_incoming) in orders {
         let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
-        ensure!(
-            ctx.sender == order.user,
-            "only the user can cancel the order"
-        );
+        ensure!(sender == order.user, "only the user can cancel the order");
 
         let refund = match direction {
             Direction::Bid => Coin {
@@ -441,15 +449,13 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
 
         // Remove the order from storage
         if is_incoming {
-            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
+            INCOMING_ORDERS.remove(storage, (sender, *order_id));
         } else {
-            ORDERS.remove(ctx.storage, order_key)?;
+            ORDERS.remove(storage, order_key)?;
         }
     }
 
-    Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, refunds)?)
-        .add_subevents(events))
+    Ok((refunds, events))
 }
 
 #[inline]
