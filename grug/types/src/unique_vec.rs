@@ -33,6 +33,16 @@ where
     pub fn new_unchecked(inner: Vec<T>) -> Self {
         Self(inner)
     }
+
+    /// Check if the item is already in the vector, and if not, push it.
+    pub fn try_push(&mut self, item: T) -> StdResult<()> {
+        if self.0.contains(&item) {
+            return Err(StdError::duplicate_data::<T>());
+        }
+
+        self.0.push(item);
+        Ok(())
+    }
 }
 
 impl<T> Inner for UniqueVec<T>
