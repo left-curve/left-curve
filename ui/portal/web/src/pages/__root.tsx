@@ -13,4 +13,5 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       });
     }
   },
+  errorComponent: () => <div>Something went wrong</div>,
 });
