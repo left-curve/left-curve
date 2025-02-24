@@ -1,11 +1,13 @@
 import tailwindScrollbar from "tailwind-scrollbar";
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
-
 export const tailwindConfig: Partial<Config> = {
   theme: {
     colors: {
       transparent: "transparent",
+      status: {
+        success: "#25B12A",
+      },
       gray: {
         25: "#FAFAFA",
         50: "#F5F4F4",
@@ -94,7 +96,16 @@ export const tailwindConfig: Partial<Config> = {
       },
       error: {
         25: "#FFFBFA",
+        50: "#FEF3F2",
+        100: "#FEE4E2",
+        200: "#FECDCA",
+        300: "#FDA29B",
+        400: "#F97066",
         500: "#F04438",
+        600: "#D92D20",
+        700: "#B42318",
+        800: "#912017",
+        900: "#55150B",
       },
     },
     boxShadow: {
@@ -139,6 +150,33 @@ export const tailwindConfig: Partial<Config> = {
       h1: ["36px", { lineHeight: "140%" }],
       xl: ["40px", { lineHeight: "140%" }],
       "2xl": ["60px", { lineHeight: "140%", letterSpacing: "-2%" }],
+    },
+    animation: {
+      "rotate-2": "rotate 4s linear infinite",
+      "rotate-4": "rotate 4s linear infinite",
+      "dash-4": "dash 2s ease-in-out infinite",
+      "spinner-ease-spin": "spinner-spin 0.8s ease infinite",
+      "spinner-linear-spin": "spinner-spin 0.8s linear infinite",
+    },
+    keyframes: {
+      "spinner-spin": {
+        "0%": {
+          transform: "rotate(0deg)",
+        },
+        "100%": {
+          transform: "rotate(360deg)",
+        },
+      },
+      rotate: {
+        "100%": {
+          transform: "rotate(360deg)",
+        },
+      },
+      dash: {
+        "0%": { "stroke-dasharray": "1, 200", "stroke-dashoffset": "0" },
+        "50%": { "stroke-dasharray": "90, 200", "stroke-dashoffset": "-35px" },
+        "100%": { "stroke-dashoffset": "-125px" },
+      },
     },
   },
   plugins: [
@@ -277,7 +315,7 @@ export const tailwindConfig: Partial<Config> = {
         ".diatype-m-regular": {
           fontWeight: "400",
           fontSize: "16px",
-          lineHeight: "22.4px",
+          lineHeight: "1",
           fontFamily: theme("fontFamily.diatype-rounded"),
         },
         ".diatype-m-medium": {

@@ -29,7 +29,7 @@ export type MsgRegisterUser = {
 };
 
 export async function registerUser<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+  client: DangoClient<transport, undefined | Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
   const { username, keyHash, key } = parameters;

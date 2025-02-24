@@ -14,6 +14,9 @@ export { Table } from "./foundation/table/Table";
 export { Tabs } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
 export { Input } from "./foundation/Input";
+export { Stepper } from "./foundation/Stepper";
+export { Carousel } from "./foundation/Carousel";
+export { ResizerContainer } from "./foundation/ResizerContainer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -35,9 +38,11 @@ export { XCircleIcon } from "./foundation/icons/XCircle";
 export { CopyCheckIcon } from "./foundation/icons/CopyCheck";
 export { ConnectorIcon } from "./foundation/icons/Connector";
 export { CrossIcon } from "./foundation/icons/Cross";
-export { IconChevronRight } from "./foundation/icons/IconChevronRight";
 export { DangoDotsIcon } from "./foundation/icons/DangoDots";
 
+export { IconDoubleChevronRight } from "./foundation/icons/IconDoubleChevronRight";
+export { IconChevronRight } from "./foundation/icons/IconChevronRight";
+export { IconChevronLeft } from "./foundation/icons/IconChevronLeft";
 export { IconChevronDown } from "./foundation/icons/IconChevronDown";
 export { IconGear } from "./foundation/icons/IconGear";
 export { IconTrash } from "./foundation/icons/IconTrash";
@@ -45,6 +50,7 @@ export { IconAddCross } from "./foundation/icons/IconAddCross";
 export { IconBell } from "./foundation/icons/IconBell";
 export { IconSearch } from "./foundation/icons/IconSearch";
 export { IconUser } from "./foundation/icons/IconUser";
+export { IconLeft } from "./foundation/icons/IconLeft";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

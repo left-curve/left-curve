@@ -44,6 +44,7 @@ const buttonVariants = tv(
       "group",
       "relative",
       "inline-flex",
+      "cursor-pointer",
       "items-center",
       "justify-center",
       "box-border",
@@ -66,7 +67,7 @@ const buttonVariants = tv(
         secondary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
-        link: "rounded-xl transition-all duration-300 w-fit",
+        link: "rounded-xl transition-all duration-300 w-fit mx-1",
       },
       size: {
         xs: "h-[25px] py-1 px-[6px] exposure-xs-italic text-xs gap-[2px]",

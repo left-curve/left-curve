@@ -102,7 +102,7 @@ const inputVariants = tv(
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
       input: [
-        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-gray-700",
+        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-gray-700 leading-none",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
