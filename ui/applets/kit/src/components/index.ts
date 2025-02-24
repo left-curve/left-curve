@@ -11,12 +11,13 @@ export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
 export { AccountCard } from "./foundation/AccountCard";
 export { Table } from "./foundation/table/Table";
-export { Tabs } from "./foundation/Tabs";
+export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
 export { Input } from "./foundation/Input";
 export { Stepper } from "./foundation/Stepper";
 export { Carousel } from "./foundation/Carousel";
 export { ResizerContainer } from "./foundation/ResizerContainer";
+export { AssetCard } from "./foundation/AssetCard";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -35,7 +36,7 @@ export { ArrowSelectorIcon } from "./foundation/icons/ArrowSelector";
 export { SwapArrowDownIcon } from "./foundation/icons/SwapArrowDown";
 export { CheckCircleIcon } from "./foundation/icons/CheckCircle";
 export { XCircleIcon } from "./foundation/icons/XCircle";
-export { CopyCheckIcon } from "./foundation/icons/CopyCheck";
+export { IconCopyCheck } from "./foundation/icons/IconCopyCheck";
 export { ConnectorIcon } from "./foundation/icons/Connector";
 export { CrossIcon } from "./foundation/icons/Cross";
 export { DangoDotsIcon } from "./foundation/icons/DangoDots";
@@ -49,8 +50,8 @@ export { IconTrash } from "./foundation/icons/IconTrash";
 export { IconAddCross } from "./foundation/icons/IconAddCross";
 export { IconBell } from "./foundation/icons/IconBell";
 export { IconSearch } from "./foundation/icons/IconSearch";
-export { IconUser } from "./foundation/icons/IconUser";
 export { IconLeft } from "./foundation/icons/IconLeft";
+export { IconLogOut } from "./foundation/icons/IconLogOut";
 
 /* ---------------------------------- Emojis -------------------------------- */
 
@@ -77,3 +78,4 @@ export { Birdo } from "./foundation/chars/Birdo";
 /* -------------------------------------------------------------------------- */
 
 export { StrategyCard } from "./workspace/dashboard/StrategyCard";
+export { AssetsPreview } from "./workspace/dashboard/AssetsPreview";

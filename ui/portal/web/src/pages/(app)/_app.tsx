@@ -8,7 +8,7 @@ export const Route = createFileRoute("/(app)/_app")({
         <img
           src="/images/union.png"
           alt="bg-image"
-          className="drag-none select-none h-[20vh] w-full fixed top-0 left-0 z-0"
+          className="drag-none select-none h-[20vh] w-full fixed bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0"
         />
 
         <Header />
