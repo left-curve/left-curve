@@ -8,7 +8,7 @@ const { publicVars } = loadEnv();
 export default defineConfig({
   source: {
     entry: {
-      index: "./src/App.tsx",
+      index: "./src/app.tsx",
     },
     alias: {
       "~": "./src",
