@@ -52,6 +52,8 @@ export { IconBell } from "./foundation/icons/IconBell";
 export { IconSearch } from "./foundation/icons/IconSearch";
 export { IconLeft } from "./foundation/icons/IconLeft";
 export { IconLogOut } from "./foundation/icons/IconLogOut";
+export { IconKey } from "./foundation/icons/IconKey";
+export { IconClose } from "./foundation/icons/IconClose";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

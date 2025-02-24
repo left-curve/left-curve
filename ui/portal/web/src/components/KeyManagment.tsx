@@ -1,4 +1,5 @@
 import {
+  Button,
   IconAddCross,
   IconCopy,
   IconTrash,
@@ -11,6 +12,8 @@ import { useAccount } from "@left-curve/store-react";
 import { ConnectionStatus } from "@left-curve/store-react/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
+import { Modals } from "./Modal";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -20,6 +23,7 @@ const KeyTranslation = {
 export const KeyManagment: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const { showModal } = useApp();
 
   if (status !== ConnectionStatus.Connected) return null;
 
@@ -39,13 +43,10 @@ export const KeyManagment: React.FC = () => {
             for secure logins, ensuring only you can access your account.
           </p>
         </div>
-        <button
-          type="button"
-          className="w-full md:w-fit h-fit [box-shadow:0px_0px_8px_-2px_#FFFFFFA3_inset,_0px_3px_6px_-2px_#FFFFFFA3_inset,_0px_4px_6px_0px_#0000000A,_0px_4px_6px_0px_#0000000A] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.12)_8%,_rgba(46,_37,_33,_0.24)_100%)] bg-red-bean-400 px-6 py-2 rounded-full font-exposure text-red-bean-50 italic font-medium flex gap-2 items-center justify-center"
-        >
+        <Button size="md" className="min-w-[120px]" onClick={() => showModal(Modals.AddKey)}>
           <IconAddCross className="w-5 h-5" />
           Add
-        </button>
+        </Button>
       </div>
       {isPending ? (
         <Spinner color="gray" size="md" />
@@ -67,6 +68,7 @@ export const KeyManagment: React.FC = () => {
                 <div className="flex gap-1">
                   <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyHash} />
                   <IconTrash
+                    onClick={() => showModal(Modals.RemoveKey, { keyHash })}
                     className={twMerge("w-5 h-5 cursor-pointer", {
                       "text-gray-300 cursor-default": keyHash === currentKeyHash,
                     })}
