@@ -3,6 +3,7 @@ import type React from "react";
 import { Badge } from "./Badge";
 import { IconButton } from "./IconButton";
 import TruncateText from "./TruncateText";
+import { IconCopy } from "./icons/IconCopy";
 import { IconLogOut } from "./icons/IconLogOut";
 import { IconQR } from "./icons/IconQR";
 
@@ -41,12 +42,15 @@ export const AccountCard: React.FC<Props> = ({
         <div className="flex gap-4 ">
           <div className="flex flex-col">
             <p className="exposure-m-italic capitalize">{name}</p>
-            <TruncateText
-              text={address}
-              className="diatype-xs-medium text-gray-500"
-              start={4}
-              end={4}
-            />
+            <div className="flex gap-1 items-center">
+              <TruncateText
+                text={address}
+                className="diatype-xs-medium text-gray-500"
+                start={4}
+                end={4}
+              />
+              <IconCopy copyText={address} className="w-4 h-4 cursor-pointer" />
+            </div>
           </div>
           <Badge text={type} color="blue" className="h-fit capitalize" />
         </div>

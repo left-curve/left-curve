@@ -22,6 +22,7 @@
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
     "react-hot-toast": "catalog:",
+    "react-modal-sheet": "^4.0.1",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,16 +1,25 @@
-import { Button, IconBell, IconGear, ProfileIcon, twMerge } from "@left-curve/applets-kit";
+import {
+  Button,
+  IconBell,
+  IconGear,
+  ProfileIcon,
+  twMerge,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
 
 import { IconSearch } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
 import { HamburgerMenu } from "./HamburguerMenu";
-import { AccountMenu } from "./menu/AccountMenu";
+import { AccountDesktopMenu } from "./menu/AccountDesktopMenu";
+import { AccountMobileMenu } from "./menu/AccountMobileMenu";
 
 export const Header: React.FC = () => {
   const { account, isConnected } = useAccount();
   const { setSidebarVisibility } = useApp();
   const navigate = useNavigate();
+  const isMd = useMediaQuery("md");
 
   return (
     <>
@@ -74,7 +83,7 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </header>
-      <AccountMenu />
+      {isMd ? <AccountDesktopMenu /> : <AccountMobileMenu />}
     </>
   );
 };

@@ -1,6 +1,7 @@
-import { IconChevronLeft, IconChevronRight, twMerge } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { IconChevronLeft, IconChevronRight } from "../";
+import { twMerge } from "../../utils";
 
 import type React from "react";
 
