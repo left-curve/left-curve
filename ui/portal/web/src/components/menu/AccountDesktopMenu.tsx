@@ -1,4 +1,4 @@
-import { IconDoubleChevronRight, twMerge } from "@left-curve/applets-kit";
+import { IconDoubleChevronRight, twMerge, useClickAway } from "@left-curve/applets-kit";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -8,6 +8,8 @@ import { AccountMenuBody } from "./AccountBody";
 export const AccountDesktopMenu: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { setSidebarVisibility, isSidebarVisible } = useApp();
+
+  useClickAway(menuRef, () => setSidebarVisibility(false));
 
   return (
     <div
