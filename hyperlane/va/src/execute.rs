@@ -1,7 +1,7 @@
 use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug::{HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier},
+    grug::{HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier, UniqueVec},
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
@@ -66,10 +66,9 @@ fn announce(
         ctx.storage,
         validator,
         |maybe_storage_locations| -> StdResult<_> {
-            let mut storage_locations = maybe_storage_locations.unwrap_or_default();
-            if !storage_locations.contains(&storage_location) {
-                storage_locations.push(storage_location.clone());
-            }
+            let mut storage_locations = maybe_storage_locations.unwrap_or(UniqueVec::new(vec![])?);
+            storage_locations.try_push(storage_location.clone())?;
+
             Ok(storage_locations)
         },
     )?;
