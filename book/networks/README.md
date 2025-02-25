@@ -2,9 +2,196 @@
 
 Dango mainnet, testnets, and devnets.
 
-## Note on devnets
+## How to spin up a devnet
 
-Devnets are used internally for development and testing purposes. You can spin up our own testnet using the Dockerfile found in [docker/devnet](../../docker/devnet/).
+### Prerequisites
+
+- Linux (we use Ubuntu 24.04)
+- Docker
+- Rust 1.80+
+- Go
+
+### Steps
+
+1. Compile dango:
+
+   ```bash
+   git clone https://github.com/left-curve/left-curve.git
+   cd left-curve
+   cargo install --path dango/cli
+   dango --version
+   ```
+
+2. Compile cometbft:
+
+   ```bash
+   git clone https://github.com/cometbft/cometbft.git
+   cd cometbft
+   make install
+   cometbft version
+   ```
+
+3. Initialize the `~/.cometbft` directory:
+
+   ```bash
+   cometbft init
+   ```
+
+4. Create genesis state. Provide chain ID and genesis time as positional arguments:
+
+   ```bash
+   cd left-curve
+   cargo run -p dango-genesis --example build_genesis -- dev-5 2025-02-25T21:00:00Z
+   ```
+
+   Genesis should be written into `~/.cometbft/config/genesis.json`
+
+5. Create systemd service for postgresql:
+
+   ```ini
+   [Unit]
+   Description=PostgreSQL
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=larry
+   Group=docker
+   WorkingDirectory=/home/larry/workspace/left-curve/indexer
+   ExecStart=/usr/bin/docker compose up db
+   ExecStop=/usr/bin/docker compose down db
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Save this as `/etc/systemd/system/postgresql.service`.
+
+   **Notes:**
+
+   - `WorkingDirectory` should be the directory where the `docker-compose.yml` is located.
+   - The `User` should be added to the `docker` group:
+
+     ```bash
+     sudo usermod -aG docker larry
+     ```
+
+6. Create systemd service for dango:
+
+   ```ini
+   [Unit]
+   Description=Dango
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=larry
+   ExecStart=/home/larry/.cargo/bin/dango start \
+     --abci-addr 127.0.0.1:16658 \
+     --indexer-enabled \
+     --indexer-keep-blocks \
+     --indexer-database-url postgres://postgres@localhost/grug_dev \
+     --indexer-httpd-enabled
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Save this as `/etc/systemd/system/dango.service`.
+
+7. Create systemd service for cometbft:
+
+   ```ini
+   [Unit]
+   Description=CometBFT
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=larry
+   ExecStart=/home/larry/.go/bin/cometbft start
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Save this as `/etc/systemd/system/cometbft.service`.
+
+8. Refresh systemd:
+
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+9. Start postgresql:
+
+   ```bash
+   sudo systemctl start postgresql
+   ```
+
+10. Create database for the indexer:
+
+    ```bash
+    cd left-curve/indexer
+    createdb -h localhost -U postgres grug_dev
+    ```
+
+11. Start dango:
+
+    ```bash
+    sudo systemctl start dango
+    ```
+
+12. Start cometbft:
+
+    ```bash
+    sudo systemctl start cometbft
+    ```
+
+   **Note:** when starting, start in this order: postgresql, dango, cometbft. When terminating, do it in the reverse order.
+
+### Killing existing devnet and start a new one
+
+1. Stop dango and cometbft services (no need to stop postgresql):
+
+   ```bash
+   sudo systemctl stop cometbft
+   sudo systemctl stop dango
+   ```
+
+2. Reset cometbft:
+
+   ```bash
+   cometbft unsafe-reset-all
+   ```
+
+3. Reset dango:
+
+   ```bash
+   dango db reset
+   ```
+
+4. Reset indexer DB:
+
+   ```bash
+   dropdb -h localhost -U postgres grug_dev
+   createdb -h localhost -U postgres grug_dev
+   ```
+
+5. Delete indexer saved blocks:
+
+   ```bash
+   rm -rfv ~/.dango/indexer
+   ```
+
+6. Restart the services:
+
+   ```bash
+   sudo systemctl start dango
+   sudo systemctl start cometbft
+   ```
+
+## Test accounts
 
 Each devnet comes with 10 genesis users: `owner` and `user{1-9}`. They use Secp256k1 public keys derived from seed phrases with derivation path `m/44'/60'/0'/0/0`.
 
