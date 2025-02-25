@@ -11,7 +11,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, time},
+    std::{fmt::Debug, sync::Arc, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -34,11 +34,11 @@ pub struct StartCmd {
     #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
-    /// Enable the internal indexer
+    /// Whether to persist blocks and block responses in indexer DB
     #[arg(long, default_value = "false")]
     indexer_keep_blocks: bool,
 
-    /// The indexer database url
+    /// The indexer database URL
     #[arg(long, default_value = "postgres://localhost")]
     indexer_database_url: String,
 
@@ -49,57 +49,10 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        if self.indexer_enabled {
-            let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(self.indexer_keep_blocks)
-                .with_database_url(&self.indexer_database_url)
-                .with_dir(app_dir.indexer_dir())
-                .with_sqlx_pubsub()
-                .build()
-                .expect("Can't create indexer");
-            if self.indexer_httpd_enabled {
-                // NOTE: If the httpd was heavily used, it would be better to
-                // run it in a separate tokio runtime.
-                tokio::try_join!(
-                    Self::run_httpd_server(indexer.context.clone().into()),
-                    self.run_with_indexer(app_dir, indexer)
-                )?;
-
-                Ok(())
-            } else {
-                self.run_with_indexer(app_dir, indexer).await
-            }
-        } else {
-            self.run_with_indexer(app_dir, NullIndexer).await
-        }
-    }
-
-    /// Run the HTTP server
-    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
-            .await
-            .map_err(|err| {
-                tracing::error!("Failed to run HTTP server: {err:?}");
-                err.into()
-            })
-    }
-
-    async fn run_with_indexer<ID>(
-        self,
-        app_dir: HomeDirectory,
-        mut indexer: ID,
-    ) -> anyhow::Result<()>
-    where
-        ID: Indexer + Send + 'static,
-        ID::Error: Debug,
-        AppError: From<ID::Error>,
-    {
+        // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
 
-        indexer
-            .start(&db.state_storage(None)?)
-            .expect("Can't start indexer");
-
+        // Create hybird VM.
         let codes = build_rust_codes();
         let vm = HybridVm::new(self.wasm_cache_capacity, [
             codes.account_factory.to_bytes().hash256(),
@@ -119,6 +72,68 @@ impl StartCmd {
             codes.vesting.to_bytes().hash256(),
             codes.warp.to_bytes().hash256(),
         ]);
+
+        // Run ABCI server, optionally with indexer and httpd server.
+        if self.indexer_enabled {
+            let indexer = non_blocking_indexer::IndexerBuilder::default()
+                .with_keep_blocks(self.indexer_keep_blocks)
+                .with_database_url(&self.indexer_database_url)
+                .with_dir(app_dir.indexer_dir())
+                .with_sqlx_pubsub()
+                .build()
+                .expect("Can't create indexer");
+
+            let app = App::new(
+                db.clone(),
+                vm.clone(),
+                ProposalPreparer::new(),
+                NullIndexer,
+                self.query_gas_limit,
+            );
+
+            if self.indexer_httpd_enabled {
+                let httpd_context = Context::new(indexer.context.clone(), Arc::new(app));
+
+                // NOTE: If the httpd was heavily used, it would be better to
+                // run it in a separate tokio runtime.
+                tokio::try_join!(
+                    Self::run_httpd_server(httpd_context),
+                    self.run_with_indexer(db, vm, indexer)
+                )?;
+
+                Ok(())
+            } else {
+                self.run_with_indexer(db, vm, indexer).await
+            }
+        } else {
+            self.run_with_indexer(db, vm, NullIndexer).await
+        }
+    }
+
+    /// Run the HTTP server
+    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
+            .await
+            .map_err(|err| {
+                tracing::error!("Failed to run HTTP server: {err:?}");
+                err.into()
+            })
+    }
+
+    async fn run_with_indexer<ID>(
+        self,
+        db: DiskDb,
+        vm: HybridVm,
+        mut indexer: ID,
+    ) -> anyhow::Result<()>
+    where
+        ID: Indexer + Send + 'static,
+        ID::Error: Debug,
+        AppError: From<ID::Error>,
+    {
+        indexer
+            .start(&db.state_storage(None)?)
+            .expect("Can't start indexer");
 
         let app = App::new(
             db,

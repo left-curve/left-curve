@@ -19,7 +19,7 @@ assertor           = { workspace = true }
 async-graphql      = { workspace = true }
 awc                = { workspace = true }
 futures-util       = { workspace = true }
-grug-app           = { workspace = true, features = ["tracing"] }
+grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
 grug-math          = { workspace = true }
