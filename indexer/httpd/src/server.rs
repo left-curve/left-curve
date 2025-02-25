@@ -1,7 +1,9 @@
 use {
     super::error::Error,
     crate::{context::Context, routes},
+    actix_cors::Cors,
     actix_web::{
+        http,
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
         App, HttpResponse, HttpServer,
@@ -35,7 +37,21 @@ where
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
-        let app = App::new().wrap(Logger::default()).wrap(Compress::default());
+        let cors = if let Ok(origin) = std::env::var("ORIGIN") {
+            Cors::default()
+                .allowed_origin(&origin)
+                .allowed_methods(vec!["POST"])
+                .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+                .allowed_header(http::header::CONTENT_TYPE)
+                .max_age(3600)
+        } else {
+            Cors::default()
+        };
+
+        let app = App::new()
+            .wrap(Logger::default())
+            .wrap(Compress::default())
+            .wrap(cors);
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
