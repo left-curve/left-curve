@@ -1,8 +1,8 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, Direction, OrderId, QueryOrdersRequest},
+        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM},
+        dex::{self, Direction, OrderId, QueryOrdersByPairRequest, QueryOrdersRequest},
     },
     grug::{
         btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
@@ -465,4 +465,173 @@ fn submit_and_cancel_order_in_same_block() {
             limit: None,
         })
         .should_succeed_and(BTreeMap::is_empty);
+}
+
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    None,
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+    };
+    "dango/usdc no pagination"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    None,
+    btree_map! {
+        !4 => (Direction::Bid, Udec128::new(20), Uint128::new(10)),
+        5 => (Direction::Ask, Udec128::new(25), Uint128::new(10)),
+    };
+    "eth/usdc no pagination"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    Some(3),
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+    };
+    "dango/usdc with limit no start after"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    Some(2),
+    None,
+    btree_map! {
+        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+    };
+    "dango/usdc with start after"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    Some(!1),
+    Some(2),
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+    };
+    "dango/usdc with start after and limit"
+)]
+fn query_orders_by_pair(
+    orders_to_submit: Vec<((Denom, Denom), Direction, u128, u128)>,
+    (base_denom, quote_denom): (Denom, Denom),
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
+    expected_orders: BTreeMap<OrderId, (Direction, Udec128, Uint128)>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Submit the orders in a single block.
+    let txs = orders_to_submit
+        .into_iter()
+        .map(|((base_denom, quote_denom), direction, price, amount)| {
+            let price = Udec128::new(price);
+            let amount = Uint128::new(amount);
+
+            let funds = match direction {
+                Direction::Bid => {
+                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
+                    Coins::one(quote_denom.clone(), quote_amount).unwrap()
+                },
+                Direction::Ask => Coins::one(base_denom.clone(), amount).unwrap(),
+            };
+
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::SubmitOrder {
+                    base_denom,
+                    quote_denom,
+                    direction,
+                    amount,
+                    price,
+                },
+                funds,
+            )?;
+
+            accounts.user1.sign_transaction(
+                NonEmpty::new_unchecked(vec![msg]),
+                &suite.chain_id,
+                100_000,
+            )
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersByPairRequest {
+            base_denom,
+            quote_denom,
+            start_after,
+            limit,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders.len());
+            expected_orders
+                .iter()
+                .all(|(order_id, (direction, price, amount))| {
+                    let queried_order = orders.get(order_id).unwrap();
+                    queried_order.direction == *direction
+                        && queried_order.price == *price
+                        && queried_order.amount == *amount
+                        && queried_order.remaining == *amount
+                        && queried_order.user == accounts.user1.address()
+                })
+        });
 }
