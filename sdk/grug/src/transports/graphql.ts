@@ -92,7 +92,7 @@ export function graphql(
           `;
 
           const { queryApp } = await client.request<{ queryApp: string }>(document, {
-            request: JSON.stringify(recursiveTransform({ query }, camelToSnake)),
+            request: JSON.stringify(recursiveTransform(query, camelToSnake)),
             height,
             prove,
           });
@@ -131,7 +131,7 @@ export function graphql(
           `;
 
           const { simulate } = await client.request<{ simulate: string }>(document, {
-            tx: recursiveTransform(JSON.stringify(tx), camelToSnake),
+            tx: JSON.stringify(recursiveTransform(tx, camelToSnake)),
             height,
             prove,
           });
