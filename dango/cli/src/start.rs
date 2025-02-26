@@ -164,19 +164,16 @@ impl StartCmd {
             .finish()
             .unwrap(); // this fails if one of consensus|snapshot|mempool|info is None
 
-        // NOTE: this is to catch Ctrl-c and properly stops the server. When using
+        // NOTE: This is to catch Ctrl-c and properly stops the server. When using
         // httpd server + indexer, it wouldn't process SIGINT properly without this.
         tokio::select! {
             result = async {
-                abci_server.listen_tcp(self.abci_addr).await.map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
-            } => {
-                result
-            },
-            _ = tokio::signal::ctrl_c() => {
-                Ok(())
-            },
-        }?;
-
-        Ok(())
+                abci_server
+                    .listen_tcp(self.abci_addr)
+                    .await
+                    .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
+            } => result,
+            _ = tokio::signal::ctrl_c() => Ok(()),
+        }
     }
 }
