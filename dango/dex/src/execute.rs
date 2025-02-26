@@ -44,7 +44,18 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             curve_type,
             lp_denom,
             swap_fee,
-        } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
+            tick_size,
+            order_depth,
+        } => create_passive_pool(
+            ctx,
+            base_denom,
+            quote_denom,
+            curve_type,
+            lp_denom,
+            swap_fee,
+            tick_size,
+            order_depth,
+        ),
         ExecuteMsg::BatchSubmitOrders(orders) => batch_submit_orders(ctx, orders),
         ExecuteMsg::BatchSwap { swaps } => batch_swap(ctx, swaps),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
@@ -81,6 +92,8 @@ fn create_passive_pool(
     curve_type: CurveInvariant,
     lp_denom: Denom,
     swap_fee: Udec128,
+    tick_size: Udec128,
+    order_depth: Uint128,
 ) -> anyhow::Result<Response> {
     // Only the owner can create a passive pool
     ensure!(
@@ -104,6 +117,18 @@ fn create_passive_pool(
     // Validate swap fee
     ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
 
+    // Validate tick size
+    ensure!(
+        tick_size > Udec128::ZERO,
+        "tick size must be greater than 0"
+    );
+
+    // Validate order depth
+    ensure!(
+        order_depth > Uint128::ZERO,
+        "order depth must be greater than 0"
+    );
+
     // Ensure the funds contain only the base and quote denoms and contain both
     ensure!(
         ctx.funds.has(&base_denom) && ctx.funds.has(&quote_denom) && ctx.funds.len() == 2,
@@ -119,6 +144,8 @@ fn create_passive_pool(
         ctx.funds.try_into()?,
         curve_type,
         swap_fee,
+        tick_size,
+        order_depth,
     )?;
 
     // Create the pool
@@ -346,6 +373,19 @@ fn batch_swap(ctx: MutableCtx, swaps: Vec<Swap>) -> anyhow::Result<Response> {
 }
 
 fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
+    let (refunds, events) = _cancel_orders(ctx.storage, ctx.sender, order_ids)?;
+    Ok(Response::new()
+        .add_message(Message::transfer(ctx.sender, refunds)?)
+        .add_subevents(events))
+}
+
+/// Internal function to handle the cancellation of orders. This is used by both
+/// `cron_execute` and `cancel_orders`.
+fn _cancel_orders(
+    storage: &mut dyn Storage,
+    sender: Addr,
+    order_ids: OrderIds,
+) -> anyhow::Result<(Coins, Vec<ContractEvent>)> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
@@ -355,13 +395,13 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
         OrderIds::All => ORDERS
             .idx
             .user
-            .prefix(ctx.sender)
-            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .prefix(sender)
+            .range(storage, None, None, IterationOrder::Ascending)
             .map(|order| Ok((order?, false)))
             .chain(
                 INCOMING_ORDERS
-                    .prefix(ctx.sender)
-                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .prefix(sender)
+                    .values(storage, None, None, IterationOrder::Ascending)
                     .map(|order| Ok((order?, true))),
             )
             .collect::<StdResult<Vec<_>>>()?,
@@ -371,11 +411,9 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
             .map(|order_id| {
                 // First see if the order is the persistent storage. If not,
                 // check the transient storage.
-                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                if let Some(order) = ORDERS.idx.order_id.may_load(storage, order_id)? {
                     Ok((order, false))
-                } else if let Some(order) =
-                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
-                {
+                } else if let Some(order) = INCOMING_ORDERS.may_load(storage, (sender, order_id))? {
                     Ok((order, true))
                 } else {
                     bail!("order with id `{order_id}` not found");
@@ -388,10 +426,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
     for ((order_key, order), is_incoming) in orders {
         let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
-        ensure!(
-            ctx.sender == order.user,
-            "only the user can cancel the order"
-        );
+        ensure!(sender == order.user, "only the user can cancel the order");
 
         let refund = match direction {
             Direction::Bid => Coin {
@@ -414,15 +449,13 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
 
         // Remove the order from storage
         if is_incoming {
-            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
+            INCOMING_ORDERS.remove(storage, (sender, *order_id));
         } else {
-            ORDERS.remove(ctx.storage, order_key)?;
+            ORDERS.remove(storage, order_key)?;
         }
     }
 
-    Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, refunds)?)
-        .add_subevents(events))
+    Ok((refunds, events))
 }
 
 #[inline]
@@ -549,9 +582,28 @@ fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
 /// Implemented according to:
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
+
+    // Cancel all orders owned by the contract
+    _cancel_orders(ctx.storage, ctx.contract, OrderIds::All)?;
+
+    // Loop through all passive pools and reflect the pools onto the orderbook
+    let pairs_with_pools = LP_DENOMS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    for (_, lp_denom) in pairs_with_pools {
+        let pool = POOLS.load(ctx.storage, &lp_denom)?;
+        let order_infos = pool.reflect_curve()?;
+
+        _batch_submit_orders(
+            ctx.storage,
+            ctx.contract,
+            pool.reserves.clone().into(),
+            order_infos,
+        )?;
+    }
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;

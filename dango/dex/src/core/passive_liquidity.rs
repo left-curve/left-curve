@@ -1,9 +1,9 @@
 use {
     anyhow::ensure,
-    dango_types::dex::{CurveInvariant, Direction, Pool, Swap},
+    dango_types::dex::{CurveInvariant, Direction, OrderSubmissionInfo, Pool, Swap},
     grug::{
-        Coin, CoinPair, Denom, Int, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, Int, IsZero, MultiplyFraction, MultiplyRatio, Number,
+        NumberConst, StdResult, Udec128, Uint128,
     },
 };
 
@@ -17,6 +17,8 @@ pub trait PassiveLiquidityPool {
         reserves: CoinPair,
         curve_type: CurveInvariant,
         swap_fee: Udec128,
+        tick_size: Udec128,
+        order_depth: Uint128,
     ) -> anyhow::Result<(Box<Self>, Uint128)>;
 
     /// Provide liquidity to the pool. This function mutates the pool reserves.
@@ -48,6 +50,16 @@ pub trait PassiveLiquidityPool {
     /// Returns a tuple of coins, where the first coin is the offer and the second
     /// coin is the ask.
     fn simulate_swap(&self, swap: &Swap) -> anyhow::Result<(Coin, Coin)>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// Returns a vec of orders to place on the orderbook.
+    /// TODO: add swap fee to the calculation
+    fn reflect_curve(&self) -> StdResult<Vec<OrderSubmissionInfo>>;
+
+    /// Returns the spot price of the pool at the current reserves, given as the number
+    /// of quote asset units per base asset unit.
+    fn spot_price(&self) -> StdResult<Udec128>;
 }
 
 pub trait TradingFunction {
@@ -82,6 +94,8 @@ impl PassiveLiquidityPool for Pool {
         reserves: CoinPair,
         curve_type: CurveInvariant,
         swap_fee: Udec128,
+        tick_size: Udec128,
+        order_depth: Uint128,
     ) -> anyhow::Result<(Box<Self>, Uint128)> {
         ensure!(
             reserves.first().amount.is_non_zero() && reserves.second().amount.is_non_zero(),
@@ -104,6 +118,8 @@ impl PassiveLiquidityPool for Pool {
                 reserves,
                 curve_type,
                 swap_fee,
+                tick_size,
+                order_depth,
             }),
             initial_lp_supply,
         ))
@@ -217,6 +233,65 @@ impl PassiveLiquidityPool for Pool {
         };
 
         Ok((coin_in, coin_out))
+    }
+
+    fn reflect_curve(&self) -> StdResult<Vec<OrderSubmissionInfo>> {
+        let a = self.reserves.amount_of(&self.base_denom);
+        let b = self.reserves.amount_of(&self.quote_denom);
+
+        let price = self.spot_price()?;
+
+        let mut orders = Vec::with_capacity(2 * self.order_depth.into_inner() as usize);
+        let mut a_bid_prev = Uint128::ZERO;
+        let mut a_ask_prev = Uint128::ZERO;
+        for i in 0..(self.order_depth.into_inner() + 1) {
+            let delta_p = self
+                .tick_size
+                .checked_mul(Udec128::checked_from_ratio(i, Uint128::ONE)?)?;
+
+            // Calculate the price i ticks on the ask and bid side respectively
+            let price_ask = price.checked_add(delta_p)?;
+            let price_bid = price.checked_sub(delta_p)?;
+
+            // Calculate the amount of base that can be bought at the price
+            let (a_ask, a_bid) = match self.curve_type {
+                CurveInvariant::Xyk => {
+                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
+                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+                    (a_ask, a_bid)
+                },
+            };
+
+            orders.push(OrderSubmissionInfo {
+                base_denom: self.base_denom.clone(),
+                quote_denom: self.quote_denom.clone(),
+                direction: Direction::Bid,
+                amount: a_bid.checked_sub(a_bid_prev)?,
+                price: price_bid,
+            });
+
+            orders.push(OrderSubmissionInfo {
+                base_denom: self.base_denom.clone(),
+                quote_denom: self.quote_denom.clone(),
+                direction: Direction::Ask,
+                amount: a_ask.checked_sub(a_ask_prev)?,
+                price: price_ask,
+            });
+
+            a_bid_prev = a_bid;
+            a_ask_prev = a_ask;
+        }
+
+        Ok(orders)
+    }
+
+    fn spot_price(&self) -> StdResult<Udec128> {
+        let base_reserves = self.reserves.amount_of(&self.base_denom);
+        let quote_reserves = self.reserves.amount_of(&self.quote_denom);
+
+        match self.curve_type {
+            CurveInvariant::Xyk => Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?),
+        }
     }
 }
 
