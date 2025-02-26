@@ -3,6 +3,11 @@ import type { ChainConfig } from "./app.js";
 import type { Coins, Funds } from "./coin.js";
 import type { Base64, Hex, Json } from "./encoding.js";
 
+export type TxOutcome = {
+  gasLimit: number;
+  gasUsed: number;
+};
+
 export type TxParameters = {
   funds?: Funds;
   gasLimit?: number;
