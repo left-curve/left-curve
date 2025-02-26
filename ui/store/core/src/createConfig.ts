@@ -151,7 +151,7 @@ export function createConfig<
   const stateCreator = storage
     ? persist(getInitialState, {
         name: "store",
-        version: 0,
+        version: 0.2,
         storage,
         migrate(state, version) {
           const persistedState = state as State;
@@ -236,6 +236,7 @@ export function createConfig<
       return {
         ...x,
         connections: new Map(x.connections).set(uid, {
+          keyHash: data.keyHash,
           accounts: data.accounts ?? connection.accounts,
           account: connection.account,
           connector: connection.connector,
@@ -264,6 +265,7 @@ export function createConfig<
       return {
         ...x,
         connections: new Map(x.connections).set(data.uid, {
+          keyHash: data.keyHash,
           account: data.accounts[0],
           accounts: data.accounts,
           chainId: data.chainId,

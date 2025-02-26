@@ -1,11 +1,13 @@
 "use client";
 
+import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
 import React, {
   cloneElement,
   createContext,
   memo,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -82,10 +84,12 @@ interface Props {
   onStepChange?: (stepIndex: number) => void;
   /** Optional start index @default 0 */
   startIndex?: number;
+  /** Persist key */
+  persistKey?: string;
 }
 
 export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
-  ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, onReset, onFinish }) => {
+  ({ children, onStepChange, wrapper: Wrapper, startIndex = 0, persistKey, onReset, onFinish }) => {
     const [activeStep, setActiveStep] = useState(startIndex || 0);
     const [isLoading, setIsLoading] = useState(false);
     const [data, setData] = useState<unknown>({});
@@ -97,12 +101,32 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
     hasNextStep.current = activeStep < stepCount - 1;
     hasPreviousStep.current = activeStep > 0;
 
+    useEffect(() => {
+      if (persistKey) {
+        const item = localStorage.getItem(persistKey);
+        if (item) {
+          const { step, data } = deserializeJson<{ step: number; data: unknown }>(item);
+          setActiveStep(step);
+          setData(data);
+        }
+      }
+    }, []);
+
+    useEffect(() => {
+      if (persistKey) {
+        localStorage.setItem(persistKey, serializeJson({ step: activeStep, data }));
+      }
+    }, [data, activeStep]);
+
     const goToNextStep = useCallback(() => {
       if (hasNextStep.current) {
         const newActiveStepIndex = activeStep + 1;
 
         setActiveStep(newActiveStepIndex);
         onStepChange?.(newActiveStepIndex);
+      }
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
       }
     }, [activeStep, onStepChange]);
 
@@ -113,6 +137,9 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
 
         setActiveStep(newActiveStepIndex);
         onStepChange?.(newActiveStepIndex);
+      }
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
       }
     }, [activeStep, onStepChange]);
 
@@ -152,6 +179,9 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
     const doReset = useCallback(() => {
       setActiveStep(startIndex);
       setData({});
+      if (persistKey) {
+        localStorage.removeItem(persistKey);
+      }
       onReset?.();
     }, [startIndex, onReset]);
 

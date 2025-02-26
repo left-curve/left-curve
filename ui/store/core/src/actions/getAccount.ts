@@ -1,7 +1,7 @@
 import { changeAccount as changeAccountAction } from "./changeAccount.js";
 import { refreshAccounts as refreshAccountsAction } from "./refreshAccounts.js";
 
-import type { Account, AccountTypes, Username } from "@left-curve/dango/types";
+import type { Account, AccountTypes, KeyHash, Username } from "@left-curve/dango/types";
 import type { Chain, ChainId } from "@left-curve/dango/types";
 
 import type { Connector } from "../types/connector.js";
@@ -10,6 +10,7 @@ import type { Config } from "../types/store.js";
 export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes> =
   | {
       username: Username;
+      keyHash: KeyHash;
       account: Account<accounType>;
       accounts: readonly Account[];
       chain: Chain | undefined;
@@ -25,6 +26,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: Username | undefined;
+      keyHash: KeyHash | undefined;
       account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
@@ -40,6 +42,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: Username | undefined;
+      keyHash: KeyHash | undefined;
       account: Account<accounType> | undefined;
       accounts: readonly Account[] | undefined;
       chain: Chain | undefined;
@@ -55,6 +58,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
     }
   | {
       username: undefined;
+      keyHash: undefined;
       account: undefined;
       accounts: undefined;
       chain: undefined;
@@ -71,6 +75,7 @@ export type GetAccountReturnType<accounType extends AccountTypes = AccountTypes>
 
 const disconnected = {
   username: undefined,
+  keyHash: undefined,
   account: undefined,
   accounts: undefined,
   chain: undefined,
@@ -107,12 +112,13 @@ export function getAccount<
     refreshAccountsAction(config, { connectorUId });
   };
 
-  const { accounts, connector, username, account: acc } = connection;
+  const { accounts, connector, username, account: acc, keyHash } = connection;
   const account = acc as Account<accountType>;
   switch (status) {
     case "connected":
       return {
         username,
+        keyHash,
         account,
         accounts,
         chain,
@@ -129,6 +135,7 @@ export function getAccount<
     case "reconnecting":
       return {
         username,
+        keyHash,
         account,
         accounts,
         chain,
@@ -145,6 +152,7 @@ export function getAccount<
     case "connecting":
       return {
         username,
+        keyHash,
         account,
         accounts,
         chain,

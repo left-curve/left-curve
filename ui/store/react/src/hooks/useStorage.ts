@@ -19,7 +19,7 @@ export function useStorage<T = undefined>(
   const storage = (() => {
     if (_storage_) return _storage_;
     return createStorage({
-      key: "grustorage",
+      key: "dango_storage",
       storage:
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
     });
@@ -31,7 +31,7 @@ export function useStorage<T = undefined>(
   })();
 
   const { data, refetch } = useQuery<T, Error, T, string[]>({
-    queryKey: ["grustorage", key],
+    queryKey: ["dango_storage", key],
     queryFn: () => {
       const item = storage.getItem(key, {
         version: __version__,

@@ -1,13 +1,14 @@
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 
 const { publicVars } = loadEnv();
 
 export default defineConfig({
   source: {
     entry: {
-      index: "./src/App.tsx",
+      index: "./src/app.tsx",
     },
     alias: {
       "~": "./src",
@@ -15,6 +16,8 @@ export default defineConfig({
     define: publicVars,
   },
   server: { port: 5080 },
+
+  html: { template: "public/index.html" },
   performance: {
     prefetch: {
       type: "all-assets",
@@ -22,6 +25,15 @@ export default defineConfig({
     },
   },
   output: { distPath: { root: "build" } },
-  html: { template: "public/index.html" },
   plugins: [pluginReact()],
+  tools: {
+    rspack: {
+      plugins: [
+        TanStackRouterRspack({
+          routesDirectory: "./src/pages",
+          generatedRouteTree: "./src/app.pages.ts",
+        }),
+      ],
+    },
+  },
 });
