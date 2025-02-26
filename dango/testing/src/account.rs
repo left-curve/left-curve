@@ -90,8 +90,8 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             .to_vec()
             .try_into()
             .unwrap();
-        let key = Key::Secp256k1(pk);
-        (sk, key)
+
+        (sk, Key::Secp256k1(pk))
     }
 
     pub fn new_random(username: &str) -> Self {

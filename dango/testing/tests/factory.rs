@@ -248,7 +248,10 @@ fn update_key() {
             },
             Coins::new(),
         )
-        .should_fail_with_error("cannot delete last key");
+        .should_fail_with_error(format!(
+            "can't delete the last key associated with username `{}`",
+            user.username
+        ));
 
     // Query keys should return only one key.
     suite
