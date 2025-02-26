@@ -279,14 +279,15 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
         },
         Op::Delete => {
-            let remaining_keys = KEYS
-                .prefix(&username)
-                .keys(ctx.storage, None, None, Order::Ascending)
-                .count();
-
-            ensure!(remaining_keys > 1, "cannot delete last key");
-
             KEYS.remove(ctx.storage, (&username, key_hash));
+
+            ensure!(
+                KEYS.prefix(&username)
+                    .range(ctx.storage, None, None, Order::Ascending)
+                    .next()
+                    .is_some(),
+                "cannot delete last key"
+            );
         },
     }
 
