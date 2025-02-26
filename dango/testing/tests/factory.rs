@@ -8,8 +8,8 @@ use {
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, Message,
-        NonEmpty, QuerierExt, ResultExt, StdError, Tx, Uint128,
+        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt,
+        Message, NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128,
     },
     test_case::test_case,
 };
@@ -198,6 +198,120 @@ fn onboarding_without_deposit() {
 
     // Try again, should succeed.
     suite.check_tx(tx).should_succeed();
+}
+
+#[test]
+fn update_key() {
+    let (suite, accounts, codes, contracts) = setup_test_naive();
+    let (mut suite, _) = HyperlaneTestSuite::new_mocked(suite, accounts.owner);
+
+    // Create a new key offchain; then, predict what its address would be.
+    let mut user = TestAccount::new_random("user").predict_address(
+        contracts.account_factory,
+        0,
+        codes.account_spot.to_bytes().hash256(),
+        true,
+    );
+
+    // Make the initial deposit.
+    suite.hyperlane().recieve_transfer(
+        user.address(),
+        Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
+    );
+
+    // User uses account factory as sender to send an empty transaction.
+    // Account factory should interpret this action as the user wishes to create
+    // an account and claim the funds held in IBC transfer contract.
+    suite
+        .execute(
+            &mut Factory::new(contracts.account_factory),
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterUser {
+                secret: 0,
+                username: user.username.clone(),
+                key: user.first_key(),
+                key_hash: user.first_key_hash(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Try to delete last key, should fail.
+    let first_key_hash = user.first_key_hash();
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Delete,
+                key_hash: first_key_hash,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("cannot delete last key");
+
+    // query key should return only one key
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryKeysByUserRequest {
+                username: user.username.clone(),
+            },
+        )
+        .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
+
+    // Add a new key
+
+    let (_, pk) = TestAccount::new_key_pair();
+    let key_hash = pk.to_json_vec().unwrap().hash256();
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Insert(pk),
+                key_hash,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // query key should return two keys
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryKeysByUserRequest {
+                username: user.username.clone(),
+            },
+        )
+        .should_succeed_and_equal(btree_map! {
+            user.first_key_hash() => user.first_key(),
+            key_hash => pk,
+        });
+
+    // Delete the first key should be possible since there is another key
+
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Delete,
+                key_hash: first_key_hash,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // query key should return only one key
+    suite
+        .query_wasm_smart(
+            contracts.account_factory,
+            account_factory::QueryKeysByUserRequest {
+                username: user.username.clone(),
+            },
+        )
+        .should_succeed_and_equal(btree_map! { key_hash => pk });
 }
 
 /// A malicious block builder detects a register user transaction, inserts a new,
