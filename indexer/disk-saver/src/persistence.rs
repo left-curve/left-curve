@@ -173,6 +173,10 @@ impl DiskPersistence {
         Ok(data)
     }
 
+    pub fn exists(&self) -> bool {
+        self.file_path.exists()
+    }
+
     pub fn delete(&self) -> Result<(), Error> {
         std::fs::remove_file(&self.file_path)?;
         Ok(())
