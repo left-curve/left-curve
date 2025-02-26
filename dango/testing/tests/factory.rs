@@ -250,7 +250,7 @@ fn update_key() {
         )
         .should_fail_with_error("cannot delete last key");
 
-    // query key should return only one key
+    // Query keys should return only one key.
     suite
         .query_wasm_smart(
             contracts.account_factory,
@@ -260,8 +260,7 @@ fn update_key() {
         )
         .should_succeed_and_equal(btree_map! { user.first_key_hash() => user.first_key() });
 
-    // Add a new key
-
+    // Add a new key to the user's account.
     let (_, pk) = TestAccount::new_key_pair();
     let key_hash = pk.to_json_vec().unwrap().hash256();
     suite
@@ -276,7 +275,7 @@ fn update_key() {
         )
         .should_succeed();
 
-    // query key should return two keys
+    // Query keys should return two keys.
     suite
         .query_wasm_smart(
             contracts.account_factory,
@@ -289,8 +288,7 @@ fn update_key() {
             key_hash => pk,
         });
 
-    // Delete the first key should be possible since there is another key
-
+    // Delete the first key should be possible since there is another key.
     suite
         .execute(
             &mut user,
@@ -303,7 +301,7 @@ fn update_key() {
         )
         .should_succeed();
 
-    // query key should return only one key
+    // Query keys should return only one key.
     suite
         .query_wasm_smart(
             contracts.account_factory,
