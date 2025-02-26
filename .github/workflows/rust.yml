@@ -27,7 +27,8 @@ on:
 jobs:
   test:
     name: Test + Lint
-    runs-on: self-hosted
+    # runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
