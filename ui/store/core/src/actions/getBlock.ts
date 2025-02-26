@@ -18,6 +18,6 @@ export async function getBlock<config extends Config>(
   parameters: GetBlockParameters = {},
 ): Promise<GetBlockReturnType> {
   const client = getPublicClient(config, parameters);
-  const { lastFinalizedBlock } = await getChainInfo(client);
-  return lastFinalizedBlock;
+  const { block } = await getChainInfo(client);
+  return block;
 }

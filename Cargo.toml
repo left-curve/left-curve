@@ -58,6 +58,7 @@ version       = "0.0.0"
 [workspace.dependencies]
 actix                   = "0.13"
 actix-codec             = "0.5"
+actix-cors              = "0.7"
 actix-files             = "0"
 actix-http              = "3"
 actix-multipart         = "0.10"
@@ -126,7 +127,7 @@ strum_macros            = "0.26"
 syn                     = "2"
 tempfile                = "3"
 tendermint              = "0.40"
-tendermint-rpc          = "0.40"
+tendermint-rpc          = { version = "0.40", features = ["http-client"] }
 tera                    = "1"
 test-case               = "3"
 thiserror               = "2"
@@ -168,7 +169,7 @@ grug-vm-wasm      = { path = "grug/vm/wasm" }
 # Dango packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
-dango-account-safe          = { path = "dango/account/safe" }
+dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
 dango-app                   = { path = "dango/app" }

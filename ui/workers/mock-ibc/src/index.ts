@@ -1,9 +1,7 @@
 import type { Request } from "@cloudflare/workers-types";
-import type { Address } from "@left-curve/dango/types";
-import type { DangoAppConfigResponse } from "@left-curve/dango/types/dango";
-import { http, createSignerClient, isValidAddress } from "@left-curve/sdk";
-import { devnet } from "@left-curve/sdk/chains";
-import { PrivateKeySigner } from "@left-curve/sdk/signers";
+import {  isValidAddress, createSignerClient, graphql, PrivateKeySigner, devnet } from "@left-curve/dango";
+
+import type { AppConfig, Address } from "@left-curve/dango/types";
 
 interface Env {
   MNEMONIC: string;
@@ -36,7 +34,7 @@ export default {
       chain: devnet,
       username: env.USERNAME,
       signer: PrivateKeySigner.fromMnemonic(env.MNEMONIC),
-      transport: http(devnet.rpcUrls.default.http[0]),
+      transport: graphql(devnet.urls.indexer),
     });
 
     const accounts = await client.getAccountsByUsername({ username: env.USERNAME });
@@ -52,7 +50,7 @@ export default {
       return new Response("error: invalid address", { headers, status: 400 });
     }
 
-    const { addresses } = await client.getAppConfig<DangoAppConfigResponse>();
+    const { addresses } = await client.getAppConfig<AppConfig>();
 
     const response = await client.execute({
       contract: addresses.ibcTransfer,

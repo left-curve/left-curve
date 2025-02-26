@@ -11,7 +11,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, time},
+    std::{fmt::Debug, sync::Arc, time},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -34,11 +34,11 @@ pub struct StartCmd {
     #[arg(long, default_value = "false")]
     indexer_enabled: bool,
 
-    /// Enable the internal indexer
+    /// Whether to persist blocks and block responses in indexer DB
     #[arg(long, default_value = "false")]
     indexer_keep_blocks: bool,
 
-    /// The indexer database url
+    /// The indexer database URL
     #[arg(long, default_value = "postgres://localhost")]
     indexer_database_url: String,
 
@@ -49,6 +49,31 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        // Open disk DB.
+        let db = DiskDb::open(app_dir.data_dir())?;
+
+        // Create hybird VM.
+        let codes = build_rust_codes();
+        let vm = HybridVm::new(self.wasm_cache_capacity, [
+            codes.account_factory.to_bytes().hash256(),
+            codes.account_margin.to_bytes().hash256(),
+            codes.account_multi.to_bytes().hash256(),
+            codes.account_spot.to_bytes().hash256(),
+            codes.bank.to_bytes().hash256(),
+            codes.dex.to_bytes().hash256(),
+            codes.hyperlane.fee.to_bytes().hash256(),
+            codes.hyperlane.ism.to_bytes().hash256(),
+            codes.hyperlane.mailbox.to_bytes().hash256(),
+            codes.hyperlane.merkle.to_bytes().hash256(),
+            codes.hyperlane.va.to_bytes().hash256(),
+            codes.lending.to_bytes().hash256(),
+            codes.oracle.to_bytes().hash256(),
+            codes.taxman.to_bytes().hash256(),
+            codes.vesting.to_bytes().hash256(),
+            codes.warp.to_bytes().hash256(),
+        ]);
+
+        // Run ABCI server, optionally with indexer and httpd server.
         if self.indexer_enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
                 .with_keep_blocks(self.indexer_keep_blocks)
@@ -57,20 +82,31 @@ impl StartCmd {
                 .with_sqlx_pubsub()
                 .build()
                 .expect("Can't create indexer");
+
+            let app = App::new(
+                db.clone(),
+                vm.clone(),
+                ProposalPreparer::new(),
+                NullIndexer,
+                self.query_gas_limit,
+            );
+
             if self.indexer_httpd_enabled {
+                let httpd_context = Context::new(indexer.context.clone(), Arc::new(app));
+
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(indexer.context.clone().into()),
-                    self.run_with_indexer(app_dir, indexer)
+                    Self::run_httpd_server(httpd_context),
+                    self.run_with_indexer(db, vm, indexer)
                 )?;
 
                 Ok(())
             } else {
-                self.run_with_indexer(app_dir, indexer).await
+                self.run_with_indexer(db, vm, indexer).await
             }
         } else {
-            self.run_with_indexer(app_dir, NullIndexer).await
+            self.run_with_indexer(db, vm, NullIndexer).await
         }
     }
 
@@ -86,7 +122,8 @@ impl StartCmd {
 
     async fn run_with_indexer<ID>(
         self,
-        app_dir: HomeDirectory,
+        db: DiskDb,
+        vm: HybridVm,
         mut indexer: ID,
     ) -> anyhow::Result<()>
     where
@@ -94,31 +131,9 @@ impl StartCmd {
         ID::Error: Debug,
         AppError: From<ID::Error>,
     {
-        let db = DiskDb::open(app_dir.data_dir())?;
-
         indexer
             .start(&db.state_storage(None)?)
             .expect("Can't start indexer");
-
-        let codes = build_rust_codes();
-        let vm = HybridVm::new(self.wasm_cache_capacity, [
-            codes.account_factory.to_bytes().hash256(),
-            codes.account_margin.to_bytes().hash256(),
-            codes.account_safe.to_bytes().hash256(),
-            codes.account_spot.to_bytes().hash256(),
-            codes.bank.to_bytes().hash256(),
-            codes.dex.to_bytes().hash256(),
-            codes.hyperlane.fee.to_bytes().hash256(),
-            codes.hyperlane.ism.to_bytes().hash256(),
-            codes.hyperlane.mailbox.to_bytes().hash256(),
-            codes.hyperlane.merkle.to_bytes().hash256(),
-            codes.hyperlane.va.to_bytes().hash256(),
-            codes.lending.to_bytes().hash256(),
-            codes.oracle.to_bytes().hash256(),
-            codes.taxman.to_bytes().hash256(),
-            codes.vesting.to_bytes().hash256(),
-            codes.warp.to_bytes().hash256(),
-        ]);
 
         let app = App::new(
             db,

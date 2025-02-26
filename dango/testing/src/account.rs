@@ -117,12 +117,13 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn predict_address(
         self,
         factory: Addr,
+        secret: u32,
         spot_code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount {
         let salt = if new_user_salt {
             NewUserSalt {
-                username: &self.username,
+                secret,
                 key: self.keys.1,
                 key_hash: self.sign_with,
             }
@@ -226,7 +227,7 @@ where
                 assert_eq!(owner, &self.username);
                 AccountType::Margin
             },
-            AccountParams::Safe(_) => AccountType::Safe,
+            AccountParams::Multi(_) => AccountType::Multi,
         };
 
         // Derive the new accounts address.
@@ -388,15 +389,15 @@ impl Signer for Factory {
     }
 }
 
-// ----------------------------------- safe ------------------------------------
+// ----------------------------------- multi -----------------------------------
 
-pub struct Safe<'a> {
+pub struct Multi<'a> {
     address: Addr,
     signer: Option<&'a TestAccount>,
     nonce: u32,
 }
 
-impl Safe<'_> {
+impl Multi<'_> {
     pub fn new(address: Addr) -> Self {
         Self {
             address,
@@ -406,7 +407,7 @@ impl Safe<'_> {
     }
 }
 
-impl<'a> Safe<'a> {
+impl<'a> Multi<'a> {
     pub fn with_signer(&mut self, signer: &'a TestAccount) -> &mut Self {
         self.signer = Some(signer);
         self
@@ -418,20 +419,20 @@ impl<'a> Safe<'a> {
     }
 }
 
-impl Addressable for Safe<'_> {
+impl Addressable for Multi<'_> {
     fn address(&self) -> Addr {
         self.address
     }
 }
 
-impl Signer for Safe<'_> {
+impl Signer for Multi<'_> {
     fn unsigned_transaction(
         &self,
         msgs: NonEmpty<Vec<Message>>,
         chain_id: &str,
     ) -> StdResult<UnsignedTx> {
         self.signer
-            .expect("[Safe]: signer not set")
+            .expect("[Multi]: signer not set") // TODO: use typed state pattern to avoid runtime error
             .unsigned_transaction(msgs, chain_id)
     }
 
@@ -443,7 +444,7 @@ impl Signer for Safe<'_> {
     ) -> StdResult<Tx> {
         let (data, credential) = self
             .signer
-            .expect("[Safe]: signer not set")
+            .expect("[Multi]: signer not set")
             .sign_transaction_with_nonce(
                 self.address(),
                 msgs.clone(),

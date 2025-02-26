@@ -47,6 +47,9 @@ cache/
 dependencies/
 out/
 
+# Python
+**/.ipynb_checkpoints/
+
 # LaTeX
 **/*.log
 book/papers/**/*.aux

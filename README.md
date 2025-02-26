@@ -6,23 +6,25 @@
 
 This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number of [Left Curve Software](https://x.com/leftCurveSoft) products:
 
-| Name              | Language   | Description                                 |
-| ----------------- | ---------- | ------------------------------------------- |
-| [dango](./dango/) | Rust       | A suite of DeFi application smart contracts |
-| [grug](./grug/)   | Rust       | An execution environment for blockchains    |
-| [sdk](./sdk/)     | TypeScript | An SDK for interacting with Grug chains     |
-| [ui](./ui/)       | TypeScript | A web interface for accessing Dango         |
+| Name                      | Language   | Description                                                                                      |
+| ------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| [book](./book/)           | Markdown   | documentation, created with [mdBook](https://rust-lang.github.io/mdBook/)                        |
+| [dango](./dango/)         | Rust       | a suite of DeFi application smart contracts                                                      |
+| [grug](./grug/)           | Rust       | an execution environment for blockchains                                                         |
+| [hyperlane](./hyperlane/) | Rust       | implementation of the [Hyperlane](https://hyperlane.xyz/) cross-chain messaging protocol in Grug |
+| [indexer](./indexer/)     | Rust       | indexer and server infrastructure                                                                |
+| [sdk](./sdk/)             | TypeScript | an SDK for interacting with Grug chains                                                          |
+| [ui](./ui/)               | TypeScript | a web interface for accessing Dango                                                              |
 
 ## How to use
 
 Prerequisites:
 
-- [Rust](https://rustup.rs/) with `wasm32-unknown-unknown` target
+- [Rust](https://rustup.rs/) 1.80+
+- [Node.js](https://nodejs.org/en/download/) 21.0+
+- [pnpm](https://pnpm.io/)
 - [Just](https://just.systems/man/en/)
 - [Docker](https://docs.docker.com/engine/install/)
-- [Node.js](https://nodejs.org/en/download/) [version 21.0+](https://github.com/left-curve/left-curve/blob/main/sdk/README.md?plain=1#L62)
-- [pnpm](https://pnpm.io/)
-- [Forge](https://book.getfoundry.sh/getting-started/installation)
 
 We use [VS Code](https://code.visualstudio.com/) as text editor with the following plugins:
 
@@ -122,34 +124,7 @@ Storybook:
 pnpm storybook
 ```
 
-## Solidity
-
-Install dependencies:
-
-```shell
-forge soldeer install
-```
-
-Install dependencies of dependencies (this isn't done automatically in the previous step):
-
-```shell
-cd dependencies/hyperlane-monorepo-0.0.0
-yarn install
-```
-
-Compile contracts:
-
-```shell
-forge build
-```
-
-Run tests:
-
-```shell
-forge test
-```
-
-## Docs
+## Book
 
 Install dependencies:
 
@@ -158,16 +133,14 @@ cargo install mdbook
 cargo install mdbook-katex
 ```
 
-Generate docs:
+Generate book:
 
 ```shell
 mdbook build
 ```
 
-## Acknowledgement
+## Copyright
 
-> TODO
+© 2024-2025 Left Curve Software. All rights reserved.
 
-## License
-
-> TBD
+This repository and all its contents, including but not limited to source code, documentation, specifications, and associated materials (collectively, the "Software") are proprietary to Left Curve Software Limited (the "Company") and provided for informational purposes only. No license, express or implied, is granted. No part of the Software may be modified, forked, distributed, sublicensed, or used in any manner, for commercial or non-commercial purpose, without express written permission of the Comapny.

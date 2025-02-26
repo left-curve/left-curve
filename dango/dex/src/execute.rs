@@ -1,13 +1,13 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, NEW_ORDER_COUNTS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
         NEXT_ORDER_ID, ORDERS, PAIRS,
     },
-    anyhow::ensure,
+    anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
+            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
             OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
         },
     },
@@ -127,21 +127,22 @@ fn submit_order(
         order_id = !order_id;
     }
 
-    NEW_ORDER_COUNTS.increment(ctx.storage, (&base_denom, &quote_denom))?;
-
-    ORDERS.save(
+    INCOMING_ORDERS.save(
         ctx.storage,
-        (
-            (base_denom.clone(), quote_denom.clone()),
-            direction,
-            price,
-            order_id,
+        (ctx.sender, order_id),
+        &(
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                direction,
+                price,
+                order_id,
+            ),
+            Order {
+                user: ctx.sender,
+                amount,
+                remaining: amount,
+            },
         ),
-        &Order {
-            user: ctx.sender,
-            amount,
-            remaining: amount,
-        },
     )?;
 
     Ok(Response::new().add_event(OrderSubmitted {
@@ -157,13 +158,48 @@ fn submit_order(
 }
 
 #[inline]
-fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Result<Response> {
+fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Response> {
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) =
-            ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+    // First, collect all orders to be cancelled into memory.
+    let orders = match order_ids {
+        // Cancel all orders.
+        OrderIds::All => ORDERS
+            .idx
+            .user
+            .prefix(ctx.sender)
+            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .map(|order| Ok((order?, false)))
+            .chain(
+                INCOMING_ORDERS
+                    .prefix(ctx.sender)
+                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .map(|order| Ok((order?, true))),
+            )
+            .collect::<StdResult<Vec<_>>>()?,
+        // Cancel selected orders.
+        OrderIds::Some(order_ids) => order_ids
+            .into_iter()
+            .map(|order_id| {
+                // First see if the order is the persistent storage. If not,
+                // check the transient storage.
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                    Ok((order, false))
+                } else if let Some(order) =
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
+                {
+                    Ok((order, true))
+                } else {
+                    bail!("order with id `{order_id}` not found");
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?,
+    };
+
+    // Now, cancel the orders one by one.
+    for ((order_key, order), is_incoming) in orders {
+        let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
         ensure!(
             ctx.sender == order.user,
@@ -173,7 +209,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         let refund = match direction {
             Direction::Bid => Coin {
                 denom: quote_denom.clone(),
-                amount: order.remaining.checked_mul_dec_floor(price)?,
+                amount: order.remaining.checked_mul_dec_floor(*price)?,
             },
             Direction::Ask => Coin {
                 denom: base_denom.clone(),
@@ -182,17 +218,19 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         };
 
         events.push(ContractEvent::new("order_canceled", OrderCanceled {
-            order_id,
+            order_id: *order_id,
             remaining: order.remaining,
             refund: refund.clone(),
         })?);
 
         refunds.insert(refund)?;
 
-        ORDERS.remove(
-            ctx.storage,
-            ((base_denom, quote_denom), direction, price, order_id),
-        )?;
+        // Remove the order from storage
+        if is_incoming {
+            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
+        } else {
+            ORDERS.remove(ctx.storage, order_key)?;
+        }
     }
 
     Ok(Response::new()
@@ -209,16 +247,22 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     let mut events = Vec::new();
     let mut refunds = BTreeMap::new();
 
-    // Find all pairs that have received new orders during the block.
-    let pairs = NEW_ORDER_COUNTS
-        .current_range(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let (pair, _) = res?;
-            Ok(pair)
-        })
-        .collect::<StdResult<Vec<_>>>()?;
+    // Collect incoming orders and clear the temporary storage.
+    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
 
-    // Loop through the pairs, match and clear the orders for each of them.
+    // Add incoming orders to the persistent storage.
+    for (order_key, order) in incoming_orders.values() {
+        ORDERS.save(ctx.storage, order_key.clone(), order)?;
+    }
+
+    // Find all the unique pairs that have received new orders in the block.
+    let pairs = incoming_orders
+        .into_values()
+        .map(|((pair, ..), _)| pair)
+        .collect::<BTreeSet<_>>();
+
+    // Loop through the pairs that have received new orders in the block.
+    // Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
     for (base_denom, quote_denom) in pairs {
         clear_orders_of_pair(
@@ -229,9 +273,6 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
             &mut refunds,
         )?;
     }
-
-    // Reset the order counters for the next block.
-    NEW_ORDER_COUNTS.reset_all(ctx.storage);
 
     Ok(Response::new()
         .add_message({

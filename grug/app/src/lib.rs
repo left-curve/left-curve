@@ -11,6 +11,7 @@ mod macros;
 mod proposal_preparer;
 mod providers;
 mod query;
+mod query_app;
 mod shared;
 mod state;
 mod submessage;
@@ -19,5 +20,5 @@ mod vm;
 
 pub use crate::{
     app::*, buffer::*, error::*, event::*, execute::*, gas::*, indexer::*, proposal_preparer::*,
-    providers::*, query::*, shared::*, state::*, submessage::*, traits::*, vm::*,
+    providers::*, query::*, query_app::*, shared::*, state::*, submessage::*, traits::*, vm::*,
 };

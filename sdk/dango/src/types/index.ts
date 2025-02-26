@@ -1,6 +1,6 @@
 export type {
   ChainConfigResponse,
-  ChainInfoResponse,
+  ChainStatusResponse,
   QueryContractRequest,
   QueryContractsRequest,
   QueryCodesRequest,
@@ -94,11 +94,8 @@ export type {
   JsonRpcId,
   JsonRpcRequest,
   RpcClient,
-  RpcSchema,
   RequestFn,
   RequestFnParameters,
-  RpcRequestOptions,
-  DerivedRpcSchema,
   HttpRequestParameters,
   HttpRpcClientOptions,
   Block,
@@ -131,6 +128,10 @@ export type {
   TxEvent,
   QueryAbciResponse,
   RawSignature,
+  TransportSchema,
+  DerivedTransportSchema,
+  IndexerSchema,
+  RequestOptions,
 } from "@left-curve/sdk/types";
 
 export type {

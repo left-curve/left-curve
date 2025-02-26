@@ -30,6 +30,7 @@ jobs:
     runs-on: self-hosted
     env:
       PGDATABASE: grug_test
+      DB_HOST: postgres
     # services:
     #   postgres:
     #     image: postgres
@@ -64,7 +65,7 @@ jobs:
 
   format:
     name: Format
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
