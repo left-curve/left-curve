@@ -18,6 +18,6 @@ export const devnet = /*#__PURE__*/ defineChain({
     },
   },
   urls: {
-    indexer: "https://devnet-rpc.dango.exchange/",
+    indexer: "https://graphql-devnet.dango.exchange",
   },
 });
