@@ -92,9 +92,9 @@ export type QueryResponse =
   | { wasmSmart: WasmSmartResponse }
   | { multi: QueryResponse[] };
 
-export type ChainInfoResponse = {
+export type ChainStatusResponse = {
   chainId: string;
-  lastFinalizedBlock: BlockInfo;
+  block: BlockInfo;
 };
 
 export type CodeResponse = Code;

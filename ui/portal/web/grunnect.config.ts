@@ -1,4 +1,4 @@
-import { http, createConfig, devnet, passkey } from "@left-curve/store-react";
+import { createConfig, devnet, graphql, passkey } from "@left-curve/store-react";
 
 import type { Config } from "@left-curve/store-react/types";
 
@@ -8,7 +8,7 @@ export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chains: [dango],
   transports: {
-    [dango.id]: http(dango.rpcUrls.default.http.at(0), { batch: true }),
+    [dango.id]: graphql(dango.urls.indexer, { batch: true }),
   },
   coins: {
     [dango.id]: {

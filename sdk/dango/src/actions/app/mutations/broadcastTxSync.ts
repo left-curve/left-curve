@@ -1,4 +1,3 @@
-import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import type { Prettify, Transport, Tx, TxData, UnsignedTx } from "@left-curve/sdk/types";
 
 import type { DangoClient, Signer } from "../../../types/index.js";
@@ -21,16 +20,11 @@ export async function broadcastTxSync<transport extends Transport>(
 ): BroadcastTxSyncReturnType {
   const { tx } = parameters;
 
-  const result = await client.request({
-    method: "broadcast_tx_sync",
+  return await client.request({
+    method: "broadcast",
     params: {
-      tx: encodeBase64(serialize(tx)),
+      mode: "sync",
+      tx,
     },
   });
-
-  const { code, codespace, log } = result;
-
-  if (code === 0) return result;
-
-  throw new Error(`failed to broadcast tx! codespace: ${codespace}, code: ${code}, log: ${log}`);
 }

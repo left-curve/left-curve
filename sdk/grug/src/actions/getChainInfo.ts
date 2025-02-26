@@ -1,6 +1,6 @@
-import type { Chain, ChainInfoResponse, Client, Signer, Transport } from "../types/index.js";
+import type { Chain, ChainStatusResponse, Client, Signer, Transport } from "../types/index.js";
 
-export type GetChainInfoReturnType = Promise<ChainInfoResponse>;
+export type GetChainInfoReturnType = Promise<ChainStatusResponse>;
 
 /**
  * Get the chain information.
@@ -11,17 +11,5 @@ export async function getChainInfo<
   chain extends Chain | undefined,
   signer extends Signer | undefined,
 >(client: Client<Transport, chain, signer>): GetChainInfoReturnType {
-  const { block } = await client.request({
-    method: "block",
-    params: {},
-  });
-
-  return {
-    chainId: block.header.chain_id,
-    lastFinalizedBlock: {
-      hash: block.header.last_block_id.hash,
-      height: block.header.height,
-      timestamp: block.header.time,
-    },
-  };
+  return await client.request({ method: "query_status" });
 }
