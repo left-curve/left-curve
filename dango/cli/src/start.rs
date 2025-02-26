@@ -156,15 +156,24 @@ impl StartCmd {
             .rate_limit(50, time::Duration::from_secs(1))
             .service(info);
 
-        Server::builder()
+        let abci_server = Server::builder()
             .consensus(consensus)
             .snapshot(snapshot)
             .mempool(mempool)
             .info(info)
             .finish()
-            .unwrap() // this fails if one of consensus|snapshot|mempool|info is None
-            .listen_tcp(self.abci_addr)
-            .await
-            .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
+            .unwrap(); // this fails if one of consensus|snapshot|mempool|info is None
+
+        // NOTE: This is to catch Ctrl-c and properly stops the server. When using
+        // httpd server + indexer, it wouldn't process SIGINT properly without this.
+        tokio::select! {
+            result = async {
+                abci_server
+                    .listen_tcp(self.abci_addr)
+                    .await
+                    .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
+            } => result,
+            _ = tokio::signal::ctrl_c() => Ok(()),
+        }
     }
 }
