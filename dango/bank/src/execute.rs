@@ -48,7 +48,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     ensure!(ctx.funds.is_empty(), "don't send funds to bank contract");
 
     match msg {
-        ExecuteMsg::GrantNamespace { namespace, owner } => grant_namespace(ctx, namespace, owner),
+        ExecuteMsg::SetNamespaceOwner { namespace, owner } => {
+            set_namespace_owner(ctx, namespace, owner)
+        },
         ExecuteMsg::SetMetadata { denom, metadata } => set_metadata(ctx, denom, metadata),
         ExecuteMsg::Mint { to, denom, amount } => mint(ctx, to, denom, amount),
         ExecuteMsg::Burn {
@@ -69,7 +71,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn grant_namespace(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Result<Response> {
+fn set_namespace_owner(ctx: MutableCtx, namespace: Part, owner: Addr) -> anyhow::Result<Response> {
     // Only chain owner can grant namespace.
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
