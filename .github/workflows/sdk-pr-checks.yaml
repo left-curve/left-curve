@@ -28,6 +28,9 @@ jobs:
       - name: Linter checks
         run: pnpm lint:sdk
 
+      - name: Test checks
+        run: pnpm test:sdk
+
       - name: Build checks
         run: pnpm build:sdk
 
