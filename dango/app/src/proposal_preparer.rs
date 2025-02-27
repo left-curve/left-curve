@@ -27,12 +27,12 @@ const MAX_THREAD_SLEEP: Duration = Duration::from_secs(30);
 const GAS_LIMIT: u64 = 50_000_000;
 
 #[grug::derive(Serde)]
-struct LatestVaaResponse {
+pub struct LatestVaaResponse {
     pub binary: LatestVaaBinaryResponse,
 }
 
 #[grug::derive(Serde)]
-struct LatestVaaBinaryResponse {
+pub struct LatestVaaBinaryResponse {
     pub data: Vec<Binary>,
 }
 

@@ -40,6 +40,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/va",
   "indexer/*",
+  "pyth",
 ]
 resolver = "2"
 
@@ -112,7 +113,7 @@ pyth-sdk                = "0.8.0"
 pythnet-sdk             = "2"
 quote                   = "1"
 rand                    = "0.8" # Can't use 0.9 because RustCrypto libraries still depend on 0.8
-reqwest                 = "0.12"
+reqwest                 = { version = "0.12", features = ["stream"] }
 ripemd                  = "0.1"
 rocksdb                 = "0.23"
 serde                   = "1"
@@ -196,6 +197,9 @@ indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+
+# Pyth packages
+pyth-client = { path = "pyth" }
 
 # Hyperlane packages
 hyperlane-fee     = { path = "hyperlane/hooks/fee" }

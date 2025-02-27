@@ -1,0 +1,22 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "pyth"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow       = { workspace = true }
+dango-app    = { workspace = true }
+futures-util = { workspace = true }
+grug         = { workspace = true }
+reqwest      = { workspace = true }
+tokio        = { workspace = true }
+tokio-stream = { workspace = true }

@@ -6805,6 +6805,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyth"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-app",
+ "futures-util",
+ "grug",
+ "reqwest 0.12.12",
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "pyth-sdk"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
