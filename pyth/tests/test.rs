@@ -22,21 +22,25 @@ async fn test_client() {
         ),
     ];
 
-    let mut rx = client.run_streaming(ids).unwrap();
+    let shared = client.run_streaming(ids).unwrap();
 
     for _ in 0..10 {
-        if let Some(vaas) = rx.recv().await {
-            println!("New message");
-            // Decode the binary data
-            for vaa in vaas.binary.data {
+        // Read the vaas from the shared memory.
+        let mut vaas = Vec::new();
+        shared.write_with(|mut shared_vaas| {
+            vaas = shared_vaas.clone();
+            *shared_vaas = vec![];
+        });
+
+        if vaas.is_empty() {
+            sleep(Duration::from_secs(1)).await;
+        } else {
+            for vaa in vaas {
                 let vaa = PythVaa::new(&api, vaa.into_inner()).unwrap();
                 for feed in vaa.unverified() {
                     println!("feed: {:?}", feed);
                 }
             }
-            println!();
-        } else {
-            sleep(Duration::from_secs(1)).await;
         }
     }
 }

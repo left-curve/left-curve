@@ -1,12 +1,10 @@
 use {
     dango_app::LatestVaaResponse,
-    grug::{JsonDeExt, StdResult},
+    grug::{Binary, JsonDeExt, StdResult},
+    grug_app::Shared,
     reqwest::Client,
     reqwest_eventsource::{Event, EventSource},
-    tokio::{
-        sync::mpsc::{self, Receiver, Sender},
-        task::JoinHandle,
-    },
+    tokio::task::JoinHandle,
     tokio_stream::StreamExt,
 };
 
@@ -27,14 +25,17 @@ impl PythClient {
     pub fn run_streaming(
         &mut self,
         ids: Vec<(&'static str, String)>,
-    ) -> StdResult<Receiver<LatestVaaResponse>> {
-        let (tx, rx) = mpsc::channel(100);
+    ) -> StdResult<Shared<Vec<Binary>>> {
+        let shared = Shared::new(Vec::new());
+        let shared_clone = shared.clone();
         let base_url = self.base_url.clone();
         self.thread = Some(tokio::spawn(PythClient::run_streaming_inner(
-            base_url, ids, tx,
+            base_url,
+            ids,
+            shared_clone,
         )));
 
-        Ok(rx)
+        Ok(shared)
     }
 
     /// Close the client and stop the streaming thread.
@@ -48,7 +49,7 @@ impl PythClient {
     async fn run_streaming_inner(
         base_url: String,
         ids: Vec<(&str, String)>,
-        tx: Sender<LatestVaaResponse>,
+        shared: Shared<Vec<Binary>>,
     ) {
         loop {
             let builder = Client::new()
@@ -69,7 +70,7 @@ impl PythClient {
                             .data
                             .deserialize_json::<LatestVaaResponse>()
                             .unwrap();
-                        tx.send(vaas).await.unwrap();
+                        shared.write_with(|mut shared_vaas| *shared_vaas = vaas.binary.data);
                     },
                     Err(err) => {
                         println!("Error: {}", err);
