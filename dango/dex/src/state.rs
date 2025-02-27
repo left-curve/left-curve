@@ -1,5 +1,5 @@
 use {
-    dango_types::dex::{Direction, OrderId, PairParams},
+    dango_types::dex::{Direction, OrderId, PairParams, Pool},
     grug::{Addr, Counter, Denom, IndexedMap, Map, MultiIndex, Udec128, Uint128, UniqueIndex},
 };
 
@@ -15,6 +15,12 @@ pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("ord
 
 /// Key is the user's address and the order id.
 pub const INCOMING_ORDERS: Map<(Addr, OrderId), (OrderKey, Order)> = Map::new("incoming_orders");
+
+/// Mapping from LP token denom to pool.
+pub const POOLS: Map<&Denom, Pool> = Map::new("pools");
+
+/// Mapping from (&base_denom, &quote_denom) to lp_denom.
+pub const LP_DENOMS: Map<(&Denom, &Denom), Denom> = Map::new("lp_denoms");
 
 /// Type of the keys under which orders are stored in the contract storage.
 ///
