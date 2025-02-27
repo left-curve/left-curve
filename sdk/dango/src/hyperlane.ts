@@ -7,6 +7,7 @@ export {
   IncrementalMerkleTree,
   Message,
   Metadata,
+  TokenMessage,
   mockValidatorSet,
   mockValidatorSign,
 } from "@left-curve/sdk/hyperlane";

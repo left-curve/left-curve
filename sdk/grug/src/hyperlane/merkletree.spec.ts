@@ -8,7 +8,7 @@ import cases from "../../../../hyperlane/types/testdata/merkle.json" with { type
 describe("incremental merklee tree", () => {
   it("insertion works", () => {
     for (const case_ of cases) {
-      const tree = new IncrementalMerkleTree();
+      const tree = IncrementalMerkleTree.create();
 
       for (const leaf of case_.leaves) {
         const leafHash = ethHashMessage(leaf);

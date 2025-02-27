@@ -8,5 +8,13 @@ export type AppConfig = {
     lending: Address;
     oracle: Address;
     amm: Address;
+    warp: Address;
+    hyperlane: {
+      fee: Address;
+      ism: Address;
+      mailbox: Address;
+      merkle: Address;
+      va: Address;
+    };
   };
 };

@@ -44,11 +44,26 @@ const ZERO_HASHES = [
 ];
 
 export class IncrementalMerkleTree {
-  branch: Uint8Array[];
+  #branch: Uint8Array[];
+  #root: Uint8Array;
   #count: bigint;
-  constructor() {
-    this.branch = ZERO_HASHES.map((h) => decodeHex(h.toUpperCase()));
-    this.#count = 0n;
+
+  static create() {
+    return new IncrementalMerkleTree({
+      branch: ZERO_HASHES.map((h) => decodeHex(h)),
+      count: 0n,
+      root: decodeHex(ZERO_HASHES[0]),
+    });
+  }
+
+  static from(params: { branch: Uint8Array[]; count: bigint; root: Uint8Array }) {
+    return new IncrementalMerkleTree(params);
+  }
+
+  private constructor(params: { branch: Uint8Array[]; count: bigint; root: Uint8Array }) {
+    this.#branch = params.branch;
+    this.#count = params.count;
+    this.#root = params.root;
   }
 
   insert(node: Uint8Array) {
@@ -60,10 +75,10 @@ export class IncrementalMerkleTree {
 
     for (let i = 0; i < TREE_DEPTH; i++) {
       if ((size & 1n) === 1n) {
-        this.branch[i] = node;
+        this.#branch[i] = node;
         return;
       }
-      node = keccak256Two(this.branch[i], node);
+      node = keccak256Two(this.#branch[i], node);
       size /= 2n;
     }
   }
@@ -73,7 +88,7 @@ export class IncrementalMerkleTree {
 
     for (let i = 0; i < TREE_DEPTH; i++) {
       const ithBit = (this.#count >> BigInt(i)) & 1n;
-      const next = this.branch[i];
+      const next = this.#branch[i];
 
       if (ithBit === 1n) {
         current = keccak256Two(next, current);
@@ -87,5 +102,13 @@ export class IncrementalMerkleTree {
 
   count() {
     return this.#count;
+  }
+
+  save() {
+    return {
+      branch: this.#branch,
+      count: this.#count,
+      root: this.#root,
+    };
   }
 }
