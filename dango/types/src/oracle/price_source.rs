@@ -1,9 +1,4 @@
-use {
-    crate::oracle::{PrecisionlessPrice, PythId},
-    grug::{Map, Udec128},
-};
-
-pub const PRICES: Map<PythId, PrecisionlessPrice> = Map::new("price");
+use {crate::oracle::PythId, grug::Udec128};
 
 #[grug::derive(Serde, Borsh)]
 pub enum PriceSource {
