@@ -13,10 +13,11 @@ version       = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow       = { workspace = true }
-dango-app    = { workspace = true }
-futures-util = { workspace = true }
-grug         = { workspace = true }
-reqwest      = { workspace = true }
-tokio        = { workspace = true }
-tokio-stream = { workspace = true }
+anyhow              = { workspace = true }
+dango-app           = { workspace = true }
+futures-util        = { workspace = true }
+grug                = { workspace = true }
+reqwest             = { workspace = true }
+reqwest-eventsource = { workspace = true }
+tokio               = { workspace = true }
+tokio-stream        = { workspace = true }

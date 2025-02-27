@@ -1,6 +1,12 @@
 use {
-    dango_app::LatestVaaResponse, futures_util::StreamExt, grug::JsonDeExt, pyth::PythClient,
-    reqwest::Client, std::time::Duration, tokio::time::sleep,
+    dango_app::LatestVaaResponse,
+    futures_util::StreamExt,
+    grug::JsonDeExt,
+    pyth::PythClient,
+    reqwest::{Client, RequestBuilder},
+    reqwest_eventsource::{Event, EventSource},
+    std::time::Duration,
+    tokio::time::sleep,
 };
 
 #[tokio::test]
@@ -103,6 +109,33 @@ async fn test_client() {
             println!("vaas: {:?}", vaas);
         } else {
             sleep(Duration::from_secs(1)).await;
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_eventstream() {
+    let mut es = EventSource::get("https://hermes.pyth.network/v2/updates/price/stream?ids[]=e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43&parsed=false&encoding=base64");
+    let mut count = 0;
+    while let Some(event) = es.next().await {
+        match event {
+            Ok(Event::Open) => println!("Connection Open!"),
+            Ok(Event::Message(message)) => {
+                // println!("Message: {:#?}", message);
+                let vaas = message
+                    .data
+                    .deserialize_json::<LatestVaaResponse>()
+                    .unwrap();
+                println!("vaas: {:?}", vaas);
+            },
+            Err(err) => {
+                println!("Error: {}", err);
+                es.close();
+            },
+        }
+        count += 1;
+        if count > 10 {
+            break;
         }
     }
 }
