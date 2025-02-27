@@ -6821,6 +6821,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "dango-app",
+ "dango-types",
  "futures-util",
  "grug",
  "reqwest 0.12.12",

@@ -1,9 +1,10 @@
 use {
     dango_app::LatestVaaResponse,
+    dango_types::oracle::PythVaa,
     futures_util::StreamExt,
-    grug::JsonDeExt,
+    grug::{Inner, JsonDeExt, MockApi},
     pyth::PythClient,
-    reqwest::{Client, RequestBuilder},
+    reqwest::Client,
     reqwest_eventsource::{Event, EventSource},
     std::time::Duration,
     tokio::time::sleep,
@@ -96,17 +97,33 @@ fn find_event_delimiter(buffer: &[u8]) -> Option<usize> {
 
 #[tokio::test]
 async fn test_client() {
-    let mut client = PythClient::new("https://hermes.pyth.network");
-    let ids = vec![(
-        "ids[]",
-        "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43".to_string(),
-    )];
+    let api = MockApi;
 
-    let rx = client.run_streaming(ids).unwrap();
+    let mut client = PythClient::new("https://hermes.pyth.network");
+    let ids = vec![
+        (
+            "ids[]",
+            "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43".to_string(),
+        ),
+        (
+            "ids[]",
+            "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace".to_string(),
+        ),
+    ];
+
+    let mut rx = client.run_streaming(ids).unwrap();
 
     for _ in 0..10 {
-        if let Ok(vaas) = rx.try_recv() {
-            println!("vaas: {:?}", vaas);
+        if let Some(vaas) = rx.recv().await {
+            println!("New message");
+            // Decode the binary data
+            for vaa in vaas.binary.data {
+                let vaa = PythVaa::new(&api, vaa.into_inner()).unwrap();
+                for feed in vaa.unverified() {
+                    println!("feed: {:?}", feed);
+                }
+            }
+            println!();
         } else {
             sleep(Duration::from_secs(1)).await;
         }

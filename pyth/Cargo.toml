@@ -15,6 +15,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 anyhow              = { workspace = true }
 dango-app           = { workspace = true }
+dango-types         = { workspace = true }
 futures-util        = { workspace = true }
 grug                = { workspace = true }
 reqwest             = { workspace = true }
