@@ -54,7 +54,7 @@ pub enum QueryMsg {
     /// Enumerate all trading pairs and their parameters.
     #[returns(Vec<PairUpdate>)]
     Pairs {
-        start_after: Option<PairPageParams>,
+        start_after: Option<PairPageParam>,
         limit: Option<u32>,
     },
     /// Query a single active order by ID.
@@ -85,7 +85,7 @@ pub enum QueryMsg {
 
 /// Pagination parameters of the `QueryMsg::Pairs` query.
 #[grug::derive(Serde)]
-pub struct PairPageParams {
+pub struct PairPageParam {
     pub base_denom: Denom,
     pub quote_denom: Denom,
 }

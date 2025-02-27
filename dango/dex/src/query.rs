@@ -1,7 +1,7 @@
 use {
     crate::{ORDERS, PAIRS},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParams,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
         PairParams, PairUpdate, QueryMsg,
     },
     grug::{
@@ -62,7 +62,7 @@ fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdRe
 #[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
-    start_after: Option<PairPageParams>,
+    start_after: Option<PairPageParam>,
     limit: Option<u32>,
 ) -> StdResult<Vec<PairUpdate>> {
     let start = start_after
