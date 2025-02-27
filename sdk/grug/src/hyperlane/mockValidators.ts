@@ -14,7 +14,9 @@ type Validator = {
 export const mockValidatorSet = (size: number) => {
   const validators: Validator[] = Array.from({ length: size }, () => {
     const secret = Secp256k1.makeKeyPair();
-    const address = encodeHex(keccak256(secret.getPublicKey().slice(1)));
+
+    const address = encodeHex(keccak256(secret.getPublicKey(false).slice(1)).slice(12));
+
     return {
       address,
       secret,
