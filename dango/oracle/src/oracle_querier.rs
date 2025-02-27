@@ -1,10 +1,10 @@
 use {
-    crate::PRICE_SOURCES,
+    crate::{PRICES, PRICE_SOURCES},
     anyhow::anyhow,
     dango_types::{
         config::AppConfig,
         lending::{NAMESPACE, SUBNAMESPACE},
-        oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource, PRICES},
+        oracle::{PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{Addr, Denom, Number, Querier, QuerierExt, StdError, StorageQuerier},
 };
