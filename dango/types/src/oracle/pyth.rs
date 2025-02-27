@@ -172,7 +172,7 @@ mod tests {
     use {
         crate::{
             constants::{GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
-            oracle::{GuardianSet, PythVaa},
+            oracle::{GuardianSet, GuardianSetIndex, PythVaa},
         },
         data_encoding::BASE64,
         grug::{
