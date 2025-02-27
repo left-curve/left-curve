@@ -4,7 +4,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/grug"
+      "path": "../../../sdk/dango"
     }
   ]
 }

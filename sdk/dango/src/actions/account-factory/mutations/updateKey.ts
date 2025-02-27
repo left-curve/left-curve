@@ -11,40 +11,40 @@ import type {
   TypedDataParameter,
 } from "../../../types/index.js";
 
-export type ConfigureKeyParameters = {
+export type UpdateKeyParameters = {
   sender: Address;
   action: "delete" | { insert: Key };
   keyHash: KeyHash;
 };
 
-export type ConfigureKeyReturnType = ExecuteReturnType;
+export type UpdateKeyReturnType = ExecuteReturnType;
 
-export type MsgConfigureKey = {
-  configureKey: {
+export type MsgUpdateKey = {
+  updateKey: {
     KeyHash: Hex;
     key: "delete" | { insert: Key };
   };
 };
 
-export async function configureKey<transport extends Transport>(
+export async function updateKey<transport extends Transport>(
   client: DangoClient<transport, Signer>,
-  parameters: ConfigureKeyParameters,
-): ConfigureKeyReturnType {
+  parameters: UpdateKeyParameters,
+): UpdateKeyReturnType {
   const { keyHash, action, sender } = parameters;
 
   const { addresses } = await getAppConfig<AppConfig>(client);
 
-  const configureKeyMsg = {
-    configureKey: {
+  const UpdateKeyMsg = {
+    updateKey: {
       keyHash,
       key: action,
     },
   };
 
   const typedData: TypedDataParameter = {
-    type: [{ name: "configure_key", type: "ConfigureKey" }],
+    type: [{ name: "configure_key", type: "UpdateKey" }],
     extraTypes: {
-      ConfigureKey: [
+      UpdateKey: [
         { name: "key_hash", type: "string" },
         typeof action === "string"
           ? { name: "key", type: "string" }
@@ -65,7 +65,7 @@ export async function configureKey<transport extends Transport>(
   return await execute(client, {
     contract: addresses.accountFactory,
     sender,
-    msg: configureKeyMsg,
+    msg: UpdateKeyMsg,
     typedData,
   });
 }

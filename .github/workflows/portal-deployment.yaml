@@ -12,8 +12,6 @@ on:
       - "ui/portal/**"
       - "ui/applets/**"
   pull_request:
-    branches:
-      - "*"
     paths:
       - "sdk/**"
       - "ui/store/**"

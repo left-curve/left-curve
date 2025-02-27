@@ -47,6 +47,11 @@
       "import": "./build/encoding.js",
       "default": "./build/encoding.cjs"
     },
+     "./hyperlane": {
+      "types": "./build/hyperlane.d.ts",
+      "import": "./build/hyperlane.js",
+      "default": "./build/hyperlane.cjs"
+    },
     "./utils": {
       "types": "./build/utils/index.d.ts",
       "import": "./build/utils/index.js",
@@ -59,6 +64,7 @@
       "actions": ["./build/actions/index.d.ts"],
       "crypto": ["./build/crypto.d.ts"],
       "encoding": ["./build/encoding.d.ts"],
+      "hyperlane": ["./build/hyperlane.d.ts"],
       "utils": ["./build/utils/index.d.ts"]
     }
   },

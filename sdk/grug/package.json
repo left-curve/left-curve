@@ -54,6 +54,11 @@
       "import": "./build/encoding/index.js",
       "default": "./build/encoding/index.cjs"
     },
+    "./hyperlane": {
+      "types": "./build/hyperlane/index.d.ts",
+      "import": "./build/hyperlane/index.js",
+      "default": "./build/hyperlane/index.cjs"
+    },
     "./utils": {
       "types": "./build/utils/index.d.ts",
       "import": "./build/utils/index.js",
@@ -81,6 +86,9 @@
       ],
       "encoding": [
         "./build/encoding/index.d.ts"
+      ],
+      "hyperlane": [
+        "./build/hyperlane/index.d.ts"
       ],
       "utils": [
         "./build/utils/index.d.ts"

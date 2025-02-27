@@ -123,7 +123,7 @@ export class Secp256k1 implements KeyPair {
    * @param messageHash - The hash of the message to sign.
    * @returns The signature of the message hash.
    */
-  createSignature(messageHash: Uint8Array): Uint8Array {
+  createSignature(messageHash: Uint8Array, recovery = false): Uint8Array {
     if (messageHash.length === 0) {
       throw new Error("Message hash must not be empty");
     }
@@ -133,7 +133,8 @@ export class Secp256k1 implements KeyPair {
 
     const signature = secp256k1.sign(messageHash, this.#privateKey, { lowS: true });
 
-    return signature.toCompactRawBytes();
+    if (!recovery) return signature.toCompactRawBytes();
+    return new Uint8Array([...signature.toCompactRawBytes(), signature.recovery]);
   }
 
   /**
