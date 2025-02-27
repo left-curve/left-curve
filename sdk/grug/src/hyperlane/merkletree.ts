@@ -41,47 +41,51 @@ const ZERO_HASHES = [
   "388ab20e2573d171a88108e79d820e98f26c0b84aa8b2f4aa4968dbb818ea322",
   "93237c50ba75ee485f4c22adf2f741400bdf8d6a9cc7df7ecae576221665d735",
   "8448818bb4ae4562849e949e17ac16e0be16688e156b5cf15e098c627c0056a9",
-].map(decodeHex);
+];
 
-export const incrementalMerkleTree = () => {
-  const branch = [...ZERO_HASHES];
-  let _count = 0n;
+export class IncrementalMerkleTree {
+  branch: Uint8Array[];
+  #count: bigint;
+  constructor() {
+    this.branch = ZERO_HASHES.map((h) => decodeHex(h.toUpperCase()));
+    this.#count = 0n;
+  }
 
-  const insert = (node: Uint8Array) => {
-    if (_count >= MAX_LEAVES) throw new Error("tree is full");
+  insert(node: Uint8Array) {
+    if (this.#count >= MAX_LEAVES) throw new Error("tree is full");
 
-    _count += 1n;
+    this.#count += 1n;
 
-    let size = _count;
+    let size = this.#count;
 
     for (let i = 0; i < TREE_DEPTH; i++) {
       if ((size & 1n) === 1n) {
-        branch[i] = node;
+        this.branch[i] = node;
         return;
       }
-      node = keccak256Two(branch[i], node);
+      node = keccak256Two(this.branch[i], node);
       size /= 2n;
     }
-  };
+  }
 
-  const root = () => {
-    let current = ZERO_HASHES[0];
+  root() {
+    let current = decodeHex(ZERO_HASHES[0]);
 
     for (let i = 0; i < TREE_DEPTH; i++) {
-      const ithBit = (_count >> BigInt(i)) & 1n;
-      const next = branch[i];
+      const ithBit = (this.#count >> BigInt(i)) & 1n;
+      const next = this.branch[i];
 
       if (ithBit === 1n) {
         current = keccak256Two(next, current);
       } else {
-        current = keccak256Two(current, ZERO_HASHES[i]);
+        current = keccak256Two(current, decodeHex(ZERO_HASHES[i]));
       }
     }
 
     return current;
-  };
+  }
 
-  const count = () => _count;
-
-  return { insert, root, count };
-};
+  count() {
+    return this.#count;
+  }
+}

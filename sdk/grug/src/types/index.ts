@@ -104,6 +104,7 @@ export type {
   Base64,
   Binary,
   JsonValue,
+  Encoder,
 } from "./encoding.js";
 
 export type {

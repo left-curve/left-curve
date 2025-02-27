@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ethHashMessage } from "../crypto/index.js";
 import { decodeHex, encodeHex } from "../encoding/index.js";
-import { incrementalMerkleTree } from "./merkletree.js";
+import { IncrementalMerkleTree } from "./merkletree.js";
 
 import cases from "../../../../hyperlane/types/testdata/merkle.json" with { type: "json" };
 
 describe("incremental merklee tree", () => {
   it("insertion works", () => {
     for (const case_ of cases) {
-      const tree = incrementalMerkleTree();
+      const tree = new IncrementalMerkleTree();
 
       for (const leaf of case_.leaves) {
         const leafHash = ethHashMessage(leaf);
