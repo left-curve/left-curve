@@ -109,9 +109,9 @@ export {
 } from "./mutations/registerUser.js";
 
 export {
-  type ConfigureKeyParameters,
-  type ConfigureKeyReturnType,
-  configureKey,
+  type UpdateKeyParameters,
+  type UpdateKeyReturnType,
+  updateKey,
 } from "./mutations/updateKey.js";
 
 /* -------------------------------------------------------------------------- */
