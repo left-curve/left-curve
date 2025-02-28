@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "pyth"
+name          = "pyth-client"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -16,6 +16,7 @@ crate-type = ["cdylib", "rlib"]
 dango-app           = { workspace = true }
 grug                = { workspace = true }
 grug-app            = { workspace = true }
+pyth-types          = { workspace = true }
 reqwest             = { workspace = true }
 reqwest-eventsource = { workspace = true }
 tokio               = { workspace = true }

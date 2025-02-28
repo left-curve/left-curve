@@ -40,7 +40,8 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/va",
   "indexer/*",
-  "pyth",
+  "pyth/client",
+  "pyth/types",
 ]
 resolver = "2"
 
@@ -200,7 +201,8 @@ indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 
 # Pyth packages
-pyth-client = { path = "pyth" }
+pyth-client = { path = "pyth/client" }
+pyth-types  = { path = "pyth/types" }
 
 # Hyperlane packages
 hyperlane-fee     = { path = "hyperlane/hooks/fee" }

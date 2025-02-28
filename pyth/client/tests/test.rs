@@ -1,7 +1,8 @@
 use {
     dango_types::oracle::PythVaa,
     grug::{Inner, MockApi},
-    pyth::{PythClient, PYTH_URL},
+    pyth_client::PythClient,
+    pyth_types::{BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     std::time::Duration,
     tokio::time::sleep,
 };
@@ -12,14 +13,8 @@ async fn test_client() {
 
     let mut client = PythClient::new(PYTH_URL);
     let ids = vec![
-        (
-            "ids[]",
-            "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43".to_string(),
-        ),
-        (
-            "ids[]",
-            "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace".to_string(),
-        ),
+        ("ids[]", BTC_USD_ID.to_string()),
+        ("ids[]", ETH_USD_ID.to_string()),
     ];
 
     let shared = client.run_streaming(ids).unwrap();

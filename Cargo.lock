@@ -6816,13 +6816,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth"
+name = "pyth-client"
 version = "0.0.0"
 dependencies = [
  "dango-app",
  "dango-types",
  "grug",
  "grug-app",
+ "pyth-types",
  "reqwest 0.12.12",
  "reqwest-eventsource",
  "tokio",
@@ -6854,6 +6855,14 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "pyth-types"
+version = "0.0.0"
+dependencies = [
+ "grug",
+ "hex-literal",
 ]
 
 [[package]]
