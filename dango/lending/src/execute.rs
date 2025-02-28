@@ -55,11 +55,13 @@ fn update_markets(
     for (denom, updates) in updates {
         if let Some(market) = MARKETS.may_load(ctx.storage, &denom)? {
             if let Some(interest_rate_model) = updates.interest_rate_model {
-                MARKETS.save(
-                    ctx.storage,
-                    &denom,
-                    &market.set_interest_rate_model(interest_rate_model),
-                )?;
+                // Update indexes first, so that interests accumulated up to this
+                // point are accounted for. Then, set the new interest rate model.
+                let new_market = market
+                    .update_indices(&ctx.querier, ctx.block.timestamp)?
+                    .set_interest_rate_model(interest_rate_model);
+
+                MARKETS.save(ctx.storage, &denom, &new_market)?;
             }
         } else {
             MARKETS.save(
