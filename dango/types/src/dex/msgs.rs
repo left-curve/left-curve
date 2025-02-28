@@ -4,16 +4,35 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
+/// A request to submit a new limit order.
+///
+/// - For SELL orders, sender must attach `base_denom` of `amount` amount.
+///
+/// - For BUY orders, sender must attach `quote_denom` of the amount
+///   calculated as:
+///
+///   ```plain
+///   ceil(amount * price)
+///   ```
 #[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub pairs: Vec<PairUpdate>,
+pub struct OrderSubmission {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    pub amount: Uint128,
+    pub price: Udec128,
 }
 
-#[grug::derive(Serde)]
 /// A set of order IDs, either a specific set or all. Used to cancel orders.
+#[grug::derive(Serde)]
 pub enum OrderIds {
     Some(BTreeSet<OrderId>),
     All,
+}
+
+#[grug::derive(Serde)]
+pub struct InstantiateMsg {
+    pub pairs: Vec<PairUpdate>,
 }
 
 #[grug::derive(Serde)]
@@ -22,6 +41,11 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     BatchUpdatePairs(Vec<PairUpdate>),
+    /// Create or cancel multiple limit orders in one batch.
+    BatchUpdateOrders {
+        submits: Vec<OrderSubmission>,
+        cancels: Option<OrderIds>,
+    },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity
     /// provision at pool ratio.
@@ -35,25 +59,6 @@ pub enum ExecuteMsg {
         base_denom: Denom,
         quote_denom: Denom,
     },
-    /// Submit a new order.
-    ///
-    /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
-    ///
-    /// - For BUY orders, sender must attach `quote_denom` of the amount
-    ///   calculated as:
-    ///
-    ///   ```plain
-    ///   ceil(amount * price)
-    ///   ```
-    SubmitOrder {
-        base_denom: Denom,
-        quote_denom: Denom,
-        direction: Direction,
-        amount: Uint128,
-        price: Udec128,
-    },
-    /// Cancel one or more orders by IDs.
-    CancelOrders { order_ids: OrderIds },
 }
 
 #[grug::derive(Serde, QueryRequest)]
