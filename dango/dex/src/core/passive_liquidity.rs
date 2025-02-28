@@ -16,7 +16,11 @@ impl TradingFunction for CurveInvariant {
     fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
         match self {
             // k = x * y
-            CurveInvariant::Xyk => Ok(*reserve.first().amount * *reserve.second().amount),
+            CurveInvariant::Xyk => {
+                let first = *reserve.first().amount;
+                let second = *reserve.second().amount;
+                Ok(first.checked_mul(second)?)
+            },
         }
     }
 
