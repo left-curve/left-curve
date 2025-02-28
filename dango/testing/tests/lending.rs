@@ -11,7 +11,7 @@ use {
             QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, NAMESPACE,
             SECONDS_PER_YEAR, SUBNAMESPACE,
         },
-        oracle,
+        oracle::{self, PriceSource},
     },
     grug::{
         btree_map, Addressable, Binary, Coins, Denom, Duration, JsonSerExt, Message, MsgConfigure,
@@ -147,6 +147,111 @@ fn update_markets_works() {
             start_after: None,
         })
         .should_succeed_and(|markets| markets.contains_key(&ATOM_DENOM));
+}
+
+#[test]
+fn indexes_are_updated_when_interest_rate_model_is_updated() {
+    let (mut suite, mut accounts, _codes, contracts) = setup_test_naive();
+
+    // Ensure USDC market already exists.
+    suite
+        .query_wasm_smart(contracts.lending, QueryMarketsRequest {
+            limit: None,
+            start_after: None,
+        })
+        .should_succeed_and(|markets| markets.contains_key(&USDC_DENOM));
+
+    // deposit some USDC
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.lending,
+            &lending::ExecuteMsg::Deposit {},
+            Coins::one(USDC_DENOM.clone(), 100).unwrap(),
+        )
+        .should_succeed();
+
+    // Create a margin account.
+    let mut margin_account = accounts
+        .user1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            AccountParams::Margin(single::Params::new(accounts.user1.username.clone())),
+            Coins::new(),
+        )
+        .unwrap();
+
+    // Whitelist USDC as collateral at 100% power
+    set_collateral_power(
+        &mut suite,
+        &mut accounts,
+        USDC_DENOM.clone(),
+        CollateralPower::new(Udec128::new_percent(100)).unwrap(),
+    );
+
+    // Register price source for USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                USDC_DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Borrow some USDC
+    suite
+        .execute(
+            &mut margin_account,
+            contracts.lending,
+            &lending::ExecuteMsg::Borrow(Coins::one(USDC_DENOM.clone(), 100).unwrap()),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Increase time to accrue interest
+    suite.increase_time(Duration::from_seconds(60 * 60 * 24)); // 1 day
+
+    // Query the current market for USDC
+    let market = suite
+        .query_wasm_smart(contracts.lending, QueryMarketRequest {
+            denom: USDC_DENOM.clone(),
+        })
+        .unwrap();
+
+    let old_borrow_index = market.borrow_index;
+    let old_supply_index = market.supply_index;
+
+    // Update the interest rate model
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.lending,
+            &lending::ExecuteMsg::UpdateMarkets(btree_map! {
+                USDC_DENOM.clone() => MarketUpdates {
+                    interest_rate_model: Some(InterestRateModel::default()),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query the updated market for USDC
+    let updated_market = suite
+        .query_wasm_smart(contracts.lending, QueryMarketRequest {
+            denom: USDC_DENOM.clone(),
+        })
+        .unwrap();
+
+    assert!(updated_market.borrow_index > old_borrow_index);
+    assert!(updated_market.supply_index > old_supply_index);
 }
 
 fn set_collateral_power(
