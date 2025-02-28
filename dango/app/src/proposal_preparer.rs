@@ -10,16 +10,12 @@ use {
     grug_app::{AppError, Shared},
     prost::bytes::Bytes,
     pyth_client::PythClient,
-    pyth_types::PYTH_URL,
-    std::{sync::RwLock, time::Duration},
+    pyth_types::{PythId, PYTH_URL},
+    std::sync::RwLock,
     thiserror::Error,
     tracing::error,
 };
 
-const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
-const THREAD_SLEEP: Duration = Duration::from_millis(1000);
-const THREAD_SLEEP_ON_FIRST_429: Duration = Duration::from_millis(5000);
-const MAX_THREAD_SLEEP: Duration = Duration::from_secs(30);
 const GAS_LIMIT: u64 = 50_000_000;
 
 #[derive(Debug, Error)]
@@ -38,7 +34,7 @@ impl From<ProposerError> for AppError {
 }
 
 pub struct ProposalPreparer {
-    latest_params: RwLock<Vec<(&'static str, String)>>,
+    latest_params: RwLock<Vec<PythId>>,
     latest_vaas: Shared<Vec<Binary>>,
     // Option since we don't want to clone the thread handle.
     // Store the thread to keep it alive.
@@ -99,7 +95,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
                 // For now there is only Pyth as PriceSource, but there could be more.
                 #[allow(irrefutable_let_patterns)]
                 if let PriceSource::Pyth { id, .. } = price_source {
-                    Some(("ids[]", id.to_string()))
+                    Some(id)
                 } else {
                     None
                 }
@@ -119,7 +115,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
                 // Start a new connection only if there are some params.
                 if let Ok(params) = NonEmpty::new(params) {
-                    client.run_streaming(params, Some(self.latest_vaas.clone()))?;
+                    client.run_streaming(params, Some(self.latest_vaas.clone()));
                 }
             }
         }

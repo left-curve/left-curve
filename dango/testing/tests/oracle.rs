@@ -5,7 +5,7 @@ use {
             ATOM_DENOM, BNB_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM, USDC_DENOM,
             WBTC_DENOM, XRP_DENOM,
         },
-        oracle::{ExecuteMsg, PrecisionlessPrice, PythId, PythVaa, QueryPriceRequest},
+        oracle::{ExecuteMsg, PrecisionlessPrice, PythVaa, QueryPriceRequest},
     },
     grug::{
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
@@ -13,8 +13,8 @@ use {
     grug_app::NaiveProposalPreparer,
     pyth_sdk::PriceFeed,
     pyth_types::{
-        ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SHIB_USD_ID, SOL_USD_ID,
-        USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
+        PythId, ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SHIB_USD_ID,
+        SOL_USD_ID, USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
     },
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };

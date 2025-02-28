@@ -3296,6 +3296,7 @@ dependencies = [
  "dango-types",
  "grug",
  "pyth-sdk 0.8.0",
+ "pyth-types",
 ]
 
 [[package]]

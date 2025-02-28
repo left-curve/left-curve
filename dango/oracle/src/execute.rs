@@ -1,11 +1,12 @@
 use {
     crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa, PRICES},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythVaa, PRICES},
     grug::{
         AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
         MutableCtx, QuerierExt, Response, Tx,
     },
+    pyth_types::PythId,
     std::collections::BTreeMap,
 };
 

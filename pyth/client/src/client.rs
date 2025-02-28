@@ -1,7 +1,7 @@
 use {
-    grug::{Binary, JsonDeExt, NonEmpty, StdResult},
+    grug::{Binary, JsonDeExt, NonEmpty},
     grug_app::Shared,
-    pyth_types::LatestVaaResponse,
+    pyth_types::{LatestVaaResponse, PythId},
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     std::{
@@ -35,9 +35,9 @@ impl PythClient {
     /// Otherwise, it will create a new shared value and return it.
     pub fn run_streaming(
         &mut self,
-        ids: NonEmpty<Vec<(&'static str, String)>>,
+        ids: NonEmpty<Vec<PythId>>,
         shared_vaas: Option<Shared<Vec<Binary>>>,
-    ) -> StdResult<Shared<Vec<Binary>>> {
+    ) -> Shared<Vec<Binary>> {
         let base_url = self.base_url.clone();
 
         let shared = shared_vaas.unwrap_or_default();
@@ -57,7 +57,7 @@ impl PythClient {
             });
         });
 
-        Ok(shared)
+        shared
     }
 
     /// Close the client and stop the streaming thread.
@@ -68,19 +68,33 @@ impl PythClient {
     /// Inner function to run the SSE connection.
     async fn run_streaming_inner(
         base_url: String,
-        ids: NonEmpty<Vec<(&str, String)>>,
+        ids: NonEmpty<Vec<PythId>>,
         shared: Shared<Vec<Binary>>,
         keep_running: Arc<AtomicBool>,
     ) {
+        let ids = ids
+            .iter()
+            .map(|id| ("ids[]", id.to_string()))
+            .collect::<Vec<_>>();
+
         loop {
             let builder = Client::new()
                 .get(format!("{}/v2/updates/price/stream", base_url))
                 .query(&ids)
                 .query(&[("parsed", "false")])
-                .query(&[("encoding", "base64")]);
+                .query(&[("encoding", "base64")])
+                // If, for some reason, the price id is invalid, ignore it
+                // instead of making the request fail.
+                // TODO: remove? The request still fail with random id. To be ignored,
+                // the id must respect the correct id format (len, string in hex).
+                .query(&[("ignore_invalid_price_ids", "true")]);
 
             // Connect to EventSource.
+            // This method will return Err only if the RequestBuilder cannot be cloned.
+            // This only happens if the request body is a stream (not this case).
             let mut es = EventSource::new(builder).unwrap();
+
+            // Set the exponential backoff for reconnect.
             es.set_retry_policy(Box::new(ExponentialBackoff::new(
                 Duration::from_secs(1),
                 1.5,

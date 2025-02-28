@@ -1,6 +1,7 @@
 use {
-    crate::oracle::{PrecisionlessPrice, PythId},
+    crate::oracle::PrecisionlessPrice,
     grug::{Map, Udec128},
+    pyth_types::PythId,
 };
 
 pub const PRICES: Map<PythId, PrecisionlessPrice> = Map::new("price");
