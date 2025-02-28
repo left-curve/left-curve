@@ -471,7 +471,7 @@ fn submit_and_cancel_order_in_same_block() {
 fn only_owner_can_create_passive_pool() {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
-    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
 
     suite
         .execute(
@@ -556,7 +556,7 @@ fn only_owner_can_create_passive_pool() {
     Uint128::new(73) ; "provision at different ratio"
 )]
 fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
-    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     // Record the users initial balances.
@@ -654,7 +654,7 @@ fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
 fn withdraw_liquidity(withdraw_amount: Uint128, expected_funds_returned: Coins) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
-    let lp_denom = Denom::try_from("dex/lp/dangousdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
 
     // Create a passive pool.
     let initial_funds = coins! {

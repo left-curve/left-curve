@@ -13,7 +13,7 @@ use {
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Inner, IsZero, Message,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, IsZero, Message,
         MultiplyFraction, MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt,
         Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
@@ -100,9 +100,8 @@ fn create_passive_pool(
     );
 
     // Ensure the LP token denom is valid
-    let parts = lp_denom.inner();
     ensure!(
-        parts.len() == 3 && parts[0] == *NAMESPACE && parts[1] == *LP_NAMESPACE,
+        lp_denom.starts_with(&[NAMESPACE.clone(), LP_NAMESPACE.clone()]),
         "invalid LP token denom"
     );
 
