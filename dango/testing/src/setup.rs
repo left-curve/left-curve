@@ -25,8 +25,9 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
-    std::path::PathBuf,
+    indexer_httpd::context::Context,
+    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    std::{path::PathBuf, sync::Arc},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -102,16 +103,20 @@ pub fn setup_test_with_indexer() -> (
 
     let indexer_context = indexer.context.clone();
 
-    (
-        setup_suite_with_db_and_vm(
-            MemDb::new(),
-            RustVm::new(),
-            codes,
-            ProposalPreparer::new(),
-            indexer,
-        ),
-        indexer_context,
-    )
+    let db = MemDb::new();
+    let vm = RustVm::new();
+
+    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
+        db.clone(),
+        vm.clone(),
+        codes,
+        ProposalPreparer::new(),
+        indexer,
+    );
+
+    let httpd_context = Context::new(indexer_context, Arc::new(suite.app.clone_without_indexer()));
+
+    ((suite, accounts, codes, contracts), httpd_context)
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and

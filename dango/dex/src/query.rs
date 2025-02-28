@@ -1,8 +1,8 @@
 use {
     crate::{LP_DENOMS, ORDERS, PAIRS, POOLS},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, Pair, PairParams,
-        PairUpdate, Pool, QueryMsg,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
+        PairParams, PairUpdate, Pool, QueryMsg,
     },
     grug::{
         Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
@@ -73,7 +73,7 @@ fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdRe
 #[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
-    start_after: Option<Pair>,
+    start_after: Option<PairPageParam>,
     limit: Option<u32>,
 ) -> StdResult<Vec<PairUpdate>> {
     let start = start_after

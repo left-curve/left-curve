@@ -11,7 +11,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@left-curve/sdk": "workspace:^"
+    "@left-curve/dango": "workspace:^"
   },
   "sideEffects": false,
   "devDependencies": {

@@ -10,6 +10,11 @@ export type Json = { [key: string]: JsonValue };
 export type JsonValue = Json | JsonValue[] | string | number | boolean | undefined | null;
 
 /**
+ * Represents a JSON string.
+ */
+export type JsonString = string;
+
+/**
  * Represents a string in hex.
  */
 export type Hex = string;
