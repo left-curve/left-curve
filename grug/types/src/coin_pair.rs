@@ -160,48 +160,6 @@ impl CoinPair {
             },
         ]))
     }
-
-    pub fn has(&self, denom: &Denom) -> bool {
-        self.first().denom == denom || self.second().denom == denom
-    }
-
-    pub fn amount_of(&self, denom: &Denom) -> Uint128 {
-        if self.first().denom == denom {
-            *self.first().amount
-        } else {
-            *self.second().amount
-        }
-    }
-
-    pub fn checked_add(&mut self, other: &Coin) -> StdResult<&mut Self> {
-        if self.first().denom == &other.denom {
-            self.first_mut().amount.checked_add_assign(other.amount)?;
-        } else if self.second().denom == &other.denom {
-            self.second_mut().amount.checked_add_assign(other.amount)?;
-        } else {
-            return Err(StdError::invalid_coins(format!(
-                "can't add coin {} to coin pair {:?}",
-                other, self
-            )));
-        }
-
-        Ok(self)
-    }
-
-    pub fn checked_sub(&mut self, other: &Coin) -> StdResult<&mut Self> {
-        if self.first().denom == &other.denom {
-            self.first_mut().amount.checked_sub_assign(other.amount)?;
-        } else if self.second().denom == &other.denom {
-            self.second_mut().amount.checked_sub_assign(other.amount)?;
-        } else {
-            return Err(StdError::invalid_coins(format!(
-                "can't subtract coin {} from coin pair {:?}",
-                other, self
-            )));
-        }
-
-        Ok(self)
-    }
 }
 
 impl TryFrom<Coins> for CoinPair {
