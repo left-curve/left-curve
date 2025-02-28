@@ -1,5 +1,7 @@
 use {
-    grug::{CoinPair, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128},
+    grug::{
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
+    },
     std::{fmt::Display, str::FromStr},
 };
 
@@ -56,11 +58,16 @@ impl PrimaryKey for Direction {
 /// Parameters of a trading pair.
 #[grug::derive(Serde, Borsh)]
 pub struct PairParams {
-    // TODO: add:
-    // - fee rate (either here or as a global parameter)
+    /// Liquidity token denom of the passive liquidity pool.
+    pub lp_denom: Denom,
+    /// Curve invariant for the passive liquidity pool.
+    pub curve_invariant: CurveInvariant,
+    /// Fee rate for instant swaps in the passive liquidity pool.
+    pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    // TODO:
+    // - orderbook fee rate (either here or as a global parameter)
     // - tick size (necessary or not?)
     // - minimum order size
-    // - params for the passive liquidity pool
 }
 
 #[grug::derive(Serde, Borsh)]
@@ -89,15 +96,6 @@ impl FromStr for CurveInvariant {
             )),
         }
     }
-}
-
-#[grug::derive(Serde, Borsh)]
-pub struct Pool {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-    pub curve_type: CurveInvariant,
-    pub reserves: CoinPair,
-    pub swap_fee: Udec128,
 }
 
 /// Updates to a trading pair's parameters.

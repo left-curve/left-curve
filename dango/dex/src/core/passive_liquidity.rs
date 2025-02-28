@@ -1,138 +1,147 @@
 use {
-    anyhow::ensure,
-    dango_types::dex::{CurveInvariant, Pool},
-    grug::{Coin, CoinPair, Denom, IsZero, Number, NumberConst, Udec128, Uint128},
+    dango_types::dex::{CurveInvariant, PairParams},
+    grug::{CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
 };
 
-pub trait PassiveLiquidityPool {
-    /// Initialize the pool with the given reserves.
-    ///
-    /// Returns a tuple of the pool and the initial LP token supply.
-    fn initialize(
-        base_denom: Denom,
-        quote_denom: Denom,
-        reserves: CoinPair,
-        curve_type: CurveInvariant,
-        swap_fee: Udec128,
-    ) -> anyhow::Result<(Box<Self>, Uint128)>;
+const HALF: Udec128 = Udec128::new_percent(50);
 
+pub trait TradingFunction {
+    /// Calculate the value of the trading invariant.
+    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128>;
+
+    fn normalized_invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128>;
+}
+
+impl TradingFunction for CurveInvariant {
+    fn invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
+        match self {
+            // k = x * y
+            CurveInvariant::Xyk => Ok(*reserve.first().amount * *reserve.second().amount),
+        }
+    }
+
+    fn normalized_invariant(&self, reserve: &CoinPair) -> anyhow::Result<Uint128> {
+        match self {
+            // sqrt(k)
+            CurveInvariant::Xyk => Ok(self.invariant(reserve)?.checked_sqrt()?),
+        }
+    }
+}
+
+pub trait PassiveLiquidityPool {
     /// Provide liquidity to the pool. This function mutates the pool reserves.
     /// Liquidity is provided at the current pool balance, any excess funds are
     /// returned to the user.
     ///
-    /// Returns a tuple of (`Udec128`, `CoinPair`) where the first element is the
-    /// percentage by which to increase the LP token supply and the second element
-    /// is the amount of each asset that was not used to provide liquidity.
-    fn add_liquidity(&mut self, funds: CoinPair) -> anyhow::Result<Udec128>;
+    /// ## Inputs
+    ///
+    /// - `reserve`: The current pool reserves, before the deposit is added.
+    /// - `lp_token_supply`: The current total supply of LP tokens.
+    /// - `deposit`: The funds to add to the pool. Note, this may be asymmetrical,
+    ///   or in the extreme case, one-sided.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The amount of LP tokens to mint.
+    fn add_liquidity(
+        &self,
+        reserve: CoinPair,
+        lp_token_supply: Uint128,
+        deposit: CoinPair,
+    ) -> anyhow::Result<(CoinPair, Uint128)>;
 
     /// Remove a portion of the liquidity from the pool. This function mutates the pool reserves.
     ///
-    /// Returns the underlying liquidity that was removed.
+    /// ## Inputs:
+    ///
+    /// - `reserve`: The current pool reserves, before the withdrawal is made.
+    /// - `lp_token_supply`: The current total supply of LP tokens.
+    /// - `lp_burn_amount`: The amount of LP tokens to burn.
+    ///
+    /// ## Outputs:
+    ///
+    /// - The updated pool reserves.
+    /// - The funds withdrawn from the pool.
     fn remove_liquidity(
-        &mut self,
-        numerator: Uint128,
-        denominator: Uint128,
-    ) -> anyhow::Result<CoinPair>;
+        &self,
+        reserve: CoinPair,
+        lp_token_supply: Uint128,
+        lp_burn_amount: Uint128,
+    ) -> anyhow::Result<(CoinPair, CoinPair)>;
 }
 
-pub trait TradingFunction {
-    /// Calculate the value of the trading invariant.
-    fn invariant(&self, reserves: &CoinPair) -> anyhow::Result<Uint128>;
-}
+impl PassiveLiquidityPool for PairParams {
+    fn add_liquidity(
+        &self,
+        mut reserve: CoinPair,
+        lp_token_supply: Uint128,
+        deposit: CoinPair,
+    ) -> anyhow::Result<(CoinPair, Uint128)> {
+        if lp_token_supply.is_zero() {
+            reserve.merge(deposit.clone())?;
 
-impl PassiveLiquidityPool for Pool {
-    fn initialize(
-        base_denom: Denom,
-        quote_denom: Denom,
-        reserves: CoinPair,
-        curve_type: CurveInvariant,
-        swap_fee: Udec128,
-    ) -> anyhow::Result<(Box<Self>, Uint128)> {
-        ensure!(
-            reserves.first().amount.is_non_zero() && reserves.second().amount.is_non_zero(),
-            "cannot initialize pool with zero reserves"
-        );
+            let invariant = self.curve_invariant.normalized_invariant(&reserve)?;
 
-        ensure!(
-            reserves.has(&base_denom) && reserves.has(&quote_denom),
-            "invalid reserves"
-        );
+            // TODO: apply a scaling factor? e.g. 1,000,000 LP tokens per unit of invariant.
+            let mint_amount = invariant;
 
-        let initial_lp_supply = match curve_type {
-            CurveInvariant::Xyk => curve_type.invariant(&reserves)?.checked_sqrt()?,
-        };
+            Ok((reserve, mint_amount))
+        } else {
+            let invariant_before = self.curve_invariant.normalized_invariant(&reserve)?;
 
-        Ok((
-            Box::new(Self {
-                base_denom,
-                quote_denom,
-                reserves,
-                curve_type,
-                swap_fee,
-            }),
-            initial_lp_supply,
-        ))
-    }
+            // Add the used funds to the pool reserves.
+            reserve.merge(deposit.clone())?;
 
-    fn add_liquidity(&mut self, funds: CoinPair) -> anyhow::Result<Udec128> {
-        ensure!(
-            self.reserves.first().amount.is_non_zero()
-                && self.reserves.second().amount.is_non_zero(),
-            "cannot add liquidity to pool with zero reserves"
-        );
+            // Compute the proportional increase in the invariant.
+            let invariant_after = self.curve_invariant.normalized_invariant(&reserve)?;
+            let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
 
-        ensure!(
-            funds.first().denom == self.reserves.first().denom
-                && funds.second().denom == self.reserves.second().denom,
-            "invalid funds"
-        );
+            // Compute the mint ratio from the invariant ratio based on the curve type.
+            // This ensures that an unbalances provision will be equivalent to a swap
+            // followed by a balancedliquidity provision.
+            let mint_ratio = invariant_ratio.checked_sub(Udec128::ONE)?;
+            let mint_amount_before_fee = lp_token_supply.checked_mul_dec_floor(mint_ratio)?;
 
-        ensure!(
-            funds.first().amount.is_non_zero() && funds.second().amount.is_non_zero(),
-            "cannot add zero liquidity"
-        );
+            // Apply swap fee to unbalanced provision. Logic is based on Curve V2:
+            // https://github.com/curvefi/twocrypto-ng/blob/main/contracts/main/Twocrypto.vy#L1146-L1168
+            let (a, b, reserve_a, reserve_b) = (
+                *deposit.first().amount,
+                *deposit.second().amount,
+                *reserve.first().amount,
+                *reserve.second().amount,
+            );
+            let sum_reserves = reserve_a.checked_add(reserve_b)?;
+            let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
+            let fee_rate = Udec128::checked_from_ratio(
+                abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
+                sum_reserves,
+            )?
+            .checked_mul(self.swap_fee_rate.checked_mul(HALF)?)?;
 
-        let invariant_before = self.curve_type.invariant(&self.reserves)?;
+            let mint_amount = mint_amount_before_fee
+                .checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
 
-        // Add the used funds to the pool reserves
-        self.reserves
-            .checked_add(&Coin::new(
-                funds.first().denom.clone(),
-                *funds.first().amount,
-            )?)?
-            .checked_add(&Coin::new(
-                funds.second().denom.clone(),
-                *funds.second().amount,
-            )?)?;
-
-        // Compute the proportional increase in the invariant
-        let invariant_after = self.curve_type.invariant(&self.reserves)?;
-        let invariant_ratio = Udec128::checked_from_ratio(invariant_after, invariant_before)?;
-
-        // Compute the mint ratio from the invariant ratio based on the curve type.
-        // This ensures that an unbalances provision will be equivalent to a swap
-        // followed by a balancedliquidity provision.
-        let mint_ratio = match self.curve_type {
-            CurveInvariant::Xyk => invariant_ratio.checked_sqrt()?,
+            Ok((reserve, mint_amount))
         }
-        .checked_sub(Udec128::ONE)?;
-
-        Ok(mint_ratio)
     }
 
     fn remove_liquidity(
-        &mut self,
-        numerator: Uint128,
-        denominator: Uint128,
-    ) -> anyhow::Result<CoinPair> {
-        Ok(self.reserves.split(numerator, denominator)?)
+        &self,
+        mut reserve: CoinPair,
+        lp_token_supply: Uint128,
+        lp_burn_amount: Uint128,
+    ) -> anyhow::Result<(CoinPair, CoinPair)> {
+        let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
+
+        Ok((reserve, refund))
     }
 }
 
-impl TradingFunction for CurveInvariant {
-    fn invariant(&self, reserves: &CoinPair) -> anyhow::Result<Uint128> {
-        match self {
-            CurveInvariant::Xyk => Ok(*reserves.first().amount * *reserves.second().amount),
-        }
+fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
+    if a > b {
+        a - b
+    } else {
+        b - a
     }
 }

@@ -1,11 +1,12 @@
 use {
-    crate::{LP_DENOMS, ORDERS, PAIRS, POOLS},
+    crate::{ORDERS, PAIRS, RESERVES},
     dango_types::dex::{
         OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
-        PairParams, PairUpdate, Pool, QueryMsg,
+        PairParams, PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
+        Addr, Bound, CoinPair, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
+        StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -24,6 +25,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::Pairs { start_after, limit } => {
             let res = query_pairs(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::Reserve {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_reserve(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::Reserves { start_after, limit } => {
+            let res = query_reserves(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Order { order_id } => {
@@ -49,17 +61,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             limit,
         } => {
             let res = query_orders_by_user(ctx, user, start_after, limit)?;
-            res.to_json_value()
-        },
-        QueryMsg::PassivePool { lp_denom } => {
-            let res = query_passive_pool(ctx, lp_denom)?;
-            res.to_json_value()
-        },
-        QueryMsg::LpDenom {
-            base_denom,
-            quote_denom,
-        } => {
-            let res = query_lp_denom(ctx, base_denom, quote_denom)?;
             res.to_json_value()
         },
     }
@@ -90,6 +91,38 @@ fn query_pairs(
                 base_denom,
                 quote_denom,
                 params,
+            })
+        })
+        .collect()
+}
+
+#[inline]
+fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<CoinPair> {
+    RESERVES.load(ctx.storage, (&base_denom, &quote_denom))
+}
+
+#[inline]
+fn query_reserves(
+    ctx: ImmutableCtx,
+    start_after: Option<PairPageParam>,
+    limit: Option<u32>,
+) -> StdResult<Vec<ReservesResponse>> {
+    let start = start_after
+        .as_ref()
+        .map(|pair| Bound::Exclusive((&pair.base_denom, &pair.quote_denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    RESERVES
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((base_denom, quote_denom), reserve) = res?;
+            Ok(ReservesResponse {
+                pair: PairPageParam {
+                    base_denom,
+                    quote_denom,
+                },
+                reserve,
             })
         })
         .collect()
@@ -185,14 +218,4 @@ fn query_orders_by_user(
             }))
         })
         .collect()
-}
-
-#[inline]
-fn query_passive_pool(ctx: ImmutableCtx, lp_denom: Denom) -> StdResult<Pool> {
-    POOLS.load(ctx.storage, &lp_denom)
-}
-
-#[inline]
-fn query_lp_denom(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<Denom> {
-    LP_DENOMS.load(ctx.storage, (&base_denom, &quote_denom))
 }

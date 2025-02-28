@@ -1,21 +1,20 @@
 use {
     crate::{
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
-        INCOMING_ORDERS, LP_DENOMS, NEXT_ORDER_ID, ORDERS, PAIRS, POOLS,
+        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
     },
     anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
-            CurveInvariant, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled,
-            OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE,
-            NAMESPACE,
+            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
+            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, IsZero, Message,
-        MultiplyFraction, MutableCtx, Number, NumberConst, Order as IterationOrder, QuerierExt,
-        Response, StdResult, Storage, SudoCtx, Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
+        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
+        SudoCtx, Udec128, Uint128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -30,21 +29,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::BatchUpdatePairs(updates) => {
-            ensure!(
-                ctx.sender == ctx.querier.query_owner()?,
-                "only the owner can update a trading pair parameters"
-            );
-
-            batch_update_pairs(ctx, updates)
-        },
-        ExecuteMsg::CreatePassivePool {
+        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+        ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
-            curve_type,
-            lp_denom,
-            swap_fee,
-        } => create_passive_pool(ctx, base_denom, quote_denom, curve_type, lp_denom, swap_fee),
+        } => provide_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::WithdrawLiquidity {
+            base_denom,
+            quote_denom,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom),
         ExecuteMsg::SubmitOrder {
             base_denom,
             quote_denom,
@@ -53,16 +46,29 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             price,
         } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
         ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
-        ExecuteMsg::ProvideLiquidity { lp_denom } => provide_liquidity(ctx, lp_denom),
-        ExecuteMsg::WithdrawLiquidity {} => withdraw_liquidity(ctx),
     }
 }
 
 #[inline]
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()? || ctx.sender == GENESIS_SENDER,
+        "only the owner can update a trading pair parameters"
+    );
+
     let mut events = Vec::with_capacity(updates.len());
 
     for update in updates {
+        ensure!(
+            update
+                .params
+                .lp_denom
+                .starts_with(&[NAMESPACE.clone(), LP_NAMESPACE.clone()]),
+            "LP token denom doesn't start with the correct prefix: `{}/{}/...`",
+            NAMESPACE.as_ref(),
+            LP_NAMESPACE.as_ref()
+        );
+
         PAIRS.save(
             ctx.storage,
             (&update.base_denom, &update.quote_denom),
@@ -79,69 +85,109 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 }
 
 #[inline]
-fn create_passive_pool(
-    ctx: MutableCtx,
+fn provide_liquidity(
+    mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    curve_type: CurveInvariant,
-    lp_denom: Denom,
-    swap_fee: Udec128,
 ) -> anyhow::Result<Response> {
-    // Only the owner can create a passive pool
+    // Get the deposited funds.
+    let deposit = ctx
+        .funds
+        .take_pair((base_denom.clone(), quote_denom.clone()))?;
+
+    // The user must have not sent any funds other the base/quote denoms.
     ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "Only the owner can create a passive pool"
-    );
-
-    // Ensure the pool doesn't already exist
-    ensure!(
-        !POOLS.has(ctx.storage, &lp_denom),
-        "Pool already exists for pair ({base_denom}, {quote_denom})"
-    );
-
-    // Ensure the LP token denom is valid
-    ensure!(
-        lp_denom.starts_with(&[NAMESPACE.clone(), LP_NAMESPACE.clone()]),
-        "invalid LP token denom"
-    );
-
-    // Validate swap fee
-    ensure!(swap_fee < Udec128::ONE, "swap fee must be less than 100%");
-
-    // Ensure the funds contain only the base and quote denoms and contain both
-    ensure!(
-        ctx.funds.has(&base_denom) && ctx.funds.has(&quote_denom) && ctx.funds.len() == 2,
-        "Invalid funds. Must send only the base and quote denoms and both must be present."
-    );
-
-    // Save the LP token denom
-    LP_DENOMS.save(ctx.storage, (&base_denom, &quote_denom), &lp_denom)?;
-
-    let (pool, initial_lp_supply) = PassiveLiquidityPool::initialize(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}` and `{}`",
+        ctx.funds,
         base_denom,
-        quote_denom,
-        ctx.funds.try_into()?,
-        curve_type,
-        swap_fee,
-    )?;
+        quote_denom
+    );
 
-    // Create the pool
-    POOLS.save(ctx.storage, &lp_denom, &pool)?;
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
 
-    // Create mint message. Mint the initial LP token supply to the contract
-    // to ensure the pool is never emptied.
-    let bank = ctx.querier.query_bank()?;
-    let mint_msg = Message::execute(
-        bank,
-        &bank::ExecuteMsg::Mint {
-            to: ctx.contract,
-            denom: lp_denom,
-            amount: initial_lp_supply,
-        },
-        Coins::new(),
-    )?;
+    // Load the current pool reserve. Default to empty if not found.
+    let reserve = RESERVES
+        .may_load(ctx.storage, (&base_denom, &quote_denom))?
+        .map_or_else(
+            || CoinPair::new_empty(base_denom.clone(), quote_denom.clone()),
+            Ok,
+        )?;
 
-    Ok(Response::new().add_message(mint_msg))
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Compute the amount of LP tokens to mint.
+    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: ctx.sender,
+                denom: pair.lp_denom,
+                amount: lp_mint_amount,
+            },
+            Coins::new(), // No funds needed for minting
+        )?
+    }))
+    // TODO: add event
+}
+
+/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
+/// The underlying assets will be returned to the sender.
+#[inline]
+fn withdraw_liquidity(
+    mut ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> anyhow::Result<Response> {
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserve.
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Get the sent LP tokens.
+    let lp_burn_amount = ctx.funds.take(pair.lp_denom.clone()).amount;
+
+    // The user must have not sent any funds other the LP token.
+    ensure!(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}`",
+        ctx.funds,
+        pair.lp_denom
+    );
+
+    // Calculate the amount of each asset to return
+    let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::default()
+        .add_message({
+            let bank = ctx.querier.query_bank()?;
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    denom: pair.lp_denom,
+                    amount: lp_burn_amount,
+                },
+                Coins::new(), // No funds needed for burning
+            )?
+        })
+        .add_message(Message::transfer(ctx.sender, refunds)?))
+    // TODO: add events
 }
 
 #[inline]
@@ -312,125 +358,6 @@ fn cancel_orders(ctx: MutableCtx, order_ids: OrderIds) -> anyhow::Result<Respons
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, refunds)?)
         .add_subevents(events))
-}
-
-#[inline]
-fn provide_liquidity(ctx: MutableCtx, lp_denom: Denom) -> anyhow::Result<Response> {
-    // Get the funds from sent
-    let funds: CoinPair = ctx.funds.try_into()?;
-
-    let mut pool = POOLS.load(ctx.storage, &lp_denom)?;
-
-    // Ensure the funds are valid. They must only contain the base and quote denoms and must contain both
-    ensure!(
-        funds.has(&pool.base_denom) || funds.has(&pool.quote_denom),
-        "Invalid funds. Must send at least one coin in the pair. Sent: {:?}, {:?}, {:?}",
-        funds,
-        pool.base_denom,
-        pool.quote_denom
-    );
-
-    // Ensure the pair is registered
-    ensure!(
-        PAIRS.has(ctx.storage, (&pool.base_denom, &pool.quote_denom)),
-        "Pair not found."
-    );
-
-    // Ensure the pool has reserves
-    ensure!(
-        pool.reserves.first().amount.is_non_zero() && pool.reserves.second().amount.is_non_zero(),
-        "Cannot add liquidity to pool with zero reserves"
-    );
-
-    // Query the LP token supply
-    let lp_supply = ctx.querier.query_supply(lp_denom.clone())?;
-    assert!(lp_supply.is_non_zero(), "LP token supply is zero");
-
-    // Calculate the funds to provide and the amount of LP tokens to mint
-    let mint_ratio = pool.add_liquidity(funds.clone())?;
-    let lp_mint_amount = lp_supply.checked_mul_dec_floor(mint_ratio)?;
-
-    // Apply swap fee to unbalanced provision
-    fn abs_diff(a: Uint128, b: Uint128) -> Uint128 {
-        if a > b {
-            a - b
-        } else {
-            b - a
-        }
-    }
-    let (a, b, reserves_a, reserves_b) = (
-        *funds.first().amount,
-        *funds.second().amount,
-        *pool.reserves.first().amount,
-        *pool.reserves.second().amount,
-    );
-    let sum_reserves = reserves_a.checked_add(reserves_b)?;
-    let avg_reserves = sum_reserves.checked_div(Uint128::new(2))?;
-    let fee_rate = Udec128::checked_from_ratio(
-        abs_diff(a, avg_reserves).checked_add(abs_diff(b, avg_reserves))?,
-        sum_reserves,
-    )?
-    .checked_mul(
-        pool.swap_fee
-            .checked_div(Udec128::checked_from_ratio(2, 1)?)?,
-    )?;
-    let lp_mint_amount_after_fees =
-        lp_mint_amount.checked_mul_dec_floor(Udec128::ONE.checked_sub(fee_rate)?)?;
-
-    // Save the updated pool
-    POOLS.save(ctx.storage, &lp_denom, &pool)?;
-
-    // Create mint message
-    let bank = ctx.querier.query_bank()?;
-    let mint_msg = Message::execute(
-        bank,
-        &bank::ExecuteMsg::Mint {
-            to: ctx.sender,
-            denom: lp_denom,
-            amount: lp_mint_amount_after_fees,
-        },
-        Coins::new(), // No funds needed for minting
-    )?;
-
-    Ok(Response::new().add_message(mint_msg))
-}
-
-/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
-/// The underlying assets will be returned to the sender.
-#[inline]
-fn withdraw_liquidity(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let sent_lp_tokens = ctx.funds.clone().into_one_coin()?;
-
-    // Query the LP token supply
-    let lp_supply = ctx.querier.query_supply(sent_lp_tokens.denom.clone())?;
-
-    // Load the pool
-    let mut pool = POOLS.load(ctx.storage, &sent_lp_tokens.denom)?;
-
-    // Calculate the amount of each asset to return
-    let coins_to_return = pool.remove_liquidity(sent_lp_tokens.amount, lp_supply)?;
-
-    // Save the updated pool
-    POOLS.save(ctx.storage, &sent_lp_tokens.denom, &pool)?;
-
-    // Create burn message
-    let bank = ctx.querier.query_bank()?;
-    let burn_msg = Message::execute(
-        bank,
-        &bank::ExecuteMsg::Burn {
-            from: ctx.contract,
-            denom: sent_lp_tokens.denom,
-            amount: sent_lp_tokens.amount,
-        },
-        Coins::new(), // No funds needed for burning
-    )?;
-
-    // Create transfer message
-    let transfer_msg = Message::transfer(ctx.sender, coins_to_return)?;
-
-    Ok(Response::default()
-        .add_message(burn_msg)
-        .add_message(transfer_msg))
 }
 
 /// Match and fill orders using the uniform price auction strategy.
