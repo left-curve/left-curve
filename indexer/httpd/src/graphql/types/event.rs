@@ -26,7 +26,7 @@ impl From<entity::events::Model> for Event {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
             event_idx: item.event_idx as u32,
-            r#type: item.r#type.clone(),
+            r#type: item.r#type,
             method: item.method,
             event_status: item.event_status,
             commitment_status: item.commitment_status,
