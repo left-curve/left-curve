@@ -3,13 +3,14 @@ use {
     grug_app::Shared,
     pyth_types::LatestVaaResponse,
     reqwest::Client,
-    reqwest_eventsource::{Event, EventSource},
+    reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     std::{
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
         },
         thread::{self},
+        time::Duration,
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
@@ -80,6 +81,12 @@ impl PythClient {
 
             // Connect to EventSource.
             let mut es = EventSource::new(builder).unwrap();
+            es.set_retry_policy(Box::new(ExponentialBackoff::new(
+                Duration::from_secs(1),
+                1.5,
+                Some(Duration::from_secs(30)),
+                None,
+            )));
 
             // Waiting for next message and send through channel.
             while let Some(event) = es.next().await {
