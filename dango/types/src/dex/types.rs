@@ -1,4 +1,9 @@
-use grug::{Denom, PrimaryKey, RawKey, StdError, StdResult};
+use {
+    grug::{
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
+    },
+    std::{fmt::Display, str::FromStr},
+};
 
 /// Numerical identifier of an order.
 ///
@@ -53,11 +58,44 @@ impl PrimaryKey for Direction {
 /// Parameters of a trading pair.
 #[grug::derive(Serde, Borsh)]
 pub struct PairParams {
-    // TODO: add:
-    // - fee rate (either here or as a global parameter)
+    /// Liquidity token denom of the passive liquidity pool.
+    pub lp_denom: Denom,
+    /// Curve invariant for the passive liquidity pool.
+    pub curve_invariant: CurveInvariant,
+    /// Fee rate for instant swaps in the passive liquidity pool.
+    pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    // TODO:
+    // - orderbook fee rate (either here or as a global parameter)
     // - tick size (necessary or not?)
     // - minimum order size
-    // - params for the passive liquidity pool
+}
+
+#[grug::derive(Serde, Borsh)]
+pub enum CurveInvariant {
+    Xyk,
+}
+
+impl Display for CurveInvariant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            CurveInvariant::Xyk => "xyk",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for CurveInvariant {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> StdResult<Self> {
+        match s {
+            "xyk" => Ok(CurveInvariant::Xyk),
+            _ => Err(StdError::deserialize::<Self, _>(
+                "str",
+                "invalid curve type",
+            )),
+        }
+    }
 }
 
 /// Updates to a trading pair's parameters.

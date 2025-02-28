@@ -1,20 +1,20 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
-        NEXT_ORDER_ID, ORDERS, PAIRS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
+        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
     },
     anyhow::{bail, ensure},
     dango_types::{
         bank,
         dex::{
             Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
-            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
+        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
+        SudoCtx, Udec128, Uint128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -29,14 +29,15 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::BatchUpdatePairs(updates) => {
-            ensure!(
-                ctx.sender == ctx.querier.query_owner()?,
-                "only the owner can update a trading pair parameters"
-            );
-
-            batch_update_pairs(ctx, updates)
-        },
+        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+        ExecuteMsg::ProvideLiquidity {
+            base_denom,
+            quote_denom,
+        } => provide_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::WithdrawLiquidity {
+            base_denom,
+            quote_denom,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom),
         ExecuteMsg::SubmitOrder {
             base_denom,
             quote_denom,
@@ -50,9 +51,24 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 #[inline]
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()? || ctx.sender == GENESIS_SENDER,
+        "only the owner can update a trading pair parameters"
+    );
+
     let mut events = Vec::with_capacity(updates.len());
 
     for update in updates {
+        ensure!(
+            update
+                .params
+                .lp_denom
+                .starts_with(&[NAMESPACE.clone(), LP_NAMESPACE.clone()]),
+            "LP token denom doesn't start with the correct prefix: `{}/{}/...`",
+            NAMESPACE.as_ref(),
+            LP_NAMESPACE.as_ref()
+        );
+
         PAIRS.save(
             ctx.storage,
             (&update.base_denom, &update.quote_denom),
@@ -66,6 +82,112 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     }
 
     Ok(Response::new().add_subevents(events))
+}
+
+#[inline]
+fn provide_liquidity(
+    mut ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> anyhow::Result<Response> {
+    // Get the deposited funds.
+    let deposit = ctx
+        .funds
+        .take_pair((base_denom.clone(), quote_denom.clone()))?;
+
+    // The user must have not sent any funds other the base/quote denoms.
+    ensure!(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}` and `{}`",
+        ctx.funds,
+        base_denom,
+        quote_denom
+    );
+
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserve. Default to empty if not found.
+    let reserve = RESERVES
+        .may_load(ctx.storage, (&base_denom, &quote_denom))?
+        .map_or_else(
+            || CoinPair::new_empty(base_denom.clone(), quote_denom.clone()),
+            Ok,
+        )?;
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Compute the amount of LP tokens to mint.
+    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: ctx.sender,
+                denom: pair.lp_denom,
+                amount: lp_mint_amount,
+            },
+            Coins::new(), // No funds needed for minting
+        )?
+    }))
+    // TODO: add event
+}
+
+/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
+/// The underlying assets will be returned to the sender.
+#[inline]
+fn withdraw_liquidity(
+    mut ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> anyhow::Result<Response> {
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserve.
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Get the sent LP tokens.
+    let lp_burn_amount = ctx.funds.take(pair.lp_denom.clone()).amount;
+
+    // The user must have not sent any funds other the LP token.
+    ensure!(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}`",
+        ctx.funds,
+        pair.lp_denom
+    );
+
+    // Calculate the amount of each asset to return
+    let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::new()
+        .add_message({
+            let bank = ctx.querier.query_bank()?;
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    denom: pair.lp_denom,
+                    amount: lp_burn_amount,
+                },
+                Coins::new(), // No funds needed for burning
+            )?
+        })
+        .add_message(Message::transfer(ctx.sender, refunds)?))
+    // TODO: add events
 }
 
 #[inline]
