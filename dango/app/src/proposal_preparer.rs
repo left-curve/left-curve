@@ -9,6 +9,7 @@ use {
     },
     grug_app::{AppError, Shared},
     prost::bytes::Bytes,
+    pyth_types::PYTH_URL,
     std::{
         cmp::min,
         ops::Mul,
@@ -19,7 +20,6 @@ use {
     tracing::{error, info},
 };
 
-const PYTH_URL: &str = "https://hermes.pyth.network";
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
 const THREAD_SLEEP: Duration = Duration::from_millis(1000);
 const THREAD_SLEEP_ON_FIRST_429: Duration = Duration::from_millis(5000);

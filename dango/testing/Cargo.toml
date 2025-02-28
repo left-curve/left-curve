@@ -47,6 +47,7 @@ dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
 proptest              = { workspace = true }
 pyth-sdk              = { workspace = true }
+pyth-types            = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }
 serde_json            = { workspace = true }
