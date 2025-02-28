@@ -173,7 +173,7 @@ fn withdraw_liquidity(
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
-    Ok(Response::default()
+    Ok(Response::new()
         .add_message({
             let bank = ctx.querier.query_bank()?;
             Message::execute(
