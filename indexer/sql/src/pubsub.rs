@@ -1,18 +1,15 @@
-use {crate::error::IndexerError, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
-
 pub mod memory;
 pub mod postgres;
 pub mod postgres_multiple;
 
 pub use {memory::MemoryPubSub, postgres::PostgresPubSub};
 
+use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
 #[async_trait]
 pub trait PubSub {
-    async fn subscribe_block_minted(
-        &self,
-    ) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>, IndexerError>;
+    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>>;
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize, IndexerError>;
+    async fn publish_block_minted(&self, block_height: u64) -> Result<usize>;
 }
 
 pub enum PubSubType {
@@ -73,7 +70,7 @@ mod tests {
     /// A test that demonstrates how to use postgres pubsub.
     #[ignore]
     #[tokio::test]
-    async fn foobar() -> anyhow::Result<()> {
+    async fn manual_psql_implementation() -> anyhow::Result<()> {
         let pool = PgPoolOptions::new()
             .connect("postgres://postgres@postgres/grug_test")
             .await?;

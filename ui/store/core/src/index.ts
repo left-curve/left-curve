@@ -1,7 +1,7 @@
 export { createConfig } from "./createConfig.js";
 export { hydrate } from "./hydrate.js";
 
-export { devnet, http } from "@left-curve/dango";
+export { devnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Storage                                  */

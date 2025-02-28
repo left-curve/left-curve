@@ -1,12 +1,16 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM},
-        dex::{self, Direction, OrderId, QueryOrdersByPairRequest, QueryOrdersRequest},
+        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
+        dex::{
+            self, CurveInvariant, Direction, OrderId, PairParams, PairUpdate,
+            QueryOrdersByPairRequest, QueryOrdersRequest,
+        },
     },
     grug::{
-        btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+        btree_map, coins, Addressable, BalanceChange, Bounded, Coin, Coins, Denom, Inner, Message,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
+        Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -387,11 +391,10 @@ fn cancel_order() {
         .should_succeed();
 
     // Check that the user balance has not changed
-    suite
-        .balances()
-        .should_change(accounts.user1.address(), btree_map! {
-            USDC_DENOM.clone() => BalanceChange::Unchanged
-        });
+    suite.balances().should_change(
+        accounts.user1.address(),
+        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    );
 
     // Check that order does not exist
     suite
@@ -634,4 +637,272 @@ fn query_orders_by_pair(
                         && queried_order.user == accounts.user1.address()
                 })
         });
+}
+
+#[test]
+fn only_owner_can_create_passive_pool() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/xrp/usdc").unwrap();
+
+    // Attempt to create pair as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: XRP_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {
+                    lp_denom: lp_denom.clone(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            }]),
+            Coins::new(),
+        )
+        .should_fail_with_error("only the owner can update a trading pair parameters");
+
+    // Attempt to create pair as owner. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: XRP_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {
+                    lp_denom: lp_denom.clone(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            }]),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 100,
+    },
+    Uint128::new(100);
+    "provision at pool ratio"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 50,
+        USDC_DENOM.clone() => 50,
+    },
+    Uint128::new(50);
+    "provision at half pool balance same ratio"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 50,
+    },
+    Uint128::new(73);
+    "provision at different ratio"
+)]
+fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+
+    // Owner first provides some initial liquidity.
+    let initial_reserves = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            initial_reserves.clone(),
+        )
+        .should_succeed();
+
+    // Record the users initial balances.
+    suite
+        .balances()
+        .record_many(accounts.users().map(|user| user.address()));
+
+    // Execute all the provisions.
+    let mut expected_pool_balances = initial_reserves.clone();
+
+    // record the dex balance
+    suite.balances().record(contracts.dex.address());
+
+    // Execute provide liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            provision.clone(),
+        )
+        .should_succeed();
+
+    // Ensure that the dex balance has increased by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(provision.clone(), Coins::new()),
+    );
+
+    // Ensure user's balance has decreased by the expected amount and that
+    // LP tokens have been minted.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(
+            coins! { lp_denom.clone() => expected_lp_balance },
+            provision.clone(),
+        ),
+    );
+
+    // Check that the reserves in pool object were updated correctly.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and_equal(
+            expected_pool_balances
+                .insert_many(provision)
+                .unwrap()
+                .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+                .unwrap(),
+        );
+}
+
+#[test_case(
+    Uint128::new(100),
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+    "withdrawa all"
+)]
+#[test_case(
+    Uint128::new(50),
+    coins! {
+        DANGO_DENOM.clone() => 50,
+        USDC_DENOM.clone()  => 50,
+    };
+    "withdraw half"
+)]
+fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+
+    // Owner first provides some initial liquidity.
+    let initial_reserves = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            initial_reserves.clone(),
+        )
+        .should_succeed();
+
+    // User provides some liquidity.
+    let provided_funds = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            provided_funds.clone(),
+        )
+        .should_succeed();
+
+    // record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // withdraw liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            coins! { lp_denom.clone() => lp_burn_amount },
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(
+            expected_funds_returned.clone(),
+            coins! { lp_denom.clone() => lp_burn_amount },
+        ),
+    );
+
+    // Assert that the dex balance has decreased by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(Coins::new(), expected_funds_returned.clone()),
+    );
+
+    // Assert pool reserves are updated correctly
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryReserveRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and_equal({
+            initial_reserves
+                .clone()
+                .insert_many(provided_funds)
+                .unwrap()
+                .deduct_many(expected_funds_returned)
+                .unwrap()
+                .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+                .unwrap()
+        });
+}
+
+fn balance_changes_from_coins(
+    increases: Coins,
+    decreases: Coins,
+) -> BTreeMap<Denom, BalanceChange> {
+    increases
+        .into_iter()
+        .map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Increased(amount.into_inner()))
+        })
+        .chain(decreases.into_iter().map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Decreased(amount.into_inner()))
+        }))
+        .collect()
 }

@@ -14,12 +14,12 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Namespace { namespace } => {
-            let res = query_namespace(ctx, namespace)?;
+        QueryMsg::NamespaceOwner { namespace } => {
+            let res = query_namespace_owner(ctx, namespace)?;
             res.to_json_value()
         },
-        QueryMsg::Namespaces { start_after, limit } => {
-            let res = query_namespaces(ctx, start_after, limit)?;
+        QueryMsg::NamespaceOwners { start_after, limit } => {
+            let res = query_namespace_owners(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Metadata { denom } => {
@@ -33,11 +33,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     }
 }
 
-fn query_namespace(ctx: ImmutableCtx, namespace: Part) -> StdResult<Addr> {
+fn query_namespace_owner(ctx: ImmutableCtx, namespace: Part) -> StdResult<Addr> {
     NAMESPACE_OWNERS.load(ctx.storage, &namespace)
 }
 
-fn query_namespaces(
+fn query_namespace_owners(
     ctx: ImmutableCtx,
     start_after: Option<Part>,
     limit: Option<u32>,

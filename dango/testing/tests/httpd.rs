@@ -28,7 +28,7 @@ use {
 async fn graphql_returns_transfer() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((mut suite, mut accounts, _, contracts), indexer_context) = setup_test_with_indexer();
+    let ((mut suite, mut accounts, _, contracts), httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -50,19 +50,19 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish();
 
     let graphql_query = r#"
-    query Transfers($block_height: Int!) {
-      transfers(blockHeight: $block_height) {
-        nodes {
-          blockHeight
-          fromAddress
-          toAddress
-          amount
-          denom
+      query Transfers($block_height: Int!) {
+        transfers(blockHeight: $block_height) {
+          nodes {
+            blockHeight
+            fromAddress
+            toAddress
+            amount
+            denom
+          }
+          edges { node { blockHeight fromAddress toAddress amount denom } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
-        edges { node { blockHeight fromAddress toAddress amount denom } cursor }
-        pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
       }
-    }
     "#;
 
     let variables = serde_json::json!({
@@ -82,8 +82,8 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 
     local_set
         .run_until(async {
-            tokio::task::spawn_local(async {
-                let app = build_actix_app(indexer_context.into());
+            tokio::task::spawn_local(async move {
+                let app = build_actix_app(httpd_context);
 
                 let response =
                     call_graphql::<PaginatedResponse<Transfer>>(app, request_body).await?;
@@ -110,18 +110,14 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
             })
             .await
         })
-        .await??;
-
-    Ok(())
+        .await?
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let ((mut suite, mut accounts, _, contracts), indexer_context) = setup_test_with_indexer();
-
-    let httpd_context: Context = indexer_context.clone().into();
+    let ((mut suite, mut accounts, _, contracts), httpd_context) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
