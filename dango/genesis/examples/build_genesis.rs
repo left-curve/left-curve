@@ -7,11 +7,12 @@ use {
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
             USDC_DENOM,
         },
-        dex::{PairParams, PairUpdate},
+        dex::{CurveInvariant, PairParams, PairUpdate},
         taxman,
     },
     grug::{
-        btree_map, coins, Coins, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
+        btree_map, coins, Bounded, Coins, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
+        JsonSerExt, Udec128,
     },
     hex_literal::hex,
     home::home_dir,
@@ -120,22 +121,38 @@ fn main() {
             PairUpdate {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
             },
             PairUpdate {
                 base_denom: BTC_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
             },
             PairUpdate {
                 base_denom: ETH_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
             },
             PairUpdate {
                 base_denom: SOL_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                },
             },
         ],
         markets: btree_map! {},

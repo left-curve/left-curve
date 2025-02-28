@@ -1,6 +1,6 @@
 use {
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
-    grug::{Addr, Denom, Udec128, Uint128},
+    grug::{Addr, CoinPair, Denom, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -22,6 +22,19 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     BatchUpdatePairs(Vec<PairUpdate>),
+    /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
+    /// equivalent to a swap to reach the pool ratio, followed by a liquidity
+    /// provision at pool ratio.
+    ProvideLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
+    // Withdraw passive liquidity from a pair. Withdrawal is always performed at
+    // the pool ratio.
+    WithdrawLiquidity {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
     /// Submit a new order.
     ///
     /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
@@ -57,6 +70,18 @@ pub enum QueryMsg {
         start_after: Option<PairPageParam>,
         limit: Option<u32>,
     },
+    /// Query the passive liquidity pool reserve of a single trading pair,
+    #[returns(CoinPair)]
+    Reserve {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
+    /// Enumerate all passive liquidity pool reserves.
+    #[returns(Vec<ReservesResponse>)]
+    Reserves {
+        start_after: Option<PairPageParam>,
+        limit: Option<u32>,
+    },
     /// Query a single active order by ID.
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
@@ -88,6 +113,13 @@ pub enum QueryMsg {
 pub struct PairPageParam {
     pub base_denom: Denom,
     pub quote_denom: Denom,
+}
+
+/// Response type of the `QueryMsg::Reserves` query.
+#[grug::derive(Serde)]
+pub struct ReservesResponse {
+    pub pair: PairPageParam,
+    pub reserve: CoinPair,
 }
 
 /// Response type of the `QueryMsg::Order` and `Orders` queries.
