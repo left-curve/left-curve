@@ -21,6 +21,7 @@ pub struct Event {
 }
 
 #[derive(Enum, Copy, Clone, Default, Eq, PartialEq, Debug, Deserialize, Hash)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum EventStatus {
     #[default]
     Ok,
@@ -42,6 +43,7 @@ impl From<i16> for EventStatus {
 }
 
 #[derive(Enum, Copy, Clone, Default, Eq, PartialEq, Debug, Deserialize, Hash)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum CommitmentStatus {
     #[default]
     Committed,

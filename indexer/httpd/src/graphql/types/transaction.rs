@@ -23,6 +23,7 @@ pub struct Transaction {
 }
 
 #[derive(Enum, Copy, Clone, Default, Eq, PartialEq, Debug, Deserialize, Hash)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum Category {
     #[default]
     Cron,
