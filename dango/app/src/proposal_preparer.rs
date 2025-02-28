@@ -9,15 +9,11 @@ use {
     },
     grug_app::{AppError, Shared},
     prost::bytes::Bytes,
+    pyth_client::PythClient,
     pyth_types::PYTH_URL,
-    std::{
-        cmp::min,
-        ops::Mul,
-        thread::{self, JoinHandle},
-        time::Duration,
-    },
+    std::{sync::RwLock, time::Duration},
     thiserror::Error,
-    tracing::{error, info},
+    tracing::error,
 };
 
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(1000);
@@ -25,16 +21,6 @@ const THREAD_SLEEP: Duration = Duration::from_millis(1000);
 const THREAD_SLEEP_ON_FIRST_429: Duration = Duration::from_millis(5000);
 const MAX_THREAD_SLEEP: Duration = Duration::from_secs(30);
 const GAS_LIMIT: u64 = 50_000_000;
-
-#[grug::derive(Serde)]
-pub struct LatestVaaResponse {
-    pub binary: LatestVaaBinaryResponse,
-}
-
-#[grug::derive(Serde)]
-pub struct LatestVaaBinaryResponse {
-    pub data: Vec<Binary>,
-}
 
 #[derive(Debug, Error)]
 pub enum ProposerError {
@@ -52,19 +38,19 @@ impl From<ProposerError> for AppError {
 }
 
 pub struct ProposalPreparer {
-    params: Shared<Vec<(&'static str, String)>>,
+    latest_params: RwLock<Vec<(&'static str, String)>>,
     latest_vaas: Shared<Vec<Binary>>,
     // Option since we don't want to clone the thread handle.
     // Store the thread to keep it alive.
-    _handle: Option<JoinHandle<()>>,
+    _pyth_client: Option<RwLock<PythClient>>,
 }
 
 impl Clone for ProposalPreparer {
     fn clone(&self) -> Self {
         Self {
-            params: self.params.clone(),
+            latest_params: RwLock::new(vec![]),
             latest_vaas: self.latest_vaas.clone(),
-            _handle: None,
+            _pyth_client: None,
         }
     }
 }
@@ -77,89 +63,15 @@ impl Default for ProposalPreparer {
 
 impl ProposalPreparer {
     pub fn new() -> Self {
-        let params = Shared::new(Vec::new());
-        let thread_params = params.clone();
-        let latest_vaas = Shared::new(Vec::new());
-        let thread_latest_vaas = latest_vaas.clone();
+        let latest_params = Vec::new(); // Used to compare with the new params.
 
-        let _handle = thread::spawn(move || {
-            let update_func = || -> Result<(), reqwest::Error> {
-                // Copy the params to unlock the mutex.
-                let mut params = thread_params.read_access().clone();
-                if params.is_empty() {
-                    return Ok(());
-                }
-
-                // Set the encoding to base64 to match the oracle contract.
-                params.push(("encoding", "base64".to_string()));
-                // Set the parsed to false since we don't use parsed data.
-                params.push(("parsed", "false".to_string()));
-
-                // Retrieve VAAs from pyth node.
-                let vaas = reqwest::blocking::Client::builder()
-                    .timeout(REQUEST_TIMEOUT)
-                    .build()?
-                    .get(format!("{PYTH_URL}/v2/updates/price/latest"))
-                    .query(&params)
-                    .send()?
-                    .error_for_status()?
-                    .json::<LatestVaaResponse>()?
-                    .binary
-                    .data;
-
-                info!(len = vaas.len(), "Prepare proposal: fetched latest VAAs");
-
-                // Update the prices.
-                thread_latest_vaas.write_with(|mut latest_vaas| {
-                    *latest_vaas = vaas;
-                });
-
-                Ok(())
-            };
-
-            let mut failed_requests: u32 = 0;
-            let mut sleep = THREAD_SLEEP;
-
-            loop {
-                // Update the VAAs.
-                match update_func() {
-                    Ok(_) => {
-                        failed_requests = 0;
-                    },
-                    Err(err) => {
-                        failed_requests += 1;
-
-                        // Exponentially increases the sleep time on failed requests.
-                        sleep = min(
-                            MAX_THREAD_SLEEP,
-                            THREAD_SLEEP.mul(2u32.pow(failed_requests)),
-                        );
-
-                        if let Some(status_code) = err.status() {
-                            // The first time we get a 429, we increase
-                            // the sleep time to avoid further rate limitation.
-                            if status_code == 429 && failed_requests == 1 {
-                                sleep = THREAD_SLEEP_ON_FIRST_429;
-                            }
-                            error!(
-                                code = status_code.as_u16(),
-                                reason = status_code.canonical_reason().unwrap_or("Unknown"),
-                                "Failed to update the latest VAAs"
-                            );
-                        } else {
-                            error!(err = err.to_string(), "Failed to update the latest VAAs");
-                        }
-                    },
-                }
-
-                thread::sleep(sleep);
-            }
-        });
+        let client = PythClient::new(PYTH_URL.to_string());
+        let latest_vaas = Shared::new(vec![]);
 
         Self {
-            params,
+            latest_params: RwLock::new(latest_params),
             latest_vaas,
-            _handle: Some(_handle),
+            _pyth_client: Some(RwLock::new(client)),
         }
     }
 }
@@ -194,10 +106,23 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
             })
             .collect::<Vec<_>>();
 
-        // Write the params to the shared memory.
-        self.params.write_with(|mut params_ref| {
-            *params_ref = params;
-        });
+        // Compare with the latest params.
+        // If there are some differences, update the PythClient connections.
+        let mut latest_params = self.latest_params.write().unwrap();
+        if *latest_params != params {
+            *latest_params = params.clone();
+
+            if let Some(client) = &self._pyth_client {
+                let mut client = client.write().unwrap();
+                // Close the previous connection.
+                client.close();
+
+                // Start a new connection only if there are some params.
+                if let Ok(params) = NonEmpty::new(params) {
+                    client.run_streaming(params, Some(self.latest_vaas.clone()))?;
+                }
+            }
+        }
 
         // Retreive the VAAs from the shared memory.
         // Consuming the VAAs to avoid feeding the same prices multiple times.
@@ -235,7 +160,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
 #[cfg(test)]
 mod test {
-    use {super::LatestVaaResponse, grug::JsonDeExt};
+    use {grug::JsonDeExt, pyth_types::LatestVaaResponse};
 
     #[test]
     fn deserializing_pyth_response() {

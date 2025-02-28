@@ -3100,6 +3100,7 @@ dependencies = [
  "grug",
  "grug-app",
  "prost",
+ "pyth-client",
  "pyth-types",
  "reqwest 0.12.12",
  "thiserror 2.0.11",
@@ -6821,7 +6822,6 @@ dependencies = [
 name = "pyth-client"
 version = "0.0.0"
 dependencies = [
- "dango-app",
  "dango-types",
  "grug",
  "grug-app",
@@ -6830,6 +6830,7 @@ dependencies = [
  "reqwest-eventsource",
  "tokio",
  "tokio-stream",
+ "tracing",
 ]
 
 [[package]]

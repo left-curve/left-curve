@@ -1,6 +1,6 @@
 use {
     dango_types::oracle::PythVaa,
-    grug::{Inner, MockApi},
+    grug::{Inner, MockApi, NonEmpty},
     pyth_client::PythClient,
     pyth_types::{BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     std::time::Duration,
@@ -17,7 +17,9 @@ async fn test_client() {
         ("ids[]", ETH_USD_ID.to_string()),
     ];
 
-    let shared = client.run_streaming(ids).unwrap();
+    let shared = client
+        .run_streaming(NonEmpty::new(ids).unwrap(), None)
+        .unwrap();
 
     for _ in 0..10 {
         // Read the vaas from the shared memory.
