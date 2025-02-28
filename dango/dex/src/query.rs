@@ -159,7 +159,7 @@ fn query_orders_by_pair(
                 remaining: order.remaining,
             }))
         })
-        .collect::<StdResult<_>>()
+        .collect()
 }
 
 #[inline]
