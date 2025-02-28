@@ -1,7 +1,7 @@
 use {
-    grug::{Binary, JsonDeExt, NonEmpty},
+    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     grug_app::Shared,
-    pyth_types::{LatestVaaResponse, PythId},
+    pyth_types::LatestVaaResponse,
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     std::{
@@ -33,11 +33,19 @@ impl PythClient {
     /// Start a SSE connection to the Pyth network.
     /// If shared_vaas is provided, it will update the shared value with the latest VAA.
     /// Otherwise, it will create a new shared value and return it.
-    pub fn run_streaming(
+    pub fn run_streaming<I>(
         &mut self,
-        ids: NonEmpty<Vec<PythId>>,
+        ids: NonEmpty<I>,
         shared_vaas: Option<Shared<Vec<Binary>>>,
-    ) -> Shared<Vec<Binary>> {
+    ) -> Shared<Vec<Binary>>
+    where
+        I: IntoIterator + Lengthy + Send + 'static,
+        I::Item: ToString,
+    {
+        // Close the previous connection if it exists since the Arc
+        // to shut down the thread will be replaced.
+        self.close();
+
         let base_url = self.base_url.clone();
 
         let shared = shared_vaas.unwrap_or_default();
@@ -65,15 +73,40 @@ impl PythClient {
         self.keep_running.store(false, Ordering::SeqCst);
     }
 
+    /// Get the latest VAA from the Pyth network.
+    pub fn get_latest_vaas<I>(&self, ids: I) -> reqwest::Result<Vec<Binary>>
+    where
+        I: IntoIterator,
+        I::Item: ToString,
+    {
+        let ids = ids
+            .into_iter()
+            .map(|id| ("ids[]", id.to_string()))
+            .collect::<Vec<_>>();
+
+        Ok(reqwest::blocking::Client::new()
+            .get(format!("{}/api/latest_vaas", self.base_url))
+            .query(&ids)
+            .send()?
+            .error_for_status()?
+            .json::<LatestVaaResponse>()?
+            .binary
+            .data)
+    }
+
     /// Inner function to run the SSE connection.
-    async fn run_streaming_inner(
+    async fn run_streaming_inner<I>(
         base_url: String,
-        ids: NonEmpty<Vec<PythId>>,
+        ids: NonEmpty<I>,
         shared: Shared<Vec<Binary>>,
         keep_running: Arc<AtomicBool>,
-    ) {
+    ) where
+        I: IntoIterator + Lengthy,
+        I::Item: ToString,
+    {
         let ids = ids
-            .iter()
+            .into_inner()
+            .into_iter()
             .map(|id| ("ids[]", id.to_string()))
             .collect::<Vec<_>>();
 

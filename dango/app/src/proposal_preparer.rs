@@ -34,19 +34,19 @@ impl From<ProposerError> for AppError {
 }
 
 pub struct ProposalPreparer {
-    latest_params: RwLock<Vec<PythId>>,
+    // Last ids used in the connection to the Pyth network.
+    old_ids: RwLock<Vec<PythId>>,
     latest_vaas: Shared<Vec<Binary>>,
-    // Option since we don't want to clone the thread handle.
-    // Store the thread to keep it alive.
-    _pyth_client: Option<RwLock<PythClient>>,
+    // Option since we don't want to clone client.
+    pyth_client: Option<RwLock<PythClient>>,
 }
 
 impl Clone for ProposalPreparer {
     fn clone(&self) -> Self {
         Self {
-            latest_params: RwLock::new(vec![]),
+            old_ids: RwLock::new(vec![]),
             latest_vaas: self.latest_vaas.clone(),
-            _pyth_client: None,
+            pyth_client: None,
         }
     }
 }
@@ -65,9 +65,9 @@ impl ProposalPreparer {
         let latest_vaas = Shared::new(vec![]);
 
         Self {
-            latest_params: RwLock::new(latest_params),
+            old_ids: RwLock::new(latest_params),
             latest_vaas,
-            _pyth_client: Some(RwLock::new(client)),
+            pyth_client: Some(RwLock::new(client)),
         }
     }
 }
@@ -85,7 +85,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
         // Retrieve the price ids from the oracle and prepare the query params.
         // TODO: optimize this by using the raw WasmScan query.
-        let params = querier
+        let new_ids = querier
             .query_wasm_smart(cfg.addresses.oracle, QueryPriceSourcesRequest {
                 start_after: None,
                 limit: Some(u32::MAX),
@@ -102,20 +102,20 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
             })
             .collect::<Vec<_>>();
 
-        // Compare with the latest params.
+        // Compare new ids from the chain with the old ones.
         // If there are some differences, update the PythClient connections.
-        let mut latest_params = self.latest_params.write().unwrap();
-        if *latest_params != params {
-            *latest_params = params.clone();
+        let mut old_ids = self.old_ids.write().unwrap();
+        if *old_ids != new_ids {
+            *old_ids = new_ids.clone();
 
-            if let Some(client) = &self._pyth_client {
+            if let Some(client) = &self.pyth_client {
                 let mut client = client.write().unwrap();
                 // Close the previous connection.
                 client.close();
 
                 // Start a new connection only if there are some params.
-                if let Ok(params) = NonEmpty::new(params) {
-                    client.run_streaming(params, Some(self.latest_vaas.clone()));
+                if let Ok(ids) = NonEmpty::new(new_ids) {
+                    client.run_streaming(ids, Some(self.latest_vaas.clone()));
                 }
             }
         }
