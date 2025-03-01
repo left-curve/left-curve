@@ -9,7 +9,7 @@ use {
             InstantiateMsg,
         },
         config::AppConfig,
-        lending, DangoQuerier,
+        dex, lending, DangoQuerier,
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
@@ -225,8 +225,9 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     // Create message to cancel all the user's limit orders
     let cancel_msg = Message::execute(
         app_cfg.addresses.dex,
-        &dango_types::dex::ExecuteMsg::CancelOrders {
-            order_ids: dango_types::dex::OrderIds::All,
+        &dex::ExecuteMsg::BatchUpdateOrders {
+            creates: vec![],
+            cancels: Some(dex::OrderIds::All),
         },
         Coins::new(),
     )?;

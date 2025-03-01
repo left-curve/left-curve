@@ -11,6 +11,7 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
+        dex::CreateLimitOrderRequest,
         lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
@@ -717,12 +718,15 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .execute(
             &mut margin_account,
             contracts.dex,
-            &dango_types::dex::ExecuteMsg::SubmitOrder {
-                base_denom: DANGO_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                direction: dango_types::dex::Direction::Bid,
-                amount: Uint128::new(100_000_000),
-                price: Udec128::ONE,
+            &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: dango_types::dex::Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::ONE,
+                }],
+                cancels: None,
             },
             Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
         )

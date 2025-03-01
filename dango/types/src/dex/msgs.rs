@@ -4,16 +4,47 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
+/// A request to create a new limit order.
+///
+/// When creating a new limit order, the trader must send appropriate amount of
+/// funds along with the message:
+///
+/// - For SELL orders, must send `base_denom` of `amount` amount.
+///
+/// - For BUY orders, must send `quote_denom` of the amount calculated as:
+///
+///   ```plain
+///   ceil(amount * price)
+///   ```
 #[grug::derive(Serde)]
-pub struct InstantiateMsg {
-    pub pairs: Vec<PairUpdate>,
+pub struct CreateLimitOrderRequest {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    pub direction: Direction,
+    /// The amount of _base asset_ to trade.
+    ///
+    /// The frontend UI may allow user to choose the amount in terms of the
+    /// quote asset, and convert it to the base asset amount behind the scene:
+    ///
+    /// ```plain
+    /// base_asset_amount = floor(quote_asset_amount / price)
+    /// ```
+    pub amount: Uint128,
+    /// The limit price measured _in the quote asset_, i.e. how many units of
+    /// quote asset is equal in value to 1 unit of base asset.
+    pub price: Udec128,
 }
 
-#[grug::derive(Serde)]
 /// A set of order IDs, either a specific set or all. Used to cancel orders.
+#[grug::derive(Serde)]
 pub enum OrderIds {
     Some(BTreeSet<OrderId>),
     All,
+}
+
+#[grug::derive(Serde)]
+pub struct InstantiateMsg {
+    pub pairs: Vec<PairUpdate>,
 }
 
 #[grug::derive(Serde)]
@@ -22,6 +53,11 @@ pub enum ExecuteMsg {
     ///
     /// Can only be called by the chain owner.
     BatchUpdatePairs(Vec<PairUpdate>),
+    /// Create or cancel multiple limit orders in one batch.
+    BatchUpdateOrders {
+        creates: Vec<CreateLimitOrderRequest>,
+        cancels: Option<OrderIds>,
+    },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
     /// equivalent to a swap to reach the pool ratio, followed by a liquidity
     /// provision at pool ratio.
@@ -35,25 +71,6 @@ pub enum ExecuteMsg {
         base_denom: Denom,
         quote_denom: Denom,
     },
-    /// Submit a new order.
-    ///
-    /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
-    ///
-    /// - For BUY orders, sender must attach `quote_denom` of the amount
-    ///   calculated as:
-    ///
-    ///   ```plain
-    ///   ceil(amount * price)
-    ///   ```
-    SubmitOrder {
-        base_denom: Denom,
-        quote_denom: Denom,
-        direction: Direction,
-        amount: Uint128,
-        price: Udec128,
-    },
-    /// Cancel one or more orders by IDs.
-    CancelOrders { order_ids: OrderIds },
 }
 
 #[grug::derive(Serde, QueryRequest)]
