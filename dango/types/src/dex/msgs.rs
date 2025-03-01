@@ -11,7 +11,7 @@ use {
 ///
 /// - For SELL orders, must send `base_denom` of `amount` amount.
 ///
-/// - For BUY orders, must send`quote_denom` of the amount calculated as:
+/// - For BUY orders, must send `quote_denom` of the amount calculated as:
 ///
 ///   ```plain
 ///   ceil(amount * price)
