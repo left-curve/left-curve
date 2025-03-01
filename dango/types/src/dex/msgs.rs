@@ -6,10 +6,12 @@ use {
 
 /// A request to create a new limit order.
 ///
-/// - For SELL orders, sender must attach `base_denom` of `amount` amount.
+/// When creating a new limit order, the trader must send appropriate amount of
+/// funds along with the message:
 ///
-/// - For BUY orders, sender must attach `quote_denom` of the amount
-///   calculated as:
+/// - For SELL orders, must send `base_denom` of `amount` amount.
+///
+/// - For BUY orders, must send`quote_denom` of the amount calculated as:
 ///
 ///   ```plain
 ///   ceil(amount * price)
