@@ -370,7 +370,7 @@ fn dex_works(
     None,
     grug::coins! { USDC_DENOM.clone() => 100 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
-    btree_map! { 
+    btree_map! {
         !0 => OrderResponse {
             user: grug::Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: DANGO_DENOM.clone(),
@@ -496,7 +496,7 @@ fn dex_works(
     Some(OrderIds::Some(BTreeSet::from([!0]))),
     grug::coins! { USDC_DENOM.clone() => 199 },
     BTreeMap::new(),
-    BTreeMap::new() 
+    BTreeMap::new()
     => panics "insufficient funds";
     "two submission insufficient funds"
 )]
