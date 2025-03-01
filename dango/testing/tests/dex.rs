@@ -43,6 +43,16 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         ));
 }
 
+#[test]
+fn create_and_cancel_multiple_orders_success() {
+    // TODO
+}
+
+#[test]
+fn create_and_cancel_multiple_orders_fail() {
+    // TODO
+}
+
 // Test cases from:
 // https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better
 //
