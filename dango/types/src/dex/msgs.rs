@@ -21,7 +21,17 @@ pub struct CreateLimitOrderRequest {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
+    /// The amount of _base asset_ to trade.
+    ///
+    /// The frontend UI may allow user to choose the amount in terms of the
+    /// quote asset, and convert it to the base asset amount behind the scene:
+    ///
+    /// ```plain
+    /// base_asset_amount = floor(quote_asset_amount / price)
+    /// ```
     pub amount: Uint128,
+    /// The limit price measured _in the quote asset_, i.e. how many units of
+    /// quote asset is equal in value to 1 unit of base asset.
     pub price: Udec128,
 }
 
