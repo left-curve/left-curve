@@ -3,8 +3,8 @@ use {
     dango_types::{
         constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
-            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, PairParams,
-            PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
+            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
+            OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
         },
     },
     grug::{
@@ -41,16 +41,6 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             ATOM_DENOM.clone(),
             USDC_DENOM.clone()
         ));
-}
-
-#[test]
-fn create_and_cancel_multiple_orders_success() {
-    // TODO
-}
-
-#[test]
-fn create_and_cancel_multiple_orders_fail() {
-    // TODO
 }
 
 // Test cases from:
@@ -369,8 +359,154 @@ fn dex_works(
     assert_eq!(orders, remaining_orders);
 }
 
-#[test]
-fn cancel_order() {
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    None,
+    grug::coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! { 
+        !0 => OrderResponse {
+            user: grug::Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "one submission no cancellations"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    grug::coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    BTreeMap::new();
+    "one submission cancels one order"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    grug::coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: grug::Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "two submission cancels one order"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0, !1]))),
+    grug::coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    BTreeMap::new();
+    "two submission cancels both orders"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::All),
+    grug::coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    BTreeMap::new();
+    "two submission cancel all"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    grug::coins! { USDC_DENOM.clone() => 199 },
+    BTreeMap::new(),
+    BTreeMap::new() 
+    => panics "insufficient funds";
+    "two submission insufficient funds"
+)]
+fn submit_and_cancel_orders(
+    submissions: Vec<CreateLimitOrderRequest>,
+    cancellations: Option<OrderIds>,
+    funds: Coins,
+    expected_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_orders_after: BTreeMap<OrderId, OrderResponse>,
+) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
     // Record the user's balance
@@ -382,16 +518,10 @@ fn cancel_order() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateLimitOrderRequest {
-                    base_denom: DANGO_DENOM.clone(),
-                    quote_denom: USDC_DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: Uint128::new(100),
-                    price: Udec128::new(1),
-                }],
+                creates: submissions,
                 cancels: None,
             },
-            grug::coins! { USDC_DENOM.clone() => 100 },
+            funds,
         )
         .should_succeed();
 
@@ -402,17 +532,16 @@ fn cancel_order() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates: vec![],
-                cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
+                cancels: cancellations,
             },
             coins! { DANGO_DENOM.clone() => 1 },
         )
         .should_succeed();
 
     // Check that the user balance has not changed
-    suite.balances().should_change(
-        accounts.user1.address(),
-        btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
-    );
+    suite
+        .balances()
+        .should_change(accounts.user1.address(), expected_balance_changes);
 
     // Check that order does not exist
     suite
@@ -420,7 +549,20 @@ fn cancel_order() {
             start_after: None,
             limit: None,
         })
-        .should_succeed_and(BTreeMap::is_empty);
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after.len());
+            expected_orders_after
+                .iter()
+                .all(|(order_id, expected_order)| {
+                    let actual_order = orders.get(order_id).unwrap();
+                    println!("actual_order: {:?}", actual_order);
+                    println!("expected_order: {:?}", expected_order);
+                    actual_order.user == accounts.user1.address()
+                        && actual_order.base_denom == expected_order.base_denom
+                        && actual_order.quote_denom == expected_order.quote_denom
+                        && actual_order.direction == expected_order.direction
+                })
+        });
 }
 
 #[test]
