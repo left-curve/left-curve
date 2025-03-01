@@ -3,8 +3,8 @@ use {
     dango_types::{
         constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
-            self, CurveInvariant, Direction, OrderId, OrderSubmission, PairParams, PairUpdate,
-            QueryOrdersByPairRequest, QueryOrdersRequest,
+            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, PairParams,
+            PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
         },
     },
     grug::{
@@ -25,7 +25,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                submits: vec![OrderSubmission {
+                creates: vec![CreateLimitOrderRequest {
                     base_denom: ATOM_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Bid,
@@ -322,7 +322,7 @@ fn dex_works(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    submits: vec![OrderSubmission {
+                    creates: vec![CreateLimitOrderRequest {
                         base_denom: DANGO_DENOM.clone(),
                         quote_denom: USDC_DENOM.clone(),
                         direction,
@@ -382,7 +382,7 @@ fn cancel_order() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                submits: vec![OrderSubmission {
+                creates: vec![CreateLimitOrderRequest {
                     base_denom: DANGO_DENOM.clone(),
                     quote_denom: USDC_DENOM.clone(),
                     direction: Direction::Bid,
@@ -401,7 +401,7 @@ fn cancel_order() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                submits: vec![],
+                creates: vec![],
                 cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
             },
             coins! { DANGO_DENOM.clone() => 1 },
@@ -434,7 +434,7 @@ fn submit_and_cancel_order_in_same_block() {
     let submit_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            submits: vec![OrderSubmission {
+            creates: vec![CreateLimitOrderRequest {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
                 direction: Direction::Bid,
@@ -450,7 +450,7 @@ fn submit_and_cancel_order_in_same_block() {
     let cancel_order_msg = Message::execute(
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
-            submits: vec![],
+            creates: vec![],
             cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
         },
         Coins::new(),
@@ -611,7 +611,7 @@ fn query_orders_by_pair(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    submits: vec![OrderSubmission {
+                    creates: vec![CreateLimitOrderRequest {
                         base_denom,
                         quote_denom,
                         direction,

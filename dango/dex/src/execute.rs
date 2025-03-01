@@ -7,9 +7,9 @@ use {
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderIds,
-            OrderSubmission, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated, LP_NAMESPACE,
-            NAMESPACE,
+            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
+            OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
@@ -31,8 +31,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
-        ExecuteMsg::BatchUpdateOrders { submits, cancels } => {
-            batch_update_orders(ctx, submits, cancels)
+        ExecuteMsg::BatchUpdateOrders { creates, cancels } => {
+            batch_update_orders(ctx, creates, cancels)
         },
         ExecuteMsg::ProvideLiquidity {
             base_denom,
@@ -83,7 +83,7 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 #[inline]
 fn batch_update_orders(
     mut ctx: MutableCtx,
-    submits: Vec<OrderSubmission>,
+    creates: Vec<CreateLimitOrderRequest>,
     cancels: Option<OrderIds>,
 ) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
@@ -166,7 +166,7 @@ fn batch_update_orders(
 
     // --------------------------- 2. Create orders ----------------------------
 
-    for order in submits {
+    for order in creates {
         ensure!(
             PAIRS.has(ctx.storage, (&order.base_denom, &order.quote_denom)),
             "pair not found with base `{}` and quote `{}`",

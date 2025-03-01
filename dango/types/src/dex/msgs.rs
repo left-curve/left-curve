@@ -4,7 +4,7 @@ use {
     std::collections::{BTreeMap, BTreeSet},
 };
 
-/// A request to submit a new limit order.
+/// A request to create a new limit order.
 ///
 /// - For SELL orders, sender must attach `base_denom` of `amount` amount.
 ///
@@ -15,7 +15,7 @@ use {
 ///   ceil(amount * price)
 ///   ```
 #[grug::derive(Serde)]
-pub struct OrderSubmission {
+pub struct CreateLimitOrderRequest {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
@@ -43,7 +43,7 @@ pub enum ExecuteMsg {
     BatchUpdatePairs(Vec<PairUpdate>),
     /// Create or cancel multiple limit orders in one batch.
     BatchUpdateOrders {
-        submits: Vec<OrderSubmission>,
+        creates: Vec<CreateLimitOrderRequest>,
         cancels: Option<OrderIds>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
