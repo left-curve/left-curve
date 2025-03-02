@@ -3,7 +3,7 @@ use {
         fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
         INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
     },
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         dex::{
@@ -235,7 +235,7 @@ fn batch_update_orders(
     ctx.funds
         .insert_many(refunds)?
         .deduct_many(deposits)
-        .map_err(|e| anyhow::anyhow!("insufficient funds: {}", e))?;
+        .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)

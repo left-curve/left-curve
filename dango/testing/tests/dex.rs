@@ -8,9 +8,9 @@ use {
         },
     },
     grug::{
-        btree_map, coins, Addressable, BalanceChange, Bounded, Coin, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
-        Uint128,
+        btree_map, coins, Addr, Addressable, BalanceChange, Bounded, Coin, Coins, Denom, Inner,
+        Message, MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult,
+        Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -368,11 +368,11 @@ fn dex_works(
         price: Udec128::new(1),
     }],
     None,
-    grug::coins! { USDC_DENOM.clone() => 100 },
+    coins! { USDC_DENOM.clone() => 100 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
         !0 => OrderResponse {
-            user: grug::Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: DANGO_DENOM.clone(),
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Bid,
@@ -392,9 +392,9 @@ fn dex_works(
         price: Udec128::new(1),
     }],
     Some(OrderIds::Some(BTreeSet::from([!0]))),
-    grug::coins! { USDC_DENOM.clone() => 100 },
+    coins! { USDC_DENOM.clone() => 100 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
-    BTreeMap::new();
+    btree_map! {};
     "one submission cancels one order"
 )]
 #[test_case(
@@ -415,11 +415,11 @@ fn dex_works(
         },
     ],
     Some(OrderIds::Some(BTreeSet::from([!0]))),
-    grug::coins! { USDC_DENOM.clone() => 200 },
+    coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
     btree_map! {
         !1 => OrderResponse {
-            user: grug::Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
             base_denom: DANGO_DENOM.clone(),
             quote_denom: USDC_DENOM.clone(),
             direction: Direction::Bid,
@@ -448,9 +448,9 @@ fn dex_works(
         },
     ],
     Some(OrderIds::Some(BTreeSet::from([!0, !1]))),
-    grug::coins! { USDC_DENOM.clone() => 200 },
+    coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
-    BTreeMap::new();
+    btree_map! {};
     "two submission cancels both orders"
 )]
 #[test_case(
@@ -471,9 +471,9 @@ fn dex_works(
         },
     ],
     Some(OrderIds::All),
-    grug::coins! { USDC_DENOM.clone() => 200 },
+    coins! { USDC_DENOM.clone() => 200 },
     btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
-    BTreeMap::new();
+    btree_map! {};
     "two submission cancel all"
 )]
 #[test_case(
@@ -494,10 +494,10 @@ fn dex_works(
         },
     ],
     Some(OrderIds::Some(BTreeSet::from([!0]))),
-    grug::coins! { USDC_DENOM.clone() => 199 },
-    BTreeMap::new(),
-    BTreeMap::new()
-    => panics "insufficient funds";
+    coins! { USDC_DENOM.clone() => 199 },
+    btree_map! {},
+    btree_map! {}
+    => panics "insufficient funds for batch updating orders";
     "two submission insufficient funds"
 )]
 fn submit_and_cancel_orders(
@@ -509,10 +509,10 @@ fn submit_and_cancel_orders(
 ) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
-    // Record the user's balance
+    // Record the user's balance.
     suite.balances().record(accounts.user1.address());
 
-    // Add order to the order book
+    // Add order to the order book.
     suite
         .execute(
             &mut accounts.user1,
@@ -525,7 +525,7 @@ fn submit_and_cancel_orders(
         )
         .should_succeed();
 
-    // Cancel the order
+    // Cancel the order.
     suite
         .execute(
             &mut accounts.user1,
@@ -538,12 +538,12 @@ fn submit_and_cancel_orders(
         )
         .should_succeed();
 
-    // Check that the user balance has not changed
+    // Check that the user balance has not changed.
     suite
         .balances()
         .should_change(accounts.user1.address(), expected_balance_changes);
 
-    // Check that order does not exist
+    // Check that order does not exist.
     suite
         .query_wasm_smart(contracts.dex, QueryOrdersRequest {
             start_after: None,
@@ -555,8 +555,6 @@ fn submit_and_cancel_orders(
                 .iter()
                 .all(|(order_id, expected_order)| {
                     let actual_order = orders.get(order_id).unwrap();
-                    println!("actual_order: {:?}", actual_order);
-                    println!("expected_order: {:?}", expected_order);
                     actual_order.user == accounts.user1.address()
                         && actual_order.base_denom == expected_order.base_denom
                         && actual_order.quote_denom == expected_order.quote_denom
