@@ -119,6 +119,7 @@ export const tailwindConfig: Partial<Config> = {
       none: "0 0 #0000",
     },
     borderRadius: {
+      xxs: "4px",
       xs: "8px",
       sm: "10px",
       md: "12px",
