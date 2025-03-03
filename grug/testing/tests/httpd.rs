@@ -2,11 +2,7 @@ use {
     assertor::*,
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
-    grug_testing::{
-        build_app_service, call_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response, setup_tracing_subscriber, GraphQLCustomRequest,
-        PaginatedResponse, TestAccounts, TestBuilder, TestSuite,
-    },
+    grug_testing::{setup_tracing_subscriber, TestAccounts, TestBuilder, TestSuite},
     grug_types::{self, Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
@@ -17,7 +13,13 @@ use {
     serde_json::json,
     std::{str::FromStr, sync::Arc},
     tokio::sync::mpsc,
+    utils::{
+        build_app_service, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse,
+    },
 };
+
+pub mod utils;
 
 async fn create_block() -> anyhow::Result<(
     Context,
