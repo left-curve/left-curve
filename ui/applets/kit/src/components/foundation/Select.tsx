@@ -6,6 +6,7 @@ import { type ReactElement, cloneElement, useMemo, useRef } from "react";
 import { useClickAway } from "react-use";
 
 import { type VariantProps, tv } from "tailwind-variants";
+import { twMerge } from "../../utils";
 import { ListBox } from "./Listbox";
 import { IconChevronDown } from "./icons/IconChevronDown";
 
@@ -62,19 +63,20 @@ export function Select<T extends object>(props: SelectProps<T>) {
       </button>
       <motion.div layout className="overflow-hidden">
         <AnimatePresence mode="wait">
-          {state.isOpen ? (
-            <motion.div
-              className={listboxWrapper({
+          <motion.div
+            className={twMerge(
+              listboxWrapper({
                 className: classNames?.listboxWrapper,
-              })}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0, padding: 0 }}
-              transition={{ duration: 0.1 }}
-            >
-              <ListBox {...menuProps} state={state} />
-            </motion.div>
-          ) : null}
+              }),
+              { hidden: !state.isOpen, block: state.isOpen },
+            )}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0, padding: 0 }}
+            transition={{ duration: 0.1 }}
+          >
+            <ListBox {...menuProps} state={state} />
+          </motion.div>
         </AnimatePresence>
       </motion.div>
     </div>
