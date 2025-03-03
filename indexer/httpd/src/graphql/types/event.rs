@@ -30,14 +30,13 @@ pub enum EventStatus {
     Handled,
 }
 
-impl From<i16> for EventStatus {
-    fn from(status: i16) -> EventStatus {
+impl From<entity::events::EventStatus> for EventStatus {
+    fn from(status: entity::events::EventStatus) -> EventStatus {
         match status {
-            0 => EventStatus::Ok,
-            1 => EventStatus::Failed,
-            2 => EventStatus::NestedFailed,
-            3 => EventStatus::Handled,
-            _ => panic!("Invalid event status"),
+            entity::events::EventStatus::Ok => EventStatus::Ok,
+            entity::events::EventStatus::Failed => EventStatus::Failed,
+            entity::events::EventStatus::NestedFailed => EventStatus::NestedFailed,
+            entity::events::EventStatus::Handled => EventStatus::Handled,
         }
     }
 }
@@ -51,13 +50,12 @@ pub enum CommitmentStatus {
     Reverted,
 }
 
-impl From<i16> for CommitmentStatus {
-    fn from(status: i16) -> CommitmentStatus {
+impl From<entity::events::CommitmentStatus> for CommitmentStatus {
+    fn from(status: entity::events::CommitmentStatus) -> CommitmentStatus {
         match status {
-            0 => CommitmentStatus::Committed,
-            1 => CommitmentStatus::Failed,
-            2 => CommitmentStatus::Reverted,
-            _ => panic!("Invalid commitment status"),
+            entity::events::CommitmentStatus::Committed => CommitmentStatus::Committed,
+            entity::events::CommitmentStatus::Failed => CommitmentStatus::Failed,
+            entity::events::CommitmentStatus::Reverted => CommitmentStatus::Reverted,
         }
     }
 }

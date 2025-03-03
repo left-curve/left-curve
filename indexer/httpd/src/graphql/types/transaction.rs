@@ -30,12 +30,11 @@ pub enum Category {
     Tx,
 }
 
-impl From<i16> for Category {
-    fn from(status: i16) -> Category {
+impl From<entity::events::TransactionType> for Category {
+    fn from(status: entity::events::TransactionType) -> Category {
         match status {
-            0 => Category::Cron,
-            1 => Category::Tx,
-            _ => panic!("Invalid transaction category"),
+            entity::events::TransactionType::Cron => Category::Cron,
+            entity::events::TransactionType::Tx => Category::Tx,
         }
     }
 }
