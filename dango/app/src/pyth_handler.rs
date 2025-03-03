@@ -1,6 +1,6 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Binary, NonEmpty, QuerierExt, QuerierWrapper, StdError},
+    grug::{Addr, Binary, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
     grug_app::Shared,
     pyth_client::PythClient,
     pyth_types::PythId,
@@ -27,7 +27,7 @@ impl PythClientPPHandler {
     }
 
     /// Check if the pyth ids stored on oracle contract are changed; if so, update the Pyth connection.
-    pub fn update_ids(&mut self, querier: QuerierWrapper, oracle: Addr) -> Result<(), StdError> {
+    pub fn update_ids(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
         // TODO: optimize this by using the raw WasmScan query.
         let new_ids = querier
             .query_wasm_smart(oracle, QueryPriceSourcesRequest {
@@ -59,8 +59,7 @@ impl PythClientPPHandler {
 
         // Start a new connection only if there are some params.
         if let Ok(ids) = NonEmpty::new(new_ids) {
-            self.client
-                .run_streaming(ids, Some(self.shared_vaas.clone()));
+            self.shared_vaas = self.client.run_streaming(ids);
         }
 
         Ok(())

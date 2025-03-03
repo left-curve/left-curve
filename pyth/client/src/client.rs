@@ -35,11 +35,7 @@ impl PythClient {
     /// Start a SSE connection to the Pyth network.
     /// If shared_vaas is provided, it will update the shared value with the latest VAA.
     /// Otherwise, it will create a new shared value and return it.
-    pub fn run_streaming<I>(
-        &mut self,
-        ids: NonEmpty<I>,
-        shared_vaas: Option<Shared<Vec<Binary>>>,
-    ) -> Shared<Vec<Binary>>
+    pub fn run_streaming<I>(&mut self, ids: NonEmpty<I>) -> Shared<Vec<Binary>>
     where
         I: IntoIterator + Lengthy + Send + 'static,
         I::Item: ToString,
@@ -50,7 +46,8 @@ impl PythClient {
 
         let base_url = self.base_url.clone();
 
-        let shared = shared_vaas.unwrap_or_default();
+        // Create the shared vector to write/read the vaas.
+        let shared = Shared::new(vec![]);
         let shared_clone = shared.clone();
 
         // Create a new atomic bool. Don't reuse the old one since there is no

@@ -16,9 +16,6 @@ const GAS_LIMIT: u64 = 50_000_000;
 pub enum ProposerError {
     #[error(transparent)]
     Std(#[from] StdError),
-
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
 }
 
 impl From<ProposerError> for AppError {
@@ -28,6 +25,7 @@ impl From<ProposerError> for AppError {
 }
 
 pub struct ProposalPreparer {
+    // Option to be able to not clone the PythClientPPHandler.
     pyth_client: Option<RwLock<PythClientPPHandler>>,
 }
 
@@ -64,9 +62,11 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
     ) -> Result<Vec<Bytes>, Self::Error> {
         let cfg: AppConfig = querier.query_app_config()?;
 
-        // Update the ids for the PythClientPPHandler.
+        // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
         let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
-        pyth_client.update_ids(querier, cfg.addresses.oracle)?;
+        if let Err(e) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
+            error!("Failed to update the Pyth IDs: {}", e);
+        };
 
         // Retrieve the VAAs.
         let vaas = pyth_client.fetch_latest_vaas();

@@ -16,7 +16,7 @@ async fn test_client() {
     let mut client = PythClient::new(PYTH_URL);
     let ids = NonEmpty::new(vec![BTC_USD_ID, ETH_USD_ID]).unwrap();
 
-    let shared = client.run_streaming(ids, None);
+    let mut shared = client.run_streaming(ids);
 
     for _ in 0..2 {
         for _ in 0..10 {
@@ -42,6 +42,6 @@ async fn test_client() {
         // Close the connection, adding a new id and restarting the connection.
         client.close();
         let ids = NonEmpty::new(vec![BTC_USD_ID, ETH_USD_ID, ATOM_USD_ID]).unwrap();
-        client.run_streaming(ids, Some(shared.clone()));
+        shared = client.run_streaming(ids);
     }
 }
