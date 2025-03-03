@@ -99,7 +99,7 @@ const inputVariants = tv(
     slots: {
       base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
-        "group relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10 ",
+        "group relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10",
         "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
@@ -122,7 +122,7 @@ const inputVariants = tv(
       },
       isInvalid: {
         true: {
-          inputWrapper: "border-error-500 text-error-500",
+          inputWrapper: "border-error-500",
           input: "text-gray-700",
         },
       },

@@ -17,7 +17,7 @@ import {
   Input,
   Spinner,
   XCircleIcon,
-  useInput,
+  useInputs,
   useWizard,
 } from "@left-curve/applets-kit";
 
@@ -26,7 +26,10 @@ import type React from "react";
 
 export const SignupUsernameStep: React.FC = () => {
   const { done, data } = useWizard<{ key: Key; keyHash: Hex; connectorId: string }>();
-  const { register: usernameInput, value: username, error } = useInput("username");
+  const { register, inputs } = useInputs();
+
+  const { value: username, error } = inputs.username || {};
+
   const { key, keyHash, connectorId } = data;
 
   const navigate = useNavigate();
@@ -103,7 +106,7 @@ export const SignupUsernameStep: React.FC = () => {
       <Input
         label="Username"
         placeholder="Enter your username"
-        {...usernameInput({
+        {...register("username", {
           validate: (value) => {
             if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
               return "Username must be no more than 15 lowercase alphanumeric (a-z|0-9) or underscore";

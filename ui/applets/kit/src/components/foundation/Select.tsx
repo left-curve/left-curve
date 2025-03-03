@@ -62,19 +62,19 @@ export function Select<T extends object>(props: SelectProps<T>) {
       </button>
       <motion.div layout className="overflow-hidden">
         <AnimatePresence mode="wait">
-          {state.isOpen && (
+          {state.isOpen ? (
             <motion.div
               className={listboxWrapper({
                 className: classNames?.listboxWrapper,
               })}
-              initial={{ opacity: 0, height: 0, padding: 0 }}
-              animate={{ opacity: 1, height: "auto", padding: "9px 4px" }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0, padding: 0 }}
               transition={{ duration: 0.1 }}
             >
               <ListBox {...menuProps} state={state} />
             </motion.div>
-          )}
+          ) : null}
         </AnimatePresence>
       </motion.div>
     </div>
@@ -85,7 +85,7 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit min-w-[9rem] transition-all  duration-500 leading-none",
     listboxWrapper:
-      "rounded-3xl overflow-hidden max-h-[12rem] w-full transition-all z-30 shadow-card-shadow top-[3.375rem] bg-rice-25 absolute",
+      "rounded-md overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-card-shadow top-[3.375rem] bg-rice-25 absolute",
     selectorIcon: "min-w-[20px] min-h-[20px] transition-all duration-300",
     trigger:
       "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between px-4 py-3 gap-3 outline-none shadow-card-shadow diatype-m-regular h-[46px] rounded-md bg-rice-25",

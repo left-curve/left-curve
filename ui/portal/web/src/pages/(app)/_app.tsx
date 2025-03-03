@@ -4,7 +4,7 @@ import { Header } from "~/components/Header";
 export const Route = createFileRoute("/(app)/_app")({
   component: function Layout() {
     return (
-      <div className="flex flex-col min-h-screen w-full h-full relative scrollbar-none items-center justify-center">
+      <div className="flex flex-col min-h-screen w-screen h-full relative scrollbar-none items-center justify-center overflow-hidden">
         <img
           src="/images/union.png"
           alt="bg-image"

@@ -1,4 +1,4 @@
-import { useInput, useWizard } from "@left-curve/applets-kit";
+import { useInputs, useWizard } from "@left-curve/applets-kit";
 import { usePublicClient } from "@left-curve/store-react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -11,12 +11,9 @@ import type { FormEvent } from "react";
 export const LoginUsernameStep: React.FC = () => {
   const navigate = useNavigate();
   const { nextStep, setData, data } = useWizard<{ username: string }>();
-  const {
-    register: usernameInput,
-    setError,
-    value: username,
-    error,
-  } = useInput("username", { initialValue: data.username });
+  const { register, inputs, setError } = useInputs();
+
+  const { value: username, error } = inputs.username || {};
 
   const client = usePublicClient();
 
@@ -27,7 +24,7 @@ export const LoginUsernameStep: React.FC = () => {
       const { accounts } = await client.getUser({ username });
       const numberOfAccounts = Object.keys(accounts).length;
       if (numberOfAccounts === 0) {
-        setError("Username doesn't exist");
+        setError("username", "Username doesn't exist");
       } else {
         setData({ username });
         nextStep();
@@ -49,7 +46,7 @@ export const LoginUsernameStep: React.FC = () => {
         <Input
           label="Username"
           placeholder="Enter your username"
-          {...usernameInput({
+          {...register("username", {
             validate: (value) => {
               if (!value) return "Username is required";
               return true;

@@ -1,6 +1,6 @@
 export * from "./useMediaQuery";
 export { useDebounce, useClickAway, useMeasure } from "react-use";
-export { useInput } from "./useInput";
+export { useInputs } from "./useInputs";
 
 export {
   type UseAccountNameParameters,
