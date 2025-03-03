@@ -1,16 +1,10 @@
 use {
-    dango_types::{
-        config::AppConfig,
-        oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
-    },
-    grug::{
-        Binary, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
-        Tx,
-    },
-    grug_app::{AppError, Shared},
+    crate::pyth_handler::PythClientPPHandler,
+    dango_types::{config::AppConfig, oracle::ExecuteMsg},
+    grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug_app::AppError,
     prost::bytes::Bytes,
-    pyth_client::PythClient,
-    pyth_types::{PythId, PYTH_URL},
+    pyth_types::PYTH_URL,
     std::sync::RwLock,
     thiserror::Error,
     tracing::error,
@@ -34,20 +28,12 @@ impl From<ProposerError> for AppError {
 }
 
 pub struct ProposalPreparer {
-    // Last ids used in the connection to the Pyth network.
-    old_ids: RwLock<Vec<PythId>>,
-    latest_vaas: Shared<Vec<Binary>>,
-    // Option since we don't want to clone client.
-    pyth_client: Option<RwLock<PythClient>>,
+    pyth_client: Option<RwLock<PythClientPPHandler>>,
 }
 
 impl Clone for ProposalPreparer {
     fn clone(&self) -> Self {
-        Self {
-            old_ids: RwLock::new(vec![]),
-            latest_vaas: self.latest_vaas.clone(),
-            pyth_client: None,
-        }
+        Self { pyth_client: None }
     }
 }
 
@@ -59,14 +45,9 @@ impl Default for ProposalPreparer {
 
 impl ProposalPreparer {
     pub fn new() -> Self {
-        let latest_params = Vec::new(); // Used to compare with the new params.
-
-        let client = PythClient::new(PYTH_URL.to_string());
-        let latest_vaas = Shared::new(vec![]);
+        let client = PythClientPPHandler::new(PYTH_URL.to_string());
 
         Self {
-            old_ids: RwLock::new(latest_params),
-            latest_vaas,
             pyth_client: Some(RwLock::new(client)),
         }
     }
@@ -83,50 +64,12 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
     ) -> Result<Vec<Bytes>, Self::Error> {
         let cfg: AppConfig = querier.query_app_config()?;
 
-        // Retrieve the price ids from the oracle and prepare the query params.
-        // TODO: optimize this by using the raw WasmScan query.
-        let new_ids = querier
-            .query_wasm_smart(cfg.addresses.oracle, QueryPriceSourcesRequest {
-                start_after: None,
-                limit: Some(u32::MAX),
-            })?
-            .into_values()
-            .filter_map(|price_source| {
-                // For now there is only Pyth as PriceSource, but there could be more.
-                #[allow(irrefutable_let_patterns)]
-                if let PriceSource::Pyth { id, .. } = price_source {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
+        // Update the ids for the PythClientPPHandler.
+        let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
+        pyth_client.update_ids(querier, cfg.addresses.oracle)?;
 
-        // Compare new ids from the chain with the old ones.
-        // If there are some differences, update the PythClient connections.
-        let mut old_ids = self.old_ids.write().unwrap();
-        if *old_ids != new_ids {
-            *old_ids = new_ids.clone();
-
-            if let Some(client) = &self.pyth_client {
-                let mut client = client.write().unwrap();
-                // Close the previous connection.
-                client.close();
-
-                // Start a new connection only if there are some params.
-                if let Ok(ids) = NonEmpty::new(new_ids) {
-                    client.run_streaming(ids, Some(self.latest_vaas.clone()));
-                }
-            }
-        }
-
-        // Retreive the VAAs from the shared memory.
-        // Consuming the VAAs to avoid feeding the same prices multiple times.
-        let vaas = self.latest_vaas.write_with(|mut prices_lock| {
-            let prices = prices_lock.clone();
-            *prices_lock = vec![];
-            prices
-        });
+        // Retrieve the VAAs.
+        let vaas = pyth_client.fetch_latest_vaas();
 
         // Return if there are no VAAs to feed.
         if vaas.is_empty() {
