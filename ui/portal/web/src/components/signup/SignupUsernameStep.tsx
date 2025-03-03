@@ -74,7 +74,7 @@ export const SignupUsernameStep: React.FC = () => {
           salt,
         });
 
-        const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
+        const response = await fetch("https://mock-warp.left-curve.workers.dev", {
           method: "POST",
           body: JSON.stringify({ address }),
         });
