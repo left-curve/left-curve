@@ -8,7 +8,7 @@ interface Props {
 
 export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
   return (
-    <div className="flex w-[calc(100%-4rem)] items-center pb-9">
+    <div className="flex w-[calc(100%-4rem)] items-center pb-9 min-h-[4rem] diatype-sm-bold">
       {steps.map((step, i) => {
         const isActive = i === activeStep;
         return (
@@ -17,7 +17,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
               <StepIcon index={i} active={activeStep} />
               <p
                 className={twMerge(
-                  "absolute min-w-fit block top-9 left-1/2 -translate-x-1/2 transition-all",
+                  "absolute min-w-fit block top-9 left-1/2 -translate-x-1/2 transition-all text-nowrap",
                   {
                     "text-red-bean-600": isActive,
                   },
@@ -29,7 +29,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
             {i < steps.length - 1 && (
               <span
                 className={twMerge(
-                  "w-full h-[2px] diatype-sm-bold transition-all",
+                  "w-full h-[2px]  transition-all",
                   i < activeStep ? "bg-red-bean-500" : "bg-gray-100",
                 )}
               />
@@ -73,11 +73,12 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
   return (
     <div
       className={twMerge(
-        "w-6 h-6 border-2 transition-all rounded-full flex items-center justify-center relative z-20",
-        "before:content-[''] before:absolute before:border before:border-red-bean-400 before:bg-white before:w-7 before:h-7 before:rounded-full before:bg-reb-bean-400 before:transition-all",
+        "transition-all rounded-full flex items-center justify-center relative z-20",
+        "before:content-[''] before:absolute before:z-10 before:bg-white-100 before:border before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-reb-bean-400 before:transition-all",
+        "",
         active === index
-          ? "border-white bg-red-bean-400 before:scale-1"
-          : "border-gray-200 before:scale-0 bg-gray-25",
+          ? "border-white bg-red-bean-400 before:scale-1 w-7 h-7 border-4"
+          : "border-gray-200 before:scale-0 bg-gray-25 w-6 h-6 border-2",
       )}
     >
       <div

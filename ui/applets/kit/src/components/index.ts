@@ -18,6 +18,7 @@ export { Stepper } from "./foundation/Stepper";
 export { Carousel } from "./foundation/Carousel";
 export { ResizerContainer } from "./foundation/ResizerContainer";
 export { AssetCard } from "./foundation/AssetCard";
+export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -57,6 +58,7 @@ export { IconKey } from "./foundation/icons/IconKey";
 export { IconClose } from "./foundation/icons/IconClose";
 export { IconStar } from "./foundation/icons/IconStar";
 export { IconEmptyStar } from "./foundation/icons/IconEmptyStar";
+export { IconCheckedCircle } from "./foundation/icons/IconCheckedCircle";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

@@ -8,7 +8,7 @@ type UseInputOptions = {
 
 type InputOptions = {
   validate?: (value: string) => boolean | string;
-  mask?: (value: string) => string;
+  mask?: (value: string, previousValue: string) => string;
 };
 
 export function useInput(name: string, options?: UseInputOptions) {
@@ -22,7 +22,7 @@ export function useInput(name: string, options?: UseInputOptions) {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const { validate, mask } = inputOptions.current || {};
-      const newValue = mask ? mask(event.target.value) : event.target.value;
+      const newValue = mask ? mask(event.target.value, value) : event.target.value;
       setValue(newValue);
 
       if (validate) {
