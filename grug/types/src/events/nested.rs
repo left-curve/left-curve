@@ -1,5 +1,7 @@
 use {
-    crate::{Addr, Coins, CheckedContractEvent, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp},
+    crate::{
+        Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
     serde::{Deserialize, Serialize},

@@ -1,8 +1,8 @@
 use {
     super::FlattenStatus,
     crate::{
-        Addr, Coins, CommitmentStatus, CheckedContractEvent, EvtConfigure, EvtUpload, Hash256, Json,
-        Label, ReplyOn, Timestamp, TxEvents,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload, Hash256,
+        Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},

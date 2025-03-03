@@ -5,8 +5,8 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, Context, CheckedContractEvent, EvtGuest,
-        GenericResult, Hash256, Response, Storage,
+        Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, CheckedContractEvent, Context,
+        EvtGuest, GenericResult, Hash256, Response, Storage,
     },
 };
 
