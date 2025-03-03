@@ -26,7 +26,7 @@ fn proposal_pyth() {
     // Trigger the prepare proposal to upload the prices to oracle.
     suite.make_empty_block();
 
-    // Retreive the prices.
+    // Retrieve the prices.
     let prices1 = suite
         .query_wasm_smart(contracts.oracle, QueryPricesRequest {
             start_after: None,

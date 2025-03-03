@@ -26,8 +26,8 @@ impl PythClientPPHandler {
         }
     }
 
+    /// Check if the pyth ids stored on oracle contract are changed; if so, update the Pyth connection.
     pub fn update_ids(&mut self, querier: QuerierWrapper, oracle: Addr) -> Result<(), StdError> {
-        // Retrieve the price ids from the oracle and prepare the query params.
         // TODO: optimize this by using the raw WasmScan query.
         let new_ids = querier
             .query_wasm_smart(oracle, QueryPriceSourcesRequest {
