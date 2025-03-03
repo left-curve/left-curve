@@ -1,7 +1,7 @@
 use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug::{HexByteArray, Inner, MutableCtx, Response, StdResult, StorageQuerier},
+    grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
@@ -62,15 +62,12 @@ fn announce(
     ensure!(address == validator.inner(), "pubkey mismatch");
 
     // Append storage_locations.
-    STORAGE_LOCATIONS.may_update(
-        ctx.storage,
-        validator,
-        |maybe_storage_locations| -> StdResult<_> {
-            let mut storage_locations = maybe_storage_locations.unwrap_or_default();
-            storage_locations.insert(storage_location.clone());
-            Ok(storage_locations)
-        },
-    )?;
+    STORAGE_LOCATIONS.may_update(ctx.storage, validator, |maybe| {
+        let mut storage_locations = maybe.unwrap_or_default();
+        storage_locations.try_push(storage_location.clone())?;
+
+        Ok::<_, StdError>(storage_locations)
+    })?;
 
     Ok(Response::new().add_event(Announce {
         sender: ctx.sender,

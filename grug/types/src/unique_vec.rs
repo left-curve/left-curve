@@ -7,7 +7,10 @@ use {
 };
 
 /// A wrapper over a vector that guarantees that no element appears twice.
-#[derive(Serialize, BorshSerialize, Debug, Clone, PartialEq, Eq)]
+///
+/// This is useful if you want to ensure a collection of items is unique, and
+/// also _ordered_ (in which case `BTreeSet` isn't suitable).
+#[derive(Serialize, BorshSerialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct UniqueVec<T>(Vec<T>)
 where
     T: Eq + Hash;
@@ -32,6 +35,17 @@ where
 
     pub fn new_unchecked(inner: Vec<T>) -> Self {
         Self(inner)
+    }
+
+    /// Check if the item is already in the vector, and if not, push it.
+    pub fn try_push(&mut self, item: T) -> StdResult<()> {
+        if self.0.contains(&item) {
+            return Err(StdError::duplicate_data::<T>());
+        }
+
+        self.0.push(item);
+
+        Ok(())
     }
 }
 
@@ -112,6 +126,15 @@ mod tests {
 
         b"[1, 2, 3, 1, 5]"
             .deserialize_json::<UniqueVec<u32>>()
+            .should_fail_with_error("duplicate data found!");
+    }
+
+    #[test]
+    fn unique_vec_try_push() {
+        let mut unique_vec = UniqueVec::new_unchecked(vec![1, 2, 3]);
+        unique_vec.try_push(4).should_succeed();
+        unique_vec
+            .try_push(3)
             .should_fail_with_error("duplicate data found!");
     }
 }
