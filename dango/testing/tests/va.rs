@@ -1,8 +1,8 @@
 use {
     dango_testing::{generate_random_key, setup_test},
     grug::{
-        btree_set, Addr, Addressable, Coins, ContractEvent, HashExt, HexByteArray, Inner,
-        JsonDeExt, QuerierExt, ResultExt, SearchEvent,
+        btree_set, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner,
+        JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
     },
     grug_crypto::Identity256,
     hyperlane_types::{
@@ -97,7 +97,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()
@@ -123,7 +123,7 @@ fn test_announce() {
         // Check that the validator was added to the storage locations.
         storage_locations_expected.insert(
             announcement.validator,
-            BTreeSet::from(["Test/Storage/Location".to_string()]),
+            UniqueVec::new_unchecked(vec!["Test/Storage/Location".to_string()]),
         );
 
         suite
@@ -133,7 +133,7 @@ fn test_announce() {
             .should_succeed_and_equal(storage_locations_expected.clone());
     }
 
-    // Adding the same announcement again (success but no changes).
+    // Adding the same announcement again.
     {
         suite
             .execute(
@@ -146,21 +146,7 @@ fn test_announce() {
                 },
                 Coins::new(),
             )
-            .should_succeed();
-
-        // Check that there are no changes.
-        suite
-            .query_wasm_smart(va, va::QueryAnnouncedValidatorsRequest {
-                start_after: None,
-                limit: None,
-            })
-            .should_succeed_and_equal(validators_expected.clone());
-
-        suite
-            .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
-                validators: btree_set![announcement.validator],
-            })
-            .should_succeed_and_equal(storage_locations_expected.clone());
+            .should_fail_with_error("duplicate data found!");
     }
 
     // Adding same validator with different storage location.
@@ -185,7 +171,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()
@@ -210,7 +196,8 @@ fn test_announce() {
         storage_locations_expected
             .get_mut(&announcement.validator)
             .unwrap()
-            .insert(announcement2.storage_location);
+            .try_push(announcement2.storage_location)
+            .unwrap();
 
         suite
             .query_wasm_smart(va, va::QueryAnnouncedStorageLocationsRequest {
@@ -236,7 +223,7 @@ fn test_announce() {
             )
             .should_succeed()
             .events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|evt| evt.ty == "validator_announcement")
             .take()
             .one()
@@ -262,7 +249,7 @@ fn test_announce() {
         // Check that the storage location was added.
         storage_locations_expected.insert(
             announcement3.validator,
-            BTreeSet::from([announcement3.storage_location]),
+            UniqueVec::new_unchecked(vec![announcement3.storage_location]),
         );
 
         suite

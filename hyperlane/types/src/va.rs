@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, HexByteArray},
+    grug::{Addr, HexByteArray, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -33,7 +33,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Query the storage locations of the given validators.
-    #[returns(BTreeMap<HexByteArray<20>, BTreeSet<String>>)]
+    #[returns(BTreeMap<HexByteArray<20>, UniqueVec<String>>)]
     AnnouncedStorageLocations {
         validators: BTreeSet<HexByteArray<20>>,
     },

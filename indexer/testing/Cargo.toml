@@ -1,0 +1,18 @@
+[package]
+edition = "2021"
+name    = "indexer-testing"
+publish = false
+version = "0.1.0"
+
+[dependencies]
+actix-codec   = { workspace = true }
+actix-http    = { workspace = true }
+actix-test    = { workspace = true }
+actix-web     = { workspace = true }
+anyhow        = { workspace = true }
+awc           = { workspace = true }
+futures-util  = { workspace = true }
+indexer-httpd = { workspace = true }
+sea-orm       = { workspace = true }
+serde         = { workspace = true }
+serde_json    = { workspace = true }

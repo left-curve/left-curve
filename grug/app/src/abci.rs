@@ -14,7 +14,7 @@ use {
         task::{Context, Poll},
     },
     tendermint::{
-        abci::{request, response, types::ExecTxResult, Code},
+        abci::{self, request, response, types::ExecTxResult, Code},
         block::Height,
         merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
@@ -192,17 +192,30 @@ where
                     .tx_outcomes
                     .into_iter()
                     .map(into_tm_tx_result)
-                    .collect();
+                    .collect::<AppResult<_>>()?;
+
+                let cron_events = outcome
+                    .cron_outcomes
+                    .into_iter()
+                    .enumerate()
+                    .map(|(id, cron)| {
+                        Ok(abci::Event {
+                            kind: format!("cron-{}", id),
+                            attributes: vec![abci::EventAttribute::V037(
+                                abci::v0_37::EventAttribute {
+                                    key: format!("cron-{}", id),
+                                    value: cron.to_json_string()?,
+                                    index: false,
+                                },
+                            )],
+                        })
+                    })
+                    .collect::<AppResult<_>>()?;
 
                 Ok(response::FinalizeBlock {
                     app_hash: into_tm_app_hash(outcome.app_hash),
-                    // We don't return events to Tendermint (perhaps with the
-                    // exception of IBC events which may be needed by relayers).
-                    // Instead we use `BlockOutcome` which is provided to the
-                    // indexer.
-                    // In the future, we may switch to another consensus engine
-                    // such as Malachite which doesn't deal with events at all.
-                    events: vec![],
+                    // `events` field is used for cron events.
+                    events: cron_events,
                     tx_results,
                     // We haven't implemented any mechanism to alter the
                     // validator set or consensus params yet.
@@ -330,23 +343,22 @@ fn from_tm_hash(bytes: Hash) -> Hash256 {
     }
 }
 
-fn into_tm_tx_result(outcome: TxOutcome) -> ExecTxResult {
-    match outcome.result {
-        GenericResult::Ok(_) => ExecTxResult {
-            code: Code::Ok,
-            gas_wanted: outcome.gas_limit as i64,
-            gas_used: outcome.gas_used as i64,
-            ..Default::default()
-        },
-        GenericResult::Err(err) => ExecTxResult {
-            code: into_tm_code_error(1),
-            codespace: "tx".to_string(),
-            log: err,
-            gas_wanted: outcome.gas_limit as i64,
-            gas_used: outcome.gas_used as i64,
-            ..Default::default()
-        },
-    }
+fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
+    let (code, codespace) = if outcome.result.is_ok() {
+        (Code::Ok, "")
+    } else {
+        (into_tm_code_error(1), "tx")
+    };
+
+    Ok(ExecTxResult {
+        code,
+        data: outcome.events.to_json_vec()?.into(),
+        codespace: codespace.to_string(),
+        log: outcome.result.to_json_string()?,
+        gas_wanted: outcome.gas_limit as i64,
+        gas_used: outcome.gas_used as i64,
+        ..Default::default()
+    })
 }
 
 fn into_tm_app_hash(hash: Hash256) -> AppHash {
