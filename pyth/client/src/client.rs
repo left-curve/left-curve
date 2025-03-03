@@ -139,19 +139,31 @@ impl PythClient {
                 match event {
                     Ok(Event::Open) => info!("Pyth SSE connection open"),
                     Ok(Event::Message(message)) => {
-                        if let Ok(vaas) = message.data.deserialize_json::<LatestVaaResponse>() {
-                            // Check if the thread should keep running.
-                            if !keep_running.load(Ordering::Relaxed) {
-                                return;
-                            }
+                        // Deserialize the message.
+                        match message.data.deserialize_json::<LatestVaaResponse>() {
+                            Ok(vaas) => {
+                                // Check if the thread should keep running.
+                                if !keep_running.load(Ordering::Relaxed) {
+                                    return;
+                                }
 
-                            shared.write_with(|mut shared_vaas| *shared_vaas = vaas.binary.data);
-                        } else {
-                            error!("Failed to deserialize the message: {:?}", message);
+                                // Update the shared value.
+                                shared
+                                    .write_with(|mut shared_vaas| *shared_vaas = vaas.binary.data);
+                            },
+                            Err(err) => {
+                                error!(
+                                    err = err.to_string(),
+                                    "Failed to deserialize Pyth event into LastestVaaResponse"
+                                );
+                            },
                         }
                     },
                     Err(err) => {
-                        error!("Error: {}", err);
+                        error!(
+                            err = err.to_string(),
+                            "Error while receiving the events from Pyth"
+                        );
                         es.close();
                     },
                 }

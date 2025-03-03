@@ -64,8 +64,8 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
         // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
         let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
-        if let Err(e) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
-            error!("Failed to update the Pyth IDs: {}", e);
+        if let Err(err) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
+            error!(err = err.to_string(), "Failed to update the Pyth IDs");
         };
 
         // Retrieve the VAAs.
