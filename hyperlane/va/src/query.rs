@@ -52,9 +52,7 @@ fn query_announced_storage_locations(
     validators
         .into_iter()
         .map(|v| {
-            let storage_locations = STORAGE_LOCATIONS
-                .load(ctx.storage, v)
-                .unwrap_or(UniqueVec::new(vec![])?);
+            let storage_locations = STORAGE_LOCATIONS.load(ctx.storage, v).unwrap_or_default();
             Ok((v, storage_locations))
         })
         .collect()

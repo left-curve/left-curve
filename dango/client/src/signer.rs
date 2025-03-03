@@ -35,6 +35,8 @@ where
     T: MaybeDefined<u32>,
 {
     pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
+        // If the account hasn't sent any transaction yet, use 0 as nonce.
+        // Otherwise, use the latest seen nonce + 1.
         let nonce = client
             .query_wasm_smart(self.address, spot::QuerySeenNoncesRequest {}, None)
             .await?
@@ -110,6 +112,7 @@ impl SingleSigner<Defined<u32>> {
         let nonce = self.query_next_nonce(client).await?;
 
         self.nonce = Defined::new(nonce);
+
         Ok(())
     }
 }

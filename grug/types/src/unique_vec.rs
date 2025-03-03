@@ -7,7 +7,10 @@ use {
 };
 
 /// A wrapper over a vector that guarantees that no element appears twice.
-#[derive(Serialize, BorshSerialize, Debug, Clone, PartialEq, Eq)]
+///
+/// This is useful if you want to ensure a collection of items is unique, and
+/// also _ordered_ (in which case `BTreeSet` isn't suitable).
+#[derive(Serialize, BorshSerialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct UniqueVec<T>(Vec<T>)
 where
     T: Eq + Hash;
@@ -41,6 +44,7 @@ where
         }
 
         self.0.push(item);
+
         Ok(())
     }
 }
