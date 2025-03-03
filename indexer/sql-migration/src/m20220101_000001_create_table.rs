@@ -1,6 +1,11 @@
 use {
-    crate::idens::{Block, Event, Message, Transaction},
-    sea_orm_migration::{prelude::*, schema::*},
+    crate::idens::{
+        Block, CommitmentStatus, Event, EventStatus, Message, Transaction, TransactionType,
+    },
+    sea_orm_migration::{
+        prelude::{extension::postgres::Type, *},
+        schema::*,
+    },
 };
 
 #[derive(DeriveMigrationName)]
@@ -29,12 +34,56 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
+            .create_type(
+                Type::create()
+                    .as_enum(EventStatus::Enum)
+                    .values(vec![
+                        EventStatus::Ok,
+                        EventStatus::Failed,
+                        EventStatus::NestedFailed,
+                        EventStatus::Handled,
+                    ])
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_type(
+                Type::create()
+                    .as_enum(TransactionType::Enum)
+                    .values(vec![TransactionType::Cron, TransactionType::Tx])
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_type(
+                Type::create()
+                    .as_enum(CommitmentStatus::Enum)
+                    .values(vec![
+                        CommitmentStatus::Committed,
+                        CommitmentStatus::Failed,
+                        CommitmentStatus::Reverted,
+                    ])
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
             .create_table(
                 Table::create()
                     .table(Transaction::Table)
                     .if_not_exists()
                     .col(pk_uuid(Transaction::Id))
-                    .col(integer(Transaction::TransactionType))
+                    .col(ColumnDef::new(Transaction::TransactionType)
+                    .enumeration(
+                        TransactionType::Enum,
+                        [
+                            TransactionType::Cron,
+                            TransactionType::Tx,
+                        ],
+                    )
+                    .not_null())
                     .col(integer(Transaction::TransactionIdx))
                     .col(date_time(Transaction::CreatedAt))
                     // TODO: add foreign key to blocks
@@ -92,9 +141,36 @@ impl MigrationTrait for Migration {
                     .col(date_time(Event::CreatedAt))
                     .col(string(Event::Type))
                     .col(string_null(Event::Method))
-                    .col(small_integer(Event::EventStatus))
-                    .col(small_integer(Event::CommitmentStatus))
-                    .col(small_integer(Event::TransactionType))
+                    .col(ColumnDef::new(Event::EventStatus)
+                    .enumeration(
+                        EventStatus::Enum,
+                        [
+                            EventStatus::Ok,
+                            EventStatus::Failed,
+                            EventStatus::NestedFailed,
+                            EventStatus::Handled,
+                        ],
+                    )
+                    .not_null())
+                    .col(ColumnDef::new(Event::CommitmentStatus)
+                    .enumeration(
+                        CommitmentStatus::Enum,
+                        [
+                            CommitmentStatus::Committed,
+                            CommitmentStatus::Failed,
+                            CommitmentStatus::Reverted,
+                        ],
+                    )
+                    .not_null())
+                    .col(ColumnDef::new(Event::TransactionType)
+                    .enumeration(
+                        TransactionType::Enum,
+                        [
+                            TransactionType::Cron,
+                            TransactionType::Tx,
+                        ],
+                    )
+                    .not_null())
                     .col(integer(Event::TransactionIdx))
                     .col(integer_null(Event::MessageIdx))
                     .col(integer(Event::EventIdx))

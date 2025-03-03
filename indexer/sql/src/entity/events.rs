@@ -66,16 +66,7 @@ impl From<FlatCategory> for TransactionType {
     }
 }
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    DeriveEntityModel,
-    Eq,
-    /* Default,
-     * serde :: Serialize,
-     * serde :: Deserialize, */
-)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "events")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
