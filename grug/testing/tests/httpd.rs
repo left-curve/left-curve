@@ -333,6 +333,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
@@ -422,6 +423,7 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
@@ -512,6 +514,7 @@ async fn graphql_subscribe_to_messages() -> anyhow::Result<()> {
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
@@ -614,6 +617,7 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
             // Enabling this here will cause the test to hang
             // suite.app.indexer.wait_for_finish();
         }
+
         Ok::<(), anyhow::Error>(())
     });
 
