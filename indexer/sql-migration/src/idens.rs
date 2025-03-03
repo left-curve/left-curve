@@ -34,42 +34,6 @@ pub enum Transaction {
 }
 
 #[derive(DeriveIden)]
-pub enum TransactionType {
-    #[sea_orm(iden = "transaction_type")]
-    Enum,
-    #[sea_orm(iden = "cron")]
-    Cron,
-    #[sea_orm(iden = "tx")]
-    Tx,
-}
-
-#[derive(DeriveIden)]
-pub enum EventStatus {
-    #[sea_orm(iden = "event_status")]
-    Enum,
-    #[sea_orm(iden = "ok")]
-    Ok,
-    #[sea_orm(iden = "failed")]
-    Failed,
-    #[sea_orm(iden = "nested_failed")]
-    NestedFailed,
-    #[sea_orm(iden = "handled")]
-    Handled,
-}
-
-#[derive(DeriveIden)]
-pub enum CommitmentStatus {
-    #[sea_orm(iden = "commitment_status")]
-    Enum,
-    #[sea_orm(iden = "committed")]
-    Committed,
-    #[sea_orm(iden = "failed")]
-    Failed,
-    #[sea_orm(iden = "reverted")]
-    Reverted,
-}
-
-#[derive(DeriveIden)]
 pub enum Message {
     #[sea_orm(iden = "messages")]
     Table,

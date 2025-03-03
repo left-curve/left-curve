@@ -3,14 +3,14 @@ use {
     sea_orm::entity::prelude::*,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "commitment_status")]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
+#[sea_orm(rs_type = "i16", db_type = "Integer")]
 pub enum CommitmentStatus {
-    #[sea_orm(string_value = "Committed")]
+    #[sea_orm(num_value = 0)]
     Committed,
-    #[sea_orm(string_value = "Failed")]
+    #[sea_orm(num_value = 1)]
     Failed,
-    #[sea_orm(string_value = "Reverted")]
+    #[sea_orm(num_value = 2)]
     Reverted,
 }
 
@@ -24,16 +24,16 @@ impl From<FlatCommitmentStatus> for CommitmentStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "event_status")]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
+#[sea_orm(rs_type = "i16", db_type = "Integer")]
 pub enum EventStatus {
-    #[sea_orm(string_value = "Ok")]
+    #[sea_orm(num_value = 0)]
     Ok,
-    #[sea_orm(string_value = "Failed")]
+    #[sea_orm(num_value = 1)]
     Failed,
-    #[sea_orm(string_value = "NestedFailed")]
+    #[sea_orm(num_value = 2)]
     NestedFailed,
-    #[sea_orm(string_value = "Handled")]
+    #[sea_orm(num_value = 3)]
     Handled,
 }
 
@@ -48,12 +48,12 @@ impl From<FlatEventStatus> for EventStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "transaction_type")]
+#[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
+#[sea_orm(rs_type = "i16", db_type = "Integer")]
 pub enum TransactionType {
-    #[sea_orm(string_value = "Cron")]
+    #[sea_orm(num_value = 0)]
     Cron,
-    #[sea_orm(string_value = "Tx")]
+    #[sea_orm(num_value = 1)]
     Tx,
 }
 
