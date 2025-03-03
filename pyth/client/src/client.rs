@@ -1,9 +1,11 @@
 use {
-    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
+    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty, StdError, StdResult},
     grug_app::Shared,
+    indexer_disk_saver::persistence::DiskPersistence,
     pyth_types::LatestVaaResponse,
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
+    sha2::{Digest, Sha256},
     std::{
         sync::{
             atomic::{AtomicBool, Ordering},
@@ -158,5 +160,65 @@ impl PythClient {
                 }
             }
         }
+    }
+}
+
+pub struct PythMockCache {}
+
+impl PythMockCache {
+    /// Get the latest VAA from the Pyth network.
+    pub fn get_latest_vaas<I>(&self, ids: I) -> StdResult<Vec<Binary>>
+    where
+        I: IntoIterator,
+        I::Item: ToString,
+    {
+        let filename = self.create_file_name(ids);
+
+        let cache_file = DiskPersistence::new(filename.clone().into(), true);
+        if cache_file.file_path.exists() {
+            return Ok(cache_file.load::<Vec<Binary>>().map_err(|e| match e {
+                indexer_disk_saver::error::Error::Std(std_error) => std_error,
+                _ => StdError::deserialize::<Vec<Binary>, _>("bosh", "failed"),
+            })?);
+        }
+
+        Err(StdError::DataNotFound {
+            ty: "cache",
+            key: filename,
+        })
+    }
+
+    /// Cache data.
+    pub fn store_data<I>(&self, ids: I, data: Vec<Vec<Binary>>) -> StdResult<()>
+    where
+        I: IntoIterator,
+        I::Item: ToString,
+    {
+        let filename = self.create_file_name(ids);
+
+        let cache_file = DiskPersistence::new(filename.clone().into(), true);
+        cache_file.save(&data).map_err(|e| match e {
+            indexer_disk_saver::error::Error::Std(std_error) => std_error,
+            _ => StdError::deserialize::<Vec<Binary>, _>("bosh", "failed"),
+        })?;
+
+        todo!()
+    }
+
+    fn create_file_name<I>(&self, ids: I) -> String
+    where
+        I: IntoIterator,
+        I::Item: ToString,
+    {
+        format!(
+            "{}/testdata/vaas_cache/{:x}",
+            std::env::var("CARGO_MANIFEST_DIR").unwrap(),
+            Sha256::digest(
+                ids.into_iter()
+                    .map(|id| id.to_string())
+                    .collect::<Vec<_>>()
+                    .join("__")
+            )
+        )
     }
 }
