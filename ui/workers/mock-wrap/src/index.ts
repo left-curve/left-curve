@@ -7,12 +7,7 @@ import {
   isValidAddress,
 } from "@left-curve/dango";
 import { Secp256k1, keccak256 } from "@left-curve/dango/crypto";
-import {
-  decodeHex,
-  deserializeJson,
-  encodeBase64,
-  serializeJson,
-} from "@left-curve/dango/encoding";
+import { decodeHex, deserializeJson, encodeHex, serializeJson } from "@left-curve/dango/encoding";
 import {
   Addr32,
   DANGO_DOMAIN,
@@ -127,8 +122,8 @@ export default {
       contract: addresses.hyperlane.mailbox,
       msg: {
         process: {
-          raw_message: encodeBase64(message),
-          raw_metadata: encodeBase64(metadata),
+          raw_message: encodeHex(message),
+          raw_metadata: encodeHex(metadata),
         },
       },
     });
