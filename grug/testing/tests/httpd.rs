@@ -10,16 +10,14 @@ use {
         graphql::types::{block::Block, message::Message, transaction::Transaction},
     },
     indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
-    serde_json::json,
-    std::{str::FromStr, sync::Arc},
-    tokio::sync::mpsc,
-    utils::{
+    indexer_testing::{
         build_app_service, call_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse,
     },
+    serde_json::json,
+    std::{str::FromStr, sync::Arc},
+    tokio::sync::mpsc,
 };
-
-pub mod utils;
 
 async fn create_block() -> anyhow::Result<(
     Context,
