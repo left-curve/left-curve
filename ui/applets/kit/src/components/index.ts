@@ -21,6 +21,7 @@ export { AssetCard } from "./foundation/AssetCard";
 export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";
+export { TextLoop } from "./foundation/TextLoop";
 
 /* ---------------------------------- Icons --------------------------------- */
 

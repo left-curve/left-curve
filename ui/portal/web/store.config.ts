@@ -44,10 +44,10 @@ export const config: Config = createConfig({
       },
       "hyp/eth/usdc": {
         type: "native",
-        name: "USD Circle",
+        name: "Ethereum USD Circle",
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
-        symbol: "USDC",
+        symbol: "EUSDC",
         denom: "hyp/eth/usdc",
         decimals: 6,
         coingeckoId: "usd-coin",

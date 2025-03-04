@@ -1,0 +1,37 @@
+import { type AppletMetadata, IconAddCross } from "@left-curve/applets-kit";
+import { useStorage } from "@left-curve/store-react";
+import { Link } from "@tanstack/react-router";
+import type React from "react";
+import { useApp } from "~/hooks/useApp";
+import { applets } from "../../applets";
+
+export const FavAppletSection: React.FC = () => {
+  const [favApplets] = useStorage<AppletMetadata[]>("fav_applets", {
+    initialValue: applets.slice(0, 3),
+  });
+
+  const { setSearchBarVisibility } = useApp();
+
+  return (
+    <div className="flex gap-4 md:gap-8 items-start flex-wrap md:justify-start w-full">
+      {favApplets.map((applet) => (
+        <div key={applet.title} className="flex flex-col items-center gap-2">
+          <Link
+            to={applet.path}
+            className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow bg-red-bean-50 rounded-md p-[10px]"
+          >
+            <img src={applet.img} alt={applet.title} className="w-full h-full" />
+          </Link>
+          <p className="text-sm font-bold">{applet.title}</p>
+        </div>
+      ))}
+
+      <div
+        className="h-16 w-16 md:h-20 md:w-20 shadow-card-shadow border-[1.43px] border-rice-100 text-rice-100 rounded-md p-[10px] flex items-center justify-center cursor-pointer"
+        onClick={() => setSearchBarVisibility(true)}
+      >
+        <IconAddCross />
+      </div>
+    </div>
+  );
+};

@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown, IconGear, useMediaQuery } from "@left-curve/applets-kit";
-import { NotificationsList, exampleNotifications } from "~/components/NotificationsList";
+import {
+  IconButton,
+  IconChevronDown,
+  IconGear,
+  twMerge,
+  useMediaQuery,
+} from "@left-curve/applets-kit";
+import { NotificationsList } from "~/components/NotificationsList";
 
 export const Route = createFileRoute("/(app)/_app/notifications")({
   component: NotificationComponent,
@@ -22,8 +28,8 @@ function NotificationComponent() {
         </h2>
         <IconGear className="w-[22px] h-[22px] text-rice-700" />
       </div>
-      <div className="bg-rice-25 w-full shadow-card-shadow rounded-3xl">
-        <NotificationsList notifications={exampleNotifications} />
+      <div className={twMerge("bg-rice-25 w-full shadow-card-shadow rounded-3xl")}>
+        <NotificationsList notifications={[]} />
       </div>
     </div>
   );

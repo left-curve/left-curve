@@ -42,7 +42,7 @@ export async function updateKey<transport extends Transport>(
   };
 
   const typedData: TypedDataParameter = {
-    type: [{ name: "configure_key", type: "UpdateKey" }],
+    type: [{ name: "update_key", type: "UpdateKey" }],
     extraTypes: {
       UpdateKey: [
         { name: "key_hash", type: "string" },
