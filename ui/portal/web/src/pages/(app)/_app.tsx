@@ -12,7 +12,9 @@ export const Route = createFileRoute("/(app)/_app")({
         />
 
         <Header />
-        <Outlet />
+        <div className="flex items-start justify-center w-full z-10 h-full relative">
+          <Outlet />
+        </div>
       </main>
     );
   },

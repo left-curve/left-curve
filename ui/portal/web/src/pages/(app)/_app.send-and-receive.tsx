@@ -77,7 +77,7 @@ function SendAndReceiveComponent() {
   });
 
   return (
-    <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start h-full z-10">
+    <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start ">
       <ResizerContainer className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full">
         <Tabs
           selectedTab={action}
