@@ -67,8 +67,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         </div>
 
         <div
-          className={twMerge("hidden", {
-            block: !bottomComponent && errorMessage,
+          className={twMerge("hidden text-left", {
+            block: errorMessage,
           })}
         >
           <span className="diatype-sm-regular text-error-500">{errorMessage}</span>
@@ -82,7 +82,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <span className="diatype-sm-regular text-gray-500">{hintMessage}</span>
         </div>
 
-        {bottomComponent ? bottomComponent : null}
+        {bottomComponent ? (
+          <div className="text-gray-500 diatype-sm-regular">{bottomComponent}</div>
+        ) : null}
       </div>
     );
   },
@@ -95,10 +97,10 @@ export { Input };
 const inputVariants = tv(
   {
     slots: {
-      base: "group flex flex-col data-[hidden=true]:hidden gap-1",
+      base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
-        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10 ",
-        "bg-rice-25 group-hover:bg-rice-50 border border-transparent group-active:border-rice-200",
+        "group relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10 ",
+        "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
       input: [
