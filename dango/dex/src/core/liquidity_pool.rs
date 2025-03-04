@@ -1,7 +1,11 @@
 use {
     crate::TradingFunction,
-    dango_types::dex::PairParams,
-    grug::{CoinPair, IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
+    anyhow::ensure,
+    dango_types::dex::{Direction, PairParams, SlippageControl},
+    grug::{
+        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
+        Uint128,
+    },
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -47,6 +51,46 @@ pub trait PassiveLiquidityPool {
         lp_token_supply: Uint128,
         lp_burn_amount: Uint128,
     ) -> anyhow::Result<(CoinPair, CoinPair)>;
+
+    /// Perform a swap in the pool. This function mutates the pool reserves.
+    ///
+    /// ## Inputs
+    ///
+    /// - `swap`: The swap request containing the information of the swap to be performed.
+    ///
+    /// ## Outputs
+    ///
+    /// - The updated pool reserves.
+    /// - The coin input to the swap.
+    /// - The coin output from the swap.
+    fn swap(
+        &self,
+        reserve: CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        amount: Uint128,
+        slippage: Option<SlippageControl>,
+    ) -> anyhow::Result<(CoinPair, Coin, Coin)>;
+
+    /// Simulate a swap in the pool. This function does not mutate the pool reserves.
+    ///
+    /// ## Inputs
+    ///
+    /// - `swap`: The swap request containing the information of the swap to be performed.
+    ///
+    /// ## Outputs
+    ///
+    /// - A tuple of coins, where the first coin is the offer and the second coin is the ask.
+    fn simulate_swap(
+        &self,
+        reserve: &CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        amount: Uint128,
+        slippage: Option<SlippageControl>,
+    ) -> anyhow::Result<(Coin, Coin)>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -113,6 +157,118 @@ impl PassiveLiquidityPool for PairParams {
         let refund = reserve.split(lp_burn_amount, lp_token_supply)?;
 
         Ok((reserve, refund))
+    }
+
+    fn swap(
+        &self,
+        mut reserve: CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        amount: Uint128,
+        slippage: Option<SlippageControl>,
+    ) -> anyhow::Result<(CoinPair, Coin, Coin)> {
+        let invariant_before = self.curve_invariant.invariant(&reserve)?;
+
+        let (coin_in, coin_out) = self.simulate_swap(
+            &reserve,
+            base_denom,
+            quote_denom,
+            direction,
+            amount,
+            slippage,
+        )?;
+
+        reserve.checked_add(&coin_in)?.checked_sub(&coin_out)?;
+
+        // Sanity check that the invariant is preserved. Should be larger
+        // after in all swaps with fee.
+        let invariant_after = self.curve_invariant.invariant(&reserve)?;
+        ensure!(
+            invariant_after >= invariant_before,
+            "invariant not preserved"
+        );
+
+        Ok((reserve, coin_in, coin_out))
+    }
+
+    fn simulate_swap(
+        &self,
+        reserves: &CoinPair,
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        amount: Uint128,
+        slippage: Option<SlippageControl>,
+    ) -> anyhow::Result<(Coin, Coin)> {
+        ensure!(
+            reserves.has(&base_denom) && reserves.has(&quote_denom),
+            "invalid reserves"
+        );
+
+        // Perform the swap calculations
+        let (coin_in, coin_out) = match direction {
+            Direction::Ask => {
+                let coin_in = Coin::new(base_denom.clone(), amount)?;
+                (
+                    coin_in.clone(),
+                    self.curve_invariant.solve_amount_out(
+                        coin_in.clone(),
+                        &quote_denom,
+                        self.swap_fee_rate.clone().into_inner(),
+                        reserves,
+                    )?,
+                )
+            },
+            Direction::Bid => {
+                let coin_out = Coin::new(base_denom.clone(), amount)?;
+                (
+                    self.curve_invariant.solve_amount_in(
+                        coin_out.clone(),
+                        &quote_denom,
+                        self.swap_fee_rate.clone().into_inner(),
+                        reserves,
+                    )?,
+                    coin_out,
+                )
+            },
+        };
+
+        // Enforce slippage control.
+        if let Some(slippage_control) = slippage {
+            match slippage_control {
+                SlippageControl::MinimumOut(min_out) => {
+                    ensure!(
+                        direction != Direction::Bid,
+                        "minimum out is only supported for direction: ask"
+                    );
+                    ensure!(coin_out.amount >= min_out, "slippage tolerance exceeded");
+                },
+                SlippageControl::MaximumIn(max_in) => {
+                    ensure!(
+                        direction != Direction::Ask,
+                        "maximum in is only supported for direction: bid"
+                    );
+                    ensure!(coin_in.amount <= max_in, "slippage tolerance exceeded");
+                },
+                SlippageControl::PriceLimit(price_limit) => {
+                    let execution_price =
+                        Udec128::checked_from_ratio(coin_out.amount, coin_in.amount)?;
+                    match direction {
+                        Direction::Bid => ensure!(
+                            execution_price <= price_limit,
+                            "slippage tolerance exceeded"
+                        ),
+                        Direction::Ask => ensure!(
+                            execution_price >= price_limit,
+                            "slippage tolerance exceeded"
+                        ),
+                    }
+                },
+            }
+        }
+
+        Ok((coin_in, coin_out))
     }
 }
 

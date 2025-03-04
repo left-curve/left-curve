@@ -161,16 +161,56 @@ impl CoinPair {
         ]))
     }
 
+    /// Return true if the coin pair has the given denom.
     pub fn has(&self, denom: &Denom) -> bool {
         self.first().denom == denom || self.second().denom == denom
     }
 
+    /// Return the amount of the given denom in the coin pair.
     pub fn amount_of(&self, denom: &Denom) -> Uint128 {
         if self.first().denom == denom {
             *self.first().amount
         } else {
             *self.second().amount
         }
+    }
+
+    /// Add a coin to the coin pair.
+    ///
+    /// Error if the coin pair doesn't have the denom or if the addition
+    /// overflows.
+    pub fn checked_add(&mut self, other: &Coin) -> StdResult<&mut Self> {
+        if self.first().denom == &other.denom {
+            self.first_mut().amount.checked_add_assign(other.amount)?;
+        } else if self.second().denom == &other.denom {
+            self.second_mut().amount.checked_add_assign(other.amount)?;
+        } else {
+            return Err(StdError::invalid_coins(format!(
+                "can't add coin {} to coin pair {:?}",
+                other, self
+            )));
+        }
+
+        Ok(self)
+    }
+
+    /// Subtract a coin from the coin pair.
+    ///
+    /// Error if the coin pair doesn't have the denom or if the subtraction
+    /// underflows.
+    pub fn checked_sub(&mut self, other: &Coin) -> StdResult<&mut Self> {
+        if self.first().denom == &other.denom {
+            self.first_mut().amount.checked_sub_assign(other.amount)?;
+        } else if self.second().denom == &other.denom {
+            self.second_mut().amount.checked_sub_assign(other.amount)?;
+        } else {
+            return Err(StdError::invalid_coins(format!(
+                "can't subtract coin {} from coin pair {:?}",
+                other, self
+            )));
+        }
+
+        Ok(self)
     }
 }
 
