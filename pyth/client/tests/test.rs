@@ -8,7 +8,7 @@ use {
 };
 
 #[tokio::test]
-async fn test_client() {
+async fn test_client_sse_subscription() {
     setup_tracing_subscriber(tracing::Level::INFO);
 
     let api = MockApi;
@@ -43,5 +43,22 @@ async fn test_client() {
         client.close();
         let ids = NonEmpty::new(vec![BTC_USD_ID, ETH_USD_ID, ATOM_USD_ID]).unwrap();
         shared = client.run_streaming(ids);
+    }
+}
+
+#[test]
+fn test_client_latest_vaas() {
+    let mut pyth_client = PythClient::new(PYTH_URL);
+
+    let ids = vec![BTC_USD_ID, ETH_USD_ID];
+    let vaas = pyth_client.get_latest_vaas(ids).unwrap();
+
+    assert!(!vaas.is_empty());
+
+    for vaa in vaas {
+        let vaa = PythVaa::new(&MockApi, vaa.into_inner()).unwrap();
+        for feed in vaa.unverified() {
+            println!("feed: {:?}", feed);
+        }
     }
 }

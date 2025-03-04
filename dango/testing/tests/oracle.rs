@@ -2,8 +2,8 @@ use {
     dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         constants::{
-            ATOM_DENOM, BNB_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM, USDC_DENOM,
-            WBTC_DENOM, XRP_DENOM,
+            ATOM_DENOM, BNB_DENOM, BTC_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM,
+            USDC_DENOM, WBTC_DENOM, XRP_DENOM,
         },
         oracle::{ExecuteMsg, PrecisionlessPrice, PythVaa, QueryPriceRequest},
     },
@@ -11,10 +11,11 @@ use {
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
     },
     grug_app::NaiveProposalPreparer,
+    pyth_client::PythClient,
     pyth_sdk::PriceFeed,
     pyth_types::{
-        PythId, ATOM_USD_ID, BNB_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SHIB_USD_ID,
-        SOL_USD_ID, USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
+        PythId, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIB_USD_ID,
+        SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
     },
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
@@ -141,13 +142,15 @@ fn oracle() {
 fn double_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let btc_vaas_raw = get_latest_vaas([WBTC_USD_ID]).unwrap();
-        let eth_vaas_raw = get_latest_vaas([ETH_USD_ID]).unwrap();
+        let btc_vaas_raw = pyth_client.get_latest_vaas(vec![BTC_USD_ID]).unwrap();
+        let eth_vaas_raw = pyth_client.get_latest_vaas(vec![ETH_USD_ID]).unwrap();
 
         let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
             .unwrap()
@@ -198,7 +201,7 @@ fn double_vaas() {
         {
             let current_price = suite
                 .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: WBTC_DENOM.clone(),
+                    denom: BTC_DENOM.clone(),
                 })
                 .unwrap();
 
@@ -263,6 +266,8 @@ fn double_vaas() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),
         BNB_USD_ID  => BNB_DENOM.clone(),
@@ -271,7 +276,7 @@ fn multiple_vaas() {
         SHIB_USD_ID => SHIB_DENOM.clone(),
         SOL_USD_ID  => SOL_DENOM.clone(),
         USDC_USD_ID => USDC_DENOM.clone(),
-        WBTC_USD_ID => WBTC_DENOM.clone(),
+        BTC_USD_ID => BTC_DENOM.clone(),
         XRP_USD_ID  => XRP_DENOM.clone(),
     };
 
@@ -281,7 +286,7 @@ fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let vaas_raw = get_latest_vaas(id_denoms.keys()).unwrap();
+        let vaas_raw = pyth_client.get_latest_vaas(id_denoms.keys()).unwrap();
 
         let vaas = vaas_raw
             .iter()
@@ -357,22 +362,4 @@ fn multiple_vaas() {
         // sleep for 1 second
         thread::sleep(Duration::from_secs(1));
     }
-}
-
-/// Return JSON string of the latest VAA from Pyth network.
-fn get_latest_vaas<I>(ids: I) -> reqwest::Result<Vec<Binary>>
-where
-    I: IntoIterator,
-    I::Item: ToString,
-{
-    let ids = ids
-        .into_iter()
-        .map(|id| ("ids[]", id.to_string()))
-        .collect::<Vec<_>>();
-
-    reqwest::blocking::Client::new()
-        .get(format!("{PYTH_URL}/api/latest_vaas"))
-        .query(&ids)
-        .send()?
-        .json()
 }

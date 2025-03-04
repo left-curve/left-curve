@@ -46,6 +46,7 @@ dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
 proptest              = { workspace = true }
+pyth-client           = { workspace = true }
 pyth-sdk              = { workspace = true }
 pyth-types            = { workspace = true }
 rand                  = { workspace = true }

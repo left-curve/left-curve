@@ -1,12 +1,15 @@
 use {
-    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty, StdError, StdResult},
+    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty, StdError},
     grug_app::Shared,
-    indexer_disk_saver::persistence::DiskPersistence,
+    indexer_disk_saver::{error::Error, persistence::DiskPersistence},
     pyth_types::LatestVaaResponse,
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     sha2::{Digest, Sha256},
     std::{
+        collections::HashMap,
+        env,
+        path::Path,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -22,6 +25,7 @@ use {
 pub struct PythClient {
     base_url: String,
     keep_running: Arc<AtomicBool>,
+    middleware: Option<PythMockCache>,
 }
 
 impl PythClient {
@@ -29,7 +33,14 @@ impl PythClient {
         Self {
             base_url: base_url.into(),
             keep_running: Arc::new(AtomicBool::new(false)),
+            middleware: None,
         }
+    }
+
+    /// Use the middleware to be able to use cached data.
+    pub fn with_middleware(mut self) -> Self {
+        self.middleware = Some(PythMockCache::new());
+        self
     }
 
     /// Start a SSE connection to the Pyth network.
@@ -73,24 +84,47 @@ impl PythClient {
     }
 
     /// Get the latest VAA from the Pyth network.
-    pub fn get_latest_vaas<I>(&self, ids: I) -> reqwest::Result<Vec<Binary>>
+    pub fn get_latest_vaas<I>(&mut self, ids: I) -> reqwest::Result<Vec<Binary>>
     where
-        I: IntoIterator,
+        I: IntoIterator + Clone,
         I::Item: ToString,
     {
-        let ids = ids
-            .into_iter()
-            .map(|id| ("ids[]", id.to_string()))
-            .collect::<Vec<_>>();
+        // If there is the middleware, try to get the data from it.
+        if let Some(middleware) = &mut self.middleware {
+            // This code should be reached only in tests.
+            // Unwrap in order to fail if the file is not found.
+            return Ok(middleware.get_latest_vaas(ids.clone()).unwrap());
+        }
 
         Ok(reqwest::blocking::Client::new()
-            .get(format!("{}/api/latest_vaas", self.base_url))
-            .query(&ids)
+            .get(format!("{}/v2/updates/price/latest", self.base_url))
+            .query(&PythClient::create_request_params(ids.clone()))
             .send()?
             .error_for_status()?
             .json::<LatestVaaResponse>()?
             .binary
             .data)
+    }
+
+    fn create_request_params<I>(ids: I) -> Vec<(&'static str, String)>
+    where
+        I: IntoIterator,
+        I::Item: ToString,
+    {
+        let mut params = ids
+            .into_iter()
+            .map(|id| ("ids[]", id.to_string()))
+            .collect::<Vec<_>>();
+
+        params.push(("parsed", "false".to_string()));
+        params.push(("encoding", "base64".to_string()));
+        // If, for some reason, the price id is invalid, ignore it
+        // instead of making the request fail.
+        // TODO: remove? The request still fail with random id. To be ignored,
+        // the id must respect the correct id format (len, string in hex).
+        params.push(("ignore_invalid_price_ids", "true".to_string()));
+
+        params
     }
 
     /// Inner function to run the SSE connection.
@@ -103,23 +137,12 @@ impl PythClient {
         I: IntoIterator + Lengthy,
         I::Item: ToString,
     {
-        let ids = ids
-            .into_inner()
-            .into_iter()
-            .map(|id| ("ids[]", id.to_string()))
-            .collect::<Vec<_>>();
+        let params = PythClient::create_request_params(ids.into_inner());
 
         loop {
             let builder = Client::new()
                 .get(format!("{}/v2/updates/price/stream", base_url))
-                .query(&ids)
-                .query(&[("parsed", "false")])
-                .query(&[("encoding", "base64")])
-                // If, for some reason, the price id is invalid, ignore it
-                // instead of making the request fail.
-                // TODO: remove? The request still fail with random id. To be ignored,
-                // the id must respect the correct id format (len, string in hex).
-                .query(&[("ignore_invalid_price_ids", "true")]);
+                .query(&params);
 
             // Connect to EventSource.
             // This method will return Err only if the RequestBuilder cannot be cloned.
@@ -154,7 +177,7 @@ impl PythClient {
                             Err(err) => {
                                 error!(
                                     err = err.to_string(),
-                                    "Failed to deserialize Pyth event into LastestVaaResponse"
+                                    "Failed to deserialize Pyth event into LatestVaaResponse"
                                 );
                             },
                         }
@@ -172,33 +195,57 @@ impl PythClient {
     }
 }
 
-pub struct PythMockCache {}
+pub struct PythMockCache {
+    stored_vaas: HashMap<String, std::vec::IntoIter<Vec<Binary>>>,
+}
 
 impl PythMockCache {
+    pub fn new() -> Self {
+        Self {
+            stored_vaas: HashMap::new(),
+        }
+    }
+
     /// Get the latest VAA from the Pyth network.
-    pub fn get_latest_vaas<I>(&self, ids: I) -> StdResult<Vec<Binary>>
+    pub fn get_latest_vaas<I>(&mut self, ids: I) -> Result<Vec<Binary>, Error>
     where
         I: IntoIterator,
         I::Item: ToString,
     {
-        let filename = self.create_file_name(ids);
+        let mut return_vaas = vec![];
 
-        let cache_file = DiskPersistence::new(filename.clone().into(), true);
-        if cache_file.file_path.exists() {
-            return Ok(cache_file.load::<Vec<Binary>>().map_err(|e| match e {
-                indexer_disk_saver::error::Error::Std(std_error) => std_error,
-                _ => StdError::deserialize::<Vec<Binary>, _>("bosh", "failed"),
-            })?);
+        for id in ids {
+            let filename = self.create_file_name(vec![id]);
+
+            // If the file is not in memory, try to read from disk.
+            if !self.stored_vaas.contains_key(&filename) {
+                let cache_file = DiskPersistence::new(filename.clone().into(), true);
+                if cache_file.file_path.exists() {
+                    let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
+                    self.stored_vaas
+                        .insert(filename.clone(), loaded_vaas.into_iter());
+                }
+            }
+
+            // Check if the vaas are stored in memory.
+            if let Some(vaas_iter) = self.stored_vaas.get_mut(&filename) {
+                if let Some(vaas) = vaas_iter.next() {
+                    return_vaas.extend(vaas);
+                }
+            } else {
+                return Err(StdError::DataNotFound {
+                    ty: "cache",
+                    key: filename,
+                }
+                .into());
+            }
         }
 
-        Err(StdError::DataNotFound {
-            ty: "cache",
-            key: filename,
-        })
+        Ok(return_vaas)
     }
 
     /// Cache data.
-    pub fn store_data<I>(&self, ids: I, data: Vec<Vec<Binary>>) -> StdResult<()>
+    pub fn store_data<I>(&self, ids: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
     where
         I: IntoIterator,
         I::Item: ToString,
@@ -206,12 +253,9 @@ impl PythMockCache {
         let filename = self.create_file_name(ids);
 
         let cache_file = DiskPersistence::new(filename.clone().into(), true);
-        cache_file.save(&data).map_err(|e| match e {
-            indexer_disk_saver::error::Error::Std(std_error) => std_error,
-            _ => StdError::deserialize::<Vec<Binary>, _>("bosh", "failed"),
-        })?;
+        cache_file.save(&data)?;
 
-        todo!()
+        Ok(())
     }
 
     fn create_file_name<I>(&self, ids: I) -> String
@@ -219,15 +263,26 @@ impl PythMockCache {
         I: IntoIterator,
         I::Item: ToString,
     {
+        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let mut path = Path::new(&manifest_dir);
+
+        // Risali alla root del workspace
+        while path.parent().is_some() {
+            path = path.parent().unwrap();
+            let cargo_toml = path.join("Cargo.lock");
+            if cargo_toml.exists() {
+                break;
+            }
+        }
+
+        // Sort the ids to have a unique file name.
+        let mut ids = ids.into_iter().map(|id| id.to_string()).collect::<Vec<_>>();
+        ids.sort();
+
         format!(
-            "{}/testdata/vaas_cache/{:x}",
-            std::env::var("CARGO_MANIFEST_DIR").unwrap(),
-            Sha256::digest(
-                ids.into_iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>()
-                    .join("__")
-            )
+            "{}/pyth/client/testdata/{:x}",
+            path.to_str().unwrap(),
+            Sha256::digest(ids.join("__"))
         )
     }
 }

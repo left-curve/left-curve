@@ -3339,6 +3339,7 @@ dependencies = [
  "indexer-sql",
  "k256",
  "proptest",
+ "pyth-client",
  "pyth-sdk 0.8.0",
  "pyth-types",
  "rand",
