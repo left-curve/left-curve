@@ -14,7 +14,7 @@ use {
             atomic::{AtomicBool, Ordering},
             Arc,
         },
-        thread::{self},
+        thread::{self, sleep},
         time::Duration,
     },
     tokio::runtime::Runtime,
@@ -65,6 +65,16 @@ impl PythClient {
         // guarantee that the old thread has already stopped.
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running_clone = self.keep_running.clone();
+
+        // If the middleware, run the middleware thread.
+        if let Some(_) = &mut self.middleware {
+            let mut middleware = PythMockCache::new();
+            thread::spawn(move || {
+                middleware.run_streaming(ids, shared_clone, keep_running_clone);
+            });
+
+            return shared;
+        }
 
         thread::spawn(|| {
             let rt = Runtime::new().unwrap();
@@ -203,6 +213,41 @@ impl PythMockCache {
     pub fn new() -> Self {
         Self {
             stored_vaas: HashMap::new(),
+        }
+    }
+
+    /// Inner function to run the SSE connection.
+    fn run_streaming<I>(
+        &mut self,
+        ids: NonEmpty<I>,
+        shared: Shared<Vec<Binary>>,
+        keep_running: Arc<AtomicBool>,
+    ) where
+        I: IntoIterator + Lengthy,
+        I::Item: ToString,
+    {
+        let ids = ids
+            .into_inner()
+            .into_iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>();
+
+        loop {
+            // Check if the thread should keep running.
+            if !keep_running.load(Ordering::Relaxed) {
+                return;
+            }
+
+            // Retrieve the vaas
+            let vaas = self.get_latest_vaas(ids.clone()).unwrap();
+
+            // Update the shared value.
+            shared.write_with(|mut shared_vaas| {
+                *shared_vaas = vaas;
+            });
+
+            // Sleep for 0,5 seconds.
+            sleep(Duration::from_millis(500));
         }
     }
 
