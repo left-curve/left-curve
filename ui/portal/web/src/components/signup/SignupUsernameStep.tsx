@@ -67,19 +67,21 @@ export const SignupUsernameStep: React.FC = () => {
           accountType: AccountType.Spot,
         });
 
-        const salt = createAccountSalt({ key, keyHash, username });
+        const secret = Math.floor(Math.random() * 0x100000000);
+
+        const salt = createAccountSalt({ key, keyHash, secret });
         const address = computeAddress({
           deployer: addresses.accountFactory,
           codeHash: accountCodeHash,
           salt,
         });
 
-        const response = await fetch("https://mock-ibc.left-curve.workers.dev", {
+        const response = await fetch("https://mock-warp.left-curve.workers.dev", {
           method: "POST",
           body: JSON.stringify({ address }),
         });
         if (!response.ok) throw new Error("error: failed to send funds");
-        await registerUser(client, { key, keyHash, username });
+        await registerUser(client, { key, keyHash, username, secret });
 
         await wait(1000);
         await connector.connect({ username, chainId, keyHash });

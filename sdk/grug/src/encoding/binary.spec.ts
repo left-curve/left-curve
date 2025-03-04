@@ -13,7 +13,7 @@ describe("serializing and deserializing complex types", () => {
           },
         },
       },
-      '{"configure":{"new_cfg":{"bank":"0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838"}}}',
+      '{"update_config":{"new_cfg":{"bank":"0xccf2d114c23acb6735aa28418310cb20f042f1d2c3974969ac103376dae70838"}}}',
     ],
     [
       "query balances request",

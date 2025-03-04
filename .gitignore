@@ -35,6 +35,7 @@ app.pages.ts
 
 # Envs
 **/.env
+**/*.vars
 
 # Workers
 **/.wrangler

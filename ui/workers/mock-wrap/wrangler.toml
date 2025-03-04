@@ -2,7 +2,11 @@
 compatibility_date  = "2024-10-04"
 compatibility_flags = ["nodejs_compat"]
 main                = "build/index.js"
-name                = "mock-ibc"
+name                = "mock-warp"
+
+[[kv_namespaces]]
+binding = "WARP_KV"
+id      = "680ddd315dc145098d87822dd1d68dd2"
 
 [build]
 command   = "pnpm build"
