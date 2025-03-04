@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Coins, Config, Hash256, Json, JsonSerExt, LengthBounded, MaxLength, NonEmpty,
-        StdError, StdResult,
+        Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
+        NonEmpty, StdError, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -28,6 +28,12 @@ pub struct Tx {
     pub msgs: NonEmpty<Vec<Message>>,
     pub data: Json,
     pub credential: Json,
+}
+
+impl Tx {
+    pub fn tx_hash(&self) -> StdResult<Hash256> {
+        Ok(self.to_json_vec()?.hash256())
+    }
 }
 
 /// A transaction but without a gas limit or credential.

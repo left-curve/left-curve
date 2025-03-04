@@ -1,20 +1,21 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, INCOMING_ORDERS,
-        NEXT_ORDER_ID, ORDERS, PAIRS,
+        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
+        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
     },
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         dex::{
-            Direction, ExecuteMsg, InstantiateMsg, OrderCanceled, OrderFilled, OrderId,
-            OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
+            OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
+            LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
+        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
+        SudoCtx, Udec128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -29,30 +30,41 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::BatchUpdatePairs(updates) => {
-            ensure!(
-                ctx.sender == ctx.querier.query_owner()?,
-                "only the owner can update a trading pair parameters"
-            );
-
-            batch_update_pairs(ctx, updates)
+        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+        ExecuteMsg::BatchUpdateOrders { creates, cancels } => {
+            batch_update_orders(ctx, creates, cancels)
         },
-        ExecuteMsg::SubmitOrder {
+        ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
-            direction,
-            amount,
-            price,
-        } => submit_order(ctx, base_denom, quote_denom, direction, amount, price),
-        ExecuteMsg::CancelOrders { order_ids } => cancel_orders(ctx, order_ids),
+        } => provide_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::WithdrawLiquidity {
+            base_denom,
+            quote_denom,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom),
     }
 }
 
 #[inline]
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()? || ctx.sender == GENESIS_SENDER,
+        "only the owner can update a trading pair parameters"
+    );
+
     let mut events = Vec::with_capacity(updates.len());
 
     for update in updates {
+        ensure!(
+            update
+                .params
+                .lp_denom
+                .starts_with(&[NAMESPACE.clone(), LP_NAMESPACE.clone()]),
+            "LP token denom doesn't start with the correct prefix: `{}/{}/...`",
+            NAMESPACE.as_ref(),
+            LP_NAMESPACE.as_ref()
+        );
+
         PAIRS.save(
             ctx.storage,
             (&update.base_denom, &update.quote_denom),
@@ -69,127 +81,57 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 }
 
 #[inline]
-fn submit_order(
-    ctx: MutableCtx,
-    base_denom: Denom,
-    quote_denom: Denom,
-    direction: Direction,
-    amount: Uint128,
-    price: Udec128,
+fn batch_update_orders(
+    mut ctx: MutableCtx,
+    creates: Vec<CreateLimitOrderRequest>,
+    cancels: Option<OrderIds>,
 ) -> anyhow::Result<Response> {
-    ensure!(
-        PAIRS.has(ctx.storage, (&base_denom, &quote_denom)),
-        "pair not found with base `{base_denom}` and quote `{quote_denom}`"
-    );
-
-    let deposit = ctx.funds.into_one_coin()?;
-
-    match direction {
-        Direction::Bid => {
-            let amount = amount.checked_mul_dec_ceil(price)?;
-
-            ensure!(
-                deposit.denom == quote_denom,
-                "incorrect deposit denom for BUY order! expecting: {}, found: {}",
-                quote_denom,
-                deposit.denom
-            );
-
-            ensure!(
-                deposit.amount == amount,
-                "incorrect deposit amount for BUY order! expecting: {}, found: {}",
-                amount,
-                deposit.amount
-            );
-        },
-        Direction::Ask => {
-            ensure!(
-                deposit.denom == base_denom,
-                "incorrect deposit denom for SELL order! expecting: {}, found: {}",
-                base_denom,
-                deposit.denom
-            );
-
-            ensure!(
-                deposit.amount == amount,
-                "incorrect deposit amount for SELL order! expecting: {}, found: {}",
-                amount,
-                deposit.amount
-            );
-        },
-    }
-
-    let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
-
-    // For BUY orders, invert the order ID. This is necessary for enforcing
-    // price-time priority. See the docs on `OrderId` for details.
-    if direction == Direction::Bid {
-        order_id = !order_id;
-    }
-
-    INCOMING_ORDERS.save(
-        ctx.storage,
-        order_id,
-        &(
-            (
-                (base_denom.clone(), quote_denom.clone()),
-                direction,
-                price,
-                order_id,
-            ),
-            Order {
-                user: ctx.sender,
-                amount,
-                remaining: amount,
-            },
-        ),
-    )?;
-
-    Ok(Response::new().add_event(OrderSubmitted {
-        order_id,
-        user: ctx.sender,
-        base_denom,
-        quote_denom,
-        direction,
-        price,
-        amount,
-        deposit,
-    })?)
-}
-
-#[inline]
-fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Result<Response> {
+    let mut deposits = Coins::new();
     let mut refunds = Coins::new();
     let mut events = Vec::new();
 
-    for order_id in order_ids {
-        let (((base_denom, quote_denom), direction, price, _), order) = match (
-            ORDERS.idx.order_id.may_load(ctx.storage, order_id)?,
-            INCOMING_ORDERS.may_load(ctx.storage, order_id)?,
-        ) {
-            // If the order is in the persistent storage, then remove it from
-            // there.
-            (Some((order_key, order)), None) => {
-                ORDERS.remove(ctx.storage, order_key.clone())?;
-                (order_key, order)
-            },
-            // If the order is in the incoming orders map, then remove it from
-            // there. This should be rare, as the trader would need to submit
-            // then remove the order in the same block.
-            (None, Some((order_key, order))) => {
-                INCOMING_ORDERS.remove(ctx.storage, order_id);
-                (order_key, order)
-            },
-            // Order is not found in either place, error.
-            (None, None) => {
-                bail!("order with id `{order_id}` not found");
-            },
-            // Order is found in both maps. This should never happen, indicating
-            // a serious bug. We panic and halt the chain for investigation.
-            (Some(_), Some(_)) => {
-                unreachable!("order with id `{order_id}` found in both maps");
-            },
-        };
+    // --------------------------- 1. Cancel orders ----------------------------
+
+    // First, collect all orders to be cancelled into memory.
+    let orders = match cancels {
+        // Cancel all orders.
+        Some(OrderIds::All) => ORDERS
+            .idx
+            .user
+            .prefix(ctx.sender)
+            .range(ctx.storage, None, None, IterationOrder::Ascending)
+            .map(|order| Ok((order?, false)))
+            .chain(
+                INCOMING_ORDERS
+                    .prefix(ctx.sender)
+                    .values(ctx.storage, None, None, IterationOrder::Ascending)
+                    .map(|order| Ok((order?, true))),
+            )
+            .collect::<StdResult<Vec<_>>>()?,
+        // Cancel selected orders.
+        Some(OrderIds::Some(order_ids)) => order_ids
+            .into_iter()
+            .map(|order_id| {
+                // First see if the order is the persistent storage. If not,
+                // check the transient storage.
+                if let Some(order) = ORDERS.idx.order_id.may_load(ctx.storage, order_id)? {
+                    Ok((order, false))
+                } else if let Some(order) =
+                    INCOMING_ORDERS.may_load(ctx.storage, (ctx.sender, order_id))?
+                {
+                    Ok((order, true))
+                } else {
+                    bail!("order with id `{order_id}` not found");
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?,
+        // Do nothing.
+        None => Vec::new(),
+    };
+
+    // Now, cancel the orders one by one.
+    for ((order_key, order), is_incoming) in orders {
+        let ((base_denom, quote_denom), direction, price, order_id) = &order_key;
 
         ensure!(
             ctx.sender == order.user,
@@ -199,7 +141,7 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
         let refund = match direction {
             Direction::Bid => Coin {
                 denom: quote_denom.clone(),
-                amount: order.remaining.checked_mul_dec_floor(price)?,
+                amount: order.remaining.checked_mul_dec_floor(*price)?,
             },
             Direction::Ask => Coin {
                 denom: base_denom.clone(),
@@ -207,18 +149,203 @@ fn cancel_orders(ctx: MutableCtx, order_ids: BTreeSet<OrderId>) -> anyhow::Resul
             },
         };
 
+        refunds.insert(refund.clone())?;
+
         events.push(ContractEvent::new("order_canceled", OrderCanceled {
-            order_id,
+            order_id: *order_id,
             remaining: order.remaining,
-            refund: refund.clone(),
+            refund,
         })?);
 
-        refunds.insert(refund)?;
+        if is_incoming {
+            INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
+        } else {
+            ORDERS.remove(ctx.storage, order_key)?;
+        }
     }
 
+    // --------------------------- 2. Create orders ----------------------------
+
+    for order in creates {
+        ensure!(
+            PAIRS.has(ctx.storage, (&order.base_denom, &order.quote_denom)),
+            "pair not found with base `{}` and quote `{}`",
+            order.base_denom,
+            order.quote_denom
+        );
+
+        let deposit = match order.direction {
+            Direction::Bid => Coin {
+                denom: order.quote_denom.clone(),
+                amount: order.amount.checked_mul_dec_ceil(order.price)?,
+            },
+            Direction::Ask => Coin {
+                denom: order.base_denom.clone(),
+                amount: order.amount,
+            },
+        };
+
+        let (mut order_id, _) = NEXT_ORDER_ID.increment(ctx.storage)?;
+
+        // For BUY orders, invert the order ID. This is necessary for enforcing
+        // price-time priority. See the docs on `OrderId` for details.
+        if order.direction == Direction::Bid {
+            order_id = !order_id;
+        }
+
+        deposits.insert(deposit.clone())?;
+
+        events.push(ContractEvent::new("order_submitted", OrderSubmitted {
+            order_id,
+            user: ctx.sender,
+            base_denom: order.base_denom.clone(),
+            quote_denom: order.quote_denom.clone(),
+            direction: order.direction,
+            price: order.price,
+            amount: order.amount,
+            deposit,
+        })?);
+
+        INCOMING_ORDERS.save(
+            ctx.storage,
+            (ctx.sender, order_id),
+            &(
+                (
+                    (order.base_denom, order.quote_denom),
+                    order.direction,
+                    order.price,
+                    order_id,
+                ),
+                Order {
+                    user: ctx.sender,
+                    amount: order.amount,
+                    remaining: order.amount,
+                },
+            ),
+        )?;
+    }
+
+    // ----------------------------- 3. Wrap it up -----------------------------
+
+    // Compute the amount of tokens that should be sent back to the users.
+    //
+    // This equals the amount that user has sent to the contract, plus the
+    // amount that are to be refunded from the cancaled orders, and the amount
+    // that the user is supposed to deposit for creating the new orders.
+    ctx.funds
+        .insert_many(refunds)?
+        .deduct_many(deposits)
+        .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
+
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, refunds)?)
+        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
         .add_subevents(events))
+}
+
+#[inline]
+fn provide_liquidity(
+    mut ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> anyhow::Result<Response> {
+    // Get the deposited funds.
+    let deposit = ctx
+        .funds
+        .take_pair((base_denom.clone(), quote_denom.clone()))?;
+
+    // The user must have not sent any funds other the base/quote denoms.
+    ensure!(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}` and `{}`",
+        ctx.funds,
+        base_denom,
+        quote_denom
+    );
+
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserve. Default to empty if not found.
+    let reserve = RESERVES
+        .may_load(ctx.storage, (&base_denom, &quote_denom))?
+        .map_or_else(
+            || CoinPair::new_empty(base_denom.clone(), quote_denom.clone()),
+            Ok,
+        )?;
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Compute the amount of LP tokens to mint.
+    let (reserve, lp_mint_amount) = pair.add_liquidity(reserve, lp_token_supply, deposit)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::new().add_message({
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: ctx.sender,
+                denom: pair.lp_denom,
+                amount: lp_mint_amount,
+            },
+            Coins::new(), // No funds needed for minting
+        )?
+    }))
+    // TODO: add event
+}
+
+/// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
+/// The underlying assets will be returned to the sender.
+#[inline]
+fn withdraw_liquidity(
+    mut ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> anyhow::Result<Response> {
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserve.
+    let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Query the LP token supply.
+    let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
+
+    // Get the sent LP tokens.
+    let lp_burn_amount = ctx.funds.take(pair.lp_denom.clone()).amount;
+
+    // The user must have not sent any funds other the LP token.
+    ensure!(
+        ctx.funds.is_empty(),
+        "unexpected deposit: {}; expecting `{}`",
+        ctx.funds,
+        pair.lp_denom
+    );
+
+    // Calculate the amount of each asset to return
+    let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
+
+    // Save the updated pool reserve.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    Ok(Response::new()
+        .add_message({
+            let bank = ctx.querier.query_bank()?;
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    denom: pair.lp_denom,
+                    amount: lp_burn_amount,
+                },
+                Coins::new(), // No funds needed for burning
+            )?
+        })
+        .add_message(Message::transfer(ctx.sender, refunds)?))
+    // TODO: add events
 }
 
 /// Match and fill orders using the uniform price auction strategy.

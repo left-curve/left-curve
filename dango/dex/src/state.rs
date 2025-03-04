@@ -1,18 +1,25 @@
 use {
     dango_types::dex::{Direction, OrderId, PairParams},
-    grug::{Addr, Counter, Denom, IndexedMap, Map, Udec128, Uint128, UniqueIndex},
+    grug::{
+        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Udec128, Uint128, UniqueIndex,
+    },
 };
 
 // (base_denom, quote_denom) => params
 pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 
+// (base_denom, quote_denom) => coin_pair
+pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
+
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
 
 pub const ORDERS: IndexedMap<OrderKey, Order, OrderIndex> = IndexedMap::new("order", OrderIndex {
     order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
+    user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
 });
 
-pub const INCOMING_ORDERS: Map<OrderId, (OrderKey, Order)> = Map::new("incoming_orders");
+/// Key is the user's address and the order id.
+pub const INCOMING_ORDERS: Map<(Addr, OrderId), (OrderKey, Order)> = Map::new("incoming_orders");
 
 /// Type of the keys under which orders are stored in the contract storage.
 ///
@@ -25,7 +32,7 @@ pub const INCOMING_ORDERS: Map<OrderId, (OrderKey, Order)> = Map::new("incoming_
 /// TODO: ideally we use `&'a Denom` here, but handling lifetime is tricky.
 pub type OrderKey = ((Denom, Denom), Direction, Udec128, OrderId);
 
-#[grug::derive(Borsh)]
+#[grug::derive(Borsh, Serde)]
 #[derive(Copy)]
 pub struct Order {
     pub user: Addr,
@@ -38,5 +45,6 @@ pub struct Order {
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndex<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
-    // TODO: also index orders by pair and user
+    pub user: MultiIndex<'a, OrderKey, Addr, Order>,
+    // TODO: also index orders by pair
 }

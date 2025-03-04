@@ -1,5 +1,5 @@
 use {
-    async_graphql::{ComplexObject, SimpleObject},
+    async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::entity,
     serde::Deserialize,
@@ -12,8 +12,7 @@ use {
 pub struct Transaction {
     pub block_height: u64,
     pub created_at: DateTime<Utc>,
-    // TODO: This should be an enum
-    pub transaction_type: i16,
+    pub transaction_type: Category,
     pub transaction_idx: u32,
     pub sender: String,
     pub hash: String,
@@ -23,12 +22,29 @@ pub struct Transaction {
     pub gas_used: i64,
 }
 
+#[derive(Enum, Copy, Clone, Default, Eq, PartialEq, Debug, Deserialize, Hash)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum Category {
+    #[default]
+    Cron,
+    Tx,
+}
+
+impl From<entity::events::TransactionType> for Category {
+    fn from(status: entity::events::TransactionType) -> Category {
+        match status {
+            entity::events::TransactionType::Cron => Category::Cron,
+            entity::events::TransactionType::Tx => Category::Tx,
+        }
+    }
+}
+
 impl From<entity::transactions::Model> for Transaction {
     fn from(item: entity::transactions::Model) -> Self {
         Self {
             block_height: item.block_height as u64,
             created_at: Utc.from_utc_datetime(&item.created_at),
-            transaction_type: item.transaction_type,
+            transaction_type: item.transaction_type.into(),
             transaction_idx: item.transaction_idx as u32,
             sender: item.sender.clone(),
             hash: item.hash.clone(),

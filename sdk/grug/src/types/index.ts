@@ -1,6 +1,6 @@
 export type {
   ChainConfigResponse,
-  ChainInfoResponse,
+  ChainStatusResponse,
   QueryContractRequest,
   QueryContractsRequest,
   QueryCodesRequest,
@@ -55,6 +55,11 @@ export type {
 export type {
   Transport,
   TransportConfig,
+  DerivedTransportSchema,
+  RequestFn,
+  RequestFnParameters,
+  RequestOptions,
+  TransportSchema,
 } from "./transports.js";
 
 export type {
@@ -135,17 +140,20 @@ export type {
   JsonRpcId,
   JsonRpcRequest,
   RpcClient,
-  RpcSchema,
-  RequestFn,
-  RequestFnParameters,
-  RpcRequestOptions,
-  DerivedRpcSchema,
 } from "./rpc.js";
 
 export type {
   HttpRequestParameters,
   HttpRpcClientOptions,
 } from "./http.js";
+
+export type { IndexerSchema } from "./indexer.js";
+
+export type {
+  GraphQLClientResponse,
+  GraphqlClient,
+  GraphqlClientOptions,
+} from "./graphql.js";
 
 export {
   Block,

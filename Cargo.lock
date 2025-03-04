@@ -55,6 +55,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-cors"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9e772b3bcafe335042b5db010ab7c09013dad6eac4915c91d8d50902769f331"
+dependencies = [
+ "actix-utils",
+ "actix-web",
+ "derive_more 0.99.19",
+ "futures-util",
+ "log",
+ "once_cell",
+ "smallvec",
+]
+
+[[package]]
 name = "actix-files"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3275,6 +3290,7 @@ name = "dango-oracle"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-lending",
  "dango-types",
  "grug",
  "pyth-sdk 0.8.0",
@@ -3320,6 +3336,7 @@ dependencies = [
  "indexer-disk-saver",
  "indexer-httpd",
  "indexer-sql",
+ "indexer-testing",
  "k256",
  "proptest",
  "pyth-sdk 0.8.0",
@@ -4416,16 +4433,10 @@ dependencies = [
 name = "grug-testing"
 version = "0.0.0"
 dependencies = [
- "actix-codec",
- "actix-http",
- "actix-test",
- "actix-web",
  "anyhow",
  "assertor",
  "async-graphql",
- "awc",
  "borsh 1.5.5",
- "futures-util",
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
@@ -4438,6 +4449,7 @@ dependencies = [
  "grug-vm-rust",
  "indexer-httpd",
  "indexer-sql",
+ "indexer-testing",
  "k256",
  "prost",
  "rand",
@@ -5253,14 +5265,17 @@ name = "indexer-httpd"
 version = "0.0.0"
 dependencies = [
  "actix",
+ "actix-cors",
  "actix-files",
  "actix-web",
  "anyhow",
  "assertor",
  "async-graphql",
  "async-graphql-actix-web",
+ "base64 0.22.1",
  "chrono",
  "clap",
+ "grug-app",
  "grug-types",
  "indexer-sql",
  "num_cpus",
@@ -5268,6 +5283,8 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "tendermint",
+ "tendermint-rpc",
  "thiserror 2.0.11",
  "tokio",
  "tracing",
@@ -5311,6 +5328,23 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "sea-orm-migration",
+]
+
+[[package]]
+name = "indexer-testing"
+version = "0.1.0"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-test",
+ "actix-web",
+ "anyhow",
+ "awc",
+ "futures-util",
+ "indexer-httpd",
+ "sea-orm",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

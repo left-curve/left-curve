@@ -459,6 +459,7 @@ where
         &bank::InstantiateMsg {
             balances,
             namespaces: btree_map! {
+                dex::NAMESPACE.clone()     => dex,
                 lending::NAMESPACE.clone() => lending,
                 warp::NAMESPACE.clone()    => warp,
             },
@@ -539,6 +540,7 @@ where
     let app_config = AppConfig {
         addresses: AppAddresses {
             account_factory,
+            dex,
             hyperlane: Hyperlane {
                 fee,
                 ism,

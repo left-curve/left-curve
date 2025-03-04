@@ -2,8 +2,8 @@ use {
     crate::lending::InterestRateModel,
     anyhow::ensure,
     grug::{
-        Decimal, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Querier, QuerierExt,
-        QuerierWrapper, StdError, Timestamp, Udec128, Uint128,
+        Decimal, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst, PrevNumber,
+        Querier, QuerierExt, QuerierWrapper, StdError, Timestamp, Udec128, Udec256, Uint128,
     },
     std::error::Error,
 };
@@ -21,7 +21,7 @@ pub struct Market {
     pub interest_rate_model: InterestRateModel,
     /// The total amount of coins borrowed from this market scaled by the
     /// borrow index.
-    pub total_borrowed_scaled: Udec128,
+    pub total_borrowed_scaled: Udec256,
     /// The current borrow index of this market. This is used to calculate the
     /// interest accrued on borrows.
     pub borrow_index: Udec128,
@@ -39,7 +39,7 @@ impl Market {
         Self {
             supply_lp_denom,
             interest_rate_model,
-            total_borrowed_scaled: Udec128::ZERO,
+            total_borrowed_scaled: Udec256::ZERO,
             borrow_index: Udec128::ONE,
             supply_index: Udec128::ONE,
             last_update_time: Timestamp::ZERO,
@@ -117,9 +117,12 @@ impl Market {
         let borrow_interest = new_total_borrowed.checked_sub(previous_total_borrowed)?;
         let protocol_fee =
             borrow_interest.checked_mul_dec(self.interest_rate_model.reserve_factor())?;
-        let protocol_fee_scaled = Udec128::new(protocol_fee.into_inner())
-            .checked_div(supply_index)?
-            .into_int();
+        let protocol_fee_scaled = protocol_fee
+            .into_next()
+            .checked_into_dec()?
+            .checked_div(supply_index.into_next())?
+            .into_int()
+            .checked_into_prev()?;
 
         // Return the new market state
         new_market
@@ -130,7 +133,7 @@ impl Market {
 
     /// Immutably adds the given amount to the scaled total borrowed and returns
     /// the new market state.
-    pub fn add_borrowed(&self, amount_scaled: Udec128) -> anyhow::Result<Self> {
+    pub fn add_borrowed(&self, amount_scaled: Udec256) -> anyhow::Result<Self> {
         Ok(Self {
             total_borrowed_scaled: self.total_borrowed_scaled.checked_add(amount_scaled)?,
             ..self.clone()
@@ -139,7 +142,7 @@ impl Market {
 
     /// Immutably deducts the given amount from the scaled total borrowed and
     /// returns the new market state.
-    pub fn deduct_borrowed(&self, amount_scaled: Udec128) -> anyhow::Result<Self> {
+    pub fn deduct_borrowed(&self, amount_scaled: Udec256) -> anyhow::Result<Self> {
         Ok(Self {
             total_borrowed_scaled: self.total_borrowed_scaled.checked_sub(amount_scaled)?,
             ..self.clone()
@@ -203,11 +206,12 @@ impl Market {
 
     /// Calculates the actual debt for the given scaled amount. Makes sure to
     /// round up in favor of the protocol.
-    pub fn calculate_debt(&self, scaled_amount: Udec128) -> anyhow::Result<Uint128> {
+    pub fn calculate_debt(&self, scaled_amount: Udec256) -> anyhow::Result<Uint128> {
         Ok(scaled_amount
-            .checked_mul(self.borrow_index)?
+            .checked_mul(self.borrow_index.into_next())?
             .checked_ceil()?
-            .into_int())
+            .into_int()
+            .checked_into_prev()?)
     }
 
     /// Returns the total amount of coins supplied to this market.
@@ -225,8 +229,10 @@ impl Market {
     pub fn total_borrowed(&self) -> anyhow::Result<Uint128> {
         Ok(self
             .total_borrowed_scaled
-            .checked_mul(self.borrow_index)?
-            .into_int())
+            .checked_mul(self.borrow_index.into_next())?
+            .checked_ceil()?
+            .into_int()
+            .checked_into_prev()?)
     }
 }
 

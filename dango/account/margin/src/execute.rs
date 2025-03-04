@@ -1,5 +1,5 @@
 use {
-    crate::MarginQuerier,
+    crate::query_health,
     anyhow::{anyhow, ensure},
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
@@ -9,7 +9,7 @@ use {
             InstantiateMsg,
         },
         config::AppConfig,
-        lending, DangoQuerier,
+        dex, lending, DangoQuerier,
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
@@ -45,9 +45,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn backrun(ctx: AuthCtx, _tx: Tx) -> anyhow::Result<Response> {
-    let health = ctx
-        .querier
-        .query_health(ctx.contract, ctx.block.timestamp, None)?;
+    let health = query_health(&ctx.querier, ctx.contract, ctx.block.timestamp, None)?;
 
     // After executing all messages in the transactions, the account must have
     // a utilization rate no greater than one. Otherwise, we throw an error to
@@ -69,7 +67,7 @@ pub fn receive(_ctx: MutableCtx) -> StdResult<Response> {
     Ok(Response::new())
 }
 
-pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Response> {
+pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Response> {
     let app_cfg: AppConfig = ctx.querier.query_app_config()?;
 
     // Query account health
@@ -79,10 +77,14 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         total_adjusted_collateral_value,
         debts,
         collaterals,
+        limit_order_collaterals,
         ..
-    } = ctx
-        .querier
-        .query_health(ctx.contract, ctx.block.timestamp, Some(ctx.funds.clone()))?;
+    } = query_health(
+        &ctx.querier,
+        ctx.contract,
+        ctx.block.timestamp,
+        Some(ctx.funds.clone()),
+    )?;
 
     // Ensure account is undercollateralized
     ensure!(
@@ -94,9 +96,9 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     let target_health_factor = app_cfg.target_utilization_rate.checked_inv()?;
     let liquidation_collateral_power = *app_cfg
         .collateral_powers
-        .get(&liquidation_denom)
+        .get(&collateral_denom)
         .ok_or_else(|| {
-            anyhow!("collateral power not found for chosen collateral: `{liquidation_denom}`")
+            anyhow!("collateral power not found for chosen collateral: `{collateral_denom}`")
         })?
         .inner();
 
@@ -136,11 +138,14 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
 
     // Calculate the maximum debt that can be repaid based on the balance of the
     // chosen collateral.
-    let collateral_price = ctx
-        .querier
-        .query_price(app_cfg.addresses.oracle, &liquidation_denom)?;
-    let liquidation_collateral_value =
-        collateral_price.value_of_unit_amount(collaterals.amount_of(&liquidation_denom))?;
+    let collateral_price =
+        ctx.querier
+            .query_price(app_cfg.addresses.oracle, &collateral_denom, None)?;
+    let liquidation_collateral_value = collateral_price.value_of_unit_amount(
+        collaterals
+            .amount_of(&collateral_denom)
+            .checked_add(limit_order_collaterals.amount_of(&collateral_denom))?,
+    )?;
     let mrd_from_chosen_collateral =
         liquidation_collateral_value.checked_div(Udec128::ONE + liq_bonus)?;
 
@@ -165,7 +170,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         let debt_amount = debts.amount_of(&coin.denom);
         let price = ctx
             .querier
-            .query_price(app_cfg.addresses.oracle, &coin.denom)?;
+            .query_price(app_cfg.addresses.oracle, &coin.denom, None)?;
         let debt_value = price.value_of_unit_amount(debt_amount)?;
 
         let max_repay_for_denom = if repaid_debt_value.checked_add(debt_value)? > debt_repay_value {
@@ -205,7 +210,7 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
     // Send the claimed collateral and any debt refunds to the liquidator.
     let mut send_coins = refunds.clone();
     send_coins.insert(Coin::new(
-        liquidation_denom.clone(),
+        collateral_denom.clone(),
         claimed_collateral_amount,
     )?)?;
     let send_msg = Message::transfer(ctx.sender, send_coins)?;
@@ -217,11 +222,22 @@ pub fn liquidate(ctx: MutableCtx, liquidation_denom: Denom) -> anyhow::Result<Re
         repay_coins.clone(),
     )?;
 
+    // Create message to cancel all the user's limit orders
+    let cancel_msg = Message::execute(
+        app_cfg.addresses.dex,
+        &dex::ExecuteMsg::BatchUpdateOrders {
+            creates: vec![],
+            cancels: Some(dex::OrderIds::All),
+        },
+        Coins::new(),
+    )?;
+
     Ok(Response::new()
+        .add_message(cancel_msg)
         .add_message(repay_msg)
         .add_message(send_msg)
         .add_event(Liquidate {
-            liquidation_denom,
+            collateral_denom,
             repay_coins,
             refunds,
             repaid_debt_value,

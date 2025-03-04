@@ -2,7 +2,9 @@ use {
     crate::MARKETS,
     anyhow::bail,
     dango_types::lending::{Market, NAMESPACE, SUBNAMESPACE},
-    grug::{Coin, Coins, Denom, Inner, Number, QuerierWrapper, Storage, Timestamp, Udec128},
+    grug::{
+        Coin, Coins, Denom, NextNumber, Number, PrevNumber, QuerierWrapper, Storage, Timestamp,
+    },
     std::collections::BTreeMap,
 };
 
@@ -25,10 +27,13 @@ pub fn calculate_deposit(
 
         // Compute the amount of LP tokens to mint
         let supply_index = market.supply_index;
-        let amount_scaled = Udec128::new(coin.amount.into_inner())
-            .checked_div(supply_index)?
-            .into_int();
-
+        let amount_scaled = coin
+            .amount
+            .into_next()
+            .checked_into_dec()?
+            .checked_div(supply_index.into_next())?
+            .into_int()
+            .checked_into_prev()?;
         lp_tokens.insert(Coin::new(market.supply_lp_denom.clone(), amount_scaled)?)?;
         markets.insert(coin.denom, market);
     }
@@ -58,9 +63,13 @@ pub fn calculate_withdraw(
             .update_indices(querier, timestamp)?;
 
         // Compute the amount of underlying coins to withdraw
-        let underlying_amount = Udec128::new(coin.amount.into_inner())
-            .checked_mul(market.supply_index)?
-            .into_int();
+        let underlying_amount = coin
+            .amount
+            .into_next()
+            .checked_into_dec()?
+            .checked_mul(market.supply_index.into_next())?
+            .into_int()
+            .checked_into_prev()?;
 
         withdrawn.insert(Coin::new(underlying_denom.clone(), underlying_amount)?)?;
         markets.insert(underlying_denom, market);

@@ -1,5 +1,7 @@
 use {
-    crate::{Addr, Coins, ContractEvent, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp},
+    crate::{
+        Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
+    },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
     serde::{Deserialize, Serialize},
@@ -333,7 +335,7 @@ pub struct EvtGuest {
     /// The wasm export function that was being called when the event was emitted.
     pub method: String,
     /// Sub events emitted by the contract.
-    pub contract_events: Vec<ContractEvent>, /* events emitted by the contract (swap_amount, slipage, etc) */
+    pub contract_events: Vec<CheckedContractEvent>, /* events emitted by the contract (swap_amount, slipage, etc) */
     /// All events emitted by a submessage.
     pub sub_events: Vec<EventStatus<SubEvent>>, /* all events emitted by a submessage, if len is 3 it means 3 submessages were executed */
 }

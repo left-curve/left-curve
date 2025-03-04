@@ -21,24 +21,17 @@ impl BlockSubscription {
             .map(Into::into);
 
         Ok(once(async { last_block })
-            .chain(
-                app_ctx
-                    .pubsub
-                    .subscribe_block_minted()
-                    .await?
-                    .then(move |block_height| {
-                        let db = app_ctx.db.clone();
-                        async move {
-                            entity::blocks::Entity::find()
-                                .filter(entity::blocks::Column::BlockHeight.eq(block_height as i64))
-                                .one(&db)
-                                .await
-                                .ok()
-                                .flatten()
-                                .map(Into::into)
-                        }
-                    }),
-            )
+            .chain(app_ctx.pubsub.subscribe_block_minted().await?.then(
+                move |block_height| async move {
+                    entity::blocks::Entity::find()
+                        .filter(entity::blocks::Column::BlockHeight.eq(block_height as i64))
+                        .one(&app_ctx.db)
+                        .await
+                        .ok()
+                        .flatten()
+                        .map(Into::into)
+                },
+            ))
             .filter_map(|block| async { block }))
     }
 }

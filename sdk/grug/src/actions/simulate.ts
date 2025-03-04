@@ -1,5 +1,3 @@
-import { decodeBase64, deserialize, serialize } from "../encoding/index.js";
-
 import type {
   Chain,
   Client,
@@ -8,7 +6,6 @@ import type {
   SimulateResponse,
   Transport,
 } from "../types/index.js";
-import { queryAbci } from "./queryAbci.js";
 
 export type SimulateParameters = {
   simulate: SimulateRequest;
@@ -32,16 +29,17 @@ export async function simulate<chain extends Chain | undefined, signer extends S
   client: Client<Transport, chain, signer>,
   parameters: SimulateParameters,
 ): SimulateReturnType {
-  const { simulate, scale = 1.3, base = 1_880_000, height = 0 } = parameters;
+  const { simulate: tx, scale = 1.3, base = 1_880_000, height = 0 } = parameters;
 
-  const { value } = await queryAbci(client, {
-    data: serialize(simulate),
-    height,
-    path: "/simulate",
-    prove: false,
+  const { gasLimit, gasUsed } = await client.request({
+    method: "simulate",
+    params: {
+      tx,
+      height,
+      prove: false,
+    },
   });
 
-  const { gasLimit, gasUsed } = deserialize<SimulateResponse>(decodeBase64(value ?? ""));
   return {
     gasLimit,
     gasUsed: Math.round((gasUsed + base) * scale),

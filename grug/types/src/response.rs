@@ -1,5 +1,5 @@
 use {
-    crate::{EventName, Json, JsonSerExt, Message, StdResult},
+    crate::{Addr, EventName, Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -270,6 +270,29 @@ impl SubMessage {
         Ok(Self {
             msg: msg.into(),
             reply_on: ReplyOn::Error(payload.to_json_value()?),
+        })
+    }
+}
+
+/// A [ContractEvent] where the contract address is added by the host.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CheckedContractEvent {
+    pub contract: Addr,
+    #[serde(rename = "type")]
+    pub ty: String,
+    pub data: Json,
+}
+
+impl CheckedContractEvent {
+    pub fn new<T, U>(contract: Addr, ty: T, data: U) -> StdResult<Self>
+    where
+        T: Into<String>,
+        U: Serialize,
+    {
+        Ok(Self {
+            contract,
+            ty: ty.into(),
+            data: data.to_json_value()?,
         })
     }
 }

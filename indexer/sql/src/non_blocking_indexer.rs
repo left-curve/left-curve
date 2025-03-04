@@ -2,7 +2,8 @@ use {
     crate::{
         bail,
         block_to_index::BlockToIndex,
-        entity, error,
+        entity,
+        error::{self, IndexerError},
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
@@ -140,6 +141,36 @@ where
         }
     }
 
+    pub fn build_context(self) -> error::Result<Context> {
+        let db = match self.db_url.maybe_into_inner() {
+            Some(url) => self
+                .handle
+                .block_on(async { Context::connect_db_with_url(&url).await }),
+            None => self.handle.block_on(async { Context::connect_db().await }),
+        }?;
+
+        let mut context = Context {
+            db: db.clone(),
+            // This gets overwritten in the next match
+            pubsub: Arc::new(MemoryPubSub::new(100)),
+        };
+
+        match self.pubsub {
+            PubSubType::Postgres => self.handle.block_on(async {
+                if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
+                    let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
+
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
+                }
+
+                Ok::<(), IndexerError>(())
+            })?,
+            PubSubType::Memory => {},
+        }
+
+        Ok(context)
+    }
+
     pub fn build(self) -> error::Result<NonBlockingIndexer<H>> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self
@@ -153,6 +184,7 @@ where
 
         let mut context = Context {
             db: db.clone(),
+            // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
         };
 
@@ -161,9 +193,11 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()));
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
                 }
-            }),
+
+                Ok::<(), IndexerError>(())
+            })?,
             PubSubType::Memory => {},
         }
 

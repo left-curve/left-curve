@@ -14,18 +14,18 @@ import type { Json, JsonValue } from "../types/index.js";
  * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
  * ```
  */
-export function recursiveTransform(
+export function recursiveTransform<T = Json | JsonValue>(
   payload: Json | JsonValue,
   transformFn: (str: string) => string,
-): Json | JsonValue {
+): T {
   // for strings, numbers, and nulls, there's no key to be transformed
   if (typeof payload !== "object" || payload === null) {
-    return payload;
+    return payload as T;
   }
 
   // for arrays, we recursively transform each element
   if (Array.isArray(payload)) {
-    return payload.map((element) => recursiveTransform(element, transformFn));
+    return payload.map((element) => recursiveTransform(element, transformFn)) as T;
   }
 
   // for objects, we go through each key, transforming it to snake_case

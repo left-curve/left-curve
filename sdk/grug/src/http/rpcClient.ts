@@ -17,7 +17,7 @@ function createIdStore() {
 
 export const idHandler = /*#__PURE__*/ createIdStore();
 
-export function httpRpc(url: string, options: HttpRpcClientOptions = {}): RpcClient {
+export function rpcClient(url: string, options: HttpRpcClientOptions = {}): RpcClient {
   return {
     async request(params) {
       const {

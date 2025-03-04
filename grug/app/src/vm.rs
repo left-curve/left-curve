@@ -5,8 +5,8 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
-        Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, Context, EvtGuest, GenericResult,
-        Hash256, Response, Storage,
+        Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, CheckedContractEvent, Context,
+        EvtGuest, GenericResult, Hash256, Response, Storage,
     },
 };
 
@@ -377,7 +377,15 @@ where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    evt.contract_events = response.subevents;
+    evt.contract_events = response
+        .subevents
+        .into_iter()
+        .map(|e| CheckedContractEvent {
+            contract: evt.contract,
+            ty: e.ty,
+            data: e.data,
+        })
+        .collect();
 
     // Handle submessages; append events emitted during submessage handling
     handle_submessages(

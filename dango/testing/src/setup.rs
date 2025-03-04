@@ -10,13 +10,13 @@ use {
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
             USDC_DENOM, WBTC_DENOM,
         },
-        dex::{PairParams, PairUpdate},
+        dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Duration, HashExt,
-        NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        btree_map, coins, Binary, BlockInfo, Bounded, Coins, ContractWrapper, Denom, Duration,
+        HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -25,8 +25,9 @@ use {
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
     hex_literal::hex,
-    indexer_sql::{non_blocking_indexer::NonBlockingIndexer, Context},
-    std::path::PathBuf,
+    indexer_httpd::context::Context,
+    indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -102,16 +103,20 @@ pub fn setup_test_with_indexer() -> (
 
     let indexer_context = indexer.context.clone();
 
-    (
-        setup_suite_with_db_and_vm(
-            MemDb::new(),
-            RustVm::new(),
-            codes,
-            ProposalPreparer::new(),
-            indexer,
-        ),
-        indexer_context,
-    )
+    let db = MemDb::new();
+    let vm = RustVm::new();
+
+    let (suite, accounts, codes, contracts) = setup_suite_with_db_and_vm(
+        db.clone(),
+        vm.clone(),
+        codes,
+        ProposalPreparer::new(),
+        indexer,
+    );
+
+    let httpd_context = Context::new(indexer_context, Arc::new(suite.app.clone_without_indexer()));
+
+    ((suite, accounts, codes, contracts), httpd_context)
 }
 
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and
@@ -315,22 +320,38 @@ where
             PairUpdate {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: BTC_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: ETH_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: SOL_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
         ],
         markets: btree_map! {

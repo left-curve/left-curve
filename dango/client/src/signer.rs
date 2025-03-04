@@ -10,13 +10,14 @@ use {
         Addr, Addressable, ByteArray, Client, Defined, Hash256, HashExt, Inner, JsonSerExt,
         MaybeDefined, Message, NonEmpty, Signer, StdResult, Tx, Undefined, UnsignedTx,
     },
-    std::{collections::BTreeSet, str::FromStr},
+    std::str::FromStr,
 };
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
 /// Utility for signing transactions in the format by Dango's single-signature
 /// accounts, i.e. spot and margin accounts.
+#[derive(Debug)]
 pub struct SingleSigner<T>
 where
     T: MaybeDefined<u32>,
@@ -26,7 +27,25 @@ where
     pub key: Key,
     pub key_hash: Hash256,
     pub nonce: T,
-    sk: SigningKey,
+    pub sk: SigningKey,
+}
+
+impl<T> SingleSigner<T>
+where
+    T: MaybeDefined<u32>,
+{
+    pub async fn query_next_nonce(&self, client: &Client) -> anyhow::Result<Nonce> {
+        // If the account hasn't sent any transaction yet, use 0 as nonce.
+        // Otherwise, use the latest seen nonce + 1.
+        let nonce = client
+            .query_wasm_smart(self.address, spot::QuerySeenNoncesRequest {}, None)
+            .await?
+            .last()
+            .map(|newest_nonce| newest_nonce + 1)
+            .unwrap_or(0);
+
+        Ok(nonce)
+    }
 }
 
 impl SingleSigner<Undefined<u32>> {
@@ -75,16 +94,7 @@ impl SingleSigner<Undefined<u32>> {
     }
 
     pub async fn query_nonce(self, client: &Client) -> anyhow::Result<SingleSigner<Defined<u32>>> {
-        let nonce = client
-            .query_wasm_smart::<_, BTreeSet<Nonce>>(
-                self.address,
-                &spot::QueryMsg::SeenNonces {},
-                None,
-            )
-            .await?
-            .last()
-            .map(|newest_nonce| newest_nonce + 1)
-            .unwrap_or(0);
+        let nonce = self.query_next_nonce(client).await?;
 
         Ok(SingleSigner {
             username: self.username,
@@ -94,6 +104,16 @@ impl SingleSigner<Undefined<u32>> {
             nonce: Defined::new(nonce),
             sk: self.sk,
         })
+    }
+}
+
+impl SingleSigner<Defined<u32>> {
+    pub async fn update_nonce(&mut self, client: &Client) -> anyhow::Result<()> {
+        let nonce = self.query_next_nonce(client).await?;
+
+        self.nonce = Defined::new(nonce);
+
+        Ok(())
     }
 }
 
