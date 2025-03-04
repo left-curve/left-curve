@@ -84,5 +84,40 @@ pub enum QueryMsg {
         start_after: Option<Denom>,
         limit: Option<u32>,
     },
-    // TODO: add query methods for orphaned transfers
+    /// Query the orphaned transfer amount between a sender and a recipient.
+    #[returns(Coins)]
+    OrphanedTransfer { sender: Addr, recipient: Addr },
+    /// Enumerate orphaned transfers among all senders and recipients.
+    #[returns(Vec<OrphanedTransferResponseItem>)]
+    OrphanedTransfers {
+        start_after: Option<OrphanedTransferPageParam>,
+        limit: Option<u32>,
+    },
+    /// Enumerate orphaned transfer originated from a sender.
+    #[returns(BTreeMap<Addr, Coins>)]
+    OrphanedTransfersBySender {
+        sender: Addr,
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
+    /// Enumerate orphaned transfer destined to a recipient.
+    #[returns(BTreeMap<Addr, Coins>)]
+    OrphanedTransfersByRecipient {
+        recipient: Addr,
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+    },
+}
+
+#[grug::derive(Serde)]
+pub struct OrphanedTransferPageParam {
+    pub sender: Addr,
+    pub recipient: Addr,
+}
+
+#[grug::derive(Serde)]
+pub struct OrphanedTransferResponseItem {
+    pub sender: Addr,
+    pub recipient: Addr,
+    pub amount: Coins,
 }
