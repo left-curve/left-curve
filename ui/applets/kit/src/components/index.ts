@@ -1,87 +1,91 @@
 /* -------------------------------------------------------------------------- */
-/*                                    Atoms                                   */
+/*                                    Foundation                              */
 /* -------------------------------------------------------------------------- */
 
-export { Button, type ButtonProps } from "./atoms/Button";
-export { Spinner } from "./atoms/Spinner";
-export { Input, type InputProps } from "./atoms/Input";
-export { Tabs } from "./atoms/tabs/Tabs";
-export { TabItem as Tab } from "./atoms/tabs/TabItem";
-export { Select, Item as SelectItem } from "./atoms/Select";
-export { AccountDescriptionCard } from "./atoms/AccountDescriptionCard";
-export { QRCode } from "./atoms/QRCode";
-export { Hamburger } from "./atoms/Hamburger";
+export { Button, type ButtonProps } from "./foundation/Button";
+export { IconButton, type IconButtonProps } from "./foundation/IconButton";
+export { Spinner } from "./foundation/Spinner";
+export { QRCode } from "./foundation/QRCode";
+export { Select, Item as SelectItem } from "./foundation/Select";
+export { Hamburger } from "./foundation/Hamburger";
+export { TruncateText } from "./foundation/TruncateText";
+export { AccountCard } from "./foundation/AccountCard";
+export { Table } from "./foundation/table/Table";
+export { Tabs, Tab } from "./foundation/Tabs";
+export { PoolTable } from "./foundation/table/PoolTable";
+export { Input } from "./foundation/Input";
+export { Stepper } from "./foundation/Stepper";
+export { Carousel } from "./foundation/Carousel";
+export { ResizerContainer } from "./foundation/ResizerContainer";
+export { AssetCard } from "./foundation/AssetCard";
+export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
+export { CoinSelector } from "./foundation/CoinSelector";
+export { AccountSearchInput } from "./foundation/AccountSearchInput";
+export { TextLoop } from "./foundation/TextLoop";
+
+/* ---------------------------------- Icons --------------------------------- */
+
+export { BackArrowIcon } from "./foundation/icons/BackArrow";
+export { CloseIcon } from "./foundation/icons/Close";
+export { CollapseIcon } from "./foundation/icons/Collapse";
+export { ExpandedIcon } from "./foundation/icons/Expanded";
+export { PlusIcon } from "./foundation/icons/Plus";
+export { ProfileIcon } from "./foundation/icons/Profile";
+export { IconCopy } from "./foundation/icons/IconCopy";
+export { BellIcon } from "./foundation/icons/Bell";
+export { WalletIcon } from "./foundation/icons/Wallet";
+export { ExternalLinkIcon } from "./foundation/icons/ExternalLink";
+export { SearchIcon } from "./foundation/icons/Search";
+export { ArrowSelectorIcon } from "./foundation/icons/ArrowSelector";
+export { SwapArrowDownIcon } from "./foundation/icons/SwapArrowDown";
+export { CheckCircleIcon } from "./foundation/icons/CheckCircle";
+export { XCircleIcon } from "./foundation/icons/XCircle";
+export { IconCopyCheck } from "./foundation/icons/IconCopyCheck";
+export { ConnectorIcon } from "./foundation/icons/Connector";
+export { CrossIcon } from "./foundation/icons/Cross";
+export { DangoDotsIcon } from "./foundation/icons/DangoDots";
+
+export { IconDoubleChevronRight } from "./foundation/icons/IconDoubleChevronRight";
+export { IconChevronRight } from "./foundation/icons/IconChevronRight";
+export { IconChevronLeftCarousell } from "./foundation/icons/IconChevronLeftCarousell";
+export { IconChevronLeft } from "./foundation/icons/IconChevronLeft";
+export { IconChevronDown } from "./foundation/icons/IconChevronDown";
+export { IconGear } from "./foundation/icons/IconGear";
+export { IconTrash } from "./foundation/icons/IconTrash";
+export { IconAddCross } from "./foundation/icons/IconAddCross";
+export { IconBell } from "./foundation/icons/IconBell";
+export { IconSearch } from "./foundation/icons/IconSearch";
+export { IconLeft } from "./foundation/icons/IconLeft";
+export { IconLogOut } from "./foundation/icons/IconLogOut";
+export { IconKey } from "./foundation/icons/IconKey";
+export { IconClose } from "./foundation/icons/IconClose";
+export { IconStar } from "./foundation/icons/IconStar";
+export { IconEmptyStar } from "./foundation/icons/IconEmptyStar";
+export { IconCheckedCircle } from "./foundation/icons/IconCheckedCircle";
+
+/* ---------------------------------- Emojis -------------------------------- */
+
+export { Ants } from "./foundation/icons/emoji/Ants";
+export { Factory1 } from "./foundation/icons/emoji/Factory1";
+export { Factory2 } from "./foundation/icons/emoji/Factory2";
+export { Fisher } from "./foundation/icons/emoji/Fisher";
+export { Hamster } from "./foundation/icons/emoji/Hamster";
+export { Lock } from "./foundation/icons/emoji/Lock";
+export { Money } from "./foundation/icons/emoji/Money";
+export { MoneyBag } from "./foundation/icons/emoji/MoneyBag";
+export { Pig1 } from "./foundation/icons/emoji/Pig1";
+export { Pig2 } from "./foundation/icons/emoji/Pig2";
+export { Temple } from "./foundation/icons/emoji/Temple";
+export { Wizard } from "./foundation/icons/emoji/Wizard";
+export { type EmojiName, Emoji } from "./foundation/Emoji";
+
+/* ---------------------------------- Chars --------------------------------- */
+
+export { Birdo } from "./foundation/chars/Birdo";
 
 /* -------------------------------------------------------------------------- */
-/*                                  Molecules                                 */
+/*                                  Dashboard                                 */
 /* -------------------------------------------------------------------------- */
 
-export { Modal, type ModalProps, type ModalRef } from "./molecules/Modal";
-export { ProposalCard } from "./molecules/ProposalCard";
-export { MenuAccounts } from "./molecules/MenuAccounts";
-export { MenuConnections } from "./molecules/MenuConnections";
-export { MenuNotifications } from "./molecules/MenuNotifications";
-export { ConnectButton } from "./molecules/ConnectButton";
-export { AccountInfo } from "./molecules/AccountInfo";
-export { AppletCard } from "./molecules/AppletCard";
-export { PortfolioTable } from "./molecules/PortfolioTable";
-export { SpotPortfolioTable } from "./molecules/SpotPortfolioTable";
-export { SafePortfolioTable } from "./molecules/SafePortfolioTable";
-export { SafeMembersTable } from "./molecules/SafeMembersTable";
-export { SafeProposalsTable } from "./molecules/SafeProposalsTable";
-export { MarginAccountInfo } from "./molecules/MarginAccountInfo";
-export { MarginDebtsTable } from "./molecules/MarginDebtsTable";
-export { MarginAssetsTable } from "./molecules/MarginAssetsTable";
-export { BorrowingBar } from "./molecules/BorrowingBar";
-export { CoinSelector } from "./molecules/CoinSelector";
-export { AccountSearchInput } from "./molecules/AccountSearchInput";
-export { ConnectorButtonOptions } from "./molecules/ConnectorButtonOptions";
-export { PoolSelector } from "./molecules/PoolSelector";
-export { PoolManagment } from "./molecules/PoolManagment";
-export { PoolCard } from "./molecules/PoolCard";
-export { SpotEditAccount } from "./molecules/SpotEditAccount";
-
-/* -------------------------------------------------------------------------- */
-/*                                  Organisms                                 */
-/* -------------------------------------------------------------------------- */
-
-export { CommandBar } from "./organisms/CommandBar";
-export { ConnectModal } from "./organisms/ConnectModal";
-export { AccountCard } from "./organisms/AccountCard";
-
-/* -------------------------------------------------------------------------- */
-/*                                    Icons                                   */
-/* -------------------------------------------------------------------------- */
-
-export { BackArrowIcon } from "./icons/BackArrow";
-export { CloseIcon } from "./icons/Close";
-export { CollapseIcon } from "./icons/Collapse";
-export { ExpandedIcon } from "./icons/Expanded";
-export { PlusIcon } from "./icons/Plus";
-export { ProfileIcon } from "./icons/Profile";
-export { CopyIcon } from "./icons/Copy";
-export { BellIcon } from "./icons/Bell";
-export { WalletIcon } from "./icons/Wallet";
-export { ExternalLinkIcon } from "./icons/ExternalLink";
-export { SearchIcon } from "./icons/Search";
-export { ArrowSelectorIcon } from "./icons/ArrowSelector";
-export { SwapArrowDownIcon } from "./icons/SwapArrowDown";
-export { CheckCircleIcon } from "./icons/CheckCircle";
-export { XCircleIcon } from "./icons/XCircle";
-export { CopyCheckIcon } from "./icons/CopyCheck";
-export { ConnectorIcon } from "./icons/Connector";
-export { CrossIcon } from "./icons/Cross";
-
-export { Ants } from "./icons/emoji/Ants";
-export { Factory1 } from "./icons/emoji/Factory1";
-export { Factory2 } from "./icons/emoji/Factory2";
-export { Fisher } from "./icons/emoji/Fisher";
-export { Hamster } from "./icons/emoji/Hamster";
-export { Lock } from "./icons/emoji/Lock";
-export { Money } from "./icons/emoji/Money";
-export { MoneyBag } from "./icons/emoji/MoneyBag";
-export { Pig1 } from "./icons/emoji/Pig1";
-export { Pig2 } from "./icons/emoji/Pig2";
-export { Temple } from "./icons/emoji/Temple";
-export { Wizard } from "./icons/emoji/Wizard";
-export { type EmojiName, Emoji } from "./atoms/Emoji";
+export { StrategyCard } from "./workspace/dashboard/StrategyCard";
+export { AssetsPreview } from "./workspace/dashboard/AssetsPreview";

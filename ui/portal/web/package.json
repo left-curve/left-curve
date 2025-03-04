@@ -8,19 +8,22 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
-    "@left-curve/ui-config": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store-react": "workspace:^",
+    "@left-curve/ui-config": "workspace:^",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
+    "@tanstack/react-table": "^8.21.2",
+    "@tanstack/router-plugin": "^1.102.1",
     "@tanstack/zod-adapter": "catalog:",
     "framer-motion": "catalog:",
     "react": "catalog:",
-    "zod": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",
-    "react-hot-toast": "catalog:"
+    "react-hot-toast": "catalog:",
+    "react-modal-sheet": "^4.0.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

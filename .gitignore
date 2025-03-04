@@ -31,9 +31,11 @@ next-env.d.ts
 *storybook.log
 **/storybook-static
 **/.expo
+app.pages.ts
 
 # Envs
 **/.env
+**/*.vars
 
 # Workers
 **/.wrangler

@@ -11,9 +11,7 @@
     "clean:build": {
       "cache": false
     },
-    "test": {
-      "dependsOn": ["build"]
-    },
+    "test": {},
     "pre-dev": {
       "dependsOn": ["^pre-dev"],
       "outputs": [".next/**", "!.next/cache/**", "build/**"]

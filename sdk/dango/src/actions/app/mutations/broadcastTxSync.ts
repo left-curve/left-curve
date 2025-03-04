@@ -15,7 +15,7 @@ export type BroadcastTxSyncReturnType = Promise<Prettify<{ hash: Uint8Array } & 
  * @returns The transaction hash and data.
  */
 export async function broadcastTxSync<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+  client: DangoClient<transport, undefined | Signer>,
   parameters: BroadcastTxSyncParameters,
 ): BroadcastTxSyncReturnType {
   const { tx } = parameters;

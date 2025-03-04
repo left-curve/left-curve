@@ -1,11 +1,16 @@
-import { parseAsn1Signature, requestWebAuthnSignature, sha256 } from "@left-curve/dango/crypto";
+import {
+  createWebAuthnCredential,
+  parseAsn1Signature,
+  requestWebAuthnSignature,
+  sha256,
+} from "@left-curve/dango/crypto";
 
 import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
 
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { KeyAlgo } from "@left-curve/dango/types";
-import { getRootDomain } from "@left-curve/dango/utils";
+import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 
@@ -30,28 +35,31 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       name: "Passkey",
       type: "passkey",
       icon,
-      async connect({ username, chainId, challenge }) {
+      async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
         _username = username;
         _transport = transports[chainId];
 
         const client = await this.getClient();
 
-        if (challenge) {
+        const keyHash = await (async () => {
+          if (_keyHash_) return _keyHash_;
+          const c = challenge as string;
           const { credentialId } = await requestWebAuthnSignature({
-            challenge: encodeUtf8(challenge),
+            challenge: encodeUtf8(c),
             rpId: getRootDomain(window.location.hostname),
             userVerification: "preferred",
           });
 
-          const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
-          const keys = await getKeysByUsername(client, { username });
+          return createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        })();
 
-          if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
-          _isAuthorized = true;
-        }
+        const keys = await getKeysByUsername(client, { username });
+
+        if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
+        _isAuthorized = true;
 
         const accounts = await this.getAccounts();
-        emitter.emit("connect", { accounts, chainId, username });
+        emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
         _isAuthorized = false;
@@ -66,6 +74,29 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           });
         }
         return _client;
+      },
+      async createNewKey(challenge = "Please sign this message to confirm your identity.") {
+        const { id, getPublicKey } = await createWebAuthnCredential({
+          challenge: encodeUtf8(challenge),
+          user: {
+            name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
+          },
+          rp: {
+            name: window.document.title,
+            id: getRootDomain(window.location.hostname),
+          },
+          authenticatorSelection: {
+            residentKey: "preferred",
+            requireResidentKey: false,
+            userVerification: "preferred",
+          },
+        });
+
+        const publicKey = await getPublicKey();
+        const key = { secp256r1: encodeBase64(publicKey) };
+        const keyHash = createKeyHash({ credentialId: id, keyAlgo: KeyAlgo.Secp256r1 });
+
+        return { key, keyHash };
       },
       async getKeyHash() {
         const { credentialId } = await requestWebAuthnSignature({
