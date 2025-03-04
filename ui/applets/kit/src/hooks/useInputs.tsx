@@ -58,6 +58,14 @@ export function useInputs(options?: UseInputsOptions) {
     }));
   }, []);
 
+  const reset = useCallback(() => {
+    setInputs((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([key]) => [key, { value: initialValues?.[key] || "" }]),
+      ),
+    );
+  }, []);
+
   const register = useCallback(
     (name: string, options?: InputOptions) => {
       inputOptions.current[name] = options || {};
@@ -75,5 +83,5 @@ export function useInputs(options?: UseInputsOptions) {
     [setValue, inputs],
   );
 
-  return { register, setValue, setError, inputs };
+  return { register, setValue, setError, inputs, reset };
 }

@@ -48,7 +48,7 @@ export const config: Config = createConfig({
         logoURI:
           "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
         symbol: "USDC",
-        denom: "uusdc",
+        denom: "hyp/eth/usdc",
         decimals: 6,
         coingeckoId: "usd-coin",
       },

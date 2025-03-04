@@ -9,6 +9,7 @@ import {
   StrategyCard,
 } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
+import { ButtonLink } from "~/components/ButtonLink";
 import { useApp } from "~/hooks/useApp";
 
 const mockDataTable = [
@@ -93,12 +94,18 @@ function OverviewComponent() {
 
           {isConnected ? (
             <div className="md:self-end flex gap-4 items-center justify-center w-full md:max-w-[256px]">
-              <Button fullWidth size="md">
+              <ButtonLink fullWidth size="md" to="/send-and-receive" search={{ action: "receive" }}>
                 Fund
-              </Button>
-              <Button as={Link} fullWidth variant="secondary" size="md" to="/send-and-receive">
+              </ButtonLink>
+              <ButtonLink
+                fullWidth
+                variant="secondary"
+                size="md"
+                to="/send-and-receive"
+                search={{ action: "send" }}
+              >
                 Send
-              </Button>
+              </ButtonLink>
             </div>
           ) : null}
         </div>

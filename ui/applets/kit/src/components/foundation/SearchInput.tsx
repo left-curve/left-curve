@@ -1,9 +1,9 @@
-import { useControlledState } from "@react-stately/utils";
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, useState } from "react";
 import { useClickAway, useDebounce } from "react-use";
 import { forwardRef, twMerge, useDOMRef } from "../../utils";
 
+import { useControlledState } from "../../hooks";
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";
 
@@ -20,7 +20,7 @@ export const SearchInput = forwardRef<"input", SearchInputProps>(
     const menuRef = useDOMRef<HTMLDivElement>(null);
     const [showMenu, setShowMenu] = useState(false);
 
-    const [inputValue, setInputValue] = useControlledState(value, defaultValue ?? "", onChange);
+    const [inputValue, setInputValue] = useControlledState(value, onChange, defaultValue ?? "");
 
     const OptionComponent = optComponent || <p />;
 

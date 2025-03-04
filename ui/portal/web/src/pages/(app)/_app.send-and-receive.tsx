@@ -1,6 +1,6 @@
 import { capitalize, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
@@ -19,15 +19,23 @@ import {
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
+
+const searchParamsSchema = z.object({
+  action: z.enum(["send", "receive"]).catch("send"),
+});
 
 export const Route = createFileRoute("/(app)/_app/send-and-receive")({
   component: SendAndReceiveComponent,
+  validateSearch: searchParamsSchema,
 });
 
 function SendAndReceiveComponent() {
-  const [selectedTab, setSelectedTab] = useState("Send");
+  const { action } = useSearch({ strict: false });
+  const navigate = useNavigate({ from: "/send-and-receive" });
+
   const [selectedDenom, setSelectedDenom] = useState("uusdc");
-  const { register, setError, setValue, inputs } = useInputs();
+  const { register, setError, setValue, inputs, reset } = useInputs();
   const { address, amount } = inputs;
 
   const { account } = useAccount();
@@ -62,15 +70,23 @@ function SendAndReceiveComponent() {
       });
       await wait(1000);
     },
-    onSuccess: () => refreshBalances(),
+    onSuccess: () => {
+      reset();
+      refreshBalances();
+    },
   });
 
   return (
     <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start h-full z-10">
       <ResizerContainer className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full">
-        <Tabs defaultKey="Send" keys={["Send", "Receive"]} fullWidth onTabChange={setSelectedTab} />
+        <Tabs
+          selectedTab={action}
+          keys={["send", "receive"]}
+          fullWidth
+          onTabChange={(v) => navigate({ search: { action: v }, replace: false })}
+        />
 
-        {selectedTab === "Send" ? (
+        {action === "send" ? (
           <>
             <div className="flex flex-col w-full gap-4">
               <Input

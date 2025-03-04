@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
-import React, { Children, cloneElement, type PropsWithChildren } from "react";
+import type React from "react";
+import { Children, type PropsWithChildren, cloneElement } from "react";
+import { useControlledState } from "../../hooks";
 import { twMerge } from "../../utils";
 
 export interface TabsProps {
   onTabChange?: (tab: string) => void;
   defaultKey?: string;
   keys?: string[];
+  selectedTab?: string;
   fullWidth?: boolean;
 }
 
@@ -13,11 +16,12 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   onTabChange,
   children,
   keys,
+  selectedTab,
   defaultKey,
   fullWidth,
 }) => {
   const tabs = keys ? keys : Children.toArray(children);
-  const [activeTab, setActiveTab] = React.useState(() => {
+  const [activeTab, setActiveTab] = useControlledState(selectedTab, onTabChange, () => {
     if (defaultKey) return defaultKey;
 
     if (tabs.length > 0) {
@@ -25,10 +29,6 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
     }
     return "";
   });
-
-  React.useEffect(() => {
-    onTabChange?.(activeTab);
-  }, [activeTab]);
 
   return (
     <motion.div
@@ -45,7 +45,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
         return (
           <motion.button
             className={twMerge(
-              "relative transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
+              "relative capitalize transition-all flex items-center justify-center py-2 px-4 cursor-pointer",
               { "flex-1": fullWidth },
             )}
             key={`navLink-${e}`}
