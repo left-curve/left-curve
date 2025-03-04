@@ -30,18 +30,17 @@ function SettingsComponent() {
         )}
         <span className="h3-bold">Settings</span>
       </h2>
-      {/* first element */}
       <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-1">
         <h3 className="text-lg font-bold px-[10px] py-4">Display</h3>
         <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
           <p>Language</p>
-          <Select defaultSelectedKey="en">
+          <Select defaultSelectedKey="en" label="Language">
             <SelectItem key="en">English</SelectItem>
           </Select>
         </div>
         <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
           <p>Number Format</p>
-          <Select defaultSelectedKey="en">
+          <Select defaultSelectedKey="en" label="Number Format">
             <SelectItem key="en">1234.00</SelectItem>
           </Select>
         </div>
