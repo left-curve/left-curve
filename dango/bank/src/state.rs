@@ -17,7 +17,7 @@ pub const ORPHANED_TRANSFERS: IndexedMap<(Addr, Addr), Coins, OrphanedTransferIn
         recipient: MultiIndex::new(
             |(_, recipient), _| *recipient,
             "orphaned_transfer",
-            "orphaned_trasfer__recipient",
+            "orphaned_transfer__recipient",
         ),
     });
 
