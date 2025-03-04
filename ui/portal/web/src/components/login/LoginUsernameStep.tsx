@@ -45,7 +45,12 @@ export const LoginUsernameStep: React.FC = () => {
       <form className="flex flex-col gap-6 w-full" onSubmit={signInWithUsername}>
         <Input
           label="Username"
-          placeholder="Enter your username"
+          placeholder={
+            <p className="flex gap-1">
+              <span>Enter your</span>
+              <span className="text-rice-800 exposure-m-italic">username</span>
+            </p>
+          }
           {...register("username", {
             validate: (value) => {
               if (!value) return "Username is required";
