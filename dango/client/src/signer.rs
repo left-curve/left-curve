@@ -27,7 +27,7 @@ where
     pub key: Key,
     pub key_hash: Hash256,
     pub nonce: T,
-    sk: SigningKey,
+    pub sk: SigningKey,
 }
 
 impl<T> SingleSigner<T>
