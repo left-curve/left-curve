@@ -9,13 +9,13 @@ use {
         dex::{
             CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
             OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
-            LP_NAMESPACE, NAMESPACE,
+            SlippageControl, LP_NAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventBuilder, EventName, Message,
+        MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
+        StdResult, Storage, SudoCtx, Udec128, Uint128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -42,6 +42,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             base_denom,
             quote_denom,
         } => withdraw_liquidity(ctx, base_denom, quote_denom),
+        ExecuteMsg::Swap {
+            base_denom,
+            quote_denom,
+            direction,
+            amount,
+            slippage,
+        } => swap(ctx, base_denom, quote_denom, direction, amount, slippage),
     }
 }
 
@@ -295,6 +302,49 @@ fn provide_liquidity(
         )?
     }))
     // TODO: add event
+}
+
+/// Perform a swap in the pool.
+#[inline]
+fn swap(
+    ctx: MutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    direction: Direction,
+    amount: Uint128,
+    slippage: Option<SlippageControl>,
+) -> anyhow::Result<Response> {
+    let mut funds = ctx.funds.clone();
+
+    // Load the pair params.
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the current pool reserves.
+    let reserves = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Calculate the out amount and update the pool reserves
+    let (reserve, offer, ask) = pair.swap(
+        reserves,
+        base_denom.clone(),
+        quote_denom.clone(),
+        direction,
+        amount,
+        slippage,
+    )?;
+
+    // Save the updated pool reserves.
+    RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
+
+    // Deduct the offer and add the ask to the funds. The funds sent are mutated
+    // by the swap to reflect the user funds after the swap. This allows multiple
+    // swaps using the output of the previous swap as the input for the next swap.
+    funds
+        .deduct(offer)
+        .map_err(|_| anyhow::anyhow!("insufficient funds"))?;
+    funds.insert(ask)?;
+
+    // Send back any unused funds together with proceeds from swaps
+    Ok(Response::new().add_message(Message::transfer(ctx.sender, funds)?))
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
