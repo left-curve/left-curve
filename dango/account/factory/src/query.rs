@@ -1,5 +1,5 @@
 use {
-    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, NEXT_ACCOUNT_INDEX},
+    crate::{ACCOUNTS, ACCOUNTS_BY_USER, CODE_HASHES, KEYS, MINIMUM_DEPOSIT, NEXT_ACCOUNT_INDEX},
     dango_types::{
         account_factory::{
             Account, AccountIndex, AccountType, QueryKeyPaginateParam, QueryKeyResponseItem,
@@ -7,7 +7,9 @@ use {
         },
         auth::Key,
     },
-    grug::{Addr, Bound, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
+    grug::{
+        Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
+    },
     std::collections::BTreeMap,
 };
 
@@ -16,6 +18,10 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::MinimumDeposit {} => {
+            let res = query_minimum_deposit(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::NextAccountIndex {} => {
             let res = query_next_account_index(ctx.storage)?;
             res.to_json_value()
@@ -58,6 +64,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
     }
     .map_err(Into::into)
+}
+
+fn query_minimum_deposit(storage: &dyn Storage) -> StdResult<Coins> {
+    MINIMUM_DEPOSIT.load(storage)
 }
 
 fn query_next_account_index(storage: &dyn Storage) -> StdResult<AccountIndex> {
