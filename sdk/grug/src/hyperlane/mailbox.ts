@@ -34,8 +34,8 @@ export class Message implements Encoder {
     let offset = 0;
 
     const buf = new Uint8Array(77 + this.body.byteLength);
-    buf.set(encodeEndian32(this.version), offset);
-    offset += 4;
+    buf.set([this.version], offset);
+    offset += 1;
     buf.set(encodeEndian32(this.nonce), offset);
     offset += 4;
     buf.set(encodeEndian32(this.originDomain), offset);

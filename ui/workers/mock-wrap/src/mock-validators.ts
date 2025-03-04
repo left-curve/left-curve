@@ -43,7 +43,7 @@ const main = async () => {
       contract: addresses.warp as Address,
       msg: {
         set_route: {
-          denom: "uusdc",
+          denom: "hyp/eth/usdc",
           destination_domain: 123,
           route: {
             address: "0000000000000000000000000000000000000000000000000000000000000000",
@@ -53,6 +53,9 @@ const main = async () => {
       },
       sender,
     });
+
+    await wait(3000);
+
     const route = await client.queryWasmSmart<{ address: Address; fee: string }>({
       contract: addresses.warp,
       msg: {

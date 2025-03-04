@@ -42,6 +42,16 @@ export const config: Config = createConfig({
         decimals: 18,
         coingeckoId: "ripple",
       },
+      "hyp/eth/usdc": {
+        type: "native",
+        name: "USD Circle",
+        logoURI:
+          "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
+        symbol: "USDC",
+        denom: "uusdc",
+        decimals: 6,
+        coingeckoId: "usd-coin",
+      },
       usol: {
         type: "native",
         name: "Solana",

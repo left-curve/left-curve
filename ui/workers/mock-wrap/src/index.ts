@@ -67,7 +67,7 @@ export default {
       contract: addresses.warp,
       msg: {
         route: {
-          denom: "uusdc",
+          denom: "hyp/eth/usdc",
           destinationDomain: MOCK_REMOTE_DOMAIN,
         },
       },
@@ -79,8 +79,8 @@ export default {
       return new Response("error: invalid address", { headers, status: 400 });
     }
 
-    const currentNonce = (await env.WARP_KV.get("nonce")) || "0";
-    const nextNonce = Number(currentNonce) + 1;
+    const currentNonce = Number((await env.WARP_KV.get("nonce")) || "0");
+    const nextNonce = currentNonce + 1;
     await env.WARP_KV.put("nonce", nextNonce.toString());
 
     const merkleeTreeConfig = await env.WARP_KV.get("merkle_tree", "text");
@@ -89,7 +89,7 @@ export default {
       version: MAILBOX_VERSION,
       originDomain: MOCK_REMOTE_DOMAIN,
       destinationDomain: DANGO_DOMAIN,
-      nonce: nextNonce,
+      nonce: currentNonce,
       sender: Addr32.decode(decodeHex(route.address)),
       recipient: Addr32.from(addresses.warp),
       body: TokenMessage.from({

@@ -1,4 +1,3 @@
-import { concatBytes } from "@noble/hashes/utils";
 import { encodeEndian32, encodeUtf8 } from "../encoding/index.js";
 import { keccak256 } from "./sha.js";
 
@@ -8,9 +7,21 @@ export function multisigHash(
   merkleIndex: number,
   messageId: Uint8Array,
 ): Uint8Array {
-  return keccak256(concatBytes(domainHash, merkleRoot, encodeEndian32(merkleIndex), messageId));
+  const bytes: number[] = [];
+  bytes.push(...domainHash);
+  bytes.push(...merkleRoot);
+  bytes.push(...encodeEndian32(Number(merkleIndex)));
+  bytes.push(...messageId);
+  return keccak256(new Uint8Array(bytes));
 }
 
 export function domainHash(domain: number, address: Uint8Array, key: string) {
-  return keccak256(concatBytes(encodeEndian32(domain), address, encodeUtf8(key)));
+  let offset = 0;
+  const buff = new Uint8Array(36 + key.length);
+  buff.set(encodeEndian32(domain), offset);
+  offset += 4;
+  buff.set(address, offset);
+  offset += 32;
+  buff.set(encodeUtf8(key), offset);
+  return keccak256(buff);
 }

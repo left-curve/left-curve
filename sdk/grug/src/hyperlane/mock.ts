@@ -1,4 +1,11 @@
-import { type KeyPair, Secp256k1, domainHash, keccak256, multisigHash } from "../crypto/index.js";
+import {
+  type KeyPair,
+  Secp256k1,
+  domainHash,
+  ethHashMessage,
+  keccak256,
+  multisigHash,
+} from "../crypto/index.js";
 import { encodeHex } from "../encoding/index.js";
 import { Addr32 } from "./addr32.js";
 import type { IncrementalMerkleTree } from "./merkletree.js";
@@ -38,11 +45,14 @@ export function mockValidatorSign(
   const merkleRoot = merkleTree.root();
   const merkleIndex = merkleTree.count() - 1n;
 
-  const mHash = multisigHash(
-    domainHash(originDomain, MOCK_REMOTE_MERKLE_TREE, HYPERLANE_DOMAIN_KEY),
-    merkleRoot,
-    Number(merkleIndex),
-    messageId,
+  const mHash = ethHashMessage(
+    multisigHash(
+      domainHash(originDomain, MOCK_REMOTE_MERKLE_TREE, HYPERLANE_DOMAIN_KEY),
+      merkleRoot,
+      Number(merkleIndex),
+      messageId,
+    ),
+    false,
   );
 
   const signatures = validators.map(({ secret }) => {
@@ -54,6 +64,16 @@ export function mockValidatorSign(
     merkleIndex: Number(merkleIndex),
     merkleRoot,
     originMerkleTree: Addr32.decode(MOCK_REMOTE_MERKLE_TREE),
-    signatures,
+    signatures: signatures.sort((a, b) => {
+      for (let i = 0; i < a.length; i++) {
+        if (a[i] < b[i]) {
+          return -1;
+        }
+        if (a[i] > b[i]) {
+          return 1;
+        }
+      }
+      return 1;
+    }),
   });
 }

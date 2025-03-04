@@ -4,9 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prebuild": "cd ../.. && pnpm build:sdk",
     "deploy": "wrangler deploy -y",
-    "dev": "wrangler dev ",
+    "dev": "wrangler dev",
     "start": "wrangler dev",
     "build": "pnpm tsup",
     "cf-typegen": "wrangler types",
