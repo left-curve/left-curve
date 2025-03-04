@@ -160,6 +160,18 @@ impl CoinPair {
             },
         ]))
     }
+
+    pub fn has(&self, denom: &Denom) -> bool {
+        self.first().denom == denom || self.second().denom == denom
+    }
+
+    pub fn amount_of(&self, denom: &Denom) -> Uint128 {
+        if self.first().denom == denom {
+            *self.first().amount
+        } else {
+            *self.second().amount
+        }
+    }
 }
 
 impl TryFrom<Coins> for CoinPair {
