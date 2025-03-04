@@ -1,37 +1,26 @@
 export const applets = [
   {
-    isFeatured: true,
-    img: "wizard",
-    title: "Account Creation",
-    description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/account-creation",
-  },
-  {
-    isFeatured: true,
-    img: "fisher",
-    title: "Block Explorer",
-    description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "block-explorer",
-  },
-  {
-    isFeatured: true,
-    img: "factory-1",
-    title: "Token Factory",
-    description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/token-factory",
-  },
-  {
-    isFeatured: true,
-    img: "moneybag",
-    title: "Deposit & Withdraw",
-    description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/amm",
-  },
-  {
-    isFeatured: false,
-    img: "money",
+    img: "/images/applets/send-and-receive.svg",
     title: "Send & Receive",
     description: "Lorem ipsum dolor sit amet consectetur.",
-    path: "/transfer",
+    path: "/send-and-receive",
+  },
+  {
+    img: "/images/applets/settings.svg",
+    title: "Settings",
+    description: "Lorem ipsum dolor sit amet consectetur.",
+    path: "/settings",
+  },
+  {
+    img: "/images/applets/notifications.svg",
+    title: "Notifications",
+    description: "Lorem ipsum dolor sit amet consectetur.",
+    path: "/notifications",
+  },
+  {
+    img: "/images/applets/account-creation.svg",
+    title: "Account Creation",
+    description: "Lorem ipsum dolor sit amet consectetur.",
+    path: "/create-account",
   },
 ];
