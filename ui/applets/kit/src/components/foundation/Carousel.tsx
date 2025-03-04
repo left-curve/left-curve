@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { IconChevronLeft, IconChevronRight } from "../";
+import { IconChevronLeftCarousell, IconChevronRight } from "../";
 import { twMerge } from "../../utils";
 
 import type React from "react";
@@ -76,7 +76,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       </AnimatePresence>
 
       <div className="w-full max-w-[18rem] flex items-center justify-between gap-3">
-        <IconChevronLeft
+        <IconChevronLeftCarousell
           onClick={prevSlide}
           className="w-[20px] h-[20px] text-rice-300 cursor-pointer"
         />

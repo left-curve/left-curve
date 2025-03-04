@@ -11,7 +11,7 @@ export const IconSearch: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ..
       {...props}
     >
       <path
-        stroke="#6E6865"
+        stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="2.92"

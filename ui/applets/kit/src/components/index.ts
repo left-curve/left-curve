@@ -43,6 +43,7 @@ export { DangoDotsIcon } from "./foundation/icons/DangoDots";
 
 export { IconDoubleChevronRight } from "./foundation/icons/IconDoubleChevronRight";
 export { IconChevronRight } from "./foundation/icons/IconChevronRight";
+export { IconChevronLeftCarousell } from "./foundation/icons/IconChevronLeftCarousell";
 export { IconChevronLeft } from "./foundation/icons/IconChevronLeft";
 export { IconChevronDown } from "./foundation/icons/IconChevronDown";
 export { IconGear } from "./foundation/icons/IconGear";
@@ -54,6 +55,8 @@ export { IconLeft } from "./foundation/icons/IconLeft";
 export { IconLogOut } from "./foundation/icons/IconLogOut";
 export { IconKey } from "./foundation/icons/IconKey";
 export { IconClose } from "./foundation/icons/IconClose";
+export { IconStar } from "./foundation/icons/IconStar";
+export { IconEmptyStar } from "./foundation/icons/IconEmptyStar";
 
 /* ---------------------------------- Emojis -------------------------------- */
 
