@@ -8,7 +8,7 @@ import {
   useWizard,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect } from "react";
 
@@ -69,7 +69,12 @@ export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) =
               </div>
             ) : (
               <div className="flex items-center flex-col">
-                <Button variant="link" className="text-red-bean-400 hover:text-red-bean-600">
+                <Button
+                  as={Link}
+                  to="/"
+                  variant="link"
+                  className="text-red-bean-400 hover:text-red-bean-600"
+                >
                   Do this later
                 </Button>
                 <Button
