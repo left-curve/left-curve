@@ -563,6 +563,232 @@ fn submit_and_cancel_orders(
         });
 }
 
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "submit one order then cancel it and submit it again"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(50),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Increased(50) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(50),
+            remaining: Uint128::new(50),
+        },
+    };
+    "submit one order then cancel it and place a new order using half of the funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(200),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(200),
+            remaining: Uint128::new(200),
+        },
+    };
+    "submit one order then cancel it and place a new order using more funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(200),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(200),
+            remaining: Uint128::new(200),
+        },
+    }
+    => panics "insufficient funds";
+    "submit one order then cancel it and place a new order with insufficient funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(150),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(50) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(150),
+            remaining: Uint128::new(150),
+        },
+    };
+    "submit one order then cancel it and place a new order excess funds are returned"
+)]
+fn submit_orders_then_cancel_and_submit_in_same_message(
+    initial_orders: Vec<CreateLimitOrderRequest>,
+    initial_funds: Coins,
+    cancellations: Option<OrderIds>,
+    new_orders: Vec<CreateLimitOrderRequest>,
+    second_funds: Coins,
+    expected_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_orders_after: BTreeMap<OrderId, OrderResponse>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Submit the initial orders
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: initial_orders,
+                cancels: None,
+            },
+            initial_funds,
+        )
+        .should_succeed();
+
+    // Record the user's balance
+    suite.balances().record(accounts.user1.address());
+
+    // Cancel the initial orders
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: new_orders,
+                cancels: cancellations,
+            },
+            second_funds,
+        )
+        .should_succeed();
+
+    // Check that the user balance has changed
+    suite
+        .balances()
+        .should_change(accounts.user1.address(), expected_balance_changes);
+
+    // Check that the orders are as expected
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after.len());
+            expected_orders_after
+                .iter()
+                .all(|(order_id, expected_order)| {
+                    let actual_order = orders.get(order_id).unwrap();
+                    actual_order.user == accounts.user1.address()
+                        && actual_order.base_denom == expected_order.base_denom
+                        && actual_order.quote_denom == expected_order.quote_denom
+                        && actual_order.direction == expected_order.direction
+                })
+        });
+}
+
 #[test]
 fn submit_and_cancel_order_in_same_block() {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
