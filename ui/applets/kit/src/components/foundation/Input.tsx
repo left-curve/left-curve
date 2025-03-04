@@ -3,7 +3,10 @@ import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "../../utils";
 
 export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "color" | "className">,
+  extends Omit<
+      React.InputHTMLAttributes<HTMLInputElement>,
+      "placeholder" | "size" | "color" | "className"
+    >,
     VariantProps<typeof inputVariants> {
   label?: string;
   startContent?: React.ReactNode;
@@ -17,6 +20,7 @@ export interface InputProps
     input?: string;
     description?: string;
   };
+  placeholder?: React.ReactNode;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -35,6 +39,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       errorMessage,
       label,
       name,
+      placeholder,
       ...props
     },
     ref,
@@ -55,6 +60,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
         <div className={inputWrapper({ className: classNames?.inputWrapper })}>
           {startContent ? startContent : null}
+          {!props.value && placeholder ? (
+            <div className="w-full absolute z-0 text-gray-500">{placeholder}</div>
+          ) : null}
           <input
             type={type}
             disabled={isDisabled}
@@ -99,7 +107,7 @@ const inputVariants = tv(
     slots: {
       base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
       inputWrapper: [
-        "group relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10 ",
+        "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-input-shadow gap-3 z-10",
         "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
@@ -108,7 +116,7 @@ const inputVariants = tv(
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
-        "autofill:bg-transparent bg-clip-text",
+        "autofill:bg-transparent bg-clip-text z-10",
       ],
     },
     variants: {
@@ -122,7 +130,7 @@ const inputVariants = tv(
       },
       isInvalid: {
         true: {
-          inputWrapper: "border-error-500 text-error-500",
+          inputWrapper: "border-error-500",
           input: "text-gray-700",
         },
       },

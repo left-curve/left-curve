@@ -6,7 +6,10 @@ import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { AssetTab } from "./AssetTab";
 
+import { useNavigate } from "@tanstack/react-router";
+
 export const AccountMenuBody: React.FC = () => {
+  const navigate = useNavigate();
   const { setSidebarVisibility } = useApp();
   const { account, connector } = useAccount();
   const [menuAccountActiveLink, setMenuAccountActiveLink] = useState<"Assets" | "Earn" | "Pools">(
@@ -32,10 +35,25 @@ export const AccountMenuBody: React.FC = () => {
           }}
         />
         <div className="md:self-end flex gap-4 items-center justify-center w-full">
-          <Button fullWidth size="md">
+          <Button
+            fullWidth
+            size="md"
+            onClick={() => [
+              navigate({ to: "/send-and-receive", search: { action: "receive" } }),
+              setSidebarVisibility(false),
+            ]}
+          >
             Fund
           </Button>
-          <Button fullWidth variant="secondary" size="md">
+          <Button
+            fullWidth
+            variant="secondary"
+            size="md"
+            onClick={() => [
+              navigate({ to: "/send-and-receive", search: { action: "send" } }),
+              setSidebarVisibility(false),
+            ]}
+          >
             Send
           </Button>
         </div>

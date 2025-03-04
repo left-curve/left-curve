@@ -3,21 +3,12 @@ import { useEffect, useRef } from "react";
 import { twMerge } from "../../utils";
 
 const defaultOptions: QROptions = {
-  width: 210,
-  height: 210,
-  dotsOptions: {
-    type: "dots",
-    color: "#000",
-    gradient: {
-      type: "radial",
-      colorStops: [
-        { offset: 0, color: "#000" },
-        { offset: 1, color: "#000" },
-      ],
-    },
-  },
+  width: 180,
+  height: 180,
+  shape: "square",
+  backgroundOptions: { color: "#FFF9F0" },
   cornersSquareOptions: {
-    type: "extra-rounded",
+    type: "square",
     color: "#000",
     gradient: {
       type: "linear",
@@ -29,7 +20,7 @@ const defaultOptions: QROptions = {
     },
   },
   cornersDotOptions: {
-    type: "dot",
+    type: "square",
     color: "#000",
   },
   imageOptions: {
@@ -55,11 +46,5 @@ export const QRCode: React.FC<Props> = ({ data, options = {}, ...props }) => {
     qrCode.update({ data });
   }, [data]);
 
-  return (
-    <div
-      ref={ref}
-      {...props}
-      className={twMerge("rounded-[72px] bg-surface-rose-100 p-10", props.className)}
-    />
-  );
+  return <div ref={ref} {...props} className={twMerge("bg-rice-25 p-2", props.className)} />;
 };

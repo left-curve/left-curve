@@ -6,27 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@cloudflare/workers-types':
-      specifier: ^4.20241004.0
-      version: 4.20241022.0
-    '@rsbuild/core':
-      specifier: ^1.2.4
-      version: 1.2.5
-    '@rsbuild/plugin-react':
-      specifier: ^1.1.0
-      version: 1.1.0
-    '@tanstack/react-query':
-      specifier: ^5.59.0
-      version: 5.59.0
-    '@tanstack/react-router':
-      specifier: ^1.111.3
-      version: 1.111.3
-    '@tanstack/router-devtools':
-      specifier: ^1.111.3
-      version: 1.111.3
-    '@tanstack/zod-adapter':
-      specifier: ^1.111.3
-      version: 1.111.3
     '@types/node':
       specifier: ^20
       version: 20.16.10
@@ -36,21 +15,12 @@ catalogs:
     '@types/react-dom':
       specifier: ^18.3.1
       version: 18.3.1
-    '@unocss/postcss':
-      specifier: ^0.63.3
-      version: 0.63.3
-    '@unocss/reset':
-      specifier: ^0.63.3
-      version: 0.63.3
     autoprefixer:
       specifier: ^10.4.20
       version: 10.4.20
     framer-motion:
       specifier: ^11.11.7
       version: 11.11.7
-    next:
-      specifier: 14.2.5
-      version: 14.2.5
     postcss:
       specifier: ^8
       version: 8.4.47
@@ -60,37 +30,13 @@ catalogs:
     react-dom:
       specifier: ^18.3.1
       version: 18.3.1
-    react-hook-form:
-      specifier: ^7.53.0
-      version: 7.53.0
-    react-hot-toast:
-      specifier: ^2.4.1
-      version: 2.4.1
-    react-refresh:
-      specifier: ^0.14.2
-      version: 0.14.2
     tailwindcss:
       specifier: ^3.4.13
       version: 3.4.13
-    typescript:
-      specifier: ^5.6.3
-      version: 5.6.3
     vite:
       specifier: ^5.4.7
       version: 5.4.8
     vite-tsconfig-paths:
-      specifier: ^5.0.1
-      version: 5.0.1
-    vitest:
-      specifier: ^2.0.5
-      version: 2.1.1
-    wrangler:
-      specifier: ^3.60.3
-      version: 3.83.0
-    zod:
-      specifier: ^3.24.1
-      version: 3.24.1
-    zustand:
       specifier: ^5.0.1
       version: 5.0.1
 
@@ -222,9 +168,6 @@ importers:
       '@react-stately/tabs':
         specifier: ^3.6.9
         version: 3.6.10(react@18.3.1)
-      '@react-stately/utils':
-        specifier: ^3.10.4
-        version: 3.10.4(react@18.3.1)
       '@react-types/shared':
         specifier: ^3.24.1
         version: 3.25.0(react@18.3.1)

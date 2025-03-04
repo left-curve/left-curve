@@ -1,4 +1,4 @@
-import { Button, Input, useInput, useSigningClient, useWizard } from "@left-curve/applets-kit";
+import { Button, Input, useInputs, useSigningClient, useWizard } from "@left-curve/applets-kit";
 import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
@@ -8,7 +8,9 @@ import type React from "react";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, value: fundsAmount } = useInput("address");
+  const { register, inputs } = useInputs();
+
+  const { value: fundsAmount } = inputs.amount || {};
 
   const config = useConfig();
   const chainId = useChainId();
@@ -48,7 +50,7 @@ export const CreateAccountDepositStep: React.FC = () => {
     <div className="flex flex-col gap-6 w-full">
       <Input
         placeholder="0"
-        {...register({
+        {...register("amount", {
           validate: (v) => {
             if (Number(v) > Number(humanBalance)) return "Insufficient balance";
             return true;
