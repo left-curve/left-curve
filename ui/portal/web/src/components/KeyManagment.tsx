@@ -52,6 +52,7 @@ export const KeyManagment: React.FC = () => {
         <Spinner color="gray" size="md" />
       ) : (
         Object.entries(keys).map(([keyHash, key]) => {
+          const isActive = keyHash === currentKeyHash;
           return (
             <div
               key={crypto.randomUUID()}
@@ -59,7 +60,10 @@ export const KeyManagment: React.FC = () => {
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <TruncateText className="text-gray-700 font-bold" text={keyHash} />
+                  <div className="flex gap-[6px] items-center">
+                    <TruncateText className="text-gray-700 font-bold" text={keyHash} />
+                    {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
+                  </div>
 
                   <p className="text-gray-500 text-sm">
                     {KeyTranslation[Object.keys(key).at(0) as keyof typeof KeyTranslation]}
@@ -70,7 +74,7 @@ export const KeyManagment: React.FC = () => {
                   <IconTrash
                     onClick={() => showModal(Modals.RemoveKey, { keyHash })}
                     className={twMerge("w-5 h-5 cursor-pointer", {
-                      "text-gray-300 cursor-default": keyHash === currentKeyHash,
+                      "text-gray-300 cursor-default": isActive,
                     })}
                   />
                 </div>
