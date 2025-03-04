@@ -1,6 +1,7 @@
 use {
     grug::{
-        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, ZeroInclusiveOneExclusive,
+        Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128,
+        ZeroInclusiveOneExclusive,
     },
     std::{fmt::Display, str::FromStr},
 };
@@ -104,4 +105,17 @@ pub struct PairUpdate {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub params: PairParams,
+}
+
+#[grug::derive(Serde)]
+pub enum SlippageControl {
+    /// Minimum amount out. Transaction will fail if the amount out is less than the
+    /// specified amount.
+    MinimumOut(Uint128),
+    /// Maximum amount in. Transaction will fail if the amount in is greater than the
+    /// specified amount.
+    MaximumIn(Uint128),
+    /// Price limit. Transaction will fail if the execution price is greater than the
+    /// specified price for a BUY order, or less than the specified price for a SELL order.
+    PriceLimit(Udec128),
 }
