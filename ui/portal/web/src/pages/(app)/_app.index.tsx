@@ -96,7 +96,7 @@ function OverviewComponent() {
               <Button fullWidth size="md">
                 Fund
               </Button>
-              <Button fullWidth variant="secondary" size="md">
+              <Button as={Link} fullWidth variant="secondary" size="md" to="/send-and-receive">
                 Send
               </Button>
             </div>

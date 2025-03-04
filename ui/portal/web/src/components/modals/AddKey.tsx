@@ -21,7 +21,7 @@ export const AddKeyModal: React.FC = () => {
 
       const { keyHash, key } = await connector.createNewKey();
 
-      await signingClient?.configureKey({
+      await signingClient?.updateKey({
         keyHash,
         sender: account.address,
         action: {

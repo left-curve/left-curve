@@ -27,7 +27,7 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
     mutationFn: async () => {
       if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-      await signingClient.configureKey({
+      await signingClient.updateKey({
         keyHash,
         sender: account.address,
         action: "delete",

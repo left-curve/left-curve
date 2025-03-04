@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { AssetTab } from "./AssetTab";
 
+import { Link } from "@tanstack/react-router";
+
 export const AccountMenuBody: React.FC = () => {
   const { setSidebarVisibility } = useApp();
   const { account, connector } = useAccount();
@@ -35,7 +37,7 @@ export const AccountMenuBody: React.FC = () => {
           <Button fullWidth size="md">
             Fund
           </Button>
-          <Button fullWidth variant="secondary" size="md">
+          <Button as={Link} fullWidth variant="secondary" size="md" to="/send-and-receive">
             Send
           </Button>
         </div>
