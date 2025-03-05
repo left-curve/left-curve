@@ -57,37 +57,9 @@ export const AccountMenuBody: React.FC = () => {
             Send
           </Button>
         </div>
-
-        <motion.ul className="flex gap-4 text-base relative border-b border-b-gray-100 w-full items-center">
-          {Array.from(["Assets", "Earn", "Pools"]).map((tab) => {
-            const isActive = tab === menuAccountActiveLink;
-            return (
-              <motion.li
-                className="relative px-4 transition-all flex-1 flex items-center justify-center py-3 cursor-pointer"
-                key={`navLink-${tab}`}
-                onClick={() => setMenuAccountActiveLink(tab as "Assets" | "Earn" | "Pools")}
-              >
-                <p
-                  className={twMerge(
-                    "italic font-medium font-exposure transition-all",
-                    isActive ? "text-red-bean-400" : "text-gray-300",
-                  )}
-                >
-                  {tab}
-                </p>
-                {isActive ? (
-                  <motion.div
-                    className="w-full h-[1px] bg-red-bean-400 absolute bottom-0 left-0"
-                    layoutId="underline"
-                  />
-                ) : null}
-              </motion.li>
-            );
-          })}
-        </motion.ul>
       </div>
 
-      {menuAccountActiveLink === "Assets" ? <AssetTab /> : null}
+      <AssetTab />
     </>
   );
 };
