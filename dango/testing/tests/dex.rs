@@ -1449,7 +1449,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         ETH_DENOM.clone() => 500000,
     } => panics "slippage tolerance exceeded" ; "swap direction bid no fee price limit exceeded"
 )]
-fn batch_swap(
+fn swap(
     pool_liquidity: Coins,
     swap_request: SwapRequest,
     swap_funds: Coins,
@@ -1516,6 +1516,7 @@ fn batch_swap(
                 direction: swap_request.direction,
                 amount: swap_request.amount,
                 slippage: swap_request.slippage,
+                route: None,
             },
             swap_funds.clone(),
         )
