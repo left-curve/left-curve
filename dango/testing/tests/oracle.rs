@@ -142,15 +142,19 @@ fn oracle() {
 fn double_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
 
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let btc_vaas_raw = pyth_client.get_latest_vaas(vec![BTC_USD_ID]).unwrap();
-        let eth_vaas_raw = pyth_client.get_latest_vaas(vec![ETH_USD_ID]).unwrap();
+        let btc_vaas_raw = pyth_client
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+            .unwrap();
+        let eth_vaas_raw = pyth_client
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![ETH_USD_ID]))
+            .unwrap();
 
         let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
             .unwrap()
@@ -266,7 +270,7 @@ fn double_vaas() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
 
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),
@@ -280,13 +284,15 @@ fn multiple_vaas() {
         XRP_USD_ID  => XRP_DENOM.clone(),
     };
 
+    let ids = NonEmpty::new_unchecked(id_denoms.keys().cloned().collect::<Vec<_>>());
+
     let mut last_price_feeds = id_denoms
         .keys()
         .map(|id| (*id, None))
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let vaas_raw = pyth_client.get_latest_vaas(id_denoms.keys()).unwrap();
+        let vaas_raw = pyth_client.get_latest_vaas(ids.clone()).unwrap();
 
         let vaas = vaas_raw
             .iter()

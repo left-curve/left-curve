@@ -4,7 +4,7 @@ use {
     grug_app::Shared,
     pyth_client::PythClient,
     pyth_types::PythId,
-    tracing::debug,
+    tracing::warn,
 };
 
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
@@ -21,8 +21,8 @@ impl PythClientPPHandler {
         let shared_vaas = Shared::new(vec![]);
 
         if test_mode {
-            debug!("Running in test mode");
-            client = client.with_middleware();
+            warn!("Running in test mode");
+            client = client.with_middleware_cache();
         }
 
         Self {

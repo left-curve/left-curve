@@ -8,7 +8,7 @@ use {
 
 #[test]
 fn middleware_sse() {
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
     let api = MockApi;
 
     let shared = pyth_client.run_streaming(NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]));

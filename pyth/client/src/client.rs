@@ -1,31 +1,28 @@
 use {
-    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty, StdError},
+    crate::middleware_cache::PythMiddlewareCache,
+    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     grug_app::Shared,
-    indexer_disk_saver::{error::Error, persistence::DiskPersistence},
     pyth_types::LatestVaaResponse,
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
-    sha2::{Digest, Sha256},
     std::{
-        collections::HashMap,
-        env,
-        path::Path,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
         },
-        thread::{self, sleep},
+        thread::{self},
         time::Duration,
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
-    tracing::{error, info},
+    tracing::{debug, error},
 };
 
+/// PythClient is a client to interact with the Pyth network.
 pub struct PythClient {
     base_url: String,
     keep_running: Arc<AtomicBool>,
-    middleware: Option<PythMockCache>,
+    middleware: Option<PythMiddlewareCache>,
 }
 
 impl PythClient {
@@ -38,24 +35,22 @@ impl PythClient {
     }
 
     /// Use the middleware to be able to use cached data.
-    pub fn with_middleware(mut self) -> Self {
-        self.middleware = Some(PythMockCache::new());
+    pub fn with_middleware_cache(mut self) -> Self {
+        self.middleware = Some(PythMiddlewareCache::new());
         self
     }
 
-    /// Start a SSE connection to the Pyth network.
-    /// If shared_vaas is provided, it will update the shared value with the latest VAA.
-    /// Otherwise, it will create a new shared value and return it.
+    /// Start a SSE connection to the Pyth network and close the previous one if it exists.
+    /// Return a shared vector to read the vaas.
+    /// If the middleware is used, the function will run the middleware thread.
     pub fn run_streaming<I>(&mut self, ids: NonEmpty<I>) -> Shared<Vec<Binary>>
     where
-        I: IntoIterator + Lengthy + Send + 'static,
+        I: IntoIterator + Lengthy + Send + Clone + 'static,
         I::Item: ToString,
     {
         // Close the previous connection if it exists since the Arc
         // to shut down the thread will be replaced.
         self.close();
-
-        let base_url = self.base_url.clone();
 
         // Create the shared vector to write/read the vaas.
         let shared = Shared::new(vec![]);
@@ -67,42 +62,46 @@ impl PythClient {
         let keep_running_clone = self.keep_running.clone();
 
         // If the middleware, run the middleware thread.
-        if let Some(_) = &mut self.middleware {
-            let mut middleware = PythMockCache::new();
+        if self.middleware.is_some() {
             thread::spawn(move || {
-                middleware.run_streaming(ids, shared_clone, keep_running_clone);
+                let mut pyth_mock = PythMiddlewareCache::new();
+                pyth_mock.run_streaming(ids, shared_clone, keep_running_clone);
             });
+        } else {
+            let base_url = self.base_url.clone();
 
-            return shared;
-        }
-
-        thread::spawn(|| {
-            let rt = Runtime::new().unwrap();
-            rt.block_on(async {
-                PythClient::run_streaming_inner(base_url, ids, shared_clone, keep_running_clone)
+            thread::spawn(move || {
+                let rt = Runtime::new().unwrap();
+                rt.block_on(async {
+                    PythClient::run_streaming_inner(
+                        base_url,
+                        ids,
+                        shared_clone,
+                        keep_running_clone,
+                    )
                     .await;
-                info!("Pyth SSE connection closed");
+                });
             });
-        });
+        }
 
         shared
     }
 
-    /// Close the client and stop the streaming thread.
+    /// Stop the streaming thread.
     pub fn close(&mut self) {
         self.keep_running.store(false, Ordering::SeqCst);
     }
 
     /// Get the latest VAA from the Pyth network.
-    pub fn get_latest_vaas<I>(&mut self, ids: I) -> reqwest::Result<Vec<Binary>>
+    pub fn get_latest_vaas<I>(&mut self, ids: NonEmpty<I>) -> reqwest::Result<Vec<Binary>>
     where
-        I: IntoIterator + Clone,
+        I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,
     {
         // If there is the middleware, try to get the data from it.
         if let Some(middleware) = &mut self.middleware {
             // This code should be reached only in tests.
-            // Unwrap in order to fail if the file is not found.
+            // Unwrap in order to fail if the cached data are not found.
             return Ok(middleware.get_latest_vaas(ids.clone()).unwrap());
         }
 
@@ -116,12 +115,13 @@ impl PythClient {
             .data)
     }
 
-    fn create_request_params<I>(ids: I) -> Vec<(&'static str, String)>
+    fn create_request_params<I>(ids: NonEmpty<I>) -> Vec<(&'static str, String)>
     where
-        I: IntoIterator,
+        I: IntoIterator + Lengthy,
         I::Item: ToString,
     {
         let mut params = ids
+            .into_inner()
             .into_iter()
             .map(|id| ("ids[]", id.to_string()))
             .collect::<Vec<_>>();
@@ -147,7 +147,7 @@ impl PythClient {
         I: IntoIterator + Lengthy,
         I::Item: ToString,
     {
-        let params = PythClient::create_request_params(ids.into_inner());
+        let params = PythClient::create_request_params(ids);
 
         loop {
             let builder = Client::new()
@@ -170,13 +170,14 @@ impl PythClient {
             // Waiting for next message and send through channel.
             while let Some(event) = es.next().await {
                 match event {
-                    Ok(Event::Open) => info!("Pyth SSE connection open"),
+                    Ok(Event::Open) => debug!("Pyth SSE connection open"),
                     Ok(Event::Message(message)) => {
                         // Deserialize the message.
                         match message.data.deserialize_json::<LatestVaaResponse>() {
                             Ok(vaas) => {
                                 // Check if the thread should keep running.
                                 if !keep_running.load(Ordering::Relaxed) {
+                                    debug!("Pyth SSE connection open");
                                     return;
                                 }
 
@@ -202,133 +203,5 @@ impl PythClient {
                 }
             }
         }
-    }
-}
-
-pub struct PythMockCache {
-    stored_vaas: HashMap<String, std::vec::IntoIter<Vec<Binary>>>,
-}
-
-impl PythMockCache {
-    pub fn new() -> Self {
-        Self {
-            stored_vaas: HashMap::new(),
-        }
-    }
-
-    /// Inner function to run the SSE connection.
-    fn run_streaming<I>(
-        &mut self,
-        ids: NonEmpty<I>,
-        shared: Shared<Vec<Binary>>,
-        keep_running: Arc<AtomicBool>,
-    ) where
-        I: IntoIterator + Lengthy,
-        I::Item: ToString,
-    {
-        let ids = ids
-            .into_inner()
-            .into_iter()
-            .map(|id| id.to_string())
-            .collect::<Vec<_>>();
-
-        loop {
-            // Check if the thread should keep running.
-            if !keep_running.load(Ordering::Relaxed) {
-                return;
-            }
-
-            // Retrieve the vaas
-            let vaas = self.get_latest_vaas(ids.clone()).unwrap();
-
-            // Update the shared value.
-            shared.write_with(|mut shared_vaas| {
-                *shared_vaas = vaas;
-            });
-
-            // Sleep for 0,5 seconds.
-            sleep(Duration::from_millis(500));
-        }
-    }
-
-    /// Get the latest VAAs from cached data.
-    pub fn get_latest_vaas<I>(&mut self, ids: I) -> Result<Vec<Binary>, Error>
-    where
-        I: IntoIterator,
-        I::Item: ToString,
-    {
-        let mut return_vaas = vec![];
-
-        // For each id, try to get the vaas.
-        for id in ids {
-            let filename = self.create_file_name(vec![id]);
-
-            // If the file is not in memory, try to read from disk.
-            if !self.stored_vaas.contains_key(&filename) {
-                let cache_file = DiskPersistence::new(filename.clone().into(), true);
-                if cache_file.file_path.exists() {
-                    let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
-                    self.stored_vaas
-                        .insert(filename.clone(), loaded_vaas.into_iter());
-                }
-            }
-
-            // Check if the vaas are stored in memory.
-            if let Some(vaas_iter) = self.stored_vaas.get_mut(&filename) {
-                if let Some(vaas) = vaas_iter.next() {
-                    return_vaas.extend(vaas);
-                }
-            } else {
-                return Err(StdError::DataNotFound {
-                    ty: "cache",
-                    key: filename,
-                }
-                .into());
-            }
-        }
-
-        Ok(return_vaas)
-    }
-
-    /// Cache data.
-    pub fn store_data<I>(&self, ids: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
-    where
-        I: IntoIterator,
-        I::Item: ToString,
-    {
-        let filename = self.create_file_name(ids);
-
-        let cache_file = DiskPersistence::new(filename.clone().into(), true);
-        cache_file.save(&data)?;
-
-        Ok(())
-    }
-
-    fn create_file_name<I>(&self, ids: I) -> String
-    where
-        I: IntoIterator,
-        I::Item: ToString,
-    {
-        let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        let mut path = Path::new(&manifest_dir);
-
-        // Risali alla root del workspace
-        while path.parent().is_some() {
-            path = path.parent().unwrap();
-            let cargo_toml = path.join("Cargo.lock");
-            if cargo_toml.exists() {
-                break;
-            }
-        }
-
-        // Sort the ids to have a unique file name.
-        let mut ids = ids.into_iter().map(|id| id.to_string()).collect::<Vec<_>>();
-        ids.sort();
-
-        format!(
-            "{}/pyth/client/testdata/{:x}",
-            path.to_str().unwrap(),
-            Sha256::digest(ids.join("__"))
-        )
     }
 }

@@ -1,7 +1,7 @@
 use {
     dango_types::oracle::PythVaa,
     grug::{Inner, MockApi, NonEmpty},
-    pyth_client::{PythClient, PythMockCache},
+    pyth_client::{middleware_cache::PythMiddlewareCache, PythClient},
     pyth_types::{
         ATOM_USD_ID, BCH_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LTC_USD_ID,
         PYTH_URL, SHIB_USD_ID, SOL_USD_ID, SUI_USD_ID, USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,
@@ -11,7 +11,7 @@ use {
 
 #[test]
 fn write_cache() {
-    let mut pyth_mock = PythMockCache::new();
+    let mut pyth_mock = PythMiddlewareCache::new();
     let mut pyth_client = PythClient::new(PYTH_URL);
 
     // Set the ids group to store.
@@ -33,7 +33,10 @@ fn write_cache() {
 
     for id in ids {
         // If the cache already has the data, skip.
-        if let Ok(_) = pyth_mock.get_latest_vaas(vec![id]) {
+        if pyth_mock
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![id]))
+            .is_ok()
+        {
             continue;
         }
 
@@ -62,13 +65,15 @@ fn write_cache() {
 #[test]
 fn read_single_cache() {
     let api = MockApi;
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
 
     // Read the stored files.
     let mut latest_time = 0;
     let mut latest_price = 0;
     for _ in 0..10 {
-        let vaas = pyth_client.get_latest_vaas(vec![BTC_USD_ID]).unwrap();
+        let vaas = pyth_client
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+            .unwrap();
 
         for vaa in vaas {
             let vaa = PythVaa::new(&api, vaa.into_inner()).unwrap();
@@ -91,7 +96,7 @@ fn read_single_cache() {
 #[test]
 fn read_multiple_cache() {
     let api = MockApi;
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware();
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
 
     // Read the stored files.
     let mut latest_price_btc = 0;
@@ -102,15 +107,14 @@ fn read_multiple_cache() {
 
     for _ in 0..10 {
         let vaas = pyth_client
-            .get_latest_vaas(vec![BTC_USD_ID, ETH_USD_ID])
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]))
             .unwrap();
 
-        let btc_price_feed = PythVaa::new(&api, vaas.get(0).unwrap().clone().into_inner())
+        let btc_price_feed = *PythVaa::new(&api, vaas.first().unwrap().clone().into_inner())
             .unwrap()
             .unverified()
-            .get(0)
-            .unwrap()
-            .clone();
+            .first()
+            .unwrap();
 
         let new_price_btc = btc_price_feed.get_price_unchecked().price;
         let new_publish_time_btc = btc_price_feed.get_price_unchecked().publish_time;
@@ -130,12 +134,11 @@ fn read_multiple_cache() {
         );
 
         // eth
-        let eth_price_feed = PythVaa::new(&api, vaas.get(1).unwrap().clone().into_inner())
+        let eth_price_feed = *PythVaa::new(&api, vaas.get(1).unwrap().clone().into_inner())
             .unwrap()
             .unverified()
-            .get(0)
-            .unwrap()
-            .clone();
+            .first()
+            .unwrap();
 
         let new_price_eth = eth_price_feed.get_price_unchecked().price;
         let new_publish_time_eth = eth_price_feed.get_price_unchecked().publish_time;

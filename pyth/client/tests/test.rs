@@ -50,7 +50,7 @@ async fn test_client_sse_subscription() {
 fn test_client_latest_vaas() {
     let mut pyth_client = PythClient::new(PYTH_URL);
 
-    let ids = vec![BTC_USD_ID, ETH_USD_ID];
+    let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]);
     let vaas = pyth_client.get_latest_vaas(ids).unwrap();
 
     assert!(!vaas.is_empty());
