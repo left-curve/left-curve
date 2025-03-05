@@ -2,7 +2,6 @@ use {
     grug::{Binary, Inner, Lengthy, NonEmpty, StdError},
     grug_app::Shared,
     indexer_disk_saver::{error::Error, persistence::DiskPersistence},
-    sha2::{Digest, Sha256},
     std::{
         collections::HashMap,
         env,
@@ -72,7 +71,7 @@ impl PythMiddlewareCache {
 
         // For each id, try to get the vaas.
         for id in ids.into_inner() {
-            let filename = self.create_file_name(vec![id]);
+            let filename = self.create_file_name(id);
 
             // If the file is not in memory, try to read from disk.
             if !self.stored_vaas.contains_key(&filename) {
@@ -102,12 +101,11 @@ impl PythMiddlewareCache {
     }
 
     /// Cache data.
-    pub fn store_data<I>(&self, ids: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
+    pub fn store_data<I>(&self, id: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
     where
-        I: IntoIterator,
-        I::Item: ToString,
+        I: ToString,
     {
-        let filename = self.create_file_name(ids);
+        let filename = self.create_file_name(id);
 
         let cache_file = DiskPersistence::new(filename.clone().into(), true);
         cache_file.save(&data)?;
@@ -115,15 +113,14 @@ impl PythMiddlewareCache {
         Ok(())
     }
 
-    fn create_file_name<I>(&self, ids: I) -> String
+    fn create_file_name<I>(&self, id: I) -> String
     where
-        I: IntoIterator,
-        I::Item: ToString,
+        I: ToString,
     {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
         let mut path = Path::new(&manifest_dir);
 
-        // Risali alla root del workspace
+        // Find the workspace path.
         while path.parent().is_some() {
             path = path.parent().unwrap();
             let cargo_toml = path.join("Cargo.lock");
@@ -132,14 +129,10 @@ impl PythMiddlewareCache {
             }
         }
 
-        // Sort the ids to have a unique file name.
-        let mut ids = ids.into_iter().map(|id| id.to_string()).collect::<Vec<_>>();
-        ids.sort();
-
         format!(
-            "{}/pyth/client/testdata/{:x}",
+            "{}/pyth/client/testdata/{}",
             path.to_str().unwrap(),
-            Sha256::digest(ids.join("__"))
+            id.to_string()
         )
     }
 }
