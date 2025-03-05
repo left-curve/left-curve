@@ -12,6 +12,7 @@ use {
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, sync::Arc, time},
+    tokio::signal::unix::{signal, SignalKind},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
@@ -164,16 +165,24 @@ impl StartCmd {
             .finish()
             .unwrap(); // this fails if one of consensus|snapshot|mempool|info is None
 
-        // NOTE: This is to catch Ctrl-c and properly stops the server. When using
-        // httpd server + indexer, it wouldn't process SIGINT properly without this.
+        // Listen for SIGINT and SIGTERM signals.
+        // SIGINT is received when user presses Ctrl-C.
+        // SIGTERM is received when user does `systemctl stop`.
+        let mut sigint = signal(SignalKind::interrupt())?;
+        let mut sigterm = signal(SignalKind::terminate())?;
+
         tokio::select! {
-            result = async {
-                abci_server
-                    .listen_tcp(self.abci_addr)
-                    .await
-                    .map_err(|err| anyhow!("failed to start tower ABCI server: {err}"))
-            } => result,
-            _ = tokio::signal::ctrl_c() => Ok(()),
+            result = async { abci_server.listen_tcp(self.abci_addr).await } => {
+                result.map_err(|err| anyhow!("failed to start ABCI server: {err:?}"))
+            },
+            _ = sigint.recv() => {
+                tracing::info!("Received SIGINT, shutting down");
+                Ok(())
+            },
+            _ = sigterm.recv() => {
+                tracing::info!("Received SIGTERM, shutting down");
+                Ok(())
+            },
         }
     }
 }
