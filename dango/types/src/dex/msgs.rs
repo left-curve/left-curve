@@ -1,4 +1,5 @@
 use {
+    super::SlippageControl,
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
     grug::{Addr, CoinPair, Denom, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
@@ -70,6 +71,14 @@ pub enum ExecuteMsg {
     WithdrawLiquidity {
         base_denom: Denom,
         quote_denom: Denom,
+    },
+    /// Perform a swap in the passive liquidity pool for the `base_denom/quote_denom` pair
+    Swap {
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        amount: Uint128,
+        slippage: Option<SlippageControl>,
     },
 }
 
