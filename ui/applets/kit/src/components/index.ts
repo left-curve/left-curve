@@ -62,6 +62,8 @@ export { IconClose } from "./foundation/icons/IconClose";
 export { IconStar } from "./foundation/icons/IconStar";
 export { IconEmptyStar } from "./foundation/icons/IconEmptyStar";
 export { IconCheckedCircle } from "./foundation/icons/IconCheckedCircle";
+export { IconChecked } from "./foundation/icons/IconChecked";
+export { IconAlert } from "./foundation/icons/IconAlert";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

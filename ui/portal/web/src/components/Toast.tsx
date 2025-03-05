@@ -1,7 +1,7 @@
 import { useState } from "react";
 import hotToast from "react-hot-toast";
 
-import { CrossIcon } from "@left-curve/applets-kit";
+import { IconChecked, IconClose, Spinner } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
 
 interface ToastMsg {
@@ -21,10 +21,32 @@ interface Props {
   description?: string;
 }
 
+const Icon = {
+  success: (
+    <div className="min-h-6 min-w-6 rounded-full bg-green-bean-300 text-green-bean-100 flex items-center justify-center">
+      <IconChecked className="w-3 h-3" />
+    </div>
+  ),
+  error: (
+    <div className="min-h-6 min-w-6 rounded-full bg-red-bean-300 text-red-bean-100 flex items-center justify-center">
+      <IconClose className="w-4 h-4" />
+    </div>
+  ),
+  loading: (
+    <div className="text-blue-500 min-h-6 min-w-6  flex items-center justify-center">
+      <Spinner size="sm" color="current" />
+    </div>
+  ),
+};
+
 export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   return (
-    <div className="w-full max-w-[15.75rem] p-4 rounded-[20px] text-center text-white typography-body-m font-semibold border border-borders-blue-600 backdrop-blur-sm transition-all duration-500 bg-surface-blue-600 shadow-xl">
-      <p>{title}</p>
+    <div className="w-fit min-w-[12rem] max-w-[20rem] p-4 rounded-[20px] bg-white-100 border border-gray-100 transition-all duration-500 shadow-card-shadow flex items-center gap-2">
+      {Icon[type]}
+      <div className="flex flex-col">
+        <p className="text-gray-900 diatype-sm-medium">{title}</p>
+        {description && <p className="text-gray-500 diatype-xs-medium">{description}</p>}
+      </div>
     </div>
   );
 };
