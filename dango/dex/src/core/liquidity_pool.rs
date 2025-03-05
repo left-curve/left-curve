@@ -1,7 +1,7 @@
 use {
     crate::TradingFunction,
     anyhow::ensure,
-    dango_types::dex::{Direction, PairParams, SlippageControl},
+    dango_types::dex::{Direction, PairParams},
     grug::{
         Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
         Uint128,
@@ -70,7 +70,6 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        slippage: Option<SlippageControl>,
     ) -> anyhow::Result<(CoinPair, Coin, Coin)>;
 
     /// Simulate a swap in the pool. This function does not mutate the pool reserves.
@@ -89,7 +88,6 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        slippage: Option<SlippageControl>,
     ) -> anyhow::Result<(Coin, Coin)>;
 }
 
@@ -166,18 +164,11 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        slippage: Option<SlippageControl>,
     ) -> anyhow::Result<(CoinPair, Coin, Coin)> {
         let invariant_before = self.curve_invariant.invariant(&reserve)?;
 
-        let (coin_in, coin_out) = self.simulate_swap(
-            &reserve,
-            base_denom,
-            quote_denom,
-            direction,
-            amount,
-            slippage,
-        )?;
+        let (coin_in, coin_out) =
+            self.simulate_swap(&reserve, base_denom, quote_denom, direction, amount)?;
 
         reserve.checked_add(&coin_in)?.checked_sub(&coin_out)?;
 
@@ -199,7 +190,6 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        slippage: Option<SlippageControl>,
     ) -> anyhow::Result<(Coin, Coin)> {
         ensure!(
             reserves.has(&base_denom) && reserves.has(&quote_denom),
@@ -233,40 +223,6 @@ impl PassiveLiquidityPool for PairParams {
                 )
             },
         };
-
-        // Enforce slippage control.
-        if let Some(slippage_control) = slippage {
-            match slippage_control {
-                SlippageControl::MinimumOut(min_out) => {
-                    ensure!(
-                        direction != Direction::Bid,
-                        "minimum out is only supported for direction: ask"
-                    );
-                    ensure!(coin_out.amount >= min_out, "slippage tolerance exceeded");
-                },
-                SlippageControl::MaximumIn(max_in) => {
-                    ensure!(
-                        direction != Direction::Ask,
-                        "maximum in is only supported for direction: bid"
-                    );
-                    ensure!(coin_in.amount <= max_in, "slippage tolerance exceeded");
-                },
-                SlippageControl::PriceLimit(price_limit) => {
-                    let execution_price =
-                        Udec128::checked_from_ratio(coin_out.amount, coin_in.amount)?;
-                    match direction {
-                        Direction::Bid => ensure!(
-                            execution_price <= price_limit,
-                            "slippage tolerance exceeded"
-                        ),
-                        Direction::Ask => ensure!(
-                            execution_price >= price_limit,
-                            "slippage tolerance exceeded"
-                        ),
-                    }
-                },
-            }
-        }
 
         Ok((coin_in, coin_out))
     }

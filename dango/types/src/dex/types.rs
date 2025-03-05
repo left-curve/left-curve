@@ -1,4 +1,5 @@
 use {
+    anyhow::{bail, ensure},
     grug::{
         Bounded, Denom, PrimaryKey, RawKey, StdError, StdResult, Udec128, Uint128,
         ZeroInclusiveOneExclusive,
@@ -118,4 +119,77 @@ pub enum SlippageControl {
     /// Price limit. Transaction will fail if the execution price is greater than the
     /// specified price for a BUY order, or less than the specified price for a SELL order.
     PriceLimit(Udec128),
+}
+
+#[grug::derive(Serde)]
+pub struct SwapRoute(Vec<(Denom, Denom)>);
+
+impl SwapRoute {
+    pub fn new(pairs: Vec<(Denom, Denom)>) -> Self {
+        Self(pairs)
+    }
+
+    pub fn validate(
+        &self,
+        direction: &Direction,
+        base_denom: &Denom,
+        quote_denom: &Denom,
+    ) -> anyhow::Result<()> {
+        // Route must be non-empty
+        if self.0.is_empty() {
+            bail!("swap route is empty");
+        }
+
+        // Route must contain base and quote denoms
+        match direction {
+            &Direction::Bid => {
+                ensure!(
+                    (&self.start().0 == quote_denom || &self.start().1 == quote_denom)
+                        && (&self.end().0 == base_denom || &self.end().1 == base_denom),
+                    "invalid route"
+                );
+            },
+            &Direction::Ask => {
+                ensure!(
+                    (&self.start().0 == base_denom || &self.start().1 == base_denom)
+                        && (&self.end().0 == quote_denom || &self.end().1 == quote_denom),
+                    "invalid route"
+                );
+            },
+        };
+
+        // Route must be a DAG
+        let mut visited = std::collections::BTreeSet::<(Denom, Denom)>::new();
+        for pair in &self.0 {
+            if visited.contains(pair) {
+                bail!("swap route contains a cycle");
+            }
+            visited.insert(pair.clone());
+        }
+
+        Ok(())
+    }
+
+    pub fn reverse(&self) -> Self {
+        let mut pairs = self.0.clone();
+        pairs.reverse();
+        Self(pairs)
+    }
+
+    pub fn start(&self) -> &(Denom, Denom) {
+        &self.0[0]
+    }
+
+    pub fn end(&self) -> &(Denom, Denom) {
+        &self.0[self.0.len() - 1]
+    }
+}
+
+impl IntoIterator for SwapRoute {
+    type IntoIter = std::vec::IntoIter<(Denom, Denom)>;
+    type Item = (Denom, Denom);
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
 }

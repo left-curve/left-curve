@@ -1,5 +1,5 @@
 use {
-    super::SlippageControl,
+    super::{SlippageControl, SwapRoute},
     crate::dex::{Direction, OrderId, PairParams, PairUpdate},
     grug::{Addr, CoinPair, Denom, Udec128, Uint128},
     std::collections::{BTreeMap, BTreeSet},
@@ -79,6 +79,7 @@ pub enum ExecuteMsg {
         direction: Direction,
         amount: Uint128,
         slippage: Option<SlippageControl>,
+        route: Option<SwapRoute>,
     },
 }
 
