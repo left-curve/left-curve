@@ -48,7 +48,9 @@ dango-warp            = { workspace = true, features = ["library"] }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
 proptest              = { workspace = true }
+pyth-client           = { workspace = true }
 pyth-sdk              = { workspace = true }
+pyth-types            = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }
 serde_json            = { workspace = true }

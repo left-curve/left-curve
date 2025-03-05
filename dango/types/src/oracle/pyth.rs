@@ -3,7 +3,7 @@ use {
     crate::oracle::{GuardianSet, WormholeVaa},
     anyhow::{anyhow, bail},
     byteorder::BigEndian,
-    grug::{AddrEncoder, Api, BlockInfo, EncodedBytes, Map, Storage},
+    grug::{Api, BlockInfo, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
     pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
     pythnet_sdk::{
@@ -35,8 +35,6 @@ macro_rules! uncast_enum {
         }
     };
 }
-
-pub type PythId = EncodedBytes<[u8; 32], AddrEncoder>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PythVaa {

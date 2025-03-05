@@ -2,19 +2,21 @@ use {
     dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         constants::{
-            ATOM_DENOM, ATOM_USD_ID, BNB_DENOM, BNB_USD_ID, DOGE_DENOM, DOGE_USD_ID, ETH_DENOM,
-            ETH_USD_ID, SHIB_DENOM, SHIB_USD_ID, SOL_DENOM, SOL_USD_ID, USDC_DENOM, USDC_USD_ID,
-            WBTC_DENOM, WBTC_USD_ID, XRP_DENOM, XRP_USD_ID,
+            ATOM_DENOM, BNB_DENOM, BTC_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM,
+            USDC_DENOM, WBTC_DENOM, XRP_DENOM,
         },
-        oracle::{ExecuteMsg, PrecisionlessPrice, PythId, PythVaa, QueryPriceRequest},
+        oracle::{ExecuteMsg, PrecisionlessPrice, PythVaa, QueryPriceRequest},
     },
     grug::{
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
     },
     grug_app::NaiveProposalPreparer,
-    indexer_disk_saver::persistence::DiskPersistence,
+    pyth_client::PythClient,
     pyth_sdk::PriceFeed,
-    sha2::{Digest, Sha256},
+    pyth_types::{
+        PythId, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, SHIB_USD_ID,
+        SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
+    },
     std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
@@ -27,8 +29,6 @@ const VAA_1: &str = "UE5BVQEAAAADuAEAAAAEDQBnC+7yOL2qsxrpxHzhTnaruVWTSfjBRIF7sk1
 /// - price: **7131950295749**
 /// - publish_time: **1730209108**
 const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw/qtQ/jX44qUBV+Du+woo5lWLrE1ttnAPfwv9aftKy/r0pz0OdAQP25Bjy5Hx3MaOEF49sx+OrA6fxSNtBIxEkZ/wqznQAvlNE86loIz2osKoAWYeCg9FjU/8A2CmZZhcyXb4Cf+beAQSN829+7wKOw6tdMnKwtiYKdXL1yo1uP10iZ3EhU2M4cxrD0xYKA0pkb9hmhRo+zHrOY9pyTGXAsz7FjlI+gvgCAQa5MiGBgMRLFGW0fTd+bqc+isCQDbhgm/99yNkVaDt40ASST8CfH5zp4Xim5l5Yhs+/HMpeFSuTNULeDXsTO2FaAAjaPzeC8Bie6n154BaKA+45xn0lDa0epmVZs16zVCkKczSUNVG5e5VZe6N8edT+dVicoZYT9tgHJn2WDIjcpRv7AAsc0fdXE42zolp1Dhg1XVL5oe6NeTZi2Beu2ecv5FkvtCwm9dytTv6C359wJqUZLbZVaqOU9CEVbBvTzbKAm/tQAAx12qSCdkLtlJZAmhhrCvW56375q1Dy74L417r+GhDgYRqPCNWyaY7azRFfOwahxc9ECZgHj1aJg0bk395+JhTnAQ2K/IC6aRcSpPd+SfbWnfPtdJTdJFw5QCS50FbBfxxmqBTcG8E8fyYyCz5SGC8rtXgrBi+cQZe8FgW4CoLXXxC+AQ7TotPy0p9aHpwlIrXvu9B2nThByrwd4icwnOfQsUDHcG65PXWvu9nc1o5EK6SImnv+AmIu+RID2MnyTavsGEMpAA/XdQHG8mkgdWlZ1w7fg2MBs3fa0VxIlKc1DuaBdZVZEjrnB4gE15oqMZ21Bt8ji6r6J+ar/9K46EUeYC2t6CuBARDpRTI9ZZlh0MvxIbxRkuAgtRTv8oNrSz4sQJMNbhWdswTmqQQMZjtdJwGWepaAGhnEiuF/JgIr20AnDxCWbolgABGwVILVFDCHnLV54/bIdXUEiigPZvsKcDxLpOoJ722xZT1cXwXoBmwQ2lXQxGOjyj8VvgAt2kZJNbGc77+pmsqdABIFwK9Dc5BLxz+dXztA5bPMcEKkfZ18t7HPZ9BVQN7f1Cw4XcBZDSRR0MM6tqeBYvLJZhDMbt2Ax0m0+RlzQTZyAWcg5VQAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFWSo1AUFVV1YAAAAAAApl86sAACcQTdtYrFsURmdX9JeZM/nLGOdGy18BAFUAydiwdaXGkwM2WuI2M9TghRmb9cUgo7kP7RMioDQv/DMAAAZ8iV0qxQAAAAIvYnVX////+AAAAABnIOVUAAAAAGcg5VQAAAZ3rChYAAAAAAIykC3MCknCJZOvI3H3Ijt5NftDL77S253kTxg9ywpWvf3kzbZeQqXixw7K/fcAEWCww773jqhfS4CdRyUc38SMv+DhHywJbnUSyzFEWOTBVmVuvEtt6xWOTDMifAi8cAX0cBtZOyeIeLytWSqkMVYhtbm0gKCLnjtBEKLg/zEHSL48Ndm9VTihIpe8REto4Pf2MjlxRY6Smgw2TMZCJTCEj2869KzQsQhVSH4VmOJNJpevlYaqeFmJ7WDOC1tFWrVulGSZ/nIt63NKB+JP";
-
-pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
 fn setup_oracle_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     let (suite, accounts, _, contracts) = setup_test_naive();
@@ -142,13 +142,19 @@ fn oracle() {
 fn double_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
+
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
 
     for _ in 0..5 {
         // get 2 separate vaa
-        let btc_vaas_raw = get_latest_vaas([WBTC_USD_ID]).unwrap();
-        let eth_vaas_raw = get_latest_vaas([ETH_USD_ID]).unwrap();
+        let btc_vaas_raw = pyth_client
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+            .unwrap();
+        let eth_vaas_raw = pyth_client
+            .get_latest_vaas(NonEmpty::new_unchecked(vec![ETH_USD_ID]))
+            .unwrap();
 
         let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
             .unwrap()
@@ -199,7 +205,7 @@ fn double_vaas() {
         {
             let current_price = suite
                 .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: WBTC_DENOM.clone(),
+                    denom: BTC_DENOM.clone(),
                 })
                 .unwrap();
 
@@ -264,6 +270,8 @@ fn double_vaas() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
+    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
+
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),
         BNB_USD_ID  => BNB_DENOM.clone(),
@@ -272,9 +280,11 @@ fn multiple_vaas() {
         SHIB_USD_ID => SHIB_DENOM.clone(),
         SOL_USD_ID  => SOL_DENOM.clone(),
         USDC_USD_ID => USDC_DENOM.clone(),
-        WBTC_USD_ID => WBTC_DENOM.clone(),
+        BTC_USD_ID => BTC_DENOM.clone(),
         XRP_USD_ID  => XRP_DENOM.clone(),
     };
+
+    let ids = NonEmpty::new_unchecked(id_denoms.keys().cloned().collect::<Vec<_>>());
 
     let mut last_price_feeds = id_denoms
         .keys()
@@ -282,7 +292,7 @@ fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<PriceFeed>>>();
 
     for _ in 0..5 {
-        let vaas_raw = get_latest_vaas(id_denoms.keys()).unwrap();
+        let vaas_raw = pyth_client.get_latest_vaas(ids.clone()).unwrap();
 
         let vaas = vaas_raw
             .iter()
@@ -358,44 +368,4 @@ fn multiple_vaas() {
         // sleep for 1 second
         thread::sleep(Duration::from_secs(1));
     }
-}
-
-/// Return JSON string of the latest VAA from Pyth network.
-///
-/// Attempt to load from cached local files. If not found, fetch from Pyth API.
-fn get_latest_vaas<I>(ids: I) -> anyhow::Result<Vec<Binary>>
-where
-    I: IntoIterator,
-    I::Item: ToString,
-{
-    let ids = ids
-        .into_iter()
-        .map(|id| ("ids[]", id.to_string()))
-        .collect::<Vec<_>>();
-
-    let filename = format!(
-        "{}/testdata/vaas_cache/{:x}",
-        std::env::var("CARGO_MANIFEST_DIR").unwrap(),
-        Sha256::digest(
-            ids.iter()
-                .map(|(_, v)| v.clone())
-                .collect::<Vec<_>>()
-                .join("__")
-        )
-    );
-
-    let cache_file = DiskPersistence::new(filename.into(), true);
-    if cache_file.exists() {
-        return Ok(cache_file.load::<Vec<Binary>>()?);
-    }
-
-    let data = reqwest::blocking::Client::new()
-        .get(format!("{PYTH_URL}/api/latest_vaas"))
-        .query(&ids)
-        .send()?
-        .json()?;
-
-    cache_file.save(&data)?;
-
-    Ok(data)
 }

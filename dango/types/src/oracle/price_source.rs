@@ -1,4 +1,4 @@
-use {crate::oracle::PythId, grug::Udec128};
+use {grug::Udec128, pyth_types::PythId};
 
 #[grug::derive(Serde, Borsh)]
 pub enum PriceSource {

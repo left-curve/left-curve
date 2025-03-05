@@ -75,7 +75,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         MemDb::new(),
         RustVm::new(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new(true),
         NullIndexer,
     )
 }
@@ -110,7 +110,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new(true),
         indexer,
     );
 
