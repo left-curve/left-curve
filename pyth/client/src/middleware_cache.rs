@@ -76,7 +76,7 @@ impl PythMiddlewareCache {
             // If the file is not in memory, try to read from disk.
             if !self.stored_vaas.contains_key(&filename) {
                 let cache_file = DiskPersistence::new(filename.clone().into(), true);
-                if cache_file.file_path.exists() {
+                if cache_file.exists() {
                     let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
                     self.stored_vaas
                         .insert(filename.clone(), loaded_vaas.into_iter());
