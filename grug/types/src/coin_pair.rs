@@ -167,11 +167,16 @@ impl CoinPair {
     }
 
     /// Return the amount of the given denom in the coin pair.
-    pub fn amount_of(&self, denom: &Denom) -> Uint128 {
+    pub fn amount_of(&self, denom: &Denom) -> StdResult<Uint128> {
         if self.first().denom == denom {
-            *self.first().amount
+            Ok(*self.first().amount)
+        } else if self.second().denom == denom {
+            Ok(*self.second().amount)
         } else {
-            *self.second().amount
+            Err(StdError::invalid_coins(format!(
+                "coin pair {:?} doesn't have denom: {}",
+                self, denom
+            )))
         }
     }
 
