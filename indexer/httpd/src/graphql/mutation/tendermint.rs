@@ -10,7 +10,7 @@ static TENDERMINT_HTTP_CLIENT: OnceLock<tendermint_rpc::HttpClient> = OnceLock::
 
 pub fn get_http_client() -> &'static tendermint_rpc::HttpClient {
     TENDERMINT_HTTP_CLIENT.get_or_init(|| {
-        tendermint_rpc::HttpClient::new("http://localhost:16657")
+        tendermint_rpc::HttpClient::new("http://localhost:26657")
             .expect("Can't build a tendermint RPC client")
     })
 }
