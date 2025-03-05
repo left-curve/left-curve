@@ -61,8 +61,8 @@ impl TradingFunction for CurveInvariant {
             "invalid reserves"
         );
 
-        let offer_reserves = reserves.amount_of(denom_in);
-        let ask_reserves = reserves.amount_of(&coin_out.denom);
+        let offer_reserves = reserves.amount_of(denom_in)?;
+        let ask_reserves = reserves.amount_of(&coin_out.denom)?;
         ensure!(offer_reserves > coin_out.amount, "insufficient liquidity");
 
         match *self {
@@ -103,8 +103,8 @@ impl TradingFunction for CurveInvariant {
         );
         match self {
             CurveInvariant::Xyk => {
-                let a = reserves.amount_of(&coin_in.denom);
-                let b = reserves.amount_of(denom_out);
+                let a = reserves.amount_of(&coin_in.denom)?;
+                let b = reserves.amount_of(denom_out)?;
 
                 // Solve A * B = (A + offer.amount) * (B - amount_out) for amount_out
                 // => amount_out = B - (A * B) / (A + offer.amount)
