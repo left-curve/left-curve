@@ -84,6 +84,7 @@ export type {
   NativeCoin,
   ContractCoin,
   CoinGeckoId,
+  WithPrice,
 } from "./coin.js";
 
 export type {

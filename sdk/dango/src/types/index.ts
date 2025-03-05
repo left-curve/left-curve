@@ -132,6 +132,7 @@ export type {
   DerivedTransportSchema,
   IndexerSchema,
   RequestOptions,
+  WithPrice,
 } from "@left-curve/sdk/types";
 
 export type {

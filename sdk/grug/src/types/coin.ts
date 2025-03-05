@@ -23,6 +23,10 @@ export type Coins = Record<Denom, string>;
 
 export type Funds = Record<Denom, string>;
 
+export type WithPrice<T> = T & {
+  readonly price: number;
+};
+
 export type WithGasPriceStep<T> = T & {
   readonly gasPriceStep: {
     readonly low: number;
