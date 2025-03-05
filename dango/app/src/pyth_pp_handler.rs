@@ -4,6 +4,7 @@ use {
     grug_app::Shared,
     pyth_client::PythClient,
     pyth_types::PythId,
+    tracing::debug,
 };
 
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
@@ -15,9 +16,14 @@ pub struct PythClientPPHandler {
 }
 
 impl PythClientPPHandler {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        let client = PythClient::new(base_url);
+    pub fn new(base_url: impl Into<String>, test_mode: bool) -> Self {
+        let mut client = PythClient::new(base_url);
         let shared_vaas = Shared::new(vec![]);
+
+        if test_mode {
+            debug!("Running in test mode");
+            client = client.with_middleware();
+        }
 
         Self {
             client,

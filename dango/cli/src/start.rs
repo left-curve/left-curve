@@ -86,7 +86,7 @@ impl StartCmd {
             let app = App::new(
                 db.clone(),
                 vm.clone(),
-                ProposalPreparer::new(),
+                ProposalPreparer::new(false),
                 NullIndexer,
                 self.query_gas_limit,
             );
@@ -138,7 +138,7 @@ impl StartCmd {
         let app = App::new(
             db,
             vm,
-            ProposalPreparer::new(),
+            ProposalPreparer::new(false),
             indexer,
             self.query_gas_limit,
         );

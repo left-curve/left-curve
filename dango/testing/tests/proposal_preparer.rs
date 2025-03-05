@@ -11,9 +11,8 @@ use {
 
 #[test]
 fn proposal_pyth() {
+    setup_tracing_subscriber(tracing::Level::DEBUG);
     let (mut suite, _, _, contracts) = setup_test();
-
-    setup_tracing_subscriber(tracing::Level::INFO);
 
     // Trigger the prepare proposal to write the price ids into
     // Shared pyth_ids variable.

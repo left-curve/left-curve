@@ -1,5 +1,5 @@
 use {
-    crate::pyth_handler::PythClientPPHandler,
+    crate::pyth_pp_handler::PythClientPPHandler,
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     grug_app::AppError,
@@ -35,15 +35,9 @@ impl Clone for ProposalPreparer {
     }
 }
 
-impl Default for ProposalPreparer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ProposalPreparer {
-    pub fn new() -> Self {
-        let client = PythClientPPHandler::new(PYTH_URL.to_string());
+    pub fn new(test_mode: bool) -> Self {
+        let client = PythClientPPHandler::new(PYTH_URL.to_string(), test_mode);
 
         Self {
             pyth_client: Some(RwLock::new(client)),

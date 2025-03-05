@@ -1,4 +1,4 @@
 mod proposal_preparer;
-mod pyth_handler;
+mod pyth_pp_handler;
 
 pub use proposal_preparer::*;

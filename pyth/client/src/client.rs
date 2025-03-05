@@ -251,7 +251,7 @@ impl PythMockCache {
         }
     }
 
-    /// Get the latest VAA from the Pyth network.
+    /// Get the latest VAAs from cached data.
     pub fn get_latest_vaas<I>(&mut self, ids: I) -> Result<Vec<Binary>, Error>
     where
         I: IntoIterator,
@@ -259,6 +259,7 @@ impl PythMockCache {
     {
         let mut return_vaas = vec![];
 
+        // For each id, try to get the vaas.
         for id in ids {
             let filename = self.create_file_name(vec![id]);
 
