@@ -1,15 +1,15 @@
 use {
     crate::{ALLOYS, MAILBOX, ROUTES},
     dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
-    grug::{Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{
+        Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, DEFAULT_PAGE_LIMIT,
+    },
     hyperlane_types::{
         mailbox::Domain,
         recipients::{RecipientQuery, RecipientQueryResponse},
     },
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

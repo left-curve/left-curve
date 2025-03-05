@@ -8,12 +8,10 @@ use {
         Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryBalanceRequest,
         QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest, QueryContractRequest,
         QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest,
-        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage,
+        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage, DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Config> {
     CONFIG.load_with_gas(storage, gas_tracker)

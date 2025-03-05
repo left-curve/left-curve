@@ -11,6 +11,13 @@ use {
     std::collections::BTreeMap,
 };
 
+/// The default number of items to be returned in enumerative queries, if user
+/// doesn't specify a limit.
+///
+/// Exported here for convenience. Of course, individual contracts can choose
+/// their own defaults.
+pub const DEFAULT_PAGE_LIMIT: u32 = 30;
+
 // ----------------------------------- trait -----------------------------------
 
 /// Represents a query request to a contract.

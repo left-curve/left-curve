@@ -9,11 +9,10 @@ use {
     },
     grug::{
         Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
+        DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {

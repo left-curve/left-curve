@@ -1,7 +1,10 @@
 use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
-    grug::{Bound, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{
+        Bound, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        DEFAULT_PAGE_LIMIT,
+    },
     hyperlane_types::{
         domain_hash, eip191_hash,
         isms::{
@@ -13,8 +16,6 @@ use {
     },
     std::collections::{BTreeMap, BTreeSet},
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
