@@ -6,7 +6,10 @@ export type EthPersonalMessage = Hex | string | Uint8Array;
 
 const presignMessagePrefix = "\x19Ethereum Signed Message:\n";
 
-export function ethHashMessage(_message_: EthPersonalMessage): Hex {
+export function ethHashMessage<T extends boolean = true>(
+  _message_: EthPersonalMessage,
+  hex: T = true as T,
+): T extends true ? Hex : Uint8Array {
   const message = (() => {
     if (_message_ instanceof Uint8Array) return _message_;
     return isHex(_message_) ? decodeHex(_message_) : encodeUtf8(_message_);
@@ -18,5 +21,7 @@ export function ethHashMessage(_message_: EthPersonalMessage): Hex {
     ...message,
   ]);
 
-  return encodeHex(keccak256(messageHash));
+  return (hex ? encodeHex(keccak256(messageHash)) : keccak256(messageHash)) as T extends true
+    ? Hex
+    : Uint8Array;
 }

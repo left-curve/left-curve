@@ -280,6 +280,16 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         },
         Op::Delete => {
             KEYS.remove(ctx.storage, (&username, key_hash));
+
+            // Ensure the user hasn't removed every single key associated with
+            // their username. There must be at least one remaining.
+            ensure!(
+                KEYS.prefix(&username)
+                    .range(ctx.storage, None, None, Order::Ascending)
+                    .next()
+                    .is_some(),
+                "can't delete the last key associated with username `{username}`"
+            );
         },
     }
 

@@ -25,3 +25,7 @@ export type Hex = string;
 export type Base64 = string;
 
 export type Binary = Uint8Array;
+
+export type Encoder = {
+  encode(): Uint8Array;
+};

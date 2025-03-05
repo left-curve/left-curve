@@ -81,6 +81,12 @@ import { type GetUserParameters, type GetUserReturnType, getUser } from "./queri
 import { type RegisterAccountParameters, registerAccount } from "./mutations/registerAccount.js";
 
 import {
+  type UpdateKeyParameters,
+  type UpdateKeyReturnType,
+  updateKey,
+} from "./mutations/updateKey.js";
+
+import {
   type GetUsersByKeyHashReturnType,
   type GetUsersByKeyhashParameters,
   getUsersByKeyHash,
@@ -112,6 +118,7 @@ export type AccountFactoryQueryActions = {
 
 export type AccountFactoryMutationActions = {
   registerUser: (args: RegisterUserParameters) => RegisterUserReturnType;
+  updateKey: (args: UpdateKeyParameters) => UpdateKeyReturnType;
   registerAccount: (
     args: RegisterAccountParameters,
     txArgs: TxParameters,
@@ -145,6 +152,7 @@ export function accountFactoryMutationActions<transport extends Transport = Tran
 ): AccountFactoryMutationActions {
   return {
     registerUser: (...args) => registerUser(client, ...args),
+    updateKey: (...args) => updateKey(client, ...args),
     registerAccount: (...args) => registerAccount(client, ...args),
   };
 }

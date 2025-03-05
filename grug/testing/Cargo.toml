@@ -10,15 +10,7 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-actix-codec        = { workspace = true }
-actix-http         = { workspace = true }
-actix-test         = { workspace = true }
-actix-web          = { workspace = true }
 anyhow             = { workspace = true }
-assertor           = { workspace = true }
-async-graphql      = { workspace = true }
-awc                = { workspace = true }
-futures-util       = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
 grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
@@ -28,21 +20,24 @@ grug-mock-bank     = { workspace = true, features = ["library"] }
 grug-mock-taxman   = { workspace = true, features = ["library"] }
 grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
-indexer-httpd      = { workspace = true }
-indexer-sql        = { workspace = true, features = ["tracing"] }
 k256               = { workspace = true }
 rand               = { workspace = true }
-sea-orm            = { workspace = true }
 serde              = { workspace = true }
 serde_json         = { workspace = true }
-tokio              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
-borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
-grug-storage = { workspace = true }
-prost        = { workspace = true }
-reqwest      = { workspace = true, features = ["blocking", "json"] }
-test-case    = { workspace = true }
-thiserror    = { workspace = true }
+assertor        = { workspace = true }
+async-graphql   = { workspace = true }
+borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
+grug-storage    = { workspace = true }
+indexer-httpd   = { workspace = true }
+indexer-sql     = { workspace = true, features = ["tracing"] }
+indexer-testing = { workspace = true }
+prost           = { workspace = true }
+reqwest         = { workspace = true, features = ["blocking", "json"] }
+sea-orm         = { workspace = true }
+test-case       = { workspace = true }
+thiserror       = { workspace = true }
+tokio           = { workspace = true }

@@ -9,7 +9,7 @@ use {
 
 /// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
 /// methods.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Shared<S> {
     inner: Arc<RwLock<S>>,
 }

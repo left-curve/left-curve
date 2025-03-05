@@ -1,15 +1,12 @@
 use {
-    crate::{Coin, CoinRef, CoinRefMut, Coins, StdError, StdResult},
+    crate::{Coin, CoinRef, CoinRefMut, Coins, Denom, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{IsZero, MultiplyRatio, Number, Uint128},
+    grug_math::{IsZero, MultiplyRatio, Number, NumberConst, Uint128},
     serde::{de, Serialize},
     std::{cmp::Ordering, collections::BTreeMap, io},
 };
 
 /// A _sorted_ pair of coins of distinct denoms and possibly zero amounts.
-///
-/// Note: unlike [`Coins`](crate::Coins), which contains only coins of non-zero
-/// amounts, a `CoinPair` may contain zero amounts.
 #[derive(Serialize, BorshSerialize, Clone, Debug, PartialEq, Eq)]
 pub struct CoinPair([Coin; 2]);
 
@@ -25,6 +22,14 @@ impl CoinPair {
             Ordering::Less => Ok(Self([coin1, coin2])),
             Ordering::Greater => Ok(Self([coin2, coin1])),
         }
+    }
+
+    /// Create a new coin pair with zero amounts.
+    pub fn new_empty(denom1: Denom, denom2: Denom) -> StdResult<Self> {
+        Self::new(
+            Coin::new(denom1, Uint128::ZERO)?,
+            Coin::new(denom2, Uint128::ZERO)?,
+        )
     }
 
     /// Create a new coin pair without checking whether the denoms are distinct.

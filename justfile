@@ -21,7 +21,7 @@ docker-create-builder name:
 
 # Compile and install the Dango node software
 install:
-  cargo install --path dango/cli
+  cargo install --path dango/cli --locked
 
 # Run tests
 test:

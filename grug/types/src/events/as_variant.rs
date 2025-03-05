@@ -1,5 +1,5 @@
 use crate::{
-    ContractEvent, EvtConfigure, EvtUpload, FlatEvent, FlatEvtAuthenticate, FlatEvtBackrun,
+    CheckedContractEvent, EvtConfigure, EvtUpload, FlatEvent, FlatEvtAuthenticate, FlatEvtBackrun,
     FlatEvtCron, FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate,
     FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold,
 };
@@ -43,5 +43,5 @@ impl_as_variant! {
     Finalize      => FlatEvtFinalize,
     Cron          => FlatEvtCron,
     Guest         => FlatEvtGuest,
-    ContractEvent => ContractEvent,
+    ContractEvent => CheckedContractEvent,
 }

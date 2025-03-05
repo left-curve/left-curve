@@ -1,14 +1,16 @@
 use {
     clap::{Parser, Subcommand},
     colored_json::ToColoredJson,
+    data_encoding::BASE64,
     grug_client::Client,
     grug_jmt::Proof,
     grug_types::{
-        Addr, Binary, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Query,
-        QueryWasmSmartRequest,
+        Addr, Binary, Bound, Denom, GenericResult, Hash, Hash256, JsonDeExt, JsonSerExt, Query,
+        QueryWasmSmartRequest, StdError, StdResult, Tx, TxEvents,
     },
     serde::Serialize,
     std::str::FromStr,
+    tendermint::abci::types::ExecTxResult,
 };
 
 #[derive(Parser)]
@@ -143,15 +145,10 @@ impl QueryCmd {
                 return print_json_pretty(res);
             },
             SubCmd::Tx { hash } => {
-                // Cast the hex string to uppercase, so that users can use
-                // either upper or lowercase on the CLI.
-                let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
-                let res = client.query_tx(hash).await?;
-                return print_json_pretty(res);
+                return query_tx(&client, &hash).await;
             },
             SubCmd::Block { height } => {
-                let res = client.query_block_result(height).await?;
-                return print_json_pretty(res);
+                return query_block(&client, height).await;
             },
             SubCmd::Config => Query::config(),
             SubCmd::AppConfig => Query::app_config(),
@@ -231,6 +228,101 @@ impl QueryCmd {
     }
 }
 
+#[derive(Serialize)]
+struct PrintableExecTxResult {
+    codespace: String,
+    code: tendermint::abci::Code,
+    gas_wanted: i64,
+    gas_used: i64,
+    // Instead of `String`, use the human-readable `GenericResult<()>`.
+    log: GenericResult<()>,
+    // Instead of `Bytes`, use the human-readable `TxEvents`.
+    data: TxEvents,
+}
+
+impl TryFrom<ExecTxResult> for PrintableExecTxResult {
+    type Error = StdError;
+
+    fn try_from(res: ExecTxResult) -> StdResult<Self> {
+        Ok(Self {
+            codespace: res.codespace,
+            code: res.code,
+            gas_wanted: res.gas_wanted,
+            gas_used: res.gas_used,
+            log: res.log.deserialize_json()?,
+            // Strangely, the `data` field isn't the JSON bytes of the `TxEvents`,
+            // which Grug app sends to Tendermint via ABCI.
+            // Instead, it's the UTF-8 bytes of the base64 encoding of the UTF-8 bytes of the JSON string of the `TxEvents`.
+            // Why the double encoding, Tendermint?
+            // As such, we need to first deserialize base64, then deserialize JSON.
+            data: BASE64.decode(&res.data)?.deserialize_json()?,
+        })
+    }
+}
+
+// ------------------------------------ tx -------------------------------------
+
+#[derive(Serialize)]
+struct PrintableQueryTxResponse {
+    hash: tendermint::Hash,
+    height: tendermint::block::Height,
+    index: u32,
+    // Deserialize the tx from `Vec<u8>`.
+    tx: Tx,
+    // Convert the `ExecTxResult` to the human-readable `PrintableExecTxResult`.
+    tx_result: PrintableExecTxResult,
+}
+
+async fn query_tx(client: &Client, hash: &str) -> anyhow::Result<()> {
+    // Cast the hex string to uppercase, so that users can use either upper or
+    // lowercase on the CLI.
+    let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
+    let res = client.query_tx(hash).await?;
+
+    print_json_pretty(PrintableQueryTxResponse {
+        hash: res.hash,
+        height: res.height,
+        index: res.index,
+        tx: res.tx.deserialize_json()?,
+        tx_result: res.tx_result.try_into()?,
+    })
+}
+
+// ----------------------------------- block -----------------------------------
+
+#[derive(Serialize)]
+struct PrintableQueryBlockResponse {
+    height: tendermint::block::Height,
+    // Convert the `ExecTxResult` to the human-readable `PrintableExecTxResult`.
+    txs_results: Option<Vec<PrintableExecTxResult>>,
+    finalize_block_events: Vec<tendermint::abci::Event>,
+    validator_updates: Vec<tendermint::validator::Update>,
+    consensus_param_updates: Option<tendermint::consensus::Params>,
+    #[serde(with = "tendermint::serializers::apphash")]
+    app_hash: tendermint::AppHash,
+}
+
+async fn query_block(client: &Client, height: Option<u64>) -> anyhow::Result<()> {
+    let res = client.query_block_result(height).await?;
+
+    print_json_pretty(PrintableQueryBlockResponse {
+        height: res.height,
+        txs_results: res
+            .txs_results
+            .map(|txs| {
+                txs.into_iter()
+                    .map(PrintableExecTxResult::try_from)
+                    .collect::<StdResult<_>>()
+            })
+            .transpose()?,
+        finalize_block_events: res.finalize_block_events,
+        validator_updates: res.validator_updates,
+        consensus_param_updates: res.consensus_param_updates,
+        app_hash: res.app_hash,
+    })
+}
+
+// ----------------------------------- store -----------------------------------
 #[derive(Serialize)]
 struct PrintableQueryStoreResponse {
     key: String,

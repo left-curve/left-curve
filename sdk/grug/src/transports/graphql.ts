@@ -149,20 +149,20 @@ export function graphql(
                     hash
                     log
                     code
-                    codespace
                   }
                 }
             `;
-          const response = await client.request<IndexerSchema[3]["ReturnType"]>(document, {
+          const { broadcastTxSync } = await client.request<{
+            broadcastTxSync: IndexerSchema[3]["ReturnType"];
+          }>(document, {
             tx: encodeBase64(serialize(tx)),
           });
+          const { code } = broadcastTxSync;
 
-          const { code } = response;
-
-          if (code === 0) return response;
+          if (code === 0) return broadcastTxSync;
 
           throw new Error(
-            `failed to broadcast tx! codespace: ${response.codespace}, code: ${code}, log: ${response.log}`,
+            `failed to broadcast tx! codespace: ${broadcastTxSync.codespace}, code: ${code}, log: ${broadcastTxSync.log}`,
           );
         }
         default:

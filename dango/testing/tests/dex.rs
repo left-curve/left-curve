@@ -1,12 +1,16 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, USDC_DENOM},
-        dex::{self, Direction, OrderId, QueryOrdersRequest},
+        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
+        dex::{
+            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
+            OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
+        },
     },
     grug::{
-        btree_map, coins, Addressable, BalanceChange, Coins, Denom, Inner, Message,
-        MultiplyFraction, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Udec128, Uint128,
+        btree_map, coins, Addr, Addressable, BalanceChange, Bounded, Coin, Coins, Denom, Inner,
+        Message, MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult,
+        Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,
@@ -20,12 +24,15 @@ fn cannot_submit_orders_in_non_existing_pairs() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder {
-                base_denom: ATOM_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                direction: Direction::Bid,
-                amount: Uint128::new(100),
-                price: Udec128::new(1),
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: ATOM_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(100),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
             },
             Coins::one(USDC_DENOM.clone(), 1).unwrap(),
         )
@@ -304,12 +311,15 @@ fn dex_works(
 
             let msg = Message::execute(
                 contracts.dex,
-                &dex::ExecuteMsg::SubmitOrder {
-                    base_denom: DANGO_DENOM.clone(),
-                    quote_denom: USDC_DENOM.clone(),
-                    direction,
-                    amount,
-                    price,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![CreateLimitOrderRequest {
+                        base_denom: DANGO_DENOM.clone(),
+                        quote_denom: USDC_DENOM.clone(),
+                        direction,
+                        amount,
+                        price,
+                    }],
+                    cancels: None,
                 },
                 funds,
             )?;
@@ -349,57 +359,434 @@ fn dex_works(
     assert_eq!(orders, remaining_orders);
 }
 
-#[test]
-fn cancel_order() {
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    None,
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !0 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "one submission no cancellations"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    btree_map! {};
+    "one submission cancels one order"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "two submission cancels one order"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0, !1]))),
+    coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    btree_map! {};
+    "two submission cancels both orders"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::All),
+    coins! { USDC_DENOM.clone() => 200 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    btree_map! {};
+    "two submission cancel all"
+)]
+#[test_case(
+    vec![
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+        CreateLimitOrderRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            amount: Uint128::new(100),
+            price: Udec128::new(1),
+        },
+    ],
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    coins! { USDC_DENOM.clone() => 199 },
+    btree_map! {},
+    btree_map! {}
+    => panics "insufficient funds for batch updating orders";
+    "two submission insufficient funds"
+)]
+fn submit_and_cancel_orders(
+    submissions: Vec<CreateLimitOrderRequest>,
+    cancellations: Option<OrderIds>,
+    funds: Coins,
+    expected_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_orders_after: BTreeMap<OrderId, OrderResponse>,
+) {
     let (mut suite, mut accounts, _, contracts) = setup_test_naive();
 
-    // Record the user's balance
+    // Record the user's balance.
     suite.balances().record(accounts.user1.address());
 
-    // Add order to the order book
+    // Add order to the order book.
     suite
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::SubmitOrder {
-                base_denom: DANGO_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                direction: Direction::Bid,
-                amount: Uint128::new(100),
-                price: Udec128::new(1),
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: submissions,
+                cancels: None,
             },
-            grug::coins! {
-                USDC_DENOM.clone() => 100
-            },
+            funds,
         )
         .should_succeed();
 
-    // Cancel the order
+    // Cancel the order.
     suite
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::CancelOrders {
-                order_ids: dex::OrderIds::Some(BTreeSet::from([!0])),
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![],
+                cancels: cancellations,
             },
             coins! { DANGO_DENOM.clone() => 1 },
         )
         .should_succeed();
 
-    // Check that the user balance has not changed
+    // Check that the user balance has not changed.
     suite
         .balances()
-        .should_change(accounts.user1.address(), btree_map! {
-            USDC_DENOM.clone() => BalanceChange::Unchanged
-        });
+        .should_change(accounts.user1.address(), expected_balance_changes);
 
-    // Check that order does not exist
+    // Check that order does not exist.
     suite
         .query_wasm_smart(contracts.dex, QueryOrdersRequest {
             start_after: None,
             limit: None,
         })
-        .should_succeed_and(BTreeMap::is_empty);
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after.len());
+            expected_orders_after
+                .iter()
+                .all(|(order_id, expected_order)| {
+                    let actual_order = orders.get(order_id).unwrap();
+                    actual_order.user == accounts.user1.address()
+                        && actual_order.base_denom == expected_order.base_denom
+                        && actual_order.quote_denom == expected_order.quote_denom
+                        && actual_order.direction == expected_order.direction
+                })
+        });
+}
+
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Unchanged },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(100),
+            remaining: Uint128::new(100),
+        },
+    };
+    "submit one order then cancel it and submit it again"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(50),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Increased(50) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(50),
+            remaining: Uint128::new(50),
+        },
+    };
+    "submit one order then cancel it and place a new order using half of the funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(200),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(200),
+            remaining: Uint128::new(200),
+        },
+    };
+    "submit one order then cancel it and place a new order using more funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(200),
+        price: Udec128::new(1),
+    }],
+    Coins::new(),
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(100) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(200),
+            remaining: Uint128::new(200),
+        },
+    }
+    => panics "insufficient funds";
+    "submit one order then cancel it and place a new order with insufficient funds"
+)]
+#[test_case(
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(100),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    Some(OrderIds::Some(BTreeSet::from([!0]))),
+    vec![CreateLimitOrderRequest {
+        base_denom: DANGO_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+        direction: Direction::Bid,
+        amount: Uint128::new(150),
+        price: Udec128::new(1),
+    }],
+    coins! { USDC_DENOM.clone() => 100 },
+    btree_map! { USDC_DENOM.clone() => BalanceChange::Decreased(50) },
+    btree_map! {
+        !1 => OrderResponse {
+            user: Addr::mock(1), // Just a placeholder. User1 address is used in assertion.
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+            direction: Direction::Bid,
+            price: Udec128::new(1),
+            amount: Uint128::new(150),
+            remaining: Uint128::new(150),
+        },
+    };
+    "submit one order then cancel it and place a new order excess funds are returned"
+)]
+fn submit_orders_then_cancel_and_submit_in_same_message(
+    initial_orders: Vec<CreateLimitOrderRequest>,
+    initial_funds: Coins,
+    cancellations: Option<OrderIds>,
+    new_orders: Vec<CreateLimitOrderRequest>,
+    second_funds: Coins,
+    expected_balance_changes: BTreeMap<Denom, BalanceChange>,
+    expected_orders_after: BTreeMap<OrderId, OrderResponse>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Submit the initial orders
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: initial_orders,
+                cancels: None,
+            },
+            initial_funds,
+        )
+        .should_succeed();
+
+    // Record the user's balance
+    suite.balances().record(accounts.user1.address());
+
+    // Cancel the initial orders
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: new_orders,
+                cancels: cancellations,
+            },
+            second_funds,
+        )
+        .should_succeed();
+
+    // Check that the user balance has changed
+    suite
+        .balances()
+        .should_change(accounts.user1.address(), expected_balance_changes);
+
+    // Check that the orders are as expected
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders_after.len());
+            expected_orders_after
+                .iter()
+                .all(|(order_id, expected_order)| {
+                    let actual_order = orders.get(order_id).unwrap();
+                    actual_order.user == accounts.user1.address()
+                        && actual_order.base_denom == expected_order.base_denom
+                        && actual_order.quote_denom == expected_order.quote_denom
+                        && actual_order.direction == expected_order.direction
+                })
+        });
 }
 
 #[test]
@@ -412,12 +799,15 @@ fn submit_and_cancel_order_in_same_block() {
     // Build and sign a transaction with two messages: submit an order and cancel the order
     let submit_order_msg = Message::execute(
         contracts.dex,
-        &dex::ExecuteMsg::SubmitOrder {
-            base_denom: DANGO_DENOM.clone(),
-            quote_denom: USDC_DENOM.clone(),
-            direction: Direction::Bid,
-            amount: Uint128::new(100),
-            price: Udec128::new(1),
+        &dex::ExecuteMsg::BatchUpdateOrders {
+            creates: vec![CreateLimitOrderRequest {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                direction: Direction::Bid,
+                amount: Uint128::new(100),
+                price: Udec128::new(1),
+            }],
+            cancels: None,
         },
         coins! { USDC_DENOM.clone() => 100 },
     )
@@ -425,8 +815,9 @@ fn submit_and_cancel_order_in_same_block() {
 
     let cancel_order_msg = Message::execute(
         contracts.dex,
-        &dex::ExecuteMsg::CancelOrders {
-            order_ids: dex::OrderIds::Some(BTreeSet::from([!0])),
+        &dex::ExecuteMsg::BatchUpdateOrders {
+            creates: vec![],
+            cancels: Some(dex::OrderIds::Some(BTreeSet::from([!0]))),
         },
         Coins::new(),
     )
@@ -465,4 +856,444 @@ fn submit_and_cancel_order_in_same_block() {
             limit: None,
         })
         .should_succeed_and(BTreeMap::is_empty);
+}
+
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    None,
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+    };
+    "dango/usdc no pagination"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    None,
+    btree_map! {
+        !4 => (Direction::Bid, Udec128::new(20), Uint128::new(10)),
+        5 => (Direction::Ask, Udec128::new(25), Uint128::new(10)),
+    };
+    "eth/usdc no pagination"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    None,
+    Some(3),
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        !1 => (Direction::Bid, Udec128::new(10), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+    };
+    "dango/usdc with limit no start after"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    Some(2),
+    None,
+    btree_map! {
+        3 => (Direction::Ask, Udec128::new(50), Uint128::new(10)),
+    };
+    "dango/usdc with start after"
+)]
+#[test_case(
+    vec![
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 30, 10), // !0
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 10, 10), // !1
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 40, 10), //  2
+        ((DANGO_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 50, 10), //  3
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Bid, 20, 10), // !4
+        ((ETH_DENOM.clone(), USDC_DENOM.clone()), Direction::Ask, 25, 10), //  5
+    ],
+    (DANGO_DENOM.clone(), USDC_DENOM.clone()),
+    Some(!1),
+    Some(2),
+    btree_map! {
+        !0 => (Direction::Bid, Udec128::new(30), Uint128::new(10)),
+        2 => (Direction::Ask, Udec128::new(40), Uint128::new(10)),
+    };
+    "dango/usdc with start after and limit"
+)]
+fn query_orders_by_pair(
+    orders_to_submit: Vec<((Denom, Denom), Direction, u128, u128)>,
+    (base_denom, quote_denom): (Denom, Denom),
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
+    expected_orders: BTreeMap<OrderId, (Direction, Udec128, Uint128)>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Submit the orders in a single block.
+    let txs = orders_to_submit
+        .into_iter()
+        .map(|((base_denom, quote_denom), direction, price, amount)| {
+            let price = Udec128::new(price);
+            let amount = Uint128::new(amount);
+
+            let funds = match direction {
+                Direction::Bid => {
+                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
+                    Coins::one(quote_denom.clone(), quote_amount).unwrap()
+                },
+                Direction::Ask => Coins::one(base_denom.clone(), amount).unwrap(),
+            };
+
+            let msg = Message::execute(
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![CreateLimitOrderRequest {
+                        base_denom,
+                        quote_denom,
+                        direction,
+                        amount,
+                        price,
+                    }],
+                    cancels: None,
+                },
+                funds,
+            )?;
+
+            accounts.user1.sign_transaction(
+                NonEmpty::new_unchecked(vec![msg]),
+                &suite.chain_id,
+                100_000,
+            )
+        })
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    // Make a block with the order submissions. Ensure all transactions were
+    // successful.
+    suite
+        .make_block(txs)
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersByPairRequest {
+            base_denom,
+            quote_denom,
+            start_after,
+            limit,
+        })
+        .should_succeed_and(|orders| {
+            assert_eq!(orders.len(), expected_orders.len());
+            expected_orders
+                .iter()
+                .all(|(order_id, (direction, price, amount))| {
+                    let queried_order = orders.get(order_id).unwrap();
+                    queried_order.direction == *direction
+                        && queried_order.price == *price
+                        && queried_order.amount == *amount
+                        && queried_order.remaining == *amount
+                        && queried_order.user == accounts.user1.address()
+                })
+        });
+}
+
+#[test]
+fn only_owner_can_create_passive_pool() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/xrp/usdc").unwrap();
+
+    // Attempt to create pair as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: XRP_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {
+                    lp_denom: lp_denom.clone(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            }]),
+            Coins::new(),
+        )
+        .should_fail_with_error("only the owner can update a trading pair parameters");
+
+    // Attempt to create pair as owner. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: XRP_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {
+                    lp_denom: lp_denom.clone(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            }]),
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 100,
+    },
+    Uint128::new(100);
+    "provision at pool ratio"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 50,
+        USDC_DENOM.clone() => 50,
+    },
+    Uint128::new(50);
+    "provision at half pool balance same ratio"
+)]
+#[test_case(
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 50,
+    },
+    Uint128::new(73);
+    "provision at different ratio"
+)]
+fn provide_liquidity(provision: Coins, expected_lp_balance: Uint128) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+
+    // Owner first provides some initial liquidity.
+    let initial_reserves = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            initial_reserves.clone(),
+        )
+        .should_succeed();
+
+    // Record the users initial balances.
+    suite
+        .balances()
+        .record_many(accounts.users().map(|user| user.address()));
+
+    // Execute all the provisions.
+    let mut expected_pool_balances = initial_reserves.clone();
+
+    // record the dex balance
+    suite.balances().record(contracts.dex.address());
+
+    // Execute provide liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            provision.clone(),
+        )
+        .should_succeed();
+
+    // Ensure that the dex balance has increased by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(provision.clone(), Coins::new()),
+    );
+
+    // Ensure user's balance has decreased by the expected amount and that
+    // LP tokens have been minted.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(
+            coins! { lp_denom.clone() => expected_lp_balance },
+            provision.clone(),
+        ),
+    );
+
+    // Check that the reserves in pool object were updated correctly.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and_equal(
+            expected_pool_balances
+                .insert_many(provision)
+                .unwrap()
+                .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+                .unwrap(),
+        );
+}
+
+#[test_case(
+    Uint128::new(100),
+    coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+    "withdrawa all"
+)]
+#[test_case(
+    Uint128::new(50),
+    coins! {
+        DANGO_DENOM.clone() => 50,
+        USDC_DENOM.clone()  => 50,
+    };
+    "withdraw half"
+)]
+fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+
+    // Owner first provides some initial liquidity.
+    let initial_reserves = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone()  => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            initial_reserves.clone(),
+        )
+        .should_succeed();
+
+    // User provides some liquidity.
+    let provided_funds = coins! {
+        DANGO_DENOM.clone() => 100,
+        USDC_DENOM.clone() => 100,
+    };
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            provided_funds.clone(),
+        )
+        .should_succeed();
+
+    // record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // withdraw liquidity
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: DANGO_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            coins! { lp_denom.clone() => lp_burn_amount },
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(
+            expected_funds_returned.clone(),
+            coins! { lp_denom.clone() => lp_burn_amount },
+        ),
+    );
+
+    // Assert that the dex balance has decreased by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(Coins::new(), expected_funds_returned.clone()),
+    );
+
+    // Assert pool reserves are updated correctly
+    suite
+        .query_wasm_smart(contracts.dex, dango_types::dex::QueryReserveRequest {
+            base_denom: DANGO_DENOM.clone(),
+            quote_denom: USDC_DENOM.clone(),
+        })
+        .should_succeed_and_equal({
+            initial_reserves
+                .clone()
+                .insert_many(provided_funds)
+                .unwrap()
+                .deduct_many(expected_funds_returned)
+                .unwrap()
+                .take_pair((DANGO_DENOM.clone(), USDC_DENOM.clone()))
+                .unwrap()
+        });
+}
+
+fn balance_changes_from_coins(
+    increases: Coins,
+    decreases: Coins,
+) -> BTreeMap<Denom, BalanceChange> {
+    increases
+        .into_iter()
+        .map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Increased(amount.into_inner()))
+        })
+        .chain(decreases.into_iter().map(|Coin { denom, amount }| {
+            (denom.clone(), BalanceChange::Decreased(amount.into_inner()))
+        }))
+        .collect()
 }

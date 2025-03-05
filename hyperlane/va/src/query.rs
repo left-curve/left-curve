@@ -1,6 +1,8 @@
 use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
-    grug::{Addr, Bound, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{
+        Addr, Bound, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult, UniqueVec,
+    },
     hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -46,11 +48,11 @@ fn query_announced_validators(
 fn query_announced_storage_locations(
     ctx: ImmutableCtx,
     validators: BTreeSet<HexByteArray<20>>,
-) -> StdResult<BTreeMap<HexByteArray<20>, BTreeSet<String>>> {
+) -> StdResult<BTreeMap<HexByteArray<20>, UniqueVec<String>>> {
     validators
         .into_iter()
         .map(|v| {
-            let storage_locations = STORAGE_LOCATIONS.load(ctx.storage, v)?;
+            let storage_locations = STORAGE_LOCATIONS.load(ctx.storage, v).unwrap_or_default();
             Ok((v, storage_locations))
         })
         .collect()

@@ -51,6 +51,9 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query the minimum deposit required to onboard a user.
+    #[returns(Coins)]
+    MinimumDeposit {},
     /// Query the account index, which is used in deriving the account address,
     /// that will be used if a user is to create a new account.
     #[returns(AccountIndex)]

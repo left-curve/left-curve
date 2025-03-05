@@ -81,6 +81,19 @@ pub struct TestAccount<
 }
 
 impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
+    pub fn new_key_pair() -> (SigningKey, Key) {
+        let sk = SigningKey::random(&mut OsRng);
+        let pk = sk
+            .verifying_key()
+            .to_encoded_point(true)
+            .to_bytes()
+            .to_vec()
+            .try_into()
+            .unwrap();
+
+        (sk, Key::Secp256k1(pk))
+    }
+
     pub fn new_random(username: &str) -> Self {
         let sk = SigningKey::random(&mut OsRng);
 

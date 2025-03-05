@@ -15,12 +15,12 @@ use {
         account_factory::{self, AccountParams},
         constants::USDC_DENOM,
     },
-    grug::{
-        build_actix_app_with_config, call_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response, setup_tracing_subscriber, Coins, GraphQLCustomRequest,
-        Message, NonEmpty, PaginatedResponse, ResultExt,
-    },
+    grug::{setup_tracing_subscriber, Coins, Message, NonEmpty, ResultExt},
     indexer_httpd::context::Context,
+    indexer_testing::{
+        build_actix_app_with_config, call_graphql, call_ws_graphql_stream,
+        parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse,
+    },
     tokio::sync::mpsc,
 };
 

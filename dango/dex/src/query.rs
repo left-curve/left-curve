@@ -1,11 +1,12 @@
 use {
-    crate::{ORDERS, PAIRS},
+    crate::{ORDERS, PAIRS, RESERVES},
     dango_types::dex::{
-        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, Pair, PairParams,
-        PairUpdate, QueryMsg,
+        OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairPageParam,
+        PairParams, PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder, StdResult,
+        Addr, Bound, CoinPair, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
+        StdResult,
     },
     std::collections::BTreeMap,
 };
@@ -24,6 +25,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::Pairs { start_after, limit } => {
             let res = query_pairs(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::Reserve {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_reserve(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::Reserves { start_after, limit } => {
+            let res = query_reserves(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Order { order_id } => {
@@ -62,7 +74,7 @@ fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdRe
 #[inline]
 fn query_pairs(
     ctx: ImmutableCtx,
-    start_after: Option<Pair>,
+    start_after: Option<PairPageParam>,
     limit: Option<u32>,
 ) -> StdResult<Vec<PairUpdate>> {
     let start = start_after
@@ -79,6 +91,38 @@ fn query_pairs(
                 base_denom,
                 quote_denom,
                 params,
+            })
+        })
+        .collect()
+}
+
+#[inline]
+fn query_reserve(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<CoinPair> {
+    RESERVES.load(ctx.storage, (&base_denom, &quote_denom))
+}
+
+#[inline]
+fn query_reserves(
+    ctx: ImmutableCtx,
+    start_after: Option<PairPageParam>,
+    limit: Option<u32>,
+) -> StdResult<Vec<ReservesResponse>> {
+    let start = start_after
+        .as_ref()
+        .map(|pair| Bound::Exclusive((&pair.base_denom, &pair.quote_denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    RESERVES
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((base_denom, quote_denom), reserve) = res?;
+            Ok(ReservesResponse {
+                pair: PairPageParam {
+                    base_denom,
+                    quote_denom,
+                },
+                reserve,
             })
         })
         .collect()
@@ -131,13 +175,35 @@ fn query_orders(
 
 #[inline]
 fn query_orders_by_pair(
-    _ctx: ImmutableCtx,
-    _base_denom: Denom,
-    _quote_denom: Denom,
-    _start_after: Option<OrderId>,
-    _limit: Option<u32>,
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
 ) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
-    todo!();
+    let start = start_after
+        .map(|order_id| -> StdResult<_> {
+            let ((_, direction, price, _), _) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            Ok(Bound::Exclusive((direction, price, order_id)))
+        })
+        .transpose()?;
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORDERS
+        .prefix((base_denom, quote_denom))
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((direction, price, order_id), order) = res?;
+            Ok((order_id, OrdersByPairResponse {
+                user: order.user,
+                direction,
+                price,
+                amount: order.amount,
+                remaining: order.remaining,
+            }))
+        })
+        .collect()
 }
 
 #[inline]

@@ -1,7 +1,7 @@
 use {
-    crate::{state::GUARDIAN_SETS, PRICE_SOURCES},
+    crate::{state::GUARDIAN_SETS, PRICES, PRICE_SOURCES},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythVaa, PRICES},
+    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythVaa},
     grug::{
         AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
         MutableCtx, QuerierExt, Response, Tx,

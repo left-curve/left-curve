@@ -16,6 +16,7 @@ export type RegisterUserParameters = {
   username: Username;
   key: Key;
   keyHash: KeyHash;
+  secret: number;
 };
 
 export type RegisterUserReturnType = BroadcastTxSyncReturnType;
@@ -29,10 +30,10 @@ export type MsgRegisterUser = {
 };
 
 export async function registerUser<transport extends Transport>(
-  client: DangoClient<transport, Signer>,
+  client: DangoClient<transport, undefined | Signer>,
   parameters: RegisterUserParameters,
 ): RegisterUserReturnType {
-  const { username, keyHash, key } = parameters;
+  const { username, keyHash, key, secret } = parameters;
 
   const { addresses } = await getAppConfig<AppConfig>(client);
 
@@ -41,6 +42,7 @@ export async function registerUser<transport extends Transport>(
       username,
       keyHash,
       key,
+      secret,
     },
   };
 

@@ -1,10 +1,15 @@
 use {
     dango_types::dex::{Direction, OrderId, PairParams},
-    grug::{Addr, Counter, Denom, IndexedMap, Map, MultiIndex, Udec128, Uint128, UniqueIndex},
+    grug::{
+        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, Udec128, Uint128, UniqueIndex,
+    },
 };
 
 // (base_denom, quote_denom) => params
 pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
+
+// (base_denom, quote_denom) => coin_pair
+pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", 0, 1);
 
@@ -36,6 +41,7 @@ pub struct Order {
     /// Portion of the order that remains unfilled, measured in the _base asset_.
     pub remaining: Uint128,
 }
+
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndex<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,

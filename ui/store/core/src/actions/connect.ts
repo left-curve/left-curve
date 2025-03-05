@@ -7,7 +7,7 @@ export type ConnectParameters = {
   chainId: string;
   username: string;
   connector: Connector;
-  challenge?: string;
+  challenge: string;
 };
 
 export type ConnectReturnType = void;

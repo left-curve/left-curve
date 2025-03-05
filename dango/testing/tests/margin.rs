@@ -11,13 +11,15 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         constants::{DANGO_DENOM, USDC_DENOM, WBTC_DENOM},
+        dex::CreateLimitOrderRequest,
         lending::{self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
-        btree_map, coins, Addr, Addressable, Binary, Coins, ContractEvent, Denom, Inner, IsZero,
-        JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty,
-        Number, NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128, Uint128,
+        btree_map, coins, Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner,
+        IsZero, JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber,
+        NonEmpty, Number, NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128,
+        Uint128,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -716,12 +718,15 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
         .execute(
             &mut margin_account,
             contracts.dex,
-            &dango_types::dex::ExecuteMsg::SubmitOrder {
-                base_denom: DANGO_DENOM.clone(),
-                quote_denom: USDC_DENOM.clone(),
-                direction: dango_types::dex::Direction::Bid,
-                amount: Uint128::new(100_000_000),
-                price: Udec128::ONE,
+            &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: dango_types::dex::Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::ONE,
+                }],
+                cancels: None,
             },
             Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
         )
@@ -1282,7 +1287,7 @@ proptest! {
         // Check liquidation bonus
         let config = suite.query_app_config::<AppConfig>().unwrap();
         let liquidation_event = res.events
-            .search_event::<ContractEvent>()
+            .search_event::<CheckedContractEvent>()
             .with_predicate(|e| e.ty == "liquidate")
             .take()
             .one()

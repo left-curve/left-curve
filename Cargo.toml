@@ -199,6 +199,7 @@ indexer-disk-saver    = { path = "indexer/disk-saver" }
 indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
+indexer-testing       = { path = "indexer/testing" }
 
 # Pyth packages
 pyth-client = { path = "pyth/client" }

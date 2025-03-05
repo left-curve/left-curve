@@ -1,8 +1,8 @@
 use {
     super::FlattenStatus,
     crate::{
-        Addr, Coins, CommitmentStatus, ContractEvent, EvtConfigure, EvtUpload, Hash256, Json,
-        Label, ReplyOn, Timestamp, TxEvents,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload, Hash256,
+        Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -179,7 +179,7 @@ pub enum FlatEvent {
     /// A guest was called.
     Guest(FlatEvtGuest),
     /// A contract event was emitted.
-    ContractEvent(ContractEvent),
+    ContractEvent(CheckedContractEvent),
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

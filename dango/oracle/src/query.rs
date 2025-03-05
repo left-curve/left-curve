@@ -1,6 +1,6 @@
 use {
     crate::{OracleQuerier, GUARDIAN_SETS, PRICE_SOURCES},
-    dango_types::oracle::{GuardianSet, PrecisionedPrice, PriceSource, QueryMsg},
+    dango_types::oracle::{GuardianSet, GuardianSetIndex, PrecisionedPrice, PriceSource, QueryMsg},
     grug::{Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
     std::collections::BTreeMap,
 };
@@ -87,9 +87,9 @@ fn query_guardian_set(ctx: ImmutableCtx, index: u32) -> StdResult<GuardianSet> {
 
 fn query_guardian_sets(
     ctx: ImmutableCtx,
-    start_after: Option<u32>,
+    start_after: Option<GuardianSetIndex>,
     limit: Option<u32>,
-) -> StdResult<BTreeMap<u32, GuardianSet>> {
+) -> StdResult<BTreeMap<GuardianSetIndex, GuardianSet>> {
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 

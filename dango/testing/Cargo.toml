@@ -45,6 +45,8 @@ dango-httpd           = { workspace = true }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 dango-warp            = { workspace = true, features = ["library"] }
+indexer-disk-saver    = { workspace = true }
+indexer-testing       = { workspace = true }
 proptest              = { workspace = true }
 pyth-client           = { workspace = true }
 pyth-sdk              = { workspace = true }
@@ -52,6 +54,7 @@ pyth-types            = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }
 serde_json            = { workspace = true }
+sha2                  = { workspace = true }
 test-case             = { workspace = true }
 tokio                 = { workspace = true, features = ["full"] }
 tracing               = { workspace = true }

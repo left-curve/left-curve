@@ -10,13 +10,13 @@ use {
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
             USDC_DENOM, WBTC_DENOM,
         },
-        dex::{PairParams, PairUpdate},
+        dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Coins, ContractWrapper, Duration, HashExt,
-        NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        btree_map, coins, Binary, BlockInfo, Bounded, Coins, ContractWrapper, Denom, Duration,
+        HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -27,7 +27,7 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
-    std::{path::PathBuf, sync::Arc},
+    std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
 pub const MOCK_CHAIN_ID: &str = "mock-1";
@@ -320,22 +320,38 @@ where
             PairUpdate {
                 base_denom: DANGO_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: BTC_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: ETH_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
             PairUpdate {
                 base_denom: SOL_DENOM.clone(),
                 quote_denom: USDC_DENOM.clone(),
-                params: PairParams {},
+                params: PairParams {
+                    lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                    curve_invariant: CurveInvariant::Xyk,
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // TODO: set to non-zero
+                },
             },
         ],
         markets: btree_map! {

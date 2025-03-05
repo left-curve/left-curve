@@ -105,12 +105,7 @@ fn dispatch(
             }),
             ctx.funds,
         )?)
-        .add_event(Dispatch {
-            sender: message.sender,
-            destination_domain: message.destination_domain,
-            recipient: message.recipient,
-            message: message.body,
-        })?
+        .add_event(Dispatch(message))?
         .add_event(DispatchId { message_id })?)
 }
 

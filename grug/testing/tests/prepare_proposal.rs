@@ -2,12 +2,12 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper,
-        ResultExt, StdError, Tx,
+        btree_map, Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierExt,
+        QuerierWrapper, ResultExt, StdError, Tx,
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
-    std::{collections::BTreeMap, str::FromStr, time::Duration},
+    std::str::FromStr,
     thiserror::Error,
 };
 
@@ -112,18 +112,32 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
             let oracle = Addr::from_str(oracle)?;
 
             // Query the prices of a few coins from Coingecko.
-            let prices = reqwest::blocking::Client::builder()
-                .timeout(Duration::from_millis(5000))
-                .build()?
-                .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd")
-                .send()?
-                .json::<BTreeMap<String, Json>>()?
-                .into_iter()
-                .map(|(coingecko_id, vs_currencies)| {
-                    let price = vs_currencies["usd"].as_f64().unwrap();
-                    (coingecko_id, price)
-                })
-                .collect();
+            let prices = {
+                // Use the following to query from Coingecko.
+                // In practice, this often fails due to rate limiting. As such,
+                // we comment this out and use a hardcoded mock data below instead.
+                {
+                    // reqwest::blocking::Client::builder()
+                    //     .timeout(Duration::from_millis(5000))
+                    //     .build()?
+                    //     .get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,harrypotterobamasonic10in&vs_currencies=usd")
+                    //     .send()?
+                    //     .json::<BTreeMap<String, Json>>()?
+                    //     .into_iter()
+                    //     .map(|(coingecko_id, vs_currencies)| {
+                    //         let price = vs_currencies["usd"].as_f64().unwrap();
+                    //         (coingecko_id, price)
+                    //     })
+                    //     .collect()
+                }
+
+                // The mock data.
+                btree_map! {
+                    "bitcoin".to_string() => 86706.,
+                    "ethereum".to_string() => 2152.79,
+                    "harrypotterobamasonic10in".to_string() => 0.071202,
+                }
+            };
 
             // Compose an oracle update transaction.
             let tx = Tx {

@@ -1,5 +1,8 @@
 use {
-    crate::{entity, error::Result},
+    crate::{
+        entity::{self, events::TransactionType},
+        error::Result,
+    },
     grug_math::Inner,
     grug_types::{
         flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
@@ -73,7 +76,7 @@ impl Models {
                 let new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
-                    transaction_type: Set(FlatCategory::Tx as i16),
+                    transaction_type: Set(TransactionType::Tx),
                     has_succeeded: Set(tx_outcome.result.is_ok()),
                     error_message: Set(tx_outcome.clone().result.err()),
                     gas_wanted: Set(tx.gas_limit.try_into()?),
@@ -278,9 +281,6 @@ fn build_event_active_model(
         .and_then(|s| s.as_str())
         .map(|c| c.to_string());
 
-    let event_status = index_event.event_status.as_i16();
-    let commitment_status = index_event.commitment_status.as_i16();
-
     Ok(entity::events::ActiveModel {
         id: Set(event_id),
         parent_id: Set(parent_event_id),
@@ -290,8 +290,8 @@ fn build_event_active_model(
         r#type: Set(index_event.event.to_string()),
         method: Set(method),
         data: Set(data),
-        event_status: Set(event_status),
-        commitment_status: Set(commitment_status),
+        event_status: Set(index_event.event_status.clone().into()),
+        commitment_status: Set(index_event.commitment_status.clone().into()),
         transaction_idx: Set(index_event.id.category_index as i32),
         transaction_type: Set(index_event.id.category as i16),
         message_idx: Set(index_event.id.message_index.map(|i| i as i32)),

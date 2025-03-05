@@ -1,10 +1,12 @@
 use {
-    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, SUPPLIES},
-    dango_types::bank::{Metadata, QueryMsg},
+    crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
+    dango_types::bank::{
+        Metadata, OrphanedTransferPageParam, OrphanedTransferResponseItem, QueryMsg,
+    },
     grug::{
         Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
-        JsonSerExt, NumberConst, Order, Part, QueryBalanceRequest, QueryBalancesRequest,
-        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Uint128,
+        JsonSerExt, NumberConst, Order, Part, PrefixBound, QueryBalanceRequest,
+        QueryBalancesRequest, QuerySuppliesRequest, QuerySupplyRequest, StdResult, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -14,12 +16,12 @@ const DEFAULT_PAGE_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
     match msg {
-        QueryMsg::Namespace { namespace } => {
-            let res = query_namespace(ctx, namespace)?;
+        QueryMsg::NamespaceOwner { namespace } => {
+            let res = query_namespace_owner(ctx, namespace)?;
             res.to_json_value()
         },
-        QueryMsg::Namespaces { start_after, limit } => {
-            let res = query_namespaces(ctx, start_after, limit)?;
+        QueryMsg::NamespaceOwners { start_after, limit } => {
+            let res = query_namespace_owners(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Metadata { denom } => {
@@ -30,14 +32,38 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_metadatas(ctx, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::OrphanedTransfer { sender, recipient } => {
+            let res = query_orphaned_transfer(ctx, sender, recipient)?;
+            res.to_json_value()
+        },
+        QueryMsg::OrphanedTransfers { start_after, limit } => {
+            let res = query_orphaned_transfers(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::OrphanedTransfersBySender {
+            sender,
+            start_after,
+            limit,
+        } => {
+            let res = query_orphaned_transfers_by_sender(ctx, sender, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::OrphanedTransfersByRecipient {
+            recipient,
+            start_after,
+            limit,
+        } => {
+            let res = query_orphaned_transfers_by_recipient(ctx, recipient, start_after, limit)?;
+            res.to_json_value()
+        },
     }
 }
 
-fn query_namespace(ctx: ImmutableCtx, namespace: Part) -> StdResult<Addr> {
+fn query_namespace_owner(ctx: ImmutableCtx, namespace: Part) -> StdResult<Addr> {
     NAMESPACE_OWNERS.load(ctx.storage, &namespace)
 }
 
-fn query_namespaces(
+fn query_namespace_owners(
     ctx: ImmutableCtx,
     start_after: Option<Part>,
     limit: Option<u32>,
@@ -66,6 +92,73 @@ fn query_metadatas(
     METADATAS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
+        .collect()
+}
+
+fn query_orphaned_transfer(ctx: ImmutableCtx, sender: Addr, recipient: Addr) -> StdResult<Coins> {
+    ORPHANED_TRANSFERS
+        .may_load(ctx.storage, (sender, recipient))
+        .map(|opt| opt.unwrap_or_default())
+}
+
+fn query_orphaned_transfers(
+    ctx: ImmutableCtx,
+    start_after: Option<OrphanedTransferPageParam>,
+    limit: Option<u32>,
+) -> StdResult<Vec<OrphanedTransferResponseItem>> {
+    let start = start_after.map(|page| Bound::Exclusive((page.sender, page.recipient)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORPHANED_TRANSFERS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((sender, recipient), coins) = res?;
+            Ok(OrphanedTransferResponseItem {
+                sender,
+                recipient,
+                amount: coins,
+            })
+        })
+        .collect()
+}
+
+fn query_orphaned_transfers_by_sender(
+    ctx: ImmutableCtx,
+    sender: Addr,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Addr, Coins>> {
+    let start = start_after.map(Bound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORPHANED_TRANSFERS
+        .prefix(sender)
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect()
+}
+
+fn query_orphaned_transfers_by_recipient(
+    ctx: ImmutableCtx,
+    recipient: Addr,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Addr, Coins>> {
+    let start = start_after.map(PrefixBound::Exclusive);
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    ORPHANED_TRANSFERS
+        .idx
+        .recipient
+        .prefix(recipient)
+        .prefix_range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((sender, _recipient), coins) = res?;
+            debug_assert_eq!(_recipient, recipient);
+            Ok((sender, coins))
+        })
         .collect()
 }
 
