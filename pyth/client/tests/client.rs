@@ -5,6 +5,7 @@ use {
     pyth_types::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
 };
 
+// Ignore since it makes network requests.
 #[ignore]
 #[test]
 fn latest_vaas_network() {
@@ -13,6 +14,7 @@ fn latest_vaas_network() {
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
 }
 
+// Ignore since it makes network requests.
 #[ignore]
 #[test]
 fn sse_subscription_network() {

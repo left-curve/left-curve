@@ -26,11 +26,14 @@ where
 
         assert!(!vaas.is_empty(), "No vaas found");
 
+        let mut count_price_feed = 0;
         for vaa in vaas.iter() {
             for price_feed in PythVaa::new(&api, vaa.clone().into_inner())
                 .unwrap()
                 .unverified()
             {
+                count_price_feed += 1;
+
                 let new_price = price_feed.get_price_unchecked().price;
                 let new_publish_time = price_feed.get_price_unchecked().publish_time;
 
@@ -47,6 +50,8 @@ where
                 latest_values.insert(price_feed.id.to_string(), (new_price, new_publish_time));
             }
         }
+        assert!(count_price_feed == ids.length(), "Not all feeds were read");
+
         sleep(Duration::from_secs(2));
     }
 }
@@ -92,7 +97,7 @@ where
                 assert_ne!(
                     new_price,
                     latest_values.get(&price_feed.id.to_string()).unwrap().0,
-                    "Price has not changed"
+                    "Price has not changed (may happened with live data)"
                 );
                 assert!(
                     new_publish_time > latest_values.get(&price_feed.id.to_string()).unwrap().1,
@@ -119,7 +124,7 @@ where
     // Wait some times before ensuring the stream is closed.
     sleep(Duration::from_secs(5));
 
-    // Ensure the shared is empty.
+    // Ensure the shared is still empty.
     shared.write_with(|shared_vaas| {
         assert!(shared_vaas.is_empty());
     });
@@ -157,7 +162,7 @@ where
                 assert_ne!(
                     new_price,
                     latest_values.get(&price_feed.id.to_string()).unwrap().0,
-                    "Price has not changed (may happened)"
+                    "Price has not changed (may happened with live data)"
                 );
                 assert!(
                     new_publish_time > latest_values.get(&price_feed.id.to_string()).unwrap().1,
@@ -168,7 +173,7 @@ where
             }
         }
 
-        assert!(count_price_feed == ids1.length(), "Not all feeds were read");
+        assert!(count_price_feed == ids2.length(), "Not all feeds were read");
 
         sleep(Duration::from_secs(1));
     }
