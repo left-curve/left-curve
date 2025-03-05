@@ -36,7 +36,7 @@ export const AccountCard: React.FC<Props> = ({
       <img
         src="/images/account-card/dog.svg"
         alt="account-card-dog"
-        className="absolute right-0 bottom-0"
+        className="absolute right-0 bottom-0 select-none drag-none"
       />
       <div className="flex items-center justify-between ">
         <div className="flex gap-4 ">

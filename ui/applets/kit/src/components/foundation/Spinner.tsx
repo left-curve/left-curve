@@ -81,20 +81,20 @@ const spinner = tv({
         circle2: "border-b-current",
       },
       gray: {
-        circle1: "border-b-gray-300",
-        circle2: "border-b-gray-300",
+        circle1: "border-b-gray-500",
+        circle2: "border-b-gray-500",
       },
       white: {
         circle1: "border-b-white",
         circle2: "border-b-white",
       },
       green: {
-        circle1: "border-b-brand-green",
-        circle2: "border-b-brand-green",
+        circle1: "border-b-green-bean-300",
+        circle2: "border-b-green-bean-300",
       },
       pink: {
-        circle1: "border-b-surface-pink-300",
-        circle2: "border-b-surface-pink-300",
+        circle1: "border-b-red-bean-300",
+        circle2: "border-b-red-bean-300",
       },
     },
   },
