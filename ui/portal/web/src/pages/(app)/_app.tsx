@@ -34,14 +34,7 @@ export const Route = createFileRoute("/(app)/_app")({
           )}
         />
 
-        <header
-          className={twMerge(
-            "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full p-4 transition-all",
-            isScrolled ? "lg:bg-white-100 lg:shadow-card-shadow" : "bg-transparent shadow-none",
-          )}
-        >
-          <Header />
-        </header>
+        <Header isScrolled={isScrolled} />
         <div className="flex items-start justify-start w-full z-30 h-full relative flex-col">
           <Outlet />
         </div>
