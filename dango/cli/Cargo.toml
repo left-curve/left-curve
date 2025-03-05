@@ -24,6 +24,7 @@ dango-client       = { workspace = true }
 dango-genesis      = { workspace = true }
 dango-httpd        = { workspace = true }
 dango-types        = { workspace = true }
+data-encoding      = { workspace = true }
 dialoguer          = { workspace = true }
 futures            = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
@@ -38,6 +39,7 @@ indexer-httpd      = { workspace = true }
 indexer-sql        = { workspace = true, features = ["tracing"] }
 rand               = { workspace = true }
 serde              = { workspace = true }
+tendermint         = { workspace = true }
 tokio              = { workspace = true }
 tower              = { workspace = true, features = ["full"] }
 tower-abci         = { workspace = true }
