@@ -7,11 +7,10 @@ use {
         Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
         JsonSerExt, NumberConst, Order, Part, PrefixBound, QueryBalanceRequest,
         QueryBalancesRequest, QuerySuppliesRequest, QuerySupplyRequest, StdResult, Uint128,
+        DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

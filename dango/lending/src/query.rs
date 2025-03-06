@@ -3,12 +3,10 @@ use {
     dango_types::lending::{Market, QueryMsg},
     grug::{
         Addr, Bound, Coin, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
-        StdResult, Storage, Timestamp,
+        StdResult, Storage, Timestamp, DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {

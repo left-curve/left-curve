@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppletItem } from "./AppletItem";
+import { AssetItem } from "./AssetItem";
 
 import { applets } from "../../../applets";
 
@@ -58,6 +59,18 @@ export const SearchMenuBody: React.FC<SearchMenuBodyProps> = ({ isVisible, hideM
                   </Command.Item>
                 ))}
               </Command.Group>
+              {/*    <Command.Group value="Assets">
+                {[].map((token) => (
+                  <Command.Item
+                    key={token.title}
+                    value={token.title}
+                    className="group"
+                    onSelect={() => [navigate({ to: token.path }), hideMenu()]}
+                  >
+                    <TokenItem {...token} />
+                  </Command.Item>
+                ))}
+              </Command.Group> */}
             </Command.List>
           </motion.div>
         </motion.div>

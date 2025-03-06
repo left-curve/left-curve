@@ -1,11 +1,9 @@
 use {
     crate::{POSITIONS, UNLOCKING_SCHEDULE},
     dango_types::vesting::{PositionResponse, QueryMsg},
-    grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{Addr, Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult, DEFAULT_PAGE_LIMIT},
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

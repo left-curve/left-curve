@@ -3,12 +3,10 @@ use {
     grug_math::{NumberConst, Uint128},
     grug_types::{
         Addr, Bound, Coin, Coins, Denom, Order, QueryBalanceRequest, QueryBalancesRequest,
-        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Storage,
+        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Storage, DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };
-
-pub const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 pub fn query_balance(storage: &dyn Storage, req: QueryBalanceRequest) -> StdResult<Coin> {
     let maybe_amount = BALANCES_BY_ADDR.may_load(storage, (req.address, &req.denom))?;

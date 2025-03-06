@@ -5,11 +5,9 @@ use {
         account::multi::{Proposal, ProposalId, QueryMsg, Status, Vote},
         account_factory::Username,
     },
-    grug::{Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
+    grug::{Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage, DEFAULT_PAGE_LIMIT},
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

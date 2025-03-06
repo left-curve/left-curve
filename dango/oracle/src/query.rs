@@ -1,12 +1,13 @@
 use {
     crate::{OracleQuerier, GUARDIAN_SETS, PRICE_SOURCES},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
-    grug::{Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    grug::{
+        Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        DEFAULT_PAGE_LIMIT,
+    },
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {

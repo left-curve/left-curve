@@ -2,12 +2,11 @@ use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
     grug::{
         Addr, Bound, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult, UniqueVec,
+        DEFAULT_PAGE_LIMIT,
     },
     hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
 };
-
-const DEFAULT_PAGE_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {

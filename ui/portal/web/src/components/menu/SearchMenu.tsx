@@ -1,6 +1,7 @@
 import {
   IconButton,
   IconChevronDown,
+  IconClose,
   IconSearch,
   ResizerContainer,
   TextLoop,
@@ -86,6 +87,10 @@ export const SearchMenu: React.FC = () => {
                   value={searchText}
                   className="bg-rice-25 pt-[4px] w-full outline-none focus:outline-none placeholder:text-gray-500"
                 />
+
+                {!isLg && searchText ? (
+                  <IconClose className="w-6 h-6 text-gray-500" onClick={() => setSearchText("")} />
+                ) : null}
               </motion.div>
               {!isSearchBarVisible && (
                 <AnimatePresence mode="wait" custom={isSearchBarVisible}>
