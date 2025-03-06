@@ -57,7 +57,7 @@ impl PythMiddlewareCache {
                     let shared =
                         pyth_client.run_streaming(NonEmpty::new(vec![id.to_string()]).unwrap());
                     while values.len() < 15 {
-                        let vaas = shared.read_and_write(vec![]);
+                        let vaas = shared.replace(vec![]);
                         if !vaas.is_empty() {
                             values.push(vaas);
                         }

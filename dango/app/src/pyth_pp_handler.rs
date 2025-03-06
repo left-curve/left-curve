@@ -74,6 +74,6 @@ impl PythClientPPHandler {
     pub fn fetch_latest_vaas(&self) -> Vec<Binary> {
         // Retrieve the VAAs from the shared memory and consume them in order to
         // avoid pushing the same VAAs again.
-        self.shared_vaas.read_and_write(vec![])
+        self.shared_vaas.replace(vec![])
     }
 }

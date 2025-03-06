@@ -75,7 +75,7 @@ where
     sleep(Duration::from_secs(1));
     for _ in 0..5 {
         // Read from the shared memory.
-        let vaas = shared.read_and_write(vec![]);
+        let vaas = shared.replace(vec![]);
 
         assert!(!vaas.is_empty());
 
@@ -136,7 +136,7 @@ where
     sleep(Duration::from_secs(1));
     for _ in 0..5 {
         // Read from the shared memory.
-        let vaas = shared.read_and_write(vec![]);
+        let vaas = shared.replace(vec![]);
 
         assert!(!vaas.is_empty());
 
