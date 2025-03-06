@@ -1,7 +1,8 @@
 use {
     crate::{OracleQuerier, GUARDIAN_SETS, PRICE_SOURCES},
-    dango_types::oracle::{GuardianSet, GuardianSetIndex, PrecisionedPrice, PriceSource, QueryMsg},
+    dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     grug::{Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
+    pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
 

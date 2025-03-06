@@ -1,6 +1,6 @@
 use {
     super::GuardianSetIndex,
-    crate::oracle::{GuardianSet, WormholeVaa},
+    crate::{GuardianSet, WormholeVaa},
     anyhow::{anyhow, bail},
     byteorder::BigEndian,
     grug::{Api, BlockInfo, Map, Storage},
@@ -168,9 +168,10 @@ impl PythVaa {
 #[cfg(test)]
 mod tests {
     use {
+        super::PythVaa,
         crate::{
             constants::{GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
-            oracle::{GuardianSet, GuardianSetIndex, PythVaa},
+            GuardianSet, GuardianSetIndex,
         },
         data_encoding::BASE64,
         grug::{

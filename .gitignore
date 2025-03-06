@@ -11,6 +11,10 @@ target/
 **/proptest-regressions/
 **/*.proptest-regressions
 
+# Upload the testdata for the pyth
+!pyth/client/testdata/
+
+
 # macOS
 **/.DS_Store
 

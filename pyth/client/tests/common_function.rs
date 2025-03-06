@@ -1,7 +1,7 @@
 use {
-    dango_types::oracle::PythVaa,
     grug::{btree_map, Inner, Lengthy, MockApi, NonEmpty},
     pyth_client::PythClient,
+    pyth_types::PythVaa,
     std::{thread::sleep, time::Duration},
 };
 

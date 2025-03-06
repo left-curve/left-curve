@@ -3220,6 +3220,7 @@ dependencies = [
  "hyperlane-merkle",
  "hyperlane-types",
  "hyperlane-va",
+ "pyth-types",
  "rand",
  "serde",
 ]
@@ -3296,7 +3297,6 @@ dependencies = [
  "dango-lending",
  "dango-types",
  "grug",
- "pyth-sdk 0.8.0",
  "pyth-types",
 ]
 
@@ -3344,7 +3344,6 @@ dependencies = [
  "k256",
  "proptest",
  "pyth-client",
- "pyth-sdk 0.8.0",
  "pyth-types",
  "rand",
  "reqwest 0.12.12",
@@ -3368,10 +3367,7 @@ dependencies = [
  "grug",
  "hyperlane-types",
  "paste",
- "pyth-sdk 0.8.0",
  "pyth-types",
- "pyth-wormhole-attester-sdk",
- "pythnet-sdk",
  "serde",
  "serde_json",
  "thiserror 2.0.11",
@@ -6883,8 +6879,14 @@ dependencies = [
 name = "pyth-types"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "byteorder",
+ "data-encoding",
  "grug",
  "hex-literal",
+ "pyth-sdk 0.8.0",
+ "pyth-wormhole-attester-sdk",
+ "pythnet-sdk",
 ]
 
 [[package]]

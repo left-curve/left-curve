@@ -13,5 +13,11 @@ version       = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-grug        = { workspace = true }
-hex-literal = { workspace = true }
+anyhow                     = { workspace = true }
+byteorder                  = { workspace = true }
+data-encoding              = { workspace = true }
+grug                       = { workspace = true }
+hex-literal                = { workspace = true }
+pyth-sdk                   = { workspace = true }
+pyth-wormhole-attester-sdk = { workspace = true }
+pythnet-sdk                = { workspace = true }

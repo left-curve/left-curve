@@ -1,5 +1,5 @@
 use {
-    crate::oracle::BytesAnalyzer,
+    crate::BytesAnalyzer,
     anyhow::{anyhow, ensure},
     data_encoding::BASE64,
     grug::{Api, BlockInfo, ByteArray, Hash160, Hash256, Inner, Map, NonZero, Storage, Timestamp},

@@ -1,7 +1,7 @@
 use {
-    dango_types::oracle::{GuardianSet, GuardianSetIndex, PrecisionlessPrice, PriceSource},
+    dango_types::oracle::{PrecisionlessPrice, PriceSource},
     grug::{Denom, Map},
-    pyth_types::PythId,
+    pyth_types::{GuardianSet, GuardianSetIndex, PythId},
 };
 
 pub const GUARDIAN_SETS: Map<GuardianSetIndex, GuardianSet> = Map::new("guardian_set");

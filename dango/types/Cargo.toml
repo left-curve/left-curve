@@ -10,20 +10,17 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-anyhow                     = { workspace = true }
-borsh                      = { workspace = true, features = ["derive"] }
-byteorder                  = { workspace = true }
-data-encoding              = { workspace = true }
-grug                       = { workspace = true }
-hyperlane-types            = { workspace = true }
-paste                      = { workspace = true }
-pyth-sdk                   = { workspace = true }
-pyth-types                 = { workspace = true }
-pyth-wormhole-attester-sdk = { workspace = true }
-pythnet-sdk                = { workspace = true }
-serde                      = { workspace = true, features = ["derive"] }
-serde_json                 = { workspace = true }
-thiserror                  = { workspace = true }
+anyhow          = { workspace = true }
+borsh           = { workspace = true, features = ["derive"] }
+byteorder       = { workspace = true }
+data-encoding   = { workspace = true }
+grug            = { workspace = true }
+hyperlane-types = { workspace = true }
+paste           = { workspace = true }
+pyth-types      = { workspace = true }
+serde           = { workspace = true, features = ["derive"] }
+serde_json      = { workspace = true }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
