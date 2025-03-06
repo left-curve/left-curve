@@ -1,6 +1,7 @@
 use {
-    crate::oracle::{GuardianSet, GuardianSetIndex, PrecisionedPrice, PriceSource},
+    crate::oracle::{PrecisionedPrice, PriceSource},
     grug::{Binary, Denom, NonEmpty},
+    pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
 
