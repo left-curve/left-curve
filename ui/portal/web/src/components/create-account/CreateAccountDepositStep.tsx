@@ -38,7 +38,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         },
         {
           funds: {
-            uusdc: parseUnits(fundsAmount, usdcInfo.decimals).toString(),
+            "hyp/eth/usdc": parseUnits(fundsAmount, usdcInfo.decimals).toString(),
           },
         },
       );

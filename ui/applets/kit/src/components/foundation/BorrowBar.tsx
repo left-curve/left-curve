@@ -1,5 +1,4 @@
 import type React from "react";
-import { twMerge } from "../../utils";
 
 interface Props {
   total: number;
@@ -10,8 +9,6 @@ interface Props {
 export const BorrowBar: React.FC<Props> = ({ borrow, borrowed, total }) => {
   const borrowPercentage = (borrow / total) * 100;
   const borrowedPercentage = (borrowed / total) * 100;
-  console.log(borrowPercentage);
-  console.log(borrowedPercentage);
 
   return (
     <div className="w-full flex flex-col gap-1">

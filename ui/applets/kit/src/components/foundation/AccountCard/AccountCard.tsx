@@ -50,7 +50,7 @@ export const AccountCard: React.FC<Props> = ({ account, balance, balanceChange }
         </div>
       </div>
       {type === AccountType.Margin ? (
-        <BorrowBar borrow={100} borrowed={59.32} total={120} />
+        <BorrowBar borrow={0} borrowed={0} total={0} />
       ) : (
         <div className="flex gap-2 items-center relative z-10">
           <p className="h4-regular">{balance}</p>
