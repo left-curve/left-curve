@@ -52,7 +52,7 @@ impl PythMiddlewareCache {
                 if !cache_file.exists() {
                     let mut pyth_client = PythClient::new(base_url.to_string());
 
-                    // Retrieve 30 samples of the data.
+                    // Retrieve 15 samples of the data.
                     let mut values = vec![];
                     let shared =
                         pyth_client.run_streaming(NonEmpty::new(vec![id.to_string()]).unwrap());
@@ -63,6 +63,8 @@ impl PythMiddlewareCache {
                         }
                         sleep(Duration::from_millis(1200));
                     }
+
+                    pyth_client.close();
 
                     // Store the data in the cache.
                     self.store_data(id, values).unwrap();
