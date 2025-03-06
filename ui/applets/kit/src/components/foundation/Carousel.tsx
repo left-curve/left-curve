@@ -9,6 +9,7 @@ type CarouselProps = {
   children: React.ReactNode[];
   infinite?: boolean;
   autoPlayInterval?: number;
+  draggable?: boolean;
 };
 
 const variants = {
@@ -30,6 +31,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   children,
   infinite = true,
   autoPlayInterval = 0,
+  draggable = true,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -58,6 +60,19 @@ export const Carousel: React.FC<CarouselProps> = ({
     setCurrentIndex(index);
   };
 
+  const handleDragEnd = (
+    event: PointerEvent | MouseEvent | TouchEvent,
+    info: { offset: { x: number; y: number } },
+  ) => {
+    const dragOffset = info.offset.x;
+
+    if (dragOffset > 50) {
+      prevSlide();
+    } else if (dragOffset < -50) {
+      nextSlide();
+    }
+  };
+
   return (
     <div className="relative flex flex-col items-center justify-center gap-6 overflow-hidden">
       <AnimatePresence initial={false} mode="wait" custom={direction}>
@@ -70,15 +85,18 @@ export const Carousel: React.FC<CarouselProps> = ({
           exit="exit"
           transition={{ duration: 0.3 }}
           className="w-full"
+          drag={draggable ? "x" : false}
+          dragConstraints={{ left: 0, right: 0 }}
+          onDragEnd={handleDragEnd}
         >
           {children[currentIndex]}
         </motion.div>
       </AnimatePresence>
 
-      <div className="w-full max-w-[18rem] flex items-center justify-between gap-3">
+      <div className="w-full max-w-[18rem] flex items-center justify-center lg:justify-between gap-3">
         <IconChevronLeftCarousell
           onClick={prevSlide}
-          className="w-[20px] h-[20px] text-blue-500 cursor-pointer"
+          className="hidden lg:block w-[20px] h-[20px] text-blue-500 cursor-pointer"
         />
 
         <div className="flex space-x-2">
@@ -96,7 +114,7 @@ export const Carousel: React.FC<CarouselProps> = ({
 
         <IconChevronRight
           onClick={nextSlide}
-          className="w-[20px] h-[20px] text-blue-500 cursor-pointer"
+          className="hidden lg:block w-[20px] h-[20px] text-blue-500 cursor-pointer"
         />
       </div>
     </div>

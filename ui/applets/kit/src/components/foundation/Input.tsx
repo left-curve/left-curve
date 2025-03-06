@@ -61,7 +61,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <div className={inputWrapper({ className: classNames?.inputWrapper })}>
           {startContent ? startContent : null}
           {!props.value && placeholder ? (
-            <div className="w-full absolute z-0 text-gray-500">{placeholder}</div>
+            <div className="w-full absolute z-0 text-gray-500 text-left">{placeholder}</div>
           ) : null}
           <input
             type={type}

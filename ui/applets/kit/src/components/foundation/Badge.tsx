@@ -19,8 +19,8 @@ const badgeVariants = tv(
         green: "bg-green-bean-100 text-green-bean-800 border-green-bean-200",
       },
       size: {
-        s: "py-[2px] px-2",
-        m: "py-[3px] px-1 border",
+        s: "py-[2px] px-2 diatype-xs-medium",
+        m: "py-[3px] px-1 border diatype-xs-medium",
       },
     },
     defaultVariants: {
