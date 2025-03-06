@@ -52,6 +52,8 @@ impl PythClient {
         // to shut down the thread will be replaced.
         self.close();
 
+        let base_url = self.base_url.clone();
+
         // Create the shared vector to write/read the vaas.
         let shared = Shared::new(vec![]);
         let shared_clone = shared.clone();
@@ -62,14 +64,9 @@ impl PythClient {
         let keep_running_clone = self.keep_running.clone();
 
         // If the middleware, run the middleware thread.
-        if self.middleware.is_some() {
-            thread::spawn(move || {
-                let mut pyth_mock = PythMiddlewareCache::new();
-                pyth_mock.run_streaming(ids, shared_clone, keep_running_clone);
-            });
+        if let Some(middleware) = &self.middleware {
+            middleware.run_streaming(ids, base_url, shared_clone, keep_running_clone);
         } else {
-            let base_url = self.base_url.clone();
-
             thread::spawn(move || {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async {
@@ -102,7 +99,9 @@ impl PythClient {
         if let Some(middleware) = &mut self.middleware {
             // This code should be reached only in tests.
             // Unwrap in order to fail if the cached data are not found.
-            return Ok(middleware.get_latest_vaas(ids.clone()).unwrap());
+            return Ok(middleware
+                .get_latest_vaas(ids.clone(), &self.base_url)
+                .unwrap());
         }
 
         Ok(reqwest::blocking::Client::new()

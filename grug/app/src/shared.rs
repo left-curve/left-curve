@@ -66,6 +66,20 @@ impl<S> Clone for Shared<S> {
     }
 }
 
+impl<S> Shared<S>
+where
+    S: Clone,
+{
+    /// Return the value inside and replace it with a new one.
+    pub fn read_and_write(&self, new_value: S) -> S {
+        let mut write = self.write_access();
+        let old_value = write.clone();
+        *write = new_value;
+
+        old_value
+    }
+}
+
 // When the inner type is `Storage`, the outer `Shared` also implements `Storage`.
 impl<S> Storage for Shared<S>
 where
@@ -296,5 +310,19 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(data, data2);
+    }
+
+    #[test]
+    fn read_and_write() {
+        let old_value = vec![1, 2, 3, 4, 5];
+        let shared = Shared::new(old_value.clone());
+
+        assert!(shared.read_with(|inner| *inner == old_value));
+
+        let new_value = vec![6, 7, 8, 9, 10];
+        let return_value = shared.read_and_write(new_value.clone());
+
+        assert!(shared.read_with(|inner| *inner == new_value));
+        assert_eq!(return_value, old_value);
     }
 }

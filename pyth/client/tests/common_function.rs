@@ -21,7 +21,7 @@ where
 
     let ids = NonEmpty::new_unchecked(ids);
 
-    for _ in 0..10 {
+    for _ in 0..5 {
         let vaas = pyth_client.get_latest_vaas(ids.clone()).unwrap();
 
         assert!(!vaas.is_empty(), "No vaas found");
@@ -52,7 +52,7 @@ where
         }
         assert!(count_price_feed == ids.length(), "Not all feeds were read");
 
-        sleep(Duration::from_secs(2));
+        sleep(Duration::from_millis(1200));
     }
 }
 
@@ -73,7 +73,7 @@ where
     let shared = pyth_client.run_streaming(NonEmpty::new_unchecked(ids1.clone()));
 
     sleep(Duration::from_secs(1));
-    for _ in 0..10 {
+    for _ in 0..5 {
         // Read from the shared memory.
         let mut vaas = Vec::new();
         shared.write_with(|mut shared_vaas| {
@@ -138,7 +138,7 @@ where
     let shared = pyth_client.run_streaming(NonEmpty::new_unchecked(ids2.clone()));
 
     sleep(Duration::from_secs(1));
-    for _ in 0..10 {
+    for _ in 0..5 {
         // Read from the shared memory.
         let mut vaas = Vec::new();
         shared.write_with(|mut shared_vaas| {

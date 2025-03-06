@@ -1,5 +1,4 @@
 use {
-    core::time,
     dango_testing::setup_test,
     dango_types::{self, oracle::QueryPricesRequest},
     grug::{setup_tracing_subscriber, QuerierExt, ResultExt},
@@ -20,7 +19,7 @@ fn proposal_pyth() {
 
     // Give time to the thread to write the price into
     // Shared latest_vaas variable.
-    thread::sleep(time::Duration::from_secs(3));
+    thread::sleep(Duration::from_secs(1));
 
     // Trigger the prepare proposal to upload the prices to oracle.
     suite.make_empty_block();
@@ -34,7 +33,7 @@ fn proposal_pyth() {
         .should_succeed();
 
     // Await some time and assert that the timestamp are updated.
-    sleep(time::Duration::from_secs(2));
+    sleep(Duration::from_secs(2));
 
     suite.make_empty_block();
 
@@ -50,10 +49,10 @@ fn proposal_pyth() {
         assert_ne!(price.timestamp, prices2.get(&denom).unwrap().timestamp);
     }
 
-    // Create some empty blocks and give some time
-    // to the thread to write the price into the Shared prices variable.
-    for _ in 0..5 {
-        suite.make_empty_block();
-        thread::sleep(Duration::from_secs(2));
-    }
+    // // Create some empty blocks and give some time
+    // // to the thread to write the price into the Shared prices variable.
+    // for _ in 0..5 {
+    //     suite.make_empty_block();
+    //     thread::sleep(Duration::from_secs(2));
+    // }
 }
