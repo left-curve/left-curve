@@ -1,20 +1,26 @@
-import { AccountCard, Button, twMerge } from "@left-curve/applets-kit";
+import {
+  AccountCard,
+  Button,
+  IconAddCross,
+  IconButton,
+  IconChevronLeft,
+  IconLogOut,
+  IconQR,
+} from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
-import { motion } from "framer-motion";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
 import { useNavigate } from "@tanstack/react-router";
 
 export const AccountMenuBody: React.FC = () => {
   const navigate = useNavigate();
+  const [tab, setTab] = useState<"account" | "assets">("assets");
   const { setSidebarVisibility } = useApp();
   const { account, connector } = useAccount();
-  const [menuAccountActiveLink, setMenuAccountActiveLink] = useState<"Assets" | "Earn" | "Pools">(
-    "Assets",
-  );
 
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
@@ -25,41 +31,67 @@ export const AccountMenuBody: React.FC = () => {
 
   return (
     <>
-      <div className="p-4 w-full flex items-center flex-col gap-5">
-        <AccountCard
-          account={account}
-          balance={totalBalance}
-          logout={() => {
-            setSidebarVisibility(false);
-            connector?.disconnect();
-          }}
-        />
-        <div className="md:self-end flex gap-4 items-center justify-center w-full">
-          <Button
-            fullWidth
-            size="md"
-            onClick={() => [
-              navigate({ to: "/send-and-receive", search: { action: "receive" } }),
-              setSidebarVisibility(false),
-            ]}
-          >
-            Fund
-          </Button>
-          <Button
-            fullWidth
-            variant="secondary"
-            size="md"
-            onClick={() => [
-              navigate({ to: "/send-and-receive", search: { action: "send" } }),
-              setSidebarVisibility(false),
-            ]}
-          >
-            Send
-          </Button>
-        </div>
+      <div className="p-4 w-full flex items-center flex-col gap-5 relative">
+        <AccountCard account={account} balance={totalBalance} />
+        <IconButton
+          className="absolute top-8 right-8 z-30"
+          size="sm"
+          variant="secondary"
+          onClick={() => setTab(tab === "account" ? "assets" : "account")}
+        >
+          <IconChevronLeft className="w-4 h-4 -rotate-90" />
+        </IconButton>
+        {tab === "assets" && (
+          <div className="md:self-end flex gap-2 items-center justify-center w-full">
+            <Button
+              fullWidth
+              size="md"
+              onClick={() => [
+                navigate({ to: "/send-and-receive", search: { action: "receive" } }),
+                setSidebarVisibility(false),
+              ]}
+            >
+              Fund
+            </Button>
+            <Button
+              fullWidth
+              variant="secondary"
+              size="md"
+              onClick={() => [
+                navigate({ to: "/send-and-receive", search: { action: "send" } }),
+                setSidebarVisibility(false),
+              ]}
+            >
+              Send
+            </Button>
+            <IconButton variant="secondary">
+              <IconQR />
+            </IconButton>
+            <IconButton
+              variant="secondary"
+              onClick={() => {
+                setSidebarVisibility(false);
+                connector?.disconnect();
+              }}
+            >
+              <IconLogOut />
+            </IconButton>
+          </div>
+        )}
+        {tab === "account" && (
+          <div className="flex items-center justify-between gap-4 w-full">
+            <p>Other Accounts</p>
+            <Button
+              onClick={() => [setSidebarVisibility(false), navigate({ to: "/create-account" })]}
+            >
+              <IconAddCross className="w-5 h-5" /> <span>Add Account</span>
+            </Button>
+          </div>
+        )}
       </div>
 
-      <AssetTab />
+      {tab === "assets" && <AssetTab />}
+      {tab === "account" && <AccountTab />}
     </>
   );
 };
