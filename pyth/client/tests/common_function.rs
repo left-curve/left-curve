@@ -75,11 +75,7 @@ where
     sleep(Duration::from_secs(1));
     for _ in 0..5 {
         // Read from the shared memory.
-        let mut vaas = Vec::new();
-        shared.write_with(|mut shared_vaas| {
-            vaas = shared_vaas.clone();
-            *shared_vaas = vec![];
-        });
+        let vaas = shared.read_and_write(vec![]);
 
         assert!(!vaas.is_empty());
 
@@ -125,7 +121,7 @@ where
     sleep(Duration::from_secs(5));
 
     // Ensure the shared is still empty.
-    shared.write_with(|shared_vaas| {
+    shared.read_with(|shared_vaas| {
         assert!(shared_vaas.is_empty());
     });
 
@@ -140,11 +136,7 @@ where
     sleep(Duration::from_secs(1));
     for _ in 0..5 {
         // Read from the shared memory.
-        let mut vaas = Vec::new();
-        shared.write_with(|mut shared_vaas| {
-            vaas = shared_vaas.clone();
-            *shared_vaas = vec![];
-        });
+        let vaas = shared.read_and_write(vec![]);
 
         assert!(!vaas.is_empty());
 
