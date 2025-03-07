@@ -6,19 +6,12 @@ use {
 
 pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 
-// ----------------------------------- types -----------------------------------
-
-#[grug::derive(Borsh)]
-pub struct Config {
-    pub announcement_fee: Coin,
-    pub max_len_storage: usize,
-}
-
 // --------------------------------- messages ----------------------------------
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub mailbox: Addr,
+    pub announce_fee: Coin,
 }
 
 #[grug::derive(Serde)]
@@ -55,6 +48,7 @@ pub enum QueryMsg {
 pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
+    pub announce_fee: Coin,
 }
 
 #[grug::derive(Serde)]

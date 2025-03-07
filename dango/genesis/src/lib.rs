@@ -10,9 +10,9 @@ use {
         taxman, vesting, warp,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission, Permissions,
-        ResultExt, StdResult, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
+        Permissions, ResultExt, StdResult, GENESIS_SENDER,
     },
     hyperlane_types::{
         hooks,
@@ -416,7 +416,10 @@ where
     let va = instantiate(
         &mut msgs,
         hyperlane_va_code_hash,
-        &va::InstantiateMsg { mailbox },
+        &va::InstantiateMsg {
+            mailbox,
+            announce_fee: Coin::new("dng", 100).unwrap(),
+        },
         "hyperlane/va",
         "hyperlane/va",
     )?;

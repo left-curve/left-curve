@@ -1,5 +1,5 @@
 use {
-    crate::{CONFIG, MAILBOX, STORAGE_LOCATIONS},
+    crate::{ANNOUNCE_FEE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -11,10 +11,12 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
+    ANNOUNCE_FEE.save(ctx.storage, &msg.announce_fee)?;
 
     Ok(Response::new().add_event(Initialize {
         creator: ctx.sender,
         mailbox: msg.mailbox,
+        announce_fee: msg.announce_fee,
     })?)
 }
 
@@ -35,18 +37,8 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
-    let config = CONFIG.load(ctx.storage)?;
-
-    // Check if storage location is too long.
-    ensure!(
-        storage_location.len() <= config.max_len_storage,
-        "Storage location too long, max: {}, got: {}",
-        config.max_len_storage,
-        storage_location.len()
-    );
-
     // Check if the funds for announcement are enough.
-    let fee = config.announcement_fee;
+    let fee = ANNOUNCE_FEE.load(ctx.storage)?;
 
     ensure!(
         ctx.funds.as_one_coin_of_denom(&fee.denom)?.amount >= &fee.amount,
