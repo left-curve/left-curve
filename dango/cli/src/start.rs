@@ -35,7 +35,7 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        let config: Config = ConfigParser::parse(PathBuf::from("dango.toml"))?;
+        let config: Config = ConfigParser::parse(PathBuf::from("dango.toml")).unwrap_or_default();
 
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;

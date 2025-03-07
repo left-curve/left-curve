@@ -3,6 +3,6 @@ enabled             = false
 tendermint_endpoint = "http://localhost:26657"
 
 [indexer]
-database_url = "postgres://localhost"
+database_url = "postgres://postgres@localhost/grug_dev"
 enabled      = true
 keep_blocks  = false
