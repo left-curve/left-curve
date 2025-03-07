@@ -113,6 +113,7 @@ impl StartCmd {
         indexer_httpd::server::run_server(
             &config.indexer_httpd.ip,
             config.indexer_httpd.port,
+            config.indexer_httpd.cors_allowed_origin,
             context,
             config_app,
             build_schema,

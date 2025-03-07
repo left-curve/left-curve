@@ -1,4 +1,5 @@
 [indexer_httpd]
+cors_allowed_origin = "127.0.0.1"
 enabled             = false
 ip                  = "127.0.0.1"
 port                = 8080

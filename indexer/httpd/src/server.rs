@@ -15,6 +15,7 @@ use {
 pub async fn run_server<CA, GS, I>(
     ip: I,
     port: u16,
+    cors_allowed_origin: Option<String>,
     context: Context,
     config_app: CA,
     build_schema: fn(Context) -> GS,
@@ -30,9 +31,9 @@ where
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
-        let cors = if let Ok(origin) = std::env::var("ORIGIN") {
+        let cors = if let Some(origin) = cors_allowed_origin.as_deref() {
             Cors::default()
-                .allowed_origin(&origin)
+                .allowed_origin(origin)
                 .allowed_methods(vec!["POST"])
                 .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
                 .allowed_header(http::header::CONTENT_TYPE)

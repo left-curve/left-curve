@@ -25,6 +25,7 @@ pub struct IndexerHttpdConfig {
     pub tendermint_endpoint: String,
     pub ip: String,
     pub port: u16,
+    pub cors_allowed_origin: Option<String>,
 }
 
 fn default_tendermint_endpoint() -> String {
