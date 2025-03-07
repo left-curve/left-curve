@@ -31,11 +31,17 @@ pub struct StartCmd {
     /// Gas limit when serving query requests
     #[arg(long, default_value_t = u64::MAX)]
     query_gas_limit: u64,
+
+    /// Optional path to the configuration file
+    #[arg(long)]
+    config_file: Option<PathBuf>,
 }
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        let config: Config = ConfigParser::parse(PathBuf::from("dango.toml")).unwrap_or_default();
+        let config: Config =
+            ConfigParser::parse(self.config_file.clone().unwrap_or(app_dir.config_file()))
+                .unwrap_or_default();
 
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;

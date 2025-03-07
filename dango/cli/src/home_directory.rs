@@ -24,4 +24,8 @@ impl HomeDirectory {
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
     }
+
+    pub fn config_file(&self) -> PathBuf {
+        self.home.join("dango.toml")
+    }
 }
