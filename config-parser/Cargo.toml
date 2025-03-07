@@ -1,0 +1,16 @@
+[package]
+edition = "2021"
+name    = "config-parser"
+publish = false
+version = "0.1.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+config    = { workspace = true }
+serde     = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+assertor = { workspace = true }

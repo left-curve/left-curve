@@ -1,0 +1,10 @@
+tendermint_endpoint = "http://localhost:26657"
+
+[indexer-httpd]
+enabled             = false
+tendermint_endpoint = "http://localhost:26657"
+
+[indexer]
+database_url = "postgres://localhost"
+enabled      = true
+keep_blocks  = false
