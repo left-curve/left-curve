@@ -1428,7 +1428,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
 )]
 #[test_case(
     coins! {
-        ETH_DENOM.clone() => 1000000,   
+        ETH_DENOM.clone() => 1000000,
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
