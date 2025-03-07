@@ -74,8 +74,13 @@ pub enum ExecuteMsg {
     },
     /// Perform a swap in the passive liquidity pool for the `base_denom/quote_denom` pair
     Swap {
+        /// The amount of base asset to trade.
         amount: Uint128,
         direction: Direction,
+        /// The route of the swap. The first denom is the base denom, and the
+        /// last denom is the quote denom. The route must be acyclic and non-empty.
+        /// There must exist passive pools for all adjacent denoms in the route or
+        /// the swap will fail.
         route: Vec<Denom>,
         slippage: Option<SlippageControl>,
     },
