@@ -1,5 +1,5 @@
 use {
-    crate::{MAILBOX, STORAGE_LOCATIONS},
+    crate::{CONFIG, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -35,6 +35,28 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
+    let config = CONFIG.load(ctx.storage)?;
+
+    // Check if storage location is too long.
+    ensure!(
+        storage_location.len() <= config.max_len_storage,
+        "Storage location too long, max: {}, got: {}",
+        config.max_len_storage,
+        storage_location.len()
+    );
+
+    // Check if the funds for announcement are enough.
+    let fee = config.announcement_fee;
+
+    ensure!(
+        ctx.funds.as_one_coin_of_denom(&fee.denom)?.amount >= &fee.amount,
+        "Not enough funds for announcement, required: {}, got: {}",
+        fee,
+        ctx.funds
+    );
+
+    // TODO: Send the fee to taxman with PayFee once it's implemented.
+
     // Make announcement digest.
     let mailbox = MAILBOX.load(ctx.storage)?;
 

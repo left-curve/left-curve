@@ -1,9 +1,18 @@
 use {
-    grug::{Addr, HexByteArray, UniqueVec},
+    core::str,
+    grug::{Addr, Coin, HexByteArray, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
 pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
+
+// ----------------------------------- types -----------------------------------
+
+#[grug::derive(Borsh)]
+pub struct Config {
+    pub announcement_fee: Coin,
+    pub max_len_storage: usize,
+}
 
 // --------------------------------- messages ----------------------------------
 

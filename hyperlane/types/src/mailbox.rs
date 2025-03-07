@@ -61,7 +61,7 @@ pub struct Config {
     pub default_ism: Addr,
     // Note: this is typically set to the IGP (interchain gas paymaster) hook.
     // Users who don't want to pay IGP fee can compose a message that indicates
-    // a dfferent hook other than the IGP.
+    // a different hook other than the IGP.
     // For Dango, this will be set to a "flat rate fee" hook.
     pub default_hook: Addr,
     // Note: this is typically set to the Merkle tree hook, or an aggregate hook
