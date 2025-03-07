@@ -10,14 +10,20 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
     pub grug_app: Arc<dyn QueryApp + Send + Sync>,
+    pub tendermint_endpoint: String,
 }
 
 impl Context {
-    pub fn new(ctx: indexer_sql::Context, grug_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
+    pub fn new(
+        ctx: indexer_sql::Context,
+        grug_app: Arc<dyn QueryApp + Send + Sync>,
+        tendermint_endpoint: String,
+    ) -> Self {
         Self {
             db: ctx.db,
             pubsub: ctx.pubsub,
             grug_app,
+            tendermint_endpoint,
         }
     }
 }

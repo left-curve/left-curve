@@ -4,11 +4,9 @@ use {
     std::path::PathBuf,
 };
 
-#[allow(dead_code)]
 pub struct ConfigParser {}
 
 impl ConfigParser {
-    #[allow(dead_code)]
     pub fn parse<D>(path: PathBuf) -> Result<D, Error>
     where
         D: serde::de::DeserializeOwned,

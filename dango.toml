@@ -1,6 +1,4 @@
-tendermint_endpoint = "http://localhost:26657"
-
-[indexer-httpd]
+[indexer_httpd]
 enabled             = false
 tendermint_endpoint = "http://localhost:26657"
 

@@ -3199,6 +3199,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
+ "config-parser",
  "dango-app",
  "dango-client",
  "dango-genesis",

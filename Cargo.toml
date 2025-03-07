@@ -208,6 +208,8 @@ hyperlane-merkle  = { path = "hyperlane/hooks/merkle" }
 hyperlane-types   = { path = "hyperlane/types" }
 hyperlane-va      = { path = "hyperlane/va" }
 
+config-parser = { path = "config-parser" }
+
 [workspace.dependencies.async-graphql]
 features = [
   "apollo_persisted_queries",

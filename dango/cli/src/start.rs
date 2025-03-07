@@ -1,7 +1,8 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{config::Config, home_directory::HomeDirectory},
     anyhow::anyhow,
     clap::Parser,
+    config_parser::ConfigParser,
     dango_app::ProposalPreparer,
     dango_genesis::build_rust_codes,
     dango_httpd::{graphql::build_schema, server::config_app},
@@ -11,7 +12,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, sync::Arc, time},
+    std::{fmt::Debug, path::PathBuf, sync::Arc, time},
     tokio::signal::unix::{signal, SignalKind},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
@@ -30,26 +31,12 @@ pub struct StartCmd {
     /// Gas limit when serving query requests
     #[arg(long, default_value_t = u64::MAX)]
     query_gas_limit: u64,
-
-    /// Enable the internal indexer
-    #[arg(long, default_value = "false")]
-    indexer_enabled: bool,
-
-    /// Whether to persist blocks and block responses in indexer DB
-    #[arg(long, default_value = "false")]
-    indexer_keep_blocks: bool,
-
-    /// The indexer database URL
-    #[arg(long, default_value = "postgres://localhost")]
-    indexer_database_url: String,
-
-    /// Enable the indexer httpd
-    #[arg(long, default_value = "false")]
-    indexer_httpd_enabled: bool,
 }
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        let config: Config = ConfigParser::parse(PathBuf::from("dango.toml"))?;
+
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
 
@@ -75,10 +62,10 @@ impl StartCmd {
         ]);
 
         // Run ABCI server, optionally with indexer and httpd server.
-        if self.indexer_enabled {
+        if config.indexer.enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(self.indexer_keep_blocks)
-                .with_database_url(&self.indexer_database_url)
+                .with_keep_blocks(config.indexer.keep_blocks)
+                .with_database_url(&config.indexer.database_url)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
                 .build()
@@ -92,8 +79,12 @@ impl StartCmd {
                 self.query_gas_limit,
             );
 
-            if self.indexer_httpd_enabled {
-                let httpd_context = Context::new(indexer.context.clone(), Arc::new(app));
+            if config.indexer_httpd.enabled {
+                let httpd_context = Context::new(
+                    indexer.context.clone(),
+                    Arc::new(app),
+                    config.indexer_httpd.tendermint_endpoint.clone(),
+                );
 
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
