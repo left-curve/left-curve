@@ -1,5 +1,7 @@
 [indexer_httpd]
 enabled             = false
+ip                  = "127.0.0.1"
+port                = 8080
 tendermint_endpoint = "http://localhost:26657"
 
 [indexer]

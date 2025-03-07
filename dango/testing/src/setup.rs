@@ -117,7 +117,7 @@ pub fn setup_test_with_indexer() -> (
     let httpd_context = Context::new(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
-        "http://localhost:26657".to_string(),
+        "http://localhost:26657",
     );
 
     ((suite, accounts, codes, contracts), httpd_context)

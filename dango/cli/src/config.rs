@@ -23,6 +23,8 @@ pub struct IndexerHttpdConfig {
     pub enabled: bool,
     #[serde(default = "default_tendermint_endpoint")]
     pub tendermint_endpoint: String,
+    pub ip: String,
+    pub port: u16,
 }
 
 fn default_tendermint_endpoint() -> String {

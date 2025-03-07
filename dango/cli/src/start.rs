@@ -95,7 +95,7 @@ impl StartCmd {
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(httpd_context),
+                    Self::run_httpd_server(config, httpd_context),
                     self.run_with_indexer(db, vm, indexer)
                 )?;
 
@@ -109,13 +109,19 @@ impl StartCmd {
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
-            .await
-            .map_err(|err| {
-                tracing::error!("Failed to run HTTP server: {err:?}");
-                err.into()
-            })
+    async fn run_httpd_server(config: Config, context: Context) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(
+            &config.indexer_httpd.ip,
+            config.indexer_httpd.port,
+            context,
+            config_app,
+            build_schema,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!("Failed to run HTTP server: {err:?}");
+            err.into()
+        })
     }
 
     async fn run_with_indexer<ID>(

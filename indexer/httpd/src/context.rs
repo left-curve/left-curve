@@ -14,16 +14,19 @@ pub struct Context {
 }
 
 impl Context {
-    pub fn new(
+    pub fn new<T>(
         ctx: indexer_sql::Context,
         grug_app: Arc<dyn QueryApp + Send + Sync>,
-        tendermint_endpoint: String,
-    ) -> Self {
+        tendermint_endpoint: T,
+    ) -> Self
+    where
+        T: ToString,
+    {
         Self {
             db: ctx.db,
             pubsub: ctx.pubsub,
             grug_app,
-            tendermint_endpoint,
+            tendermint_endpoint: tendermint_endpoint.to_string(),
         }
     }
 }
