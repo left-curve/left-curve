@@ -26,6 +26,6 @@ impl HomeDirectory {
     }
 
     pub fn config_file(&self) -> PathBuf {
-        self.home.join("dango.toml")
+        self.home.join("app.toml")
     }
 }
