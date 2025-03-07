@@ -88,7 +88,7 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-    ) -> anyhow::Result<(Coin, Coin)>;
+    ) -> anyhow::Result<(CoinPair, Coin, Coin)>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -159,7 +159,7 @@ impl PassiveLiquidityPool for PairParams {
 
     fn swap(
         &self,
-        mut reserve: CoinPair,
+        reserve: CoinPair,
         base_denom: Denom,
         quote_denom: Denom,
         direction: Direction,
@@ -167,10 +167,8 @@ impl PassiveLiquidityPool for PairParams {
     ) -> anyhow::Result<(CoinPair, Coin, Coin)> {
         let invariant_before = self.curve_invariant.invariant(&reserve)?;
 
-        let (coin_in, coin_out) =
+        let (new_reserve, coin_in, coin_out) =
             self.simulate_swap(&reserve, base_denom, quote_denom, direction, amount)?;
-
-        reserve.checked_add(&coin_in)?.checked_sub(&coin_out)?;
 
         // Sanity check that the invariant is preserved. Should be larger
         // after in all swaps with fee.
@@ -180,19 +178,19 @@ impl PassiveLiquidityPool for PairParams {
             "invariant not preserved"
         );
 
-        Ok((reserve, coin_in, coin_out))
+        Ok((new_reserve, coin_in, coin_out))
     }
 
     fn simulate_swap(
         &self,
-        reserves: &CoinPair,
+        reserve: &CoinPair,
         base_denom: Denom,
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-    ) -> anyhow::Result<(Coin, Coin)> {
+    ) -> anyhow::Result<(CoinPair, Coin, Coin)> {
         ensure!(
-            reserves.has(&base_denom) && reserves.has(&quote_denom),
+            reserve.has(&base_denom) && reserve.has(&quote_denom),
             "invalid reserves"
         );
 
@@ -206,7 +204,7 @@ impl PassiveLiquidityPool for PairParams {
                         coin_in.clone(),
                         &quote_denom,
                         self.swap_fee_rate.clone().into_inner(),
-                        reserves,
+                        reserve,
                     )?,
                 )
             },
@@ -217,14 +215,17 @@ impl PassiveLiquidityPool for PairParams {
                         coin_out.clone(),
                         &quote_denom,
                         self.swap_fee_rate.clone().into_inner(),
-                        reserves,
+                        reserve,
                     )?,
                     coin_out,
                 )
             },
         };
 
-        Ok((coin_in, coin_out))
+        let mut new_reserve = reserve.clone();
+        new_reserve.checked_add(&coin_in)?.checked_sub(&coin_out)?;
+
+        Ok((new_reserve, coin_in, coin_out))
     }
 }
 
