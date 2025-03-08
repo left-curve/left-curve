@@ -353,8 +353,18 @@ where
     /// Where will this block be temporarily saved on disk
     pub fn block_filename(&self, block_height: u64) -> PathBuf {
         let directory = self.indexer_path.block_path();
+
+        let subdirectories = block_height
+            .to_string()
+            .chars()
+            .rev()
+            .take(3)
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>();
+
         let filename = block_height.to_string();
-        directory.join(filename)
+
+        directory.join(subdirectories.join("/")).join(filename)
     }
 
     /// Index all previous blocks not yet indexed.
