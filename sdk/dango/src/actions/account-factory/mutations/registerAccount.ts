@@ -38,16 +38,16 @@ export async function registerAccount<transport extends Transport>(
             SpotParams: [{ name: "owner", type: "string" }],
           }
         : {}),
-      ...("safe" in config
+      ...("multi" in config
         ? {
-            AccountParams: [{ name: "safe", type: "SafeParams" }],
+            AccountParams: [{ name: "multi", type: "SafeParams" }],
             SafeParams: [
               { name: "threshold", type: "uint32" },
               { name: "votingPeriod", type: "uint256" },
               { name: "timelock", type: "uint256" },
               { name: "members", type: "Member" },
             ],
-            Member: [...getMembersTypedData(config.safe.members)],
+            Member: [...getMembersTypedData(config.multi.members)],
           }
         : {}),
       ...("margin" in config

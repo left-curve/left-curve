@@ -1,6 +1,5 @@
 mod address;
 mod crypto;
-pub mod hooks;
 mod incremental_merkle_tree;
 pub mod isms;
 pub mod mailbox;

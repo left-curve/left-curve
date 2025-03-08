@@ -3278,10 +3278,8 @@ dependencies = [
  "hex",
  "hex-literal",
  "home",
- "hyperlane-fee",
  "hyperlane-ism",
  "hyperlane-mailbox",
- "hyperlane-merkle",
  "hyperlane-types",
  "hyperlane-va",
  "rand",
@@ -5026,15 +5024,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyperlane-fee"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug",
- "hyperlane-types",
-]
-
-[[package]]
 name = "hyperlane-ism"
 version = "0.0.0"
 dependencies = [
@@ -5052,17 +5041,6 @@ dependencies = [
  "anyhow",
  "grug",
  "hyperlane-types",
-]
-
-[[package]]
-name = "hyperlane-merkle"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug",
- "hex-literal",
- "hyperlane-types",
- "sha3",
 ]
 
 [[package]]
