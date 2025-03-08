@@ -235,6 +235,7 @@ where
                     DANGO_DENOM.clone() => 100_000_000_000_000,
                     USDC_DENOM.clone()  => 100_000_000_000,
                     ETH_DENOM.clone() => 100_000_000_000_000,
+                    BTC_DENOM.clone() => 100_000_000_000_000,
                 },
             },
             user1.username.clone() => GenesisUser {
@@ -247,6 +248,7 @@ where
                     // synth tokens in genesis. We add this just for testing purpose.
                     WBTC_DENOM.clone() => 100_000_000_000_000,
                     ETH_DENOM.clone()  => 100_000_000_000_000,
+                    BTC_DENOM.clone()  => 100_000_000_000_000,
                 }
             },
             user2.username.clone() => GenesisUser {

@@ -1,7 +1,7 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ATOM_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
+        constants::{ATOM_DENOM, BTC_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
             OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
@@ -1290,8 +1290,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: None,
@@ -1302,6 +1301,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1313,8 +1313,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: None,
@@ -1325,6 +1324,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::new_permille(1),
     coins! {
         USDC_DENOM.clone() => 499500,
@@ -1336,8 +1336,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: None,
@@ -1348,6 +1347,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 999999,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1359,8 +1359,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: None,
@@ -1371,6 +1370,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1382,8 +1382,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(500000),
         slippage: None,
@@ -1394,6 +1393,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
@@ -1405,8 +1405,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(499500),
         slippage: None,
@@ -1417,6 +1416,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::new_permille(1),
     coins! {
         ETH_DENOM.clone() => 499500,
@@ -1428,8 +1428,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(1000000),
         slippage: None,
@@ -1440,6 +1439,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::new_permille(1),
     coins! {
         ETH_DENOM.clone() => 499500,
@@ -1451,8 +1451,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
@@ -1463,6 +1462,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1474,8 +1474,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500001))),
@@ -1486,6 +1485,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1497,8 +1497,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
@@ -1509,6 +1508,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1520,8 +1520,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(500000),
         slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(1000000))),
@@ -1532,6 +1531,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
@@ -1543,11 +1543,10 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-            base_denom: ETH_DENOM.clone(),
-            quote_denom: USDC_DENOM.clone(),
-            direction: Direction::Bid,
-            amount: Uint128::new(500000),
-            slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(999999))),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
+        direction: Direction::Bid,
+        amount: Uint128::new(500000),
+        slippage: Some(dex::SlippageControl::MaximumIn(Uint128::new(999999))),
     },
     coins! {
         USDC_DENOM.clone() => 1000000,
@@ -1555,6 +1554,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
@@ -1566,8 +1566,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(500000),
         slippage: Some(dex::SlippageControl::MinimumOut(Uint128::new(500000))),
@@ -1578,6 +1577,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
@@ -1589,8 +1589,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: Some(dex::SlippageControl::PriceLimit(Udec128::new_percent(50))),
@@ -1601,6 +1600,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1612,8 +1612,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Ask,
         amount: Uint128::new(1000000),
         slippage: Some(dex::SlippageControl::PriceLimit(Udec128::new_percent(51))),
@@ -1624,6 +1623,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         ETH_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         USDC_DENOM.clone() => 500000,
@@ -1635,8 +1635,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(500000),
         slippage: Some(dex::SlippageControl::PriceLimit(Udec128::new_percent(50))),
@@ -1647,6 +1646,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
@@ -1658,8 +1658,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
         USDC_DENOM.clone() => 1000000,
     },
     SwapRequest {
-        base_denom: ETH_DENOM.clone(),
-        quote_denom: USDC_DENOM.clone(),
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone()],
         direction: Direction::Bid,
         amount: Uint128::new(500000),
         slippage: Some(dex::SlippageControl::PriceLimit(Udec128::new_percent(49))),
@@ -1670,16 +1669,18 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, expected_funds_returned: Coins) {
     coins! {
         USDC_DENOM.clone() => 1000000,
     },
+    (ETH_DENOM.clone(), USDC_DENOM.clone()),
     Udec128::ZERO,
     coins! {
         ETH_DENOM.clone() => 500000,
     } => panics "slippage tolerance exceeded" ; "swap direction bid no fee price limit exceeded"
 )]
-fn batch_swap(
+fn swap(
     pool_liquidity: Coins,
     swap_request: SwapRequest,
     swap_funds: Coins,
     expected_funds_used: Coins,
+    (base_denom, quote_denom): (Denom, Denom),
     swap_fee_rate: Udec128,
     expected_out: Coins,
 ) {
@@ -1688,8 +1689,8 @@ fn batch_swap(
     if swap_fee_rate != Udec128::ZERO {
         suite
             .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
-                base_denom: swap_request.base_denom.clone(),
-                quote_denom: swap_request.quote_denom.clone(),
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
             })
             .should_succeed_and(|pair_params: &PairParams| {
                 // Update pair params
@@ -1698,8 +1699,8 @@ fn batch_swap(
                         &mut accounts.owner,
                         contracts.dex,
                         &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
-                            base_denom: swap_request.base_denom.clone(),
-                            quote_denom: swap_request.quote_denom.clone(),
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
                             params: PairParams {
                                 lp_denom: pair_params.lp_denom.clone(),
                                 swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
@@ -1719,8 +1720,8 @@ fn batch_swap(
             &mut accounts.owner,
             contracts.dex,
             &dex::ExecuteMsg::ProvideLiquidity {
-                base_denom: swap_request.base_denom.clone(),
-                quote_denom: swap_request.quote_denom.clone(),
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
             },
             pool_liquidity.clone(),
         )
@@ -1737,10 +1738,9 @@ fn batch_swap(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::Swap {
-                base_denom: swap_request.base_denom.clone(),
-                quote_denom: swap_request.quote_denom.clone(),
-                direction: swap_request.direction,
                 amount: swap_request.amount,
+                direction: swap_request.direction,
+                route: swap_request.route,
                 slippage: swap_request.slippage,
             },
             swap_funds.clone(),
@@ -1770,12 +1770,134 @@ fn batch_swap(
 
     suite
         .query_wasm_smart(contracts.dex, QueryReserveRequest {
-            base_denom: swap_request.base_denom.clone(),
-            quote_denom: swap_request.quote_denom.clone(),
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
         })
         .should_succeed_and(|reserve: &CoinPair| {
             Coins::from(reserve.clone()) == expected_pool_reserves
         });
+}
+
+#[test_case(
+    vec![
+        (ETH_DENOM.clone(), USDC_DENOM.clone(), coins! {
+            ETH_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        }),
+        (BTC_DENOM.clone(), USDC_DENOM.clone(), coins! {
+            BTC_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        }),
+    ],
+    SwapRequest {
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone(), BTC_DENOM.clone()],
+        direction: Direction::Ask,
+        amount: Uint128::new(1000000),
+        slippage: None,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    },
+    coins! {
+        BTC_DENOM.clone() => 333333,
+    },
+    coins! {
+        ETH_DENOM.clone() => 1000000,
+    };
+    "eth->usdc->btc Ask"
+)]
+#[test_case(
+    vec![
+        (ETH_DENOM.clone(), USDC_DENOM.clone(), coins! {
+            ETH_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        }),
+        (BTC_DENOM.clone(), USDC_DENOM.clone(), coins! {
+            BTC_DENOM.clone() => 1000000,
+            USDC_DENOM.clone() => 1000000,
+        }),
+    ],
+    SwapRequest {
+        route: vec![ETH_DENOM.clone(), USDC_DENOM.clone(), BTC_DENOM.clone()],
+        direction: Direction::Bid,
+        amount: Uint128::new(333333),
+        slippage: None,
+    },
+    coins! {
+        BTC_DENOM.clone() => 1000000,
+    },
+    coins! {
+        ETH_DENOM.clone() => 333333,
+    },
+    coins! {
+        BTC_DENOM.clone() => 1000000,
+    };
+    "eth->usdc->btc Bid"
+)]
+// TODO: tests
+// - Invalid route
+// - Insufficient liquidity
+// - Insufficient funds
+// - Minimum out for bid and ask
+// - Maximum in for bid and ask
+// - Price limit for bid and ask
+fn swap_with_route(
+    pool_reserves: Vec<(Denom, Denom, Coins)>,
+    swap_request: SwapRequest,
+    swap_funds: Coins,
+    expected_out: Coins,
+    expected_funds_used: Coins,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Provide liquidity with owner account
+    for (base_denom, quote_denom, pool_reserve) in pool_reserves {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.dex,
+                &dex::ExecuteMsg::ProvideLiquidity {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                },
+                pool_reserve.clone(),
+            )
+            .should_succeed();
+    }
+
+    // Record user and dex balances
+    suite
+        .balances()
+        .record_many(vec![accounts.user1.address(), contracts.dex.address()]);
+
+    // User swaps
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::Swap {
+                amount: swap_request.amount,
+                direction: swap_request.direction,
+                route: swap_request.route,
+                slippage: swap_request.slippage,
+            },
+            swap_funds.clone(),
+        )
+        .should_succeed();
+
+    // Assert that the user's balances have changed as expected.
+    suite.balances().should_change(
+        accounts.user1.address(),
+        balance_changes_from_coins(expected_out.clone(), expected_funds_used.clone()),
+    );
+
+    // Assert that the dex balance has changed by the expected amount.
+    suite.balances().should_change(
+        contracts.dex.address(),
+        balance_changes_from_coins(expected_funds_used.clone(), expected_out.clone()),
+    );
+
+    // TODO: Assert that all pool in route have changed as expected
 }
 
 fn balance_changes_from_coins(
@@ -1795,8 +1917,7 @@ fn balance_changes_from_coins(
 
 /// Helper struct to make the test cases more readable.
 struct SwapRequest {
-    base_denom: Denom,
-    quote_denom: Denom,
+    route: Vec<Denom>,
     direction: Direction,
     amount: Uint128,
     slippage: Option<SlippageControl>,
