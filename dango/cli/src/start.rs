@@ -1,5 +1,8 @@
 use {
-    crate::home_directory::HomeDirectory,
+    crate::{
+        config::{parse_config, Config},
+        home_directory::HomeDirectory,
+    },
     anyhow::anyhow,
     clap::Parser,
     dango_app::ProposalPreparer,
@@ -11,7 +14,7 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, sync::Arc, time},
+    std::{fmt::Debug, path::PathBuf, sync::Arc, time},
     tokio::signal::unix::{signal, SignalKind},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
@@ -31,25 +34,16 @@ pub struct StartCmd {
     #[arg(long, default_value_t = u64::MAX)]
     query_gas_limit: u64,
 
-    /// Enable the internal indexer
-    #[arg(long, default_value = "false")]
-    indexer_enabled: bool,
-
-    /// Whether to persist blocks and block responses in indexer DB
-    #[arg(long, default_value = "false")]
-    indexer_keep_blocks: bool,
-
-    /// The indexer database URL
-    #[arg(long, default_value = "postgres://localhost")]
-    indexer_database_url: String,
-
-    /// Enable the indexer httpd
-    #[arg(long, default_value = "false")]
-    indexer_httpd_enabled: bool,
+    /// Optional path to the configuration file
+    #[arg(long)]
+    config_file: Option<PathBuf>,
 }
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        // Parse the config file.
+        let cfg = parse_config(app_dir.config_file())?;
+
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
 
@@ -73,14 +67,14 @@ impl StartCmd {
         ]);
 
         // Run ABCI server, optionally with indexer and httpd server.
-        if self.indexer_enabled {
+        if cfg.indexer.enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(self.indexer_keep_blocks)
-                .with_database_url(&self.indexer_database_url)
+                .with_keep_blocks(cfg.indexer.keep_blocks)
+                .with_database_url(&cfg.indexer.postgres_url)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
                 .build()
-                .expect("Can't create indexer");
+                .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
             let app = App::new(
                 db.clone(),
@@ -90,13 +84,17 @@ impl StartCmd {
                 self.query_gas_limit,
             );
 
-            if self.indexer_httpd_enabled {
-                let httpd_context = Context::new(indexer.context.clone(), Arc::new(app));
+            if cfg.indexer.httpd.enabled {
+                let httpd_context = Context::new(
+                    indexer.context.clone(),
+                    Arc::new(app),
+                    cfg.tendermint.rpc_addr.clone(),
+                );
 
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(httpd_context),
+                    Self::run_httpd_server(cfg, httpd_context),
                     self.run_with_indexer(db, vm, indexer)
                 )?;
 
@@ -110,13 +108,20 @@ impl StartCmd {
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(context: Context) -> anyhow::Result<()> {
-        indexer_httpd::server::run_server(None, None, context, config_app, build_schema)
-            .await
-            .map_err(|err| {
-                tracing::error!("Failed to run HTTP server: {err:?}");
-                err.into()
-            })
+    async fn run_httpd_server(cfg: Config, context: Context) -> anyhow::Result<()> {
+        indexer_httpd::server::run_server(
+            &cfg.indexer.httpd.ip,
+            cfg.indexer.httpd.port,
+            cfg.indexer.httpd.cors_allowed_origin,
+            context,
+            config_app,
+            build_schema,
+        )
+        .await
+        .map_err(|err| {
+            tracing::error!("Failed to run HTTP server: {err:?}");
+            err.into()
+        })
     }
 
     async fn run_with_indexer<ID>(
