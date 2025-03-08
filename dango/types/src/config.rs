@@ -69,20 +69,16 @@ impl Default for AppAddresses {
 #[grug::derive(Serde)]
 #[derive(Copy)]
 pub struct Hyperlane<T> {
-    pub fee: T,
     pub ism: T,
     pub mailbox: T,
-    pub merkle: T,
     pub va: T,
 }
 
 impl Default for Hyperlane<Addr> {
     fn default() -> Self {
         Hyperlane {
-            fee: Addr::mock(0),
             ism: Addr::mock(0),
             mailbox: Addr::mock(0),
-            merkle: Addr::mock(0),
             va: Addr::mock(0),
         }
     }

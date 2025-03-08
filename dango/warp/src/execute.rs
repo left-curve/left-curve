@@ -221,12 +221,6 @@ fn transfer_remote(
                     metadata: metadata.unwrap_or_default(),
                 }
                 .encode(),
-                // For sending tokens, we currently don't support metadata.
-                metadata: None,
-                // Always use the mailbox's default hook, which is set to the
-                // fee hook. This hook will get the withdrawal fee. We don't
-                // want the user to specify a different hook and steal the fee.
-                hook: None,
             },
             Coins::new(),
         )?)
