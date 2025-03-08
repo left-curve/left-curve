@@ -108,11 +108,11 @@ impl StartCmd {
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(config: Config, context: Context) -> anyhow::Result<()> {
+    async fn run_httpd_server(cfg: Config, context: Context) -> anyhow::Result<()> {
         indexer_httpd::server::run_server(
-            &config.indexer.httpd.ip,
-            config.indexer.httpd.port,
-            config.indexer.httpd.cors_allowed_origin,
+            &cfg.indexer.httpd.ip,
+            cfg.indexer.httpd.port,
+            cfg.indexer.httpd.cors_allowed_origin,
             context,
             config_app,
             build_schema,
