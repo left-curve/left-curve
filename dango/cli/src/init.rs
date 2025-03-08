@@ -85,7 +85,7 @@ impl InitCmd {
             home.as_os_str().to_str().unwrap()
         );
 
-        std::fs::create_dir_all(&home)?;
+        std::fs::create_dir_all(home)?;
         std::fs::create_dir(home.data_dir())?;
         std::fs::create_dir(home.keys_dir())?;
         std::fs::create_dir(home.indexer_dir())?;
