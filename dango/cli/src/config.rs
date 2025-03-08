@@ -116,9 +116,9 @@ mod tests {
     fn test_parse_config_file() {
         std::env::set_var("TENDERMINT__RPC_ADDR", "BAR");
 
-        let config = parse_config("testdata/config_test1.toml").expect("Failed to parse file");
+        let cfg = parse_config("testdata/default_config.toml").unwrap();
 
-        assert_that!(config.tendermint.abci_addr.as_str()).is_equal_to("http://localhost:26658");
-        assert_that!(config.tendermint.rpc_addr.as_str()).is_equal_to("BAR");
+        assert_that!(cfg.tendermint.abci_addr.as_str()).is_equal_to("http://localhost:26658");
+        assert_that!(cfg.tendermint.rpc_addr.as_str()).is_equal_to("BAR");
     }
 }
