@@ -1,4 +1,5 @@
 use {
+    crate::{config::parse_config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
     colored_json::ToColoredJson,
     data_encoding::BASE64,
@@ -15,10 +16,6 @@ use {
 
 #[derive(Parser)]
 pub struct QueryCmd {
-    /// Tendermint RPC address
-    #[arg(long, default_value = "http://127.0.0.1:26657")]
-    node: String,
-
     /// The block height at which to perform queries [default: last finalized height]
     #[arg(long)]
     height: Option<u64>,
@@ -136,8 +133,12 @@ enum SubCmd {
 }
 
 impl QueryCmd {
-    pub async fn run(self) -> anyhow::Result<()> {
-        let client = Client::connect(self.node.as_str())?;
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        // Parse the config file.
+        let cfg = parse_config(app_dir.config_file())?;
+
+        // Create Grug client via Tendermint RPC.
+        let client = Client::connect(cfg.tendermint.rpc_addr.as_str())?;
 
         let req = match self.subcmd {
             SubCmd::Status {} => {

@@ -1,6 +1,7 @@
 mod config;
 mod db;
 mod home_directory;
+mod init;
 mod keys;
 mod prompt;
 mod query;
@@ -9,23 +10,18 @@ mod tx;
 
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
-        tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, init::InitCmd, keys::KeysCmd, query::QueryCmd,
+        start::StartCmd, tx::TxCmd,
     },
-    anyhow::anyhow,
     clap::Parser,
-    home::home_dir,
     std::path::PathBuf,
     tracing::metadata::LevelFilter,
 };
 
-// relative to user home directory (~)
-const DEFAULT_APP_DIR: &str = ".dango";
-
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
 struct Cli {
-    /// Directory for the physical database
+    /// Directory for the physical database [default: ~/.dango]
     #[arg(long, global = true)]
     home: Option<PathBuf>,
 
@@ -47,6 +43,9 @@ enum Command {
     #[command(subcommand, next_display_order = None)]
     Keys(KeysCmd),
 
+    /// Initialize the home directory.
+    Init(InitCmd),
+
     /// Make a query [alias: q]
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
@@ -61,27 +60,23 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Parse CLI arguments.
     let cli = Cli::parse();
 
+    // Find the home directory from the CLI `--home` flag.
+    let app_dir = HomeDirectory::new_or_default(cli.home)?;
+
+    // Set up tracing.
     tracing_subscriber::fmt()
         .with_max_level(cli.tracing_level)
         .init();
 
-    let app_dir = if let Some(dir) = cli.home {
-        dir
-    } else {
-        home_dir()
-            .ok_or(anyhow!("Failed to find home directory"))?
-            .join(DEFAULT_APP_DIR)
-    };
-
-    let app_dir = HomeDirectory::new(app_dir);
-
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
-        Command::Query(cmd) => cmd.run().await,
+        Command::Init(cmd) => cmd.run(&app_dir),
+        Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
-        Command::Tx(cmd) => cmd.run(app_dir.keys_dir()).await,
+        Command::Tx(cmd) => cmd.run(app_dir).await,
     }
 }

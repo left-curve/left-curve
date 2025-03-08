@@ -1,8 +1,10 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory},
+    crate::{
+        config::{parse_config, Config},
+        home_directory::HomeDirectory,
+    },
     anyhow::anyhow,
     clap::Parser,
-    config_parser::ConfigParser,
     dango_app::ProposalPreparer,
     dango_genesis::build_rust_codes,
     dango_httpd::{graphql::build_schema, server::config_app},
@@ -39,9 +41,8 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
-        let config: Config =
-            ConfigParser::parse(self.config_file.clone().unwrap_or(app_dir.config_file()))
-                .unwrap_or_default();
+        // Parse the config file.
+        let cfg = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
@@ -66,14 +67,14 @@ impl StartCmd {
         ]);
 
         // Run ABCI server, optionally with indexer and httpd server.
-        if config.indexer.enabled {
+        if cfg.indexer.enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
-                .with_keep_blocks(config.indexer.keep_blocks)
-                .with_database_url(&config.indexer.database_url)
+                .with_keep_blocks(cfg.indexer.keep_blocks)
+                .with_database_url(&cfg.indexer.postgres_url)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
                 .build()
-                .expect("Can't create indexer");
+                .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
 
             let app = App::new(
                 db.clone(),
@@ -83,17 +84,17 @@ impl StartCmd {
                 self.query_gas_limit,
             );
 
-            if config.indexer_httpd.enabled {
+            if cfg.indexer.httpd.enabled {
                 let httpd_context = Context::new(
                     indexer.context.clone(),
                     Arc::new(app),
-                    config.indexer_httpd.tendermint_endpoint.clone(),
+                    cfg.tendermint.rpc_addr.clone(),
                 );
 
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(config, httpd_context),
+                    Self::run_httpd_server(cfg, httpd_context),
                     self.run_with_indexer(db, vm, indexer)
                 )?;
 
@@ -109,9 +110,9 @@ impl StartCmd {
     /// Run the HTTP server
     async fn run_httpd_server(config: Config, context: Context) -> anyhow::Result<()> {
         indexer_httpd::server::run_server(
-            &config.indexer_httpd.ip,
-            config.indexer_httpd.port,
-            config.indexer_httpd.cors_allowed_origin,
+            &config.indexer.httpd.ip,
+            config.indexer.httpd.port,
+            config.indexer.httpd.cors_allowed_origin,
             context,
             config_app,
             build_schema,

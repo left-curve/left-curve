@@ -1,30 +1,65 @@
-use std::path::PathBuf;
+use std::{
+    ops::Deref,
+    path::{Path, PathBuf},
+};
 
-/// Grug needs to store some data in different folders
+use {anyhow::anyhow, home::home_dir};
+
+// relative to user home directory (~)
+const DEFAULT_APP_DIR: &str = ".dango";
+
 pub struct HomeDirectory {
-    home: PathBuf,
+    pub home: PathBuf,
+}
+
+impl AsRef<Path> for HomeDirectory {
+    fn as_ref(&self) -> &Path {
+        &self.home
+    }
+}
+
+impl Deref for HomeDirectory {
+    type Target = PathBuf;
+
+    fn deref(&self) -> &Self::Target {
+        &self.home
+    }
 }
 
 impl HomeDirectory {
-    pub fn new(home: PathBuf) -> Self {
-        Self { home }
+    pub fn new_or_default(maybe_home: Option<PathBuf>) -> anyhow::Result<Self> {
+        maybe_home
+            .map_or_else(
+                || {
+                    let user_home = home_dir().ok_or(anyhow!("failed to find home directory"))?;
+                    Ok(user_home.join(DEFAULT_APP_DIR))
+                },
+                Ok,
+            )
+            .map(|home| Self { home })
     }
 
-    /// Used for the RocksDB database.
+    /// Return whether the home directory exists.
+    pub fn exists(&self) -> bool {
+        self.home.exists()
+    }
+
+    /// Return the path to Grug's RocksDB database directory.
     pub fn data_dir(&self) -> PathBuf {
         self.home.join("data")
     }
 
-    /// Used for keystores.
+    /// Return the path to the directory that stores keys.
     pub fn keys_dir(&self) -> PathBuf {
         self.home.join("keys")
     }
 
-    /// Used for the indexer, used to store blocks before they're saved to the DB.
+    /// Return the path to the directory used by the indexer to store blocks.
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
     }
 
+    /// Return the path to the configuration file.
     pub fn config_file(&self) -> PathBuf {
         self.home.join("app.toml")
     }

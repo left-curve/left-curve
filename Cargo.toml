@@ -1,7 +1,6 @@
 [workspace]
 exclude = ["indexer/.data"]
 members = [
-  "config-parser",
   "dango/account/*",
   "dango/app",
   "dango/auth",
@@ -204,8 +203,6 @@ hyperlane-ism     = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox = { path = "hyperlane/mailbox" }
 hyperlane-types   = { path = "hyperlane/types" }
 hyperlane-va      = { path = "hyperlane/va" }
-
-config-parser = { path = "config-parser" }
 
 [workspace.dependencies.async-graphql]
 features = [

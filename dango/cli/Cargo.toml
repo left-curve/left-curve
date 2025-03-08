@@ -19,7 +19,7 @@ bip32              = { workspace = true }
 clap               = { workspace = true, features = ["derive", "wrap_help"] }
 colored            = { workspace = true }
 colored_json       = { workspace = true }
-config-parser      = { workspace = true }
+config             = { workspace = true }
 dango-app          = { workspace = true }
 dango-client       = { workspace = true }
 dango-genesis      = { workspace = true }
@@ -46,3 +46,6 @@ tower              = { workspace = true, features = ["full"] }
 tower-abci         = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+assertor = { workspace = true }
