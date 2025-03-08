@@ -35,7 +35,6 @@ members = [
   "grug/testing",
   "grug/types",
   "grug/vm/*",
-  "hyperlane/hooks/*",
   "hyperlane/isms/*",
   "hyperlane/mailbox",
   "hyperlane/va",
@@ -199,10 +198,8 @@ indexer-sql-migration = { path = "indexer/sql-migration" }
 indexer-testing       = { path = "indexer/testing" }
 
 # Hyperlane packages
-hyperlane-fee     = { path = "hyperlane/hooks/fee" }
 hyperlane-ism     = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox = { path = "hyperlane/mailbox" }
-hyperlane-merkle  = { path = "hyperlane/hooks/merkle" }
 hyperlane-types   = { path = "hyperlane/types" }
 hyperlane-va      = { path = "hyperlane/va" }
 

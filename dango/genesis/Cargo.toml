@@ -24,10 +24,8 @@ dango-types           = { workspace = true }
 dango-vesting         = { workspace = true, features = ["library"] }
 dango-warp            = { workspace = true, features = ["library"] }
 grug                  = { workspace = true }
-hyperlane-fee         = { workspace = true, features = ["library"] }
 hyperlane-ism         = { workspace = true, features = ["library"] }
 hyperlane-mailbox     = { workspace = true, features = ["library"] }
-hyperlane-merkle      = { workspace = true, features = ["library"] }
 hyperlane-types       = { workspace = true }
 hyperlane-va          = { workspace = true, features = ["library"] }
 serde                 = { workspace = true }

@@ -1,22 +1,22 @@
 use {
-    crate::{CONFIG, DELIVERIES, NONCE},
+    crate::{CONFIG, DELIVERIES, MERKLE_TREE, NONCE},
     anyhow::{anyhow, ensure},
-    grug::{Addr, Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
+    grug::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
-        hooks::{self, HookMsg, HookQuery, QueryHookRequest},
         isms::{IsmQuery, QueryIsmRequest},
         mailbox::{
-            Dispatch, DispatchId, Domain, ExecuteMsg, InstantiateMsg, Message, Process, ProcessId,
-            MAILBOX_VERSION,
+            Dispatch, DispatchId, Domain, ExecuteMsg, InsertedIntoTree, InstantiateMsg, Message,
+            PostDispatch, Process, ProcessId, MAILBOX_VERSION,
         },
         recipients::{self, QueryRecipientRequest, RecipientMsg, RecipientQuery},
-        Addr32,
+        Addr32, IncrementalMerkleTree,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> {
     CONFIG.save(ctx.storage, &msg.config)?;
+    MERKLE_TREE.save(ctx.storage, &IncrementalMerkleTree::default())?;
 
     Ok(Response::new())
 }
@@ -28,16 +28,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             destination_domain,
             recipient,
             body,
-            metadata,
-            hook,
-        } => dispatch(
-            ctx,
-            destination_domain,
-            recipient,
-            body,
-            metadata.unwrap_or_default(),
-            hook,
-        ),
+        } => dispatch(ctx, destination_domain, recipient, body),
         ExecuteMsg::Process {
             raw_message,
             raw_metadata,
@@ -47,12 +38,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 #[inline]
 fn dispatch(
-    mut ctx: MutableCtx,
+    ctx: MutableCtx,
     destination_domain: Domain,
     recipient: Addr32,
     body: HexBinary,
-    metadata: HexBinary,
-    hook: Option<Addr>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
     let (nonce, _) = NONCE.increment(ctx.storage)?;
@@ -71,42 +60,22 @@ fn dispatch(
     let raw_message = message.encode();
     let message_id = Hash::from_inner(ctx.api.keccak256(&raw_message));
 
-    // Query the required hook for fee amount.
-    let fees = ctx
-        .querier
-        .query_wasm_smart(
-            cfg.required_hook,
-            QueryHookRequest(HookQuery::QuoteDispatch {
-                raw_message: raw_message.clone(),
-                raw_metadata: metadata.clone(),
-            }),
-        )?
-        .as_quote_dispatch();
-
-    // Deduct the fee from the received funds.
-    // The fee will go to the required hook; the rest (if any) will go to the
-    // sender specified hook, or the default hook if not specified.
-    ctx.funds.deduct_many(fees.clone())?;
+    // Insert the message into the Merkle tree.
+    let tree = MERKLE_TREE.update(ctx.storage, |mut tree| -> anyhow::Result<_> {
+        tree.insert(message_id)?;
+        Ok(tree)
+    })?;
 
     Ok(Response::new()
-        .add_message(grug::Message::execute(
-            cfg.required_hook,
-            &hooks::ExecuteMsg::Hook(HookMsg::PostDispatch {
-                raw_message: raw_message.clone(),
-                raw_metadata: metadata.clone(),
-            }),
-            fees,
-        )?)
-        .add_message(grug::Message::execute(
-            hook.unwrap_or(cfg.default_hook),
-            &hooks::ExecuteMsg::Hook(HookMsg::PostDispatch {
-                raw_message,
-                raw_metadata: metadata,
-            }),
-            ctx.funds,
-        )?)
         .add_event(Dispatch(message))?
-        .add_event(DispatchId { message_id })?)
+        .add_event(DispatchId { message_id })?
+        .add_event(PostDispatch {
+            message_id,
+            index: tree.count - 1,
+        })?
+        .add_event(InsertedIntoTree {
+            index: tree.count - 1,
+        })?)
 }
 
 #[inline]

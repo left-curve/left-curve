@@ -15,7 +15,6 @@ use {
     },
     hyperlane_types::{
         addr32,
-        hooks::merkle,
         mailbox::{self, Message, MAILBOX_VERSION},
         Addr32, IncrementalMerkleTree,
     },
@@ -94,7 +93,7 @@ fn send_escrowing_collateral() {
 
     // The message should have been inserted into Merkle tree.
     suite
-        .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+        .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
         .should_succeed_and_equal({
             let token_msg = TokenMessage {
                 recipient: MOCK_RECIPIENT,
@@ -187,7 +186,7 @@ fn send_burning_synth() {
 
     // Message should have been inserted into the Merkle tree.
     suite
-        .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+        .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
         .should_succeed_and_equal({
             let token_msg = TokenMessage {
                 recipient: MOCK_RECIPIENT,
@@ -441,7 +440,7 @@ fn alloy() {
 
         // Get the current merkle tree.
         let mut tree = suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed();
 
         // Send 20 alloyed to eth.
@@ -476,7 +475,7 @@ fn alloy() {
 
         // Check if the merkle tree has been updated.
         suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed_and_equal(tree);
 
         // Verify balances.
@@ -513,7 +512,7 @@ fn alloy() {
 
         // Get the current merkle tree.
         let mut tree = suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed();
 
         // Send all sol_usdc.
@@ -548,7 +547,7 @@ fn alloy() {
 
         // Check if the merkle tree has been updated.
         suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed_and_equal(tree);
 
         // Verify balances.
@@ -571,7 +570,7 @@ fn alloy() {
 
         // Get the current merkle tree.
         let mut tree = suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed();
 
         suite
@@ -605,7 +604,7 @@ fn alloy() {
 
         // Check if the merkle tree has been updated.
         suite
-            .query_wasm_smart(contracts.hyperlane.merkle, merkle::QueryTreeRequest {})
+            .query_wasm_smart(contracts.hyperlane.mailbox, mailbox::QueryTreeRequest {})
             .should_succeed_and_equal(tree);
 
         // Verify balances.
