@@ -5,13 +5,14 @@ use {
     anyhow::{anyhow, ensure},
     dango_types::{
         bank,
+        taxman::{self, FeeType},
         warp::{
             ExecuteMsg, Handle, InstantiateMsg, RateLimit, Route, TokenMessage, TransferRemote,
             ALLOY_SUBNAMESPACE, NAMESPACE,
         },
     },
     grug::{
-        Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
+        coins, Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
         Number, QuerierExt, Response, StdResult, SudoCtx,
     },
     hyperlane_types::{
@@ -127,8 +128,8 @@ fn transfer_remote(
     metadata: Option<HexBinary>,
 ) -> anyhow::Result<Response> {
     // Sender must attach exactly one token.
+    let cfg = ctx.querier.query_config()?;
     let token = ctx.funds.into_one_coin()?;
-    let bank = ctx.querier.query_bank()?;
 
     // Check if the token is alloyed.
     let (mut token, burn_alloy_msg) = if let Some(base_denom) =
@@ -136,7 +137,7 @@ fn transfer_remote(
     {
         // Burn the alloy token.
         let burn_alloy_msg = Message::execute(
-            bank,
+            cfg.bank,
             &bank::ExecuteMsg::Burn {
                 from: ctx.contract,
                 denom: token.denom.clone(),
@@ -174,14 +175,18 @@ fn transfer_remote(
         OUTBOUND_QUOTAS.save(ctx.storage, &token.denom, &quota)?;
     }
 
+    // 1. Burn the alloy token, if the token being sent is an alloy token.
+    // 2. If the token is collateral, escrow it (no need to do anything);
+    //    otherwise (it's "synthetic", in Hyperlane's terminology), burn it.
+    //    We determine whether it's synthetic by checking whether its denom is
+    //    under the `hyp` namespace.
+    // 3. Pay withdrawal fee to the taxman.
+    // 4. Dispatch the Hyperlane message at the mailbox.
     Ok(Response::new()
-        // If the token is collateral, then escrow it (no need to do anything).
-        // If it's synthetic, burn it.
-        // We determine whether it's synthetic by checking whether its denom is
-        // under the `hyp` namespace.
+        .may_add_message(burn_alloy_msg)
         .may_add_message(if token.denom.namespace() == Some(&NAMESPACE) {
             Some(Message::execute(
-                bank,
+                cfg.bank,
                 &bank::ExecuteMsg::Burn {
                     from: ctx.contract,
                     denom: token.denom.clone(),
@@ -192,7 +197,18 @@ fn transfer_remote(
         } else {
             None
         })
-        .may_add_message(burn_alloy_msg)
+        .may_add_message(if route.fee.is_non_zero() {
+            Some(Message::execute(
+                cfg.taxman,
+                &taxman::ExecuteMsg::Pay {
+                    user: ctx.sender,
+                    ty: FeeType::Withdraw,
+                },
+                coins! { token.denom.clone() => route.fee },
+            )?)
+        } else {
+            None
+        })
         .add_message(Message::execute(
             MAILBOX.load(ctx.storage)?,
             &mailbox::ExecuteMsg::Dispatch {
@@ -212,13 +228,7 @@ fn transfer_remote(
                 // want the user to specify a different hook and steal the fee.
                 hook: None,
             },
-            {
-                if route.fee.is_zero() {
-                    Coins::new()
-                } else {
-                    Coins::one(token.denom.clone(), route.fee)?
-                }
-            },
+            Coins::new(),
         )?)
         .add_event(TransferRemote {
             sender: ctx.sender,
