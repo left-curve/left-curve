@@ -116,9 +116,9 @@ fn send_escrowing_collateral() {
             tree
         });
 
-    // The fee hook should have received the fee.
+    // The taxman should have received the fee.
     suite
-        .query_balance(&contracts.hyperlane.fee, DANGO_DENOM.clone())
+        .query_balance(&contracts.taxman, DANGO_DENOM.clone())
         .should_succeed_and_equal(MOCK_ROUTE.fee);
 
     // Force the runtime to wait for the async indexer task to finish
@@ -138,13 +138,16 @@ fn send_escrowing_collateral() {
             .await
             .expect("Can't fetch transfers");
 
-        assert_that!(transfers).has_length(3);
+        // There should have been two transfers:
+        // 1. `dango` from user to Warp (tokens are escrowed in Warp contract);
+        // 2. Withdrawal fee from Warp to taxman.
+        assert_that!(transfers).has_length(2);
 
         assert_that!(transfers
             .iter()
             .map(|t| t.amount.as_str())
             .collect::<Vec<_>>())
-        .is_equal_to(vec!["100", "25", "25"]);
+        .is_equal_to(vec!["100", "25"]);
     });
 }
 
@@ -216,9 +219,9 @@ fn send_burning_synth() {
         .query_balance(&contracts.warp, ETH_DENOM.clone())
         .should_succeed_and_equal(Uint128::ZERO);
 
-    // Fee hook should have received the fee.
+    // Taxman should have received the fee.
     suite
-        .query_balance(&contracts.hyperlane.fee, ETH_DENOM.clone())
+        .query_balance(&contracts.taxman, ETH_DENOM.clone())
         .should_succeed_and_equal(MOCK_ROUTE.fee);
 }
 

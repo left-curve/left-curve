@@ -3,7 +3,7 @@ use {
     anyhow::ensure,
     dango_types::{
         bank,
-        taxman::{Config, ExecuteMsg, InstantiateMsg},
+        taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
         DangoQuerier,
     },
     grug::{
@@ -23,7 +23,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
         ExecuteMsg::Configure { new_cfg } => configure(ctx, new_cfg),
-        ExecuteMsg::Pay { payer } => pay(ctx, payer),
+        ExecuteMsg::Pay { user, ty } => pay(ctx, user, ty),
     }
 }
 
@@ -39,10 +39,22 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-fn pay(_ctx: MutableCtx, _payer: Addr) -> anyhow::Result<Response> {
+fn pay(ctx: MutableCtx, user: Addr, ty: FeeType) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.funds.is_non_empty(),
+        "fee amount cannot be zero! user: {}, type: {}",
+        user,
+        ty.as_str(),
+    );
+
     // For now, nothing to do.
     // In the future, we will implement affiliate fees.
-    Ok(Response::new())
+    Ok(Response::new().add_event(ReceiveFee {
+        handler: ctx.contract,
+        user,
+        ty,
+        amount: ctx.funds,
+    })?)
 }
 
 // TODO: exempt the account factory from paying fee.
