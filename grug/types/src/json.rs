@@ -293,7 +293,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{json, BorshDeExt, BorshSerExt, Json, JsonDeExt, JsonSerExt},
+        crate::{BorshDeExt, BorshSerExt, Json, JsonDeExt, JsonSerExt, json},
         borsh::{BorshDeserialize, BorshSerialize},
         serde::{Deserialize, Serialize},
     };

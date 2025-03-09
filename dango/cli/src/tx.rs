@@ -10,7 +10,7 @@ use {
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
     grug_client::{GasOption, SigningClient},
-    grug_types::{json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer},
+    grug_types::{Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer, json},
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
 

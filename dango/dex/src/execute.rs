@@ -1,21 +1,21 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
-        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
+        FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
+        PassiveLiquidityPool, RESERVES, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         dex::{
-            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
-            OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
-            LP_NAMESPACE, NAMESPACE,
+            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
+            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched,
+            PairUpdate, PairUpdated,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
-        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
-        SudoCtx, Udec128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, GENESIS_SENDER, Message,
+        MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
+        StdResult, Storage, SudoCtx, Udec128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };

@@ -1,9 +1,9 @@
 use {
-    crate::{TestAccount, TestAccounts, MOCK_LOCAL_DOMAIN},
+    crate::{MOCK_LOCAL_DOMAIN, TestAccount, TestAccounts},
     dango_app::ProposalPreparer,
     dango_genesis::{
-        build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisConfig,
-        GenesisUser,
+        Codes, Contracts, GenesisConfig, GenesisUser, build_genesis, build_rust_codes,
+        read_wasm_files,
     },
     dango_types::{
         constants::{
@@ -15,8 +15,8 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Bounded, Coins, ContractWrapper, Denom, Duration,
-        HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
+        Binary, BlockInfo, Bounded, Coins, ContractWrapper, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, NumberConst, Timestamp, Udec128, btree_map, coins,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},

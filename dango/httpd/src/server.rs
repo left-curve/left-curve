@@ -1,8 +1,8 @@
 use {
     crate::routes::graphql,
     actix_web::{
-        web::{self, ServiceConfig},
         HttpResponse,
+        web::{self, ServiceConfig},
     },
     indexer_httpd::{context::Context, routes::index},
 };

@@ -1,6 +1,6 @@
 use {
     crate::Denom,
-    data_encoding::{DecodeError, BASE64},
+    data_encoding::{BASE64, DecodeError},
     grug_math::MathError,
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
     thiserror::Error,

@@ -2,7 +2,7 @@ use {
     core::time,
     dango_testing::setup_test,
     dango_types::{self, oracle::QueryPricesRequest},
-    grug::{setup_tracing_subscriber, QuerierExt, ResultExt},
+    grug::{QuerierExt, ResultExt, setup_tracing_subscriber},
     std::{
         thread::{self, sleep},
         time::Duration,

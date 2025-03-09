@@ -1,5 +1,5 @@
 use {
-    crate::{create_signature, TestSuite},
+    crate::{TestSuite, create_signature},
     dango_types::{
         account::single,
         account_factory::{
@@ -9,9 +9,9 @@ use {
         auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
     },
     grug::{
-        btree_map, Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
+        Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, Signer, StdResult, Tx, Undefined,
-        UnsignedTx,
+        UnsignedTx, btree_map,
     },
     grug_app::{AppError, ProposalPreparer},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -292,7 +292,7 @@ where
     T: MaybeDefined<Addr>,
 {
     pub fn first_key(&self) -> Key {
-        self.keys.iter().next().unwrap().1 .1
+        self.keys.iter().next().unwrap().1.1
     }
 
     pub fn first_key_hash(&self) -> Hash256 {

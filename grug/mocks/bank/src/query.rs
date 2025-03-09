@@ -2,8 +2,8 @@ use {
     crate::{BALANCES_BY_ADDR, BALANCES_BY_DENOM, SUPPLIES},
     grug_math::{NumberConst, Uint128},
     grug_types::{
-        Addr, Bound, Coin, Coins, Denom, Order, QueryBalanceRequest, QueryBalancesRequest,
-        QuerySuppliesRequest, QuerySupplyRequest, StdResult, Storage, DEFAULT_PAGE_LIMIT,
+        Addr, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom, Order, QueryBalanceRequest,
+        QueryBalancesRequest, QuerySuppliesRequest, QuerySupplyRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };

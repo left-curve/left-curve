@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{parse_config, Config},
+        config::{Config, parse_config},
         home_directory::HomeDirectory,
     },
     anyhow::anyhow,
@@ -15,9 +15,9 @@ use {
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
     std::{fmt::Debug, path::PathBuf, sync::Arc, time},
-    tokio::signal::unix::{signal, SignalKind},
+    tokio::signal::unix::{SignalKind, signal},
     tower::ServiceBuilder,
-    tower_abci::v038::{split, Server},
+    tower_abci::v038::{Server, split},
 };
 
 #[derive(Parser)]

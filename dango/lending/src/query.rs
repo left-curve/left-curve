@@ -1,9 +1,9 @@
 use {
-    crate::{calculate_deposit, calculate_withdraw, DEBTS, MARKETS},
+    crate::{DEBTS, MARKETS, calculate_deposit, calculate_withdraw},
     dango_types::lending::{Market, QueryMsg},
     grug::{
-        Addr, Bound, Coin, Coins, Denom, ImmutableCtx, Json, JsonSerExt, Order, QuerierWrapper,
-        StdResult, Storage, Timestamp, DEFAULT_PAGE_LIMIT,
+        Addr, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
+        QuerierWrapper, StdResult, Storage, Timestamp,
     },
     std::collections::BTreeMap,
 };

@@ -1,13 +1,12 @@
 use {
     crate::{
-        bail,
+        Context, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
-        Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
@@ -495,7 +494,9 @@ where
         {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if !blocks.is_empty() {
-                tracing::warn!("Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?");
+                tracing::warn!(
+                    "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
+                );
             }
         }
 

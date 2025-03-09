@@ -105,7 +105,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{dts, int_test, Int, MathError, MultiplyRatio, NumberConst},
+        crate::{Int, MathError, MultiplyRatio, NumberConst, dts, int_test},
         bnum::types::{I256, U256},
     };
 

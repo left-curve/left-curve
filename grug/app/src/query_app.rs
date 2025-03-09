@@ -1,6 +1,6 @@
 use {
     crate::{
-        App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm, CHAIN_ID, LAST_FINALIZED_BLOCK,
+        App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
     grug_types::{BlockInfo, JsonDeExt, JsonSerExt},
 };

@@ -1,7 +1,7 @@
 use {
     proc_macro::TokenStream,
     std::str::FromStr,
-    syn::{parse_macro_input, ItemFn},
+    syn::{ItemFn, parse_macro_input},
 };
 
 pub fn process(mut input: TokenStream) -> TokenStream {

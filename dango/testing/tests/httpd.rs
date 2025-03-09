@@ -1,8 +1,8 @@
 use {
     actix_web::{
+        App,
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
-        App,
     },
     assertor::*,
     dango_httpd::{
@@ -15,11 +15,11 @@ use {
         account_factory::{self, AccountParams},
         constants::USDC_DENOM,
     },
-    grug::{setup_tracing_subscriber, Coins, Message, NonEmpty, ResultExt},
+    grug::{Coins, Message, NonEmpty, ResultExt, setup_tracing_subscriber},
     indexer_httpd::context::Context,
     indexer_testing::{
-        build_actix_app_with_config, call_graphql, call_ws_graphql_stream,
-        parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse,
+        GraphQLCustomRequest, PaginatedResponse, build_actix_app_with_config, call_graphql,
+        call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     tokio::sync::mpsc,
 };
@@ -90,20 +90,24 @@ async fn graphql_returns_transfer() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges).has_length(2);
 
-                assert_that!(response
-                    .data
-                    .edges
-                    .iter()
-                    .map(|t| t.node.block_height)
-                    .collect::<Vec<_>>())
+                assert_that!(
+                    response
+                        .data
+                        .edges
+                        .iter()
+                        .map(|t| t.node.block_height)
+                        .collect::<Vec<_>>()
+                )
                 .is_equal_to(vec![1, 1]);
 
-                assert_that!(response
-                    .data
-                    .edges
-                    .iter()
-                    .map(|t| t.node.amount.as_str())
-                    .collect::<Vec<_>>())
+                assert_that!(
+                    response
+                        .data
+                        .edges
+                        .iter()
+                        .map(|t| t.node.amount.as_str())
+                        .collect::<Vec<_>>()
+                )
                 .is_equal_to(vec!["100000000", "100000000"]);
 
                 Ok::<(), anyhow::Error>(())
@@ -196,11 +200,13 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 let (framed, response) =
                     parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
 
-                assert_that!(response
-                    .data
-                    .into_iter()
-                    .map(|t| t.block_height)
-                    .collect::<Vec<_>>())
+                assert_that!(
+                    response
+                        .data
+                        .into_iter()
+                        .map(|t| t.block_height)
+                        .collect::<Vec<_>>()
+                )
                 .is_equal_to(vec![1, 1]);
 
                 crate_block_tx.send(2).await.unwrap();
@@ -209,11 +215,13 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 let (framed, response) =
                     parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
 
-                assert_that!(response
-                    .data
-                    .into_iter()
-                    .map(|t| t.block_height)
-                    .collect::<Vec<_>>())
+                assert_that!(
+                    response
+                        .data
+                        .into_iter()
+                        .map(|t| t.block_height)
+                        .collect::<Vec<_>>()
+                )
                 .is_equal_to(vec![2, 2]);
 
                 crate_block_tx.send(3).await.unwrap();
@@ -222,11 +230,13 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 let (_, response) =
                     parse_graphql_subscription_response::<Vec<Transfer>>(framed, name).await?;
 
-                assert_that!(response
-                    .data
-                    .into_iter()
-                    .map(|t| t.block_height)
-                    .collect::<Vec<_>>())
+                assert_that!(
+                    response
+                        .data
+                        .into_iter()
+                        .map(|t| t.block_height)
+                        .collect::<Vec<_>>()
+                )
                 .is_equal_to(vec![3, 3]);
 
                 Ok::<(), anyhow::Error>(())

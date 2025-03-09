@@ -2,8 +2,8 @@ use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_math::Inner,
     grug_types::{
-        BlockInfo, CheckTxOutcome, Duration, GenericResult, Hash256, JsonSerExt, TxOutcome,
-        GENESIS_BLOCK_HASH,
+        BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256,
+        JsonSerExt, TxOutcome,
     },
     prost::bytes::Bytes,
     std::{
@@ -14,11 +14,11 @@ use {
         task::{Context, Poll},
     },
     tendermint::{
-        abci::{self, request, response, types::ExecTxResult, Code},
+        AppHash, Hash, Time,
+        abci::{self, Code, request, response, types::ExecTxResult},
         block::Height,
         merkle::proof::{ProofOp, ProofOps},
         v0_38::abci::{Request, Response},
-        AppHash, Hash, Time,
     },
     tower::Service,
     tower_abci::BoxError,

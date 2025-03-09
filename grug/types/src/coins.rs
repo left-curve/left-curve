@@ -1,10 +1,10 @@
 use {
-    crate::{btree_map, Coin, CoinPair, CoinRef, Denom, NonZero, StdError, StdResult},
+    crate::{Coin, CoinPair, CoinRef, Denom, NonZero, StdError, StdResult, btree_map},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Inner, IsZero, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
     std::{
-        collections::{btree_map, BTreeMap},
+        collections::{BTreeMap, btree_map},
         fmt,
         str::FromStr,
     },
@@ -517,7 +517,7 @@ impl fmt::Debug for Coins {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{btree_map, json, Coins, Denom, Json, JsonDeExt, JsonSerExt},
+        crate::{Coins, Denom, Json, JsonDeExt, JsonSerExt, btree_map, json},
         grug_math::Uint128,
         std::str::FromStr,
     };
