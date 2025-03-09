@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:17
-    profiles: ["db"]
+    profiles: [ "db" ]
     restart: always
     shm_size: 1gb
     ports:
@@ -10,5 +10,5 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-      - .data/pgdata:/var/lib/postgresql/data
+      - ~/.dango/indexer/pgdata:/var/lib/postgresql/data
     tty: true

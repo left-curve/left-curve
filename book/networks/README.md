@@ -92,12 +92,7 @@ Dango mainnet, testnets, and devnets.
    [Service]
    Type=simple
    User=larry
-   ExecStart=/home/larry/.cargo/bin/dango start \
-     --abci-addr 127.0.0.1:16658 \
-     --indexer-enabled \
-     --indexer-keep-blocks \
-     --indexer-database-url postgres://postgres@localhost/grug_dev \
-     --indexer-httpd-enabled
+   ExecStart=/home/larry/.cargo/bin/dango start
 
    [Install]
    WantedBy=multi-user.target
