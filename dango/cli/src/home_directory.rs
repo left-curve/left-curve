@@ -59,13 +59,13 @@ impl HomeDirectory {
         self.home.join("data")
     }
 
-    /// Return the path to the directory that stores keys.
-    pub fn keys_dir(&self) -> PathBuf {
-        self.home.join("keys")
-    }
-
     /// Return the path to the directory used by the indexer to store blocks.
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
+    }
+
+    /// Return the path to the directory that stores keys.
+    pub fn keys_dir(&self) -> PathBuf {
+        self.home.join("keys")
     }
 }
