@@ -1,8 +1,8 @@
 # ------------------------------------ bob -------------------------------------
 
-FROM rust:1.81.0-alpine AS bob
+FROM rust:1.85.0-alpine AS bob
 
-ARG LEFT_CURVE_GIT_COMMIT="bfa46b8"
+ARG LEFT_CURVE_GIT_COMMIT="1187f2a"
 
 # Download the crates.io index using the new sparse protocol to improve performance
 # and avoid OOM in the build.
@@ -26,9 +26,9 @@ RUN rm -rf left-curve
 
 # ---------------------------------- wasm-opt ----------------------------------
 
-FROM rust:1.81.0-alpine AS wasm-opt
+FROM rust:1.85.0-alpine AS wasm-opt
 
-ARG BINARYEN_GIT_TAG="version_119"
+ARG BINARYEN_GIT_TAG="version_122"
 
 # Install build dependencies
 RUN apk update && apk add --no-cache build-base clang cmake git ninja python3
@@ -52,7 +52,7 @@ RUN rm -rf binaryen
 
 # --------------------------------- optimizer ----------------------------------
 
-FROM rust:1.81.0-alpine AS optimizer
+FROM rust:1.85.0-alpine AS optimizer
 
 # Install build dependencies
 RUN apk update && apk add --no-cache musl-dev

@@ -46,7 +46,7 @@ book:
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/optimizer"
-OPTIMIZER_VERSION := "0.1.1"
+OPTIMIZER_VERSION := "0.2.0"
 
 # Build and publish optimizer Docker image
 docker-build-optimizer:
@@ -63,32 +63,3 @@ optimize:
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
-
-# ----------------------------------- Devnet -----------------------------------
-
-DEVNET_NAME := "leftcurve/devnet"
-DEVNET_VERSION := "0.2.0"
-DEVNET_CHAIN_ID := "dev-2"
-DEVNET_GENESIS_TIME := "2024-10-12T00:00:00.000000000Z"
-
-# Build and publish devnet Docker image
-docker-build-devnet:
-  docker buildx build \
-    --push \
-    --platform linux/amd64,linux/arm64 \
-    --tag {{DEVNET_NAME}}:{{DEVNET_VERSION}} \
-    --build-arg CHAIN_ID={{DEVNET_CHAIN_ID}} \
-    --build-arg GENESIS_TIME={{DEVNET_GENESIS_TIME}} \
-    docker/devnet
-
-# Start a devnet from genesis
-start-devnet:
-  docker run --name {{DEVNET_CHAIN_ID}} -it -p 26657:26657 -p 26656:26656 {{DEVNET_NAME}}:{{DEVNET_VERSION}}
-
-# Restart a devnet that have been previous stopped
-restart-devnet:
-  docker start -i {{DEVNET_CHAIN_ID}}
-
-# Remove a devnet
-remove-devnet:
-  docker rm -f {{DEVNET_CHAIN_ID}}
