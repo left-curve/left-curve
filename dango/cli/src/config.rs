@@ -114,7 +114,9 @@ mod tests {
 
     #[test]
     fn test_parse_config_file() {
-        std::env::set_var("TENDERMINT__RPC_ADDR", "BAR");
+        unsafe {
+            std::env::set_var("TENDERMINT__RPC_ADDR", "BAR");
+        }
 
         let cfg = parse_config("testdata/default_config.toml").unwrap();
 
