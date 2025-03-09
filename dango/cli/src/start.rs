@@ -1,10 +1,8 @@
 use {
-    crate::{
-        config::{parse_config, Config},
-        home_directory::HomeDirectory,
-    },
+    crate::{config::Config, home_directory::HomeDirectory},
     anyhow::anyhow,
     clap::Parser,
+    config_parser::parse_config,
     dango_app::ProposalPreparer,
     dango_genesis::build_rust_codes,
     dango_httpd::{graphql::build_schema, server::config_app},
@@ -42,7 +40,7 @@ pub struct StartCmd {
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         // Parse the config file.
-        let cfg = parse_config(app_dir.config_file())?;
+        let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
         let db = DiskDb::open(app_dir.data_dir())?;
