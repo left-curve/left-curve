@@ -69,7 +69,7 @@ export const NotificationsList: React.FC<Props> = ({ notifications, className })
     return (
       <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat">
         <img
-          src="/images/notifications/no-notifications.svg"
+          src="/images/notifications/no-notifications-temp.svg"
           alt="no-notifications"
           className="w-[133px] h-[144px]"
         />
