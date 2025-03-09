@@ -3,6 +3,7 @@
 /* -------------------------------------------------------------------------- */
 
 export { Button, type ButtonProps } from "./foundation/Button";
+export { Badge } from "./foundation/Badge";
 export { IconButton, type IconButtonProps } from "./foundation/IconButton";
 export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
@@ -23,6 +24,7 @@ export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";
 export { TextLoop } from "./foundation/TextLoop";
+export { AccordionItem } from "./foundation/AccordionItem";
 
 /* ---------------------------------- Icons --------------------------------- */
 

@@ -10,6 +10,7 @@ export const ResizerContainer: React.FC<ResizerContainerProps> = ({ children, cl
   return (
     <motion.div
       layout
+      layoutId="resizer"
       className={className}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

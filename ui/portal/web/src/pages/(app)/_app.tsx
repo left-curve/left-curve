@@ -35,7 +35,7 @@ export const Route = createFileRoute("/(app)/_app")({
         />
 
         <Header isScrolled={isScrolled} />
-        <div className="flex items-start justify-start w-full z-30 h-full relative flex-col">
+        <div className="flex items-center justify-start w-full z-30 h-full relative flex-col">
           <Outlet />
         </div>
       </main>
