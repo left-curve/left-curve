@@ -44,6 +44,16 @@ impl HomeDirectory {
         self.home.exists()
     }
 
+    /// Return the path to the config directory.
+    pub fn config_dir(&self) -> PathBuf {
+        self.home.join("config")
+    }
+
+    /// Return the path to the configuration file.
+    pub fn config_file(&self) -> PathBuf {
+        self.config_dir().join("app.toml")
+    }
+
     /// Return the path to Grug's RocksDB database directory.
     pub fn data_dir(&self) -> PathBuf {
         self.home.join("data")
@@ -57,10 +67,5 @@ impl HomeDirectory {
     /// Return the path to the directory used by the indexer to store blocks.
     pub fn indexer_dir(&self) -> PathBuf {
         self.home.join("indexer")
-    }
-
-    /// Return the path to the configuration file.
-    pub fn config_file(&self) -> PathBuf {
-        self.home.join("app.toml")
     }
 }
