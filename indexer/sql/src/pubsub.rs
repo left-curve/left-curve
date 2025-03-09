@@ -29,7 +29,7 @@ mod tests {
         tokio_stream::StreamExt,
     };
 
-    #[ignore]
+    #[ignore = "This test requires a running postgres instance and is not meant to be run in CI yet"]
     #[tokio::test]
     async fn test_postgres_pubsub() -> anyhow::Result<()> {
         let db_host = std::env::var("DB_HOST").unwrap_or("localhost".to_string());
@@ -68,7 +68,7 @@ mod tests {
     }
 
     /// A test that demonstrates how to use postgres pubsub.
-    #[ignore]
+    #[ignore = "This test requires a running postgres instance and is not meant to be run in CI yet"]
     #[tokio::test]
     async fn manual_psql_implementation() -> anyhow::Result<()> {
         let pool = PgPoolOptions::new()

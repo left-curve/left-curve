@@ -13,7 +13,7 @@ const subtext = {
   spot: "Can hold any asset and partake in any activity; cheapest gas cost; can only take over-collateralized loans.",
   margin:
     "Can take under-collateralized loans up to 5x leverage; can only hold whitelisted assets and partake in whitelisted activities.",
-  safe: "",
+  multi: "",
 };
 
 export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected, onClick }) => {

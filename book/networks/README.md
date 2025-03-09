@@ -31,13 +31,19 @@ Dango mainnet, testnets, and devnets.
    cometbft version
    ```
 
-3. Initialize the `~/.cometbft` directory:
+3. Initialize the `~/.dango` directory:
+
+   ```bash
+   dango init
+   ```
+
+4. Initialize the `~/.cometbft` directory:
 
    ```bash
    cometbft init
    ```
 
-4. Create genesis state. Provide chain ID and genesis time as positional arguments:
+5. Create genesis state. Provide chain ID and genesis time as positional arguments:
 
    ```bash
    cd left-curve
@@ -46,7 +52,7 @@ Dango mainnet, testnets, and devnets.
 
    Genesis should be written into `~/.cometbft/config/genesis.json`
 
-5. Create systemd service for postgresql:
+6. Create systemd service for postgresql:
 
    ```ini
    [Unit]
@@ -76,7 +82,7 @@ Dango mainnet, testnets, and devnets.
      sudo usermod -aG docker larry
      ```
 
-6. Create systemd service for dango:
+7. Create systemd service for dango:
 
    ```ini
    [Unit]
@@ -86,12 +92,7 @@ Dango mainnet, testnets, and devnets.
    [Service]
    Type=simple
    User=larry
-   ExecStart=/home/larry/.cargo/bin/dango start \
-     --abci-addr 127.0.0.1:16658 \
-     --indexer-enabled \
-     --indexer-keep-blocks \
-     --indexer-database-url postgres://postgres@localhost/grug_dev \
-     --indexer-httpd-enabled
+   ExecStart=/home/larry/.cargo/bin/dango start
 
    [Install]
    WantedBy=multi-user.target
@@ -99,7 +100,7 @@ Dango mainnet, testnets, and devnets.
 
    Save this as `/etc/systemd/system/dango.service`.
 
-7. Create systemd service for cometbft:
+8. Create systemd service for cometbft:
 
    ```ini
    [Unit]
@@ -117,38 +118,38 @@ Dango mainnet, testnets, and devnets.
 
    Save this as `/etc/systemd/system/cometbft.service`.
 
-8. Refresh systemd:
+9. Refresh systemd:
 
    ```bash
    sudo systemctl daemon-reload
    ```
 
-9. Start postgresql:
+10. Start postgresql:
 
-   ```bash
-   sudo systemctl start postgresql
-   ```
+    ```bash
+    sudo systemctl start postgresql
+    ```
 
-10. Create database for the indexer:
+11. Create database for the indexer:
 
     ```bash
     cd left-curve/indexer
     createdb -h localhost -U postgres grug_dev
     ```
 
-11. Start dango:
+12. Start dango:
 
     ```bash
     sudo systemctl start dango
     ```
 
-12. Start cometbft:
+13. Start cometbft:
 
     ```bash
     sudo systemctl start cometbft
     ```
 
-   **Note:** when starting, start in this order: postgresql, dango, cometbft. When terminating, do it in the reverse order.
+    **Note:** when starting, start in this order: postgresql, dango, cometbft. When terminating, do it in the reverse order.
 
 ### Killing existing devnet and start a new one
 

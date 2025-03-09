@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
+import { useToast } from "../Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
@@ -14,6 +15,7 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const config = useConfig();
   const chainId = useChainId();
+  const { toast } = useToast();
   const { account, refreshAccounts } = useAccount();
   const { data: signingClient } = useSigningClient();
 
@@ -23,8 +25,8 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const { accountType } = data;
   const coins = config.coins[chainId];
-  const usdcInfo = coins.uusdc;
-  const humanBalance = formatUnits(balances.uusdc || 0, usdcInfo.decimals);
+  const usdcInfo = coins["hyp/eth/usdc"];
+  const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, usdcInfo.decimals);
 
   const { mutateAsync: send } = useMutation({
     mutationFn: async () => {
@@ -36,11 +38,12 @@ export const CreateAccountDepositStep: React.FC = () => {
         },
         {
           funds: {
-            uusdc: parseUnits(fundsAmount, usdcInfo.decimals).toString(),
+            "hyp/eth/usdc": parseUnits(fundsAmount, usdcInfo.decimals).toString(),
           },
         },
       );
-      await wait(1000);
+      await wait(3000);
+      toast.success({ title: "Account created" });
       await refreshAccounts?.();
     },
     onSuccess: () => [refreshBalances(), done()],

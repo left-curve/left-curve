@@ -40,14 +40,6 @@ app.pages.ts
 # Workers
 **/.wrangler
 
-# Database
-indexer/.data
-
-# Solidity
-cache/
-dependencies/
-out/
-
 # Python
 **/.ipynb_checkpoints/
 

@@ -3,13 +3,15 @@
 /* -------------------------------------------------------------------------- */
 
 export { Button, type ButtonProps } from "./foundation/Button";
+export { Badge } from "./foundation/Badge";
 export { IconButton, type IconButtonProps } from "./foundation/IconButton";
 export { Spinner } from "./foundation/Spinner";
 export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
-export { AccountCard } from "./foundation/AccountCard";
+export { AccountCard } from "./foundation/AccountCard/AccountCard";
+export { AccountCardPreview } from "./foundation/AccountCard/AccountCardPreview";
 export { Table } from "./foundation/table/Table";
 export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
@@ -22,6 +24,7 @@ export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";
 export { TextLoop } from "./foundation/TextLoop";
+export { AccordionItem } from "./foundation/AccordionItem";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -64,6 +67,7 @@ export { IconEmptyStar } from "./foundation/icons/IconEmptyStar";
 export { IconCheckedCircle } from "./foundation/icons/IconCheckedCircle";
 export { IconChecked } from "./foundation/icons/IconChecked";
 export { IconAlert } from "./foundation/icons/IconAlert";
+export { IconQR } from "./foundation/icons/IconQR";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

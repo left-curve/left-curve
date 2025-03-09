@@ -131,11 +131,17 @@ export const tailwindConfig: Partial<Config> = {
       "5xl": "24px",
       full: "9999px",
     },
+
     backgroundImage: {
       "account-card-red":
         "linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)",
+      "account-card-blue": "linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%)",
       "account-card-green":
         "linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%)",
+      "borrow-bar-green": "linear-gradient(321.22deg, #D2D184 26.16%, #F9F8EC 111.55%)",
+      "borrow-bar-red": "linear-gradient(321.25deg, #F57589 26.85%, #FFF2E2 111.56%)",
+      "margin-header":
+        "linear-gradient(0deg, #FFFCF6, #FFFCF6),linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%)",
     },
     fontFamily: {
       "diatype-rounded": "ABCDiatypeRounded",

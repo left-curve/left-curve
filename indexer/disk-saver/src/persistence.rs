@@ -83,6 +83,11 @@ impl DiskPersistence {
         let parent = Path::new(&self.file_path)
             .parent()
             .unwrap_or_else(|| Path::new("."));
+
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)?;
+        }
+
         let mut tmp_file = NamedTempFile::new_in(parent)?;
 
         if self.compressed {
