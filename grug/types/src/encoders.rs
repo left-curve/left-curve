@@ -1,4 +1,4 @@
-use data_encoding::{Encoding, BASE64, HEXLOWER, HEXUPPER};
+use data_encoding::{BASE64, Encoding, HEXLOWER, HEXUPPER};
 
 /// Describes a scheme for encoding bytes to strings.
 pub trait Encoder {
@@ -52,9 +52,9 @@ impl Encoder for HashEncoder {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{json, Addr, Binary, ByteArray, Hash256, Json, JsonDeExt, JsonSerExt},
+        crate::{Addr, Binary, ByteArray, Hash256, Json, JsonDeExt, JsonSerExt, json},
         hex_literal::hex,
-        serde::{de::DeserializeOwned, Serialize},
+        serde::{Serialize, de::DeserializeOwned},
         std::fmt::Debug,
         test_case::test_case,
     };

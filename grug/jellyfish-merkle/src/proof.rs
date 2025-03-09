@@ -1,5 +1,5 @@
 use {
-    crate::{hash_internal_node, hash_leaf_node, BitArray},
+    crate::{BitArray, hash_internal_node, hash_leaf_node},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Hash256, Order},
     serde::{Deserialize, Serialize},
@@ -258,13 +258,15 @@ mod tests {
         "proving (a, buzz)"
     )]
     fn verifying_membership(key: &str, value: &str, proof: MembershipProof) {
-        assert!(verify_membership_proof(
-            HASH_ROOT,
-            key.as_bytes().hash256(),
-            value.as_bytes().hash256(),
-            &proof,
-        )
-        .is_ok());
+        assert!(
+            verify_membership_proof(
+                HASH_ROOT,
+                key.as_bytes().hash256(),
+                value.as_bytes().hash256(),
+                &proof,
+            )
+            .is_ok()
+        );
     }
 
     #[test_case(

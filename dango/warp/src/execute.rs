@@ -7,18 +7,18 @@ use {
         bank,
         taxman::{self, FeeType},
         warp::{
-            ExecuteMsg, Handle, InstantiateMsg, RateLimit, Route, TokenMessage, TransferRemote,
-            ALLOY_SUBNAMESPACE, NAMESPACE,
+            ALLOY_SUBNAMESPACE, ExecuteMsg, Handle, InstantiateMsg, NAMESPACE, RateLimit, Route,
+            TokenMessage, TransferRemote,
         },
     },
     grug::{
-        coins, Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
-        Number, QuerierExt, Response, StdResult, SudoCtx,
+        Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
+        Number, QuerierExt, Response, StdResult, SudoCtx, coins,
     },
     hyperlane_types::{
+        Addr32,
         mailbox::{self, Domain},
         recipients::RecipientMsg,
-        Addr32,
     },
     std::collections::BTreeMap,
 };

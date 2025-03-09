@@ -5,7 +5,7 @@ use {
         secp256k1_verify, secp256r1_verify, sha2_256, sha2_512_truncated, sha3_256,
         sha3_512_truncated,
     },
-    serde::{de, Deserialize},
+    serde::{Deserialize, de},
     shared::{read_file, validate_recover_secp256k1, validate_recover_secp256r1},
 };
 

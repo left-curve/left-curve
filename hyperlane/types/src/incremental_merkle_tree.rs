@@ -1,6 +1,6 @@
 use {
     anyhow::ensure,
-    grug::{hash, Hash256},
+    grug::{Hash256, hash},
     sha3::{Digest, Keccak256},
 };
 

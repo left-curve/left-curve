@@ -10,10 +10,10 @@ use {
     },
     serde::{de::DeserializeOwned, ser::Serialize},
     std::{any::type_name, collections::BTreeMap, ops::Deref},
-    tendermint::{block::Height, Hash as TmHash},
+    tendermint::{Hash as TmHash, block::Height},
     tendermint_rpc::{
-        endpoint::{abci_query::AbciQuery, block, block_results, broadcast::tx_sync, status, tx},
         Client as TmClient, HttpClient, HttpClientUrl,
+        endpoint::{abci_query::AbciQuery, block, block_results, broadcast::tx_sync, status, tx},
     },
 };
 
@@ -528,7 +528,6 @@ impl SigningClient {
         M: Serialize,
         SA: Into<Binary>,
         C: TryInto<Coins>,
-
         StdError: From<C::Error>,
     {
         let salt = salt.into();

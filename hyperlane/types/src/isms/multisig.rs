@@ -1,6 +1,6 @@
 use {
     super::IsmQueryResponse,
-    crate::{isms::IsmQuery, mailbox::Domain, Addr32},
+    crate::{Addr32, isms::IsmQuery, mailbox::Domain},
     anyhow::ensure,
     grug::{Hash256, HexBinary, HexByteArray, Inner},
     std::collections::{BTreeMap, BTreeSet},

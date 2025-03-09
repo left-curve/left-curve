@@ -1,7 +1,7 @@
 use {
     dango_account_factory::KEYS,
     dango_genesis::Contracts,
-    dango_testing::{setup_test_naive, Multi, TestAccount, TestAccounts, TestSuite},
+    dango_testing::{Multi, TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{
             multi::{self, QueryProposalRequest, QueryVoteRequest, Status, Vote},
@@ -15,9 +15,9 @@ use {
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, btree_set, Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256,
-        HashExt, Inner, JsonSerExt, Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer,
-        StdError, Uint128,
+        Addr, Addressable, ChangeSet, Coins, Duration, Empty, Hash256, HashExt, Inner, JsonSerExt,
+        Message, NonEmpty, NonZero, QuerierExt, ResultExt, Signer, StdError, Uint128, btree_map,
+        btree_set,
     },
     grug_app::NaiveProposalPreparer,
 };
@@ -131,11 +131,13 @@ fn proposal_passing_with_auto_execution() {
             &multi::ExecuteMsg::Propose {
                 title: "send 123 uusdc to owner".to_string(),
                 description: None,
-                messages: vec![Message::transfer(
-                    accounts.owner.address(),
-                    Coins::one(USDC_DENOM.clone(), 888_888).unwrap(),
-                )
-                .unwrap()],
+                messages: vec![
+                    Message::transfer(
+                        accounts.owner.address(),
+                        Coins::one(USDC_DENOM.clone(), 888_888).unwrap(),
+                    )
+                    .unwrap(),
+                ],
             },
             Coins::new(),
         )
@@ -211,14 +213,16 @@ fn proposal_passing_with_manual_execution() {
             &multi::ExecuteMsg::Propose {
                 title: "add user4 as member".to_string(),
                 description: None,
-                messages: vec![Message::execute(
-                    contracts.account_factory,
-                    &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
-                        updates.clone(),
-                    )),
-                    Coins::new(),
-                )
-                .unwrap()],
+                messages: vec![
+                    Message::execute(
+                        contracts.account_factory,
+                        &account_factory::ExecuteMsg::UpdateAccount(AccountParamUpdates::Multi(
+                            updates.clone(),
+                        )),
+                        Coins::new(),
+                    )
+                    .unwrap(),
+                ],
             },
             Coins::new(),
         )
@@ -598,17 +602,19 @@ fn unauthorized_voting_via_impersonation<'a>(
     let mut tx = multi
         .with_signer(attacker)
         .sign_transaction(
-            NonEmpty::new_unchecked(vec![Message::execute(
-                multi_address,
-                &multi::ExecuteMsg::Vote {
-                    proposal_id: 1,
-                    voter,
-                    vote: Vote::Yes,
-                    execute: false,
-                },
-                Coins::new(),
-            )
-            .unwrap()]),
+            NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    multi_address,
+                    &multi::ExecuteMsg::Vote {
+                        proposal_id: 1,
+                        voter,
+                        vote: Vote::Yes,
+                        execute: false,
+                    },
+                    Coins::new(),
+                )
+                .unwrap(),
+            ]),
             &suite.chain_id,
             suite.default_gas_limit,
         )

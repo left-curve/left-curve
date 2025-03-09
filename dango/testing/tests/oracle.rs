@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
+    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         constants::{
             ATOM_DENOM, ATOM_USD_ID, BNB_DENOM, BNB_USD_ID, DOGE_DENOM, DOGE_USD_ID, ETH_DENOM,
@@ -9,7 +9,7 @@ use {
         oracle::{ExecuteMsg, PrecisionlessPrice, PythId, PythVaa, QueryPriceRequest},
     },
     grug::{
-        btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
+        Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
     indexer_disk_saver::persistence::DiskPersistence,
@@ -46,7 +46,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_2).unwrap()
+                    Binary::from_str(VAA_2).unwrap(),
                 ])),
                 Coins::default(),
             )
@@ -80,7 +80,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_1).unwrap()
+                    Binary::from_str(VAA_1).unwrap(),
                 ])),
                 Coins::default(),
             )
@@ -112,7 +112,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_2).unwrap()
+                    Binary::from_str(VAA_2).unwrap(),
                 ])),
                 Coins::default(),
             )

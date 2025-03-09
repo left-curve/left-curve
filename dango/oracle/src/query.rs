@@ -1,9 +1,9 @@
 use {
-    crate::{OracleQuerier, GUARDIAN_SETS, PRICE_SOURCES},
+    crate::{GUARDIAN_SETS, OracleQuerier, PRICE_SOURCES},
     dango_types::oracle::{GuardianSet, GuardianSetIndex, PrecisionedPrice, PriceSource, QueryMsg},
     grug::{
-        Addressable, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        DEFAULT_PAGE_LIMIT,
+        Addressable, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order,
+        StdResult,
     },
     std::collections::BTreeMap,
 };

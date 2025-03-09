@@ -4,7 +4,7 @@ use {
     sea_orm::sqlx::{self, postgres::PgListener},
     std::pin::Pin,
     tokio::sync::broadcast,
-    tokio_stream::{wrappers::BroadcastStream, Stream, StreamExt},
+    tokio_stream::{Stream, StreamExt, wrappers::BroadcastStream},
 };
 
 #[derive(Clone)]

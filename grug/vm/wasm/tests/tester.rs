@@ -1,6 +1,6 @@
 use {
     grug_app::AppError,
-    grug_crypto::{sha2_256, sha2_512, Identity256, Identity512},
+    grug_crypto::{Identity256, Identity512, sha2_256, sha2_512},
     grug_db_memory::MemDb,
     grug_math::{InnerMut, Udec128},
     grug_tester::{
@@ -14,7 +14,7 @@ use {
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
-    serde::{de::DeserializeOwned, Serialize},
+    serde::{Serialize, de::DeserializeOwned},
     std::{fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
     test_case::test_case,
 };
@@ -152,7 +152,7 @@ const MSG: &[u8] = b"finger but hole";
 const WRONG_MSG: &[u8] = b"precious item ahead";
 
 fn generate_secp256r1_verify_request() -> QueryVerifySecp256r1Request {
-    use p256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+    use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
 
     let sk = SigningKey::random(&mut OsRng);
     let vk = VerifyingKey::from(&sk);
@@ -167,7 +167,7 @@ fn generate_secp256r1_verify_request() -> QueryVerifySecp256r1Request {
 }
 
 fn generate_secp256k1_verify_request() -> QueryVerifySecp256k1Request {
-    use k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+    use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
 
     let sk = SigningKey::random(&mut OsRng);
     let vk = VerifyingKey::from(&sk);

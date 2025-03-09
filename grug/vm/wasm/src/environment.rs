@@ -4,7 +4,7 @@ use {
     grug_types::{Record, StdError},
     std::{collections::HashMap, ptr::NonNull},
     wasmer::{AsStoreMut, AsStoreRef, Instance, Memory, MemoryView, Value},
-    wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints},
+    wasmer_middlewares::metering::{MeteringPoints, get_remaining_points, set_remaining_points},
 };
 
 /// Necessary stuff for performing Wasm import functions.
@@ -279,16 +279,16 @@ impl Environment {
 #[cfg(test)]
 mod test {
     use {
-        crate::{Environment, Iterator, VmError, VmResult, WasmVm, GAS_PER_OPERATION},
+        crate::{Environment, GAS_PER_OPERATION, Iterator, VmError, VmResult, WasmVm},
         grug_app::{GasTracker, QuerierProviderImpl, Shared, StorageProvider},
         grug_types::{BlockInfo, Hash256, MockStorage, Order, StdError, Storage, Timestamp},
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
-            imports, CompilerConfig, Engine, Instance, Module, RuntimeError, Singlepass, Store,
-            Value,
+            CompilerConfig, Engine, Instance, Module, RuntimeError, Singlepass, Store, Value,
+            imports,
         },
-        wasmer_middlewares::{metering::set_remaining_points, Metering},
+        wasmer_middlewares::{Metering, metering::set_remaining_points},
     };
 
     const MOCK_WAT: &[u8] = br#"(module (memory (export "memory") 1))"#;

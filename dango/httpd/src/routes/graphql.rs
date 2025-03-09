@@ -1,6 +1,6 @@
 use {
     crate::graphql::AppSchema,
-    actix_web::{web, HttpRequest, HttpResponse, Resource},
+    actix_web::{HttpRequest, HttpResponse, Resource, web},
     async_graphql::Schema,
     async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
     indexer_httpd::routes::graphql::graphiql_playgound,

@@ -1,5 +1,5 @@
 use {
-    rocksdb::{Options, DB},
+    rocksdb::{DB, Options},
     std::path::{Path, PathBuf},
     tempfile::TempDir,
 };

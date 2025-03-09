@@ -56,10 +56,10 @@ impl Region {
     pub unsafe fn consume(ptr: *mut Region) -> Vec<u8> {
         assert!(!ptr.is_null(), "Region pointer is null");
 
-        let region = Box::from_raw(ptr);
+        let region = unsafe { Box::from_raw(ptr) };
         let region_start = region.offset as *mut u8;
         assert!(!region_start.is_null(), "Region starts as null address");
 
-        Vec::from_raw_parts(region_start, region.length, region.capacity)
+        unsafe { Vec::from_raw_parts(region_start, region.length, region.capacity) }
     }
 }

@@ -1,5 +1,5 @@
 use {
-    crate::{StateResponse, PUBLIC_KEY, SEQUENCE},
+    crate::{PUBLIC_KEY, SEQUENCE, StateResponse},
     grug_types::{StdResult, Storage},
 };
 

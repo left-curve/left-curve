@@ -1,7 +1,7 @@
 use {
     crate::{
-        burn, force_transfer, initialize, mint, query_balance, query_balances, query_holders,
-        query_supplies, query_supply, transfer, ExecuteMsg, InstantiateMsg, QueryMsg,
+        ExecuteMsg, InstantiateMsg, QueryMsg, burn, force_transfer, initialize, mint,
+        query_balance, query_balances, query_holders, query_supplies, query_supply, transfer,
     },
     anyhow::bail,
     grug_types::{

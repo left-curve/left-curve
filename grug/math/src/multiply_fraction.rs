@@ -131,8 +131,8 @@ where
 mod tests {
     use {
         crate::{
-            int_test, test_utils::bt, Dec, Dec128, Dec256, Int, MathError, MultiplyFraction,
-            NumberConst, Udec128, Udec256,
+            Dec, Dec128, Dec256, Int, MathError, MultiplyFraction, NumberConst, Udec128, Udec256,
+            int_test, test_utils::bt,
         },
         bnum::types::{I256, U256},
     };

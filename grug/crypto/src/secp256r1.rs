@@ -1,6 +1,6 @@
 use {
-    crate::{to_sized, CryptoError, CryptoResult, Identity256},
-    p256::ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
+    crate::{CryptoError, CryptoResult, Identity256, to_sized},
+    p256::ecdsa::{Signature, VerifyingKey, signature::DigestVerifier},
 };
 
 const SECP256R1_DIGEST_LEN: usize = 32;
@@ -41,7 +41,7 @@ mod tests {
     use {
         super::*,
         crate::sha2_256,
-        p256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
+        p256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
         rand::rngs::OsRng,
     };
 

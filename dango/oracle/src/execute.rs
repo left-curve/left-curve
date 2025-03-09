@@ -1,5 +1,5 @@
 use {
-    crate::{state::GUARDIAN_SETS, PRICES, PRICE_SOURCES},
+    crate::{PRICE_SOURCES, PRICES, state::GUARDIAN_SETS},
     anyhow::{bail, ensure},
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa},
     grug::{

@@ -2,8 +2,8 @@ use {
     crate::{CONFIG, DELIVERIES, MERKLE_TREE, NONCE},
     grug::{Hash256, ImmutableCtx, Json, JsonSerExt, StdResult},
     hyperlane_types::{
-        mailbox::{Config, QueryMsg},
         IncrementalMerkleTree,
+        mailbox::{Config, QueryMsg},
     },
 };
 

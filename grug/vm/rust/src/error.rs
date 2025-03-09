@@ -14,7 +14,9 @@ pub enum VmError {
     #[error("unknown function: `{name}`")]
     UnknownFunction { name: &'static str },
 
-    #[error("attempting to call `{name}` with {num} inputs, but this function takes a different number of inputs")]
+    #[error(
+        "attempting to call `{name}` with {num} inputs, but this function takes a different number of inputs"
+    )]
     IncorrectNumberOfInputs { name: &'static str, num: usize },
 }
 

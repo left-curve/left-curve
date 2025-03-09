@@ -1,5 +1,5 @@
 use {
-    async_graphql::{extensions, Schema},
+    async_graphql::{Schema, extensions},
     indexer_httpd::{context::Context, graphql::mutation::Mutation},
     query::Query,
     subscription::Subscription,

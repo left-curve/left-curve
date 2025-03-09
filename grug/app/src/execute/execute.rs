@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, AppError,
-        EventResult, GasTracker, Vm, _do_transfer, CHAIN_ID, CONTRACTS,
+        _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
     grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, MsgTransfer, Storage},
 };

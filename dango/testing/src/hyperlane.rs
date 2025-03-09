@@ -5,16 +5,16 @@ use {
         warp::{self, QueryRouteRequest, Route, TokenMessage},
     },
     grug::{
-        btree_map, Addr, Coin, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner,
-        NumberConst, QuerierExt, ResultExt, Signer, TestSuite, TxOutcome, Uint128,
+        Addr, Coin, Coins, Denom, Hash256, HashExt, HexBinary, HexByteArray, Inner, NumberConst,
+        QuerierExt, ResultExt, Signer, TestSuite, TxOutcome, Uint128, btree_map,
     },
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Shared, Vm},
     grug_crypto::Identity256,
     hyperlane_types::{
-        addr32, domain_hash, eip191_hash,
-        isms::{self, multisig::Metadata, HYPERLANE_DOMAIN_KEY},
-        mailbox::{self, Domain, Message, MAILBOX_VERSION},
-        multisig_hash, Addr32, IncrementalMerkleTree,
+        Addr32, IncrementalMerkleTree, addr32, domain_hash, eip191_hash,
+        isms::{self, HYPERLANE_DOMAIN_KEY, multisig::Metadata},
+        mailbox::{self, Domain, MAILBOX_VERSION, Message},
+        multisig_hash,
     },
     k256::ecdsa::SigningKey,
     std::{

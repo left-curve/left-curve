@@ -1,7 +1,7 @@
 use {
     crate::{
+        _do_transfer, AppError, CHAIN_ID, CODES, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event, has_permission,
-        AppError, EventResult, GasTracker, Vm, _do_transfer, CHAIN_ID, CODES, CONFIG, CONTRACTS,
     },
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,

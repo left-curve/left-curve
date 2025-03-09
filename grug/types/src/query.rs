@@ -1,7 +1,7 @@
 use {
     crate::{
-        extend_one_byte, Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom,
-        Hash256, Json, JsonSerExt, StdResult,
+        Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, Hash256, Json,
+        JsonSerExt, StdResult, extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,

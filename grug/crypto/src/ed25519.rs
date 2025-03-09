@@ -1,5 +1,5 @@
 use {
-    crate::{to_sized, CryptoResult, Identity512},
+    crate::{CryptoResult, Identity512, to_sized},
     ed25519_dalek::{DigestVerifier, Signature, VerifyingKey},
 };
 
@@ -102,32 +102,38 @@ mod tests {
 
         // Valid signatures
         {
-            assert!(ed25519_batch_verify(
-                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-                &[&sig1, &sig2, &sig3],
-                &[&vk1, &vk2, &vk3]
-            )
-            .is_ok());
+            assert!(
+                ed25519_batch_verify(
+                    &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                    &[&sig1, &sig2, &sig3],
+                    &[&vk1, &vk2, &vk3]
+                )
+                .is_ok()
+            );
         }
 
         // Wrong sign
         {
-            assert!(ed25519_batch_verify(
-                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-                &[&sig2, &sig1, &sig3],
-                &[&vk1, &vk2, &vk3]
-            )
-            .is_err());
+            assert!(
+                ed25519_batch_verify(
+                    &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                    &[&sig2, &sig1, &sig3],
+                    &[&vk1, &vk2, &vk3]
+                )
+                .is_err()
+            );
         }
 
         // Wrong len
         {
-            assert!(ed25519_batch_verify(
-                &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
-                &[&sig1, &sig2, &sig3],
-                &[&vk1, &vk2]
-            )
-            .is_err());
+            assert!(
+                ed25519_batch_verify(
+                    &[&prehash_msg1, &prehash_msg2, &prehash_msg3],
+                    &[&sig1, &sig2, &sig3],
+                    &[&vk1, &vk2]
+                )
+                .is_err()
+            );
         }
     }
 

@@ -12,7 +12,7 @@ use {
 
 mod session_account {
     use {
-        dango_testing::{create_signature, generate_random_key, TestAccount},
+        dango_testing::{TestAccount, create_signature, generate_random_key},
         dango_types::auth::{
             Credential, Metadata, SessionCredential, SessionInfo, SignDoc, Signature,
             StandardCredential,

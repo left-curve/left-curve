@@ -8,7 +8,7 @@ use {
         },
         oracle::{PriceSource, PythId},
     },
-    grug::{btree_map, Denom},
+    grug::{Denom, btree_map},
     hex_literal::hex,
     std::{collections::BTreeMap, sync::LazyLock},
 };

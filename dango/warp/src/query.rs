@@ -2,7 +2,7 @@ use {
     crate::{ALLOYS, MAILBOX, ROUTES},
     dango_types::warp::{QueryMsg, QueryRoutesPageParam, QueryRoutesResponseItem, Route},
     grug::{
-        Addr, Bound, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult, DEFAULT_PAGE_LIMIT,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
     },
     hyperlane_types::{
         mailbox::Domain,

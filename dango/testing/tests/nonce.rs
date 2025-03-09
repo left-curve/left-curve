@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, TestAccounts, MOCK_CHAIN_ID},
+    dango_testing::{MOCK_CHAIN_ID, TestAccounts, setup_test_naive},
     dango_types::{account::spot::QuerySeenNoncesRequest, constants::USDC_DENOM},
     grug::{
         Addressable, Coins, Duration, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, Tx,
@@ -10,11 +10,13 @@ use {
 fn prepare_tx_with_nonce(accounts: &TestAccounts, nonce: u32, expiry: Option<Duration>) -> Tx {
     const GAS_LIMIT: u64 = 50_000_000;
 
-    let msgs = NonEmpty::new_unchecked(vec![Message::transfer(
-        accounts.user1.address(),
-        Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-    )
-    .unwrap()]);
+    let msgs = NonEmpty::new_unchecked(vec![
+        Message::transfer(
+            accounts.user1.address(),
+            Coins::one(USDC_DENOM.clone(), 123).unwrap(),
+        )
+        .unwrap(),
+    ]);
 
     let (data, credential) = accounts
         .owner

@@ -5,13 +5,13 @@ use {
     },
     grug_math::Inner,
     grug_types::{
-        flatten_commitment_status, Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory,
-        FlatEventInfo, FlattenStatus, JsonSerExt,
+        Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
+        JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{
+        Set,
         prelude::*,
         sqlx::types::chrono::{NaiveDateTime, TimeZone},
-        Set,
     },
     std::collections::HashMap,
 };

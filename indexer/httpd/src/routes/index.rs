@@ -1,4 +1,4 @@
-use actix_web::{get, Responder};
+use actix_web::{Responder, get};
 
 #[get("/")]
 pub async fn index() -> impl Responder {

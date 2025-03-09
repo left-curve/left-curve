@@ -1,5 +1,5 @@
 use {
-    crate::{GasTracker, GAS_COSTS},
+    crate::{GAS_COSTS, GasTracker},
     grug_storage::{Codec, IndexedMap, Item, Map, PrimaryKey},
     grug_types::{Bound, Order, Record, StdResult, Storage},
 };
@@ -77,7 +77,7 @@ where
     K: PrimaryKey,
 {
     fn load_with_gas(&self, storage: &dyn Storage, gas_tracker: GasTracker, key: K)
-        -> StdResult<T>;
+    -> StdResult<T>;
 
     fn has_with_gas(
         &self,

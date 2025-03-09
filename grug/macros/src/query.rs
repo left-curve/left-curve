@@ -1,8 +1,8 @@
 use {
     core::panic,
     proc_macro::TokenStream,
-    quote::{quote, ToTokens},
-    syn::{parse_macro_input, Data, DeriveInput, Fields, Ident, Type},
+    quote::{ToTokens, quote},
+    syn::{Data, DeriveInput, Fields, Ident, Type, parse_macro_input},
 };
 
 /// Throughout the function, we will use comments to illustrate how it works,

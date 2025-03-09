@@ -1,11 +1,11 @@
 use {
-    crate::{cf_preimages, new_read_options, DbResult, DiskDb, MERKLE_TREE},
+    crate::{DbResult, DiskDb, MERKLE_TREE, cf_preimages, new_read_options},
     grug_app::{Db, IbcDb},
     grug_jmt::ICS23_PROOF_SPEC,
     grug_types::{HashExt, Storage},
     ics23::{
-        commitment_proof::Proof as CommitmentProofInner, CommitmentProof, ExistenceProof,
-        NonExistenceProof,
+        CommitmentProof, ExistenceProof, NonExistenceProof,
+        commitment_proof::Proof as CommitmentProofInner,
     },
     rocksdb::{Direction, IteratorMode},
 };

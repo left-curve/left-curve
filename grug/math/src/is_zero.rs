@@ -63,7 +63,7 @@ impl_is_zero! {
 
 #[cfg(test)]
 mod int_tests {
-    use crate::{int_test, test_utils::bt, Int, IsZero, NumberConst};
+    use crate::{Int, IsZero, NumberConst, int_test, test_utils::bt};
 
     int_test!( is_zero
         method = |zero: Int<_>| {
@@ -79,7 +79,7 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-    use crate::{dec_test, test_utils::bt, Dec, IsZero, NumberConst};
+    use crate::{Dec, IsZero, NumberConst, dec_test, test_utils::bt};
 
     dec_test!( is_zero
         method = |zero: Dec<_, 18>| {

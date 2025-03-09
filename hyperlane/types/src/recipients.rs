@@ -1,5 +1,5 @@
 use {
-    crate::{mailbox::Domain, Addr32},
+    crate::{Addr32, mailbox::Domain},
     grug::{Addr, HexBinary},
 };
 

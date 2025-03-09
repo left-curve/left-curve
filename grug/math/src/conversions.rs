@@ -63,8 +63,8 @@ where
 mod int_tests {
     use {
         crate::{
-            int_test, test_utils::bt, Dec, Dec128, Dec256, Int, Int256, MathError, MathResult,
-            NumberConst, Udec128, Udec256, Uint256,
+            Dec, Dec128, Dec256, Int, Int256, MathError, MathResult, NumberConst, Udec128, Udec256,
+            Uint256, int_test, test_utils::bt,
         },
         bnum::types::{I256, U256},
     };
@@ -137,9 +137,9 @@ mod int_tests {
 mod dec_tests {
     use {
         crate::{
+            Dec, Dec128, Dec256, FixedPoint, Int, Number, NumberConst, Udec128, Udec128_6, Udec256,
             dec_test,
             test_utils::{bt, dec, dt},
-            Dec, Dec128, Dec256, FixedPoint, Int, Number, NumberConst, Udec128, Udec128_6, Udec256,
         },
         bnum::types::{I256, U256},
     };

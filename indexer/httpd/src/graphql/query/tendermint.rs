@@ -1,7 +1,7 @@
 use {
     crate::graphql::types::tendermint::AbciQuery,
     async_graphql::*,
-    base64::{engine::general_purpose::STANDARD, Engine},
+    base64::{Engine, engine::general_purpose::STANDARD},
     tendermint_rpc::Client,
 };
 

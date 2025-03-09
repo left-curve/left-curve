@@ -2,7 +2,7 @@ use {
     crate::graphql::types::transfer::Transfer,
     async_graphql::{futures_util::stream::Stream, *},
     dango_indexer_sql::entity,
-    futures_util::stream::{once, StreamExt},
+    futures_util::stream::{StreamExt, once},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
 };
 

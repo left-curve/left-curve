@@ -2,14 +2,14 @@ use {
     crate::VALIDATOR_SETS,
     anyhow::ensure,
     grug::{
-        Bound, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        DEFAULT_PAGE_LIMIT,
+        Bound, DEFAULT_PAGE_LIMIT, HashExt, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
+        StdResult,
     },
     hyperlane_types::{
         domain_hash, eip191_hash,
         isms::{
+            HYPERLANE_DOMAIN_KEY, IsmQuery, IsmQueryResponse,
             multisig::{Metadata, QueryMsg, ValidatorSet},
-            IsmQuery, IsmQueryResponse, HYPERLANE_DOMAIN_KEY,
         },
         mailbox::{Domain, Message},
         multisig_hash,
@@ -118,7 +118,7 @@ fn verify(ctx: ImmutableCtx, raw_message: &[u8], raw_metadata: &[u8]) -> anyhow:
 mod tests {
     use {
         super::*,
-        grug::{btree_set, hash, MockContext, ResultExt},
+        grug::{MockContext, ResultExt, btree_set, hash},
         hex_literal::hex,
         hyperlane_types::{addr32, mailbox::MAILBOX_VERSION},
         test_case::test_case,

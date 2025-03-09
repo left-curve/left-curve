@@ -3,13 +3,13 @@ use {
     anyhow::{bail, ensure},
     dango_auth::{authenticate_tx, verify_nonce_and_signature},
     dango_types::{
+        DangoQuerier,
         account::{
-            multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
             InstantiateMsg,
+            multi::{ExecuteMsg, Proposal, ProposalId, Status, Vote},
         },
         account_factory::{QueryAccountRequest, Username},
         auth::Metadata,
-        DangoQuerier,
     },
     grug::{
         AuthCtx, AuthResponse, Inner, JsonDeExt, Message, MsgExecute, MutableCtx, QuerierExt,
@@ -291,9 +291,9 @@ mod tests {
             config::{AppAddresses, AppConfig},
         },
         grug::{
-            btree_map, Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json,
-            JsonSerExt, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
-            MOCK_BLOCK,
+            Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json, JsonSerExt,
+            MOCK_BLOCK, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
+            btree_map,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -372,11 +372,9 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: MULTI,
                 gas_limit: 1_000_000,
-                msgs: NonEmpty::new_unchecked(vec![Message::transfer(
-                    Addr::mock(123),
-                    Coins::new(),
-                )
-                .unwrap()]),
+                msgs: NonEmpty::new_unchecked(vec![
+                    Message::transfer(Addr::mock(123), Coins::new()).unwrap(),
+                ]),
                 data: Metadata {
                     username: member1,
                     chain_id,
@@ -388,9 +386,10 @@ mod tests {
                 credential: Json::null(),
             });
 
-            assert!(res.is_err_and(|err| err
-                .to_string()
-                .contains("illegal action for a multi-signature account")));
+            assert!(res.is_err_and(|err| {
+                err.to_string()
+                    .contains("illegal action for a multi-signature account")
+            }));
         }
 
         // A member sends a tx, it's executing the multisig itself to vote in a
@@ -399,17 +398,19 @@ mod tests {
             let res = authenticate(ctx.as_auth(), Tx {
                 sender: MULTI,
                 gas_limit: 1_000_000,
-                msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                    MULTI,
-                    &multi::ExecuteMsg::Vote {
-                        proposal_id: 1,
-                        voter: member2,
-                        vote: Vote::Yes,
-                        execute: false,
-                    },
-                    Coins::new(),
-                )
-                .unwrap()]),
+                msgs: NonEmpty::new_unchecked(vec![
+                    Message::execute(
+                        MULTI,
+                        &multi::ExecuteMsg::Vote {
+                            proposal_id: 1,
+                            voter: member2,
+                            vote: Vote::Yes,
+                            execute: false,
+                        },
+                        Coins::new(),
+                    )
+                    .unwrap(),
+                ]),
                 data: Metadata {
                     username: member3,
                     chain_id: "".to_string(),
@@ -421,9 +422,10 @@ mod tests {
                 credential: Json::null(),
             });
 
-            assert!(res.is_err_and(|err| err
-                .to_string()
-                .contains("can't vote with a different username")));
+            assert!(res.is_err_and(|err| {
+                err.to_string()
+                    .contains("can't vote with a different username")
+            }));
         }
     }
 
@@ -754,11 +756,10 @@ mod tests {
             .save(&mut ctx.storage, proposal_id, &Proposal {
                 title: "title".to_string(),
                 description: None,
-                messages: vec![Message::transfer(
-                    Addr::mock(123),
-                    Coins::one("uusdc", 12_345).unwrap(),
-                )
-                .unwrap()],
+                messages: vec![
+                    Message::transfer(Addr::mock(123), Coins::one("uusdc", 12_345).unwrap())
+                        .unwrap(),
+                ],
                 status: Status::Voting {
                     params: Params {
                         members,

@@ -1,7 +1,7 @@
 use {
     crate::{
-        has_permission, AppError, AppResult, EventResult, GasTracker, MeteredItem, MeteredMap,
-        CODES, CONFIG,
+        AppError, AppResult, CODES, CONFIG, EventResult, GasTracker, MeteredItem, MeteredMap,
+        has_permission,
     },
     grug_types::{
         Addr, BlockInfo, Code, CodeStatus, EvtUpload, Hash256, HashExt, MsgUpload, Storage,

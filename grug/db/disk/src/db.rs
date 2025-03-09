@@ -625,7 +625,7 @@ mod tests {
     use {
         crate::{DiskDb, TempDataDir},
         grug_app::{Db, PrunableDb},
-        grug_jmt::{verify_proof, MembershipProof, NonMembershipProof, Proof, ProofNode},
+        grug_jmt::{MembershipProof, NonMembershipProof, Proof, ProofNode, verify_proof},
         grug_types::{Batch, Hash256, HashExt, Op, Order, Storage},
         hex_literal::hex,
     };
@@ -946,13 +946,15 @@ mod tests {
                 1 => v1::ROOT_HASH,
                 _ => unreachable!(),
             };
-            assert!(verify_proof(
-                root_hash,
-                key.as_bytes().hash256(),
-                value.map(|v| v.hash256()),
-                &found_proof,
-            )
-            .is_ok());
+            assert!(
+                verify_proof(
+                    root_hash,
+                    key.as_bytes().hash256(),
+                    value.map(|v| v.hash256()),
+                    &found_proof,
+                )
+                .is_ok()
+            );
         }
     }
 

@@ -1,16 +1,16 @@
 use {
     criterion::{
-        black_box, criterion_group, criterion_main, AxisScale, BatchSize, BenchmarkId, Criterion,
-        PlotConfiguration,
+        AxisScale, BatchSize, BenchmarkId, Criterion, PlotConfiguration, black_box,
+        criterion_group, criterion_main,
     },
     ed25519_dalek::Signer,
     grug_crypto::{
-        blake2b_512, blake2s_256, blake3, ed25519_batch_verify, ed25519_verify, keccak256,
-        secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify, sha2_256, sha2_512, sha3_256,
-        sha3_512, Identity256, Identity512,
+        Identity256, Identity512, blake2b_512, blake2s_256, blake3, ed25519_batch_verify,
+        ed25519_verify, keccak256, secp256k1_pubkey_recover, secp256k1_verify, secp256r1_verify,
+        sha2_256, sha2_512, sha3_256, sha3_512,
     },
     p256::ecdsa::signature::DigestSigner,
-    rand::{rngs::OsRng, RngCore},
+    rand::{RngCore, rngs::OsRng},
     std::time::Duration,
 };
 

@@ -1,6 +1,6 @@
 use {
     crate::context::Context,
-    async_graphql::{extensions, Schema},
+    async_graphql::{Schema, extensions},
 };
 
 pub mod mutation;

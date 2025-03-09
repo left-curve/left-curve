@@ -1,5 +1,5 @@
 use {
-    crate::{PRICES, PRICE_SOURCES},
+    crate::{PRICE_SOURCES, PRICES},
     anyhow::anyhow,
     dango_types::{
         config::AppConfig,

@@ -5,7 +5,7 @@ use {
         account::multi::{Proposal, ProposalId, QueryMsg, Status, Vote},
         account_factory::Username,
     },
-    grug::{Bound, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage, DEFAULT_PAGE_LIMIT},
+    grug::{Bound, DEFAULT_PAGE_LIMIT, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage},
     std::collections::BTreeMap,
 };
 
@@ -102,7 +102,7 @@ mod tests {
     use {
         super::*,
         dango_types::account::multi::Params,
-        grug::{btree_map, MockContext, NonZero, Timestamp},
+        grug::{MockContext, NonZero, Timestamp, btree_map},
         std::str::FromStr,
     };
 

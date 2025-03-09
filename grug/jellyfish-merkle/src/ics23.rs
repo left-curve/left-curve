@@ -1,6 +1,6 @@
 use {
     crate::{
-        BitArray, InternalNode, MerkleTree, Node, INTERNAL_NODE_HASH_PREFIX, LEAF_NODE_HASH_PERFIX,
+        BitArray, INTERNAL_NODE_HASH_PREFIX, InternalNode, LEAF_NODE_HASH_PERFIX, MerkleTree, Node,
         ROOT_BITS,
     },
     grug_types::{Hash256, Order, StdResult, Storage},

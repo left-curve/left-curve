@@ -2,9 +2,9 @@ use {
     dango_lending::{DEBTS, MARKETS},
     dango_oracle::OracleQuerier,
     dango_types::{
+        DangoQuerier,
         account::margin::HealthResponse,
         dex::{Direction, QueryOrdersByUserRequest},
-        DangoQuerier,
     },
     grug::{
         Addr, Coin, Coins, Inner, IsZero, MultiplyFraction, Number, NumberConst, QuerierExt,

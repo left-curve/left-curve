@@ -1,5 +1,5 @@
 use {
-    crate::{get_contract_impl, ContractWrapper, VmError, VmResult},
+    crate::{ContractWrapper, VmError, VmResult, get_contract_impl},
     grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi},
 };

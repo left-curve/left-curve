@@ -1,5 +1,5 @@
 use {
-    crate::{process_query, AppError, GasTracker, Vm},
+    crate::{AppError, GasTracker, Vm, process_query},
     grug_types::{
         BlockInfo, GenericResult, GenericResultExt, Querier, Query, QueryResponse, StdError,
         StdResult, Storage,

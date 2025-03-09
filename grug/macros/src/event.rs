@@ -1,8 +1,9 @@
 use {
     proc_macro::TokenStream,
     syn::{
+        DeriveInput, LitStr,
         parse::{Parse, ParseStream},
-        parse_macro_input, DeriveInput, LitStr,
+        parse_macro_input,
     },
 };
 

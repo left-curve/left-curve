@@ -1,7 +1,7 @@
 use {
     core::str,
     grug::{Inner, PrimaryKey, RawKey, StdError, StdResult},
-    serde::{de, Serialize},
+    serde::{Serialize, de},
     std::{fmt, str::FromStr},
 };
 

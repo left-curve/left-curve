@@ -1,8 +1,8 @@
 use {
     crate::{MAILBOX, STORAGE_LOCATIONS},
     grug::{
-        Addr, Bound, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult, UniqueVec,
-        DEFAULT_PAGE_LIMIT,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
+        StdResult, UniqueVec,
     },
     hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},

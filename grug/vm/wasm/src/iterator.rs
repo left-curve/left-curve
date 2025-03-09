@@ -1,5 +1,5 @@
 use {
-    grug_types::{extend_one_byte, Order, Record, Storage},
+    grug_types::{Order, Record, Storage, extend_one_byte},
     std::vec,
 };
 

@@ -4,10 +4,9 @@ use {
         Metadata, OrphanedTransferPageParam, OrphanedTransferResponseItem, QueryMsg,
     },
     grug::{
-        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, Denom, ImmutableCtx, Json,
-        JsonSerExt, NumberConst, Order, Part, PrefixBound, QueryBalanceRequest,
+        Addr, BankQuery, BankQueryResponse, Bound, Coin, Coins, DEFAULT_PAGE_LIMIT, Denom,
+        ImmutableCtx, Json, JsonSerExt, NumberConst, Order, Part, PrefixBound, QueryBalanceRequest,
         QueryBalancesRequest, QuerySuppliesRequest, QuerySupplyRequest, StdResult, Uint128,
-        DEFAULT_PAGE_LIMIT,
     },
     std::collections::BTreeMap,
 };

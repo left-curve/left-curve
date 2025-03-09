@@ -1,6 +1,6 @@
 use crate::{
-    flatten_commitment_status, flatten_tx_events, AsVariant, BlockOutcome, CommitmentStatus,
-    EventFilter, EventId, FlatCategory, FlatEvent, FlatEventInfo, FlattenStatus, TxEvents,
+    AsVariant, BlockOutcome, CommitmentStatus, EventFilter, EventId, FlatCategory, FlatEvent,
+    FlatEventInfo, FlattenStatus, TxEvents, flatten_commitment_status, flatten_tx_events,
 };
 
 pub trait SearchEvent: Sized {

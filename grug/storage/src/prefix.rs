@@ -1,8 +1,8 @@
 use {
     crate::{Codec, PrefixBound, Prefixer, PrimaryKey, RawBound, RawKey},
     grug_types::{
-        concat, encode_length, extend_one_byte, increment_last_byte, nested_namespaces_with_key,
-        trim, Bound, Order, Record, StdResult, Storage,
+        Bound, Order, Record, StdResult, Storage, concat, encode_length, extend_one_byte,
+        increment_last_byte, nested_namespaces_with_key, trim,
     },
     std::{collections::BTreeMap, marker::PhantomData},
 };

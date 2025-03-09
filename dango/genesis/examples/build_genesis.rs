@@ -1,5 +1,5 @@
 use {
-    dango_genesis::{build_genesis, build_rust_codes, GenesisConfig, GenesisUser},
+    dango_genesis::{GenesisConfig, GenesisUser, build_genesis, build_rust_codes},
     dango_types::{
         account_factory::Username,
         auth::Key,
@@ -11,8 +11,8 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Bounded, Coins, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
-        JsonSerExt, Udec128,
+        Bounded, Coins, Denom, Duration, HashExt, Inner, Json, JsonDeExt, JsonSerExt, Udec128,
+        btree_map, coins,
     },
     hex_literal::hex,
     home::home_dir,

@@ -1,9 +1,9 @@
 use {
     criterion::{
-        criterion_group, criterion_main, AxisScale, BatchSize, Criterion, PlotConfiguration,
+        AxisScale, BatchSize, Criterion, PlotConfiguration, criterion_group, criterion_main,
     },
     dango_genesis::{Codes, Contracts},
-    dango_testing::{setup_benchmark_hybrid, setup_benchmark_wasm, TestAccounts, TestSuite},
+    dango_testing::{TestAccounts, TestSuite, setup_benchmark_hybrid, setup_benchmark_wasm},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
@@ -11,7 +11,7 @@ use {
     grug::{Addr, Binary, Coins, HashExt, JsonSerExt, Message, NonEmpty, ResultExt, Tx},
     grug_app::{AppError, Db, ProposalPreparer, Vm},
     grug_db_disk::TempDataDir,
-    rand::{distributions::Alphanumeric, Rng},
+    rand::{Rng, distributions::Alphanumeric},
     std::time::Duration,
 };
 

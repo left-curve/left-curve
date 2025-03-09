@@ -2,9 +2,8 @@ use {
     crate::{CONFIG, WITHHELD_FEE},
     anyhow::ensure,
     dango_types::{
-        bank,
+        DangoQuerier, bank,
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
-        DangoQuerier,
     },
     grug::{
         Addr, AuthCtx, AuthMode, Coins, IsZero, Message, MultiplyFraction, MutableCtx, Number,

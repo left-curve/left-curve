@@ -3,10 +3,9 @@ use {
     crate::{context::Context, routes},
     actix_cors::Cors,
     actix_web::{
-        http,
+        App, HttpResponse, HttpServer, http,
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
-        App, HttpResponse, HttpServer,
     },
     std::fmt::Display,
 };

@@ -1,5 +1,5 @@
 use {
-    crate::{query_state, update_key, ExecuteMsg, QueryMsg},
+    crate::{ExecuteMsg, QueryMsg, query_state, update_key},
     grug_types::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
 

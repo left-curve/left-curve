@@ -1,5 +1,5 @@
 use {
-    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
+    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         constants::{DANGO_DENOM, USDC_DENOM},
         vesting::{self, QueryPositionRequest, Schedule, VestingStatus},

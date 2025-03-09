@@ -132,8 +132,8 @@ impl_integer! {
 mod tests {
     use {
         crate::{
-            dts, int_test, test_utils::bt, Bytable, Int, Integer, MathError, Number, NumberConst,
-            Uint128, Uint256,
+            Bytable, Int, Integer, MathError, Number, NumberConst, Uint128, Uint256, dts, int_test,
+            test_utils::bt,
         },
         bnum::types::{I256, U256},
         proptest::{array::uniform32, prelude::*},

@@ -2,10 +2,10 @@ use {
     proc_macro::TokenStream,
     quote::quote,
     syn::{
+        Expr, ItemStruct,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,
-        Expr, ItemStruct,
     },
 };
 

@@ -171,7 +171,7 @@ impl PythVaa {
 mod tests {
     use {
         crate::{
-            constants::{GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
+            constants::{GUARDIAN_SETS_INDEX, GUARDIANS_ADDRESSES},
             oracle::{GuardianSet, GuardianSetIndex, PythVaa},
         },
         data_encoding::BASE64,

@@ -2,8 +2,8 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{
-        de::{self, Error},
         Deserialize, Serialize,
+        de::{self, Error},
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -109,32 +109,36 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{json, ChangeSet, JsonDeExt};
+    use crate::{ChangeSet, JsonDeExt, json};
 
     #[test]
     fn deserializing_changeset() {
         // No intersection
-        assert!(json!({
-            "add": {
-                "a": 1,
-                "b": 2,
-                "c": 3,
-            },
-            "remove": ["d", "e", "f"],
-        })
-        .deserialize_json::<ChangeSet<String, usize>>()
-        .is_ok());
+        assert!(
+            json!({
+                "add": {
+                    "a": 1,
+                    "b": 2,
+                    "c": 3,
+                },
+                "remove": ["d", "e", "f"],
+            })
+            .deserialize_json::<ChangeSet<String, usize>>()
+            .is_ok()
+        );
 
         // Has non-empty intersection
-        assert!(json!({
-            "add": {
-                "a": 1,
-                "b": 2,
-                "c": 3,
-            },
-            "remove": ["c", "d", "e"],
-        })
-        .deserialize_json::<ChangeSet<String, usize>>()
-        .is_err());
+        assert!(
+            json!({
+                "add": {
+                    "a": 1,
+                    "b": 2,
+                    "c": 3,
+                },
+                "remove": ["c", "d", "e"],
+            })
+            .deserialize_json::<ChangeSet<String, usize>>()
+            .is_err()
+        );
     }
 }
