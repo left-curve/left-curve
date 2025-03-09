@@ -1,5 +1,4 @@
 [workspace]
-exclude = ["indexer/.data"]
 members = [
   "dango/account/*",
   "dango/app",
