@@ -68,7 +68,7 @@ impl StartCmd {
         if cfg.indexer.enabled {
             let indexer = non_blocking_indexer::IndexerBuilder::default()
                 .with_keep_blocks(cfg.indexer.keep_blocks)
-                .with_database_url(&cfg.indexer.postgres_url)
+                .with_database_url(&cfg.indexer.database_url)
                 .with_dir(app_dir.indexer_dir())
                 .with_sqlx_pubsub()
                 .build()

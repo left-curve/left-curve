@@ -27,7 +27,7 @@ impl Default for GrugConfig {
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub postgres_url: String,
+    pub database_url: String,
     pub httpd: IndexerHttpdConfig,
 }
 
@@ -36,7 +36,7 @@ impl Default for IndexerConfig {
         Self {
             enabled: false,
             keep_blocks: false,
-            postgres_url: "postgres://localhost".to_string(),
+            database_url: "postgres://localhost".to_string(),
             httpd: IndexerHttpdConfig::default(),
         }
     }
