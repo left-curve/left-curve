@@ -20,18 +20,18 @@ query_gas_limit = 100000000
 [indexer]
 
 # Whether to enable indexer.
-enabled = false
+enabled = true
 
 # Whether to store block respnonses.
-keep_blocks = false
+keep_blocks = true
 
 # URL to the PostgreSQL database.
-postgres_url = "postgres://localhost"
+postgres_url = "postgres://postgres@localhost/grug_dev"
 
 [indexer.httpd]
 
 # Whether to enable the HTTP server.
-enabled = false
+enabled = true
 
 # IP address to listen on. `0.0.0.0` means all interfaces.
 ip = "0.0.0.0"
@@ -40,7 +40,10 @@ ip = "0.0.0.0"
 port = 8080
 
 # Allowed origin for CORS.
-cors_allowed_origin = "*"
+#
+# Wildcards are not supported here. To allow all origins, simply comment out
+# this line.
+#cors_allowed_origin = "*"
 
 ################################################################################
 ###                         Tendermint Configuration                         ###
@@ -49,7 +52,7 @@ cors_allowed_origin = "*"
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://15.204.196.152:26657"
+rpc_addr = "http://localhost:26657"
 
 # Tendermint ABCI listening address.
 abci_addr = "http://localhost:26658"
