@@ -12,6 +12,7 @@ impl InitCmd {
         );
 
         std::fs::create_dir_all(home)?;
+        std::fs::create_dir(home.config_dir())?;
         std::fs::create_dir(home.data_dir())?;
         std::fs::create_dir(home.keys_dir())?;
         std::fs::create_dir(home.indexer_dir())?;
