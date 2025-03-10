@@ -63,7 +63,7 @@ export const SearchMenu: React.FC = () => {
 
   return (
     <Command ref={menuRef} className="flex flex-col gap-4 w-full">
-      <ResizerContainer>
+      <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
             "flex-col bg-rice-25 rounded-md w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all",
