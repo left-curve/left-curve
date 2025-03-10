@@ -3154,7 +3154,8 @@ dependencies = [
  "grug",
  "grug-app",
  "prost",
- "reqwest 0.12.12",
+ "pyth-client",
+ "pyth-types",
  "thiserror 2.0.11",
  "tracing",
 ]
@@ -3273,6 +3274,7 @@ dependencies = [
  "hyperlane-mailbox",
  "hyperlane-types",
  "hyperlane-va",
+ "pyth-types",
  "rand",
  "serde",
 ]
@@ -3349,7 +3351,7 @@ dependencies = [
  "dango-lending",
  "dango-types",
  "grug",
- "pyth-sdk 0.8.0",
+ "pyth-types",
 ]
 
 [[package]]
@@ -3395,7 +3397,8 @@ dependencies = [
  "indexer-testing",
  "k256",
  "proptest",
- "pyth-sdk 0.8.0",
+ "pyth-client",
+ "pyth-types",
  "rand",
  "reqwest 0.12.12",
  "sea-orm",
@@ -3416,12 +3419,9 @@ dependencies = [
  "byteorder",
  "data-encoding",
  "grug",
- "hex-literal",
  "hyperlane-types",
  "paste",
- "pyth-sdk 0.8.0",
- "pyth-wormhole-attester-sdk",
- "pythnet-sdk",
+ "pyth-types",
  "serde",
  "serde_json",
  "thiserror 2.0.11",
@@ -3882,6 +3882,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c3e4e0dd3673c1139bf041f3008816d9cf2946bbfac2945c09e523b8d7b05b2"
 dependencies = [
  "event-listener 5.4.0",
+ "pin-project-lite",
+]
+
+[[package]]
+name = "eventsource-stream"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74fef4569247a5f429d9156b9d0a2599914385dd189c539334c625d8099d90ab"
+dependencies = [
+ "futures-core",
+ "nom",
  "pin-project-lite",
 ]
 
@@ -6892,6 +6903,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyth-client"
+version = "0.0.0"
+dependencies = [
+ "dango-types",
+ "grug",
+ "grug-app",
+ "indexer-disk-saver",
+ "pyth-types",
+ "reqwest 0.12.12",
+ "reqwest-eventsource",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "pyth-sdk"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6916,6 +6943,20 @@ dependencies = [
  "hex",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "pyth-types"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "byteorder",
+ "data-encoding",
+ "grug",
+ "hex-literal",
+ "pyth-sdk 0.8.0",
+ "pyth-wormhole-attester-sdk",
+ "pythnet-sdk",
 ]
 
 [[package]]
@@ -7284,6 +7325,22 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "windows-registry",
+]
+
+[[package]]
+name = "reqwest-eventsource"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "632c55746dbb44275691640e7b40c907c16a2dc1a5842aa98aaec90da6ec6bde"
+dependencies = [
+ "eventsource-stream",
+ "futures-core",
+ "futures-timer",
+ "mime",
+ "nom",
+ "pin-project-lite",
+ "reqwest 0.12.12",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

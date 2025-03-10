@@ -7,8 +7,8 @@ use {
     },
     dango_types::{
         constants::{
-            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
-            USDC_DENOM, WBTC_DENOM,
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
+            WBTC_DENOM,
         },
         dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
@@ -27,6 +27,7 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    pyth_types::GUARDIAN_SETS,
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
@@ -75,7 +76,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         MemDb::new(),
         RustVm::new(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new(true),
         NullIndexer,
     )
 }
@@ -110,7 +111,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new(true),
         indexer,
     );
 
