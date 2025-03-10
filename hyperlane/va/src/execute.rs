@@ -47,9 +47,6 @@ fn announce(
         ctx.funds
     );
 
-    // TODO: Send the fee to taxman? In this case the hyperlane should depend
-    // from dango types.
-
     // Make announcement digest.
     let mailbox = MAILBOX.load(ctx.storage)?;
 
