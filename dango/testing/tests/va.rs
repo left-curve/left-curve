@@ -1,8 +1,9 @@
 use {
     dango_testing::{generate_random_key, setup_test},
+    dango_types::constants::USDC_DENOM,
     grug::{
-        btree_set, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner,
-        JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
+        btree_set, Addr, Addressable, CheckedContractEvent, Coin, Coins, HashExt, HexByteArray,
+        Inner, JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
     },
     grug_crypto::Identity256,
     hyperlane_types::{
@@ -66,7 +67,7 @@ impl MockAnnouncement {
 fn test_announce() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let mut signer = accounts.user1;
+    let mut signer = accounts.owner;
 
     let mailbox = contracts.hyperlane.mailbox;
     let local_domain = suite
@@ -82,7 +83,13 @@ fn test_announce() {
     // Create a working announcement.
     let announcement = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location");
 
-    // Adding a valid announcement.
+    let announce_fee = suite
+        .query_wasm_smart(va, va::QueryCalculateAnnounceFeeRequest {
+            storage_location: announcement.storage_location.clone(),
+        })
+        .should_succeed();
+
+    // Announce without sending announce fee.
     {
         suite
             .execute(
@@ -94,6 +101,38 @@ fn test_announce() {
                     signature: announcement.signature,
                 },
                 Coins::new(),
+            )
+            .should_fail_with_error("invalid payment");
+    }
+
+    // Announce with a wrong payment.
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                Coin::new(USDC_DENOM.clone(), 1000).unwrap(),
+            )
+            .should_fail_with_error("invalid payment");
+    }
+
+    // Adding a valid announcement.
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                announce_fee.clone(),
             )
             .should_succeed()
             .events
@@ -144,7 +183,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                Coins::new(),
+                announce_fee,
             )
             .should_fail_with_error("duplicate data found!");
     }
@@ -158,6 +197,12 @@ fn test_announce() {
             "Test/Storage/Location/2",
         );
 
+        let announce_fee2 = suite
+            .query_wasm_smart(va, va::QueryCalculateAnnounceFeeRequest {
+                storage_location: announcement2.storage_location.clone(),
+            })
+            .should_succeed();
+
         suite
             .execute(
                 &mut signer,
@@ -167,7 +212,7 @@ fn test_announce() {
                     validator: announcement2.validator,
                     signature: announcement2.signature,
                 },
-                Coins::new(),
+                announce_fee2,
             )
             .should_succeed()
             .events
@@ -210,6 +255,12 @@ fn test_announce() {
     {
         let announcement3 = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location/3");
 
+        let announce_fee3 = suite
+            .query_wasm_smart(va, va::QueryCalculateAnnounceFeeRequest {
+                storage_location: announcement3.storage_location.clone(),
+            })
+            .should_succeed();
+
         suite
             .execute(
                 &mut accounts.user2,
@@ -219,7 +270,7 @@ fn test_announce() {
                     validator: announcement3.validator,
                     signature: announcement3.signature,
                 },
-                Coins::new(),
+                announce_fee3,
             )
             .should_succeed()
             .events
@@ -265,6 +316,12 @@ fn test_announce() {
         let announcement =
             MockAnnouncement::new(mailbox, local_domain + 1, "Test/Storage/Location");
 
+        let announce_fee = suite
+            .query_wasm_smart(va, va::QueryCalculateAnnounceFeeRequest {
+                storage_location: announcement.storage_location.clone(),
+            })
+            .should_succeed();
+
         suite
             .execute(
                 &mut signer,
@@ -274,7 +331,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                Coins::new(),
+                announce_fee,
             )
             .should_fail_with_error("pubkey mismatch");
     }

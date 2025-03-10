@@ -1,5 +1,5 @@
 use {
-    crate::{MAILBOX, STORAGE_LOCATIONS},
+    crate::{query_calculate_announce_fee, ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -11,10 +11,12 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
+    ANNOUNCE_FEE_PER_BYTE.save(ctx.storage, &msg.announce_fee_per_byte)?;
 
     Ok(Response::new().add_event(Initialize {
         creator: ctx.sender,
         mailbox: msg.mailbox,
+        announce_fee_per_byte: msg.announce_fee_per_byte,
     })?)
 }
 
@@ -35,6 +37,16 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
+    // Calculate fee for announcement.
+    let announce_fee = query_calculate_announce_fee(ctx.storage, &storage_location)?;
+
+    ensure!(
+        ctx.funds.as_one_coin_of_denom(&announce_fee.denom)?.amount >= &announce_fee.amount,
+        "Invalid payment, required: {}, got: {}",
+        announce_fee,
+        ctx.funds
+    );
+
     // Make announcement digest.
     let mailbox = MAILBOX.load(ctx.storage)?;
 

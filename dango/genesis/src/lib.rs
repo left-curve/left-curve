@@ -4,15 +4,16 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
+        constants::DANGO_DENOM,
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
         taxman, vesting, warp,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission, Permissions,
-        ResultExt, StdResult, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
+        Permissions, ResultExt, StdResult, GENESIS_SENDER,
     },
     hyperlane_types::{
         isms::{self, multisig::ValidatorSet},
@@ -369,7 +370,10 @@ where
     let va = instantiate(
         &mut msgs,
         hyperlane_va_code_hash,
-        &va::InstantiateMsg { mailbox },
+        &va::InstantiateMsg {
+            mailbox,
+            announce_fee_per_byte: Coin::new(DANGO_DENOM.clone(), 100).unwrap(),
+        },
         "hyperlane/va",
         "hyperlane/va",
     )?;
