@@ -1,0 +1,9 @@
+VERSION := "0.0.0-alpha.3"
+
+# TODO: allow specifying platform and build args (specifically, the git commit hash)
+build:
+  docker buildx build \
+    --load \
+    --platform linux/arm64 \
+    --tag leftcurve/dango:{{VERSION}} \
+    .
