@@ -1,5 +1,5 @@
 use {
-    crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
+    crate::{query_estimate_announce_cost, ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -37,14 +37,15 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
-    // Check if the funds for announcement are enough.
+    // Calculate fee for announcement.
+    let announce_fee = query_estimate_announce_cost(ctx.storage, &storage_location)?;
 
-    // ensure!(
-    //     ctx.funds.as_one_coin_of_denom(&fee.denom)?.amount >= &fee.amount,
-    //     "Not enough funds for announcement, required: {}, got: {}",
-    //     fee,
-    //     ctx.funds
-    // );
+    ensure!(
+        ctx.funds.as_one_coin_of_denom(&announce_fee.denom)?.amount >= &announce_fee.amount,
+        "Not enough funds for announcement, required: {}, got: {}",
+        announce_fee,
+        ctx.funds
+    );
 
     // TODO: Send the fee to taxman with PayFee once it's implemented.
 

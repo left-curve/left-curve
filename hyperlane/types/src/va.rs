@@ -41,7 +41,7 @@ pub enum QueryMsg {
     },
     /// Query the cost of announcing a storage location.
     #[returns(Coin)]
-    EstimateAnnounceCost { storage_location: String },
+    CalculateAnnounceFee { storage_location: String },
 }
 
 // ---------------------------------- events -----------------------------------
