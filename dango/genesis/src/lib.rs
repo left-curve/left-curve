@@ -4,6 +4,7 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
+        constants::DANGO_DENOM,
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
@@ -371,7 +372,7 @@ where
         hyperlane_va_code_hash,
         &va::InstantiateMsg {
             mailbox,
-            announce_fee_per_byte: Coin::new("dng", 100).unwrap(),
+            announce_fee_per_byte: Coin::new(DANGO_DENOM.clone(), 100).unwrap(),
         },
         "hyperlane/va",
         "hyperlane/va",

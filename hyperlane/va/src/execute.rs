@@ -42,7 +42,7 @@ fn announce(
 
     ensure!(
         ctx.funds.as_one_coin_of_denom(&announce_fee.denom)?.amount >= &announce_fee.amount,
-        "Not enough funds for announcement, required: {}, got: {}",
+        "Invalid payment, required: {}, got: {}",
         announce_fee,
         ctx.funds
     );
