@@ -1,8 +1,8 @@
 use {
-    crate::{MAILBOX, STORAGE_LOCATIONS},
+    crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     grug::{
-        Addr, Bound, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult, UniqueVec,
-        DEFAULT_PAGE_LIMIT,
+        Addr, Bound, Coin, HexByteArray, ImmutableCtx, Json, JsonSerExt, MultiplyRatio, Order,
+        StdResult, UniqueVec, DEFAULT_PAGE_LIMIT,
     },
     hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
@@ -21,6 +21,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
         },
         QueryMsg::AnnouncedStorageLocations { validators } => {
             let res = query_announced_storage_locations(ctx, validators)?;
+            res.to_json_value()
+        },
+        QueryMsg::EstimateAnnounceCost { storage_location } => {
+            let res = query_estimate_announce_cost(ctx, storage_location)?;
             res.to_json_value()
         },
     }
@@ -55,4 +59,16 @@ fn query_announced_storage_locations(
             Ok((v, storage_locations))
         })
         .collect()
+}
+
+pub fn query_estimate_announce_cost(
+    ctx: ImmutableCtx,
+    storage_location: String,
+) -> StdResult<Coin> {
+    let fee_per_byte = ANNOUNCE_FEE_PER_BYTE.load(ctx.storage)?;
+    let cost = fee_per_byte
+        .amount
+        .checked_multiply_ratio_ceil((storage_location.len() as u128).into(), 1.into())?;
+
+    Coin::new(fee_per_byte.denom, cost)
 }

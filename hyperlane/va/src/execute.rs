@@ -1,5 +1,5 @@
 use {
-    crate::{ANNOUNCE_FEE, MAILBOX, STORAGE_LOCATIONS},
+    crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -11,12 +11,12 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
-    ANNOUNCE_FEE.save(ctx.storage, &msg.announce_fee)?;
+    ANNOUNCE_FEE_PER_BYTE.save(ctx.storage, &msg.announce_fee_per_byte)?;
 
     Ok(Response::new().add_event(Initialize {
         creator: ctx.sender,
         mailbox: msg.mailbox,
-        announce_fee: msg.announce_fee,
+        announce_fee: msg.announce_fee_per_byte,
     })?)
 }
 
@@ -38,14 +38,13 @@ fn announce(
     storage_location: String,
 ) -> anyhow::Result<Response> {
     // Check if the funds for announcement are enough.
-    let fee = ANNOUNCE_FEE.load(ctx.storage)?;
 
-    ensure!(
-        ctx.funds.as_one_coin_of_denom(&fee.denom)?.amount >= &fee.amount,
-        "Not enough funds for announcement, required: {}, got: {}",
-        fee,
-        ctx.funds
-    );
+    // ensure!(
+    //     ctx.funds.as_one_coin_of_denom(&fee.denom)?.amount >= &fee.amount,
+    //     "Not enough funds for announcement, required: {}, got: {}",
+    //     fee,
+    //     ctx.funds
+    // );
 
     // TODO: Send the fee to taxman with PayFee once it's implemented.
 

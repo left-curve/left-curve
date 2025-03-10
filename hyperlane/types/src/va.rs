@@ -11,7 +11,7 @@ pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub mailbox: Addr,
-    pub announce_fee: Coin,
+    pub announce_fee_per_byte: Coin,
 }
 
 #[grug::derive(Serde)]
@@ -39,6 +39,9 @@ pub enum QueryMsg {
     AnnouncedStorageLocations {
         validators: BTreeSet<HexByteArray<20>>,
     },
+    /// Query the cost of announcing a storage location.
+    #[returns(Coin)]
+    EstimateAnnounceCost { storage_location: String },
 }
 
 // ---------------------------------- events -----------------------------------

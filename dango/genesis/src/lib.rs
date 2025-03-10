@@ -371,7 +371,7 @@ where
         hyperlane_va_code_hash,
         &va::InstantiateMsg {
             mailbox,
-            announce_fee: Coin::new("dng", 100).unwrap(),
+            announce_fee_per_byte: Coin::new("dng", 100).unwrap(),
         },
         "hyperlane/va",
         "hyperlane/va",
