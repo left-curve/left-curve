@@ -1,5 +1,5 @@
 use {
-    crate::{query_estimate_announce_cost, ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
+    crate::{query_calculate_announce_fee, ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
     grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
     hyperlane_types::{
@@ -16,7 +16,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     Ok(Response::new().add_event(Initialize {
         creator: ctx.sender,
         mailbox: msg.mailbox,
-        announce_fee: msg.announce_fee_per_byte,
+        announce_fee_per_byte: msg.announce_fee_per_byte,
     })?)
 }
 
@@ -38,7 +38,7 @@ fn announce(
     storage_location: String,
 ) -> anyhow::Result<Response> {
     // Calculate fee for announcement.
-    let announce_fee = query_estimate_announce_cost(ctx.storage, &storage_location)?;
+    let announce_fee = query_calculate_announce_fee(ctx.storage, &storage_location)?;
 
     ensure!(
         ctx.funds.as_one_coin_of_denom(&announce_fee.denom)?.amount >= &announce_fee.amount,

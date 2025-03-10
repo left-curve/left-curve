@@ -51,7 +51,7 @@ pub enum QueryMsg {
 pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
-    pub announce_fee: Coin,
+    pub announce_fee_per_byte: Coin,
 }
 
 #[grug::derive(Serde)]

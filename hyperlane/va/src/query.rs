@@ -24,7 +24,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             res.to_json_value()
         },
         QueryMsg::CalculateAnnounceFee { storage_location } => {
-            let res = query_estimate_announce_cost(ctx.storage, &storage_location)?;
+            let res = query_calculate_announce_fee(ctx.storage, &storage_location)?;
             res.to_json_value()
         },
     }
@@ -61,7 +61,7 @@ fn query_announced_storage_locations(
         .collect()
 }
 
-pub fn query_estimate_announce_cost(
+pub fn query_calculate_announce_fee(
     storage: &dyn Storage,
     storage_location: &str,
 ) -> StdResult<Coin> {
