@@ -7,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - ./data/.pgdata:/var/lib/postgresql/data
+      - ./data/db:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -20,9 +20,9 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
-      - ./configs/.dango/config:/root/.dango/config
-      - ./data/.dango/data:/root/.dango/data
-      - ./data/.dango/indexer:/root/.dango/indexer
+      - ./configs/dango/config:/root/.dango/config
+      - ./data/dango/data:/root/.dango/data
+      - ./data/dango/indexer:/root/.dango/indexer
     environment:
       - DB_HOST=db
       - DB_PORT=5432
