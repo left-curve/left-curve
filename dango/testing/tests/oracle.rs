@@ -11,7 +11,7 @@ use {
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, Udec128,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_client::PythClient,
+    pyth_client::{middleware_cache::PythMiddlewareCache, PythClientTrait},
     pyth_types::{
         PriceFeed, PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID,
         SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
@@ -141,7 +141,7 @@ fn oracle() {
 fn double_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
+    let pyth_client = PythMiddlewareCache::new("not_real_url");
 
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
@@ -269,7 +269,7 @@ fn double_vaas() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let mut pyth_client = PythClient::new("not_real_url").with_middleware_cache();
+    let pyth_client = PythMiddlewareCache::new("not_real_url");
 
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),

@@ -1,67 +1,64 @@
 use {
-    crate::PythClient,
-    grug::{Binary, Inner, Lengthy, NonEmpty, StdError},
-    grug_app::Shared,
+    crate::{client::PythClientTrait, error, PythClient},
+    async_stream::stream,
+    async_trait::async_trait,
+    grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::{error::Error, persistence::DiskPersistence},
     std::{
         collections::HashMap,
         env,
         path::{Path, PathBuf},
-        sync::{
-            atomic::{AtomicBool, Ordering},
-            Arc,
-        },
-        thread::{self, sleep},
+        thread::sleep,
         time::Duration,
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
 };
 
+#[derive(Debug, Clone)]
 pub struct PythMiddlewareCache {
-    stored_vaas: HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>,
-}
-
-impl Default for PythMiddlewareCache {
-    fn default() -> Self {
-        Self::new()
-    }
+    base_url: String,
 }
 
 impl PythMiddlewareCache {
-    pub fn new() -> Self {
+    pub fn new<S: ToString>(base_url: S) -> Self {
         Self {
-            stored_vaas: HashMap::new(),
+            base_url: base_url.to_string(),
+            // stored_vaas: HashMap::new(),
         }
     }
 
     /// Load data from cache (if not already loaded) or retrieve it from the source.
-    pub fn load_or_retrieve_data<I, T>(&mut self, ids: NonEmpty<I>, base_url: T)
+    pub fn load_or_retrieve_data<I>(
+        base_url: String,
+        ids: NonEmpty<I>,
+    ) -> HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>
     where
         I: IntoIterator + Lengthy + Clone,
         I::Item: ToString,
-        T: ToString,
     {
+        let mut stored_vaas = HashMap::new();
+
         // Load data for each id.
         for id in ids.into_inner() {
             let element = id.to_string();
-            let filename = self.cache_filename(&element);
+            let filename = Self::cache_filename(&element);
 
             #[allow(clippy::map_entry)]
             // If the file is not in memory, try to read from disk.
-            if !self.stored_vaas.contains_key(&filename) {
+            if !stored_vaas.contains_key(&filename) {
                 let cache_file = DiskPersistence::new(filename.clone(), true);
 
                 // If the file does not exists, retrieve the data from the source.
                 if !cache_file.exists() {
                     let rt = Runtime::new().unwrap();
                     let values = rt.block_on(async {
-                        let mut stream = PythClient::stream(
-                            &base_url.to_string(),
-                            NonEmpty::new(vec![id.to_string()]).unwrap(),
-                        )
-                        .await
-                        .unwrap();
+                        let client = PythClient::new(base_url.clone());
+
+                        let mut stream = client
+                            .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
+                            .await
+                            .unwrap();
 
                         let mut values = vec![];
                         while values.len() < 15 {
@@ -74,109 +71,24 @@ impl PythMiddlewareCache {
                     });
 
                     // Store the data in the cache.
-                    self.store_data(element, values).unwrap();
+                    Self::store_data(element, values).unwrap();
                 }
 
                 // Load the data from disk.
                 let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
-                self.stored_vaas.insert(filename, loaded_vaas.into_iter());
-            }
-        }
-    }
-
-    /// Inner function to run the SSE connection.
-    pub fn run_streaming<I>(
-        &self,
-        ids: NonEmpty<I>,
-        base_url: String,
-        shared: Shared<Vec<Binary>>,
-        keep_running: Arc<AtomicBool>,
-    ) where
-        I: IntoIterator + Lengthy + Clone + Send + 'static,
-        I::Item: ToString,
-    {
-        let mut pyth_mock = PythMiddlewareCache::new();
-        pyth_mock.load_or_retrieve_data(ids.clone(), base_url);
-
-        thread::spawn(move || {
-            pyth_mock.run_streaming_inner(ids, shared, keep_running);
-        });
-    }
-
-    /// Inner function to run the SSE connection.
-    fn run_streaming_inner<I>(
-        &mut self,
-        ids: NonEmpty<I>,
-        shared: Shared<Vec<Binary>>,
-        keep_running: Arc<AtomicBool>,
-    ) where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
-    {
-        loop {
-            // Check if the thread should keep running.
-            if !keep_running.load(Ordering::Relaxed) {
-                return;
-            }
-
-            // Retrieve the vaas (at this point, the vaas are already loaded in memory).
-            let vaas: Vec<grug::EncodedBytes<Vec<u8>, grug::Base64Encoder>> =
-                self.get_latest_vaas(ids.clone(), "").unwrap();
-
-            // Update the shared value.
-
-            shared.write_with(|mut shared_vaas| {
-                *shared_vaas = vaas;
-            });
-
-            // Sleep for 0,5 seconds.
-            sleep(Duration::from_millis(500));
-        }
-    }
-
-    /// Get the latest VAAs from cached data.
-    pub fn get_latest_vaas<I, T>(
-        &mut self,
-        ids: NonEmpty<I>,
-        base_url: T,
-    ) -> Result<Vec<Binary>, Error>
-    where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
-        T: ToString,
-    {
-        self.load_or_retrieve_data(ids.clone(), base_url);
-
-        let mut return_vaas = vec![];
-
-        // For each id, try to get the vaas.
-        for id in ids.into_inner() {
-            let element = id.to_string();
-            let filename = self.cache_filename(&element);
-
-            // Check if the vaas are stored in memory.
-            if let Some(vaas_iter) = self.stored_vaas.get_mut(&filename) {
-                if let Some(vaas) = vaas_iter.next() {
-                    return_vaas.extend(vaas);
-                }
-            } else {
-                return Err(StdError::DataNotFound {
-                    ty: "cache",
-                    key: filename.to_string_lossy().to_string(),
-                }
-                .into());
+                stored_vaas.insert(filename, loaded_vaas.into_iter());
             }
         }
 
-        Ok(return_vaas)
+        stored_vaas
     }
 
     /// Cache data.
-    pub fn store_data<I>(&self, id: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
+    pub fn store_data<I>(id: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
     where
         I: AsRef<Path>,
     {
-        let filename = self.cache_filename(&id);
+        let filename = Self::cache_filename(&id);
 
         let cache_file = DiskPersistence::new(filename, true);
         cache_file.save(&data)?;
@@ -184,7 +96,7 @@ impl PythMiddlewareCache {
         Ok(())
     }
 
-    fn cache_filename<I>(&self, id: &I) -> PathBuf
+    fn cache_filename<I>(id: &I) -> PathBuf
     where
         I: AsRef<Path>,
     {
@@ -199,4 +111,61 @@ impl PythMiddlewareCache {
 
         workspace_root.join("pyth/client/testdata").join(id)
     }
+}
+
+#[async_trait]
+impl PythClientTrait for PythMiddlewareCache {
+    type Error = error::Error;
+
+    async fn stream<I>(
+        &self,
+        ids: NonEmpty<I>,
+    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    where
+        I: IntoIterator + Lengthy + Send + Clone,
+        I::Item: ToString,
+    {
+        let stored_vaas = self.get_latest_vaas(ids.clone()).unwrap();
+
+        let stream = stream! {
+            loop {
+                yield stored_vaas.clone();
+                sleep(Duration::from_millis(500));
+            }
+        };
+
+        Ok(Box::pin(stream))
+    }
+
+    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
+    where
+        I: IntoIterator + Clone + Lengthy,
+        I::Item: ToString,
+    {
+        let mut stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids.clone());
+
+        let mut return_vaas = vec![];
+
+        // For each id, try to get the vaas.
+        for id in ids.into_inner() {
+            let element = id.to_string();
+            let filename = Self::cache_filename(&element);
+
+            // Check if the vaas are stored in memory.
+            if let Some(vaas_iter) = stored_vaas.get_mut(&filename) {
+                if let Some(vaas) = vaas_iter.next() {
+                    return_vaas.extend(vaas);
+                }
+            } else {
+                return Err(error::Error::DataNotFound {
+                    ty: "cache",
+                    key: filename.to_string_lossy().to_string(),
+                });
+            }
+        }
+
+        Ok(return_vaas)
+    }
+
+    fn close(&mut self) {}
 }

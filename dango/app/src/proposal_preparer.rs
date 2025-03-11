@@ -4,8 +4,9 @@ use {
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     grug_app::AppError,
     prost::bytes::Bytes,
+    pyth_client::PythClient,
     pyth_types::PYTH_URL,
-    std::sync::RwLock,
+    std::sync::Mutex,
     thiserror::Error,
     tracing::error,
 };
@@ -27,7 +28,7 @@ impl From<ProposerError> for AppError {
 pub struct ProposalPreparer {
     // Option to be able to not clone the PythClientPPHandler.
     // Only using `.write()` so better use a Mutex
-    pyth_client: Option<RwLock<PythClientPPHandler>>,
+    pyth_client: Option<Mutex<PythClientPPHandler<PythClient>>>,
 }
 
 impl Clone for ProposalPreparer {
@@ -38,10 +39,10 @@ impl Clone for ProposalPreparer {
 
 impl ProposalPreparer {
     pub fn new() -> Self {
-        let client = PythClientPPHandler::new(PYTH_URL.to_string());
+        let client = PythClientPPHandler::new(PYTH_URL);
 
         Self {
-            pyth_client: Some(RwLock::new(client)),
+            pyth_client: Some(Mutex::new(client)),
         }
     }
 }
@@ -64,7 +65,7 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
         let cfg: AppConfig = querier.query_app_config()?;
 
         // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
-        let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
+        let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
 
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?

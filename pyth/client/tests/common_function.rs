@@ -1,6 +1,6 @@
 use {
     grug::{btree_map, Inner, Lengthy, MockApi, NonEmpty},
-    pyth_client::PythClient,
+    pyth_client::{PythClient, PythClientTrait},
     pyth_types::{PythVaa, PYTH_URL},
     std::{thread::sleep, time::Duration},
     tokio_stream::StreamExt,
@@ -188,7 +188,10 @@ where
         latest_values.insert(id.to_string(), (0, 0));
     }
 
-    let mut stream = PythClient::stream(PYTH_URL, NonEmpty::new_unchecked(ids1.clone()))
+    let client = PythClient::new(PYTH_URL);
+
+    let mut stream = client
+        .stream(NonEmpty::new_unchecked(ids1.clone()))
         .await
         .unwrap();
 

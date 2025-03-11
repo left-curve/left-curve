@@ -2,7 +2,7 @@ use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
     grug_app::Shared,
-    pyth_client::PythClient,
+    pyth_client::{middleware_cache::PythMiddlewareCache, PythClient, PythClientTrait},
     pyth_types::PythId,
     std::{
         sync::{
@@ -13,39 +13,48 @@ use {
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
-    tracing::warn,
 };
-
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
 /// keep all code related to Pyth for PP in a single structure.
-pub struct PythClientPPHandler {
-    client: PythClient,
+pub struct PythClientPPHandler<P> {
+    client: P,
     shared_vaas: Shared<Vec<Binary>>,
     current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
-impl PythClientPPHandler {
-    // So tighten to hermes pyth than I don't see the need for multiple endpoints?
-    pub fn new<S: ToString>(base_url: S) -> Self {
-        // Creating it here
+impl PythClientPPHandler<PythClient> {
+    pub fn new<S: ToString>(base_url: S) -> PythClientPPHandler<PythClient> {
         let shared_vaas = Shared::new(vec![]);
 
-        let client = if cfg!(test) {
-            warn!("Running in test mode");
-            PythClient::new(base_url).with_middleware_cache()
-        } else {
-            PythClient::new(base_url)
-        };
-
         Self {
-            client,
+            client: PythClient::new(base_url),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,
         }
     }
+}
 
+impl PythClientPPHandler<PythMiddlewareCache> {
+    #[allow(dead_code)]
+    pub fn new_with_cache<S: ToString>(base_url: S) -> PythClientPPHandler<PythMiddlewareCache> {
+        let shared_vaas = Shared::new(vec![]);
+
+        Self {
+            client: PythMiddlewareCache::new(base_url),
+            shared_vaas,
+            current_ids: vec![],
+            stoppable_thread: None,
+        }
+    }
+}
+
+impl<P> PythClientPPHandler<P>
+where
+    P: PythClientTrait + Send + 'static,
+    P::Error: std::fmt::Debug,
+{
     /// Check if the pyth ids stored on oracle contract are changed; if so, update the Pyth connection.
     pub fn update_ids(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
         // TODO: optimize this by using the raw WasmScan query.
@@ -95,16 +104,18 @@ impl PythClientPPHandler {
         }
 
         let shared_vaas = self.shared_vaas.clone();
-        let base_url = self.client.base_url.clone();
+        // let base_url = self.client.base_url.clone();
 
         let keep_running = Arc::new(AtomicBool::new(true));
+
+        let client = self.client.clone();
 
         self.stoppable_thread = Some((
             keep_running.clone(),
             thread::spawn(move || {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async {
-                    let mut stream = PythClient::stream(&base_url, ids).await.unwrap();
+                    let mut stream = client.stream(ids).await.unwrap();
 
                     loop {
                         tokio::select! {

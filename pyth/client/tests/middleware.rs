@@ -9,14 +9,14 @@ use {
 
 #[test]
 fn latest_vaas_cache() {
-    let pyth_client = PythClient::new(PYTH_URL).with_middleware_cache();
+    let pyth_client = PythClient::new(PYTH_URL);
 
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
 }
 
 #[test]
 fn sse_subscription_cache() {
-    let pyth_client = PythClient::new(PYTH_URL).with_middleware_cache();
+    let pyth_client = PythClient::new(PYTH_URL);
 
     test_sse_streaming(pyth_client, vec![BTC_USD_ID, ETH_USD_ID], vec![
         ATOM_USD_ID,
