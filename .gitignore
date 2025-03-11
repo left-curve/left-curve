@@ -54,5 +54,5 @@ book/papers/**/*.pdf
 book/papers/**/*.run.xml
 book/papers/**/*.synctex.gz
 
-# Devnet
-networks/devnet/data
+# Network data
+networks/**/data
