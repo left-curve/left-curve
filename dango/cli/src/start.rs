@@ -1,5 +1,8 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory},
+    crate::{
+        config::{Config, GrugConfig, IndexerHttpdConfig, TendermintConfig},
+        home_directory::HomeDirectory,
+    },
     anyhow::anyhow,
     clap::Parser,
     config_parser::parse_config,
@@ -12,30 +15,14 @@ use {
     grug_vm_hybrid::HybridVm,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer,
-    std::{fmt::Debug, path::PathBuf, sync::Arc, time},
+    std::{fmt::Debug, sync::Arc, time},
     tokio::signal::unix::{signal, SignalKind},
     tower::ServiceBuilder,
     tower_abci::v038::{split, Server},
 };
 
 #[derive(Parser)]
-pub struct StartCmd {
-    /// Tendermint ABCI listening address
-    #[arg(long, default_value = "127.0.0.1:26658")]
-    abci_addr: String,
-
-    /// Capacity of the wasm module cache; zero means do not use a cache
-    #[arg(long, default_value = "1000")]
-    wasm_cache_capacity: usize,
-
-    /// Gas limit when serving query requests
-    #[arg(long, default_value_t = u64::MAX)]
-    query_gas_limit: u64,
-
-    /// Optional path to the configuration file
-    #[arg(long)]
-    config_file: Option<PathBuf>,
-}
+pub struct StartCmd;
 
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
@@ -47,7 +34,7 @@ impl StartCmd {
 
         // Create hybird VM.
         let codes = build_rust_codes();
-        let vm = HybridVm::new(self.wasm_cache_capacity, [
+        let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
             codes.account_factory.to_bytes().hash256(),
             codes.account_margin.to_bytes().hash256(),
             codes.account_multi.to_bytes().hash256(),
@@ -79,7 +66,7 @@ impl StartCmd {
                 vm.clone(),
                 ProposalPreparer::new(),
                 NullIndexer,
-                self.query_gas_limit,
+                cfg.grug.query_gas_limit,
             );
 
             if cfg.indexer.httpd.enabled {
@@ -92,25 +79,27 @@ impl StartCmd {
                 // NOTE: If the httpd was heavily used, it would be better to
                 // run it in a separate tokio runtime.
                 tokio::try_join!(
-                    Self::run_httpd_server(cfg, httpd_context),
-                    self.run_with_indexer(db, vm, indexer)
+                    Self::run_httpd_server(cfg.indexer.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
                 )?;
 
                 Ok(())
             } else {
-                self.run_with_indexer(db, vm, indexer).await
+                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, indexer)
+                    .await
             }
         } else {
-            self.run_with_indexer(db, vm, NullIndexer).await
+            self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                .await
         }
     }
 
     /// Run the HTTP server
-    async fn run_httpd_server(cfg: Config, context: Context) -> anyhow::Result<()> {
+    async fn run_httpd_server(cfg: IndexerHttpdConfig, context: Context) -> anyhow::Result<()> {
         indexer_httpd::server::run_server(
-            &cfg.indexer.httpd.ip,
-            cfg.indexer.httpd.port,
-            cfg.indexer.httpd.cors_allowed_origin,
+            &cfg.ip,
+            cfg.port,
+            cfg.cors_allowed_origin,
             context,
             config_app,
             build_schema,
@@ -124,6 +113,8 @@ impl StartCmd {
 
     async fn run_with_indexer<ID>(
         self,
+        grug_cfg: GrugConfig,
+        tendermint_cfg: TendermintConfig,
         db: DiskDb,
         vm: HybridVm,
         mut indexer: ID,
@@ -142,7 +133,7 @@ impl StartCmd {
             vm,
             ProposalPreparer::new(),
             indexer,
-            self.query_gas_limit,
+            grug_cfg.query_gas_limit,
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
@@ -173,7 +164,7 @@ impl StartCmd {
         let mut sigterm = signal(SignalKind::terminate())?;
 
         tokio::select! {
-            result = async { abci_server.listen_tcp(self.abci_addr).await } => {
+            result = async { abci_server.listen_tcp(tendermint_cfg.abci_addr).await } => {
                 result.map_err(|err| anyhow!("failed to start ABCI server: {err:?}"))
             },
             _ = sigint.recv() => {
