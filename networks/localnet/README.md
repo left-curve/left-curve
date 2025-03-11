@@ -15,3 +15,5 @@ just start
 ```
 
 To stop it, simply do CTRL+C.
+
+**NOTE**: A CometBFT consensus private key is found at [`./configs/cometbft/priv_validator_key.json`](./configs/cometbft/config/priv_validator_key.json). This key is only intended for use in the localnet. Do not reuse it for any other purpose.
