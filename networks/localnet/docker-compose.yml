@@ -1,8 +1,6 @@
 services:
   db:
     image: postgres:17
-    # profiles: [ "db" ]
-    # restart: always
     shm_size: 1gb
     ports:
       - "127.0.0.1:5432:5432"
