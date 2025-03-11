@@ -1,6 +1,6 @@
 mod common_function;
 use {
-    common_function::{test_latest_vaas, test_sse_streaming},
+    common_function::{test_latest_vaas, test_sse_streaming, test_stream},
     pyth_client::PythClient,
     pyth_types::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
 };
@@ -24,4 +24,11 @@ fn sse_subscription_network() {
         ATOM_USD_ID,
         BNB_USD_ID,
     ]);
+}
+
+// Ignore since it makes network requests.
+#[ignore]
+#[tokio::test]
+async fn test_sse_stream() {
+    test_stream(vec![BTC_USD_ID, ETH_USD_ID]).await;
 }

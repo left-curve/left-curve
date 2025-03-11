@@ -6,7 +6,7 @@ use {
     std::{
         collections::HashMap,
         env,
-        path::Path,
+        path::{Path, PathBuf},
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -14,10 +14,12 @@ use {
         thread::{self, sleep},
         time::Duration,
     },
+    tokio::runtime::Runtime,
+    tokio_stream::StreamExt,
 };
 
 pub struct PythMiddlewareCache {
-    stored_vaas: HashMap<String, std::vec::IntoIter<Vec<Binary>>>,
+    stored_vaas: HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>,
 }
 
 impl Default for PythMiddlewareCache {
@@ -42,38 +44,42 @@ impl PythMiddlewareCache {
     {
         // Load data for each id.
         for id in ids.into_inner() {
-            let filename = self.create_file_name(&id);
+            let element = id.to_string();
+            let filename = self.cache_filename(&element);
 
+            #[allow(clippy::map_entry)]
             // If the file is not in memory, try to read from disk.
             if !self.stored_vaas.contains_key(&filename) {
-                let cache_file = DiskPersistence::new(filename.clone().into(), true);
+                let cache_file = DiskPersistence::new(filename.clone(), true);
 
                 // If the file does not exists, retrieve the data from the source.
                 if !cache_file.exists() {
-                    let mut pyth_client = PythClient::new(base_url.to_string());
+                    let rt = Runtime::new().unwrap();
+                    let values = rt.block_on(async {
+                        let mut stream = PythClient::stream(
+                            &base_url.to_string(),
+                            NonEmpty::new(vec![id.to_string()]).unwrap(),
+                        )
+                        .await
+                        .unwrap();
 
-                    // Retrieve 15 samples of the data.
-                    let mut values = vec![];
-                    let shared =
-                        pyth_client.run_streaming(NonEmpty::new(vec![id.to_string()]).unwrap());
-                    while values.len() < 15 {
-                        let vaas = shared.replace(vec![]);
-                        if !vaas.is_empty() {
-                            values.push(vaas);
+                        let mut values = vec![];
+                        while values.len() < 15 {
+                            if let Some(vaas) = stream.next().await {
+                                values.push(vaas);
+                            }
                         }
-                        sleep(Duration::from_millis(1200));
-                    }
 
-                    pyth_client.close();
+                        values
+                    });
 
                     // Store the data in the cache.
-                    self.store_data(id, values).unwrap();
+                    self.store_data(element, values).unwrap();
                 }
 
                 // Load the data from disk.
                 let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
-                self.stored_vaas
-                    .insert(filename.clone(), loaded_vaas.into_iter());
+                self.stored_vaas.insert(filename, loaded_vaas.into_iter());
             }
         }
     }
@@ -145,7 +151,8 @@ impl PythMiddlewareCache {
 
         // For each id, try to get the vaas.
         for id in ids.into_inner() {
-            let filename = self.create_file_name(&id);
+            let element = id.to_string();
+            let filename = self.cache_filename(&element);
 
             // Check if the vaas are stored in memory.
             if let Some(vaas_iter) = self.stored_vaas.get_mut(&filename) {
@@ -155,7 +162,7 @@ impl PythMiddlewareCache {
             } else {
                 return Err(StdError::DataNotFound {
                     ty: "cache",
-                    key: filename,
+                    key: filename.to_string_lossy().to_string(),
                 }
                 .into());
             }
@@ -167,36 +174,29 @@ impl PythMiddlewareCache {
     /// Cache data.
     pub fn store_data<I>(&self, id: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
     where
-        I: ToString,
+        I: AsRef<Path>,
     {
-        let filename = self.create_file_name(&id);
+        let filename = self.cache_filename(&id);
 
-        let cache_file = DiskPersistence::new(filename.clone().into(), true);
+        let cache_file = DiskPersistence::new(filename, true);
         cache_file.save(&data)?;
 
         Ok(())
     }
 
-    fn create_file_name<I>(&self, id: &I) -> String
+    fn cache_filename<I>(&self, id: &I) -> PathBuf
     where
-        I: ToString,
+        I: AsRef<Path>,
     {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-        let mut path = Path::new(&manifest_dir);
 
-        // Find the workspace path.
-        while path.parent().is_some() {
-            path = path.parent().unwrap();
-            let cargo_toml = path.join("Cargo.lock");
-            if cargo_toml.exists() {
-                break;
-            }
-        }
+        let start_path = Path::new(&manifest_dir);
 
-        format!(
-            "{}/pyth/client/testdata/{}",
-            path.to_str().unwrap(),
-            id.to_string()
-        )
+        let workspace_root = start_path
+            .ancestors()
+            .find(|p| p.join("Cargo.lock").exists())
+            .expect("Workspace root not found");
+
+        workspace_root.join("pyth/client/testdata").join(id)
     }
 }

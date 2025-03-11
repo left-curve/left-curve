@@ -26,6 +26,7 @@ impl From<ProposerError> for AppError {
 
 pub struct ProposalPreparer {
     // Option to be able to not clone the PythClientPPHandler.
+    // Only using `.write()` so better use a Mutex
     pyth_client: Option<RwLock<PythClientPPHandler>>,
 }
 
@@ -36,12 +37,18 @@ impl Clone for ProposalPreparer {
 }
 
 impl ProposalPreparer {
-    pub fn new(test_mode: bool) -> Self {
-        let client = PythClientPPHandler::new(PYTH_URL.to_string(), test_mode);
+    pub fn new() -> Self {
+        let client = PythClientPPHandler::new(PYTH_URL.to_string());
 
         Self {
             pyth_client: Some(RwLock::new(client)),
         }
+    }
+}
+
+impl Default for ProposalPreparer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -58,11 +65,16 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
 
         // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
         let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
+
+        // Should we find a way to start and connect the PythClientPPHandler at startup?
+        // How to know which ids should be used?
+
         if let Err(err) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
             error!(err = err.to_string(), "Failed to update the Pyth IDs");
         };
 
         // Retrieve the VAAs.
+        // This would be empty at the first connection
         let vaas = pyth_client.fetch_latest_vaas();
 
         // Return if there are no VAAs to feed.

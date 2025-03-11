@@ -1,11 +1,13 @@
 use {
     crate::middleware_cache::PythMiddlewareCache,
+    async_stream::stream,
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     grug_app::Shared,
     pyth_types::LatestVaaResponse,
     reqwest::Client,
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     std::{
+        pin::Pin,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -17,18 +19,23 @@ use {
     tokio_stream::StreamExt,
     tracing::{debug, error},
 };
-
 /// PythClient is a client to interact with the Pyth network.
 pub struct PythClient {
-    base_url: String,
+    // <U: IntoUrl>
+    pub base_url: String, // U,
     keep_running: Arc<AtomicBool>,
+    // I think since this is only for `PythMiddlewareCache`, it should be named
+    // `middleware_cache` instead of `middleware`, or even better just have
+    // `cache_enabled: true`.
+    // Or we should have a MiddlewareTrait instead of `PythMiddlewareCache`.
     middleware: Option<PythMiddlewareCache>,
 }
 
 impl PythClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
+    // Why not use `IntoUrl` ?
+    pub fn new<S: ToString>(base_url: S) -> Self {
         Self {
-            base_url: base_url.into(),
+            base_url: base_url.to_string(),
             keep_running: Arc::new(AtomicBool::new(false)),
             middleware: None,
         }
@@ -43,6 +50,7 @@ impl PythClient {
     /// Start a SSE connection to the Pyth network and close the previous one if it exists.
     /// Return a shared vector to read the vaas.
     /// If the middleware is used, the function will run the middleware thread.
+    #[deprecated]
     pub fn run_streaming<I>(&mut self, ids: NonEmpty<I>) -> Shared<Vec<Binary>>
     where
         I: IntoIterator + Lengthy + Send + Clone + 'static,
@@ -50,6 +58,7 @@ impl PythClient {
     {
         // Close the previous connection if it exists since the Arc
         // to shut down the thread will be replaced.
+        // NOTE: this will not stop the thread immediately.
         self.close();
 
         let base_url = self.base_url.clone();
@@ -70,13 +79,29 @@ impl PythClient {
             thread::spawn(move || {
                 let rt = Runtime::new().unwrap();
                 rt.block_on(async {
-                    PythClient::run_streaming_inner(
-                        base_url,
-                        ids,
-                        shared_clone,
-                        keep_running_clone,
-                    )
-                    .await;
+                    let mut stream = PythClient::stream(&base_url, ids).await.unwrap();
+
+                    loop {
+                        tokio::select! {
+                            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
+                                if !keep_running_clone.load(Ordering::Relaxed) {
+                                    return;
+                                }
+                            }
+
+                            data = stream.next() => {
+                                // to avoid waiting for the next second tick
+                                if !keep_running_clone.load(Ordering::Relaxed) {
+                                    return;
+                                }
+
+                                if let Some(data) = data {
+                                    shared_clone.write_with(|mut shared_vaas| *shared_vaas = data);
+                                }
+                            }
+
+                        }
+                    }
                 });
             });
         }
@@ -86,10 +111,14 @@ impl PythClient {
 
     /// Stop the streaming thread.
     pub fn close(&mut self) {
+        // This doesn't stop the streaming thread immediately, but it will stop
+        // after the next message is received *and* the message is properly
+        // deserialized as a `LatestVaaResponse`.
+
         self.keep_running.store(false, Ordering::SeqCst);
     }
 
-    /// Get the latest VAA from the Pyth network.
+    /// Get the latest VAA from the Pyth network. Only used for testing.
     pub fn get_latest_vaas<I>(&mut self, ids: NonEmpty<I>) -> reqwest::Result<Vec<Binary>>
     where
         I: IntoIterator + Clone + Lengthy,
@@ -136,71 +165,63 @@ impl PythClient {
         params
     }
 
-    /// Inner function to run the SSE connection.
-    async fn run_streaming_inner<I>(
-        base_url: String,
+    pub async fn stream<I>(
+        base_url: &str,
         ids: NonEmpty<I>,
-        shared: Shared<Vec<Binary>>,
-        keep_running: Arc<AtomicBool>,
-    ) where
+    ) -> Result<
+        Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>,
+        reqwest_eventsource::CannotCloneRequestError,
+    >
+    where
         I: IntoIterator + Lengthy,
         I::Item: ToString,
     {
         let params = PythClient::create_request_params(ids);
+        let builder = Client::new()
+            .get(format!("{}/v2/updates/price/stream", base_url))
+            .query(&params);
 
-        loop {
-            let builder = Client::new()
-                .get(format!("{}/v2/updates/price/stream", base_url))
-                .query(&params);
+        // Connect to EventSource.
+        let mut es = EventSource::new(builder)?;
 
-            // Connect to EventSource.
-            // This method will return Err only if the RequestBuilder cannot be cloned.
-            // This only happens if the request body is a stream (not this case).
-            let mut es = EventSource::new(builder).unwrap();
+        // Set the exponential backoff for reconnect.
+        es.set_retry_policy(Box::new(ExponentialBackoff::new(
+            Duration::from_secs(1),
+            1.5,
+            Some(Duration::from_secs(30)),
+            None,
+        )));
 
-            // Set the exponential backoff for reconnect.
-            es.set_retry_policy(Box::new(ExponentialBackoff::new(
-                Duration::from_secs(1),
-                1.5,
-                Some(Duration::from_secs(30)),
-                None,
-            )));
-
-            // Waiting for next message and send through channel.
-            while let Some(event) = es.next().await {
-                match event {
-                    Ok(Event::Open) => debug!("Pyth SSE connection open"),
-                    Ok(Event::Message(message)) => {
-                        // Deserialize the message.
-                        match message.data.deserialize_json::<LatestVaaResponse>() {
-                            Ok(vaas) => {
-                                // Check if the thread should keep running.
-                                if !keep_running.load(Ordering::Relaxed) {
-                                    debug!("Pyth SSE connection open");
-                                    return;
-                                }
-
-                                // Update the shared value.
-                                shared
-                                    .write_with(|mut shared_vaas| *shared_vaas = vaas.binary.data);
-                            },
-                            Err(err) => {
-                                error!(
-                                    err = err.to_string(),
-                                    "Failed to deserialize Pyth event into LatestVaaResponse"
-                                );
-                            },
-                        }
-                    },
-                    Err(err) => {
-                        error!(
-                            err = err.to_string(),
-                            "Error while receiving the events from Pyth"
-                        );
-                        es.close();
-                    },
+        let stream = stream! {
+            loop {
+                while let Some(event) = es.next().await {
+                    match event {
+                        Ok(Event::Open) => debug!("Pyth SSE connection open"),
+                        Ok(Event::Message(message)) => {
+                            match message.data.deserialize_json::<LatestVaaResponse>() {
+                                Ok(vaas) => {
+                                    yield vaas.binary.data;
+                                },
+                                Err(err) => {
+                                    error!(
+                                        err = err.to_string(),
+                                        "Failed to deserialize Pyth event into LatestVaaResponse"
+                                    );
+                                },
+                            }
+                        },
+                        Err(err) => {
+                            error!(
+                                err = err.to_string(),
+                                "Error while receiving the events from Pyth"
+                            );
+                            es.close();
+                        },
+                    }
                 }
             }
-        }
+        };
+
+        Ok(Box::pin(stream))
     }
 }

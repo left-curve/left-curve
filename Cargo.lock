@@ -3103,6 +3103,8 @@ dependencies = [
  "pyth-client",
  "pyth-types",
  "thiserror 2.0.11",
+ "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -6836,6 +6838,7 @@ dependencies = [
 name = "pyth-client"
 version = "0.0.0"
 dependencies = [
+ "async-stream",
  "dango-types",
  "grug",
  "grug-app",

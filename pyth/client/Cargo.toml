@@ -13,6 +13,7 @@ version       = { workspace = true }
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+async-stream        = { workspace = true }
 grug                = { workspace = true }
 grug-app            = { workspace = true }
 indexer-disk-saver  = { workspace = true }
