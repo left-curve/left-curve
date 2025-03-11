@@ -37,7 +37,6 @@ services:
     ports:
       - 127.0.0.1:26656:26656
       - 127.0.0.1:26657:26657
-      # - 127.0.0.1:26658:26658
     volumes:
       - ./configs/cometbft/config:/root/.cometbft/config
       - ./data/cometbft/data:/root/.cometbft/data
