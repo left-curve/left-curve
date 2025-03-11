@@ -18,18 +18,19 @@ start:
   docker compose up -d db
 
   # 2. Wait for the database to be ready.
-  until docker compose run --remove-orphans db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}; do
+  until docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}; do
     echo "Waiting for the database to be ready..."
     sleep 1
   done
+  echo "Database is ready!"
 
   # 3. Check whether the development database already exists. If not, create it.
-  exists=$(docker compose run --remove-orphans db psql -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname='{{DB_NAME}}'")
+  exists=$(docker compose run --rm db psql -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} -d postgres -t -A -c "SELECT 1 FROM pg_database WHERE datname='{{DB_NAME}}'")
   if [ "$exists" = "1" ]; then
     echo "Database {{DB_NAME}} already exists."
   else
     echo "Database {{DB_NAME}} does not exist. Creating..."
-    docker compose run --remove-orphans db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
+    docker compose run --rm db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
     if [ $? -ne 0 ]; then
       echo "Failed to create database {{DB_NAME}}."
       exit 1
@@ -54,15 +55,15 @@ run-dev-db:
 
 # Check whether the deveopment database is running
 check-dev-db:
-  docker compose run --remove-orphans db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}
+  docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}
 
 # Create the development database
 create-dev-db:
-  docker compose run --remove-orphans db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
+  docker compose run --rm db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
 
 # Remove the development database
 drop-dev-db:
-  docker compose run --remove-orphans db dropdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
+  docker compose run --rm db dropdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
 
 # Migrate the development database
 migrate-dev-db:
