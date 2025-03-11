@@ -12,7 +12,32 @@ default:
 start:
   #!/usr/bin/env bash
   set -e
-  # TODO: set a trap that stops the running services on error.
+
+  # Set up traps to handle errors, SIGINT, and SIGTERM.
+  cleanup() {
+    local exit_code=$?
+    case "$1" in
+      "SIGINT")
+        echo "Received SIGINT. Shutting down..."
+        ;;
+      "SIGTERM")
+        echo "Received SIGTERM. Shutting down..."
+        ;;
+      "")
+        if [ $exit_code -ne 0 ]; then
+          echo "Command failed with exit code $exit_code. Shutting down..."
+        fi
+        ;;
+    esac
+
+    docker compose down --remove-orphans
+
+    exit $exit_code
+  }
+
+  trap 'cleanup SIGINT' INT
+  trap 'cleanup SIGTERM' TERM
+  trap 'cleanup' ERR
 
   # 1. Start the postgres service in detached mode.
   docker compose up -d db

@@ -14,8 +14,4 @@ To start the localnet:
 just start
 ```
 
-To stop it:
-
-```bash
-just stop
-```
+To stop it, simply do CTRL+C.
