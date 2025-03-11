@@ -7,10 +7,12 @@ use {
 };
 
 // Test the latest vaas.
-pub fn test_latest_vaas<I>(pyth_client: PythClient, ids: I)
+pub fn test_latest_vaas<I, P>(pyth_client: P, ids: I)
 where
     I: IntoIterator + Clone + Lengthy,
     I::Item: ToString,
+    P: PythClientTrait + std::fmt::Debug,
+    P::Error: std::fmt::Debug,
 {
     let api = MockApi;
 
