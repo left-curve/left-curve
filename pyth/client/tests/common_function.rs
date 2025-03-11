@@ -7,7 +7,7 @@ use {
 };
 
 // Test the latest vaas.
-pub fn test_latest_vaas<I>(mut pyth_client: PythClient, ids: I)
+pub fn test_latest_vaas<I>(pyth_client: PythClient, ids: I)
 where
     I: IntoIterator + Clone + Lengthy,
     I::Item: ToString,
@@ -58,6 +58,7 @@ where
 }
 
 // Test the sse streaming.
+#[deprecated]
 pub fn test_sse_streaming<I>(mut pyth_client: PythClient, ids1: I, ids2: I)
 where
     I: IntoIterator + Clone + Lengthy + Send + 'static,
