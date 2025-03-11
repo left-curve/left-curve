@@ -1,11 +1,10 @@
 FROM rust:1.85.0-slim
 
 # Install dependencies.
-RUN apt update \
-  && apt install -y clang git libssl-dev pkg-config
+RUN apt update && apt install -y clang git libssl-dev pkg-config
 
 # Version of the left-curve monorepo.
-ARG LEFT_CURVE_GIT_COMMIT="8ec296f6"
+ARG LEFT_CURVE_GIT_COMMIT="d4a97e35"
 
 # Download dango source code, build, then delete.
 RUN git clone https://github.com/left-curve/left-curve.git \
@@ -19,5 +18,5 @@ RUN git clone https://github.com/left-curve/left-curve.git \
 EXPOSE 8080 26658
 
 # Run dango.
-# This assumes that the `app.toml` file have been mounted to `~/.dango/config/app.toml`.
+# This assumes that the `app.toml` file has been mounted to `/root/.dango/config/app.toml`.
 CMD ["dango", "start"]
