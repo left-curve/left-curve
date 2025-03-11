@@ -1,6 +1,5 @@
 use {
-    dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
+    grug::{Binary, Lengthy, NonEmpty},
     grug_app::Shared,
     pyth_client::{middleware_cache::PythMiddlewareCache, PythClient, PythClientTrait},
     pyth_types::PythId,
@@ -14,13 +13,28 @@ use {
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
 };
+
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
 /// keep all code related to Pyth for PP in a single structure.
 pub struct PythClientPPHandler<P> {
     client: P,
     shared_vaas: Shared<Vec<Binary>>,
-    current_ids: Vec<PythId>,
+    pub current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
+}
+
+impl<P> Clone for PythClientPPHandler<P>
+where
+    P: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            client: self.client.clone(),
+            shared_vaas: self.shared_vaas.clone(),
+            current_ids: self.current_ids.clone(),
+            stoppable_thread: None,
+        }
+    }
 }
 
 impl PythClientPPHandler<PythClient> {
@@ -50,61 +64,55 @@ impl PythClientPPHandler<PythMiddlewareCache> {
     }
 }
 
+impl<P> Drop for PythClientPPHandler<P>
+// where
+//     P: PythClientTrait,
+{
+    fn drop(&mut self) {
+        if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
+            keep_running.store(false, Ordering::Relaxed);
+        }
+        // self.client.close();
+    }
+}
+
+impl<P> PythClientPPHandler<P>
+where
+    P: PythClientTrait,
+{
+    pub fn fetch_latest_vaas(&self) -> Vec<Binary> {
+        // Retrieve the VAAs from the shared memory and consume them in order to
+        // avoid pushing the same VAAs again.
+        self.shared_vaas.replace(vec![])
+    }
+
+    pub fn pyth_ids_equal(&self, new_ids: &[PythId]) -> bool {
+        self.current_ids == new_ids
+    }
+
+    pub fn close_stream(&mut self) {
+        if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
+            keep_running.store(false, Ordering::Relaxed);
+        }
+
+        // Closing any potentially connected earlier stream
+        self.client.close();
+    }
+}
+
 impl<P> PythClientPPHandler<P>
 where
     P: PythClientTrait + Send + 'static,
     P::Error: std::fmt::Debug,
 {
-    /// Check if the pyth ids stored on oracle contract are changed; if so, update the Pyth connection.
-    pub fn update_ids(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
-        // TODO: optimize this by using the raw WasmScan query.
-        let new_ids = querier
-            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
-                start_after: None,
-                limit: Some(u32::MAX),
-            })?
-            .into_values()
-            .filter_map(|price_source| {
-                // For now there is only Pyth as PriceSource, but there could be more.
-                #[allow(irrefutable_let_patterns)]
-                if let PriceSource::Pyth { id, .. } = price_source {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        self.current_ids = new_ids.clone();
-
-        // Check if the ids are the same.
-        if self.current_ids == new_ids {
-            return Ok(());
-        }
-
-        if let Ok(ids) = NonEmpty::new(new_ids) {
-            self.connect_stream(ids);
-        }
-
-        Ok(())
-    }
-
-    fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
+    pub fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
     where
         I: IntoIterator + Lengthy + Send + Clone + 'static,
         I::Item: ToString,
     {
-        // Closing any potentially connected earlier stream
-        self.client.close();
-
-        if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
-            keep_running.store(false, Ordering::Relaxed);
-            // If we wanted to wait for the thread to finish, but we don't care.
-            // handle.join().unwrap();
-        }
+        self.close_stream();
 
         let shared_vaas = self.shared_vaas.clone();
-        // let base_url = self.client.base_url.clone();
 
         let keep_running = Arc::new(AtomicBool::new(true));
 
@@ -140,11 +148,5 @@ where
                 });
             }),
         ));
-    }
-
-    pub fn fetch_latest_vaas(&self) -> Vec<Binary> {
-        // Retrieve the VAAs from the shared memory and consume them in order to
-        // avoid pushing the same VAAs again.
-        self.shared_vaas.replace(vec![])
     }
 }

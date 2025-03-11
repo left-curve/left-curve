@@ -1,11 +1,17 @@
 use {
     crate::pyth_pp_handler::PythClientPPHandler,
-    dango_types::{config::AppConfig, oracle::ExecuteMsg},
-    grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
+    dango_types::{
+        config::AppConfig,
+        oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
+    },
+    grug::{
+        Addr, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
+        StdResult, Tx,
+    },
     grug_app::AppError,
     prost::bytes::Bytes,
-    pyth_client::PythClient,
-    pyth_types::PYTH_URL,
+    pyth_client::{middleware_cache::PythMiddlewareCache, PythClient, PythClientTrait},
+    pyth_types::{PythId, PYTH_URL},
     std::sync::Mutex,
     thiserror::Error,
     tracing::error,
@@ -25,19 +31,18 @@ impl From<ProposerError> for AppError {
     }
 }
 
-pub struct ProposalPreparer {
+pub struct ProposalPreparer<P> {
     // Option to be able to not clone the PythClientPPHandler.
-    // Only using `.write()` so better use a Mutex
-    pyth_client: Option<Mutex<PythClientPPHandler<PythClient>>>,
+    pyth_client: Option<Mutex<PythClientPPHandler<P>>>,
 }
 
-impl Clone for ProposalPreparer {
+impl<P> Clone for ProposalPreparer<P> {
     fn clone(&self) -> Self {
         Self { pyth_client: None }
     }
 }
 
-impl ProposalPreparer {
+impl ProposalPreparer<PythClient> {
     pub fn new() -> Self {
         let client = PythClientPPHandler::new(PYTH_URL);
 
@@ -47,13 +52,50 @@ impl ProposalPreparer {
     }
 }
 
-impl Default for ProposalPreparer {
+impl Default for ProposalPreparer<PythClient> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl grug_app::ProposalPreparer for ProposalPreparer {
+impl ProposalPreparer<PythMiddlewareCache> {
+    pub fn new_with_cache() -> Self {
+        let client = PythClientPPHandler::new_with_cache(PYTH_URL);
+
+        Self {
+            pyth_client: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl<P> ProposalPreparer<P> {
+    fn pyth_ids(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
+        let new_ids = querier
+            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: Some(u32::MAX),
+            })?
+            .into_values()
+            .filter_map(|price_source| {
+                // For now there is only Pyth as PriceSource, but there could be more.
+                #[allow(irrefutable_let_patterns)]
+                if let PriceSource::Pyth { id, .. } = price_source {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(new_ids)
+    }
+}
+
+impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
+where
+    P: PythClientTrait + Send + 'static,
+    P::Error: std::fmt::Debug,
+{
     type Error = ProposerError;
 
     fn prepare_proposal(
@@ -65,17 +107,31 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
         let cfg: AppConfig = querier.query_app_config()?;
 
         // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
-        let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
+        // let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
 
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?
+        let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
 
-        if let Err(err) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
-            error!(err = err.to_string(), "Failed to update the Pyth IDs");
-        };
+        match Self::pyth_ids(querier, cfg.addresses.oracle) {
+            Ok(pyth_ids) => {
+                if !pyth_client.pyth_ids_equal(&pyth_ids) {
+                    pyth_client.close_stream();
+
+                    // I clone this instead of a new client to keep the existing vaas.
+                    let mut client = pyth_client.clone();
+                    if let Ok(pyth_ids) = NonEmpty::new(pyth_ids) {
+                        client.connect_stream(pyth_ids);
+                    }
+                    *pyth_client = client;
+                }
+            },
+            Err(_) => {
+                error!("Failed to update Pyth ids");
+            },
+        }
 
         // Retrieve the VAAs.
-        // This would be empty at the first connection
         let vaas = pyth_client.fetch_latest_vaas();
 
         // Return if there are no VAAs to feed.
