@@ -14,7 +14,7 @@ use {
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt::Debug},
 };
 
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -625,7 +625,7 @@ where
     ) -> Result<Uint128, <Self as Querier>::Error>
     where
         D: TryInto<Denom>,
-        <D as TryInto<Denom>>::Error: std::fmt::Debug,
+        <D as TryInto<Denom>>::Error: Debug,
     {
         let denom = denom.try_into().unwrap();
         self.query_chain(Query::balance(address.address(), denom))

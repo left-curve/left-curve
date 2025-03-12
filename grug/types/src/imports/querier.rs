@@ -5,7 +5,7 @@ use {
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt::Debug},
 };
 
 pub trait Querier {
@@ -25,7 +25,7 @@ pub trait Querier {
 /// implements `Querier`.
 pub trait QuerierExt: Querier
 where
-    Self::Error: From<StdError>,
+    Self::Error: From<StdError> + Debug,
 {
     fn query_config(&self) -> Result<Config, Self::Error> {
         self.query_chain(Query::config()).map(|res| res.as_config())
@@ -135,12 +135,20 @@ where
     fn query_multi<const N: usize>(
         &self,
         requests: [Query; N],
-    ) -> Result<[QueryResponse; N], Self::Error> {
+    ) -> Result<[Result<QueryResponse, Self::Error>; N], Self::Error> {
         self.query_chain(Query::Multi(requests.into())).map(|res| {
             // We trust that the host has properly implemented the multi
             // query method, meaning the number of responses should always
             // match the number of requests.
-            let responses = res.as_multi();
+
+            // let res = res.as_multi();
+
+            let responses = res
+                .as_multi()
+                .into_iter()
+                .map(|res| res.map_err(|err| StdError::host(err).into()))
+                .collect::<Vec<Result<QueryResponse, Self::Error>>>();
+
             debug_assert_eq!(
                 responses.len(),
                 N,
@@ -148,6 +156,7 @@ where
                 responses.len(),
                 N
             );
+            // responses
             responses.try_into().unwrap()
         })
     }
@@ -156,7 +165,7 @@ where
 impl<Q> QuerierExt for Q
 where
     Q: Querier,
-    Q::Error: From<StdError>,
+    Q::Error: From<StdError> + Debug,
 {
 }
 

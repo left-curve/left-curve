@@ -1023,8 +1023,9 @@ where
                         query_depth,
                         req,
                     )
+                    .into_generic_result()
                 })
-                .collect::<AppResult<Vec<_>>>()?;
+                .collect::<Vec<_>>();
             Ok(QueryResponse::Multi(res))
         },
     }

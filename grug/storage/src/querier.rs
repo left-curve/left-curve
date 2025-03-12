@@ -1,6 +1,7 @@
 use {
     crate::{Codec, Path},
     grug_types::{Addr, Querier, QuerierExt, StdError},
+    std::fmt::Debug,
 };
 
 pub trait StorageQuerier: Querier {
@@ -30,7 +31,7 @@ pub trait StorageQuerier: Querier {
 impl<Q> StorageQuerier for Q
 where
     Q: QuerierExt,
-    Q::Error: From<StdError>,
+    Q::Error: From<StdError> + Debug,
 {
     fn may_query_wasm_path<T, C>(
         &self,
