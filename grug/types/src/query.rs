@@ -1,7 +1,7 @@
 use {
     crate::{
         extend_one_byte, Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom,
-        Hash256, Json, JsonSerExt, StdResult,
+        GenericResult, Hash256, Json, JsonSerExt, StdResult,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
@@ -303,7 +303,7 @@ pub enum QueryResponse {
     WasmRaw(Option<Binary>),
     WasmScan(BTreeMap<Binary, Binary>),
     WasmSmart(Json),
-    Multi(Vec<QueryResponse>),
+    Multi(Vec<GenericResult<QueryResponse>>),
 }
 
 macro_rules! generate_downcast {
@@ -339,6 +339,6 @@ impl QueryResponse {
         WasmRaw    => Option<Binary>,
         WasmScan   => BTreeMap<Binary, Binary>,
         WasmSmart  => Json,
-        Multi      => Vec<QueryResponse>,
+        Multi      => Vec<GenericResult<QueryResponse>>,
     }
 }
