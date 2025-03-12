@@ -46,6 +46,12 @@ fn dispatch(
     let cfg = CONFIG.load(ctx.storage)?;
     let (nonce, _) = NONCE.increment(ctx.storage)?;
 
+    // Ensure the destination domain is not the local domain.
+    ensure!(
+        destination_domain != cfg.local_domain,
+        "destination domain is the same as the local domain ({destination_domain})",
+    );
+
     // Compose and encode the Hyperlane message.
     let message = Message {
         version: MAILBOX_VERSION,

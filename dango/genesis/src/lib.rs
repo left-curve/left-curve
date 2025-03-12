@@ -10,9 +10,9 @@ use {
         taxman, vesting, warp,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission, Permissions,
-        ResultExt, StdResult, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
+        Permissions, ResultExt, StdResult, GENESIS_SENDER,
     },
     hyperlane_types::{
         isms::{self, multisig::ValidatorSet},
@@ -97,6 +97,8 @@ pub struct GenesisConfig<T> {
     pub hyperlane_local_domain: Domain,
     /// Hyperlane validator sets for remote domains.
     pub hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    /// Hyperlane validator announce fee rate.
+    pub hyperlane_va_announce_fee_per_byte: Coin,
     /// Warp token transfer routes.
     pub warp_routes: BTreeMap<(Denom, Domain), Addr32>,
     // TODO: add margin account parameters (collateral powers and liquidation)
@@ -259,6 +261,7 @@ pub fn build_genesis<T>(
         wormhole_guardian_sets,
         hyperlane_local_domain,
         hyperlane_ism_validator_sets,
+        hyperlane_va_announce_fee_per_byte,
         // TODO: allow setting warp routes during instantiation
         warp_routes: _,
     }: GenesisConfig<T>,
@@ -369,7 +372,10 @@ where
     let va = instantiate(
         &mut msgs,
         hyperlane_va_code_hash,
-        &va::InstantiateMsg { mailbox },
+        &va::InstantiateMsg {
+            mailbox,
+            announce_fee_per_byte: hyperlane_va_announce_fee_per_byte,
+        },
         "hyperlane/va",
         "hyperlane/va",
     )?;

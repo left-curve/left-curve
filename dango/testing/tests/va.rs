@@ -1,8 +1,9 @@
 use {
     dango_testing::{generate_random_key, setup_test},
+    dango_types::constants::{DANGO_DENOM, USDC_DENOM},
     grug::{
-        btree_set, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner,
-        JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
+        btree_set, coins, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray,
+        Inner, JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
     },
     grug_crypto::Identity256,
     hyperlane_types::{
@@ -13,6 +14,8 @@ use {
     k256::ecdsa::SigningKey,
     std::collections::{BTreeMap, BTreeSet},
 };
+
+const ANNOUNCE_FEE_PER_BYTE: u128 = 100;
 
 struct MockAnnouncement {
     sk: SigningKey,
@@ -66,21 +69,88 @@ impl MockAnnouncement {
 fn test_announce() {
     let (mut suite, mut accounts, _, contracts) = setup_test();
 
-    let mut signer = accounts.user1;
-
+    let mut signer = accounts.owner;
     let mailbox = contracts.hyperlane.mailbox;
+    let va = contracts.hyperlane.va;
+
     let local_domain = suite
         .query_wasm_smart(mailbox, mailbox::QueryConfigRequest {})
         .should_succeed()
         .local_domain;
-
-    let va = contracts.hyperlane.va;
 
     let mut validators_expected = BTreeSet::new();
     let mut storage_locations_expected = BTreeMap::new();
 
     // Create a working announcement.
     let announcement = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location");
+    let announce_fee = ANNOUNCE_FEE_PER_BYTE * announcement.storage_location.len() as u128;
+
+    // Announce without sending announce fee.
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                Coins::new(),
+            )
+            .should_fail_with_error("invalid payment");
+    }
+
+    // Announce with an incorrect payment (wrong denom)
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                coins! { DANGO_DENOM.clone() => announce_fee },
+            )
+            .should_fail_with_error("invalid payment");
+    }
+
+    // Announce with an incorrect payment (multiple denoms)
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                coins! {
+                    DANGO_DENOM.clone() => announce_fee,
+                    USDC_DENOM.clone()  => announce_fee,
+                },
+            )
+            .should_fail_with_error("invalid payment");
+    }
+
+    // Announce with an insufficient payment.
+    {
+        suite
+            .execute(
+                &mut signer,
+                va,
+                &va::ExecuteMsg::Announce {
+                    storage_location: announcement.storage_location.clone(),
+                    validator: announcement.validator,
+                    signature: announcement.signature,
+                },
+                coins! { USDC_DENOM.clone() => announce_fee - 1 },
+            )
+            .should_fail_with_error("insufficient validator announce fee");
+    }
 
     // Adding a valid announcement.
     {
@@ -93,7 +163,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                Coins::new(),
+                coins! { USDC_DENOM.clone() => announce_fee },
             )
             .should_succeed()
             .events
@@ -144,7 +214,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                Coins::new(),
+                coins! { USDC_DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("duplicate data found!");
     }
@@ -158,6 +228,8 @@ fn test_announce() {
             "Test/Storage/Location/2",
         );
 
+        let announce_fee2 = ANNOUNCE_FEE_PER_BYTE * announcement2.storage_location.len() as u128;
+
         suite
             .execute(
                 &mut signer,
@@ -167,7 +239,7 @@ fn test_announce() {
                     validator: announcement2.validator,
                     signature: announcement2.signature,
                 },
-                Coins::new(),
+                coins! { USDC_DENOM.clone() => announce_fee2 },
             )
             .should_succeed()
             .events
@@ -210,6 +282,8 @@ fn test_announce() {
     {
         let announcement3 = MockAnnouncement::new(mailbox, local_domain, "Test/Storage/Location/3");
 
+        let announce_fee3 = ANNOUNCE_FEE_PER_BYTE * announcement3.storage_location.len() as u128;
+
         suite
             .execute(
                 &mut accounts.user2,
@@ -219,7 +293,7 @@ fn test_announce() {
                     validator: announcement3.validator,
                     signature: announcement3.signature,
                 },
-                Coins::new(),
+                coins! { USDC_DENOM.clone() => announce_fee3 },
             )
             .should_succeed()
             .events
@@ -265,6 +339,8 @@ fn test_announce() {
         let announcement =
             MockAnnouncement::new(mailbox, local_domain + 1, "Test/Storage/Location");
 
+        let announce_fee = ANNOUNCE_FEE_PER_BYTE * announcement.storage_location.len() as u128;
+
         suite
             .execute(
                 &mut signer,
@@ -274,7 +350,7 @@ fn test_announce() {
                     validator: announcement.validator,
                     signature: announcement.signature,
                 },
-                Coins::new(),
+                coins! { USDC_DENOM.clone() => announce_fee },
             )
             .should_fail_with_error("pubkey mismatch");
     }

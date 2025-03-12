@@ -1,5 +1,6 @@
 use {
-    grug::{Addr, HexByteArray, UniqueVec},
+    core::str,
+    grug::{Addr, Coin, HexByteArray, UniqueVec},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -10,6 +11,7 @@ pub const VA_DOMAIN_KEY: &str = "HYPERLANE_ANNOUNCEMENT";
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
     pub mailbox: Addr,
+    pub announce_fee_per_byte: Coin,
 }
 
 #[grug::derive(Serde)]
@@ -26,6 +28,9 @@ pub enum QueryMsg {
     /// Query the mailbox contract address.
     #[returns(Addr)]
     Mailbox {},
+    /// Query the fee rate for announcing a storage location.
+    #[returns(Coin)]
+    AnnounceFeePerByte {},
     /// Query the set of validators who have announced their storage locations.
     #[returns(BTreeSet<HexByteArray<20>>)]
     AnnouncedValidators {
@@ -46,6 +51,7 @@ pub enum QueryMsg {
 pub struct Initialize {
     pub creator: Addr,
     pub mailbox: Addr,
+    pub announce_fee_per_byte: Coin,
 }
 
 #[grug::derive(Serde)]
