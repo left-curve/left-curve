@@ -23,7 +23,7 @@ export const Route = createFileRoute("/(app)/_app")({
     return (
       <main
         ref={mainRef}
-        className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none"
+        className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100"
       >
         <img
           src="/images/union.png"
