@@ -49,7 +49,7 @@ fn dispatch(
     // Ensure the destination domain is not the local domain.
     ensure!(
         destination_domain != cfg.local_domain,
-        "Destination domain is the same as the local domain"
+        "destination domain is the same as the local domain ({destination_domain})",
     );
 
     // Compose and encode the Hyperlane message.
