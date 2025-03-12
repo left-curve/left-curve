@@ -140,24 +140,24 @@ where
             // We trust that the host has properly implemented the multi
             // query method, meaning the number of responses should always
             // match the number of requests.
+            let res = res.as_multi();
 
-            // let res = res.as_multi();
-
-            let responses = res
-                .as_multi()
-                .into_iter()
-                .map(|res| res.map_err(|err| StdError::host(err).into()))
-                .collect::<Vec<Result<QueryResponse, Self::Error>>>();
-
-            debug_assert_eq!(
-                responses.len(),
+            assert_eq!(
+                res.len(),
                 N,
                 "number of responses ({}) does not match that of requests ({})",
-                responses.len(),
+                res.len(),
                 N
             );
-            // responses
-            responses.try_into().unwrap()
+
+            let mut iter = res.into_iter();
+
+            std::array::from_fn(|_| {
+                iter.next()
+                    .unwrap() // unwrap is safe because we've checked the length.
+                    .map_err(StdError::host)
+                    .map_err(Into::into)
+            })
         })
     }
 }
