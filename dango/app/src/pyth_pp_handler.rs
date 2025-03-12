@@ -3,6 +3,7 @@ use {
     grug_app::Shared,
     pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PythId,
+    reqwest::IntoUrl,
     std::{
         sync::{
             atomic::{AtomicBool, Ordering},
@@ -38,11 +39,11 @@ where
 }
 
 impl PythClientPPHandler<PythClient> {
-    pub fn new<S: ToString>(base_url: S) -> PythClientPPHandler<PythClient> {
+    pub fn new<U: IntoUrl>(base_url: U) -> PythClientPPHandler<PythClient> {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
-            client: PythClient::new(base_url),
+            client: PythClient::new(base_url).unwrap(),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,
@@ -52,11 +53,11 @@ impl PythClientPPHandler<PythClient> {
 
 impl PythClientPPHandler<PythClientCache> {
     #[allow(dead_code)]
-    pub fn new_with_cache<S: ToString>(base_url: S) -> PythClientPPHandler<PythClientCache> {
+    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythClientPPHandler<PythClientCache> {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
-            client: PythClientCache::new(base_url),
+            client: PythClientCache::new(base_url).unwrap(),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,

@@ -9,7 +9,7 @@ use {
 
 #[test]
 fn latest_vaas_cache() {
-    let pyth_client = PythClientCache::new(PYTH_URL);
+    let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
 
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
 }
@@ -17,7 +17,7 @@ fn latest_vaas_cache() {
 #[test]
 fn sse_subscription_cache() {
     // NOTE: should use PythMiddlewareCache and refactor test_sse_streaming
-    let pyth_client = PythClient::new(PYTH_URL);
+    let pyth_client = PythClient::new(PYTH_URL).unwrap();
 
     test_sse_streaming(pyth_client, vec![BTC_USD_ID, ETH_USD_ID], vec![
         ATOM_USD_ID,

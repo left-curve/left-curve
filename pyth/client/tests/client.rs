@@ -9,7 +9,7 @@ use {
 #[ignore]
 #[test]
 fn latest_vaas_network() {
-    let pyth_client = PythClient::new(PYTH_URL);
+    let pyth_client = PythClient::new(PYTH_URL).unwrap();
 
     // If this is used only here, could probably move that code here too
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
@@ -19,7 +19,7 @@ fn latest_vaas_network() {
 #[ignore = "This test was testing stream, which is what test_sse_stream does now"]
 #[test]
 fn sse_subscription_network() {
-    let pyth_client = PythClient::new(PYTH_URL);
+    let pyth_client = PythClient::new(PYTH_URL).unwrap();
 
     test_sse_streaming(pyth_client, vec![BTC_USD_ID, ETH_USD_ID], vec![
         ATOM_USD_ID,

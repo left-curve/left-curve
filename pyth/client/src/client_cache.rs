@@ -4,6 +4,7 @@ use {
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::{error::Error, persistence::DiskPersistence},
+    reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
         env,
@@ -17,20 +18,20 @@ use {
 
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
-    base_url: String,
+    base_url: Url,
 }
 
 impl PythClientCache {
-    pub fn new<S: ToString>(base_url: S) -> Self {
-        Self {
-            base_url: base_url.to_string(),
+    pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
+        Ok(Self {
+            base_url: base_url.into_url()?,
             // stored_vaas: HashMap::new(),
-        }
+        })
     }
 
     /// Load data from cache (if not already loaded) or retrieve it from the source.
     pub fn load_or_retrieve_data<I>(
-        base_url: String,
+        base_url: Url,
         ids: NonEmpty<I>,
     ) -> HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>
     where
@@ -53,7 +54,7 @@ impl PythClientCache {
                 if !cache_file.exists() {
                     let rt = Runtime::new().unwrap();
                     let values = rt.block_on(async {
-                        let client = PythClient::new(base_url.clone());
+                        let client = PythClient::new(base_url.clone()).unwrap();
 
                         let mut stream = client
                             .stream(NonEmpty::new(vec![id.to_string()]).unwrap())

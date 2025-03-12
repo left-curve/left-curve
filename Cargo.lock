@@ -3102,6 +3102,7 @@ dependencies = [
  "prost",
  "pyth-client",
  "pyth-types",
+ "reqwest 0.12.12",
  "thiserror 2.0.11",
  "tokio",
  "tokio-stream",

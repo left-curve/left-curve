@@ -141,7 +141,7 @@ fn oracle() {
 fn double_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let pyth_client = PythClientCache::new("not_real_url");
+    let pyth_client = PythClientCache::new("not_real_url").unwrap();
 
     let mut last_btc_vaa: Option<PriceFeed> = None;
     let mut last_eth_vaa: Option<PriceFeed> = None;
@@ -269,7 +269,7 @@ fn double_vaas() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let pyth_client = PythClientCache::new("not_real_url");
+    let pyth_client = PythClientCache::new("not_real_url").unwrap();
 
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),

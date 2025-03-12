@@ -191,7 +191,7 @@ where
         latest_values.insert(id.to_string(), (0, 0));
     }
 
-    let client = PythClient::new(PYTH_URL);
+    let client = PythClient::new(PYTH_URL).unwrap();
 
     let mut stream = client
         .stream(NonEmpty::new_unchecked(ids1.clone()))

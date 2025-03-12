@@ -1,10 +1,11 @@
 use {
+    crate::error,
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     grug_app::Shared,
     pyth_types::LatestVaaResponse,
-    reqwest::Client,
+    reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
     std::{
         pin::Pin,
@@ -42,7 +43,7 @@ pub trait PythClientTrait: Clone {
 /// PythClient is a client to interact with the Pyth network.
 pub struct PythClient {
     // <U: IntoUrl>
-    pub base_url: String, // U,
+    pub base_url: Url, // U,
     keep_running: Arc<AtomicBool>,
     // I think since this is only for `PythMiddlewareCache`, it should be named
     // `middleware_cache` instead of `middleware`, or even better just have
@@ -53,12 +54,12 @@ pub struct PythClient {
 
 impl PythClient {
     // Why not use `IntoUrl` ?
-    pub fn new<S: ToString>(base_url: S) -> Self {
-        Self {
-            base_url: base_url.to_string(),
+    pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
+        Ok(Self {
+            base_url: base_url.into_url()?,
             keep_running: Arc::new(AtomicBool::new(false)),
             // middleware: None,
-        }
+        })
     }
 
     // Use the middleware to be able to use cached data.
