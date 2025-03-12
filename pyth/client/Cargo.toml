@@ -25,6 +25,7 @@ thiserror           = { workspace = true }
 tokio               = { workspace = true }
 tokio-stream        = { workspace = true }
 tracing             = { workspace = true }
+url                 = { workspace = true }
 
 [dev-dependencies]
 dango-types = { workspace = true }

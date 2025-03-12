@@ -1,17 +1,11 @@
 use {
     crate::pyth_pp_handler::PythClientPPHandler,
-    dango_types::{
-        config::AppConfig,
-        oracle::{ExecuteMsg, PriceSource, QueryPriceSourcesRequest},
-    },
-    grug::{
-        Addr, Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
-        StdResult, Tx,
-    },
+    dango_types::{config::AppConfig, oracle::ExecuteMsg},
+    grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     grug_app::AppError,
     prost::bytes::Bytes,
     pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
-    pyth_types::{PythId, PYTH_URL},
+    pyth_types::PYTH_URL,
     std::sync::Mutex,
     thiserror::Error,
     tracing::error,

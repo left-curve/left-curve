@@ -1,6 +1,6 @@
 use {
-    grug::{btree_map, Inner, Lengthy, MockApi, NonEmpty},
-    pyth_client::{PythClient, PythClientTrait},
+    grug::{btree_map, setup_tracing_subscriber, Inner, Lengthy, MockApi, NonEmpty},
+    pyth_client::{client_cache, PythClient, PythClientTrait},
     pyth_types::{PythVaa, PYTH_URL},
     std::{thread::sleep, time::Duration},
     tokio_stream::StreamExt,
@@ -183,6 +183,7 @@ where
     I: IntoIterator + Clone + Lengthy + Send + 'static,
     I::Item: ToString,
 {
+    setup_tracing_subscriber(tracing::Level::DEBUG);
     let api = MockApi;
 
     // Latest values to asset that the prices and publish times change.

@@ -262,7 +262,7 @@ impl PythClientTrait for PythClient {
     {
         let params = PythClient::create_request_params(ids);
         let builder = Client::new()
-            .get(format!("{}/v2/updates/price/stream", &self.base_url))
+            .get(self.base_url.join("v2/updates/price/stream")?)
             .query(&params);
 
         // Connect to EventSource.
@@ -315,7 +315,7 @@ impl PythClientTrait for PythClient {
         I::Item: ToString,
     {
         Ok(reqwest::blocking::Client::new()
-            .get(format!("{}/v2/updates/price/latest", self.base_url))
+            .get(self.base_url.join("v2/updates/price/latest")?)
             .query(&PythClient::create_request_params(ids.clone()))
             .send()?
             .error_for_status()?
