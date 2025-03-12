@@ -13,6 +13,7 @@ import { ConnectionStatus } from "@left-curve/store-react/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
+import { m } from "~/paraglide/messages";
 import { Modals } from "./Modal";
 
 const KeyTranslation = {
@@ -37,15 +38,12 @@ export const KeyManagment: React.FC = () => {
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-1 max-w-lg">
-          <h3 className="text-lg font-bold">Key Management </h3>
-          <p className="text-gray-500 text-sm">
-            Easily add or delete passkeys to manage access to your account. Each passkey is vital
-            for secure logins, ensuring only you can access your account.
-          </p>
+          <h3 className="text-lg font-bold">{m["settings.keyManagment.title"]()}</h3>
+          <p className="text-gray-500 text-sm">{m["settings.keyManagment.description"]()}</p>
         </div>
         <Button size="md" className="min-w-[120px]" onClick={() => showModal(Modals.AddKey)}>
           <IconAddCross className="w-5 h-5" />
-          Add
+          {m["settings.keyManagment.add"]()}
         </Button>
       </div>
       {isPending ? (

@@ -11,6 +11,7 @@ import { useAccount } from "@left-curve/store-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
+import { m } from "~/paraglide/messages";
 import { HamburgerMenu } from "./HamburguerMenu";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { AccountDesktopMenu } from "./menu/AccountDesktopMenu";
@@ -37,11 +38,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   return (
     <header
       className={twMerge(
-        "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full p-4 transition-all",
+        "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
         isScrolled ? "lg:bg-white-100 lg:shadow-card-shadow" : "bg-transparent shadow-none",
       )}
     >
-      <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto">
+      <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
             src="/favicon.svg"
@@ -88,7 +89,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 </span>
               </>
             ) : (
-              <span>Connect</span>
+              <span>{m["common.signin"]()}</span>
             )}
           </Button>
         </div>

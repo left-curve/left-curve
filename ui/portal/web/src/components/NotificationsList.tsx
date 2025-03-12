@@ -8,6 +8,7 @@ import {
   isToday,
 } from "date-fns";
 import type React from "react";
+import { m } from "~/paraglide/messages";
 
 interface Notification {
   id: string;
@@ -73,9 +74,9 @@ export const NotificationsList: React.FC<Props> = ({ notifications, className })
           alt="no-notifications"
           className="w-[133px] h-[144px]"
         />
-        <p className="exposure-m-italic">No notifications yet</p>
+        <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
         <p className="diatype-m-bold text-gray-500">
-          When you approve, trade, or transfer tokens, your transaction will appear here
+          {m["notifications.noNotifications.description"]()}
         </p>
       </div>
     );

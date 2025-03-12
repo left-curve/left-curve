@@ -1,5 +1,6 @@
 import { Button } from "@left-curve/applets-kit";
 import { Link, createFileRoute } from "@tanstack/react-router";
+import { m } from "~/paraglide/messages";
 
 export const Route = createFileRoute("/(auth)/_auth/welcome")({
   component: WelcomeComponent,
@@ -17,13 +18,11 @@ function WelcomeComponent() {
         />
         <div className="flex flex-col gap-6 items-center">
           <div className="flex flex-col gap-2 items-center justify-center text-center">
-            <h1 className="display-heading-xl">Welcome to Dango</h1>
-            <p className="text-gray-500 diatype-lg-regular">
-              We’re delighted to have you with us and look forward to seeing what you do next.
-            </p>
+            <h1 className="display-heading-xl">{m["welcome.title"]()}</h1>
+            <p className="text-gray-500 diatype-lg-regular">{m["welcome.description"]()}</p>
           </div>
           <Button as={Link} className="w-full md:w-[260px]" to="/">
-            Complete Signup
+            {m["common.continue"]()}
           </Button>
         </div>
       </div>

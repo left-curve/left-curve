@@ -48,6 +48,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ref,
   ) => {
     const isInvalid = errorMessage ? true : invalid;
+    const [isFocus, setIsFocus] = React.useState(false);
     const { base, input, inputWrapper, inputParent } = inputVariants({
       fullWidth,
       isDisabled,
@@ -61,7 +62,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </label>
         ) : null}
 
-        <div className={inputWrapper({ className: classNames?.inputWrapper })}>
+        <div
+          className={twMerge(inputWrapper({ className: classNames?.inputWrapper }), {
+            group: isFocus,
+          })}
+          data-focus={isFocus}
+        >
           <div className={inputParent({ className: classNames?.inputParent })}>
             {startContent ? startContent : null}
             <div className="relative flex-1 flex items-center">
@@ -76,6 +82,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
               ) : null}
               <input
                 type={type}
+                onFocus={() => setIsFocus(true)}
+                onBlur={() => setIsFocus(false)}
                 disabled={isDisabled}
                 className={input({ startText, className: classNames?.input })}
                 ref={ref}

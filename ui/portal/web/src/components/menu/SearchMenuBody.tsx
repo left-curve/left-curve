@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
+import { m } from "~/paraglide/messages";
 import { AppletItem } from "./AppletItem";
 import { AssetItem } from "./AssetItem";
 
@@ -34,7 +35,7 @@ export const SearchMenuBody: React.FC<SearchMenuBodyProps> = ({ isVisible, hideM
               visible: {
                 transition: {
                   delayChildren: 0.1,
-                  staggerChildren: 0.1,
+                  staggerChildren: 0.05,
                 },
               },
             }}
@@ -44,7 +45,7 @@ export const SearchMenuBody: React.FC<SearchMenuBodyProps> = ({ isVisible, hideM
             <Command.List className="w-full">
               <Command.Empty>
                 <p className="rounded-[20px] py-4 px-5 font-semibold text-[1.25rem]">
-                  No results found
+                  {m["commadBar.noResult"]()}
                 </p>
               </Command.Empty>
               <Command.Group value="Applets">

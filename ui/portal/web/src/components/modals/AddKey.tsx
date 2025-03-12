@@ -6,6 +6,8 @@ import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { AuthOptions } from "../AuthOptions";
 
+import { m } from "~/paraglide/messages";
+
 export const AddKeyModal: React.FC = () => {
   const connectors = useConnectors();
   const { account } = useAccount();
@@ -50,15 +52,15 @@ export const AddKeyModal: React.FC = () => {
           <IconKey />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">Add new passkey</h3>
+          <h3 className="h4-bold">{m["settings.keyManagment.managment.add.title"]()}</h3>
           <p className="text-gray-500 diatype-m-regular">
-            Choose a credential. You can add or remove credentials later.
+            {m["settings.keyManagment.managment.add.description"]()}
           </p>
         </div>
       </div>
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="p-4">
-        <AuthOptions mode="create" action={addKey} isPending={isPending} />
+        <AuthOptions mode="signin" action={addKey} isPending={isPending} />
       </div>
     </div>
   );

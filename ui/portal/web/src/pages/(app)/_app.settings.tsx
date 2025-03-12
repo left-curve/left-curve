@@ -11,6 +11,8 @@ import {
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
 import { KeyManagment } from "~/components/KeyManagment";
+import { m } from "~/paraglide/messages";
+import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
 export const Route = createFileRoute("/(app)/_app/settings")({
   component: SettingsComponent,
@@ -28,25 +30,31 @@ function SettingsComponent() {
             <IconChevronDown className="rotate-90" />
           </IconButton>
         )}
-        <span className="h3-bold">Settings</span>
+        <span className="h3-bold">{m["settings.title"]()}</span>
       </h2>
       <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-1">
-        <h3 className="text-lg font-bold px-[10px] py-4">Display</h3>
+        <h3 className="text-lg font-bold px-[10px] py-4">{m["settings.display"]()}</h3>
         <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
-          <p>Language</p>
-          <Select defaultSelectedKey="en" label="Language">
-            <SelectItem key="en">English</SelectItem>
+          <p>{m["settings.language"]()}</p>
+          <Select
+            defaultSelectedKey={getLocale()}
+            label="Language"
+            onSelectionChange={(key) => setLocale(key.toString() as any)}
+          >
+            {locales.map((locale) => (
+              <SelectItem key={locale}>{m["settings.languages"]({ language: locale })}</SelectItem>
+            ))}
           </Select>
         </div>
         <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
-          <p>Number Format</p>
+          <p>{m["settings.number"]()}</p>
           <Select defaultSelectedKey="en" label="Number Format">
             <SelectItem key="en">1234.00</SelectItem>
           </Select>
         </div>
         {isConnected ? (
           <div className="flex items-center justify-between px-[10px] py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer">
-            <p>Connect to mobile</p>
+            <p>{m["settings.connectToMobile"]()}</p>
           </div>
         ) : null}
         {/*  <div className="flex items-center justify-between px-[10px] py-2 rounded-md">

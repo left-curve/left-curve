@@ -1,7 +1,6 @@
 import { BackpackIcon } from "./wallets/Backpack";
 import { EthereumIcon } from "./wallets/Ethereum";
 import { KeplrIcon } from "./wallets/Keplr";
-import { PasskeyIcon } from "./wallets/Passkey";
 import { PhantomIcon } from "./wallets/Phantom";
 
 interface Props extends React.SVGAttributes<HTMLOrSVGElement> {
@@ -18,8 +17,6 @@ export const WalletIcon: React.FC<Props> = ({ connectorId, ...props }) => {
       return <PhantomIcon {...props} />;
     case "backpack":
       return <BackpackIcon {...props} />;
-    case "passkey":
-      return <PasskeyIcon {...props} />;
     default:
       return <EthereumIcon {...props} />;
   }

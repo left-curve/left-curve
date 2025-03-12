@@ -12,7 +12,7 @@ catalog:
   "wrangler": "^3.60.3"
   "@cloudflare/workers-types": "^4.20241004.0"
   # Tooling
-  "@rsbuild/core": "^1.2.4"
+  "@rsbuild/core": "^1.2.14"
   "@rsbuild/plugin-react": "^1.1.0"
   "react-refresh": "^0.14.2"
   "vite": "^5.4.7"
