@@ -4,7 +4,6 @@ use {
         auth::Key,
         bank,
         config::{AppAddresses, AppConfig, Hyperlane},
-        constants::DANGO_DENOM,
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
         oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
@@ -98,6 +97,8 @@ pub struct GenesisConfig<T> {
     pub hyperlane_local_domain: Domain,
     /// Hyperlane validator sets for remote domains.
     pub hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    /// Hyperlane validator announce fee rate.
+    pub hyperlane_va_announce_fee_per_byte: Coin,
     /// Warp token transfer routes.
     pub warp_routes: BTreeMap<(Denom, Domain), Addr32>,
     // TODO: add margin account parameters (collateral powers and liquidation)
@@ -260,6 +261,7 @@ pub fn build_genesis<T>(
         wormhole_guardian_sets,
         hyperlane_local_domain,
         hyperlane_ism_validator_sets,
+        hyperlane_va_announce_fee_per_byte,
         // TODO: allow setting warp routes during instantiation
         warp_routes: _,
     }: GenesisConfig<T>,
@@ -372,7 +374,7 @@ where
         hyperlane_va_code_hash,
         &va::InstantiateMsg {
             mailbox,
-            announce_fee_per_byte: Coin::new(DANGO_DENOM.clone(), 100).unwrap(),
+            announce_fee_per_byte: hyperlane_va_announce_fee_per_byte,
         },
         "hyperlane/va",
         "hyperlane/va",
