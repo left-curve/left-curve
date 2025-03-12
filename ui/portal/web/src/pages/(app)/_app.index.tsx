@@ -2,17 +2,13 @@ import { useAccount, useBalances } from "@left-curve/store-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
 
-import {
-  AssetsPreview,
-  IconButton,
-  IconChevronDown,
-  PoolTable,
-  StrategyCard,
-} from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown, PoolTable, StrategyCard } from "@left-curve/applets-kit";
 import { useRef, useState } from "react";
+import { AssetsPreview } from "~/components/AssetsPreview";
 import { ButtonLink } from "~/components/ButtonLink";
 import { FavAppletSection } from "~/components/FavAppletSection";
 import { DotsIndicator, SwippeableAccountCard } from "~/components/SwippeableAccountCard";
+import { m } from "~/paraglide/messages";
 
 const mockDataTable = [
   {
@@ -98,7 +94,7 @@ function OverviewComponent() {
                   to="/send-and-receive"
                   search={{ action: "receive" }}
                 >
-                  Fund
+                  {m["common.funds"]()}
                 </ButtonLink>
                 <ButtonLink
                   fullWidth
@@ -107,7 +103,7 @@ function OverviewComponent() {
                   to="/send-and-receive"
                   search={{ action: "send" }}
                 >
-                  Send
+                  {m["common.send"]()}
                 </ButtonLink>
               </div>
             ) : null}

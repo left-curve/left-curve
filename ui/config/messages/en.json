@@ -10,6 +10,8 @@
     "signup": "Sign Up",
     "continue": "Continue",
     "back": "Back",
+    "cancel": "Cancel",
+    "delete": "Delete",
     "available": "Available",
     "username": "Username",
     "hi": "Hi",
@@ -57,6 +59,10 @@
     "credential": {
       "description": "Choose any of the credentials that have been associated with your username."
     }
+  },
+  "welcome": {
+    "title": "Welcome to Dango",
+    "description": "We’re delighted to have you with us and look forward to seeing what you do next."
   },
   "signup": {
     "createAccount": "Create Account",
@@ -230,10 +236,22 @@
     "keyManagment": {
       "title": "Key Management",
       "description": "Easily add or delete passkeys to manage access to your account. Each passkey is vital for secure logins, ensuring only you can access your account.",
-      "add": "Add"
+      "add": "Add",
+      "managment": {
+        "add": {
+          "title": "Add new credential",
+          "description": "Choose a credential. You can add or remove credentials later."
+        },
+        "delete": {
+          "title": "Delete credential",
+          "description": "Are you sure you want to delete this credential?",
+          "warning": "This action cannot be undone."
+        }
+      }
     }
   },
   "commadBar": {
+    "noResult": "No results found",
     "placeholder": {
       "title": "Search for",
       "transactions": "transactions",

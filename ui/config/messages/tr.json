@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Anahtar Yönetimi",
 			"description": "Hesabınıza erişimi yönetmek için parolaları kolayca ekleyin veya silin. Her parola, yalnızca sizin hesabınıza erişebilmenizi sağlayarak güvenli oturum açma işlemleri için hayati önem taşır.",
-			"add": "Eklemek"
+			"add": "Eklemek",
+			"managment": {
+				"add": {
+					"title": "Yeni kimlik bilgisi ekle",
+					"description": "Bir kimlik bilgisi seçin. Daha sonra kimlik bilgilerini ekleyebilir veya kaldırabilirsiniz."
+				},
+				"delete": {
+					"title": "Kimlik bilgilerini sil",
+					"description": "Bu kimlik bilgisini silmek istediğinizden emin misiniz?",
+					"warning": "Bu eylem geri alınamaz."
+				}
+			}
 		},
 		"language": "Dil"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Passkey ile kaydolun"
 				}
 			}
-		]
+		],
+		"cancel": "İptal etmek",
+		"delete": "Silmek"
 	},
 	"notifications": {
 		"title": "Bildirimler",
@@ -110,7 +123,8 @@
 			"accounts": "hesaplar",
 			"usernames": "kullanıcı adları",
 			"tokens": "jetonlar"
-		}
+		},
+		"noResult": "Hiçbir sonuç bulunamadı"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Para gönderimi başarısız oldu",
 			"creatingAccount": "Hesap oluşturulurken hata oluştu"
 		}
+	},
+	"welcome": {
+		"title": "Dango'ya Hoş Geldiniz",
+		"description": "Aramızda olmanızdan mutluluk duyuyoruz ve bundan sonra neler yapacağınızı görmek için sabırsızlanıyoruz."
 	}
 }

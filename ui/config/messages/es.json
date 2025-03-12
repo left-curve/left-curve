@@ -43,7 +43,18 @@
     "keyManagment": {
       "title": "Gestión de claves",
       "description": "Añade o elimina fácilmente claves de acceso para gestionar el acceso a tu cuenta. Cada clave es fundamental para iniciar sesión de forma segura, garantizando que solo tú puedas acceder a tu cuenta.",
-      "add": "Agregar"
+      "add": "Agregar",
+      "managment": {
+        "add": {
+          "title": "Agregar nueva credencial",
+          "description": "Elige una credencial. Puedes añadirla o eliminarla más tarde."
+        },
+        "delete": {
+          "title": "Eliminar credencial",
+          "description": "¿Está seguro de que desea eliminar esta credencial?",
+          "warning": "Esta acción no se puede deshacer."
+        }
+      }
     },
     "language": "Idioma"
   },
@@ -87,7 +98,9 @@
           "action=signup": "Regístrate con Passkey"
         }
       }
-    ]
+    ],
+    "cancel": "Cancelar",
+    "delete": "Borrar"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -110,7 +123,8 @@
       "accounts": "cuentas",
       "usernames": "nombres de usuario",
       "tokens": "fichas"
-    }
+    },
+    "noResult": "No se encontraron resultados"
   },
   "accountMenu": {
     "accounts": {
@@ -249,5 +263,9 @@
       "failedSendingFunds": "Error al enviar fondos",
       "creatingAccount": "Error al crear la cuenta"
     }
+  },
+  "welcome": {
+    "title": "Bienvenido a Dango",
+    "description": "Estamos encantados de tenerte con nosotros y esperamos ver qué haces a continuación."
   }
 }

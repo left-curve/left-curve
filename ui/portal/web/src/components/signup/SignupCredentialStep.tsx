@@ -81,5 +81,5 @@ export const SignupCredentialStep: React.FC = () => {
     },
   });
 
-  return <AuthOptions action={createCredential} isPending={isPending} mode="create" />;
+  return <AuthOptions action={createCredential} isPending={isPending} mode="signup" />;
 };

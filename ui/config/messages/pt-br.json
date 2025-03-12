@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Gerenciamento de Chaves",
 			"description": "Adicione ou exclua facilmente chaves de acesso para gerenciar o acesso à sua conta. Cada chave de acesso é vital para logins seguros, garantindo que somente você possa acessar sua conta.",
-			"add": "Adicionar"
+			"add": "Adicionar",
+			"managment": {
+				"add": {
+					"title": "Adicionar nova credencial",
+					"description": "Escolha uma credencial. Você pode adicionar ou remover credenciais mais tarde."
+				},
+				"delete": {
+					"title": "Excluir credencial",
+					"description": "Tem certeza de que deseja excluir esta credencial?",
+					"warning": "Esta ação não pode ser desfeita."
+				}
+			}
 		},
 		"language": "Linguagem"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Cadastre-se com a senha"
 				}
 			}
-		]
+		],
+		"cancel": "Cancelar",
+		"delete": "Excluir"
 	},
 	"notifications": {
 		"title": "Notificações",
@@ -110,7 +123,8 @@
 			"accounts": "contas",
 			"usernames": "nomes de usuários",
 			"tokens": "fichas"
-		}
+		},
+		"noResult": "Nenhum resultado encontrado"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Falha no envio de fundos",
 			"creatingAccount": "Erro ao criar conta"
 		}
+	},
+	"welcome": {
+		"title": "Bem-vindo ao Dango",
+		"description": "Estamos felizes em ter você conosco e ansiosos para ver o que você fará a seguir."
 	}
 }

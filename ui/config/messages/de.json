@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Schlüsselverwaltung",
 			"description": "Fügen Sie ganz einfach Passkeys hinzu oder löschen Sie sie, um den Zugriff auf Ihr Konto zu verwalten. Jeder Passkey ist für sichere Anmeldungen unerlässlich und stellt sicher, dass nur Sie auf Ihr Konto zugreifen können.",
-			"add": "Hinzufügen"
+			"add": "Hinzufügen",
+			"managment": {
+				"add": {
+					"title": "Neue Anmeldeinformationen hinzufügen",
+					"description": "Wählen Sie eine Anmeldeinformation. Sie können später Anmeldeinformationen hinzufügen oder entfernen."
+				},
+				"delete": {
+					"title": "Anmeldeinformationen löschen",
+					"description": "Möchten Sie diese Anmeldeinformationen wirklich löschen?",
+					"warning": "Diese Aktion kann nicht rückgängig gemacht werden."
+				}
+			}
 		},
 		"language": "Sprache"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Mit Passkey anmelden"
 				}
 			}
-		]
+		],
+		"cancel": "Stornieren",
+		"delete": "Löschen"
 	},
 	"notifications": {
 		"title": "Benachrichtigungen",
@@ -110,7 +123,8 @@
 			"accounts": "Konten",
 			"usernames": "Benutzernamen",
 			"tokens": "Token"
-		}
+		},
+		"noResult": "Keine Ergebnisse gefunden"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Das Senden von Geldern ist fehlgeschlagen",
 			"creatingAccount": "Fehler beim Erstellen des Kontos"
 		}
+	},
+	"welcome": {
+		"title": "Willkommen bei Dango",
+		"description": "Wir freuen uns, Sie bei uns zu haben und sind gespannt, was Sie als Nächstes tun."
 	}
 }

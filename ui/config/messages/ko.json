@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "키 관리",
 			"description": "계정 접근을 관리하기 위해 패스키를 쉽게 추가하거나 삭제하세요. 각 패스키는 안전한 로그인에 필수적이며, 오직 당신만이 당신의 계정에 접근할 수 있도록 보장합니다.",
-			"add": "추가하다"
+			"add": "추가하다",
+			"managment": {
+				"add": {
+					"title": "새로운 자격 증명 추가",
+					"description": "자격 증명을 선택하세요. 나중에 자격 증명을 추가하거나 제거할 수 있습니다."
+				},
+				"delete": {
+					"title": "자격 증명 삭제",
+					"description": "이 자격 증명을 삭제하시겠습니까?",
+					"warning": "이 작업은 취소할 수 없습니다."
+				}
+			}
 		},
 		"language": "언어"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Passkey로 가입하세요"
 				}
 			}
-		]
+		],
+		"cancel": "취소",
+		"delete": "삭제"
 	},
 	"notifications": {
 		"title": "알림",
@@ -110,7 +123,8 @@
 			"accounts": "계정",
 			"usernames": "사용자 이름",
 			"tokens": "토큰"
-		}
+		},
+		"noResult": "검색 결과가 없습니다"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "자금 전송에 실패했습니다",
 			"creatingAccount": "계정 생성 오류"
 		}
+	},
+	"welcome": {
+		"title": "Dango에 오신 것을 환영합니다",
+		"description": "여러분이 우리와 함께 해주셔서 기쁘고, 앞으로 무엇을 하실지 기대하고 있습니다."
 	}
 }

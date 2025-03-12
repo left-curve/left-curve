@@ -68,6 +68,7 @@ export { IconCheckedCircle } from "./foundation/icons/IconCheckedCircle";
 export { IconChecked } from "./foundation/icons/IconChecked";
 export { IconAlert } from "./foundation/icons/IconAlert";
 export { IconQR } from "./foundation/icons/IconQR";
+export { IconPasskey } from "./foundation/icons/IconPasskey";
 
 /* ---------------------------------- Emojis -------------------------------- */
 
@@ -94,4 +95,3 @@ export { Birdo } from "./foundation/chars/Birdo";
 /* -------------------------------------------------------------------------- */
 
 export { StrategyCard } from "./workspace/dashboard/StrategyCard";
-export { AssetsPreview } from "./workspace/dashboard/AssetsPreview";

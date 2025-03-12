@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "キー管理",
 			"description": "パスキーを簡単に追加または削除して、アカウントへのアクセスを管理できます。各パスキーは安全なログインに不可欠であり、あなただけがアカウントにアクセスできるようにします。",
-			"add": "追加"
+			"add": "追加",
+			"managment": {
+				"add": {
+					"title": "新しい資格情報を追加",
+					"description": "資格情報を選択します。資格情報は後で追加または削除できます。"
+				},
+				"delete": {
+					"title": "資格情報を削除",
+					"description": "この資格情報を削除してもよろしいですか?",
+					"warning": "この操作は元に戻せません。"
+				}
+			}
 		},
 		"language": "言語"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Passkeyでサインアップ"
 				}
 			}
-		]
+		],
+		"cancel": "キャンセル",
+		"delete": "消去"
 	},
 	"notifications": {
 		"title": "通知",
@@ -110,7 +123,8 @@
 			"accounts": "アカウント",
 			"usernames": "ユーザー名",
 			"tokens": "トークン"
-		}
+		},
+		"noResult": "結果が見つかりませんでした"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "資金の送金に失敗しました",
 			"creatingAccount": "アカウント作成エラー"
 		}
+	},
+	"welcome": {
+		"title": "ダンゴへようこそ",
+		"description": "私たちはあなたと一緒にいられることを嬉しく思っており、あなたの次の活躍を楽しみにしています。"
 	}
 }

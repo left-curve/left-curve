@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "密鑰管理",
 			"description": "輕鬆新增或刪除金鑰來管理您帳戶的存取。每個金鑰對於安全登入都至關重要，確保只有您可以存取您的帳戶。",
-			"add": "添加"
+			"add": "添加",
+			"managment": {
+				"add": {
+					"title": "新增憑證",
+					"description": "選擇一個憑證。您可以稍後新增或刪除憑證。"
+				},
+				"delete": {
+					"title": "刪除憑證",
+					"description": "您確實要刪除此憑證嗎？",
+					"warning": "此操作無法撤銷。"
+				}
+			}
 		},
 		"language": "語言"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "使用 Passkey 註冊"
 				}
 			}
-		]
+		],
+		"cancel": "取消",
+		"delete": "刪除"
 	},
 	"notifications": {
 		"title": "通知",
@@ -110,7 +123,8 @@
 			"accounts": "帳戶",
 			"usernames": "使用者名稱",
 			"tokens": "代幣"
-		}
+		},
+		"noResult": "未找到結果"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "匯款失敗",
 			"creatingAccount": "建立帳戶錯誤"
 		}
+	},
+	"welcome": {
+		"title": "歡迎來到 Dango",
+		"description": "我們很高興您能加入我們，並期待看到您接下來的行動。"
 	}
 }

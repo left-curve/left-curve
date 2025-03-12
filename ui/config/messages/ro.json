@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Managementul cheilor",
 			"description": "Adăugați sau ștergeți cu ușurință cheile de acces pentru a gestiona accesul la contul dvs. Fiecare cheie de acces este vitală pentru autentificarea securizată, asigurându-vă că numai dvs. vă puteți accesa contul.",
-			"add": "Adăuga"
+			"add": "Adăuga",
+			"managment": {
+				"add": {
+					"title": "Adăugați acreditări noi",
+					"description": "Alegeți o acreditare. Puteți adăuga sau elimina acreditările mai târziu."
+				},
+				"delete": {
+					"title": "Ștergeți acreditările",
+					"description": "Sigur doriți să ștergeți această autentificare?",
+					"warning": "Această acțiune nu poate fi anulată."
+				}
+			}
 		},
 		"language": "Limbă"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Înscrieți-vă cu Passkey"
 				}
 			}
-		]
+		],
+		"cancel": "Anula",
+		"delete": "Şterge"
 	},
 	"notifications": {
 		"title": "Notificări",
@@ -110,7 +123,8 @@
 			"accounts": "conturi",
 			"usernames": "nume de utilizator",
 			"tokens": "jetoane"
-		}
+		},
+		"noResult": "Nu s-au găsit rezultate"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Trimiterea fondurilor nu a reușit",
 			"creatingAccount": "Eroare la crearea contului"
 		}
+	},
+	"welcome": {
+		"title": "Bun venit la Dango",
+		"description": "Suntem încântați să vă avem alături de noi și așteptăm cu nerăbdare să vedem ce faceți în continuare."
 	}
 }

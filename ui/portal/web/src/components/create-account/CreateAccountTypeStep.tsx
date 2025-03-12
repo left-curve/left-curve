@@ -1,10 +1,12 @@
 import { AccountType } from "@left-curve/dango/types";
 import { useState } from "react";
 
-import { SelectorCreateAccount } from "@left-curve/applets-kit";
 import type { AccountTypes } from "@left-curve/dango/types";
 
 import { Button, useWizard } from "@left-curve/applets-kit";
+import { SelectorCreateAccount } from "./SelectorCreateAccount";
+
+import { m } from "~/paraglide/messages";
 
 import type React from "react";
 
@@ -27,7 +29,7 @@ export const CreateAccountTypeStep: React.FC = () => {
         />
       </div>
       <Button fullWidth onClick={() => [nextStep(), setData({ accountType: selectedAccount })]}>
-        Continue
+        {m["common.continue"]()}
       </Button>
     </div>
   );

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "paths": {
       "~/*": ["./src/*"],
-      "~/paraglide/*": ["./paraglide/*"]
+      "~/paraglide/*": ["./.paraglide/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "env.d.ts", "paraglide"],

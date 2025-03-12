@@ -40,7 +40,9 @@
 					"action=signup": "Registrati con Passkey"
 				}
 			}
-		]
+		],
+		"cancel": "Cancellare",
+		"delete": "Eliminare"
 	},
 	"explorer": {
 		"txs": {
@@ -98,7 +100,18 @@
 		"keyManagment": {
 			"title": "Gestione delle chiavi",
 			"description": "Aggiungi o elimina facilmente le passkey per gestire l'accesso al tuo account. Ogni passkey è fondamentale per accessi sicuri, assicurando che solo tu possa accedere al tuo account.",
-			"add": "Aggiungere"
+			"add": "Aggiungere",
+			"managment": {
+				"add": {
+					"title": "Aggiungi nuova credenziale",
+					"description": "Scegli una credenziale. Puoi aggiungere o rimuovere le credenziali in seguito."
+				},
+				"delete": {
+					"title": "Elimina credenziale",
+					"description": "Sei sicuro di voler eliminare questa credenziale?",
+					"warning": "Questa azione non può essere annullata."
+				}
+			}
 		}
 	},
 	"commadBar": {
@@ -110,7 +123,8 @@
 			"accounts": "conti",
 			"usernames": "nomi utente",
 			"tokens": "gettoni"
-		}
+		},
+		"noResult": "Nessun risultato trovato"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Invio fondi non riuscito",
 			"creatingAccount": "Errore durante la creazione dell'account"
 		}
+	},
+	"welcome": {
+		"title": "Benvenuti a Dango",
+		"description": "Siamo lieti di averti con noi e non vediamo l'ora di vedere cosa farai in futuro."
 	}
 }

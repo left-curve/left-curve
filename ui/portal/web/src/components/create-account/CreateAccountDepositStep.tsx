@@ -2,6 +2,7 @@ import { Button, Input, useInputs, useSigningClient, useWizard } from "@left-cur
 import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
+import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
@@ -72,7 +73,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         }
         bottomComponent={
           <div className="w-full flex justify-between">
-            <p>Available</p>
+            <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
               <span>{usdcInfo.symbol}</span>
               <span>{humanBalance}</span>
@@ -82,10 +83,10 @@ export const CreateAccountDepositStep: React.FC = () => {
       />
       <div className="flex gap-4">
         <Button fullWidth onClick={() => previousStep()}>
-          Back
+          {m["common.back"]()}
         </Button>
         <Button fullWidth onClick={() => send()}>
-          Continue
+          {m["common.continue"]()}
         </Button>
       </div>
     </div>

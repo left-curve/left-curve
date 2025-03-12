@@ -11,29 +11,12 @@ import { useAccount } from "@left-curve/store-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect } from "react";
-
-const steps = ["Authenticate", "Username"];
-
-const headers = [
-  {
-    title: "Create Your Account",
-    subtitle: "Choose a log in credential. You can add or remove credentials afterwards.",
-  },
-  /* {
-    title: "Fund Your Account",
-    subtitle: "Fund your first spot account, you’ll be able to create another account later.",
-  }, */
-  {
-    title: "Select a Username",
-    subtitle: "Your username will be public on-chain and cannot be changed afterwards.",
-  },
-];
+import { m } from "~/paraglide/messages";
 
 export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep, previousStep } = useWizard();
   const { isConnected } = useAccount();
   const navigate = useNavigate();
-  const { title, subtitle } = headers[activeStep];
 
   useEffect(() => {
     if (isConnected) navigate({ to: "/" });
@@ -52,19 +35,26 @@ export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) =
                 className="h-12 rounded-full shadow-btn-shadow-gradient"
               />
               <div className="flex flex-col gap-3 items-center justify-center text-center">
-                <h1 className="h2-heavy">{title}</h1>
-                <p className="text-gray-500 diatype-m-medium">{subtitle}</p>
+                <h1 className="h2-heavy">{m["signup.stepper.title"]({ step: activeStep })}</h1>
+                <p className="text-gray-500 diatype-m-medium">
+                  {m["signup.stepper.description"]({ step: activeStep })}
+                </p>
               </div>
-              <Stepper steps={steps} activeStep={activeStep} />
+              <Stepper
+                steps={Array.from({ length: 2 }).map((_, step) =>
+                  m["signup.stepper.steps"]({ step }),
+                )}
+                activeStep={activeStep}
+              />
             </div>
             {/* Body */}
             {children}
             {/* Footer */}
             {activeStep === 0 ? (
               <div className="flex items-center gap-1">
-                <p>Already have an account? </p>
+                <p>{m["signup.alreadyHaveAccount"]()}</p>
                 <Button variant="link" autoFocus={false} onClick={() => navigate({ to: "/login" })}>
-                  Log in
+                  {m["common.signin"]()}
                 </Button>
               </div>
             ) : (
@@ -75,7 +65,7 @@ export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) =
                   variant="link"
                   className="text-red-bean-400 hover:text-red-bean-600"
                 >
-                  Do this later
+                  {m["signup.doThisLater"]()}
                 </Button>
                 <Button
                   size="sm"
@@ -84,7 +74,7 @@ export const SignupWrapper: React.FC<React.PropsWithChildren> = ({ children }) =
                   onClick={() => previousStep()}
                 >
                   <IconLeft className="w-[22px] h-[22px]" />
-                  <span>Back</span>
+                  <span>{m["common.back"]()}</span>
                 </Button>
               </div>
             )}

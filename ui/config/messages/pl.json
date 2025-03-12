@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Zarządzanie kluczami",
 			"description": "Łatwo dodawaj lub usuwaj klucze dostępu, aby zarządzać dostępem do swojego konta. Każdy klucz dostępu jest niezbędny do bezpiecznego logowania, zapewniając, że tylko Ty możesz uzyskać dostęp do swojego konta.",
-			"add": "Dodać"
+			"add": "Dodać",
+			"managment": {
+				"add": {
+					"title": "Dodaj nowe poświadczenie",
+					"description": "Wybierz poświadczenie. Możesz dodać lub usunąć poświadczenia później."
+				},
+				"delete": {
+					"title": "Usuń poświadczenia",
+					"description": "Czy na pewno chcesz usunąć te dane uwierzytelniające?",
+					"warning": "Tej czynności nie można cofnąć."
+				}
+			}
 		},
 		"language": "Język"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Zarejestruj się za pomocą Passkey"
 				}
 			}
-		]
+		],
+		"cancel": "Anulować",
+		"delete": "Usuwać"
 	},
 	"notifications": {
 		"title": "Powiadomienia",
@@ -110,7 +123,8 @@
 			"accounts": "konta",
 			"usernames": "nazwy użytkowników",
 			"tokens": "żetony"
-		}
+		},
+		"noResult": "Nie znaleziono wyników"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Nie udało się wysłać środków",
 			"creatingAccount": "Błąd podczas tworzenia konta"
 		}
+	},
+	"welcome": {
+		"title": "Witamy w Dango",
+		"description": "Cieszymy się, że jesteś z nami i nie możemy się doczekać, aż zobaczymy Twoje kolejne działania."
 	}
 }

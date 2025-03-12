@@ -17,7 +17,7 @@ export default defineConfig({
     },
     alias: {
       "~": "./src",
-      "~/paraglide": path.resolve(__dirname, "./paraglide"),
+      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
     },
     define: publicVars,
   },
@@ -36,7 +36,7 @@ export default defineConfig({
     rspack: {
       plugins: [
         paraglideRspackPlugin({
-          outdir: "./paraglide",
+          outdir: "./.paraglide",
           cleanOutdir: true,
           emitGitIgnore: false,
           emitPrettierIgnore: false,

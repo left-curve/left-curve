@@ -11,6 +11,7 @@ import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { m } from "~/paraglide/messages";
 import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
@@ -51,7 +52,7 @@ export const AccountMenuBody: React.FC = () => {
                 setSidebarVisibility(false),
               ]}
             >
-              Fund
+              {m["common.funds"]()}
             </Button>
             <Button
               fullWidth
@@ -62,7 +63,7 @@ export const AccountMenuBody: React.FC = () => {
                 setSidebarVisibility(false),
               ]}
             >
-              Send
+              {m["common.send"]()}
             </Button>
             <IconButton variant="secondary">
               <IconQR />
@@ -80,11 +81,12 @@ export const AccountMenuBody: React.FC = () => {
         )}
         {tab === "account" && (
           <div className="flex items-center justify-between gap-4 w-full">
-            <p>Other Accounts</p>
+            <p>{m["accountMenu.accounts.otherAccounts"]()}</p>
             <Button
               onClick={() => [setSidebarVisibility(false), navigate({ to: "/create-account" })]}
             >
-              <IconAddCross className="w-5 h-5" /> <span>Add Account</span>
+              <IconAddCross className="w-5 h-5" />{" "}
+              <span>{m["accountMenu.accounts.addAccount"]()}</span>
             </Button>
           </div>
         )}

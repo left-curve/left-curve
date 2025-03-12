@@ -1,13 +1,15 @@
-import { Button, IconChevronDown, twMerge, useMeasure } from "@left-curve/applets-kit";
+import { Button, IconChevronDown, IconPasskey, twMerge } from "@left-curve/applets-kit";
 import { useConnectors } from "@left-curve/store-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useState } from "react";
 
+import { m } from "~/paraglide/messages";
+
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
-  mode: "create" | "connect";
+  mode: "signup" | "signin";
 }
 
 const containerVariants = {
@@ -29,13 +31,11 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
   const [expandWallets, setExpandWallets] = useState(false);
   const connectors = useConnectors();
 
-  const textPrefix = mode === "create" ? "Create with" : "Connect with";
-
   return (
     <div className="flex flex-col gap-6 w-full">
-      <Button fullWidth onClick={() => action("passkey")} isLoading={isPending}>
-        {" "}
-        {`${textPrefix} Passkey`}
+      <Button fullWidth onClick={() => action("passkey")} isLoading={isPending} className="gap-2">
+        <IconPasskey className="w-6 h-6" />
+        <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
       </Button>
       <div className="flex items-center justify-center text-gray-500">
         <span className="flex-1 h-[1px] bg-gray-100" />
@@ -43,7 +43,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
           className="flex items-center justify-center gap-1 px-2 cursor-pointer"
           onClick={() => setExpandWallets(!expandWallets)}
         >
-          <p>OR WALLETS</p>
+          <p>{m["common.signWithWallet"]({ action: mode })}</p>
           <IconChevronDown
             className={twMerge(
               "w-4 h-4 transition-all duration-300",
@@ -77,11 +77,13 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
                       <Button
                         as={motion.div}
                         isDisabled={isPending}
+                        className="gap-2"
                         variant="secondary"
                         fullWidth
                         onClick={() => action(connector.id)}
                       >
-                        {`${textPrefix} ${connector.name}`}
+                        <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
+                        <p className="min-w-20">{connector.name}</p>
                       </Button>
                     </motion.div>
                   );

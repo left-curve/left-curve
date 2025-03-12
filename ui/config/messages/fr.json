@@ -43,7 +43,18 @@
 		"keyManagment": {
 			"title": "Gestion des clés",
 			"description": "Ajoutez ou supprimez facilement des mots de passe pour gérer l'accès à votre compte. Chaque mot de passe est essentiel pour sécuriser vos connexions et garantir que vous seul pouvez accéder à votre compte.",
-			"add": "Ajouter"
+			"add": "Ajouter",
+			"managment": {
+				"add": {
+					"title": "Ajouter de nouvelles informations d'identification",
+					"description": "Choisissez un identifiant. Vous pourrez en ajouter ou en supprimer ultérieurement."
+				},
+				"delete": {
+					"title": "Supprimer les informations d'identification",
+					"description": "Êtes-vous sûr de vouloir supprimer ces informations d'identification ?",
+					"warning": "Cette action ne peut pas être annulée."
+				}
+			}
 		},
 		"language": "Langue"
 	},
@@ -87,7 +98,9 @@
 					"action=signup": "Inscrivez-vous avec Passkey"
 				}
 			}
-		]
+		],
+		"cancel": "Annuler",
+		"delete": "Supprimer"
 	},
 	"notifications": {
 		"title": "Notifications",
@@ -110,7 +123,8 @@
 			"accounts": "comptes",
 			"usernames": "noms d'utilisateur",
 			"tokens": "jetons"
-		}
+		},
+		"noResult": "Aucun résultat trouvé"
 	},
 	"accountMenu": {
 		"accounts": {
@@ -249,5 +263,9 @@
 			"failedSendingFunds": "Échec de l'envoi des fonds",
 			"creatingAccount": "Erreur lors de la création du compte"
 		}
+	},
+	"welcome": {
+		"title": "Bienvenue à Dango",
+		"description": "Nous sommes ravis de vous compter parmi nous et avons hâte de voir ce que vous ferez ensuite."
 	}
 }
