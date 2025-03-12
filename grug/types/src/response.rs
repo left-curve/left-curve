@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, EventName, Json, JsonSerExt, Message, StdResult},
+    crate::{Addr, Json, JsonSerExt, Message, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -67,25 +67,25 @@ impl Response {
 
     pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        E: EventName,
+        E: TryInto<ContractEvent>,
+        StdError: From<E::Error>,
     {
-        self.subevents.push(ContractEvent::new(E::NAME, event)?);
+        self.subevents.push(event.try_into()?);
         Ok(self)
     }
 
-    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
-        self.subevents.push(event);
-        self
-    }
-
-    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
+    pub fn may_add_event<E>(mut self, maybe_event: Option<E>) -> StdResult<Self>
+    where
+        E: TryInto<ContractEvent>,
+        StdError: From<E::Error>,
+    {
         if let Some(event) = maybe_event {
-            self.subevents.push(event);
+            self.subevents.push(event.try_into()?);
         }
-        self
+        Ok(self)
     }
 
-    pub fn add_subevents<I>(mut self, events: I) -> Self
+    pub fn add_events<I>(mut self, events: I) -> Self
     where
         I: IntoIterator<Item = ContractEvent>,
     {
@@ -154,27 +154,27 @@ impl AuthResponse {
 
     pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        E: EventName,
+        E: TryInto<ContractEvent>,
+        StdError: From<E::Error>,
     {
         self.response = self.response.add_event(event)?;
         Ok(self)
     }
 
-    pub fn add_subevent(mut self, event: ContractEvent) -> Self {
-        self.response = self.response.add_subevent(event);
-        self
+    pub fn may_add_event<E>(mut self, maybe_event: Option<E>) -> StdResult<Self>
+    where
+        E: TryInto<ContractEvent>,
+        StdError: From<E::Error>,
+    {
+        self.response = self.response.may_add_event(maybe_event)?;
+        Ok(self)
     }
 
-    pub fn may_add_subevent(mut self, maybe_event: Option<ContractEvent>) -> Self {
-        self.response = self.response.may_add_subevent(maybe_event);
-        self
-    }
-
-    pub fn add_subevents<I>(mut self, events: I) -> Self
+    pub fn add_events<I>(mut self, events: I) -> Self
     where
         I: IntoIterator<Item = ContractEvent>,
     {
-        self.response = self.response.add_subevents(events);
+        self.response = self.response.add_events(events);
         self
     }
 }

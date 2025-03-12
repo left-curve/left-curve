@@ -13,9 +13,9 @@ use {
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
-        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
-        SudoCtx, Udec128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, Message, MultiplyFraction, MutableCtx,
+        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
+        Udec128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -71,13 +71,16 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
             &update.params,
         )?;
 
-        events.push(ContractEvent::new(PairUpdated::NAME, PairUpdated {
-            base_denom: update.base_denom,
-            quote_denom: update.quote_denom,
-        })?);
+        events.push(
+            PairUpdated {
+                base_denom: update.base_denom,
+                quote_denom: update.quote_denom,
+            }
+            .try_into()?,
+        );
     }
 
-    Ok(Response::new().add_subevents(events))
+    Ok(Response::new().add_events(events))
 }
 
 #[inline]
@@ -239,7 +242,7 @@ fn batch_update_orders(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_subevents(events))
+        .add_events(events))
 }
 
 #[inline]
@@ -393,7 +396,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 Coins::new(),
             )?
         })
-        .add_subevents(events))
+        .add_events(events))
 }
 
 #[inline]
