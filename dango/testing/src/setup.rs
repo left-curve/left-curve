@@ -27,7 +27,7 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
-    pyth_client::middleware_cache::PythMiddlewareCache,
+    pyth_client::client_cache::PythClientCache,
     pyth_types::GUARDIAN_SETS,
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };
@@ -57,14 +57,14 @@ pub const USER9_PRIVATE_KEY: [u8; 32] =
     hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
 
 pub type TestSuite<
-    PP = ProposalPreparer<PythMiddlewareCache>,
+    PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
     ID = NullIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
-    PP = ProposalPreparer<PythMiddlewareCache>,
+    PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
     ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,

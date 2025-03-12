@@ -16,11 +16,11 @@ use {
 };
 
 #[derive(Debug, Clone)]
-pub struct PythMiddlewareCache {
+pub struct PythClientCache {
     base_url: String,
 }
 
-impl PythMiddlewareCache {
+impl PythClientCache {
     pub fn new<S: ToString>(base_url: S) -> Self {
         Self {
             base_url: base_url.to_string(),
@@ -114,7 +114,7 @@ impl PythMiddlewareCache {
 }
 
 #[async_trait]
-impl PythClientTrait for PythMiddlewareCache {
+impl PythClientTrait for PythClientCache {
     type Error = error::Error;
 
     async fn stream<I>(

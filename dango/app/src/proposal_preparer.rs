@@ -10,7 +10,7 @@ use {
     },
     grug_app::AppError,
     prost::bytes::Bytes,
-    pyth_client::{middleware_cache::PythMiddlewareCache, PythClient, PythClientTrait},
+    pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::{PythId, PYTH_URL},
     std::sync::Mutex,
     thiserror::Error,
@@ -58,7 +58,7 @@ impl Default for ProposalPreparer<PythClient> {
     }
 }
 
-impl ProposalPreparer<PythMiddlewareCache> {
+impl ProposalPreparer<PythClientCache> {
     pub fn new_with_cache() -> Self {
         let client = PythClientPPHandler::new_with_cache(PYTH_URL);
 

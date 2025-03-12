@@ -1,7 +1,7 @@
 use {
     grug::{Binary, Lengthy, NonEmpty},
     grug_app::Shared,
-    pyth_client::{middleware_cache::PythMiddlewareCache, PythClient, PythClientTrait},
+    pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PythId,
     std::{
         sync::{
@@ -50,13 +50,13 @@ impl PythClientPPHandler<PythClient> {
     }
 }
 
-impl PythClientPPHandler<PythMiddlewareCache> {
+impl PythClientPPHandler<PythClientCache> {
     #[allow(dead_code)]
-    pub fn new_with_cache<S: ToString>(base_url: S) -> PythClientPPHandler<PythMiddlewareCache> {
+    pub fn new_with_cache<S: ToString>(base_url: S) -> PythClientPPHandler<PythClientCache> {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
-            client: PythMiddlewareCache::new(base_url),
+            client: PythClientCache::new(base_url),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,
