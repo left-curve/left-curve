@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"explorer": {
+		"txs": {
+			"txDetails": "İşlem Ayrıntıları"
+		}
+	},
+	"settings": {
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "İngilizce",
+					"language=es": "İspanyol",
+					"language=de": "Almanca",
+					"language=fa": "Farsça",
+					"language=fr": "Fransızca",
+					"language=gu": "Guceratça",
+					"language=hi": "Hintçe",
+					"language=ja": "Japonca",
+					"language=ko": "Korece",
+					"language=pl": "Lehçe",
+					"language=pt-br": "Portekizce",
+					"language=ro": "Romence",
+					"language=ru": "Rusça",
+					"language=tr": "Türkçe",
+					"language=zh-cn": "Çince (Basitleştirilmiş)",
+					"language=zh-hk": "Çince (Geleneksel)",
+					"language=zh-tw": "Çince (Tayvan)",
+					"language=it": "İtalyan"
+				}
+			}
+		],
+		"title": "Ayarlar",
+		"display": "Görüntülemek",
+		"number": "Sayı",
+		"connectToMobile": "Mobil'e bağlanın",
+		"keyManagment": {
+			"title": "Anahtar Yönetimi",
+			"description": "Hesabınıza erişimi yönetmek için parolaları kolayca ekleyin veya silin. Her parola, yalnızca sizin hesabınıza erişebilmenizi sağlayarak güvenli oturum açma işlemleri için hayati önem taşır.",
+			"add": "Eklemek"
+		},
+		"language": "Dil"
+	},
+	"common": {
+		"assets": "Varlıklar",
+		"funds": "Fonlar",
+		"send": "Göndermek",
+		"viewAll": "Tümünü Görüntüle",
+		"max": "Maksimum",
+		"signin": "Oturum aç",
+		"continue": "Devam etmek",
+		"back": "Geri",
+		"available": "Mevcut",
+		"signup": "Üye olmak",
+		"username": "Kullanıcı adı",
+		"hi": "MERHABA",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Cüzdan ile giriş yapın",
+					"action=signup": "Cüzdan ile kaydolun"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Passkey ile giriş yapın",
+					"action=signup": "Passkey ile kaydolun"
+				}
+			}
+		]
+	},
+	"notifications": {
+		"title": "Bildirimler",
+		"noNotifications": {
+			"title": "Henüz bildirim yok",
+			"description": "Token'ları onayladığınızda, ticaretini yaptığınızda veya transfer ettiğinizde, işleminiz burada görünecektir"
+		}
+	},
+	"sendAndReceive": {
+		"to": "İle",
+		"sending": "Sen gönderiyorsun",
+		"inputPlaceholder": "Cüzdan adresi veya kullanıcı adı"
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "Arama",
+			"transactions": "işlemler",
+			"apps": "uygulamalar",
+			"blocks": "bloklar",
+			"accounts": "hesaplar",
+			"usernames": "kullanıcı adları",
+			"tokens": "jetonlar"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "Diğer Hesaplar",
+			"addAccount": "Hesap Ekle"
+		}
+	},
+	"accountCreation": {
+		"title": "Yeni Hesap Oluştur",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Hesap Türü",
+						"step=1": "Depozito"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Tüm ekosistemle etkileşim kurmak için hesap türünüzü seçin",
+						"step=1": "İlk spot hesabınıza para yatırın, daha sonra başka bir hesap oluşturabileceksiniz."
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Spot Hesap",
+						"accountType=margin": "Marj Hesabı"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Herhangi bir varlığı elinde tutabilir ve herhangi bir faaliyette bulunabilir; en ucuz benzin maliyeti; yalnızca aşırı teminatlı krediler alabilir.",
+						"accountType=margin": "Kaldıraç oranı 5 katına kadar teminatsız kredi alınabilir; yalnızca beyaz listedeki varlıklar tutulabilir ve beyaz listedeki faaliyetlerde bulunulabilir."
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "Girin ",
+		"noAccount": "Hesabınız yok mu?",
+		"errors": {
+			"usernameRequired": "Kullanıcı adı gerekli",
+			"usernameNotExist": "Kullanıcı adı mevcut değil"
+		},
+		"credential": {
+			"description": "Kullanıcı adınızla ilişkilendirilmiş herhangi bir kimlik bilgisini seçin."
+		}
+	},
+	"signup": {
+		"createAccount": "Hesap oluşturmak",
+		"doThisLater": "Bunu daha sonra yap",
+		"alreadyHaveAccount": "Zaten bir hesabınız var mı?",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Kimlik bilgisi",
+						"step=1": "Kullanıcı adı"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Hesabınızı Oluşturun",
+						"step=1": "Bir Kullanıcı Adı Seçin"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Bir oturum açma kimlik bilgisi seçin. Daha sonra kimlik bilgilerini ekleyebilir veya kaldırabilirsiniz.",
+						"step=1": "Kullanıcı adınız zincir üzerinde herkese açık olacak ve daha sonra değiştirilemeyecektir."
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "Kullanıcı adı zaten alınmış",
+			"failedSendingFunds": "Para gönderimi başarısız oldu",
+			"creatingAccount": "Hesap oluşturulurken hata oluştu"
+		}
+	}
+}

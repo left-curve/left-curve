@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"explorer": {
+		"txs": {
+			"txDetails": "Detalii tranzacție"
+		}
+	},
+	"settings": {
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "engleză",
+					"language=es": "spaniolă",
+					"language=de": "german",
+					"language=fa": "persană",
+					"language=fr": "franceză",
+					"language=gu": "Gujarati",
+					"language=hi": "hindi",
+					"language=ja": "japonez",
+					"language=ko": "coreean",
+					"language=pl": "Lustrui",
+					"language=pt-br": "portugheză",
+					"language=ro": "română",
+					"language=ru": "rusă",
+					"language=tr": "turc",
+					"language=zh-cn": "Chineză (simplificată)",
+					"language=zh-hk": "Chineză (tradițională)",
+					"language=zh-tw": "Chineză (Taiwan)",
+					"language=it": "italian"
+				}
+			}
+		],
+		"title": "Setări",
+		"display": "Afişa",
+		"number": "Număr",
+		"connectToMobile": "Conectați-vă la mobil",
+		"keyManagment": {
+			"title": "Managementul cheilor",
+			"description": "Adăugați sau ștergeți cu ușurință cheile de acces pentru a gestiona accesul la contul dvs. Fiecare cheie de acces este vitală pentru autentificarea securizată, asigurându-vă că numai dvs. vă puteți accesa contul.",
+			"add": "Adăuga"
+		},
+		"language": "Limbă"
+	},
+	"common": {
+		"assets": "Active",
+		"funds": "Fonduri",
+		"send": "Trimite",
+		"viewAll": "Vezi toate",
+		"max": "Max",
+		"signin": "Conectare",
+		"continue": "Continua",
+		"back": "Spate",
+		"available": "Disponibil",
+		"signup": "Înscrieți-vă",
+		"username": "Nume de utilizator",
+		"hi": "Hi",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Conectați-vă cu portofel",
+					"action=signup": "Înscrieți-vă cu portofel"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Conectați-vă cu Passkey",
+					"action=signup": "Înscrieți-vă cu Passkey"
+				}
+			}
+		]
+	},
+	"notifications": {
+		"title": "Notificări",
+		"noNotifications": {
+			"title": "Nicio notificare încă",
+			"description": "Când aprobi, schimbi sau transferi jetoane, tranzacția ta va apărea aici"
+		}
+	},
+	"sendAndReceive": {
+		"to": "La",
+		"sending": "Tu trimiți",
+		"inputPlaceholder": "Adresă portofel sau nume de utilizator"
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "Caută",
+			"transactions": "tranzacții",
+			"apps": "aplicații",
+			"blocks": "blocuri",
+			"accounts": "conturi",
+			"usernames": "nume de utilizator",
+			"tokens": "jetoane"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "Alte Conturi",
+			"addAccount": "Adăugați un cont"
+		}
+	},
+	"accountCreation": {
+		"title": "Creați un cont nou",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Tip de cont",
+						"step=1": "Depozit"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Selectați tipul de cont pentru a interacționa în întregul ecosistem",
+						"step=1": "Fondați primul cont spot, veți putea crea un alt cont mai târziu."
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Cont spot",
+						"accountType=margin": "Cont în marjă"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Poate deține orice activ și poate participa la orice activitate; cel mai ieftin cost al gazului; poate lua doar împrumuturi supracolateralizate.",
+						"accountType=margin": "Poate lua împrumuturi sub-colateralizate de până la 5x levier; poate deține numai active incluse pe lista albă și poate participa la activitățile pe lista albă."
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "Introduceți dvs ",
+		"noAccount": "Nu ai un cont?",
+		"errors": {
+			"usernameRequired": "Numele de utilizator este obligatoriu",
+			"usernameNotExist": "Numele de utilizator nu există"
+		},
+		"credential": {
+			"description": "Alegeți oricare dintre acreditările care au fost asociate cu numele dvs. de utilizator."
+		}
+	},
+	"signup": {
+		"createAccount": "Creează cont",
+		"doThisLater": "Fă asta mai târziu",
+		"alreadyHaveAccount": "Aveți deja un cont?",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Acreditare",
+						"step=1": "Nume de utilizator"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Creați-vă contul",
+						"step=1": "Selectați un nume de utilizator"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Alegeți o autentificare de conectare. Puteți adăuga sau elimina acreditările ulterior.",
+						"step=1": "Numele dvs. de utilizator va fi public în lanț și nu poate fi schimbat ulterior."
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "Numele de utilizator este deja luat",
+			"failedSendingFunds": "Trimiterea fondurilor nu a reușit",
+			"creatingAccount": "Eroare la crearea contului"
+		}
+	}
+}

@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"explorer": {
+		"txs": {
+			"txDetails": "વ્યવહાર વિગતો"
+		}
+	},
+	"settings": {
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "અંગ્રેજી",
+					"language=es": "સ્પેનિશ",
+					"language=de": "જર્મન",
+					"language=fa": "પર્શિયન",
+					"language=fr": "ફ્રેન્ચ",
+					"language=gu": "ગુજરાતી",
+					"language=hi": "હિન્દી",
+					"language=ja": "જાપાનીઝ",
+					"language=ko": "કોરિયન",
+					"language=pl": "પોલિશ",
+					"language=pt-br": "પોર્ટુગીઝ",
+					"language=ro": "રોમાનિયન",
+					"language=ru": "રશિયન",
+					"language=tr": "ટર્કિશ",
+					"language=zh-cn": "ચાઇનીઝ (સરળીકૃત)",
+					"language=zh-hk": "ચાઇનીઝ (પરંપરાગત)",
+					"language=zh-tw": "ચાઇનીઝ (તાઇવાન)",
+					"language=it": "ઇટાલિયન"
+				}
+			}
+		],
+		"title": "સેટિંગ્સ",
+		"display": "ડિસ્પ્લે",
+		"number": "નંબર",
+		"connectToMobile": "મોબાઇલથી કનેક્ટ કરો",
+		"keyManagment": {
+			"title": "કી મેનેજમેન્ટ",
+			"description": "તમારા એકાઉન્ટની ઍક્સેસ મેનેજ કરવા માટે સરળતાથી પાસકી ઉમેરો અથવા કાઢી નાખો. સુરક્ષિત લોગિન માટે દરેક પાસકી મહત્વપૂર્ણ છે, ખાતરી કરો કે ફક્ત તમે જ તમારા એકાઉન્ટને ઍક્સેસ કરી શકો છો.",
+			"add": "ઉમેરો"
+		},
+		"language": "ભાષા"
+	},
+	"common": {
+		"assets": "સંપત્તિઓ",
+		"funds": "ભંડોળ",
+		"send": "મોકલો",
+		"viewAll": "બધું જુઓ",
+		"max": "મહત્તમ",
+		"signin": "સાઇન ઇન કરો",
+		"continue": "ચાલુ રાખો",
+		"back": "પાછળ",
+		"available": "ઉપલબ્ધ",
+		"signup": "સાઇન અપ કરો",
+		"username": "વપરાશકર્તા નામ",
+		"hi": "હાય",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "વૉલેટ વડે સાઇન ઇન કરો",
+					"action=signup": "વોલેટ વડે સાઇન અપ કરો"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "પાસકી વડે સાઇન ઇન કરો",
+					"action=signup": "પાસકી સાથે સાઇન અપ કરો"
+				}
+			}
+		]
+	},
+	"notifications": {
+		"title": "સૂચનાઓ",
+		"noNotifications": {
+			"title": "હજુ સુધી કોઈ સૂચનાઓ નથી",
+			"description": "જ્યારે તમે ટોકન્સ મંજૂર કરો છો, વેપાર કરો છો અથવા ટ્રાન્સફર કરો છો, ત્યારે તમારો વ્યવહાર અહીં દેખાશે."
+		}
+	},
+	"sendAndReceive": {
+		"to": "પ્રતિ",
+		"sending": "તમે મોકલી રહ્યા છો",
+		"inputPlaceholder": "વૉલેટ સરનામું અથવા વપરાશકર્તા નામ"
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "શોધો",
+			"transactions": "વ્યવહારો",
+			"apps": "એપ્લિકેશન્સ",
+			"blocks": "બ્લોક્સ",
+			"accounts": "એકાઉન્ટ્સ",
+			"usernames": "વપરાશકર્તાનામ",
+			"tokens": "ટોકન્સ"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "અન્ય એકાઉન્ટ્સ",
+			"addAccount": "એકાઉન્ટ ઉમેરો"
+		}
+	},
+	"accountCreation": {
+		"title": "નવું ખાતું બનાવો",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "ખાતાનો પ્રકાર",
+						"step=1": "જમા"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "સમગ્ર ઇકોસિસ્ટમમાં ક્રિયાપ્રતિક્રિયા કરવા માટે તમારા એકાઉન્ટ પ્રકારને પસંદ કરો.",
+						"step=1": "તમારા પહેલા સ્પોટ એકાઉન્ટમાં ભંડોળ જમા કરો, તમે પછીથી બીજું એકાઉન્ટ બનાવી શકશો."
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "સ્પોટ એકાઉન્ટ",
+						"accountType=margin": "માર્જિન એકાઉન્ટ"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "કોઈપણ સંપત્તિ રાખી શકે છે અને કોઈપણ પ્રવૃત્તિમાં ભાગ લઈ શકે છે; સૌથી સસ્તી ગેસ કિંમત; ફક્ત વધુ પડતી કોલેટરલાઇઝ્ડ લોન લઈ શકે છે.",
+						"accountType=margin": "5x લીવરેજ સુધીની અંડર-કોલેટરલાઇઝ્ડ લોન લઈ શકે છે; ફક્ત વ્હાઇટલિસ્ટેડ સંપત્તિઓ રાખી શકે છે અને વ્હાઇટલિસ્ટેડ પ્રવૃત્તિઓમાં ભાગ લઈ શકે છે."
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "તમારું દાખલ કરો ",
+		"noAccount": "ખાતું નથી?",
+		"errors": {
+			"usernameRequired": "વપરાશકર્તા નામ જરૂરી છે",
+			"usernameNotExist": "વપરાશકર્તા નામ અસ્તિત્વમાં નથી"
+		},
+		"credential": {
+			"description": "તમારા વપરાશકર્તા નામ સાથે સંકળાયેલા કોઈપણ ઓળખપત્રો પસંદ કરો."
+		}
+	},
+	"signup": {
+		"createAccount": "ખાતું બનાવો",
+		"doThisLater": "આ પછી કરો",
+		"alreadyHaveAccount": "પહેલેથી ખાતું છે?",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "ઓળખપત્ર",
+						"step=1": "વપરાશકર્તા નામ"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "તમારું ખાતું બનાવો",
+						"step=1": "વપરાશકર્તા નામ પસંદ કરો"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "સાઇન ઇન ઓળખપત્ર પસંદ કરો. તમે પછીથી ઓળખપત્રો ઉમેરી અથવા દૂર કરી શકો છો.",
+						"step=1": "તમારું વપરાશકર્તા નામ પબ્લિક ઓન-ચેઇન હશે અને પછીથી બદલી શકાશે નહીં."
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "વપરાશકર્તા નામ પહેલેથી જ લેવામાં આવ્યું છે",
+			"failedSendingFunds": "ભંડોળ મોકલવામાં નિષ્ફળ થયાં",
+			"creatingAccount": "એકાઉન્ટ બનાવવામાં ભૂલ"
+		}
+	}
+}

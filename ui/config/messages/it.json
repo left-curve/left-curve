@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"common": {
+		"assets": "Attività",
+		"funds": "Fondi",
+		"send": "Inviare",
+		"viewAll": "Visualizza tutto",
+		"max": "Massimo",
+		"signin": "Registrazione",
+		"continue": "Continuare",
+		"back": "Indietro",
+		"available": "Disponibile",
+		"signup": "Iscrizione",
+		"username": "Nome utente",
+		"hi": "CIAO",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Accedi con il portafoglio",
+					"action=signup": "Registrati con il portafoglio"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "Accedi con Passkey",
+					"action=signup": "Registrati con Passkey"
+				}
+			}
+		]
+	},
+	"explorer": {
+		"txs": {
+			"txDetails": "Dettagli della transazione"
+		}
+	},
+	"notifications": {
+		"title": "Notifiche",
+		"noNotifications": {
+			"title": "Nessuna notifica ancora",
+			"description": "Quando approvi, scambi o trasferisci token, la tua transazione apparirà qui"
+		}
+	},
+	"sendAndReceive": {
+		"to": "A",
+		"sending": "Stai inviando",
+		"inputPlaceholder": "Indirizzo del portafoglio o nome utente"
+	},
+	"settings": {
+		"title": "Impostazioni",
+		"display": "Display",
+		"language": "Lingua",
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "Inglese",
+					"language=es": "spagnolo",
+					"language=it": "Italiano",
+					"language=fr": "francese",
+					"language=de": "tedesco",
+					"language=fa": "persiano",
+					"language=gu": "Gujarati",
+					"language=hi": "hindi",
+					"language=ja": "giapponese",
+					"language=ko": "coreano",
+					"language=pl": "Polacco",
+					"language=pt-br": "portoghese",
+					"language=ro": "rumeno",
+					"language=ru": "russo",
+					"language=tr": "turco",
+					"language=zh-cn": "Cinese (semplificato)",
+					"language=zh-hk": "Cinese (tradizionale)",
+					"language=zh-tw": "Cinese (Taiwan)"
+				}
+			}
+		],
+		"number": "Numero",
+		"connectToMobile": "Connettiti al cellulare",
+		"keyManagment": {
+			"title": "Gestione delle chiavi",
+			"description": "Aggiungi o elimina facilmente le passkey per gestire l'accesso al tuo account. Ogni passkey è fondamentale per accessi sicuri, assicurando che solo tu possa accedere al tuo account.",
+			"add": "Aggiungere"
+		}
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "Cercare",
+			"transactions": "transazioni",
+			"apps": "applicazioni",
+			"blocks": "blocchi",
+			"accounts": "conti",
+			"usernames": "nomi utente",
+			"tokens": "gettoni"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "Altri account",
+			"addAccount": "Aggiungi account"
+		}
+	},
+	"accountCreation": {
+		"title": "Crea un nuovo account",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Tipo di account",
+						"step=1": "Depositare"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Seleziona il tipo di account per interagire con l'intero ecosistema",
+						"step=1": "Deposita fondi sul tuo primo conto spot, potrai crearne un altro in seguito."
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Conto spot",
+						"accountType=margin": "Conto Margine"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "Può detenere qualsiasi bene e partecipare a qualsiasi attività; il costo della benzina è il più basso; può accettare solo prestiti con garanzia reale.",
+						"accountType=margin": "Può accettare prestiti sotto garanzia con leva finanziaria fino a 5x; può detenere solo asset inseriti nella whitelist e partecipare ad attività inserite nella whitelist."
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "Inserisci il tuo ",
+		"noAccount": "Non hai un account?",
+		"errors": {
+			"usernameRequired": "Il nome utente è obbligatorio",
+			"usernameNotExist": "Il nome utente non esiste"
+		},
+		"credential": {
+			"description": "Scegli una delle credenziali associate al tuo nome utente."
+		}
+	},
+	"signup": {
+		"createAccount": "Creare un account",
+		"doThisLater": "Fallo più tardi",
+		"alreadyHaveAccount": "Hai già un account?",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Credenziali",
+						"step=1": "Nome utente"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Crea il tuo account",
+						"step=1": "Seleziona un nome utente"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "Scegli una credenziale di accesso. Puoi aggiungere o rimuovere le credenziali in seguito.",
+						"step=1": "Il tuo nome utente sarà pubblico sulla catena e non potrà più essere modificato in seguito."
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "Il nome utente è già stato preso",
+			"failedSendingFunds": "Invio fondi non riuscito",
+			"creatingAccount": "Errore durante la creazione dell'account"
+		}
+	}
+}

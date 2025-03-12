@@ -31,7 +31,12 @@ next-env.d.ts
 *storybook.log
 **/storybook-static
 **/.expo
+**/paraglide
 app.pages.ts
+// I want to exclude all elemetns under inlang.project folder except settings.json and project_id
+ui/config/project.inlang/*
+!ui/config/project.inlang/settings.json
+!ui/config/project.inlang/project_id
 
 # Envs
 **/.env

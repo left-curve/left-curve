@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"explorer": {
+		"txs": {
+			"txDetails": "جزئیات معامله"
+		}
+	},
+	"settings": {
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "انگلیسی",
+					"language=es": "اسپانیایی",
+					"language=de": "آلمانی",
+					"language=fa": "فارسی",
+					"language=fr": "فرانسوی",
+					"language=gu": "گجراتی",
+					"language=hi": "هندی",
+					"language=ja": "ژاپنی",
+					"language=ko": "کره ای",
+					"language=pl": "لهستانی",
+					"language=pt-br": "پرتغالی",
+					"language=ro": "رومانیایی",
+					"language=ru": "روسی",
+					"language=tr": "ترکی",
+					"language=zh-cn": "چینی (ساده شده)",
+					"language=zh-hk": "چینی (سنتی)",
+					"language=zh-tw": "چینی (تایوان)",
+					"language=it": "ایتالیایی"
+				}
+			}
+		],
+		"title": "تنظیمات",
+		"display": "نمایش",
+		"number": "شماره",
+		"connectToMobile": "به موبایل وصل شوید",
+		"keyManagment": {
+			"title": "مدیریت کلید",
+			"description": "به راحتی کلیدهای عبور را اضافه یا حذف کنید تا دسترسی به حساب خود را مدیریت کنید. هر رمز عبور برای ورود ایمن حیاتی است و تضمین می کند که فقط شما می توانید به حساب خود دسترسی داشته باشید.",
+			"add": "اضافه کنید"
+		},
+		"language": "زبان"
+	},
+	"common": {
+		"assets": "دارایی ها",
+		"funds": "وجوه",
+		"send": "ارسال کنید",
+		"viewAll": "مشاهده همه",
+		"max": "حداکثر",
+		"signin": "وارد شوید",
+		"continue": "ادامه دهید",
+		"back": "برگشت",
+		"available": "موجود است",
+		"signup": "ثبت نام کنید",
+		"username": "نام کاربری",
+		"hi": "سلام",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "با کیف پول وارد شوید",
+					"action=signup": "با کیف پول ثبت نام کنید"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "با Passkey وارد شوید",
+					"action=signup": "با Passkey ثبت نام کنید"
+				}
+			}
+		]
+	},
+	"notifications": {
+		"title": "اطلاعیه ها",
+		"noNotifications": {
+			"title": "هنوز اطلاعیه ای وجود ندارد",
+			"description": "وقتی توکن‌ها را تأیید، معامله یا انتقال می‌دهید، تراکنش شما در اینجا ظاهر می‌شود"
+		}
+	},
+	"sendAndReceive": {
+		"to": "به",
+		"sending": "تو داری میفرستی",
+		"inputPlaceholder": "آدرس کیف پول یا نام کاربری"
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "جستجو برای",
+			"transactions": "معاملات",
+			"apps": "برنامه ها",
+			"blocks": "بلوک ها",
+			"accounts": "حساب ها",
+			"usernames": "نام های کاربری",
+			"tokens": "توکن ها"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "سایر حساب ها",
+			"addAccount": "افزودن حساب"
+		}
+	},
+	"accountCreation": {
+		"title": "ایجاد حساب جدید",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "نوع حساب",
+						"step=1": "سپرده گذاری"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "نوع حساب خود را برای تعامل در کل اکوسیستم انتخاب کنید",
+						"step=1": "برای اولین بار حساب خود را سرمایه گذاری کنید، بعداً می توانید حساب دیگری ایجاد کنید."
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "حساب نقطه ای",
+						"accountType=margin": "حساب حاشیه"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "می تواند هر دارایی را در اختیار داشته باشد و در هر فعالیتی شرکت کند. ارزان ترین هزینه گاز; فقط می تواند وام های بیش از حد وثیقه گرفته شود.",
+						"accountType=margin": "می تواند وام های تحت وثیقه تا 5 برابر اهرم دریافت کند. فقط می تواند دارایی های در لیست سفید را نگه دارد و در فعالیت های لیست سفید شرکت کند."
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "خود را وارد کنید ",
+		"noAccount": "حساب کاربری ندارید؟",
+		"errors": {
+			"usernameRequired": "نام کاربری مورد نیاز است",
+			"usernameNotExist": "نام کاربری وجود ندارد"
+		},
+		"credential": {
+			"description": "هر یک از اعتبارنامه هایی که با نام کاربری شما مرتبط شده اند را انتخاب کنید."
+		}
+	},
+	"signup": {
+		"createAccount": "ایجاد حساب کاربری",
+		"doThisLater": "این کار را بعدا انجام دهید",
+		"alreadyHaveAccount": "از قبل حساب کاربری دارید؟",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "اعتبارنامه",
+						"step=1": "نام کاربری"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "حساب کاربری خود را ایجاد کنید",
+						"step=1": "یک نام کاربری انتخاب کنید"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "یک علامت در اعتبارنامه را انتخاب کنید. بعد از آن می توانید اعتبارنامه ها را اضافه یا حذف کنید.",
+						"step=1": "نام کاربری شما در زنجیره عمومی خواهد بود و پس از آن قابل تغییر نیست."
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "نام کاربری قبلاً گرفته شده است",
+			"failedSendingFunds": "ارسال وجوه ناموفق بود",
+			"creatingAccount": "خطا در ایجاد حساب"
+		}
+	}
+}

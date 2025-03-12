@@ -1,0 +1,253 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"explorer": {
+		"txs": {
+			"txDetails": "लेन-देन विवरण"
+		}
+	},
+	"settings": {
+		"languages": [
+			{
+				"declarations": [
+					"input language"
+				],
+				"selectors": [
+					"language"
+				],
+				"match": {
+					"language=en": "अंग्रेज़ी",
+					"language=es": "स्पैनिश",
+					"language=de": "जर्मन",
+					"language=fa": "फ़ारसी",
+					"language=fr": "फ्रेंच",
+					"language=gu": "गुजराती",
+					"language=hi": "हिन्दी",
+					"language=ja": "जापानी",
+					"language=ko": "कोरियाई",
+					"language=pl": "पोलिश",
+					"language=pt-br": "पुर्तगाली",
+					"language=ro": "रोमानियाई",
+					"language=ru": "रूसी",
+					"language=tr": "तुर्की",
+					"language=zh-cn": "सरलीकृत चीनी)",
+					"language=zh-hk": "चीनी पारंपरिक)",
+					"language=zh-tw": "चीनी (ताइवान)",
+					"language=it": "इतालवी"
+				}
+			}
+		],
+		"title": "सेटिंग्स",
+		"display": "प्रदर्शन",
+		"number": "संख्या",
+		"connectToMobile": "मोबाइल से कनेक्ट करें",
+		"keyManagment": {
+			"title": "महतवपूर्ण प्रबंधन",
+			"description": "अपने खाते तक पहुँच प्रबंधित करने के लिए आसानी से पासकी जोड़ें या हटाएँ। प्रत्येक पासकी सुरक्षित लॉगिन के लिए महत्वपूर्ण है, यह सुनिश्चित करता है कि केवल आप ही अपने खाते तक पहुँच सकें।",
+			"add": "जोड़ना"
+		},
+		"language": "भाषा"
+	},
+	"common": {
+		"assets": "संपत्ति",
+		"funds": "फंड",
+		"send": "भेजना",
+		"viewAll": "सभी को देखें",
+		"max": "अधिकतम",
+		"signin": "दाखिल करना",
+		"continue": "जारी रखना",
+		"back": "पीछे",
+		"available": "उपलब्ध",
+		"signup": "साइन अप करें",
+		"username": "उपयोगकर्ता नाम",
+		"hi": "नमस्ते",
+		"signWithWallet": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "वॉलेट से साइन इन करें",
+					"action=signup": "वॉलेट के साथ साइन अप करें"
+				}
+			}
+		],
+		"signWithPasskey": [
+			{
+				"declarations": [
+					"input action"
+				],
+				"selectors": [
+					"action"
+				],
+				"match": {
+					"action=signin": "पासकी से साइन इन करें",
+					"action=signup": "पासकी के साथ साइन अप करें"
+				}
+			}
+		]
+	},
+	"notifications": {
+		"title": "सूचनाएं",
+		"noNotifications": {
+			"title": "अभी तक कोई सूचना नहीं",
+			"description": "जब आप टोकन स्वीकृत करते हैं, उनका व्यापार करते हैं या उन्हें स्थानांतरित करते हैं, तो आपका लेनदेन यहां दिखाई देगा"
+		}
+	},
+	"sendAndReceive": {
+		"to": "को",
+		"sending": "आप भेज रहे हैं",
+		"inputPlaceholder": "वॉलेट पता या उपयोगकर्ता नाम"
+	},
+	"commadBar": {
+		"placeholder": {
+			"title": "निम्न को खोजें",
+			"transactions": "लेनदेन",
+			"apps": "ऐप्स",
+			"blocks": "ब्लाकों",
+			"accounts": "हिसाब किताब",
+			"usernames": "उपयोगकर्ताओं के नाम",
+			"tokens": "टोकन"
+		}
+	},
+	"accountMenu": {
+		"accounts": {
+			"otherAccounts": "अन्य खाते",
+			"addAccount": "खाता जोड़ें"
+		}
+	},
+	"accountCreation": {
+		"title": "नया खाता बनाएँ",
+		"stepper": {
+			"title": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "खाता प्रकार",
+						"step=1": "जमा"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account stepper description",
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "संपूर्ण पारिस्थितिकी तंत्र में सहभागिता करने के लिए अपना खाता प्रकार चुनें",
+						"step=1": "अपने पहले स्पॉट खाते में धनराशि जमा करें, आप बाद में दूसरा खाता बना सकेंगे।"
+					}
+				}
+			]
+		},
+		"accountType": {
+			"title": [
+				{
+					"declarations": [
+						"input account type title",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "स्पॉट खाता",
+						"accountType=margin": "संचय खाता"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input account type description",
+						"input accountType"
+					],
+					"selectors": [
+						"accountType"
+					],
+					"match": {
+						"accountType=spot": "कोई भी परिसंपत्ति रख सकते हैं और किसी भी गतिविधि में भाग ले सकते हैं; सबसे सस्ती गैस लागत; केवल अधिक संपार्श्विक ऋण ही ले सकते हैं।",
+						"accountType=margin": "5x उत्तोलन तक अल्प-संपार्श्विक ऋण ले सकते हैं; केवल श्वेतसूचीबद्ध परिसंपत्तियों को ही धारण कर सकते हैं तथा श्वेतसूचीबद्ध गतिविधियों में भाग ले सकते हैं।"
+					}
+				}
+			]
+		}
+	},
+	"login": {
+		"placeholder": "अपना भरें ",
+		"noAccount": "क्या आपके पास खाता नहीं है?",
+		"errors": {
+			"usernameRequired": "उपयोगकर्ता नाम आवश्यक है",
+			"usernameNotExist": "उपयोगकर्ता नाम मौजूद नहीं है"
+		},
+		"credential": {
+			"description": "अपने उपयोगकर्ता नाम के साथ संबद्ध किसी भी क्रेडेंशियल का चयन करें।"
+		}
+	},
+	"signup": {
+		"createAccount": "खाता बनाएं",
+		"doThisLater": "यह काम बाद में करें",
+		"alreadyHaveAccount": "क्या आपके पास पहले से एक खाता मौजूद है?",
+		"stepper": {
+			"steps": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "क्रेडेंशियल",
+						"step=1": "उपयोगकर्ता नाम"
+					}
+				}
+			],
+			"title": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "अपना खाता बनाएं",
+						"step=1": "एक उपयोगकर्ता नाम चुनें"
+					}
+				}
+			],
+			"description": [
+				{
+					"declarations": [
+						"input step"
+					],
+					"selectors": [
+						"step"
+					],
+					"match": {
+						"step=0": "साइन इन क्रेडेंशियल चुनें। आप बाद में क्रेडेंशियल जोड़ या हटा सकते हैं।",
+						"step=1": "आपका उपयोगकर्ता नाम ऑन-चेन सार्वजनिक होगा और बाद में उसे बदला नहीं जा सकेगा।"
+					}
+				}
+			]
+		},
+		"errors": {
+			"usernameTaken": "उपयोगकर्ता का नाम पहले से लिया है",
+			"failedSendingFunds": "धन भेजने में विफल",
+			"creatingAccount": "खाता बनाते समय त्रुटि"
+		}
+	}
+}

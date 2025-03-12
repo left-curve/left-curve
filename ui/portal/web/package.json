@@ -8,6 +8,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@inlang/paraglide-js": "2.0.0-beta.30",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store-react": "workspace:^",
