@@ -28,6 +28,9 @@ pub enum QueryMsg {
     /// Query the mailbox contract address.
     #[returns(Addr)]
     Mailbox {},
+    /// Query the fee rate for announcing a storage location.
+    #[returns(Coin)]
+    AnnounceFeePerByte {},
     /// Query the set of validators who have announced their storage locations.
     #[returns(BTreeSet<HexByteArray<20>>)]
     AnnouncedValidators {
@@ -39,9 +42,6 @@ pub enum QueryMsg {
     AnnouncedStorageLocations {
         validators: BTreeSet<HexByteArray<20>>,
     },
-    /// Query the cost of announcing a storage location.
-    #[returns(Coin)]
-    CalculateAnnounceFee { storage_location: String },
 }
 
 // ---------------------------------- events -----------------------------------

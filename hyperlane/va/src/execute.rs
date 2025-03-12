@@ -1,7 +1,7 @@
 use {
-    crate::{query_calculate_announce_fee, ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
+    crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
+    grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier, Uint128},
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
@@ -38,13 +38,15 @@ fn announce(
     storage_location: String,
 ) -> anyhow::Result<Response> {
     // Calculate fee for announcement.
-    let announce_fee = query_calculate_announce_fee(ctx.storage, &storage_location)?;
+    let fee_per_byte = ANNOUNCE_FEE_PER_BYTE.load(ctx.storage)?;
+    let fee = Uint128::new(fee_per_byte.amount.inner() * storage_location.len() as u128);
+    let deposit = ctx.funds.into_one_coin_of_denom(&fee_per_byte.denom)?;
 
     ensure!(
-        ctx.funds.as_one_coin_of_denom(&announce_fee.denom)?.amount >= &announce_fee.amount,
-        "Invalid payment, required: {}, got: {}",
-        announce_fee,
-        ctx.funds
+        deposit.amount >= fee,
+        "insufficient validator announce fee! required: {}, got: {}",
+        fee,
+        deposit.amount
     );
 
     // Make announcement digest.

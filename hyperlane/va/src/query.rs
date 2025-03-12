@@ -1,8 +1,8 @@
 use {
     crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     grug::{
-        Addr, Bound, Coin, HexByteArray, ImmutableCtx, Inner, Json, JsonSerExt, Order, StdResult,
-        Storage, UniqueVec, DEFAULT_PAGE_LIMIT,
+        Addr, Bound, Coin, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        UniqueVec, DEFAULT_PAGE_LIMIT,
     },
     hyperlane_types::va::QueryMsg,
     std::collections::{BTreeMap, BTreeSet},
@@ -15,6 +15,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_mailbox(ctx)?;
             res.to_json_value()
         },
+        QueryMsg::AnnounceFeePerByte {} => {
+            let res = query_announce_fee_per_byte(ctx)?;
+            res.to_json_value()
+        },
         QueryMsg::AnnouncedValidators { start_after, limit } => {
             let res = query_announced_validators(ctx, start_after, limit)?;
             res.to_json_value()
@@ -23,15 +27,15 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_announced_storage_locations(ctx, validators)?;
             res.to_json_value()
         },
-        QueryMsg::CalculateAnnounceFee { storage_location } => {
-            let res = query_calculate_announce_fee(ctx.storage, &storage_location)?;
-            res.to_json_value()
-        },
     }
 }
 
 fn query_mailbox(ctx: ImmutableCtx) -> StdResult<Addr> {
     MAILBOX.load(ctx.storage)
+}
+
+fn query_announce_fee_per_byte(ctx: ImmutableCtx) -> StdResult<Coin> {
+    ANNOUNCE_FEE_PER_BYTE.load(ctx.storage)
 }
 
 fn query_announced_validators(
@@ -59,14 +63,4 @@ fn query_announced_storage_locations(
             Ok((v, storage_locations))
         })
         .collect()
-}
-
-pub fn query_calculate_announce_fee(
-    storage: &dyn Storage,
-    storage_location: &str,
-) -> StdResult<Coin> {
-    let fee_per_byte = ANNOUNCE_FEE_PER_BYTE.load(storage)?;
-    let fee_amount = fee_per_byte.amount.into_inner() * storage_location.len() as u128;
-
-    Coin::new(fee_per_byte.denom, fee_amount)
 }
