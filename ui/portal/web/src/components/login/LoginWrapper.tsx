@@ -19,7 +19,9 @@ export const LoginWrapper: React.FC<React.PropsWithChildren> = ({ children }) =>
   return (
     <div className="h-screen w-screen flex items-center justify-center">
       <div className="flex items-center justify-center flex-1">
-        <ResizerContainer className="w-full max-w-[22.5rem]">{children}</ResizerContainer>
+        <ResizerContainer layoutId="login" className="w-full max-w-[22.5rem]">
+          {children}
+        </ResizerContainer>
       </div>
       <div
         className={twMerge(

@@ -38,7 +38,9 @@ export const CreateAccountWrapper: React.FC<React.PropsWithChildren> = ({ childr
         </div>
         <Stepper steps={steps} activeStep={activeStep} />
       </div>
-      <ResizerContainer className="w-full max-w-[22.5rem]">{children}</ResizerContainer>
+      <ResizerContainer layoutId="create-account" className="w-full max-w-[22.5rem]">
+        {children}
+      </ResizerContainer>
     </div>
   );
 };

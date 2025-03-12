@@ -79,7 +79,10 @@ function SendAndReceiveComponent() {
   return (
     <div className="flex w-full justify-center items-center">
       <div className="w-full md:max-w-[50rem] flex flex-col gap-4 p-4 md:pt-28 items-center justify-start ">
-        <ResizerContainer className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full">
+        <ResizerContainer
+          layoutId="send-and-receive"
+          className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full"
+        >
           <Tabs
             selectedTab={isConnected ? action : "send"}
             keys={isConnected ? ["send", "receive"] : ["send"]}
@@ -93,7 +96,12 @@ function SendAndReceiveComponent() {
                 <Input
                   label="You're sending"
                   placeholder="0"
-                  classNames={{ base: "z-20", inputWrapper: "pr-0" }}
+                  classNames={{
+                    base: "z-20",
+                    inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
+                    inputParent: "h-[34px] h3-bold",
+                    input: "!h3-bold",
+                  }}
                   isDisabled={isPending}
                   {...register("amount", {
                     validate: (v) => {
@@ -108,31 +116,33 @@ function SendAndReceiveComponent() {
                       return prev;
                     },
                   })}
-                  endContent={
+                  startText="right"
+                  startContent={
                     <CoinSelector
                       label="coins"
+                      classNames={{ trigger: "p-0" }}
                       coins={Object.values(coins)}
                       selectedKey={selectedDenom}
                       isDisabled={isPending}
                       onSelectionChange={(k) => setSelectedDenom(k.toString())}
                     />
                   }
-                  bottomComponent={
-                    <div className="w-full flex justify-between">
-                      <p>Available</p>
-                      <div className="flex gap-1 items-center justify-center">
+                  insideBottomComponent={
+                    <div className="w-full flex justify-between pl-4 h-[22px]">
+                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
                         <span>{selectedCoin.symbol}</span>
                         <span>{humanAmount}</span>
                         <Button
                           isDisabled={isPending}
                           variant="secondary"
                           size="xs"
-                          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D]"
+                          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                           onClick={() => setValue("amount", humanAmount)}
                         >
                           Max
                         </Button>
                       </div>
+                      <p>{humanAmount}</p>
                     </div>
                   }
                 />
