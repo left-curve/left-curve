@@ -1,5 +1,6 @@
 use {
-    grug::{Binary, Lengthy, NonEmpty},
+    dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
+    grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
     grug_app::Shared,
     pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PythId,
@@ -98,6 +99,28 @@ where
 
         // Closing any potentially connected earlier stream
         self.client.close();
+    }
+
+    /// Retrieve the Pyth ids from the Oracle contract.
+    pub fn pyth_ids(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
+        let new_ids = querier
+            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: Some(u32::MAX),
+            })?
+            .into_values()
+            .filter_map(|price_source| {
+                // For now there is only Pyth as PriceSource, but there could be more.
+                #[allow(irrefutable_let_patterns)]
+                if let PriceSource::Pyth { id, .. } = price_source {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        Ok(new_ids)
     }
 }
 

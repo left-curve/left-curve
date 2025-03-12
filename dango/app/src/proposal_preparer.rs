@@ -68,29 +68,6 @@ impl ProposalPreparer<PythClientCache> {
     }
 }
 
-impl<P> ProposalPreparer<P> {
-    fn pyth_ids(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
-        let new_ids = querier
-            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
-                start_after: None,
-                limit: Some(u32::MAX),
-            })?
-            .into_values()
-            .filter_map(|price_source| {
-                // For now there is only Pyth as PriceSource, but there could be more.
-                #[allow(irrefutable_let_patterns)]
-                if let PriceSource::Pyth { id, .. } = price_source {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        Ok(new_ids)
-    }
-}
-
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
     P: PythClientTrait + Send + 'static,
@@ -113,7 +90,9 @@ where
         // How to know which ids should be used?
         let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
 
-        match Self::pyth_ids(querier, cfg.addresses.oracle) {
+        // Check if the Pyth ids have changed; if so, drop the previous connection
+        // and establish a new one with the new ids.
+        match PythClientPPHandler::<P>::pyth_ids(querier, cfg.addresses.oracle) {
             Ok(pyth_ids) => {
                 if !pyth_client.pyth_ids_equal(&pyth_ids) {
                     pyth_client.close_stream();
