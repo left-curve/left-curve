@@ -126,11 +126,18 @@ impl PythClientTrait for PythClientCache {
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
     {
-        let stored_vaas = self.get_latest_vaas(ids.clone()).unwrap();
+        let mut stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids);
 
         let stream = stream! {
+
             loop {
-                yield stored_vaas.clone();
+                let vaas = stored_vaas
+                .iter_mut()
+                .filter_map(|(_, v)| v.next())
+                .flatten()
+                .collect::<Vec<_>>();
+
+                yield vaas;
                 sleep(Duration::from_millis(500));
             }
         };
