@@ -40,13 +40,8 @@ where
                 let new_price = price_feed.get_price_unchecked().price;
                 let new_publish_time = price_feed.get_price_unchecked().publish_time;
 
-                assert_ne!(
-                    new_price,
-                    latest_values.get(&price_feed.id.to_string()).unwrap().0,
-                    "Price has not changed"
-                );
                 assert!(
-                    new_publish_time > latest_values.get(&price_feed.id.to_string()).unwrap().1,
+                    new_publish_time >= latest_values.get(&price_feed.id.to_string()).unwrap().1,
                     "Time has not increased"
                 );
 
@@ -199,11 +194,13 @@ where
         .await
         .unwrap();
 
-    for _ in 0..5 {
+    let mut valid_vaas = 0;
+    while valid_vaas < 5 {
         let Some(vaas) = stream.next().await else {
             continue;
         };
 
+        valid_vaas += 1;
         assert!(!vaas.is_empty());
 
         let mut count_price_feed = 0;
@@ -217,9 +214,11 @@ where
                 let new_price = price_feed.get_price_unchecked().price;
                 let new_publish_time = price_feed.get_price_unchecked().publish_time;
 
-                // NOTE: stream is fast, and time doesn't change of a second
-                // between two reads, you can't check for time changes.
-                // println!("{}: {} {}", price_feed.id, new_price, new_publish_time);
+                // Not sure if there should be a check for the price
+                // since there is no guarantee it changes, at least from one
+                // iteration and the next one.
+                let old_publish_time = latest_values.get(&price_feed.id.to_string()).unwrap().1;
+                assert!(new_publish_time >= old_publish_time, "Time has decreased");
 
                 latest_values.insert(price_feed.id.to_string(), (new_price, new_publish_time));
             }
