@@ -58,10 +58,7 @@ impl BlockQuery {
             },
         }
 
-        Ok(query
-            .one(&app_ctx.db)
-            .await?
-            .map(|block| block.into()))
+        Ok(query.one(&app_ctx.db).await?.map(|block| block.into()))
     }
 
     /// Get a block
