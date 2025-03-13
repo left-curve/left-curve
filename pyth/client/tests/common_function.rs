@@ -41,7 +41,7 @@ where
                 let new_publish_time = price_feed.get_price_unchecked().publish_time;
 
                 assert!(
-                    new_publish_time >= latest_values.get(&price_feed.id.to_string()).unwrap().1,
+                    new_publish_time > latest_values.get(&price_feed.id.to_string()).unwrap().1,
                     "Time has not increased"
                 );
 

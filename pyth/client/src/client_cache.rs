@@ -9,6 +9,7 @@ use {
         collections::HashMap,
         env,
         path::{Path, PathBuf},
+        sync::{Arc, Mutex},
         thread::sleep,
         time::Duration,
     },
@@ -19,17 +20,20 @@ use {
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
     base_url: Url,
+    // Use mutex to have inner mutability since PythClientTrait
+    // requires immutable references in some functions.
+    memory_vaas: Arc<Mutex<HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>>>,
 }
 
 impl PythClientCache {
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
-            // stored_vaas: HashMap::new(),
+            memory_vaas: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
-    /// Load data from cache (if not already loaded) or retrieve it from the source.
+    /// Load data from cache or retrieve it from the source.
     pub fn load_or_retrieve_data<I>(
         base_url: Url,
         ids: NonEmpty<I>,
@@ -97,6 +101,40 @@ impl PythClientCache {
         Ok(())
     }
 
+    // Load the data and save it in memory, so the lastest_vaas function
+    // can return new data at each call.
+    fn load_data_in_memory<I>(&self, ids: NonEmpty<I>)
+    where
+        I: IntoIterator + Lengthy + Clone,
+        I::Item: ToString,
+    {
+        let mut vaas_in_memory = self.memory_vaas.lock().unwrap();
+
+        // Check which files are not in memory.
+        let mut ids_to_retrieve = vec![];
+        for id in ids.into_inner() {
+            let element = id.to_string();
+            let filename = Self::cache_filename(&element);
+
+            if vaas_in_memory.contains_key(&filename) {
+                continue;
+            }
+
+            ids_to_retrieve.push(element);
+        }
+
+        // Retrieve the missing ids and store in memory.
+        if !ids_to_retrieve.is_empty() {
+            let base_url = self.base_url.clone();
+            let stored_vaas =
+                Self::load_or_retrieve_data(base_url, NonEmpty::new(ids_to_retrieve).unwrap());
+
+            for (path, iterator) in stored_vaas {
+                vaas_in_memory.insert(path, iterator);
+            }
+        }
+    }
+
     fn cache_filename<I>(id: &I) -> PathBuf
     where
         I: AsRef<Path>,
@@ -150,7 +188,9 @@ impl PythClientTrait for PythClientCache {
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,
     {
-        let mut stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids.clone());
+        // Load the data in memory.
+        self.load_data_in_memory(ids.clone());
+        let mut vaas_in_memory = self.memory_vaas.lock().unwrap();
 
         let mut return_vaas = vec![];
 
@@ -160,7 +200,7 @@ impl PythClientTrait for PythClientCache {
             let filename = Self::cache_filename(&element);
 
             // Check if the vaas are stored in memory.
-            if let Some(vaas_iter) = stored_vaas.get_mut(&filename) {
+            if let Some(vaas_iter) = vaas_in_memory.get_mut(&filename) {
                 if let Some(vaas) = vaas_iter.next() {
                     return_vaas.extend(vaas);
                 }
