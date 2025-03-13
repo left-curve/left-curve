@@ -13,9 +13,9 @@ use {
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, ContractEvent, Denom, EventName, Message, MultiplyFraction,
-        MutableCtx, Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage,
-        SudoCtx, Udec128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, Message, MultiplyFraction, MutableCtx,
+        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
+        Udec128, GENESIS_SENDER,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -52,7 +52,7 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
         "only the owner can update a trading pair parameters"
     );
 
-    let mut events = Vec::with_capacity(updates.len());
+    let mut events = EventBuilder::with_capacity(updates.len());
 
     for update in updates {
         ensure!(
@@ -71,13 +71,13 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
             &update.params,
         )?;
 
-        events.push(ContractEvent::new(PairUpdated::NAME, PairUpdated {
+        events.push(PairUpdated {
             base_denom: update.base_denom,
             quote_denom: update.quote_denom,
-        })?);
+        })?;
     }
 
-    Ok(Response::new().add_subevents(events))
+    Ok(Response::new().add_events(events))
 }
 
 #[inline]
@@ -88,7 +88,7 @@ fn batch_update_orders(
 ) -> anyhow::Result<Response> {
     let mut deposits = Coins::new();
     let mut refunds = Coins::new();
-    let mut events = Vec::new();
+    let mut events = EventBuilder::new();
 
     // --------------------------- 1. Cancel orders ----------------------------
 
@@ -151,11 +151,11 @@ fn batch_update_orders(
 
         refunds.insert(refund.clone())?;
 
-        events.push(ContractEvent::new("order_canceled", OrderCanceled {
+        events.push(OrderCanceled {
             order_id: *order_id,
             remaining: order.remaining,
             refund,
-        })?);
+        })?;
 
         if is_incoming {
             INCOMING_ORDERS.remove(ctx.storage, (ctx.sender, *order_id));
@@ -195,7 +195,7 @@ fn batch_update_orders(
 
         deposits.insert(deposit.clone())?;
 
-        events.push(ContractEvent::new("order_submitted", OrderSubmitted {
+        events.push(OrderSubmitted {
             order_id,
             user: ctx.sender,
             base_denom: order.base_denom.clone(),
@@ -204,7 +204,7 @@ fn batch_update_orders(
             price: order.price,
             amount: order.amount,
             deposit,
-        })?);
+        })?;
 
         INCOMING_ORDERS.save(
             ctx.storage,
@@ -239,7 +239,7 @@ fn batch_update_orders(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_subevents(events))
+        .add_events(events))
 }
 
 #[inline]
@@ -354,7 +354,7 @@ fn withdraw_liquidity(
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    let mut events = Vec::new();
+    let mut events = EventBuilder::new();
     let mut refunds = BTreeMap::new();
 
     // Collect incoming orders and clear the temporary storage.
@@ -393,7 +393,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
                 Coins::new(),
             )?
         })
-        .add_subevents(events))
+        .add_events(events))
 }
 
 #[inline]
@@ -401,7 +401,7 @@ fn clear_orders_of_pair(
     storage: &mut dyn Storage,
     base_denom: Denom,
     quote_denom: Denom,
-    events: &mut Vec<ContractEvent>,
+    events: &mut EventBuilder,
     refunds: &mut BTreeMap<Addr, Coins>,
 ) -> StdResult<()> {
     // Iterate BUY orders from the highest price to the lowest.
@@ -439,12 +439,12 @@ fn clear_orders_of_pair(
     // Here we choose the midpoint.
     let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
 
-    events.push(ContractEvent::new("orders_matched", OrdersMatched {
+    events.push(OrdersMatched {
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
         clearing_price,
         volume,
-    })?);
+    })?;
 
     // Clear the BUY orders.
     for FillingOutcome {
@@ -469,14 +469,14 @@ fn clear_orders_of_pair(
             },
         ])?;
 
-        events.push(ContractEvent::new("order_filled", OrderFilled {
+        events.push(OrderFilled {
             order_id,
             clearing_price,
             filled,
             refund: refund.clone(),
             fee: None,
             cleared,
-        })?);
+        })?;
 
         refunds.entry(order.user).or_default().insert_many(refund)?;
 
