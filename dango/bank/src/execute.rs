@@ -222,6 +222,7 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
     let coins = ORPHANED_TRANSFERS.take(ctx.storage, (sender, recipient))?;
 
     for coin in &coins {
+        decrease_balance(ctx.storage, &ctx.contract, coin.denom, *coin.amount)?;
         increase_balance(ctx.storage, &ctx.sender, coin.denom, *coin.amount)?;
     }
 
