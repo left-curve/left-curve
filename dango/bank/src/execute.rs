@@ -238,43 +238,65 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
         })?)
 }
 
+/// There are two major problems with existing blockchain systems related to
+/// token transfers:
+///
+/// 1. **It's not possible for the recipient to reject a token transfer.**
+///
+///    For example, a user who wants to unwrap their Wrapped Ether (WETH) tokens
+///    may mistakenly send the tokens to the WETH contract, while the correct
+///    way of doing it is to call the `withdraw` method. Due to how ERC-20 is
+///    designed, it is not possible for the WETH contract to reject this transfer.
+///    A significant amount of money has been lost due to this.
+///
+///    Dango solves this by introducing a `receive` entry point to every contract.
+///    A contract can simply throw an error if it does not wish to accept a
+///    specific transfer of tokens.
+///
+/// 2. **It is possible to send tokens to a non-existent recipient.**
+///
+///    This can happen if the sender makes a typo when inputting the recipient's
+///    address. There will be no way to recover the tokens.
+///
+///    To solve this, the Dango bank contract checks whether the recipient exists
+///    before executing the transfer. If the recipient doesn't exist, we call this
+///    an "**orphaned transfer**". The tokens will be temporarily held in the bank
+///    contract. Either the sender or the recipient (once it exists) can claim
+///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     let recipient_exists = ctx.querier.query_contract(msg.to).is_ok();
 
-    for coin in &msg.coins {
-        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
-        if recipient_exists {
-            increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
-        }
-    }
-
-    if !recipient_exists {
+    // If the recipient exists, increase the recipient's balance. Otherwise,
+    // 1. withhold the tokens in the bank contract;
+    // 2. record the transfer in the `ORPHANED_TRANSFERS` map.
+    let recipient = if recipient_exists {
+        msg.to
+    } else {
         ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, msg.to), |coins| {
             let mut coins = coins.unwrap_or_default();
             coins.insert_many(msg.coins.clone())?;
             Ok::<_, StdError>(coins)
         })?;
+
+        ctx.contract
+    };
+
+    for coin in &msg.coins {
+        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
     }
 
     Response::new()
-        .may_add_event(if recipient_exists {
-            Some(Sent {
-                user: msg.from,
-                to: msg.to,
-                coins: msg.coins.clone(),
-            })
-        } else {
-            None
+        .add_event(Sent {
+            user: msg.from,
+            to: recipient,
+            coins: msg.coins.clone(),
         })?
-        .may_add_event(if recipient_exists {
-            Some(Received {
-                user: msg.to,
-                from: msg.from,
-                coins: msg.coins.clone(),
-            })
-        } else {
-            None
+        .add_event(Received {
+            user: recipient,
+            from: msg.from,
+            coins: msg.coins.clone(),
         })?
         .may_add_event(if !recipient_exists {
             Some(TransferOrphaned {
