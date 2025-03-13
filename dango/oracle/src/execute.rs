@@ -27,7 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 /// - Auth mode must be `Finalize`. This ensures such transactions are only
 ///   inserted by the block proposer during ABCI++ `PrepareProposal`, not by
 ///   regular users.
-/// - The tranaction contains exactly one message.
+/// - The transaction contains exactly one message.
 /// - This one message is an `Execute`.
 /// - The contract being executed must be the oracle itself.
 /// - the execute message must be `FeedPrices`.
@@ -87,6 +87,18 @@ fn register_price_sources(
 }
 
 fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
+    // Only the oracle can feed prices.
+    // ensure!(
+    //     ctx.sender == ctx.contract,
+    //     "you don't have the right, O you don't have the right"
+    // );
+
+    let compare: fn(&u64, &u64) -> bool = if ctx.sender == ctx.contract {
+        u64::ge
+    } else {
+        u64::gt
+    };
+
     for vaa in vaas {
         // Deserialize the Pyth VAA from binary.
         let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
@@ -95,11 +107,17 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
             let hash = PythId::from_inner(feed.id.to_bytes());
 
-            // Save the price if there isn't already a price saved, or if there
-            // is but it's older.
+            // Save the price if there isn't already a price saved, or if the
+            // new price is not older. This is due to the fact that Pyth return
+            // the publish time with a precision of seconds but the SSE connection
+            // returns more events per seconds.
             PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
                 if let Some(price) = maybe_price {
-                    if price.timestamp < feed.get_price_unchecked().publish_time as u64 {
+                    // if feed.get_price_unchecked().publish_time as u64 >= price.timestamp {
+                    if compare(
+                        &(feed.get_price_unchecked().publish_time as u64),
+                        &price.timestamp,
+                    ) {
                         feed.try_into()
                     } else {
                         Ok(price)
