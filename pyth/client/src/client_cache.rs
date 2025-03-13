@@ -9,7 +9,10 @@ use {
         collections::HashMap,
         env,
         path::{Path, PathBuf},
-        sync::{Arc, Mutex},
+        sync::{
+            atomic::{AtomicU64, Ordering},
+            Arc,
+        },
         thread::sleep,
         time::Duration,
     },
@@ -20,16 +23,15 @@ use {
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
     base_url: Url,
-    // Use mutex to have inner mutability since PythClientTrait
-    // requires immutable references in some functions.
-    memory_vaas: Arc<Mutex<HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>>>,
+    // Used to return newer vaas at each call.
+    vaas_index: Arc<AtomicU64>,
 }
 
 impl PythClientCache {
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
-            memory_vaas: Arc::new(Mutex::new(HashMap::new())),
+            vaas_index: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -37,7 +39,7 @@ impl PythClientCache {
     pub fn load_or_retrieve_data<I>(
         base_url: Url,
         ids: NonEmpty<I>,
-    ) -> HashMap<PathBuf, std::vec::IntoIter<Vec<Binary>>>
+    ) -> HashMap<PathBuf, Vec<Vec<Binary>>>
     where
         I: IntoIterator + Lengthy + Clone,
         I::Item: ToString,
@@ -81,7 +83,7 @@ impl PythClientCache {
 
                 // Load the data from disk.
                 let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
-                stored_vaas.insert(filename, loaded_vaas.into_iter());
+                stored_vaas.insert(filename, loaded_vaas);
             }
         }
 
@@ -99,40 +101,6 @@ impl PythClientCache {
         cache_file.save(&data)?;
 
         Ok(())
-    }
-
-    // Load the data and save it in memory, so the lastest_vaas function
-    // can return new data at each call.
-    fn load_data_in_memory<I>(&self, ids: NonEmpty<I>)
-    where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
-    {
-        let mut vaas_in_memory = self.memory_vaas.lock().unwrap();
-
-        // Check which files are not in memory.
-        let mut ids_to_retrieve = vec![];
-        for id in ids.into_inner() {
-            let element = id.to_string();
-            let filename = Self::cache_filename(&element);
-
-            if vaas_in_memory.contains_key(&filename) {
-                continue;
-            }
-
-            ids_to_retrieve.push(element);
-        }
-
-        // Retrieve the missing ids and store in memory.
-        if !ids_to_retrieve.is_empty() {
-            let base_url = self.base_url.clone();
-            let stored_vaas =
-                Self::load_or_retrieve_data(base_url, NonEmpty::new(ids_to_retrieve).unwrap());
-
-            for (path, iterator) in stored_vaas {
-                vaas_in_memory.insert(path, iterator);
-            }
-        }
     }
 
     fn cache_filename<I>(id: &I) -> PathBuf
@@ -165,15 +133,16 @@ impl PythClientTrait for PythClientCache {
         I::Item: ToString,
     {
         let mut stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids);
+        let mut index = 0;
 
         let stream = stream! {
-
             loop {
                 let vaas = stored_vaas
                 .iter_mut()
-                .filter_map(|(_, v)| v.next())
+                .filter_map(|(_, v)| v.get(index).cloned())
                 .flatten()
                 .collect::<Vec<_>>();
+                index += 1;
 
                 yield vaas;
                 sleep(Duration::from_millis(500));
@@ -188,9 +157,8 @@ impl PythClientTrait for PythClientCache {
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,
     {
-        // Load the data in memory.
-        self.load_data_in_memory(ids.clone());
-        let mut vaas_in_memory = self.memory_vaas.lock().unwrap();
+        // Load the data.
+        let stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids.clone());
 
         let mut return_vaas = vec![];
 
@@ -200,9 +168,9 @@ impl PythClientTrait for PythClientCache {
             let filename = Self::cache_filename(&element);
 
             // Check if the vaas are stored in memory.
-            if let Some(vaas_iter) = vaas_in_memory.get_mut(&filename) {
-                if let Some(vaas) = vaas_iter.next() {
-                    return_vaas.extend(vaas);
+            if let Some(vaas) = stored_vaas.get(&filename) {
+                if let Some(vaas) = vaas.get(self.vaas_index.load(Ordering::Acquire) as usize) {
+                    return_vaas.extend(vaas.clone());
                 }
             } else {
                 return Err(error::Error::DataNotFound {
@@ -211,6 +179,8 @@ impl PythClientTrait for PythClientCache {
                 });
             }
         }
+
+        self.vaas_index.fetch_add(1, Ordering::SeqCst);
 
         Ok(return_vaas)
     }
