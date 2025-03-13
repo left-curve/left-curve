@@ -1,10 +1,15 @@
-use graphql_client::GraphQLQuery;
-
 type DateTime = chrono::DateTime<chrono::Utc>;
+
+#[cfg(test)]
+const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
+
+pub trait Variables {
+    type Query: graphql_client::GraphQLQuery<Variables = Self>;
+}
 
 macro_rules! query {
     ($name:ident, $path:literal, {$($variables:ident: $value:expr),*}) => {
-        #[derive(GraphQLQuery)]
+        #[derive(graphql_client::GraphQLQuery)]
         #[graphql(
             schema_path = "src/graphql/schemas/schema.graphql",
             query_path = $path,
@@ -12,20 +17,26 @@ macro_rules! query {
         )]
         pub struct $name;
 
+
+
         paste::paste! {
+
+            impl Variables for [<$name:snake>]::Variables {
+                type Query = $name;
+            }
+
             #[cfg(test)]
-            mod [<$name:snake _tests>] {
+            mod [<tests_ $name:snake >] {
                 use {
-                    super::{[<$name:snake>]::{Variables, ResponseData}, $name},
+                    super::{[<$name:snake>]::{Variables, ResponseData}, $name, GRAPHQL_URL},
                     graphql_client::{GraphQLQuery, Response},
                 };
 
                 #[tokio::test]
                 async fn [<test_ $name:snake>]() {
-                    let url = "https://devnet-graphql.dango.exchange";
                     let client = reqwest::Client::builder().build().unwrap();
                     let query = $name::build_query(Variables { $($variables: $value),* });
-                    let response = client.post(url).json(&query).send().await.unwrap();
+                    let response = client.post(GRAPHQL_URL).json(&query).send().await.unwrap();
                     response
                         .json::<Response<ResponseData>>()
                         .await

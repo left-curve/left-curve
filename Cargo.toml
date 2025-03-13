@@ -20,7 +20,6 @@ members = [
   "dango/warp",
   "grug/app",
   "grug/bob-the-builder",
-  "grug/client",
   "grug/crypto",
   "grug/db/*",
   "grug/ffi",
@@ -28,6 +27,8 @@ members = [
   "grug/macros",
   "grug/math",
   "grug/mocks/*",
+  "grug/provider",
+  "grug/rpc-client",
   "grug/std",
   "grug/storage",
   "grug/tester",
@@ -147,7 +148,6 @@ wasmer-middlewares      = "5"
 grug              = { path = "grug/std" }
 grug-app          = { path = "grug/app" }
 grug-auth         = { path = "grug/auth" }
-grug-client       = { path = "grug/client" }
 grug-crypto       = { path = "grug/crypto" }
 grug-db-disk      = { path = "grug/db/disk" }
 grug-db-memory    = { path = "grug/db/memory" }
@@ -158,6 +158,8 @@ grug-math         = { path = "grug/math" }
 grug-mock-account = { path = "grug/mocks/account" }
 grug-mock-bank    = { path = "grug/mocks/bank" }
 grug-mock-taxman  = { path = "grug/mocks/taxman" }
+grug-provider     = { path = "grug/provider" }
+grug-rpc-client   = { path = "grug/rpc-client" }
 grug-storage      = { path = "grug/storage" }
 grug-tester       = { path = "grug/tester" }
 grug-testing      = { path = "grug/testing" }

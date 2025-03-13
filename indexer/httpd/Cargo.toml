@@ -28,10 +28,12 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 graphql_client          = { workspace = true }
 grug-app                = { workspace = true }
+grug-provider           = { workspace = true }
 grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
 num_cpus                = { workspace = true }
 paste                   = { workspace = true }
+reqwest                 = { workspace = true, features = ["json"] }
 sea-orm                 = { workspace = true }
 serde                   = { workspace = true }
 serde_json              = { workspace = true }
@@ -47,4 +49,3 @@ uuid                    = { workspace = true }
 
 [dev-dependencies]
 assertor = { workspace = true }
-reqwest  = { workspace = true, features = ["json"] }

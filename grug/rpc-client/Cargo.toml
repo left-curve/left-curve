@@ -5,7 +5,7 @@ description   = "Rust client for interacting with Grug via Tendermint RPC"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-client"
+name          = "grug-rpc-client"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }

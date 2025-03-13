@@ -1,0 +1,15 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "Rust provider interface for interacting with Grug"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-provider"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+async-trait = { workspace = true }
+grug-types  = { workspace = true }

@@ -3,8 +3,8 @@ use {
     clap::{Parser, Subcommand},
     colored_json::ToColoredJson,
     data_encoding::BASE64,
-    grug_client::Client,
     grug_jmt::Proof,
+    grug_rpc_client::Client,
     grug_types::{
         Addr, Binary, Bound, Denom, GenericResult, Hash, Hash256, JsonDeExt, JsonSerExt, Query,
         QueryWasmSmartRequest, StdError, StdResult, Tx, TxEvents,
