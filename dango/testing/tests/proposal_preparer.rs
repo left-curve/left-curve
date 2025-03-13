@@ -46,7 +46,10 @@ fn proposal_pyth() {
 
     // Assert that the timestamp are updated.
     for (denom, price) in prices1 {
-        assert_ne!(price.timestamp, prices2.get(&denom).unwrap().timestamp);
+        assert!(
+            price.timestamp < prices2.get(&denom).unwrap().timestamp,
+            "Timestamp not updated"
+        );
     }
 
     // // Create some empty blocks and give some time

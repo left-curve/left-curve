@@ -1,7 +1,7 @@
 mod common_function;
 
 use {
-    common_function::{test_latest_vaas, test_sse_streaming},
+    common_function::{test_latest_vaas, test_sse_streaming, test_stream},
     pyth_client::{client_cache::PythClientCache, PythClient},
     pyth_types::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     std::vec,
@@ -23,4 +23,10 @@ fn sse_subscription_cache() {
         ATOM_USD_ID,
         BNB_USD_ID,
     ]);
+}
+
+#[tokio::test]
+async fn test_sse_stream_cache() {
+    let client = PythClientCache::new(PYTH_URL).unwrap();
+    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID]).await;
 }

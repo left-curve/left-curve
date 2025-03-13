@@ -1,7 +1,7 @@
 use {
     grug::{btree_map, setup_tracing_subscriber, Inner, Lengthy, MockApi, NonEmpty},
-    pyth_client::{client_cache, PythClient, PythClientTrait},
-    pyth_types::{PythVaa, PYTH_URL},
+    pyth_client::{PythClient, PythClientTrait},
+    pyth_types::PythVaa,
     std::{thread::sleep, time::Duration},
     tokio_stream::StreamExt,
 };
@@ -173,8 +173,10 @@ where
 }
 
 #[allow(dead_code)]
-pub async fn test_stream<I>(ids1: I)
+pub async fn test_stream<P, I>(client: P, ids: I)
 where
+    P: PythClientTrait + std::fmt::Debug,
+    P::Error: std::fmt::Debug,
     I: IntoIterator + Clone + Lengthy + Send + 'static,
     I::Item: ToString,
 {
@@ -183,19 +185,27 @@ where
 
     // Latest values to asset that the prices and publish times change.
     let mut latest_values = btree_map!();
-    for id in ids1.clone().into_iter() {
-        latest_values.insert(id.to_string(), (0, 0));
+    for id in ids.clone().into_iter() {
+        latest_values.insert(
+            id.to_string(),
+            btree_map!(
+                "price" => 0,
+                "publish_time" => 0,
+                // Set to -1 since the first iteration will increase the counter.
+                // (price and publish time are 0)
+                "price_change" => -1,
+                "publish_time_change" => -1,
+            ),
+        );
     }
 
-    let client = PythClient::new(PYTH_URL).unwrap();
-
     let mut stream = client
-        .stream(NonEmpty::new_unchecked(ids1.clone()))
+        .stream(NonEmpty::new_unchecked(ids.clone()))
         .await
         .unwrap();
 
     let mut valid_vaas = 0;
-    while valid_vaas < 5 {
+    while valid_vaas < 6 {
         let Some(vaas) = stream.next().await else {
             continue;
         };
@@ -214,16 +224,41 @@ where
                 let new_price = price_feed.get_price_unchecked().price;
                 let new_publish_time = price_feed.get_price_unchecked().publish_time;
 
-                // Not sure if there should be a check for the price
-                // since there is no guarantee it changes, at least from one
-                // iteration and the next one.
-                let old_publish_time = latest_values.get(&price_feed.id.to_string()).unwrap().1;
+                let element = latest_values.get_mut(&price_feed.id.to_string()).unwrap();
+
+                // Update the price and publish time.
+                let old_price = element.insert("price", new_price).unwrap();
+                let old_publish_time = element.insert("publish_time", new_publish_time).unwrap();
+
                 assert!(new_publish_time >= old_publish_time, "Time has decreased");
 
-                latest_values.insert(price_feed.id.to_string(), (new_price, new_publish_time));
+                // Increase counter if the price has changed.
+                element.entry("price_change").and_modify(|price_change| {
+                    if new_price != old_price {
+                        *price_change += 1;
+                    }
+                });
+
+                // Increase counter if the publish time has changed.
+                element
+                    .entry("publish_time_change")
+                    .and_modify(|publish_time_change| {
+                        if new_publish_time != old_publish_time {
+                            *publish_time_change += 1;
+                        }
+                    });
             }
         }
 
-        assert!(count_price_feed == ids1.length(), "Not all feeds were read");
+        assert!(count_price_feed == ids.length(), "Not all feeds were read");
+    }
+
+    // Asset that the prices and publish times have changed at least once.
+    for (_, element) in latest_values.iter() {
+        assert!(element.get("price_change").unwrap() > &0, "No price change");
+        assert!(
+            element.get("publish_time_change").unwrap() > &0,
+            "No publish time change"
+        );
     }
 }

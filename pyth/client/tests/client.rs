@@ -11,7 +11,6 @@ use {
 fn latest_vaas_network() {
     let pyth_client = PythClient::new(PYTH_URL).unwrap();
 
-    // If this is used only here, could probably move that code here too
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
 }
 
@@ -31,5 +30,6 @@ fn sse_subscription_network() {
 #[ignore]
 #[tokio::test]
 async fn test_sse_stream() {
-    test_stream(vec![BTC_USD_ID, ETH_USD_ID]).await;
+    let client = PythClient::new(PYTH_URL).unwrap();
+    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID]).await;
 }
