@@ -191,8 +191,8 @@ where
             btree_map!(
                 "price" => 0,
                 "publish_time" => 0,
-                // Set to -1 since the first iteration will increase the counter.
-                // (price and publish time are 0)
+                // Set to -1 since the first iteration will increase the counter
+                // (price and publish time are 0).
                 "price_change" => -1,
                 "publish_time_change" => -1,
             ),
