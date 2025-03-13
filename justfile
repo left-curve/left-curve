@@ -64,6 +64,12 @@ optimize:
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
 
+# ---------------------------------- Indexer -----------------------------------
+
+# Generate GraphQL schema
+generate-schema:
+  cargo run --bin generate-schema
+
 # ----------------------------------- Devnet -----------------------------------
 
 DEVNET_NAME := "leftcurve/devnet"
