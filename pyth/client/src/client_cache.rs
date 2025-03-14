@@ -3,7 +3,7 @@ use {
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
-    indexer_disk_saver::{error::Error, persistence::DiskPersistence},
+    indexer_disk_saver::persistence::DiskPersistence,
     reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
@@ -19,6 +19,9 @@ use {
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
 };
+
+/// Define the number of samples for each PythId to store in file.
+const CACHE_SAMPLES: usize = 15;
 
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
@@ -37,7 +40,7 @@ impl PythClientCache {
 
     /// Load data from cache or retrieve it from the source.
     pub fn load_or_retrieve_data<I>(
-        base_url: Url,
+        base_url: &Url,
         ids: NonEmpty<I>,
     ) -> HashMap<PathBuf, Vec<Vec<Binary>>>
     where
@@ -48,59 +51,44 @@ impl PythClientCache {
 
         // Load data for each id.
         for id in ids.into_inner() {
-            let element = id.to_string();
-            let filename = Self::cache_filename(&element);
+            let filename = Self::cache_filename(&id.to_string());
 
-            #[allow(clippy::map_entry)]
             // If the file is not in memory, try to read from disk.
-            if !stored_vaas.contains_key(&filename) {
-                let cache_file = DiskPersistence::new(filename.clone(), true);
+            stored_vaas.entry(filename.clone()).or_insert_with(|| {
+                let cache_file = DiskPersistence::new(filename, true);
 
-                // If the file does not exists, retrieve the data from the source.
-                if !cache_file.exists() {
-                    let rt = Runtime::new().unwrap();
-                    let values = rt.block_on(async {
-                        let client = PythClient::new(base_url.clone()).unwrap();
-
-                        let mut stream = client
-                            .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
-                            .await
-                            .unwrap();
-
-                        let mut values = vec![];
-                        while values.len() < 15 {
-                            if let Some(vaas) = stream.next().await {
-                                values.push(vaas);
-                            }
-                        }
-
-                        values
-                    });
-
-                    // Store the data in the cache.
-                    Self::store_data(element, values).unwrap();
+                if cache_file.exists() {
+                    return cache_file.load::<Vec<Vec<Binary>>>().unwrap();
                 }
 
-                // Load the data from disk.
-                let loaded_vaas = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
-                stored_vaas.insert(filename, loaded_vaas);
-            }
+                // If the file does not exists, retrieve the data from the source.
+                let rt = Runtime::new().unwrap();
+                let values = rt.block_on(async {
+                    let client = PythClient::new(base_url.clone()).unwrap();
+
+                    let mut stream = client
+                        .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
+                        .await
+                        .unwrap();
+
+                    // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
+                    let mut values = vec![];
+                    while values.len() < CACHE_SAMPLES {
+                        if let Some(vaas) = stream.next().await {
+                            values.push(vaas);
+                        }
+                    }
+
+                    values
+                });
+
+                // Store the data in the cache.
+                cache_file.save(&values).unwrap();
+                values
+            });
         }
 
         stored_vaas
-    }
-
-    /// Cache data.
-    pub fn store_data<I>(id: I, data: Vec<Vec<Binary>>) -> Result<(), Error>
-    where
-        I: AsRef<Path>,
-    {
-        let filename = Self::cache_filename(&id);
-
-        let cache_file = DiskPersistence::new(filename, true);
-        cache_file.save(&data)?;
-
-        Ok(())
     }
 
     fn cache_filename<I>(id: &I) -> PathBuf
@@ -132,7 +120,7 @@ impl PythClientTrait for PythClientCache {
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
     {
-        let mut stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids);
+        let mut stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
         let mut index = 0;
 
         let stream = stream! {
@@ -158,31 +146,18 @@ impl PythClientTrait for PythClientCache {
         I::Item: ToString,
     {
         // Load the data.
-        let stored_vaas = Self::load_or_retrieve_data(self.base_url.clone(), ids.clone());
+        let stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
+        let index = self.vaas_index.load(Ordering::Acquire) as usize;
 
-        let mut return_vaas = vec![];
-
-        // For each id, try to get the vaas.
-        for id in ids.into_inner() {
-            let element = id.to_string();
-            let filename = Self::cache_filename(&element);
-
-            // Check if the vaas are stored in memory.
-            if let Some(vaas) = stored_vaas.get(&filename) {
-                if let Some(vaas) = vaas.get(self.vaas_index.load(Ordering::Acquire) as usize) {
-                    return_vaas.extend(vaas.clone());
-                }
-            } else {
-                return Err(error::Error::DataNotFound {
-                    ty: "cache",
-                    key: filename.to_string_lossy().to_string(),
-                });
-            }
-        }
+        let result = stored_vaas
+            .into_iter()
+            .filter_map(|(_, v)| v.get(index).cloned())
+            .flatten()
+            .collect::<Vec<_>>();
 
         self.vaas_index.fetch_add(1, Ordering::SeqCst);
 
-        Ok(return_vaas)
+        Ok(result)
     }
 
     fn close(&mut self) {}
