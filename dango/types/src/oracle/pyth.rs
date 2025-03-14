@@ -163,6 +163,11 @@ impl PythVaa {
     pub fn unverified(self) -> Vec<PriceFeed> {
         self.feeds
     }
+
+    /// Return the Wormhole VAA.
+    pub fn wormhole_vaa(&self) -> &WormholeVaa {
+        &self.vaa
+    }
 }
 
 // ------------------------------------ test -----------------------------------

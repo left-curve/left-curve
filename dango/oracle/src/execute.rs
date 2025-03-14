@@ -27,7 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 /// - Auth mode must be `Finalize`. This ensures such transactions are only
 ///   inserted by the block proposer during ABCI++ `PrepareProposal`, not by
 ///   regular users.
-/// - The tranaction contains exactly one message.
+/// - The transaction contains exactly one message.
 /// - This one message is an `Execute`.
 /// - The contract being executed must be the oracle itself.
 /// - the execute message must be `FeedPrices`.
@@ -91,21 +91,23 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
         // Deserialize the Pyth VAA from binary.
         let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
 
+        let new_sequence = vaa.wormhole_vaa().sequence;
+
         // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
             let hash = PythId::from_inner(feed.id.to_bytes());
 
-            // Save the price if there isn't already a price saved, or if there
-            // is but it's older.
+            // Save the price if there isn't already a price saved, or if the
+            // new price is more recent.
             PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
-                if let Some(price) = maybe_price {
-                    if price.timestamp < feed.get_price_unchecked().publish_time as u64 {
-                        feed.try_into()
+                if let Some((price, current_sequence)) = maybe_price {
+                    if new_sequence > current_sequence {
+                        Ok((feed.try_into()?, new_sequence))
                     } else {
-                        Ok(price)
+                        Ok((price, current_sequence))
                     }
                 } else {
-                    feed.try_into()
+                    Ok((feed.try_into()?, new_sequence))
                 }
             })?;
         }
