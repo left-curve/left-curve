@@ -104,23 +104,39 @@ fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Re
 fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
     ensure_namespace_owner(&ctx, &denom)?;
 
-    increase_supply(ctx.storage, &denom, amount)?;
-
-    if ctx.querier.query_contract(to).is_ok() {
-        increase_balance(ctx.storage, &to, &denom, amount)?;
+    // Handle orphaned transfers.
+    // See the comments in `bank_execute` for more details.
+    let recipient_exists = ctx.querier.query_contract(to).is_ok();
+    let recipient = if recipient_exists {
+        to
     } else {
         ORPHANED_TRANSFERS.may_update(ctx.storage, (ctx.sender, to), |coins| {
             let mut coins = coins.unwrap_or_default();
             coins.insert(Coin::new(denom.clone(), amount)?)?;
             Ok::<_, StdError>(coins)
         })?;
-    }
 
-    Ok(Response::new().add_event(Minted {
-        user: to,
-        minter: ctx.sender,
-        coins: coins! { denom => amount },
-    })?)
+        ctx.contract
+    };
+
+    increase_supply(ctx.storage, &denom, amount)?;
+    increase_balance(ctx.storage, &recipient, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_event(Minted {
+            user: recipient,
+            minter: ctx.sender,
+            coins: coins! { denom.clone() => amount },
+        })?
+        .may_add_event(if !recipient_exists {
+            Some(TransferOrphaned {
+                from: ctx.sender,
+                to: recipient,
+                coins: coins! { denom => amount },
+            })
+        } else {
+            None
+        })?)
 }
 
 fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
@@ -266,11 +282,10 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 ///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    let recipient_exists = ctx.querier.query_contract(msg.to).is_ok();
-
     // If the recipient exists, increase the recipient's balance. Otherwise,
     // 1. withhold the tokens in the bank contract;
     // 2. record the transfer in the `ORPHANED_TRANSFERS` map.
+    let recipient_exists = ctx.querier.query_contract(msg.to).is_ok();
     let recipient = if recipient_exists {
         msg.to
     } else {
