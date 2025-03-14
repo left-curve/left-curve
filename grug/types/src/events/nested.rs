@@ -6,6 +6,7 @@ use {
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeMap,
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -110,18 +111,16 @@ pub struct EvtConfigure {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtTransfer {
     pub sender: Addr,
-    pub recipient: Addr,
-    pub coins: Coins,
+    pub transfers: BTreeMap<Addr, Coins>,
     pub bank_guest: EventStatus<EvtGuest>,
     pub receive_guest: EventStatus<EvtGuest>,
 }
 
 impl EvtTransfer {
-    pub fn base(sender: Addr, recipient: Addr, coins: Coins) -> Self {
+    pub fn base(sender: Addr, transfers: BTreeMap<Addr, Coins>) -> Self {
         Self {
             sender,
-            recipient,
-            coins,
+            transfers,
             bank_guest: EventStatus::NotReached,
             receive_guest: EventStatus::NotReached,
         }

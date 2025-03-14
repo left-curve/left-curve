@@ -7,6 +7,7 @@ use {
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeMap,
 };
 
 /// The execute message that the host provides the bank contract during the
@@ -14,8 +15,7 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BankMsg {
     pub from: Addr,
-    pub to: Addr,
-    pub coins: Coins,
+    pub transfers: BTreeMap<Addr, Coins>,
 }
 
 /// The query message that the host provides the bank contract during the

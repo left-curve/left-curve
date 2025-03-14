@@ -83,7 +83,11 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    transfer(ctx.storage, msg.from, msg.to, &msg.coins)
+    for (to, coins) in msg.transfers {
+        transfer(ctx.storage, msg.from, to, &coins)?;
+    }
+
+    Ok(Response::new())
 }
 
 #[rustfmt::skip]

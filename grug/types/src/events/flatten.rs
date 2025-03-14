@@ -192,8 +192,7 @@ impl Flatten for EvtTransfer {
             event_status: status,
             event: FlatEvent::Transfer(FlatEvtTransfer {
                 sender: self.sender,
-                recipient: self.recipient,
-                coins: self.coins,
+                transfers: self.transfers,
             }),
         }];
 
