@@ -140,7 +140,7 @@ where
 
         let keep_running = Arc::new(AtomicBool::new(true));
 
-        let client = self.client.clone();
+        let mut client = self.client.clone();
 
         self.stoppable_thread = Some((
             keep_running.clone(),

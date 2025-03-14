@@ -64,7 +64,7 @@ impl PythClientCache {
                 // If the file does not exists, retrieve the data from the source.
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
-                    let client = PythClient::new(base_url.clone()).unwrap();
+                    let mut client = PythClient::new(base_url.clone()).unwrap();
 
                     let mut stream = client
                         .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
@@ -113,7 +113,7 @@ impl PythClientTrait for PythClientCache {
     type Error = error::Error;
 
     async fn stream<I>(
-        &self,
+        &mut self,
         ids: NonEmpty<I>,
     ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
     where

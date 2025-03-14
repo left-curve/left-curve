@@ -23,7 +23,7 @@ pub trait PythClientTrait: Clone {
     type Error;
 
     async fn stream<I>(
-        &self,
+        &mut self,
         ids: NonEmpty<I>,
     ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
     where
@@ -81,13 +81,16 @@ impl PythClientTrait for PythClient {
     type Error = crate::error::Error;
 
     async fn stream<I>(
-        &self,
+        &mut self,
         ids: NonEmpty<I>,
     ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
     where
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
     {
+        // Close the previous connection.
+        self.close();
+
         let params = PythClient::create_request_params(ids);
         let builder = Client::new()
             .get(self.base_url.join("v2/updates/price/stream")?)
@@ -104,32 +107,53 @@ impl PythClientTrait for PythClient {
             None,
         )));
 
+        self.keep_running = Arc::new(AtomicBool::new(true));
+        let keep_running = self.keep_running.clone();
+
         let stream = stream! {
             loop {
-                while let Some(event) = es.next().await {
-                    match event {
-                        Ok(Event::Open) => debug!("Pyth SSE connection open"),
-                        Ok(Event::Message(message)) => {
-                            match message.data.deserialize_json::<LatestVaaResponse>() {
-                                Ok(vaas) => {
-                                    yield vaas.binary.data;
+                tokio::select! {
+                    // Safety check if, for some reason, the stream needs to be closed
+                    // but there are no more events incoming.
+                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
+                        if !keep_running.load(Ordering::Relaxed) {
+                            return;
+                        }
+                    }
+
+                    data = es.next() => {
+                        if !keep_running.load(Ordering::Acquire) {
+                            return;
+                        }
+
+                        if let Some(event) = data{
+                            match event {
+                                Ok(Event::Open) => debug!("Pyth SSE connection open"),
+                                Ok(Event::Message(message)) => {
+                                    match message.data.deserialize_json::<LatestVaaResponse>() {
+                                        Ok(vaas) => {
+                                            yield vaas.binary.data;
+                                        },
+                                        Err(err) => {
+                                            error!(
+                                                err = err.to_string(),
+                                                "Failed to deserialize Pyth event into LatestVaaResponse"
+                                            );
+                                        },
+                                    }
                                 },
                                 Err(err) => {
                                     error!(
                                         err = err.to_string(),
-                                        "Failed to deserialize Pyth event into LatestVaaResponse"
+                                        "Error while receiving the events from Pyth"
                                     );
+                                    es.close();
                                 },
                             }
-                        },
-                        Err(err) => {
-                            error!(
-                                err = err.to_string(),
-                                "Error while receiving the events from Pyth"
-                            );
-                            es.close();
-                        },
+                        }
+
                     }
+
                 }
             }
         };

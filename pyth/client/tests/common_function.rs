@@ -118,7 +118,7 @@ where
 }
 
 // Test for streaming vaas.
-pub async fn test_stream<P, I>(client: P, ids: I)
+pub async fn test_stream<P, I>(mut client: P, ids: I)
 where
     P: PythClientTrait + std::fmt::Debug,
     P::Error: std::fmt::Debug,
