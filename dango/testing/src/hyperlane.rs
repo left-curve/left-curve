@@ -373,7 +373,7 @@ where
     O: Signer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error> + From<ID::Error>,
 {
-    pub fn recieve_transfer(&mut self, to: Addr, coin: Coin) {
+    pub fn receive_transfer(&mut self, to: Addr, coin: Coin) {
         let addresses = self.addresses();
 
         if self
