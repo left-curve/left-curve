@@ -3,7 +3,6 @@ use {
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
-    grug_app::Shared,
     pyth_types::LatestVaaResponse,
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
@@ -53,103 +52,6 @@ impl PythClient {
             keep_running: Arc::new(AtomicBool::new(false)),
         })
     }
-
-    /// Start a SSE connection to the Pyth network and close the previous one if it exists.
-    /// Return a shared vector to read the vaas.
-    /// If the middleware is used, the function will run the middleware thread.
-    #[deprecated]
-    #[allow(unused_variables)]
-    pub fn run_streaming<I>(&mut self, ids: NonEmpty<I>) -> Shared<Vec<Binary>>
-    where
-        I: IntoIterator + Lengthy + Send + Clone + 'static,
-        I::Item: ToString,
-    {
-        // Close the previous connection if it exists since the Arc
-        // to shut down the thread will be replaced.
-        // NOTE: this will not stop the thread immediately.
-        self.close();
-
-        let base_url = self.base_url.clone();
-
-        // Create the shared vector to write/read the vaas.
-        let shared = Shared::new(vec![]);
-        let shared_clone = shared.clone();
-
-        // Create a new atomic bool. Don't reuse the old one since there is no
-        // guarantee that the old thread has already stopped.
-        self.keep_running = Arc::new(AtomicBool::new(true));
-        let keep_running_clone = self.keep_running.clone();
-
-        // If the middleware, run the middleware thread.
-        // if let Some(middleware) = &self.middleware {
-        //     middleware.run_streaming(ids, base_url, shared_clone, keep_running_clone);
-        // } else {
-        //     thread::spawn(move || {
-        //         let rt = Runtime::new().unwrap();
-        //         rt.block_on(async {
-        //             let mut stream = PythClient::stream(&base_url, ids).await.unwrap();
-
-        //             loop {
-        //                 tokio::select! {
-        //                     _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
-        //                         if !keep_running_clone.load(Ordering::Relaxed) {
-        //                             return;
-        //                         }
-        //                     }
-
-        //                     data = stream.next() => {
-        //                         // to avoid waiting for the next second tick
-        //                         if !keep_running_clone.load(Ordering::Relaxed) {
-        //                             return;
-        //                         }
-
-        //                         if let Some(data) = data {
-        //                             shared_clone.write_with(|mut shared_vaas| *shared_vaas = data);
-        //                         }
-        //                     }
-
-        //                 }
-        //             }
-        //         });
-        //     });
-        // }
-
-        shared
-    }
-
-    ///// Stop the streaming thread.
-    // pub fn close(&mut self) {
-    //     // This doesn't stop the streaming thread immediately, but it will stop
-    //     // after the next message is received *and* the message is properly
-    //     // deserialized as a `LatestVaaResponse`.
-
-    //     self.keep_running.store(false, Ordering::SeqCst);
-    // }
-
-    ///// Get the latest VAA from the Pyth network. Only used for testing.
-    // pub fn get_latest_vaas<I>(&mut self, ids: NonEmpty<I>) -> reqwest::Result<Vec<Binary>>
-    // where
-    //     I: IntoIterator + Clone + Lengthy,
-    //     I::Item: ToString,
-    // {
-    //     // If there is the middleware, try to get the data from it.
-    //     // if let Some(middleware) = &mut self.middleware {
-    //     //     // This code should be reached only in tests.
-    //     //     // Unwrap in order to fail if the cached data are not found.
-    //     //     return Ok(middleware
-    //     //         .get_latest_vaas(ids.clone(), &self.base_url)
-    //     //         .unwrap());
-    //     // }
-
-    //     Ok(reqwest::blocking::Client::new()
-    //         .get(format!("{}/v2/updates/price/latest", self.base_url))
-    //         .query(&PythClient::create_request_params(ids.clone()))
-    //         .send()?
-    //         .error_for_status()?
-    //         .json::<LatestVaaResponse>()?
-    //         .binary
-    //         .data)
-    // }
 
     fn create_request_params<I>(ids: NonEmpty<I>) -> Vec<(&'static str, String)>
     where
