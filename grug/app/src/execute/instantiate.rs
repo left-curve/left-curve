@@ -4,8 +4,8 @@ use {
         AppError, EventResult, GasTracker, Vm, _do_transfer, CHAIN_ID, CODES, CONFIG, CONTRACTS,
     },
     grug_types::{
-        Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,
-        MsgTransfer, StdResult, Storage,
+        btree_map, Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate,
+        MsgInstantiate, StdResult, Storage,
     },
 };
 
@@ -112,10 +112,7 @@ where
                 block,
                 msg_depth,
                 sender,
-                MsgTransfer {
-                    to: address,
-                    coins: msg.funds.clone(),
-                },
+                btree_map! { address => msg.funds.clone() },
                 false,
             ),
             evt => transfer_event
