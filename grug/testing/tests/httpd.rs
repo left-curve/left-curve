@@ -69,7 +69,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
     let (httpd_context, ..) = create_block().await?;
 
     let graphql_query = r#"
-      query Block($height: Int!) {
+      query Block($height: Int) {
         block(height: $height) {
           blockHeight
           appHash
@@ -90,6 +90,45 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
         name: "block",
         query: graphql_query,
         variables,
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let response = call_graphql::<Block>(app, request_body).await?;
+
+                assert_that!(response.data.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_last_block() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let graphql_query = r#"
+      query Block {
+        block {
+          blockHeight
+          appHash
+          hash
+          createdAt
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "block",
+        query: graphql_query,
+        variables: Default::default(),
     };
 
     let local_set = tokio::task::LocalSet::new();
