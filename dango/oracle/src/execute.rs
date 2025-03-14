@@ -91,7 +91,7 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
         // Deserialize the Pyth VAA from binary.
         let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
 
-        let sequence = vaa.wormhole_vaa().sequence;
+        let new_sequence = vaa.wormhole_vaa().sequence;
 
         // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
@@ -100,14 +100,14 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
             // Save the price if there isn't already a price saved, or if the
             // new price is more recent.
             PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
-                if let Some((price, stored_sequence)) = maybe_price {
-                    if sequence > stored_sequence {
-                        Ok((feed.try_into()?, sequence))
+                if let Some((price, current_sequence)) = maybe_price {
+                    if new_sequence > current_sequence {
+                        Ok((feed.try_into()?, new_sequence))
                     } else {
-                        Ok((price, stored_sequence))
+                        Ok((price, current_sequence))
                     }
                 } else {
-                    Ok((feed.try_into()?, sequence))
+                    Ok((feed.try_into()?, new_sequence))
                 }
             })?;
         }
