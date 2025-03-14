@@ -87,43 +87,27 @@ fn register_price_sources(
 }
 
 fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
-    // Only the oracle can feed prices.
-    // ensure!(
-    //     ctx.sender == ctx.contract,
-    //     "you don't have the right, O you don't have the right"
-    // );
-
-    let compare: fn(&u64, &u64) -> bool = if ctx.sender == ctx.contract {
-        u64::ge
-    } else {
-        u64::gt
-    };
-
     for vaa in vaas {
         // Deserialize the Pyth VAA from binary.
         let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
+
+        let sequence = vaa.wormhole_vaa().sequence;
 
         // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
             let hash = PythId::from_inner(feed.id.to_bytes());
 
             // Save the price if there isn't already a price saved, or if the
-            // new price is not older. This is due to the fact that Pyth return
-            // the publish time with a precision of seconds but the SSE connection
-            // returns more events per seconds.
+            // new price is more recent.
             PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
-                if let Some(price) = maybe_price {
-                    // if feed.get_price_unchecked().publish_time as u64 >= price.timestamp {
-                    if compare(
-                        &(feed.get_price_unchecked().publish_time as u64),
-                        &price.timestamp,
-                    ) {
-                        feed.try_into()
+                if let Some((price, stored_sequence)) = maybe_price {
+                    if sequence > stored_sequence {
+                        Ok((feed.try_into()?, sequence))
                     } else {
-                        Ok(price)
+                        Ok((price, stored_sequence))
                     }
                 } else {
-                    feed.try_into()
+                    Ok((feed.try_into()?, sequence))
                 }
             })?;
         }
