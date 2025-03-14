@@ -1,10 +1,16 @@
-import type { Signer as GrugSigner, Prettify } from "@left-curve/sdk/types";
-import type { Credential } from "./credential.js";
+import type { Signer as GrugSigner, JsonValue } from "@left-curve/sdk/types";
 import type { KeyHash } from "./key.js";
-import type { Metadata } from "./metadata.js";
+import type {
+  ArbitraryDoc,
+  ArbitrarySignatureOutcome,
+  SignDoc,
+  SignatureOutcome,
+} from "./signature.js";
 
-export type Signer = Prettify<
-  GrugSigner<Metadata, Credential> & {
-    getKeyHash(): Promise<KeyHash>;
-  }
->;
+export type Signer = GrugSigner<{
+  getKeyHash(): Promise<KeyHash>;
+  signTx(signDoc: SignDoc): Promise<SignatureOutcome>;
+  signArbitrary<T extends JsonValue = JsonValue>(
+    payload: ArbitraryDoc<T>,
+  ): Promise<ArbitrarySignatureOutcome>;
+}>;

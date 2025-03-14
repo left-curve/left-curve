@@ -6,9 +6,8 @@ import {
   Spinner,
   TruncateText,
   twMerge,
-  useSigningClient,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store-react";
+import { useAccount, useSigningClient } from "@left-curve/store-react";
 import { ConnectionStatus } from "@left-curve/store-react/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";

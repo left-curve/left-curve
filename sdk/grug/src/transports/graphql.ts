@@ -97,10 +97,7 @@ export function graphql(
             prove,
           });
 
-          return recursiveTransform<IndexerSchema[0]["ReturnType"]>(
-            JSON.parse(queryApp),
-            snakeToCamel,
-          );
+          return recursiveTransform(JSON.parse(queryApp), snakeToCamel);
         }
         case "query_status": {
           const document = gql`

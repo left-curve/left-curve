@@ -147,6 +147,7 @@ export type {
   TypedData,
   TypedDataParameter,
   TypedDataProperty,
+  ArbitraryTypedData,
 } from "./typedData.js";
 
 export type {
@@ -193,7 +194,6 @@ export type {
 export type {
   Key,
   KeyHash,
-  KeyAlgoType,
   KeyTag,
 } from "./key.js";
 
@@ -227,6 +227,7 @@ export type {
 export type {
   SigningSession,
   SigningSessionInfo,
+  SessionResponse,
 } from "./session.js";
 
 export type {
@@ -239,15 +240,9 @@ export type {
   SignatureOutcome,
 } from "./signature.js";
 
-export type {
-  TokenFactoryConfig,
-  TokenFactoryExecuteMsg,
-  TokenFactoryQueryMsg,
-} from "./token-factory.js";
+export type { DataChannelConfig } from "./webrtrc.js";
 
 export { AccountType } from "./account.js";
-
-export { KeyAlgo } from "./key.js";
 
 export { PoolType } from "./pool.js";
 

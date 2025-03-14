@@ -1,5 +1,11 @@
 import { capitalize, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
+import {
+  useAccount,
+  useBalances,
+  useChainId,
+  useConfig,
+  useSigningClient,
+} from "@left-curve/store-react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -14,7 +20,6 @@ import {
   Tabs,
   TruncateText,
   useInputs,
-  useSigningClient,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";

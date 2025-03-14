@@ -35,6 +35,8 @@ export { devnet } from "@left-curve/sdk/chains";
 
 export { PrivateKeySigner, createSessionSigner } from "./signers/index.js";
 
+export { createSessionSignature } from "./session.js";
+
 /* -------------------------------------------------------------------------- */
 /*                               Actions Builder                              */
 /* -------------------------------------------------------------------------- */

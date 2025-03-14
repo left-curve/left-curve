@@ -15,14 +15,11 @@
     "available": "Available",
     "username": "Username",
     "hi": "Hi",
+    "signinWithDesktop": "Sign in with Desktop",
     "signWithWallet": [
       {
-        "declarations": [
-          "input action"
-        ],
-        "selectors": [
-          "action"
-        ],
+        "declarations": ["input action"],
+        "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with wallet",
           "action=signup": "Sign up with wallet"
@@ -31,12 +28,8 @@
     ],
     "signWithPasskey": [
       {
-        "declarations": [
-          "input action"
-        ],
-        "selectors": [
-          "action"
-        ],
+        "declarations": ["input action"],
+        "selectors": ["action"],
         "match": {
           "action=signin": "Sign in with Passkey",
           "action=signup": "Sign up with Passkey"
@@ -49,7 +42,14 @@
       "txDetails": "Transaction Details"
     }
   },
+  "modals": {
+    "qrconnect": {
+      "title": "QR Connect",
+      "description": "Scan the QR code with your mobile to connect to your account."
+    }
+  },
   "login": {
+    "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don't have an account?",
     "errors": {
@@ -71,12 +71,8 @@
     "stepper": {
       "steps": [
         {
-          "declarations": [
-            "input step"
-          ],
-          "selectors": [
-            "step"
-          ],
+          "declarations": ["input step"],
+          "selectors": ["step"],
           "match": {
             "step=0": "Credential",
             "step=1": "Username"
@@ -85,12 +81,8 @@
       ],
       "title": [
         {
-          "declarations": [
-            "input step"
-          ],
-          "selectors": [
-            "step"
-          ],
+          "declarations": ["input step"],
+          "selectors": ["step"],
           "match": {
             "step=0": "Create Your Account",
             "step=1": "Select a Username"
@@ -99,12 +91,8 @@
       ],
       "description": [
         {
-          "declarations": [
-            "input step"
-          ],
-          "selectors": [
-            "step"
-          ],
+          "declarations": ["input step"],
+          "selectors": ["step"],
           "match": {
             "step=0": "Choose a sign in credential. You can add or remove credentials afterwards.",
             "step=1": "Your username will be public on-chain and cannot be changed afterwards."
@@ -123,13 +111,8 @@
     "stepper": {
       "title": [
         {
-          "declarations": [
-            "input account stepper description",
-            "input step"
-          ],
-          "selectors": [
-            "step"
-          ],
+          "declarations": ["input account stepper description", "input step"],
+          "selectors": ["step"],
           "match": {
             "step=0": "Account Type",
             "step=1": "Deposit"
@@ -138,13 +121,8 @@
       ],
       "description": [
         {
-          "declarations": [
-            "input account stepper description",
-            "input step"
-          ],
-          "selectors": [
-            "step"
-          ],
+          "declarations": ["input account stepper description", "input step"],
+          "selectors": ["step"],
           "match": {
             "step=0": "Select your account type to interact within the entire ecosystem",
             "step=1": "Fund your first spot account, you'll be able to create another account later."
@@ -155,13 +133,8 @@
     "accountType": {
       "title": [
         {
-          "declarations": [
-            "input account type title",
-            "input accountType"
-          ],
-          "selectors": [
-            "accountType"
-          ],
+          "declarations": ["input account type title", "input accountType"],
+          "selectors": ["accountType"],
           "match": {
             "accountType=spot": "Spot Account",
             "accountType=margin": "Margin Account"
@@ -170,13 +143,8 @@
       ],
       "description": [
         {
-          "declarations": [
-            "input account type description",
-            "input accountType"
-          ],
-          "selectors": [
-            "accountType"
-          ],
+          "declarations": ["input account type description", "input accountType"],
+          "selectors": ["accountType"],
           "match": {
             "accountType=spot": "Can hold any asset and partake in any activity; cheapest gas cost; can only take over-collateralized loans.",
             "accountType=margin": "Can take under-collateralized loans up to 5x leverage; can only hold whitelisted assets and partake in whitelisted activities."
@@ -203,12 +171,8 @@
     "language": "Language",
     "languages": [
       {
-        "declarations": [
-          "input language"
-        ],
-        "selectors": [
-          "language"
-        ],
+        "declarations": ["input language"],
+        "selectors": ["language"],
         "match": {
           "language=en": "English",
           "language=es": "Spanish",

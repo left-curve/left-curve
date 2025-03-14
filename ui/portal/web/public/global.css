@@ -39,3 +39,10 @@ body {
     width: calc(720px + (100vh - 1000px) * 0.8);
   }
 }
+
+.qr-container>div>div:nth-child(1) {
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+}

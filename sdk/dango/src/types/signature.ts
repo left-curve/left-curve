@@ -1,17 +1,20 @@
 import type {
   Base64,
-  ArbitrarySignatureOutcome as GrugArbitrarySignatureOutcome,
   SignDoc as GrugSignDoc,
   SignatureOutcome as GrugSignatureOutcome,
+  JsonValue,
 } from "@left-curve/sdk/types";
 import type { Credential } from "./credential.js";
-import type { Metadata } from "./metadata.js";
 
-export type SignDoc = GrugSignDoc<Metadata>;
+import type { ArbitraryTypedData, TxMessageType, TypedData } from "./typedData.js";
 
-export type SignatureOutcome = GrugSignatureOutcome<Metadata, Credential>;
+export type SignDoc = GrugSignDoc<TypedData<TxMessageType>>;
 
-export type ArbitrarySignatureOutcome = GrugArbitrarySignatureOutcome<Credential>;
+export type ArbitraryDoc<T extends JsonValue = JsonValue> = ArbitraryTypedData<T>;
+
+export type SignatureOutcome = GrugSignatureOutcome<SignDoc, Credential>;
+
+export type ArbitrarySignatureOutcome = GrugSignatureOutcome<JsonValue, Credential>;
 
 export type Signature =
   /** An Secp256k1 signature. */

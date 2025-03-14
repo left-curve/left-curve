@@ -9,7 +9,6 @@ import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding"
 
 import { createKeyHash, createSignerClient } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
-import { KeyAlgo } from "@left-curve/dango/types";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
@@ -29,7 +28,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
   const { icon } = parameters;
 
-  return createConnector(({ transports, emitter }) => {
+  return createConnector<undefined>(({ transports, emitter }) => {
     return {
       id: "passkey",
       name: "Passkey",
@@ -50,7 +49,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
             userVerification: "preferred",
           });
 
-          return createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+          return createKeyHash({ credentialId });
         })();
 
         const keys = await getKeysByUsername(client, { username });
@@ -94,7 +93,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         const publicKey = await getPublicKey();
         const key = { secp256r1: encodeBase64(publicKey) };
-        const keyHash = createKeyHash({ credentialId: id, keyAlgo: KeyAlgo.Secp256r1 });
+        const keyHash = createKeyHash({ credentialId: id });
 
         return { key, keyHash };
       },
@@ -104,7 +103,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           rpId: getRootDomain(window.location.hostname),
           userVerification: "preferred",
         });
-        return createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        return createKeyHash({ credentialId });
       },
       async getAccounts() {
         const client = await this.getClient();
@@ -125,7 +124,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         return _isAuthorized;
       },
       async signArbitrary(payload) {
-        const bytes = sha256(serialize(payload));
+        const { message } = payload;
+        const bytes = sha256(serialize(message));
 
         const {
           webauthn,
@@ -146,20 +146,22 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        const keyHash = createKeyHash({ credentialId });
 
         return {
           credential: { standard: { keyHash, signature: { passkey } } },
-          payload,
+          signed: message,
         };
       },
       async signTx(signDoc) {
-        const { sender, messages, data, gasLimit } = signDoc;
-        const { username, chainId, nonce, expiry } = data;
+        const { domain, message } = signDoc;
+        const sender = domain.verifyingContract;
+        const { messages, gas_limit, metadata } = message;
+        const { username, chainId, nonce, expiry } = metadata;
         const tx = sha256(
           serialize({
             sender,
-            gasLimit,
+            gasLimit: gas_limit,
             messages,
             data: { username, chainId, nonce, expiry },
           }),
@@ -185,10 +187,10 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           authenticator_data: encodeBase64(authenticatorData),
         };
 
-        const keyHash = createKeyHash({ credentialId, keyAlgo: KeyAlgo.Secp256r1 });
+        const keyHash = createKeyHash({ credentialId });
         const standard = { signature: { passkey }, keyHash };
 
-        return { credential: { standard }, signDoc };
+        return { credential: { standard }, signed: signDoc };
       },
       onConnect({ chainId, username }) {
         _username = username;

@@ -4,6 +4,7 @@ import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import type { JsonValue } from "@left-curve/sdk/types";
 
 import type { SessionCredential, SignDoc, Signer, SigningSession } from "../types/index.js";
+import type { ArbitraryDoc } from "../types/signature.js";
 
 export const createSessionSigner = (session: SigningSession): Signer => {
   const { sessionInfo, authorization, privateKey, keyHash } = session;
@@ -14,17 +15,19 @@ export const createSessionSigner = (session: SigningSession): Signer => {
   }
 
   async function signTx(signDoc: SignDoc) {
-    const { messages, sender, data, gasLimit } = signDoc;
+    const { message, domain } = signDoc;
+    const sender = domain.verifyingContract;
+    const { messages, metadata, gas_limit: gasLimit } = message;
     const tx = sha256(
       serialize({
         sender,
         gasLimit,
         messages,
         data: {
-          username: data.username,
-          chainId: data.chainId,
-          nonce: data.nonce,
-          expiry: data.expiry,
+          username: metadata.username,
+          chainId: metadata.chainId,
+          nonce: metadata.nonce,
+          expiry: metadata.expiry,
         },
       }),
     );
@@ -38,12 +41,13 @@ export const createSessionSigner = (session: SigningSession): Signer => {
 
     return {
       credential: { session },
-      signDoc,
+      signed: signDoc,
     };
   }
 
-  async function signArbitrary(payload: JsonValue) {
-    const bytes = sha256(serialize(payload));
+  async function signArbitrary(payload: ArbitraryDoc) {
+    const { message } = payload;
+    const bytes = sha256(serialize(message));
     const signature = signer.createSignature(bytes);
 
     const session: SessionCredential = {
@@ -54,7 +58,7 @@ export const createSessionSigner = (session: SigningSession): Signer => {
 
     return {
       credential: { session },
-      payload,
+      signed: message,
     };
   }
 

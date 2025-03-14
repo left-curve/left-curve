@@ -1,11 +1,5 @@
-import {
-  Button,
-  IconButton,
-  IconClose,
-  IconTrash,
-  useSigningClient,
-} from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store-react";
+import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
+import { useAccount, useSigningClient } from "@left-curve/store-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { KeyHash } from "@left-curve/dango/types";

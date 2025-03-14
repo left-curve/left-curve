@@ -14,8 +14,8 @@ import type { Json, JsonValue } from "../types/index.js";
  * let camelCasePayload = recursiveTransform(payload, snakeToCamel);
  * ```
  */
-export function recursiveTransform<T = Json | JsonValue>(
-  payload: Json | JsonValue,
+export function recursiveTransform<T extends Json | JsonValue = Json | JsonValue>(
+  payload: T,
   transformFn: (str: string) => string,
 ): T {
   // for strings, numbers, and nulls, there's no key to be transformed
