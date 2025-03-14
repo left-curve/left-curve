@@ -26,6 +26,7 @@ export {
   wait,
   withRetry,
   withTimeout,
+  withResolvers,
 } from "./promises.js";
 
 export { createBatchScheduler } from "./scheduler.js";
