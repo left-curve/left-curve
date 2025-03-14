@@ -18,15 +18,15 @@ use {
 
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
 /// keep all code related to Pyth for PP in a single structure.
-pub struct PythClientPPHandler<P> {
+pub struct PythPPHandler<P> {
     client: P,
     shared_vaas: Shared<Vec<Binary>>,
     current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
-impl PythClientPPHandler<PythClient> {
-    pub fn new<U: IntoUrl>(base_url: U) -> PythClientPPHandler<PythClient> {
+impl PythPPHandler<PythClient> {
+    pub fn new<U: IntoUrl>(base_url: U) -> PythPPHandler<PythClient> {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
@@ -38,9 +38,9 @@ impl PythClientPPHandler<PythClient> {
     }
 }
 
-impl PythClientPPHandler<PythClientCache> {
+impl PythPPHandler<PythClientCache> {
     #[allow(dead_code)]
-    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythClientPPHandler<PythClientCache> {
+    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythPPHandler<PythClientCache> {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
@@ -52,7 +52,7 @@ impl PythClientPPHandler<PythClientCache> {
     }
 }
 
-impl<P> PythClientPPHandler<P>
+impl<P> PythPPHandler<P>
 where
     P: PythClientTrait,
 {
@@ -94,7 +94,7 @@ where
     }
 }
 
-impl<P> PythClientPPHandler<P>
+impl<P> PythPPHandler<P>
 where
     P: PythClientTrait + Send + 'static,
     P::Error: std::fmt::Debug,
