@@ -69,6 +69,7 @@ export { IconChecked } from "./foundation/icons/IconChecked";
 export { IconAlert } from "./foundation/icons/IconAlert";
 export { IconQR } from "./foundation/icons/IconQR";
 export { IconPasskey } from "./foundation/icons/IconPasskey";
+export { IconMobile } from "./foundation/icons/IconMobile";
 
 /* ---------------------------------- Emojis -------------------------------- */
 
