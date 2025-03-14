@@ -1,7 +1,6 @@
 mod config;
 mod db;
 mod home_directory;
-mod init;
 mod keys;
 mod prompt;
 mod query;
@@ -10,8 +9,8 @@ mod tx;
 
 use {
     crate::{
-        db::DbCmd, home_directory::HomeDirectory, init::InitCmd, keys::KeysCmd, query::QueryCmd,
-        start::StartCmd, tx::TxCmd,
+        db::DbCmd, home_directory::HomeDirectory, keys::KeysCmd, query::QueryCmd, start::StartCmd,
+        tx::TxCmd,
     },
     clap::Parser,
     std::path::PathBuf,
@@ -43,9 +42,6 @@ enum Command {
     #[command(subcommand, next_display_order = None)]
     Keys(KeysCmd),
 
-    /// Initialize the home directory.
-    Init(InitCmd),
-
     /// Make a query [alias: q]
     #[command(next_display_order = None, alias = "q")]
     Query(QueryCmd),
@@ -74,7 +70,6 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
-        Command::Init(cmd) => cmd.run(&app_dir),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,

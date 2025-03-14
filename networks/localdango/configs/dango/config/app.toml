@@ -25,8 +25,8 @@ enabled = true
 # Whether to store block respnonses.
 keep_blocks = true
 
-# URL to the PostgreSQL database.
-postgres_url = "postgres://postgres@localhost/grug_dev"
+# URL to the SQL database to be used by the indexer.
+database_url = "postgres://postgres@db:5432/grug_dev"
 
 [indexer.httpd]
 
@@ -52,10 +52,10 @@ port = 8080
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://localhost:26657"
+rpc_addr = "http://0.0.0.0:26657"
 
 # Tendermint ABCI listening address.
-abci_addr = "http://localhost:26658"
+abci_addr = "0.0.0.0:26658"
 
 ################################################################################
 ###                        Transaction Configuration                         ###

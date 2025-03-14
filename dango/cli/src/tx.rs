@@ -1,11 +1,12 @@
 use {
     crate::{
-        config::parse_config,
+        config::Config,
         home_directory::HomeDirectory,
         prompt::{confirm, print_json_pretty, read_password},
     },
     clap::{Parser, Subcommand},
     colored::Colorize,
+    config_parser::parse_config,
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
@@ -109,7 +110,7 @@ enum SubCmd {
 impl TxCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         // Parse the config file.
-        let cfg = parse_config(app_dir.config_file())?;
+        let cfg: Config = parse_config(app_dir.config_file())?;
 
         let msg = match self.subcmd {
             SubCmd::Configure {

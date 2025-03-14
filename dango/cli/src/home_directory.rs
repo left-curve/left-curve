@@ -39,11 +39,6 @@ impl HomeDirectory {
             .map(|home| Self { home })
     }
 
-    /// Return whether the home directory exists.
-    pub fn exists(&self) -> bool {
-        self.home.exists()
-    }
-
     /// Return the path to the config directory.
     pub fn config_dir(&self) -> PathBuf {
         self.home.join("config")
