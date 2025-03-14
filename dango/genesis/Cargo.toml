@@ -28,6 +28,7 @@ hyperlane-ism         = { workspace = true, features = ["library"] }
 hyperlane-mailbox     = { workspace = true, features = ["library"] }
 hyperlane-types       = { workspace = true }
 hyperlane-va          = { workspace = true, features = ["library"] }
+pyth-types            = { workspace = true }
 serde                 = { workspace = true }
 
 [dev-dependencies]
