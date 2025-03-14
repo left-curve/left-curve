@@ -1,7 +1,8 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_update_event,
-        catch_event, AppError, EventResult, GasTracker, Vm, CHAIN_ID, CONFIG, CONTRACTS,
+        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_insert_event,
+        catch_and_update_event, catch_event, AppError, EventResult, GasTracker, Vm, CHAIN_ID,
+        CONFIG, CONTRACTS,
     },
     grug_types::{
         Addr, BankMsg, BlockInfo, Coins, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer,
@@ -114,7 +115,7 @@ where
         for (to, coins) in msg.transfers {
             // If recipient does not exist, skip the `_do_receive` call.
             if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, to) {
-                catch_and_update_event! {
+                catch_and_insert_event! {
                     _do_receive(
                         vm.clone(),
                         storage.clone(),
@@ -126,7 +127,9 @@ where
                         coins,
                         contract_info.code_hash,
                     ),
-                    evt => receive_guest
+                    evt,
+                    receive_guests,
+                    key: to
                 }
             }
         }

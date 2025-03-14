@@ -113,16 +113,19 @@ pub struct EvtTransfer {
     pub sender: Addr,
     pub transfers: BTreeMap<Addr, Coins>,
     pub bank_guest: EventStatus<EvtGuest>,
-    pub receive_guest: EventStatus<EvtGuest>,
+    pub receive_guests: BTreeMap<Addr, EventStatus<EvtGuest>>,
 }
 
 impl EvtTransfer {
     pub fn base(sender: Addr, transfers: BTreeMap<Addr, Coins>) -> Self {
         Self {
             sender,
+            receive_guests: transfers
+                .keys()
+                .map(|addr| (*addr, EventStatus::NotReached))
+                .collect(),
             transfers,
             bank_guest: EventStatus::NotReached,
-            receive_guest: EventStatus::NotReached,
         }
     }
 }

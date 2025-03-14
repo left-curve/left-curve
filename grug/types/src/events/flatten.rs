@@ -206,11 +206,11 @@ impl Flatten for EvtTransfer {
 
         events.extend(bank_guest);
 
-        let receive_guest = self
-            .receive_guest
-            .flatten_status(parent_id, next_id, commitment);
-
-        events.extend(receive_guest);
+        for event in self.receive_guests.into_values() {
+            let receive_guest = event.flatten_status(parent_id, next_id, commitment.clone());
+            next_id.increment_idx(&receive_guest);
+            events.extend(receive_guest);
+        }
 
         events
     }
