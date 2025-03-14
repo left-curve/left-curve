@@ -1,6 +1,6 @@
 import { useConnectorClient } from "@left-curve/store-react";
 import { useQuery } from "@tanstack/react-query";
-import { useSessionKey } from "./useSessionKey";
+import { useSessionKey } from "./useSessionKey.js";
 
 export function useSigningClient() {
   const { data: connectorClient } = useConnectorClient();

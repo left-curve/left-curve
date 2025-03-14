@@ -21,3 +21,5 @@ export {
   formatUnits,
   parseUnits,
 } from "./formatters.js";
+
+export { DataChannel } from "./webrtc.js";
