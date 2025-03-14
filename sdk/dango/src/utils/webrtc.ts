@@ -94,7 +94,8 @@ export class DataChannel {
   }
 
   #onDataChannelMessage(event: MessageEvent) {
-    const { id, message } = deserializeJson<{ id: string; message: unknown }>(event.data);
+    const data = deserializeJson<Json>(event.data);
+    const { id, message } = data as { id: string; message: JsonValue };
     const resolver = this.#resolver.get(id);
 
     if (resolver) {
@@ -103,7 +104,7 @@ export class DataChannel {
       return;
     }
 
-    this.#listeners.forEach((listener) => listener(event.data));
+    this.#listeners.forEach((listener) => listener(data));
   }
 
   async #onOffer(from: string, offer: RTCSessionDescriptionInit) {
