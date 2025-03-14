@@ -42,31 +42,17 @@ pub trait PythClientTrait: Clone {
 #[derive(Debug, Clone)]
 /// PythClient is a client to interact with the Pyth network.
 pub struct PythClient {
-    // <U: IntoUrl>
     pub base_url: Url, // U,
     keep_running: Arc<AtomicBool>,
-    // I think since this is only for `PythMiddlewareCache`, it should be named
-    // `middleware_cache` instead of `middleware`, or even better just have
-    // `cache_enabled: true`.
-    // Or we should have a MiddlewareTrait instead of `PythMiddlewareCache`.
-    // middleware: Option<PythMiddlewareCache>,
 }
 
 impl PythClient {
-    // Why not use `IntoUrl` ?
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
             keep_running: Arc::new(AtomicBool::new(false)),
-            // middleware: None,
         })
     }
-
-    // Use the middleware to be able to use cached data.
-    // pub fn with_middleware_cache(mut self) -> Self {
-    //     self.middleware = Some(PythMiddlewareCache::new());
-    //     self
-    // }
 
     /// Start a SSE connection to the Pyth network and close the previous one if it exists.
     /// Return a shared vector to read the vaas.
@@ -186,66 +172,6 @@ impl PythClient {
 
         params
     }
-
-    // pub async fn stream<I>(
-    //     &self,
-    //     ids: NonEmpty<I>,
-    // ) -> Result<
-    //     Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>,
-    //     reqwest_eventsource::CannotCloneRequestError,
-    // >
-    // where
-    //     I: IntoIterator + Lengthy,
-    //     I::Item: ToString,
-    // {
-    //     let params = PythClient::create_request_params(ids);
-    //     let builder = Client::new()
-    //         .get(format!("{}/v2/updates/price/stream", &self.base_url))
-    //         .query(&params);
-
-    //     // Connect to EventSource.
-    //     let mut es = EventSource::new(builder)?;
-
-    //     // Set the exponential backoff for reconnect.
-    //     es.set_retry_policy(Box::new(ExponentialBackoff::new(
-    //         Duration::from_secs(1),
-    //         1.5,
-    //         Some(Duration::from_secs(30)),
-    //         None,
-    //     )));
-
-    //     let stream = stream! {
-    //         loop {
-    //             while let Some(event) = es.next().await {
-    //                 match event {
-    //                     Ok(Event::Open) => debug!("Pyth SSE connection open"),
-    //                     Ok(Event::Message(message)) => {
-    //                         match message.data.deserialize_json::<LatestVaaResponse>() {
-    //                             Ok(vaas) => {
-    //                                 yield vaas.binary.data;
-    //                             },
-    //                             Err(err) => {
-    //                                 error!(
-    //                                     err = err.to_string(),
-    //                                     "Failed to deserialize Pyth event into LatestVaaResponse"
-    //                                 );
-    //                             },
-    //                         }
-    //                     },
-    //                     Err(err) => {
-    //                         error!(
-    //                             err = err.to_string(),
-    //                             "Error while receiving the events from Pyth"
-    //                         );
-    //                         es.close();
-    //                     },
-    //                 }
-    //             }
-    //         }
-    //     };
-
-    //     Ok(Box::pin(stream))
-    // }
 }
 
 #[async_trait]
