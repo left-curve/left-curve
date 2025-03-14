@@ -21,22 +21,8 @@ use {
 pub struct PythClientPPHandler<P> {
     client: P,
     shared_vaas: Shared<Vec<Binary>>,
-    pub current_ids: Vec<PythId>,
+    current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
-}
-
-impl<P> Clone for PythClientPPHandler<P>
-where
-    P: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            client: self.client.clone(),
-            shared_vaas: self.shared_vaas.clone(),
-            current_ids: self.current_ids.clone(),
-            stoppable_thread: None,
-        }
-    }
 }
 
 impl PythClientPPHandler<PythClient> {
@@ -66,18 +52,6 @@ impl PythClientPPHandler<PythClientCache> {
     }
 }
 
-impl<P> Drop for PythClientPPHandler<P>
-// where
-//     P: PythClientTrait,
-{
-    fn drop(&mut self) {
-        if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
-            keep_running.store(false, Ordering::Relaxed);
-        }
-        // self.client.close();
-    }
-}
-
 impl<P> PythClientPPHandler<P>
 where
     P: PythClientTrait,
@@ -88,16 +62,12 @@ where
         self.shared_vaas.replace(vec![])
     }
 
-    pub fn pyth_ids_equal(&self, new_ids: &[PythId]) -> bool {
-        self.current_ids == new_ids
-    }
-
     pub fn close_stream(&mut self) {
         if let Some((keep_running, _handle)) = self.stoppable_thread.take() {
             keep_running.store(false, Ordering::Relaxed);
         }
 
-        // Closing any potentially connected earlier stream
+        // Closing any potentially connected earlier stream.
         self.client.close();
     }
 
@@ -129,7 +99,7 @@ where
     P: PythClientTrait + Send + 'static,
     P::Error: std::fmt::Debug,
 {
-    pub fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
+    fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
     where
         I: IntoIterator + Lengthy + Send + Clone + 'static,
         I::Item: ToString,
@@ -172,5 +142,26 @@ where
                 });
             }),
         ));
+    }
+
+    pub fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
+        // Retrieve the Pyth ids from the Oracle contract.
+        let pyth_ids = Self::pyth_ids(querier, oracle)?;
+
+        // If the ids are the same, do nothing.
+        if pyth_ids == self.current_ids {
+            return Ok(());
+        }
+
+        // The PythIds have changed; close the previous stream and establish a new one.
+        self.current_ids = pyth_ids.clone();
+
+        self.close_stream();
+
+        if let Ok(pyth_ids) = NonEmpty::new(pyth_ids) {
+            self.connect_stream(pyth_ids);
+        }
+
+        Ok(())
     }
 }

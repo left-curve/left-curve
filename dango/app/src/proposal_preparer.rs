@@ -27,12 +27,12 @@ impl From<ProposerError> for AppError {
 
 pub struct ProposalPreparer<P> {
     // Option to be able to not clone the PythClientPPHandler.
-    pyth_client: Option<Mutex<PythClientPPHandler<P>>>,
+    pyth_handler: Option<Mutex<PythClientPPHandler<P>>>,
 }
 
 impl<P> Clone for ProposalPreparer<P> {
     fn clone(&self) -> Self {
-        Self { pyth_client: None }
+        Self { pyth_handler: None }
     }
 }
 
@@ -41,7 +41,7 @@ impl ProposalPreparer<PythClient> {
         let client = PythClientPPHandler::new(PYTH_URL);
 
         Self {
-            pyth_client: Some(Mutex::new(client)),
+            pyth_handler: Some(Mutex::new(client)),
         }
     }
 }
@@ -57,7 +57,7 @@ impl ProposalPreparer<PythClientCache> {
         let client = PythClientPPHandler::new_with_cache(PYTH_URL);
 
         Self {
-            pyth_client: Some(Mutex::new(client)),
+            pyth_handler: Some(Mutex::new(client)),
         }
     }
 }
@@ -77,35 +77,17 @@ where
     ) -> Result<Vec<Bytes>, Self::Error> {
         let cfg: AppConfig = querier.query_app_config()?;
 
-        // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
-        // let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
-
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?
-        let mut pyth_client = self.pyth_client.as_ref().unwrap().lock().unwrap();
+        let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
 
-        // Check if the Pyth ids have changed; if so, drop the previous connection
-        // and establish a new one with the new ids.
-        match PythClientPPHandler::<P>::pyth_ids(querier, cfg.addresses.oracle) {
-            Ok(pyth_ids) => {
-                if !pyth_client.pyth_ids_equal(&pyth_ids) {
-                    pyth_client.close_stream();
-
-                    // I clone this instead of a new client to keep the existing vaas.
-                    let mut client = pyth_client.clone();
-                    if let Ok(pyth_ids) = NonEmpty::new(pyth_ids) {
-                        client.connect_stream(pyth_ids);
-                    }
-                    *pyth_client = client;
-                }
-            },
-            Err(_) => {
-                error!("Failed to update Pyth ids");
-            },
+        // Update the Pyth stream if the PythIds in the oracle have changed.
+        if let Err(err) = pyth_handler.update_stream(querier, cfg.addresses.oracle) {
+            error!("Failed to update Pyth stream: {:?}", err);
         }
 
         // Retrieve the VAAs.
-        let vaas = pyth_client.fetch_latest_vaas();
+        let vaas = pyth_handler.fetch_latest_vaas();
 
         // Return if there are no VAAs to feed.
         if vaas.is_empty() {
