@@ -4,7 +4,6 @@ use data_encoding::BASE64;
 use grug_types::JsonSerExt;
 #[cfg(feature = "abci")]
 use grug_types::{HashExt, JsonDeExt};
-
 use {
     crate::{
         catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,

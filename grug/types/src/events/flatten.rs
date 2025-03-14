@@ -1,11 +1,10 @@
-use crate::{EventId, EventStatus, MsgsAndBackrunEvents};
-
-use super::{
-    Event, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest,
-    EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold,
-    FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, FlatEvtAuthenticate,
-    FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest, FlatEvtInstantiate,
-    FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold, SubEvent, SubEventStatus,
+use crate::{
+    Event, EventId, EventStatus, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute,
+    EvtFinalize, EvtGuest, EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload,
+    EvtWithhold, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
+    FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize,
+    FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer,
+    FlatEvtWithhold, MsgsAndBackrunEvents, SubEvent, SubEventStatus,
 };
 
 pub trait Flatten {
