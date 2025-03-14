@@ -105,3 +105,13 @@ export {
   type UseAccountInfoReturnType,
   useAccountInfo,
 } from "./hooks/useAccountInfo.js";
+
+export {
+  type UseDataChannelParamaters,
+  type UseDataChannelReturnType,
+  useDataChannel,
+} from "./hooks/useDataChannel.js";
+
+export { useSessionKey } from "./hooks/useSessionKey.js";
+
+export { useSigningClient } from "./hooks/useSigningClient.js";
