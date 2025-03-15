@@ -354,49 +354,48 @@ mod tests {
 
     #[test]
     fn passkey_authentication() {
-        let user_address = Addr::from_str("0x4857ff85aa9d69c73bc86eb45949455b45cca580").unwrap();
+        let user_address = Addr::from_str("0x4e0f79460bd512a19293f2209a880fd1c581d785").unwrap();
         let user_username = Username::from_str("passkey").unwrap();
         let user_keyhash =
-            Hash256::from_str("F060857303FA03DA27F41C8EBEA9A7E891CE05E840321CB302EE515E84B9D82B")
+            Hash256::from_str("A08F4ADFA9B0FDC7EA2F259CB4F43259F91700A0B7385CA2D951D4B4D2CF8D81")
                 .unwrap();
         let user_key = Key::Secp256r1(
             [
-                3, 199, 78, 155, 236, 166, 144, 61, 14, 162, 252, 123, 39, 173, 138, 43, 78, 85,
-                27, 52, 251, 242, 61, 201, 115, 217, 122, 234, 164, 24, 51, 48, 190,
+                2, 101, 91, 30, 81, 157, 28, 110, 211, 144, 114, 95, 107, 67, 244, 21, 200, 62,
+                251, 111, 156, 239, 15, 235, 11, 248, 164, 198, 84, 61, 88, 94, 178,
             ]
             .into(),
         );
 
         let tx = r#"{
-          "sender": "0x4857ff85aa9d69c73bc86eb45949455b45cca580",
+          "sender": "0x4e0f79460bd512a19293f2209a880fd1c581d785",
           "credential": {
             "standard": {
               "signature": {
                 "passkey": {
-                  "sig": "NmW5+jQ5lGlj4FyisBq6kA6sQ4gW2usbthLE6kl8sQPHXQVNdoHk+ZjP4YHg0p7Fl6Z+O79tHqPnm7vX1IkOsA==",
-                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWXd0dkNHdld3Q052UnhhNUxtdFE0OTZ4WV9lM1NtVkMwUnJ2SGF1TktuZyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                  "sig": "phIlIciOkg3IjjlLy74tIoXp7eATYSqmr1of3ayvbqaQ/1gDVMzmao8xrLOpNabWVXUMkJysudU5qEeK4djIEA==",
+                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTWd2S2ZrZG5TZmlNYmk4NnJBbmUyREdseUpVWmVmbDdzSVZab1VlZWxxdyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
                   "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
                 }
               },
-              "key_hash": "F060857303FA03DA27F41C8EBEA9A7E891CE05E840321CB302EE515E84B9D82B"
+              "key_hash": "A08F4ADFA9B0FDC7EA2F259CB4F43259F91700A0B7385CA2D951D4B4D2CF8D81"
             }
           },
           "data": {
             "username": "passkey",
             "nonce": 0,
-            "chain_id": "dev-3"
+            "chain_id": "dev-6"
           },
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
-                  "uusdc": "1000000"
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "12000000"
                 }
               }
             }
           ],
-          "gas_limit": 2566613
+          "gas_limit": 2448139
         }"#;
 
         let querier = MockQuerier::new()
@@ -419,7 +418,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-3")
+            .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
@@ -427,8 +426,8 @@ mod tests {
 
     #[test]
     fn eip712_authentication() {
-        let user_address = Addr::from_str("0x227e7e3d56ffd984ba6e3ead892f5676fa722a16").unwrap();
-        let user_username = Username::from_str("javier_1").unwrap();
+        let user_address = Addr::from_str("0x259289a570b0c21ad5cedf2b03761d2ad7288733").unwrap();
+        let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
             Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
                 .unwrap();
@@ -460,85 +459,85 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-3")
+            .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x227e7e3d56ffd984ba6e3ead892f5676fa722a16",
+          "sender": "0x259289a570b0c21ad5cedf2b03761d2ad7288733",
           "credential": {
             "standard": {
               "signature": {
                 "eip712": {
-                  "sig": "ygSIjqH++C55ksLXKF/9hPxBpcLECtGlsX/fxB5eTqNbXV9CUjp1PtBBu/36SYxrkY4SVYvqrsZFxcr2CBzKFQ==",
-                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6InRvIiwidHlwZSI6ImFkZHJlc3MifSx7Im5hbWUiOiJjb2lucyIsInR5cGUiOiJDb2lucyJ9XSwiQ29pbnMiOlt7Im5hbWUiOiJ1dXNkYyIsInR5cGUiOiJzdHJpbmcifV19LCJwcmltYXJ5VHlwZSI6Ik1lc3NhZ2UiLCJkb21haW4iOnsibmFtZSI6ImxvY2FsaG9zdCIsInZlcmlmeWluZ0NvbnRyYWN0IjoiMHgyMjdlN2UzZDU2ZmZkOTg0YmE2ZTNlYWQ4OTJmNTY3NmZhNzIyYTE2In0sIm1lc3NhZ2UiOnsibWV0YWRhdGEiOnsidXNlcm5hbWUiOiJqYXZpZXJfMSIsIm5vbmNlIjowLCJjaGFpbl9pZCI6ImRldi0zIn0sImdhc19saW1pdCI6MjU2NjU1OCwibWVzc2FnZXMiOlt7InRyYW5zZmVyIjp7InRvIjoiMHgwNjRjNWUyMGI0MjJiNWQ4MTdmZTgwMDExOWRhYzBhYjQzYjE3YTgwIiwiY29pbnMiOnsidXVzZGMiOiIxMDAwMDAwIn19fV19fQ=="
+                  "sig": "MiAlRlP35ggqJ3Sem18+7hjmv8zshg5cTNeBvdUVTA9Df0VM9yYp4TkTsw/x+7lrYJXBP1rsOXQFaA0g3OV75A==",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MDFiYmE2MTBjYmJmZTlkZjBjOTliODg2MmYzYWQ0MWIyZjY0NjU1MyIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjU5Mjg5YTU3MGIwYzIxYWQ1Y2VkZjJiMDM3NjFkMmFkNzI4ODczMyJ9LCJtZXNzYWdlIjp7Im1ldGFkYXRhIjp7InVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjAsImNoYWluX2lkIjoiZGV2LTYifSwiZ2FzX2xpbWl0IjoyNDQ4MTM5LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgwMWJiYTYxMGNiYmZlOWRmMGM5OWI4ODYyZjNhZDQxYjJmNjQ2NTUzIjp7Imh5cC9ldGgvdXNkYyI6IjEyMDAwMDAwIn19fV19fQ=="
                 }
               },
               "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B"
             }
           },
           "data": {
-            "username": "javier_1",
+            "username": "javier",
             "nonce": 0,
-            "chain_id": "dev-3"
+            "chain_id": "dev-6"
           },
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
-                  "uusdc": "1000000"
+                "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
+                  "hyp/eth/usdc": "12000000"
                 }
               }
             }
           ],
-          "gas_limit": 2566558
-        }"#;
+          "gas_limit": 2448139
+        }
+        "#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
 
     #[test]
     fn secp256k1_authentication() {
-        let user_address = Addr::from_str("0xb86b2d96971c32f68241df04691479edb6a9cd3b").unwrap();
-        let user_username = Username::from_str("owner").unwrap();
+        let user_address = Addr::from_str("0x88ae3afeb7abfd2425b936c7ea98b54b5e5c8911").unwrap();
+        let user_username = Username::from_str("username_key").unwrap();
         let user_keyhash =
-            Hash256::from_str("06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2")
+            Hash256::from_str("4893691F62AA862C961B33869AF4556AEB523F39EF627A06F49A291AFB09C635")
                 .unwrap();
         let user_key = Key::Secp256k1(
             [
-                2, 120, 247, 183, 217, 61, 169, 181, 166, 46, 40, 67, 65, 132, 209, 195, 55, 194,
-                194, 141, 76, 237, 41, 23, 147, 33, 90, 182, 238, 137, 215, 255, 248,
+                2, 168, 201, 136, 154, 169, 112, 145, 187, 159, 53, 95, 150, 251, 10, 146, 223,
+                158, 171, 105, 228, 192, 196, 113, 186, 68, 57, 105, 130, 77, 204, 28, 37,
             ]
             .into(),
         );
 
         let tx = r#"{
-          "sender": "0xb86b2d96971c32f68241df04691479edb6a9cd3b",
+          "sender": "0x88ae3afeb7abfd2425b936c7ea98b54b5e5c8911",
           "credential": {
             "standard": {
               "signature": {
-                "secp256k1": "YDh0d3Fu38vVRarTXssImRkORCDiyKkVYj22h8mOSAtohM3alOJkO+q/PLSo/+7WlFytT3CKJp04mSluCW0dOQ=="
+                "secp256k1": "1fgIXmWR1QBX1E0psetj2XicYbaYRPaSVQWgu5nazSFJwEZB/o4Hc91AvPRwT6uKYDpZbRfcTjn2xsWWq1dQTw=="
               },
-              "key_hash": "06E54A648823A1F12E1F03FED193C9FE0C030A65507FF09066BF9E067CD375D2"
+              "key_hash": "4893691F62AA862C961B33869AF4556AEB523F39EF627A06F49A291AFB09C635"
             }
           },
           "data": {
-            "username": "owner",
+            "username": "username_key",
             "nonce": 0,
-            "chain_id": "dev-3"
-        },
+            "chain_id": "dev-5"
+          },
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
-                  "uusdc": "10000"
+                "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
+                  "hyp/eth/usdc": "100000000"
                 }
               }
             }
           ],
-          "gas_limit": 2566278
-        }"#;
+          "gas_limit": 2448139
+        }
+        "#;
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
@@ -561,7 +560,7 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-3")
+            .with_chain_id("dev-5")
             .with_mode(AuthMode::Finalize);
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
@@ -569,8 +568,8 @@ mod tests {
 
     #[test]
     fn session_key_authentication() {
-        let user_address = Addr::from_str("0x1128323d3502087eab68007e0717ccf36d9e96fd").unwrap();
-        let user_username = Username::from_str("javier_1").unwrap();
+        let user_address = Addr::from_str("0x259289a570b0c21ad5cedf2b03761d2ad7288733").unwrap();
+        let user_username = Username::from_str("javier").unwrap();
         let user_keyhash =
             Hash256::from_str("622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B")
                 .unwrap();
@@ -603,45 +602,44 @@ mod tests {
         let mut ctx = MockContext::new()
             .with_querier(querier)
             .with_contract(user_address)
-            .with_chain_id("dev-3")
+            .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-          "sender": "0x1128323d3502087eab68007e0717ccf36d9e96fd",
-          "credential": {
-            "session": {
-              "session_info": {
-                "session_key": "A2W3zyOByPqqPDeX2iGVX3S+/Kg3dDxuQPPASRdRsxIR",
-                "expire_at": "149886405843120000000"
-              },
-              "authorization": {
-                "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
-                "signature": {
-                  "eip712": {
-                    "sig": "Iv/yinJ7jCpT9dYi5bVmz0GDsXjkPA6h8+jnbkYGSFBTEwShLBpHrpONM2qP9ZcolY/5jxhpcqHZEamfelf2yQ==",
-                    "typed_data": "eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQTJXM3p5T0J5UHFxUERlWDJpR1ZYM1MrL0tnM2REeHVRUFBBU1JkUnN4SVIiLCJleHBpcmVfYXQiOiIxNDk4ODY0MDU4NDMxMjAwMDAwMDAifSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwidHlwZXMiOnsiRUlQNzEyRG9tYWluIjpbeyJuYW1lIjoibmFtZSIsInR5cGUiOiJzdHJpbmcifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJzZXNzaW9uX2tleSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJleHBpcmVfYXQiLCJ0eXBlIjoic3RyaW5nIn1dfX0="
-                  }
+            "sender":"0x259289a570b0c21ad5cedf2b03761d2ad7288733",
+            "credential":{
+                "session":{
+                "session_info":{
+                    "session_key":"A7vPDuTOGiCMfnOPyfTfUdYwpNWszL7vgN51qFrfnjqs",
+                    "expire_at":"3484106362592"
+                },
+                "authorization":{
+                    "key_hash":"622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B",
+                    "signature":{
+                    "eip712":{
+                        "sig":"tVQATyHc6qNRVf1QHKVtcb5YMIUwT3XczVJH1eBy025KcezUOrBlyJgrl7fxZN+/ZM0+NHlVy67XNdOpJR9HrQ==",
+                        "typed_data":"eyJkb21haW4iOnsibmFtZSI6IkRhbmdvQXJiaXRyYXJ5TWVzc2FnZSJ9LCJtZXNzYWdlIjp7InNlc3Npb25fa2V5IjoiQTd2UER1VE9HaUNNZm5PUHlmVGZVZFl3cE5Xc3pMN3ZnTjUxcUZyZm5qcXMiLCJleHBpcmVfYXQiOiIzNDg0MTA2MzYyNTkyIn0sInByaW1hcnlUeXBlIjoiTWVzc2FnZSIsInR5cGVzIjp7IkVJUDcxMkRvbWFpbiI6W3sibmFtZSI6Im5hbWUiLCJ0eXBlIjoic3RyaW5nIn1dLCJNZXNzYWdlIjpbeyJuYW1lIjoic2Vzc2lvbl9rZXkiLCJ0eXBlIjoic3RyaW5nIn0seyJuYW1lIjoiZXhwaXJlX2F0IiwidHlwZSI6InN0cmluZyJ9XX19"
+                    }
+                    }
+                },
+                "session_signature":"c4OzJNFdvnVT/BLP8FuBduW/AO2bvc+zDunKEB5Ur4Nyy48pQ/Itkg7dLe0ICevxh3V9s0WRcUonocU/kgowIw=="
                 }
-              },
-              "session_signature": "yQQ45KtHDGo8itCmY59MBo9JPfA2/A+vEvNFiFnvLM1kilmxmGe0oFpeCSYlwS5uDxa7AZNp+620BlJ6dA0XcQ=="
-            }
-          },
-          "data": {
-            "username": "javier_1",
-            "nonce": 0,
-            "chain_id": "dev-3"
-          },
-          "msgs": [
-            {
-              "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
-                  "uusdc": "1000000"
+            },
+            "data":{
+                "username":"javier",
+                "nonce":0,
+                "chain_id":"dev-6"
+            },
+            "msgs":[
+                {
+                "transfer":{
+                    "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553":{
+                    "hyp/eth/usdc":"12000000"
+                    }
                 }
-              }
-            }
-          ],
-          "gas_limit": 2566260
+                }
+            ],
+            "gas_limit":2448139
         }"#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();

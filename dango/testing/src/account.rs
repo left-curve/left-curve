@@ -68,7 +68,7 @@ impl TestAccounts {
 
 // ------------------------------- test account --------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestAccount<
     T: MaybeDefined<Addr> = Defined<Addr>,
     K = BTreeMap<Hash256, (SigningKey, Key)>,
@@ -106,7 +106,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         Self::new(username, sk)
     }
 
-    fn new(username: &str, sk: SigningKey) -> Self {
+    pub fn new(username: &str, sk: SigningKey) -> Self {
         let username = Username::from_str(username).unwrap();
         let pk = sk
             .verifying_key()
@@ -151,7 +151,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
             username: self.username,
             nonce: self.nonce,
             address: Defined::new(address),
-            keys: btree_map!(self.sign_with => self.keys),
+            keys: btree_map! { self.sign_with => self.keys },
             sign_with: self.sign_with,
         }
     }
@@ -278,6 +278,10 @@ impl<T> TestAccount<T, (SigningKey, Key)>
 where
     T: MaybeDefined<Addr>,
 {
+    pub fn sk(&self) -> &SigningKey {
+        &self.keys.0
+    }
+
     pub fn key(&self) -> Key {
         self.keys.1
     }
@@ -291,6 +295,10 @@ impl<T> TestAccount<T>
 where
     T: MaybeDefined<Addr>,
 {
+    pub fn first_sk(&self) -> &SigningKey {
+        &self.keys.iter().next().unwrap().1 .0
+    }
+
     pub fn first_key(&self) -> Key {
         self.keys.iter().next().unwrap().1 .1
     }

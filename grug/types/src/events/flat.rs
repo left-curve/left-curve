@@ -6,6 +6,7 @@ use {
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
+    std::collections::BTreeMap,
     strum_macros::{Display, EnumDiscriminants},
 };
 
@@ -185,8 +186,7 @@ pub enum FlatEvent {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FlatEvtTransfer {
     pub sender: Addr,
-    pub recipient: Addr,
-    pub coins: Coins,
+    pub transfers: BTreeMap<Addr, Coins>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

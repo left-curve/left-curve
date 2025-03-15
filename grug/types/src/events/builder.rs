@@ -24,6 +24,17 @@ impl EventBuilder {
         self.events.push(event.try_into()?);
         Ok(self)
     }
+
+    pub fn may_push<T>(&mut self, maybe_event: Option<T>) -> Result<&mut Self, T::Error>
+    where
+        T: TryInto<ContractEvent>,
+    {
+        if let Some(event) = maybe_event {
+            self.events.push(event.try_into()?);
+        }
+
+        Ok(self)
+    }
 }
 
 impl IntoIterator for EventBuilder {

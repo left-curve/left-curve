@@ -385,14 +385,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     }
 
     Ok(Response::new()
-        .add_message({
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::BatchTransfer(refunds),
-                Coins::new(),
-            )?
-        })
+        .add_message(Message::batch_transfer(refunds)?)
         .add_events(events))
 }
 

@@ -38,14 +38,14 @@ macro_rules! catch_and_update_event {
 }
 
 #[macro_export]
-macro_rules! catch_and_append_event {
-    ($result:expr, $evt:expr) => {
+macro_rules! catch_and_push_event {
+    ($result:expr, $evt:expr, $field:ident) => {
         match $result {
             EventResult::Ok(i) => {
-                $evt.msgs.push(grug_types::EventStatus::Ok(i));
+                $evt.$field.push(grug_types::EventStatus::Ok(i));
             },
             EventResult::Err { event, error } => {
-                $evt.msgs.push(grug_types::EventStatus::Failed {
+                $evt.$field.push(grug_types::EventStatus::Failed {
                     event,
                     error: error.to_string(),
                 });
@@ -53,7 +53,31 @@ macro_rules! catch_and_append_event {
                 return EventResult::NestedErr { event: $evt, error };
             },
             EventResult::NestedErr { event, error } => {
-                $evt.msgs.push(grug_types::EventStatus::NestedFailed(event));
+                $evt.$field.push(grug_types::EventStatus::NestedFailed(event));
+
+                return EventResult::NestedErr { event: $evt, error };
+            },
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! catch_and_insert_event {
+    ($result:expr, $evt:expr, $field:ident, key:$key:expr) => {
+        match $result {
+            EventResult::Ok(i) => {
+                $evt.$field.insert($key, grug_types::EventStatus::Ok(i));
+            },
+            EventResult::Err { event, error } => {
+                $evt.$field.insert($key, grug_types::EventStatus::Failed {
+                    event,
+                    error: error.to_string(),
+                });
+
+                return EventResult::NestedErr { event: $evt, error };
+            },
+            EventResult::NestedErr { event, error } => {
+                $evt.$field.insert($key, grug_types::EventStatus::NestedFailed(event));
 
                 return EventResult::NestedErr { event: $evt, error };
             },

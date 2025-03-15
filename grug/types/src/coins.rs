@@ -16,7 +16,7 @@ use {
 #[macro_export]
 macro_rules! coins {
     ($($denom:expr => $amount:expr),* $(,)?) => {{
-        Coins::try_from($crate::btree_map! { $($denom => $amount),+ }).unwrap()
+        $crate::Coins::try_from($crate::btree_map! { $($denom => $amount),+ }).unwrap()
     }};
 }
 
