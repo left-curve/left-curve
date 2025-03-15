@@ -1,10 +1,10 @@
 use {
     crate::TradingFunction,
     anyhow::ensure,
-    dango_types::dex::{CurveInvariant, PairParams},
+    dango_types::dex::{CreateLimitOrderRequest, CurveInvariant, Direction, PairParams},
     grug::{
-        Coin, CoinPair, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
-        Udec128, Uint128,
+        Coin, CoinPair, Denom, Inner, IsZero, MultiplyFraction, MultiplyRatio, Number, NumberConst,
+        StdResult, Udec128, Uint128,
     },
 };
 
@@ -93,6 +93,44 @@ pub trait PassiveLiquidityPool {
         reserve: CoinPair,
         output: Coin,
     ) -> anyhow::Result<(CoinPair, Coin)>;
+
+    /// Reflect the curve onto the orderbook.
+    ///
+    /// ## Inputs
+    ///
+    /// - `base_denom`: The base asset of the pool.
+    /// - `quote_denom`: The quote asset of the pool.
+    /// - `reserves`: The current pool reserves.
+    /// - `spread`: The spread between the ask and bid.
+    ///
+    /// ## Outputs
+    ///
+    /// - A vec of orders to place on the orderbook.
+    fn reflect_curve(
+        &self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Vec<CreateLimitOrderRequest>>;
+
+    /// Returns the spot price of the pool at the current reserves, given as the number
+    /// of quote asset units per base asset unit.
+    ///
+    /// ## Inputs
+    ///
+    /// - `base_denom`: The base asset of the pool.
+    /// - `quote_denom`: The quote asset of the pool.
+    /// - `reserves`: The current pool reserves.
+    ///
+    /// ## Outputs
+    ///
+    /// - The spot price of the pool.
+    fn spot_price(
+        &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Udec128>;
 }
 
 impl PassiveLiquidityPool for PairParams {
@@ -253,6 +291,81 @@ impl PassiveLiquidityPool for PairParams {
         reserve.checked_add(&input)?.checked_sub(&output)?;
 
         Ok((reserve, input))
+    }
+
+    fn reflect_curve(
+        &self,
+        base_denom: Denom,
+        quote_denom: Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Vec<CreateLimitOrderRequest>> {
+        let a = reserves.amount_of(&base_denom)?;
+        let b = reserves.amount_of(&quote_denom)?;
+
+        let price = self.spot_price(&base_denom, &quote_denom, reserves)?;
+
+        // Calculate the starting price for the ask and bid side respectively. We
+        // place the spread symmetrically around the spot price.
+        let swap_fee_rate = self.swap_fee_rate.clone().into_inner();
+        let starting_price_ask = price.checked_mul(Udec128::ONE.checked_add(swap_fee_rate)?)?;
+        let starting_price_bid = price.checked_mul(Udec128::ONE.checked_sub(swap_fee_rate)?)?;
+
+        let mut orders = Vec::with_capacity(2 * self.order_depth as usize);
+        let mut a_bid_prev = Uint128::ZERO;
+        let mut a_ask_prev = Uint128::ZERO;
+        for i in 0..(self.order_depth + 1) {
+            let delta_p = self
+                .tick_size
+                .checked_mul(Udec128::checked_from_ratio(i as u128, Uint128::ONE)?)?;
+
+            // Calculate the price i ticks on the ask and bid side respectively
+            let price_ask = starting_price_ask.checked_add(delta_p)?;
+            let price_bid = starting_price_bid.checked_sub(delta_p)?;
+
+            // Calculate the amount of base that can be bought at the price
+            let (a_ask, a_bid) = match self.curve_invariant {
+                CurveInvariant::Xyk => {
+                    let a_ask = a.checked_sub(b.checked_div_dec(price_ask)?)?;
+                    let a_bid = b.checked_div_dec(price_bid)?.checked_sub(a)?;
+                    (a_ask, a_bid)
+                },
+            };
+
+            orders.push(CreateLimitOrderRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: Direction::Bid,
+                amount: a_bid.checked_sub(a_bid_prev)?,
+                price: price_bid,
+            });
+
+            orders.push(CreateLimitOrderRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                direction: Direction::Ask,
+                amount: a_ask.checked_sub(a_ask_prev)?,
+                price: price_ask,
+            });
+
+            a_bid_prev = a_bid;
+            a_ask_prev = a_ask;
+        }
+
+        Ok(orders)
+    }
+
+    fn spot_price(
+        &self,
+        base_denom: &Denom,
+        quote_denom: &Denom,
+        reserves: &CoinPair,
+    ) -> StdResult<Udec128> {
+        let base_reserves = reserves.amount_of(base_denom)?;
+        let quote_reserves = reserves.amount_of(quote_denom)?;
+
+        match self.curve_invariant {
+            CurveInvariant::Xyk => Ok(Udec128::checked_from_ratio(quote_reserves, base_reserves)?),
+        }
     }
 }
 
