@@ -3,9 +3,7 @@ use {
     dango_types::{
         constants::{ATOM_DENOM, BTC_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
-            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
-            OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersRequest,
-            QueryReserveRequest, SlippageControl,
+            self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds, OrderResponse, PairParams, PairUpdate, QueryOrdersByPairRequest, QueryOrdersByUserRequest, QueryOrdersRequest, QueryReserveRequest, SlippageControl
         },
     },
     grug::{
@@ -1904,6 +1902,139 @@ fn swap_with_route(
     );
 
     // TODO: Assert that all pool in route have changed as expected
+}
+
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::ONE,
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 200 * 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !2  => (Udec128::new_percent(19900), 50251),
+        !4  => (Udec128::new_percent(19800), 50759),
+        !6  => (Udec128::new_percent(19700), 51274),
+        !8  => (Udec128::new_percent(19600), 51797),
+        !10 => (Udec128::new_percent(19500), 52329),
+        !12 => (Udec128::new_percent(19400), 52868),
+        !14 => (Udec128::new_percent(19300), 53416),
+        !16 => (Udec128::new_percent(19200), 53972),
+        !18 => (Udec128::new_percent(19100), 54538),
+        !20 => (Udec128::new_percent(19000), 55112),
+        3   => (Udec128::new_percent(20100), 49751),
+        5   => (Udec128::new_percent(20200), 49259),
+        7   => (Udec128::new_percent(20300), 48773),
+        9   => (Udec128::new_percent(20400), 48295),
+        11  => (Udec128::new_percent(20500), 47824),
+        13  => (Udec128::new_percent(20600), 47360), 
+        15  => (Udec128::new_percent(20700), 46902),
+        17  => (Udec128::new_percent(20800), 46451),
+        19  => (Udec128::new_percent(20900), 46007),
+        21  => (Udec128::new_percent(21000), 45568),
+    } ; "xyk pool balance 1:200 no spread")]
+#[test_case(
+    CurveInvariant::Xyk,
+    Udec128::new_percent(1),
+    10,
+    Udec128::ZERO,
+    coins! {
+        ETH_DENOM.clone() => 10000000,
+        USDC_DENOM.clone() => 10000000,
+    },
+    btree_map! { // Map from order_id to expected (price, amount)
+        !2  => (Udec128::new_percent(99), 101010),
+        !4  => (Udec128::new_percent(98), 103072),
+        !6  => (Udec128::new_percent(97), 105197),
+        !8  => (Udec128::new_percent(96), 107388),
+        !10 => (Udec128::new_percent(95), 109649),
+        !12 => (Udec128::new_percent(94), 111982),
+        !14 => (Udec128::new_percent(93), 114390),
+        !16 => (Udec128::new_percent(92), 116877),
+        !18 => (Udec128::new_percent(91), 119446),
+        !20 => (Udec128::new_percent(90), 122100),
+        3   => (Udec128::new_percent(101), 99010),
+        5   => (Udec128::new_percent(102), 97069),
+        7   => (Udec128::new_percent(103), 95184),
+        9   => (Udec128::new_percent(104), 93353),
+        11  => (Udec128::new_percent(105), 91575),
+        13  => (Udec128::new_percent(106), 89847), 
+        15  => (Udec128::new_percent(107), 88168),
+        17  => (Udec128::new_percent(108), 86535),
+        19  => (Udec128::new_percent(109), 84947),
+        21  => (Udec128::new_percent(110), 83403),
+    } ; "xyk pool balance 1:1 no spread")]
+fn curve_on_orderbook(
+    curve_invariant: CurveInvariant,
+    tick_size: Udec128,
+    order_depth: u64,
+    swap_fee_rate: Udec128,
+    pool_liquidity: Coins,
+    expected_orders: BTreeMap<OrderId, (Udec128, u128)>,
+) {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Update pair params
+    suite.query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+        base_denom: ETH_DENOM.clone(),
+        quote_denom: USDC_DENOM.clone(),
+    })
+    .should_succeed_and(|pair_params: &PairParams| {
+        // Provide liquidity with owner account
+        suite.execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+                params: PairParams {
+                    lp_denom: pair_params.lp_denom.clone(),
+                    curve_invariant: curve_invariant,
+                    swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                    order_depth,
+                    tick_size: tick_size,
+                },
+            }]),
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+        true
+    });
+
+    // Provide liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: ETH_DENOM.clone(),
+                quote_denom: USDC_DENOM.clone(),
+            },
+            pool_liquidity.clone(),
+        )
+        .should_succeed();
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryOrdersByUserRequest {
+            user: contracts.dex.address(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| {
+            println!("orders: {:?}", orders);
+            for (i, order) in orders.iter().enumerate() {
+                println!("order {} : {:?}", i, order);
+            }
+            assert_eq!(orders.len(), 2 * order_depth as usize);
+            for (order_id, (price, amount)) in expected_orders {
+                let order = orders.get(&order_id).unwrap();
+                assert_eq!(order.price, price);
+                assert!(order.amount.into_inner().abs_diff(amount) <= 1);
+            }
+            true
+        });
 }
 
 fn balance_changes_from_coins(
