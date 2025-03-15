@@ -367,35 +367,34 @@ mod tests {
             .into(),
         );
 
-        let tx = r#"{
-            "sender":"0x4e0f79460bd512a19293f2209a880fd1c581d785",
-            "credential":{
-                "standard":{
-                "signature":{
-                    "passkey":{
-                    "sig":"phIlIciOkg3IjjlLy74tIoXp7eATYSqmr1of3ayvbqaQ/1gDVMzmao8xrLOpNabWVXUMkJysudU5qEeK4djIEA==",
-                    "client_data":"eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTWd2S2ZrZG5TZmlNYmk4NnJBbmUyREdseUpVWmVmbDdzSVZab1VlZWxxdyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
-                    "authenticator_data":"SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
-                    }
-                },
-                "key_hash":"A08F4ADFA9B0FDC7EA2F259CB4F43259F91700A0B7385CA2D951D4B4D2CF8D81"
+        let tx = r#"  "sender": "0x4e0f79460bd512a19293f2209a880fd1c581d785",
+          "credential": {
+            "standard": {
+              "signature": {
+                "passkey": {
+                  "sig": "phIlIciOkg3IjjlLy74tIoXp7eATYSqmr1of3ayvbqaQ/1gDVMzmao8xrLOpNabWVXUMkJysudU5qEeK4djIEA==",
+                  "client_data": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTWd2S2ZrZG5TZmlNYmk4NnJBbmUyREdseUpVWmVmbDdzSVZab1VlZWxxdyIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NTA4MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0=",
+                  "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4/krrmihjLHmVzzuoMdl2MZAAAAAA=="
                 }
-            },
-            "data":{
-                "username":"passkey",
-                "nonce":0,
-                "chain_id":"dev-6"
-            },
-            "msgs":[
-                {
-                "transfer":{
-                    "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9":{
-                    "hyp/eth/usdc":"12000000"
-                    }
+              },
+              "key_hash": "A08F4ADFA9B0FDC7EA2F259CB4F43259F91700A0B7385CA2D951D4B4D2CF8D81"
+            }
+          },
+          "data": {
+            "username": "passkey",
+            "nonce": 0,
+            "chain_id": "dev-6"
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9": {
+                  "hyp/eth/usdc": "12000000"
                 }
-                }
-            ],
-            "gas_limit":2448139
+              }
+            }
+          ],
+          "gas_limit": 2448139
         }"#;
 
         let querier = MockQuerier::new()
@@ -463,34 +462,35 @@ mod tests {
             .with_mode(AuthMode::Finalize);
 
         let tx = r#"{
-            "sender": "0x259289a570b0c21ad5cedf2b03761d2ad7288733",
-            "credential": {
-                "standard": {
-                "signature": {
-                    "eip712": {
-                    "sig": "MiAlRlP35ggqJ3Sem18+7hjmv8zshg5cTNeBvdUVTA9Df0VM9yYp4TkTsw/x+7lrYJXBP1rsOXQFaA0g3OV75A==",
-                    "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MDFiYmE2MTBjYmJmZTlkZjBjOTliODg2MmYzYWQ0MWIyZjY0NjU1MyIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjU5Mjg5YTU3MGIwYzIxYWQ1Y2VkZjJiMDM3NjFkMmFkNzI4ODczMyJ9LCJtZXNzYWdlIjp7Im1ldGFkYXRhIjp7InVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjAsImNoYWluX2lkIjoiZGV2LTYifSwiZ2FzX2xpbWl0IjoyNDQ4MTM5LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgwMWJiYTYxMGNiYmZlOWRmMGM5OWI4ODYyZjNhZDQxYjJmNjQ2NTUzIjp7Imh5cC9ldGgvdXNkYyI6IjEyMDAwMDAwIn19fV19fQ=="
-                    }
-                },
-                "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B"
+          "sender": "0x259289a570b0c21ad5cedf2b03761d2ad7288733",
+          "credential": {
+            "standard": {
+              "signature": {
+                "eip712": {
+                  "sig": "MiAlRlP35ggqJ3Sem18+7hjmv8zshg5cTNeBvdUVTA9Df0VM9yYp4TkTsw/x+7lrYJXBP1rsOXQFaA0g3OV75A==",
+                  "typed_data": "eyJ0eXBlcyI6eyJFSVA3MTJEb21haW4iOlt7Im5hbWUiOiJuYW1lIiwidHlwZSI6InN0cmluZyJ9LHsibmFtZSI6InZlcmlmeWluZ0NvbnRyYWN0IiwidHlwZSI6ImFkZHJlc3MifV0sIk1lc3NhZ2UiOlt7Im5hbWUiOiJtZXRhZGF0YSIsInR5cGUiOiJNZXRhZGF0YSJ9LHsibmFtZSI6Imdhc19saW1pdCIsInR5cGUiOiJ1aW50MzIifSx7Im5hbWUiOiJtZXNzYWdlcyIsInR5cGUiOiJUeE1lc3NhZ2VbXSJ9XSwiTWV0YWRhdGEiOlt7Im5hbWUiOiJ1c2VybmFtZSIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJjaGFpbl9pZCIsInR5cGUiOiJzdHJpbmcifSx7Im5hbWUiOiJub25jZSIsInR5cGUiOiJ1aW50MzIifV0sIlR4TWVzc2FnZSI6W3sibmFtZSI6InRyYW5zZmVyIiwidHlwZSI6IlRyYW5zZmVyIn1dLCJUcmFuc2ZlciI6W3sibmFtZSI6IjB4MDFiYmE2MTBjYmJmZTlkZjBjOTliODg2MmYzYWQ0MWIyZjY0NjU1MyIsInR5cGUiOiJDb2luMCJ9XSwiQ29pbjAiOlt7Im5hbWUiOiJoeXAvZXRoL3VzZGMiLCJ0eXBlIjoic3RyaW5nIn1dfSwicHJpbWFyeVR5cGUiOiJNZXNzYWdlIiwiZG9tYWluIjp7Im5hbWUiOiJsb2NhbGhvc3QiLCJ2ZXJpZnlpbmdDb250cmFjdCI6IjB4MjU5Mjg5YTU3MGIwYzIxYWQ1Y2VkZjJiMDM3NjFkMmFkNzI4ODczMyJ9LCJtZXNzYWdlIjp7Im1ldGFkYXRhIjp7InVzZXJuYW1lIjoiamF2aWVyIiwibm9uY2UiOjAsImNoYWluX2lkIjoiZGV2LTYifSwiZ2FzX2xpbWl0IjoyNDQ4MTM5LCJtZXNzYWdlcyI6W3sidHJhbnNmZXIiOnsiMHgwMWJiYTYxMGNiYmZlOWRmMGM5OWI4ODYyZjNhZDQxYjJmNjQ2NTUzIjp7Imh5cC9ldGgvdXNkYyI6IjEyMDAwMDAwIn19fV19fQ=="
                 }
-            },
-            "data": {
-                "username": "javier",
-                "nonce": 0,
-                "chain_id": "dev-6"
-            },
-            "msgs": [
-                {
-                "transfer": {
-                    "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
-                    "hyp/eth/usdc": "12000000"
-                    }
+              },
+              "key_hash": "622FE2E6EDABB23602D87CC65E4FE2749A232B32035651C99591A098AAD8629B"
+            }
+          },
+          "data": {
+            "username": "javier",
+            "nonce": 0,
+            "chain_id": "dev-6"
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
+                  "hyp/eth/usdc": "12000000"
                 }
-                }
-            ],
-            "gas_limit": 2448139
-        }"#;
+              }
+            }
+          ],
+          "gas_limit": 2448139
+        }
+        "#;
 
         authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
     }
@@ -511,31 +511,32 @@ mod tests {
         );
 
         let tx = r#"{
-            "sender":"0x88ae3afeb7abfd2425b936c7ea98b54b5e5c8911",
-            "credential":{
-                "standard":{
-                "signature":{
-                    "secp256k1":"1fgIXmWR1QBX1E0psetj2XicYbaYRPaSVQWgu5nazSFJwEZB/o4Hc91AvPRwT6uKYDpZbRfcTjn2xsWWq1dQTw=="
-                },
-                "key_hash":"4893691F62AA862C961B33869AF4556AEB523F39EF627A06F49A291AFB09C635"
+          "sender": "0x88ae3afeb7abfd2425b936c7ea98b54b5e5c8911",
+          "credential": {
+            "standard": {
+              "signature": {
+                "secp256k1": "1fgIXmWR1QBX1E0psetj2XicYbaYRPaSVQWgu5nazSFJwEZB/o4Hc91AvPRwT6uKYDpZbRfcTjn2xsWWq1dQTw=="
+              },
+              "key_hash": "4893691F62AA862C961B33869AF4556AEB523F39EF627A06F49A291AFB09C635"
+            }
+          },
+          "data": {
+            "username": "username_key",
+            "nonce": 0,
+            "chain_id": "dev-5"
+          },
+          "msgs": [
+            {
+              "transfer": {
+                "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
+                  "hyp/eth/usdc": "100000000"
                 }
-            },
-            "data":{
-                "username":"username_key",
-                "nonce":0,
-                "chain_id":"dev-5"
-            },
-            "msgs":[
-                {
-                "transfer":{
-                    "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553":{
-                    "hyp/eth/usdc":"100000000"
-                    }
-                }
-                }
-            ],
-            "gas_limit":2448139
-        }"#;
+              }
+            }
+          ],
+          "gas_limit": 2448139
+        }
+        "#;
 
         let querier = MockQuerier::new()
             .with_app_config(AppConfig {
