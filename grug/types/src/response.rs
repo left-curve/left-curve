@@ -274,7 +274,7 @@ impl SubMessage {
     }
 }
 
-/// A [ContractEvent] where the contract address is added by the host.
+/// A [`ContractEvent`] where the contract address is added by the host.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CheckedContractEvent {
     pub contract: Addr,
