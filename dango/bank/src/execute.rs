@@ -174,6 +174,9 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
     Ok(())
 }
 
+/// Note: we don't handle orphaned transfers here. This function can only be
+/// called by the taxman contract. We assume the taxman is properly programmed
+/// to never force an orphaned transfer.
 fn force_transfer(
     ctx: MutableCtx,
     from: Addr,
