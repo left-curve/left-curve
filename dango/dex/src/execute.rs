@@ -447,9 +447,29 @@ fn swap_exact_amount_out(
 /// Implemented according to:
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
-    let mut events = EventBuilder::new();
+pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut refunds = BTreeMap::new();
+    let mut creates = Vec::new();
+
+    // Loop through all passive pools and reflect the pools onto the orderbook
+    let pairs_with_pools = RESERVES
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?;
+    for ((base_denom, quote_denom), reserve) in pairs_with_pools {
+        let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+        let creates_for_pair = pair.reflect_curve(base_denom, quote_denom, &reserve)?;
+
+        // Cancel all old orders and submit new ones based on the curve.
+        creates.extend(creates_for_pair);
+    }
+
+    for (i, create) in creates.iter().enumerate() {
+        println!("create {} : {:?}", i, create);
+    }
+
+    // Update the orders.
+    let (.., mut events) =
+        _batch_update_orders(ctx.storage, ctx.contract, creates, Some(OrderIds::All))?;
 
     // Collect incoming orders and clear the temporary storage.
     let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
