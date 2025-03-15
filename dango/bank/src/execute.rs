@@ -266,10 +266,10 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
         let recipient = if recipient_exists {
             to
         } else {
-            ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, to), |coins| {
-                let mut coins = coins.unwrap_or_default();
-                coins.insert_many(coins.clone())?;
-                Ok::<_, StdError>(coins)
+            ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, to), |amount| {
+                let mut amount = amount.unwrap_or_default();
+                amount.insert_many(coins.clone())?;
+                Ok::<_, StdError>(amount)
             })?;
 
             ctx.contract
