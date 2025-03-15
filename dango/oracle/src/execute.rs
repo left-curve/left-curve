@@ -98,7 +98,21 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
             let hash = PythId::from_inner(feed.id.to_bytes());
 
             // Save the price if there isn't already a price saved, or if the
-            // new price is more recent.
+            // new price is more recent than the existing one.
+            //
+            // Note: the CosmWasm implementation of Pyth contract uses the
+            // price feed's `publish_time` to determine which price is newer:
+            // https://github.com/pyth-network/pyth-crosschain/blob/df1ca64/target_chains/cosmwasm/contracts/pyth/src/contract.rs#L588-L589
+            //
+            // However, this doesn't work in practice: whereas Pyth Core prices
+            // are updated every 400 ms, `publish_time` only comes in whole
+            // seconds. As such, it's possible for two prices to have the same
+            // `publish_time`, in which case it's impossible to tell which price
+            // is newer.
+            //
+            // To deal with this, we addtionally compare the price feed's
+            // Wormhole VAA sequence. In case `publish_time` are the same, the
+            // price with the bigger sequence is accepted.
             PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
                 if let Some((price, current_sequence)) = maybe_price {
                     if new_sequence > current_sequence {
