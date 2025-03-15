@@ -90,8 +90,7 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
     for vaa in vaas {
         // Deserialize the Pyth VAA from binary.
         let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
-
-        let new_sequence = vaa.wormhole_vaa().sequence;
+        let new_sequence = vaa.wormhole_vaa.sequence;
 
         // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
