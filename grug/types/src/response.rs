@@ -309,7 +309,7 @@ pub struct ContractEvent {
 }
 
 impl ContractEvent {
-    pub fn new<T, U>(ty: T, data: U) -> StdResult<Self>
+    pub fn new<T, U>(ty: T, data: &U) -> StdResult<Self>
     where
         T: Into<String>,
         U: Serialize,
