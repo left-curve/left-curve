@@ -1,12 +1,14 @@
 use {
     crate::{state::GUARDIAN_SETS, PRICES, PRICE_SOURCES},
     anyhow::{bail, ensure},
-    dango_types::oracle::{ExecuteMsg, InstantiateMsg, PriceSource, PythId, PythVaa},
+    dango_types::oracle::{
+        ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource, PythId, PythVaa,
+    },
     grug::{
         AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
         MutableCtx, QuerierExt, Response, Tx,
     },
-    std::collections::BTreeMap,
+    std::{cmp::Ordering, collections::BTreeMap},
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -94,7 +96,8 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
 
         // Verify the VAA, and store the prices.
         for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
-            let hash = PythId::from_inner(feed.id.to_bytes());
+            let id = PythId::from_inner(feed.id.to_bytes());
+            let new_price = PrecisionlessPrice::try_from(feed)?;
 
             // Save the price if there isn't already a price saved, or if the
             // new price is more recent than the existing one.
@@ -112,15 +115,18 @@ fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
             // To deal with this, we addtionally compare the price feed's
             // Wormhole VAA sequence. In case `publish_time` are the same, the
             // price with the bigger sequence is accepted.
-            PRICES.may_update(ctx.storage, hash, |maybe_price| -> anyhow::Result<_> {
-                if let Some((price, current_sequence)) = maybe_price {
-                    if new_sequence > current_sequence {
-                        Ok((feed.try_into()?, new_sequence))
-                    } else {
-                        Ok((price, current_sequence))
-                    }
-                } else {
-                    Ok((feed.try_into()?, new_sequence))
+            PRICES.may_update(ctx.storage, id, |current_record| -> anyhow::Result<_> {
+                match current_record {
+                    Some((current_price, current_sequence)) => {
+                        match current_price.timestamp.cmp(&new_price.timestamp) {
+                            Ordering::Less => Ok((new_price, new_sequence)),
+                            Ordering::Equal if current_sequence < new_sequence => {
+                                Ok((new_price, new_sequence))
+                            },
+                            _ => Ok((current_price, current_sequence)),
+                        }
+                    },
+                    None => Ok((new_price, new_sequence)),
                 }
             })?;
         }
