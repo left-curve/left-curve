@@ -1,4 +1,5 @@
 mod client;
-pub mod middleware_cache;
+pub mod client_cache;
+mod error;
 
 pub use client::*;

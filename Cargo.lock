@@ -3102,7 +3102,10 @@ dependencies = [
  "prost",
  "pyth-client",
  "pyth-types",
+ "reqwest 0.12.12",
  "thiserror 2.0.11",
+ "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -6836,6 +6839,8 @@ dependencies = [
 name = "pyth-client"
 version = "0.0.0"
 dependencies = [
+ "async-stream",
+ "async-trait",
  "dango-types",
  "grug",
  "grug-app",
@@ -6843,9 +6848,11 @@ dependencies = [
  "pyth-types",
  "reqwest 0.12.12",
  "reqwest-eventsource",
+ "thiserror 2.0.11",
  "tokio",
  "tokio-stream",
  "tracing",
+ "url",
 ]
 
 [[package]]

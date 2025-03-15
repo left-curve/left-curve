@@ -31,6 +31,7 @@ hyperlane-types   = { workspace = true }
 indexer-httpd     = { workspace = true }
 indexer-sql       = { workspace = true, features = ["tracing"] }
 k256              = { workspace = true }
+pyth-client       = { workspace = true }
 pyth-types        = { workspace = true }
 sea-orm           = { workspace = true }
 serde             = { workspace = true }
@@ -49,7 +50,6 @@ dango-warp            = { workspace = true, features = ["library"] }
 indexer-disk-saver    = { workspace = true }
 indexer-testing       = { workspace = true }
 proptest              = { workspace = true }
-pyth-client           = { workspace = true }
 rand                  = { workspace = true }
 reqwest               = { workspace = true, features = ["json"] }
 serde_json            = { workspace = true }

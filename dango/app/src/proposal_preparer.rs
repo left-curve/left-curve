@@ -1,11 +1,12 @@
 use {
-    crate::pyth_pp_handler::PythClientPPHandler,
+    crate::pyth_pp_handler::PythPPHandler,
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     grug_app::AppError,
     prost::bytes::Bytes,
+    pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PYTH_URL,
-    std::sync::RwLock,
+    std::sync::Mutex,
     thiserror::Error,
     tracing::error,
 };
@@ -24,28 +25,48 @@ impl From<ProposerError> for AppError {
     }
 }
 
-pub struct ProposalPreparer {
+pub struct ProposalPreparer<P> {
     // Option to be able to not clone the PythClientPPHandler.
-    pyth_client: Option<RwLock<PythClientPPHandler>>,
+    pyth_handler: Option<Mutex<PythPPHandler<P>>>,
 }
 
-impl Clone for ProposalPreparer {
+impl<P> Clone for ProposalPreparer<P> {
     fn clone(&self) -> Self {
-        Self { pyth_client: None }
+        Self { pyth_handler: None }
     }
 }
 
-impl ProposalPreparer {
-    pub fn new(test_mode: bool) -> Self {
-        let client = PythClientPPHandler::new(PYTH_URL.to_string(), test_mode);
+impl ProposalPreparer<PythClient> {
+    pub fn new() -> Self {
+        let client = PythPPHandler::new(PYTH_URL);
 
         Self {
-            pyth_client: Some(RwLock::new(client)),
+            pyth_handler: Some(Mutex::new(client)),
         }
     }
 }
 
-impl grug_app::ProposalPreparer for ProposalPreparer {
+impl Default for ProposalPreparer<PythClient> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProposalPreparer<PythClientCache> {
+    pub fn new_with_cache() -> Self {
+        let client = PythPPHandler::new_with_cache(PYTH_URL);
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
+where
+    P: PythClientTrait + Send + 'static,
+    P::Error: std::fmt::Debug,
+{
     type Error = ProposerError;
 
     fn prepare_proposal(
@@ -56,14 +77,17 @@ impl grug_app::ProposalPreparer for ProposalPreparer {
     ) -> Result<Vec<Bytes>, Self::Error> {
         let cfg: AppConfig = querier.query_app_config()?;
 
-        // Update the ids for the PythClientPPHandler. If it fails, log the error and continue.
-        let mut pyth_client = self.pyth_client.as_ref().unwrap().write().unwrap();
-        if let Err(err) = pyth_client.update_ids(querier, cfg.addresses.oracle) {
-            error!(err = err.to_string(), "Failed to update the Pyth IDs");
-        };
+        // Should we find a way to start and connect the PythClientPPHandler at startup?
+        // How to know which ids should be used?
+        let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
+
+        // Update the Pyth stream if the PythIds in the oracle have changed.
+        if let Err(err) = pyth_handler.update_stream(querier, cfg.addresses.oracle) {
+            error!("Failed to update Pyth stream: {:?}", err);
+        }
 
         // Retrieve the VAAs.
-        let vaas = pyth_client.fetch_latest_vaas();
+        let vaas = pyth_handler.fetch_latest_vaas();
 
         // Return if there are no VAAs to feed.
         if vaas.is_empty() {
