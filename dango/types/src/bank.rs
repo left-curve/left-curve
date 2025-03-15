@@ -1,4 +1,5 @@
+mod events;
 mod metadata;
 mod msgs;
 
-pub use {metadata::*, msgs::*};
+pub use {events::*, metadata::*, msgs::*};

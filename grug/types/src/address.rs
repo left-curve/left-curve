@@ -3,6 +3,21 @@ use {
     grug_math::Inner,
 };
 
+/// A shorthand for constructing a constant address from a hex string (without
+/// the `0x`-prefix).
+///
+/// This is equivalent to:
+///
+/// ```ignore
+/// Addr::from_inner(hex_literal::hex!("..."))
+/// ```
+#[macro_export]
+macro_rules! addr {
+    ($hex:literal) => {
+        $crate::Addr::from_inner($crate::__private::hex_literal::hex!($hex))
+    };
+}
+
 /// An account address.
 ///
 /// In Grug, addresses are of 20-byte length, in Hex encoding and the `0x` prefix.

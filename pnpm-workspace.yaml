@@ -9,8 +9,8 @@ packages:
 catalog:
   "typescript": "^5.6.3"
   # CF Workers
-  "wrangler": "^3.60.3"
-  "@cloudflare/workers-types": "^4.20241004.0"
+  "wrangler": "^4.0.0"
+  "@cloudflare/workers-types": "^4.20250303.0"
   # Tooling
   "@rsbuild/core": "^1.2.14"
   "@rsbuild/plugin-react": "^1.1.0"
