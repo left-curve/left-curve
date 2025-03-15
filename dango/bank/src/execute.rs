@@ -5,8 +5,8 @@ use {
         Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
     grug::{
-        coins, Addr, BankMsg, Coin, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number,
-        NumberConst, Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        coins, Addr, BankMsg, Coin, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst,
+        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::HashMap,
 };

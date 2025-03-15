@@ -11,7 +11,7 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Bounded, Coin, Coins, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
+        btree_map, coins, Bounded, Coin, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
         JsonSerExt, Udec128,
     },
     hex_literal::hex,

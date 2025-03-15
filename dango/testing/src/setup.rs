@@ -15,9 +15,8 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Bounded, Coin, Coins, ContractWrapper, Denom,
-        Duration, HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        btree_map, coins, Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration,
+        HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
