@@ -389,8 +389,7 @@ mod tests {
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
+                "0x064c5e20b422b5d817fe800119dac0ab43b17a80": {
                   "uusdc": "1000000"
                 }
               }
@@ -484,8 +483,7 @@ mod tests {
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
+                "0x064c5e20b422b5d817fe800119dac0ab43b17a80": {
                   "uusdc": "1000000"
                 }
               }
@@ -530,8 +528,7 @@ mod tests {
           "msgs": [
             {
               "transfer": {
-                "to": "0x064c5e20b422b5d817fe800119dac0ab43b17a80",
-                "coins": {
+                "0x064c5e20b422b5d817fe800119dac0ab43b17a80": {
                   "uusdc": "10000"
                 }
               }
