@@ -367,7 +367,8 @@ mod tests {
             .into(),
         );
 
-        let tx = r#"  "sender": "0x4e0f79460bd512a19293f2209a880fd1c581d785",
+        let tx = r#"{
+          "sender": "0x4e0f79460bd512a19293f2209a880fd1c581d785",
           "credential": {
             "standard": {
               "signature": {
