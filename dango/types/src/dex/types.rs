@@ -66,6 +66,13 @@ pub struct PairParams {
     pub curve_invariant: CurveInvariant,
     /// Fee rate for instant swaps in the passive liquidity pool.
     pub swap_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// The number of ticks from the current price to populate with orders
+    /// from the passive liquidity pool, in each direction.
+    pub order_depth: u64,
+    /// The tick size for the passive liquidity pool. This is the price
+    /// difference between two consecutive orders in when the passive
+    /// liquidity pool is reflected on the orderbook.
+    pub tick_size: Udec128,
     // TODO:
     // - orderbook fee rate (either here or as a global parameter)
     // - tick size (necessary or not?)
