@@ -38,10 +38,9 @@ impl VaasChecker {
 
         let mut count_price_feed = 0;
         for vaa in vaas.into_iter() {
-            for price_feed in PythVaa::new(&MockApi, vaa.into_inner())
-                .unwrap()
-                .unverified()
-            {
+            let pyth_vaa = PythVaa::new(&MockApi, vaa.into_inner()).unwrap();
+            // TODO: Check for incrementing sequence when PR on dango-oracle is merged.
+            for price_feed in pyth_vaa.unverified() {
                 count_price_feed += 1;
 
                 let new_price = price_feed.get_price_unchecked().price;
@@ -118,28 +117,65 @@ where
 }
 
 // Test for streaming vaas.
-pub async fn test_stream<P, I>(mut client: P, ids: I)
+pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
     P: PythClientTrait + std::fmt::Debug,
     P::Error: std::fmt::Debug,
     I: IntoIterator + Clone + Lengthy + Send + 'static,
     I::Item: ToString,
 {
-    let mut vaas_checker = VaasChecker::new(ids.clone());
+    let mut vaas_checker = VaasChecker::new(ids1.clone());
 
-    let mut stream = client
-        .stream(NonEmpty::new_unchecked(ids.clone()))
-        .await
-        .unwrap();
+    let mut stream = client.stream(NonEmpty::new_unchecked(ids1)).await.unwrap();
 
     let mut not_none_vaas = 0;
     while not_none_vaas < 5 {
         if let Some(vaas) = stream.next().await {
             not_none_vaas += 1;
             vaas_checker.update_values(vaas);
-        };
+        }
     }
 
     // Asset that the prices and publish times have changed at least once.
     vaas_checker.assert_changes();
+
+    // Close the stream.
+    client.close();
+
+    // Read the stream; there could be one remaining value.
+    stream.next().await;
+
+    // Assert that the stream is closed.
+    for _ in 0..5 {
+        assert!(stream.next().await.is_none(), "Stream is not closed");
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
+
+    // Open a new connection with the second ids.
+    let mut vaas_checker = VaasChecker::new(ids2.clone());
+
+    let mut stream = client.stream(NonEmpty::new_unchecked(ids2)).await.unwrap();
+
+    let mut not_none_vaas = 0;
+    while not_none_vaas < 5 {
+        if let Some(vaas) = stream.next().await {
+            not_none_vaas += 1;
+            vaas_checker.update_values(vaas);
+        }
+    }
+
+    // Asset that the prices and publish times have changed at least once.
+    vaas_checker.assert_changes();
+
+    // Close the stream.
+    client.close();
+
+    // Read the stream; there could be one remaining value.
+    stream.next().await;
+
+    // Assert that the stream is closed.
+    for _ in 0..5 {
+        assert!(stream.next().await.is_none(), "Stream is not closed");
+        tokio::time::sleep(Duration::from_millis(500)).await;
+    }
 }
