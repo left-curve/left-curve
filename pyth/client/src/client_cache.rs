@@ -10,7 +10,7 @@ use {
         env,
         path::{Path, PathBuf},
         sync::{
-            atomic::{AtomicU64, Ordering},
+            atomic::{AtomicBool, AtomicU64, Ordering},
             Arc,
         },
         thread::sleep,
@@ -28,6 +28,7 @@ pub struct PythClientCache {
     base_url: Url,
     // Used to return newer vaas at each call.
     vaas_index: Arc<AtomicU64>,
+    keep_running: Arc<AtomicBool>,
 }
 
 impl PythClientCache {
@@ -35,6 +36,7 @@ impl PythClientCache {
         Ok(Self {
             base_url: base_url.into_url()?,
             vaas_index: Arc::new(AtomicU64::new(0)),
+            keep_running: Arc::new(AtomicBool::new(false)),
         })
     }
 
@@ -120,11 +122,19 @@ impl PythClientTrait for PythClientCache {
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
     {
+        self.close();
+        self.keep_running = Arc::new(AtomicBool::new(true));
+        let keep_running = self.keep_running.clone();
+
         let mut stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
         let mut index = 0;
 
         let stream = stream! {
             loop {
+                if !keep_running.load(Ordering::Acquire) {
+                    return;
+                }
+
                 let vaas = stored_vaas
                 .iter_mut()
                 .filter_map(|(_, v)| v.get(index).cloned())
@@ -160,5 +170,7 @@ impl PythClientTrait for PythClientCache {
         Ok(result)
     }
 
-    fn close(&mut self) {}
+    fn close(&mut self) {
+        self.keep_running.store(false, Ordering::SeqCst);
+    }
 }

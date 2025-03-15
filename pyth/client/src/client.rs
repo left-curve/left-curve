@@ -41,7 +41,7 @@ pub trait PythClientTrait: Clone {
 #[derive(Debug, Clone)]
 /// PythClient is a client to interact with the Pyth network.
 pub struct PythClient {
-    pub base_url: Url, // U,
+    pub base_url: Url,
     keep_running: Arc<AtomicBool>,
 }
 
