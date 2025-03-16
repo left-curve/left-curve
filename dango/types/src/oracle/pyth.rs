@@ -43,7 +43,7 @@ pub struct PythVaa {
     pub wormhole_vaa: WormholeVaa,
     /// The Pyth price feeds.
     ///
-    /// This field is kept is private, because we don't verify the Wormhole VAA
+    /// This field is kept private, because we don't verify the Wormhole VAA
     /// at the time of creating the `PythVaa` instance. As such, the price feeds
     /// are not necessarily valid.
     ///
