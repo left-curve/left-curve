@@ -140,7 +140,6 @@ fn proposal_pyth() {
             })
             .should_succeed()
             .values()
-            .into_iter()
             .map(|price_source| {
                 if let PriceSource::Pyth { id, .. } = price_source {
                     assert_ne!(id, NOT_USED_ID);

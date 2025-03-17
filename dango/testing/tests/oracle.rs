@@ -187,7 +187,7 @@ fn multiple_vaas() {
                     .get_mut(&PythId::from_str(&price_feed.id.to_string()).unwrap())
                     .unwrap();
 
-                let new_price = Price::try_from(price_feed.clone()).unwrap();
+                let new_price = Price::try_from(price_feed).unwrap();
 
                 match last_price_data {
                     Some((last_price, last_sequence)) => {
