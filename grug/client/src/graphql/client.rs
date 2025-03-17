@@ -4,7 +4,8 @@ use {
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
-        BlockInfo, Client, Duration, Hash256, JsonDeExt, JsonSerExt, Query, QueryResponse,
+        Block, BlockClient, BlockInfo, Duration, Hash256, JsonDeExt, JsonSerExt, Query,
+        QueryClient, QueryResponse,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -48,10 +49,10 @@ impl GraphqlCLient {
 }
 
 #[async_trait]
-impl Client for GraphqlCLient {
+impl QueryClient for GraphqlCLient {
     type Error = anyhow::Error;
 
-    async fn query_app(
+    async fn query_chain(
         &self,
         query: Query,
         height: Option<u64>,
@@ -65,8 +66,13 @@ impl Client for GraphqlCLient {
 
         Ok(response.query_app.deserialize_json()?)
     }
+}
 
-    async fn query_block(&self, height: Option<u64>) -> Result<BlockInfo, Self::Error> {
+#[async_trait]
+impl BlockClient for GraphqlCLient {
+    type Error = anyhow::Error;
+
+    async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
         let response = self
             .perform(get_block::Variables {
                 height: height.unwrap_or_default() as i64,
@@ -75,19 +81,26 @@ impl Client for GraphqlCLient {
             .block
             .ok_or(anyhow!("No block returned from query"))?;
 
-        Ok(BlockInfo {
-            height: response.block_height as u64,
-            timestamp: Duration::from_nanos(
-                response.created_at.timestamp_nanos_opt().unwrap() as u128
-            ),
-            hash: Hash256::from_str(&response.hash)?,
+        Ok(Block {
+            info: BlockInfo {
+                height: response.block_height as u64,
+                timestamp: Duration::from_nanos(
+                    response.created_at.timestamp_nanos_opt().unwrap() as u128
+                ),
+                hash: Hash256::from_str(&response.hash)?,
+            },
+            // TODO
+            txs: vec![],
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {
+        super::*,
+        grug_types::{QueryClient, QueryClientExt},
+    };
 
     const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";
 
@@ -95,10 +108,13 @@ mod tests {
     async fn test_query_app() {
         let client = GraphqlCLient::new(GRAPHQL_URL);
 
-        let response = client.query_app(Query::config(), None).await.unwrap();
+        let response = client.query_chain(Query::config(), None).await.unwrap();
         println!("{:?}", response);
 
         let response = client.query_block(Some(1)).await.unwrap();
+        println!("{:?}", response);
+
+        let response = client.query_config(None).await.unwrap();
         println!("{:?}", response);
     }
 }

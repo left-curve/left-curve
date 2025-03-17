@@ -7,58 +7,58 @@ pub trait Variables {
     type Query: graphql_client::GraphQLQuery<Variables = Self>;
 }
 
-macro_rules! query {
-    ($name:ident, $path:literal, {$($variables:ident: $value:expr),*}) => {
-        #[derive(graphql_client::GraphQLQuery)]
-        #[graphql(
-            schema_path = "src/graphql/schemas/schema.graphql",
-            query_path = $path,
-            response_derives = "Debug"
-        )]
-        pub struct $name;
+macro_rules! generate_queries {
+    ($({name: $name:ident, path: $path:literal, test_with: $var:expr}), *) => {
+        $(
+            #[derive(graphql_client::GraphQLQuery)]
+            #[graphql(
+                schema_path = "src/graphql/schemas/schema.graphql",
+                query_path = $path,
+                response_derives = "Debug"
+            )]
+            pub struct $name;
 
-        paste::paste! {
-
-            impl Variables for [<$name:snake>]::Variables {
-                type Query = $name;
-            }
-
-            #[cfg(test)]
-            mod [<tests_ $name:snake >] {
-                use {
-                    super::{[<$name:snake>]::{Variables, ResponseData}, $name, GRAPHQL_URL},
-                    graphql_client::{GraphQLQuery, Response},
-                };
-
-                #[tokio::test]
-                async fn [<test_ $name:snake>]() {
-                    let client = reqwest::Client::builder().build().unwrap();
-                    let query = $name::build_query(Variables { $($variables: $value),* });
-                    let response = client.post(GRAPHQL_URL).json(&query).send().await.unwrap();
-                    response
-                        .json::<Response<ResponseData>>()
-                        .await
-                        .unwrap();
+            paste::paste! {
+                impl Variables for [<$name:snake>]::Variables {
+                    type Query = $name;
                 }
-
             }
+        )*
+
+        #[cfg(test)]
+        mod tests {
+            use {super::*, graphql_client::{GraphQLQuery, Response}};
+
+            $(
+                paste::paste! {
+                    #[tokio::test]
+                    async fn [<test_ $name:snake>]() {
+                        let client = reqwest::Client::builder().build().unwrap();
+                        let query = $name::build_query($var);
+                        let response = client.post(GRAPHQL_URL).json(&query).send().await.unwrap();
+                        response
+                            .json::<Response<[<$name:snake>]::ResponseData>>()
+                            .await
+                            .unwrap();
+                    }
+                }
+            )*
         }
     };
 }
 
-query!(
-    GetBlock,
-    "src/graphql/schemas/queries/block.graphql",
+generate_queries! {
     {
-        height: 1
-    }
-);
-
-query!(
-    QueryApp,
-    "src/graphql/schemas/queries/queryApp.graphql",
+        name: GetBlock,
+        path: "src/graphql/schemas/queries/block.graphql",
+        test_with: crate::query::get_block::Variables { height: 1 }
+    },
     {
-        request: r#"{"config":{}}"#.to_string(),
-        height: 1
+        name: QueryApp,
+        path: "src/graphql/schemas/queries/queryApp.graphql",
+        test_with: crate::query::query_app::Variables {
+            request: r#"{"config":{}}"#.to_string(),
+            height: 1
+        }
     }
-);
+}
