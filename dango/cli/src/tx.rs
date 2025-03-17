@@ -9,7 +9,7 @@ use {
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
-    grug_rpc_client::{GasOption, SigningClient},
+    grug_client::{GasOption, RpcSigningClient},
     grug_types::{json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer},
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
@@ -163,7 +163,7 @@ impl TxCmd {
             },
         };
 
-        let client = SigningClient::connect(
+        let client = RpcSigningClient::connect(
             cfg.transactions.chain_id.clone(),
             cfg.tendermint.rpc_addr.as_str(),
         )?;

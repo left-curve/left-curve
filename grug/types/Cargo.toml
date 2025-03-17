@@ -29,6 +29,7 @@ strum_macros  = { workspace = true }
 thiserror     = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+async-trait = { workspace = true }
 grug-crypto = { workspace = true }
 
 [dev-dependencies]

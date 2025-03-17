@@ -1,20 +1,23 @@
 use {
-    super::queries::{get_block, query_app, Variables},
+    super::query::{get_block, query_app},
     anyhow::anyhow,
+    async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
-    grug_provider::Provider,
-    grug_types::{BlockInfo, Duration, Hash256, JsonDeExt, JsonSerExt, Query, QueryResponse},
-    sea_orm::prelude::async_trait::async_trait,
+    grug_types::{
+        BlockInfo, Client, Duration, Hash256, JsonDeExt, JsonSerExt, Query, QueryResponse,
+    },
     serde::Serialize,
     std::str::FromStr,
 };
 
-pub struct Client {
+use super::query::Variables;
+
+pub struct GraphqlCLient {
     inner: reqwest::Client,
     endpoint: String,
 }
 
-impl Client {
+impl GraphqlCLient {
     pub fn new(endpoint: &str) -> Self {
         Self {
             inner: reqwest::Client::new(),
@@ -45,7 +48,7 @@ impl Client {
 }
 
 #[async_trait]
-impl Provider for Client {
+impl Client for GraphqlCLient {
     type Error = anyhow::Error;
 
     async fn query_app(
@@ -90,7 +93,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_app() {
-        let client = Client::new(GRAPHQL_URL);
+        let client = GraphqlCLient::new(GRAPHQL_URL);
 
         let response = client.query_app(Query::config(), None).await.unwrap();
         println!("{:?}", response);

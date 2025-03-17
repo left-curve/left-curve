@@ -8,4 +8,4 @@ pub use grug_ffi::*;
 // WebAssembly. They contain Wasm-incompatible feature, such as async runtime,
 // threads, and RNGs.
 #[cfg(not(target_arch = "wasm32"))]
-pub use {grug_provider::*, grug_rpc_client::*, grug_testing::*};
+pub use {grug_client::*, grug_testing::*};

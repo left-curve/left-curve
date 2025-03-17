@@ -17,8 +17,6 @@ macro_rules! query {
         )]
         pub struct $name;
 
-
-
         paste::paste! {
 
             impl Variables for [<$name:snake>]::Variables {

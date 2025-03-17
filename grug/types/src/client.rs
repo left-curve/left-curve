@@ -1,10 +1,10 @@
 use {
+    crate::{BlockInfo, Query, QueryResponse},
     async_trait::async_trait,
-    grug_types::{BlockInfo, Query, QueryResponse},
 };
 
 #[async_trait]
-pub trait Provider {
+pub trait Client {
     type Error;
 
     async fn query_app(

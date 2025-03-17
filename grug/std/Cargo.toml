@@ -25,8 +25,7 @@ grug-ffi = { workspace = true }
 
 # The client and testing crates are only included when _not_ building for WebAseembly.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-grug-provider   = { workspace = true }
-grug-rpc-client = { workspace = true }
-grug-testing    = { workspace = true }
+grug-client  = { workspace = true }
+grug-testing = { workspace = true }
 
 [dev-dependencies]

@@ -21,11 +21,11 @@ use {
 ///
 /// Internally, this is a wrapper over [`tendermint_rpc::HttpClient`](tendermint_rpc::HttpClient).
 #[derive(Debug, Clone)]
-pub struct Client {
+pub struct RpcClient {
     inner: HttpClient,
 }
 
-impl Client {
+impl RpcClient {
     /// Creating a new [`QueryClient`](crate::QueryClient) by connecting to a Tendermint
     /// RPC endpoint.
     pub fn connect<U>(endpoint: U) -> anyhow::Result<Self>
@@ -335,20 +335,20 @@ impl Client {
 /// A client for interacting with a Grug chain via Tendermint RPC, with the
 /// additional capability of signing transactions.
 #[derive(Debug, Clone)]
-pub struct SigningClient {
-    inner: Client,
+pub struct RpcSigningClient {
+    inner: RpcClient,
     pub chain_id: String,
 }
 
-impl Deref for SigningClient {
-    type Target = Client;
+impl Deref for RpcSigningClient {
+    type Target = RpcClient;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl SigningClient {
+impl RpcSigningClient {
     /// Creating a new [`Client`](crate::Client) by connecting to a Tendermint
     /// RPC endpoint.
     pub fn connect<T, U>(chain_id: T, endpoint: U) -> anyhow::Result<Self>
@@ -357,7 +357,7 @@ impl SigningClient {
         U: TryInto<HttpClientUrl, Error = tendermint_rpc::Error>,
     {
         Ok(Self {
-            inner: Client::connect(endpoint)?,
+            inner: RpcClient::connect(endpoint)?,
             chain_id: chain_id.into(),
         })
     }

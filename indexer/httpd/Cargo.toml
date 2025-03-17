@@ -28,7 +28,6 @@ chrono                  = { workspace = true }
 clap                    = { workspace = true }
 graphql_client          = { workspace = true }
 grug-app                = { workspace = true }
-grug-provider           = { workspace = true }
 grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
 num_cpus                = { workspace = true }

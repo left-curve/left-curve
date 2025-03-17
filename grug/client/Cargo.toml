@@ -5,16 +5,28 @@ description   = "Rust client for interacting with Grug via Tendermint RPC"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-rpc-client"
+name          = "grug-client"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
 anyhow         = { workspace = true }
+async-trait    = { workspace = true }
+chrono         = { workspace = true, features = ["serde"] }
+graphql_client = { workspace = true }
 grug-jmt       = { workspace = true }
 grug-math      = { workspace = true }
 grug-types     = { workspace = true }
+paste          = { workspace = true }
+reqwest        = { workspace = true, features = ["json"] }
 serde          = { workspace = true }
 tendermint     = { workspace = true }
 tendermint-rpc = { workspace = true, features = ["http-client"] }
+
+[build-dependencies]
+async-graphql = { workspace = true }
+indexer-httpd = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

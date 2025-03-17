@@ -3210,9 +3210,9 @@ dependencies = [
  "dialoguer",
  "futures",
  "grug-app",
+ "grug-client",
  "grug-db-disk",
  "grug-jmt",
- "grug-rpc-client",
  "grug-types",
  "grug-vm-hybrid",
  "hex",
@@ -4367,11 +4367,10 @@ name = "grug"
 version = "0.0.0"
 dependencies = [
  "borsh 1.5.5",
+ "grug-client",
  "grug-ffi",
  "grug-macros",
  "grug-math",
- "grug-provider",
- "grug-rpc-client",
  "grug-storage",
  "grug-testing",
  "grug-types",
@@ -4397,6 +4396,27 @@ dependencies = [
  "tower 0.5.2",
  "tower-abci",
  "tracing",
+]
+
+[[package]]
+name = "grug-client"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-graphql",
+ "async-trait",
+ "chrono",
+ "graphql_client",
+ "grug-jmt",
+ "grug-math",
+ "grug-types",
+ "indexer-httpd",
+ "paste",
+ "reqwest 0.12.12",
+ "serde",
+ "tendermint",
+ "tendermint-rpc",
+ "tokio",
 ]
 
 [[package]]
@@ -4531,27 +4551,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-provider"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "grug-types",
-]
-
-[[package]]
-name = "grug-rpc-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "grug-jmt",
- "grug-math",
- "grug-types",
- "serde",
- "tendermint",
- "tendermint-rpc",
-]
-
-[[package]]
 name = "grug-storage"
 version = "0.0.0"
 dependencies = [
@@ -4610,6 +4609,7 @@ dependencies = [
 name = "grug-types"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "bnum",
  "borsh 1.5.5",
  "data-encoding",
@@ -5399,7 +5399,6 @@ dependencies = [
  "clap",
  "graphql_client",
  "grug-app",
- "grug-provider",
  "grug-types",
  "indexer-sql",
  "num_cpus",
