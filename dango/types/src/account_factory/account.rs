@@ -1,4 +1,5 @@
 use {
+    super::Username,
     crate::account::{multi, single},
     grug::{PrimaryKey, RawKey, StdError, StdResult},
     paste::paste,
@@ -119,6 +120,17 @@ impl AccountParams {
             AccountParams::Spot { .. } => AccountType::Spot,
             AccountParams::Margin { .. } => AccountType::Margin,
             AccountParams::Multi(_) => AccountType::Multi,
+        }
+    }
+
+    /// Returns the owner (username) of the account.
+    ///
+    /// Returns `None` for multisig accounts.
+    pub fn owner(&self) -> Option<Username> {
+        match self {
+            AccountParams::Spot(params) => Some(params.owner.clone()),
+            AccountParams::Margin(params) => Some(params.owner.clone()),
+            AccountParams::Multi(_) => None,
         }
     }
 }

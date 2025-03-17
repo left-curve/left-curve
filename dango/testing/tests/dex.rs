@@ -1,12 +1,15 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
+        account::single::Params,
+        account_factory::AccountParams,
         constants::{ATOM_DENOM, BTC_DENOM, DANGO_DENOM, ETH_DENOM, USDC_DENOM, XRP_DENOM},
         dex::{
             self, CreateLimitOrderRequest, CurveInvariant, Direction, OrderId, OrderIds,
             OrderResponse, PairId, PairParams, PairUpdate, QueryOrdersByPairRequest,
             QueryOrdersRequest, QueryReserveRequest,
         },
+        oracle::{self, PriceSource},
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, IsZero,
@@ -1923,4 +1926,309 @@ fn balance_changes_from_coins(
             (denom.clone(), BalanceChange::Decreased(amount.into_inner()))
         }))
         .collect()
+}
+
+#[test]
+fn volume_tracking_works() {
+    let (mut suite, mut accounts, _, contracts) = setup_test_naive();
+
+    // Register oracle price source for USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                USDC_DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Register oracle price source for DANGO
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                DANGO_DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: 1730802926,
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // let user1 = &accounts.user1.username;
+    let mut user1_addr_1 = accounts.user1;
+    let mut user1_addr_2 = user1_addr_1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            AccountParams::Spot(Params::new(user1_addr_1.username.clone())),
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .unwrap();
+    let mut user2_addr_1 = accounts.user2;
+    let mut user2_addr_2 = user2_addr_1
+        .register_new_account(
+            &mut suite,
+            contracts.account_factory,
+            AccountParams::Spot(Params::new(user2_addr_1.username.clone())),
+            Coins::one(DANGO_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .unwrap();
+    // Query volumes before, should be 0
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // Submit a new order with user1 address 1
+    suite
+        .execute(
+            &mut user1_addr_1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // User2 submit an opposite matching order with address 1
+    suite
+        .execute(
+            &mut user2_addr_1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            Coins::one(DANGO_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Get timestamp after trade
+    let timestamp_after_first_trade = suite.block.timestamp;
+
+    // Query the volume for username user1, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for username user2, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for user1 address 1, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for user2 address 1, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for user1 address 2, should be zero
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // Query the volume for user2 address 2, should be zero
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // Submit a new order with user1 address 2
+    suite
+        .execute(
+            &mut user1_addr_2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Submit a new opposite matching order with user2 address 2
+    suite
+        .execute(
+            &mut user2_addr_2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateLimitOrderRequest {
+                    base_denom: DANGO_DENOM.clone(),
+                    quote_denom: USDC_DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: Uint128::new(100_000_000),
+                    price: Udec128::new(1),
+                }],
+                cancels: None,
+            },
+            Coins::one(DANGO_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .should_succeed();
+
+    // Query the volume for username user1, should be 200
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(200));
+
+    // Query the volume for username user2, should be 200
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(200));
+
+    // Query the volume for all addresses, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for both usernames since timestamp after first trade, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+
+    // Query the volume for both users address 1 since timestamp after first trade, should be zero
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
+
+    // Query the volume for both users address 2 since timestamp after first trade, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_2.address(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::new(100));
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_2.address(),
+            since: Some(timestamp_after_first_trade),
+        })
+        .should_succeed_and_equal(Uint128::new(100));
 }
