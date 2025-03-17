@@ -16,6 +16,7 @@
     "test": "turbo test",
     "test:sdk": "turbo test -F=./sdk/**",
     "dev": "turbo dev",
+    "machine-translate": "pnpm -F ui-config machine-translate",
     "dev:sdk": "turbo dev -F=./sdk/**",
     "dev:portal-web": "turbo dev -F=./sdk/** -F @left-curve/applets-kit -F @left-curve/portal-web",
     "dev:website": "turbo dev -F @left-curve/dango-website",
@@ -31,8 +32,8 @@
     "bump": "pnpm -r 'bump'"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
     "@biomejs/biome": "^1.8.3",
+    "@types/node": "catalog:",
     "tsup": "^8.3.0",
     "turbo": "^2.0.11",
     "typedoc": "^0.26.5",

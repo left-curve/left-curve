@@ -1,7 +1,7 @@
 use {
-    crate::{MAILBOX, STORAGE_LOCATIONS},
+    crate::{ANNOUNCE_FEE_PER_BYTE, MAILBOX, STORAGE_LOCATIONS},
     anyhow::ensure,
-    grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier},
+    grug::{HexByteArray, Inner, MutableCtx, Response, StdError, StorageQuerier, Uint128},
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         va::{Announce, ExecuteMsg, Initialize, InstantiateMsg, VA_DOMAIN_KEY},
@@ -11,10 +11,12 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
     MAILBOX.save(ctx.storage, &msg.mailbox)?;
+    ANNOUNCE_FEE_PER_BYTE.save(ctx.storage, &msg.announce_fee_per_byte)?;
 
     Ok(Response::new().add_event(Initialize {
         creator: ctx.sender,
         mailbox: msg.mailbox,
+        announce_fee_per_byte: msg.announce_fee_per_byte,
     })?)
 }
 
@@ -35,6 +37,18 @@ fn announce(
     signature: HexByteArray<65>,
     storage_location: String,
 ) -> anyhow::Result<Response> {
+    // Calculate fee for announcement.
+    let fee_per_byte = ANNOUNCE_FEE_PER_BYTE.load(ctx.storage)?;
+    let fee = Uint128::new(fee_per_byte.amount.inner() * storage_location.len() as u128);
+    let deposit = ctx.funds.into_one_coin_of_denom(&fee_per_byte.denom)?;
+
+    ensure!(
+        deposit.amount >= fee,
+        "insufficient validator announce fee! required: {}, got: {}",
+        fee,
+        deposit.amount
+    );
+
     // Make announcement digest.
     let mailbox = MAILBOX.load(ctx.storage)?;
 

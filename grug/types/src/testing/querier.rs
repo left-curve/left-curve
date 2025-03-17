@@ -1,8 +1,8 @@
 use {
     crate::{
-        Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult, Hash256,
-        HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query, QueryResponse, StdError,
-        StdResult, Storage,
+        Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult,
+        GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query,
+        QueryResponse, StdError, StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
@@ -256,8 +256,8 @@ impl Querier for MockQuerier {
             Query::Multi(reqs) => {
                 let responses = reqs
                     .into_iter()
-                    .map(|req| self.query_chain(req))
-                    .collect::<StdResult<Vec<_>>>()?;
+                    .map(|req| self.query_chain(req).into_generic_result())
+                    .collect::<Vec<_>>();
                 Ok(QueryResponse::Multi(responses))
             },
         }

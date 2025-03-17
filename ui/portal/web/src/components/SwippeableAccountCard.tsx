@@ -1,8 +1,9 @@
-import { AccountCard, AssetsPreview, twMerge, useMediaQuery } from "@left-curve/applets-kit";
+import { AccountCard, twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { AssetsPreview } from "./AssetsPreview";
 
 const variants = {
   enter: (direction: number) => ({

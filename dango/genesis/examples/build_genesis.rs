@@ -8,7 +8,7 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Bounded, Coins, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
+        btree_map, coins, Bounded, Coin, Denom, Duration, HashExt, Inner, Json, JsonDeExt,
         JsonSerExt, Udec128,
     },
     hex_literal::hex,
@@ -160,6 +160,7 @@ fn main() {
         wormhole_guardian_sets: GUARDIAN_SETS.clone(),
         hyperlane_local_domain: 88888888,
         hyperlane_ism_validator_sets: btree_map! {},
+        hyperlane_va_announce_fee_per_byte: Coin::new(USDC_DENOM.clone(), 100).unwrap(),
         warp_routes: btree_map! {},
     })
     .unwrap();

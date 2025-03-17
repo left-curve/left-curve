@@ -14,7 +14,7 @@ use {
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt::Debug},
 };
 
 pub struct TestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
@@ -363,6 +363,30 @@ where
         self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins).unwrap())
     }
 
+    /// Make a batched transfer of tokens to multiple recipients.
+    pub fn batch_transfer(
+        &mut self,
+        signer: &mut dyn Signer,
+        transfers: BTreeMap<Addr, Coins>,
+    ) -> TxOutcome {
+        self.batch_transfer_with_gas(signer, self.default_gas_limit, transfers)
+    }
+
+    /// Make a batched transfer of tokens to multiple recipients, under the
+    /// given gas limit.
+    pub fn batch_transfer_with_gas(
+        &mut self,
+        signer: &mut dyn Signer,
+        gas_limit: u64,
+        transfers: BTreeMap<Addr, Coins>,
+    ) -> TxOutcome {
+        self.send_message_with_gas(
+            signer,
+            gas_limit,
+            Message::batch_transfer(transfers).unwrap(),
+        )
+    }
+
     /// Upload a code. Return the code's hash.
     pub fn upload<B>(&mut self, signer: &mut dyn Signer, code: B) -> UploadOutcome
     where
@@ -625,7 +649,7 @@ where
     ) -> Result<Uint128, <Self as Querier>::Error>
     where
         D: TryInto<Denom>,
-        <D as TryInto<Denom>>::Error: std::fmt::Debug,
+        <D as TryInto<Denom>>::Error: Debug,
     {
         let denom = denom.try_into().unwrap();
         self.query_chain(Query::balance(address.address(), denom))

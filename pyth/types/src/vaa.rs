@@ -38,7 +38,15 @@ macro_rules! uncast_enum {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PythVaa {
-    vaa: WormholeVaa,
+    pub wormhole_vaa: WormholeVaa,
+    /// The Pyth price feeds.
+    ///
+    /// This field is kept private, because we don't verify the Wormhole VAA at
+    /// the time of creating the `PythVaa` instance. As such, the price feeds
+    /// are not necessarily valid.
+    ///
+    /// To verify the Wormhole VAA and get the guaranteed valid price feeds, use
+    /// the `verify` method.
     feeds: Vec<PriceFeed>,
 }
 
@@ -50,7 +58,7 @@ impl PythVaa {
     {
         let bytes = bytes.into();
 
-        let (vaa, feeds) = if bytes[0..4] == *PYTHNET_ACCUMULATOR_UPDATE_MAGIC {
+        let (wormhole_vaa, feeds) = if bytes[0..4] == *PYTHNET_ACCUMULATOR_UPDATE_MAGIC {
             let res = AccumulatorUpdateData::try_from_slice(&bytes)?;
 
             let (vaa, updates) = uncast_enum!(res.proof, Proof::WormholeMerkle, vaa, updates);
@@ -141,7 +149,10 @@ impl PythVaa {
             (vaa, feeds)
         };
 
-        Ok(PythVaa { vaa, feeds })
+        Ok(PythVaa {
+            wormhole_vaa,
+            feeds,
+        })
     }
 
     /// Verify the Wormhole VAA and return the price feeds.
@@ -150,9 +161,10 @@ impl PythVaa {
         storage: &dyn Storage,
         api: &dyn Api,
         block: BlockInfo,
-        guardian_set: Map<GuardianSetIndex, GuardianSet>,
+        guardian_sets: Map<GuardianSetIndex, GuardianSet>,
     ) -> anyhow::Result<Vec<PriceFeed>> {
-        self.vaa.verify(storage, api, block, guardian_set)?;
+        self.wormhole_vaa
+            .verify(storage, api, block, guardian_sets)?;
 
         Ok(self.feeds)
     }
@@ -211,7 +223,7 @@ mod tests {
 
         PythVaa::new(&MockApi, BASE64.decode(VAA.as_bytes()).unwrap())
             .unwrap()
-            .vaa
+            .wormhole_vaa
             .verify(&storage, &MockApi, block, GUARDIAN_SETS)
             .unwrap();
     }

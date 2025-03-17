@@ -20,6 +20,7 @@ import {
   useInputs,
   useWizard,
 } from "@left-curve/applets-kit";
+import { m } from "~/paraglide/messages";
 
 import type { AppConfig, Hex, Key } from "@left-curve/dango/types";
 import type React from "react";
@@ -54,7 +55,7 @@ export const SignupUsernameStep: React.FC = () => {
       const { accounts } = await client.getUser({ username });
       const isUsernameAvailable = !Object.keys(accounts).length;
 
-      if (!isUsernameAvailable) throw new Error("Username is already taken");
+      if (!isUsernameAvailable) throw new Error(m["signup.errors.usernameTaken"]());
       return isUsernameAvailable;
     },
   });
@@ -83,13 +84,13 @@ export const SignupUsernameStep: React.FC = () => {
           method: "POST",
           body: JSON.stringify({ address }),
         });
-        if (!response.ok) throw new Error("error: failed to send funds");
+        if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
         await registerUser(client, { key, keyHash, username, secret });
 
         await wait(1000);
         await connector.connect({ username, chainId, keyHash });
       } catch (err) {
-        toast.error({ title: "Couldn't complete the request" });
+        toast.error({ title: m["signup.errors.creatingAccount"]() });
         console.log(err);
       }
     },
@@ -104,8 +105,14 @@ export const SignupUsernameStep: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 w-full">
       <Input
-        label="Username"
-        placeholder="Enter your username"
+        placeholder={
+          <p className="flex gap-1 items-center justify-start">
+            <span>{m["login.placeholder"]()}</span>
+            <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
+              {m["common.username"]().toLowerCase()}
+            </span>
+          </p>
+        }
         {...register("username", {
           validate: (value) => {
             if (!value || value.length > 15 || !/^[a-z0-9_]+$/.test(value)) {
@@ -134,7 +141,7 @@ export const SignupUsernameStep: React.FC = () => {
         isLoading={isPending}
         isDisabled={!isUsernameAvailable || !!errorMessage}
       >
-        Create Account
+        {m["signup.createAccount"]()}
       </Button>
     </div>
   );

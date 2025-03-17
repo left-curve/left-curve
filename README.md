@@ -118,6 +118,12 @@ Generate documentation:
 pnpm doc
 ```
 
+Generate translations:
+
+```shell
+pnpm machine-translate
+```
+
 Storybook:
 
 ```shell

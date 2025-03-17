@@ -14,6 +14,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { m } from "~/paraglide/messages";
 import { SearchMenuBody } from "./SearchMenuBody";
 
 export const SearchMenu: React.FC = () => {
@@ -63,7 +64,7 @@ export const SearchMenu: React.FC = () => {
 
   return (
     <Command ref={menuRef} className="flex flex-col gap-4 w-full">
-      <ResizerContainer>
+      <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
             "flex-col bg-rice-25 rounded-md w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all",
@@ -106,7 +107,17 @@ export const SearchMenu: React.FC = () => {
                     className="flex absolute w-full h-full bg-transparent left-0 rounded-md cursor-text gap-1 items-center pl-9 pt-1 diatype-m-regular"
                     onClick={() => setSearchBarVisibility(!isSearchBarVisible)}
                   >
-                    <span>Search for</span> <TextLoop texts={["transaction", "apps"]} />
+                    <span>{m["commadBar.placeholder.title"]()}</span>{" "}
+                    <TextLoop
+                      texts={[
+                        m["commadBar.placeholder.transactions"](),
+                        m["commadBar.placeholder.apps"](),
+                        m["commadBar.placeholder.blocks"](),
+                        m["commadBar.placeholder.accounts"](),
+                        m["commadBar.placeholder.usernames"](),
+                        m["commadBar.placeholder.tokens"](),
+                      ]}
+                    />
                   </motion.button>
                 </AnimatePresence>
               )}

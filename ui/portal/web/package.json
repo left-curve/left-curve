@@ -8,6 +8,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@inlang/paraglide-js": "2.0.0-beta.30",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store-react": "workspace:^",
@@ -17,6 +18,7 @@
     "@tanstack/react-table": "^8.21.2",
     "@tanstack/router-plugin": "^1.102.1",
     "@tanstack/zod-adapter": "catalog:",
+    "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -30,6 +32,7 @@
     "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "catalog:",
     "@tanstack/router-devtools": "catalog:",
+    "@types/date-fns": "^2.6.3",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

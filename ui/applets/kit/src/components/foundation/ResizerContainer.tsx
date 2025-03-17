@@ -4,12 +4,18 @@ import type React from "react";
 interface ResizerContainerProps {
   children?: React.ReactNode;
   className?: string;
+  layoutId: string;
 }
 
-export const ResizerContainer: React.FC<ResizerContainerProps> = ({ children, className = "" }) => {
+export const ResizerContainer: React.FC<ResizerContainerProps> = ({
+  children,
+  layoutId,
+  className = "",
+}) => {
   return (
     <motion.div
       layout
+      layoutId={layoutId}
       className={className}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}

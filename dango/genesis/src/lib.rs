@@ -10,12 +10,11 @@ use {
         taxman, vesting, warp,
     },
     grug::{
-        btree_map, btree_set, Addr, Binary, Coins, Config, ContractBuilder, ContractWrapper, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission, Permissions,
-        ResultExt, StdResult, GENESIS_SENDER,
+        btree_map, btree_set, Addr, Binary, Coin, Coins, Config, ContractBuilder, ContractWrapper,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonSerExt, Message, Permission,
+        Permissions, ResultExt, StdResult, GENESIS_SENDER,
     },
     hyperlane_types::{
-        hooks,
         isms::{self, multisig::ValidatorSet},
         mailbox::{self, Domain},
         va, Addr32,
@@ -99,6 +98,8 @@ pub struct GenesisConfig<T> {
     pub hyperlane_local_domain: Domain,
     /// Hyperlane validator sets for remote domains.
     pub hyperlane_ism_validator_sets: BTreeMap<Domain, ValidatorSet>,
+    /// Hyperlane validator announce fee rate.
+    pub hyperlane_va_announce_fee_per_byte: Coin,
     /// Warp token transfer routes.
     pub warp_routes: BTreeMap<(Denom, Domain), Addr32>,
     // TODO: add margin account parameters (collateral powers and liquidation)
@@ -147,11 +148,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         .with_query(Box::new(dango_dex::query))
         .build();
 
-    let fee = ContractBuilder::new(Box::new(hyperlane_fee::instantiate))
-        .with_execute(Box::new(hyperlane_fee::execute))
-        .with_query(Box::new(hyperlane_fee::query))
-        .build();
-
     let ism = ContractBuilder::new(Box::new(hyperlane_ism::instantiate))
         .with_execute(Box::new(hyperlane_ism::execute))
         .with_query(Box::new(hyperlane_ism::query))
@@ -160,11 +156,6 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
     let mailbox = ContractBuilder::new(Box::new(hyperlane_mailbox::instantiate))
         .with_execute(Box::new(hyperlane_mailbox::execute))
         .with_query(Box::new(hyperlane_mailbox::query))
-        .build();
-
-    let merkle = ContractBuilder::new(Box::new(hyperlane_merkle::instantiate))
-        .with_execute(Box::new(hyperlane_merkle::execute))
-        .with_query(Box::new(hyperlane_merkle::query))
         .build();
 
     let va = ContractBuilder::new(Box::new(hyperlane_va::instantiate))
@@ -208,13 +199,7 @@ pub fn build_rust_codes() -> Codes<ContractWrapper> {
         account_spot,
         bank,
         dex,
-        hyperlane: Hyperlane {
-            fee,
-            ism,
-            mailbox,
-            merkle,
-            va,
-        },
+        hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
         taxman,
@@ -234,10 +219,8 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
     let account_spot = fs::read(artifacts_dir.join("dango_account_spot.wasm"))?;
     let bank = fs::read(artifacts_dir.join("dango_bank.wasm"))?;
     let dex = fs::read(artifacts_dir.join("dango_dex.wasm"))?;
-    let fee = fs::read(artifacts_dir.join("hyperlane_fee.wasm"))?;
     let ism = fs::read(artifacts_dir.join("hyperlane_ism.wasm"))?;
     let mailbox = fs::read(artifacts_dir.join("hyperlane_mailbox.wasm"))?;
-    let merkle = fs::read(artifacts_dir.join("hyperlane_merkle.wasm"))?;
     let va = fs::read(artifacts_dir.join("hyperlane_va.wasm"))?;
     let lending = fs::read(artifacts_dir.join("dango_lending.wasm"))?;
     let oracle = fs::read(artifacts_dir.join("dango_oracle.wasm"))?;
@@ -252,13 +235,7 @@ pub fn read_wasm_files(artifacts_dir: &Path) -> io::Result<Codes<Vec<u8>>> {
         account_spot,
         bank,
         dex,
-        hyperlane: Hyperlane {
-            fee,
-            ism,
-            mailbox,
-            merkle,
-            va,
-        },
+        hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
         taxman,
@@ -285,6 +262,7 @@ pub fn build_genesis<T>(
         wormhole_guardian_sets,
         hyperlane_local_domain,
         hyperlane_ism_validator_sets,
+        hyperlane_va_announce_fee_per_byte,
         // TODO: allow setting warp routes during instantiation
         warp_routes: _,
     }: GenesisConfig<T>,
@@ -301,10 +279,8 @@ where
     let account_spot_code_hash = upload(&mut msgs, codes.account_spot);
     let bank_code_hash = upload(&mut msgs, codes.bank);
     let dex_code_hash = upload(&mut msgs, codes.dex);
-    let hyperlane_fee_code_hash = upload(&mut msgs, codes.hyperlane.fee);
     let hyperlane_ism_code_hash = upload(&mut msgs, codes.hyperlane.ism);
     let hyperlane_mailbox_code_hash = upload(&mut msgs, codes.hyperlane.mailbox);
-    let hyperlane_merkle_code_hash = upload(&mut msgs, codes.hyperlane.merkle);
     let hyperlane_va_code_hash = upload(&mut msgs, codes.hyperlane.va);
     let lending_code_hash = upload(&mut msgs, codes.lending);
     let oracle_code_hash = upload(&mut msgs, codes.oracle);
@@ -358,24 +334,6 @@ where
         b"hyperlane/mailbox",
     );
 
-    // Instantiate Hyperlane fee hook.
-    let fee = instantiate(
-        &mut msgs,
-        hyperlane_fee_code_hash,
-        &hooks::fee::InstantiateMsg { mailbox },
-        "hyperlane/hook/fee",
-        "hyperlane/hook/fee",
-    )?;
-
-    // Instantiate Hyperlane merkle hook.
-    let merkle = instantiate(
-        &mut msgs,
-        hyperlane_merkle_code_hash,
-        &hooks::merkle::InstantiateMsg { mailbox },
-        "hyperlane/hook/merkle",
-        "hyperlane/hook/merkle",
-    )?;
-
     // Instantiate Hyperlane message ID multisig ISM.
     let ism = instantiate(
         &mut msgs,
@@ -404,8 +362,6 @@ where
             config: mailbox::Config {
                 local_domain: hyperlane_local_domain,
                 default_ism: ism,
-                default_hook: fee,
-                required_hook: merkle,
             },
         },
         "hyperlane/mailbox",
@@ -417,7 +373,10 @@ where
     let va = instantiate(
         &mut msgs,
         hyperlane_va_code_hash,
-        &va::InstantiateMsg { mailbox },
+        &va::InstantiateMsg {
+            mailbox,
+            announce_fee_per_byte: hyperlane_va_announce_fee_per_byte,
+        },
         "hyperlane/va",
         "hyperlane/va",
     )?;
@@ -506,13 +465,7 @@ where
         account_factory,
         bank,
         dex,
-        hyperlane: Hyperlane {
-            fee,
-            ism,
-            mailbox,
-            merkle,
-            va,
-        },
+        hyperlane: Hyperlane { ism, mailbox, va },
         lending,
         oracle,
         taxman,
@@ -542,13 +495,7 @@ where
         addresses: AppAddresses {
             account_factory,
             dex,
-            hyperlane: Hyperlane {
-                fee,
-                ism,
-                mailbox,
-                merkle,
-                va,
-            },
+            hyperlane: Hyperlane { ism, mailbox, va },
             lending,
             oracle,
             warp,

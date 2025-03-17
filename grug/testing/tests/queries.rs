@@ -18,8 +18,8 @@ mod query_maker {
             Query::supply(Denom::from_str("uusdc")?),
         ])?;
 
-        assert!(res1.as_balance().amount.is_zero());
-        assert_eq!(res2.as_supply().amount, Uint128::new(123));
+        assert!(res1?.as_balance().amount.is_zero());
+        assert_eq!(res2?.as_supply().amount, Uint128::new(123));
 
         Ok(Response::new())
     }

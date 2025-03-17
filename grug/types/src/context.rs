@@ -19,7 +19,7 @@ pub struct Context {
     pub mode:     Option<AuthMode>,
 }
 
-/// A context that contians an immutable store. The contract is allowed to read
+/// A context that contains an immutable store. The contract is allowed to read
 /// data from the store, but not write to it. This is used in query calls.
 pub struct ImmutableCtx<'a> {
     pub storage:  &'a dyn Storage,

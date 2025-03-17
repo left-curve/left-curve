@@ -14,7 +14,7 @@ export type AccountTypes = (typeof AccountType)[keyof typeof AccountType];
 export const AccountType = {
   Spot: "spot",
   Margin: "margin",
-  Safe: "safe",
+  Multi: "multi",
 } as const;
 
 export type AccountSingleConfig = { owner: Username };
@@ -23,13 +23,13 @@ export type AccountMultiConfig = Safe;
 export type AccountConfigs = {
   [AccountType.Spot]: AccountSingleConfig;
   [AccountType.Margin]: AccountSingleConfig;
-  [AccountType.Safe]: AccountMultiConfig;
+  [AccountType.Multi]: AccountMultiConfig;
 };
 
 export type AccountConfig =
   | { readonly [AccountType.Spot]: AccountSingleConfig }
   | { readonly [AccountType.Margin]: AccountSingleConfig }
-  | { readonly [AccountType.Safe]: AccountMultiConfig };
+  | { readonly [AccountType.Multi]: AccountMultiConfig };
 
 export type AccountIndex = number;
 

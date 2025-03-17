@@ -8,12 +8,14 @@ use {
         web::{self, ServiceConfig},
         App, HttpResponse, HttpServer,
     },
+    std::fmt::Display,
 };
 
 /// Run the HTTP server, includes GraphQL and REST endpoints.
-pub async fn run_server<CA, GS>(
-    ip: Option<&str>,
-    port: Option<u16>,
+pub async fn run_server<CA, GS, I>(
+    ip: I,
+    port: u16,
+    cors_allowed_origin: Option<String>,
     context: Context,
     config_app: CA,
     build_schema: fn(Context) -> GS,
@@ -21,25 +23,17 @@ pub async fn run_server<CA, GS>(
 where
     CA: Fn(Context, GS) -> Box<dyn Fn(&mut ServiceConfig)> + Clone + Send + 'static,
     GS: Clone + Send + 'static,
+    I: ToString + Display,
 {
-    let port = port
-        .or_else(|| {
-            std::env::var("PORT")
-                .ok()
-                .and_then(|val| val.parse::<u16>().ok())
-        })
-        .unwrap_or(8080);
-    let ip = ip.unwrap_or("0.0.0.0");
-
     let graphql_schema = build_schema(context.clone());
 
     #[cfg(feature = "tracing")]
     tracing::info!("Starting indexer httpd server at {ip}:{port}");
 
     HttpServer::new(move || {
-        let cors = if let Ok(origin) = std::env::var("ORIGIN") {
+        let cors = if let Some(origin) = cors_allowed_origin.as_deref() {
             Cors::default()
-                .allowed_origin(&origin)
+                .allowed_origin(origin)
                 .allowed_methods(vec!["POST"])
                 .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
                 .allowed_header(http::header::CONTENT_TYPE)
@@ -55,7 +49,7 @@ where
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
-    .bind((ip, port))?
+    .bind((ip.to_string(), port))?
     .run()
     .await?;
 

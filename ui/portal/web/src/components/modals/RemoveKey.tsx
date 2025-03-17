@@ -13,6 +13,8 @@ import { wait } from "@left-curve/dango/utils";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 
+import { m } from "~/paraglide/messages";
+
 interface Props {
   keyHash: KeyHash;
 }
@@ -54,20 +56,22 @@ export const RemoveKey: React.FC<Props> = ({ keyHash }) => {
           <IconTrash />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">Delete passkey</h3>
+          <h3 className="h4-bold">{m["settings.keyManagment.managment.delete.title"]()}</h3>
           <p className="text-gray-500 diatype-m-regular">
-            Are you sure you want to delete this passkey?
+            {m["settings.keyManagment.managment.delete.description"]()}
           </p>
-          <p className="text-gray-500 diatype-m-regular">This action cannot be undone.</p>
+          <p className="text-gray-500 diatype-m-regular">
+            {m["settings.keyManagment.managment.delete.warning"]()}
+          </p>
         </div>
       </div>
       <span className="w-full h-[1px] bg-gray-100 my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">
         <Button fullWidth variant="secondary" onClick={() => hideModal()} isDisabled={isPending}>
-          Cancel
+          {m["common.cancel"]()}
         </Button>
         <Button fullWidth onClick={() => removeKey()} isLoading={isPending}>
-          Delete
+          {m["common.delete"]()}
         </Button>
       </div>
     </div>

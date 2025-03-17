@@ -2,10 +2,11 @@
   "extends": ["@left-curve/config/ts/react.json"],
   "compilerOptions": {
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "~/paraglide/*": ["./.paraglide/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", "paraglide"],
   "exclude": ["node_modules"],
   "references": [
     {

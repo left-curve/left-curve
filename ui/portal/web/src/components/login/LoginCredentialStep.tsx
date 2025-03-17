@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import type React from "react";
+import { m } from "~/paraglide/messages";
 import { AuthOptions } from "../AuthOptions";
 import { useToast } from "../Toast";
 
@@ -48,17 +49,17 @@ export const LoginCredentialStep: React.FC = () => {
           className="h-12 rounded-full shadow-btn-shadow-gradient"
         />
         <div className="flex flex-col gap-3 items-center justify-center text-center">
-          <h1 className="h2-heavy">Hi, {username}</h1>
-          <p className="text-gray-500 diatype-m-medium">
-            Choose any of the credentials that have been associated with your username.
-          </p>
+          <h1 className="h2-heavy">
+            {m["common.hi"]()}, {username}
+          </h1>
+          <p className="text-gray-500 diatype-m-medium">{m["login.credential.description"]()}</p>
         </div>
       </div>
-      <AuthOptions action={connect} isPending={isPending} mode="connect" />
+      <AuthOptions action={connect} isPending={isPending} mode="signin" />
       <div className="flex items-center">
         <Button variant="link" onClick={() => previousStep()}>
           <IconLeft className="w-[22px] h-[22px] text-blue-500" />
-          <p className="leading-none pt-[2px]">Back</p>
+          <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
         </Button>
       </div>
     </div>

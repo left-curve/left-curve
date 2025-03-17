@@ -98,18 +98,13 @@ pub fn force_transfer(
 }
 
 /// Transfer tokens from one account to another.
-pub fn transfer(
-    storage: &mut dyn Storage,
-    from: Addr,
-    to: Addr,
-    coins: &Coins,
-) -> StdResult<Response> {
+pub fn transfer(storage: &mut dyn Storage, from: Addr, to: Addr, coins: &Coins) -> StdResult<()> {
     for coin in coins {
         decrease_balance(storage, from, coin.denom, *coin.amount)?;
         increase_balance(storage, to, coin.denom, *coin.amount)?;
     }
 
-    Ok(Response::new())
+    Ok(())
 }
 
 /// Increase the total supply of a token by the given amount.

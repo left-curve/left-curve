@@ -23,7 +23,7 @@ export const Route = createFileRoute("/(app)/_app")({
     return (
       <main
         ref={mainRef}
-        className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none"
+        className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden scrollbar-none bg-white-100"
       >
         <img
           src="/images/union.png"
@@ -35,7 +35,7 @@ export const Route = createFileRoute("/(app)/_app")({
         />
 
         <Header isScrolled={isScrolled} />
-        <div className="flex items-start justify-start w-full z-30 h-full relative flex-col">
+        <div className="flex items-center justify-start w-full z-30 h-full relative flex-col">
           <Outlet />
         </div>
       </main>

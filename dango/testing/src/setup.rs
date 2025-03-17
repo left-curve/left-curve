@@ -15,7 +15,7 @@ use {
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Bounded, Coins, ContractWrapper, Denom, Duration,
+        btree_map, coins, Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration,
         HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
@@ -120,7 +120,11 @@ pub fn setup_test_with_indexer() -> (
         indexer,
     );
 
-    let httpd_context = Context::new(indexer_context, Arc::new(suite.app.clone_without_indexer()));
+    let httpd_context = Context::new(
+        indexer_context,
+        Arc::new(suite.app.clone_without_indexer()),
+        "http://localhost:26657",
+    );
 
     ((suite, accounts, codes, contracts), httpd_context)
 }
@@ -370,6 +374,7 @@ where
         wormhole_guardian_sets: GUARDIAN_SETS.clone(),
         hyperlane_local_domain: MOCK_LOCAL_DOMAIN,
         hyperlane_ism_validator_sets: btree_map! {},
+        hyperlane_va_announce_fee_per_byte: Coin::new(USDC_DENOM.clone(), 100).unwrap(),
         warp_routes: btree_map! {},
     })
     .unwrap();

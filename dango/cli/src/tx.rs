@@ -1,5 +1,9 @@
 use {
-    crate::prompt::{confirm, print_json_pretty, read_password},
+    crate::{
+        config::parse_config,
+        home_directory::HomeDirectory,
+        prompt::{confirm, print_json_pretty, read_password},
+    },
     clap::{Parser, Subcommand},
     colored::Colorize,
     dango_client::{SigningKey, SingleSigner},
@@ -12,10 +16,6 @@ use {
 
 #[derive(Parser)]
 pub struct TxCmd {
-    /// Tendermint RPC address
-    #[arg(long, default_value = "http://127.0.0.1:26657")]
-    node: String,
-
     /// Transaction sender's username
     #[arg(long)]
     username: String,
@@ -28,10 +28,6 @@ pub struct TxCmd {
     #[arg(long)]
     key: String,
 
-    /// Chain identifier
-    #[arg(long)]
-    chain_id: String,
-
     /// Account nonce [default: query from chain]
     #[arg(long)]
     nonce: Option<u32>,
@@ -39,10 +35,6 @@ pub struct TxCmd {
     /// Amount of gas units to request [default: estimate]
     #[arg(long)]
     gas_limit: Option<u64>,
-
-    /// Scaling factor to apply to simulated gas consumption
-    #[arg(long, default_value_t = 1.4)]
-    gas_adjustment: f64,
 
     /// Simulate gas usage without submitting the transaction to mempool.
     #[arg(long)]
@@ -115,7 +107,10 @@ enum SubCmd {
 }
 
 impl TxCmd {
-    pub async fn run(self, key_dir: PathBuf) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
+        // Parse the config file.
+        let cfg = parse_config(app_dir.config_file())?;
+
         let msg = match self.subcmd {
             SubCmd::Configure {
                 new_cfg,
@@ -168,10 +163,13 @@ impl TxCmd {
             },
         };
 
-        let client = SigningClient::connect(self.chain_id.clone(), self.node.as_str())?;
+        let client = SigningClient::connect(
+            cfg.transactions.chain_id.clone(),
+            cfg.tendermint.rpc_addr.as_str(),
+        )?;
 
         let mut signer = {
-            let key_path = key_dir.join(format!("{}.json", self.key));
+            let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
             let password = read_password("🔑 Enter a password to encrypt the key".bold())?;
             let sk = SigningKey::from_file(&key_path, &password)?;
             let signer = SingleSigner::new(&self.username, self.address, sk)?;
@@ -184,7 +182,7 @@ impl TxCmd {
 
         if self.simulate {
             let msgs = NonEmpty::new_unchecked(vec![msg]);
-            let unsigned_tx = signer.unsigned_transaction(msgs, &self.chain_id)?;
+            let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.transactions.chain_id)?;
             let outcome = client.simulate(&unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
@@ -192,7 +190,7 @@ impl TxCmd {
                 GasOption::Predefined { gas_limit }
             } else {
                 GasOption::Simulate {
-                    scale: self.gas_adjustment,
+                    scale: cfg.transactions.gas_adjustment,
                     // We always increase the simulated gas consumption by this
                     // amount, since signature verification is skipped during
                     // simulation.

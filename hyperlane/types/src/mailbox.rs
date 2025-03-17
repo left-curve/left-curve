@@ -1,5 +1,5 @@
 use {
-    crate::Addr32,
+    crate::{Addr32, IncrementalMerkleTree},
     anyhow::ensure,
     grug::{Addr, Hash256, HexBinary, Inner},
 };
@@ -59,14 +59,6 @@ pub struct Config {
     pub local_domain: Domain,
     // Note: this is typically set to the message ID multisig ISM.
     pub default_ism: Addr,
-    // Note: this is typically set to the IGP (interchain gas paymaster) hook.
-    // Users who don't want to pay IGP fee can compose a message that indicates
-    // a dfferent hook other than the IGP.
-    // For Dango, this will be set to a "flat rate fee" hook.
-    pub default_hook: Addr,
-    // Note: this is typically set to the Merkle tree hook, or an aggregate hook
-    // that contains the Merkle tree hook.
-    pub required_hook: Addr,
 }
 
 // --------------------------------- messages ----------------------------------
@@ -83,8 +75,6 @@ pub enum ExecuteMsg {
         destination_domain: Domain,
         recipient: Addr32,
         body: HexBinary,
-        metadata: Option<HexBinary>,
-        hook: Option<Addr>,
     },
     /// Receive a message.
     Process {
@@ -101,6 +91,9 @@ pub enum QueryMsg {
     /// Query the current nonce.
     #[returns(u32)]
     Nonce {},
+    /// Query the current Merkle tree.
+    #[returns(IncrementalMerkleTree)]
+    Tree {},
     /// Query whether a message has been delivered.
     #[returns(bool)]
     Delivered { message_id: Hash256 },
@@ -130,4 +123,17 @@ pub struct Process {
 #[grug::event("mailbox_process_id")]
 pub struct ProcessId {
     pub message_id: Hash256,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("post_dispatch")]
+pub struct PostDispatch {
+    pub message_id: Hash256,
+    pub index: u128,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("inserted_into_tree")]
+pub struct InsertedIntoTree {
+    pub index: u128,
 }

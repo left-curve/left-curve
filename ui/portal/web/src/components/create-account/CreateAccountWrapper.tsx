@@ -7,12 +7,7 @@ import {
   useWizard,
 } from "@left-curve/applets-kit";
 import type React from "react";
-
-const steps = ["Account type", "Deposit"];
-const subtitle = [
-  "Select your account type to interact within the entire ecosystem",
-  "Fund your first spot account, you'll be able to create another account later.",
-];
+import { m } from "~/paraglide/messages";
 
 export const CreateAccountWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep } = useWizard();
@@ -32,13 +27,22 @@ export const CreateAccountWrapper: React.FC<React.PropsWithChildren> = ({ childr
                 <IconChevronDown className="rotate-90" />
               </IconButton>
             )}
-            <span className="h2-heavy">Create New Account</span>
+            <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
-          <p className="text-gray-500 diatype-m-medium">{subtitle[activeStep]}</p>
+          <p className="text-gray-500 diatype-m-medium">
+            {m["accountCreation.stepper.description"]({ step: activeStep })}
+          </p>
         </div>
-        <Stepper steps={steps} activeStep={activeStep} />
+        <Stepper
+          steps={Array.from({ length: 2 }).map((_, step) =>
+            m["accountCreation.stepper.title"]({ step }),
+          )}
+          activeStep={activeStep}
+        />
       </div>
-      <ResizerContainer className="w-full max-w-[22.5rem]">{children}</ResizerContainer>
+      <ResizerContainer layoutId="create-account" className="w-full max-w-[22.5rem]">
+        {children}
+      </ResizerContainer>
     </div>
   );
 };

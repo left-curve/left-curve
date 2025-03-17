@@ -1,11 +1,10 @@
-use crate::{EventId, EventStatus, MsgsAndBackrunEvents};
-
-use super::{
-    Event, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute, EvtFinalize, EvtGuest,
-    EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload, EvtWithhold,
-    FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, FlatEvtAuthenticate,
-    FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize, FlatEvtGuest, FlatEvtInstantiate,
-    FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer, FlatEvtWithhold, SubEvent, SubEventStatus,
+use crate::{
+    Event, EventId, EventStatus, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute,
+    EvtFinalize, EvtGuest, EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload,
+    EvtWithhold, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
+    FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize,
+    FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer,
+    FlatEvtWithhold, MsgsAndBackrunEvents, SubEvent, SubEventStatus,
 };
 
 pub trait Flatten {
@@ -192,8 +191,7 @@ impl Flatten for EvtTransfer {
             event_status: status,
             event: FlatEvent::Transfer(FlatEvtTransfer {
                 sender: self.sender,
-                recipient: self.recipient,
-                coins: self.coins,
+                transfers: self.transfers,
             }),
         }];
 
@@ -207,11 +205,11 @@ impl Flatten for EvtTransfer {
 
         events.extend(bank_guest);
 
-        let receive_guest = self
-            .receive_guest
-            .flatten_status(parent_id, next_id, commitment);
-
-        events.extend(receive_guest);
+        for event in self.receive_guests.into_values() {
+            let receive_guest = event.flatten_status(parent_id, next_id, commitment.clone());
+            next_id.increment_idx(&receive_guest);
+            events.extend(receive_guest);
+        }
 
         events
     }

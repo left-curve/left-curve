@@ -4,10 +4,10 @@ import {
   differenceInHours,
   differenceInMinutes,
   format,
-  formatDistanceToNow,
   isToday,
 } from "date-fns";
 import type React from "react";
+import { m } from "~/paraglide/messages";
 
 interface Notification {
   id: string;
@@ -69,13 +69,13 @@ export const NotificationsList: React.FC<Props> = ({ notifications, className })
     return (
       <div className="min-h-[19rem] flex flex-col gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat">
         <img
-          src="/images/notifications/no-notifications.svg"
+          src="/images/notifications/no-notifications-temp.svg"
           alt="no-notifications"
           className="w-[133px] h-[144px]"
         />
-        <p className="exposure-m-italic">No notifications yet</p>
+        <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
         <p className="diatype-m-bold text-gray-500">
-          When you approve, trade, or transfer tokens, your transaction will appear here
+          {m["notifications.noNotifications.description"]()}
         </p>
       </div>
     );

@@ -3,13 +3,28 @@ import { Item, Select, type SelectProps } from "./Select";
 
 interface Props extends Omit<SelectProps, "children"> {
   coins: AnyCoin[];
+  classNames?: {
+    base?: string;
+    listboxWrapper?: string;
+    listbox?: string;
+    value?: string;
+    selectorIcon?: string;
+    trigger?: string;
+  };
 }
 
-export const CoinSelector: React.FC<Props> = ({ coins, defaultSelectedKey, ...props }) => {
+export const CoinSelector: React.FC<Props> = ({
+  coins,
+  defaultSelectedKey,
+  classNames,
+  ...props
+}) => {
   return (
     <Select
       defaultSelectedKey={defaultSelectedKey || coins[0].denom}
-      classNames={{ trigger: "p-2 bg-transparent shadow-none justify-center" }}
+      classNames={{
+        trigger: `p-2 bg-transparent shadow-none justify-center ${classNames?.trigger}`,
+      }}
       {...props}
     >
       {coins.map((coin) => (
