@@ -26,8 +26,8 @@ export const AuthMobile: React.FC = () => {
       onError: (err) => {
         console.error(err);
         toast.error({
-          title: "Error",
-          description: "Failed to connect to the selected credential.",
+          title: m["common.error"](),
+          description: m["login.errors.failedSigingIn"](),
         });
       },
     },
@@ -41,8 +41,8 @@ export const AuthMobile: React.FC = () => {
       onError: (err) => {
         console.error(err);
         toast.error({
-          title: "Error",
-          description: "Failed to connect to the selected credential.",
+          title: m["common.error"](),
+          description: m["login.errors.failedSigingIn"](),
         });
       },
     },

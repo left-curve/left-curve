@@ -15,6 +15,7 @@
     "available": "Available",
     "username": "Username",
     "hi": "Hi",
+    "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
     "signWithWallet": [
       {
@@ -54,7 +55,8 @@
     "noAccount": "Don't have an account?",
     "errors": {
       "usernameRequired": "Username is required",
-      "usernameNotExist": "Username doesn't exist"
+      "usernameNotExist": "Username doesn't exist",
+      "failedSigingIn": "Failed to connect with the selected credential."
     },
     "credential": {
       "description": "Choose any of the credentials that have been associated with your username."

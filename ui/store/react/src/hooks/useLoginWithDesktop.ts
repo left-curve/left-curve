@@ -13,6 +13,7 @@ import { type UseMutationParameters, type UseMutationReturnType, useMutation } f
 export type UseLoginWithDesktopParameters = {
   url: string;
   username: string;
+  expiresAt?: number;
   connectors?: UseConnectorsReturnType;
   mutation?: UseMutationParameters<void, Error, { socketId: string }>;
 };
@@ -24,7 +25,12 @@ export type UseLoginWithDesktopReturnType = UseMutationReturnType<
 >;
 
 export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
-  const { url, username, mutation } = parameters;
+  const {
+    url,
+    username,
+    expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000),
+    mutation,
+  } = parameters;
   const connectors = parameters?.connectors ?? useConnectors();
   const chainId = useChainId();
 
@@ -44,7 +50,7 @@ export function useLoginWithDesktop(parameters: UseLoginWithDesktopParameters) {
       const response = await dataChannel.sendAsyncMessage<SessionResponse>({
         type: Actions.GenerateSession,
         message: {
-          expireAt: +new Date(Date.now() + 1000 * 60 * 5),
+          expireAt: +expiresAt,
           publicKey: encodeBase64(publicKey),
         },
       });
