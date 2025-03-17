@@ -1,4 +1,4 @@
-import { createSessionSignature, createSessionSigner, createSignerClient } from "@left-curve/dango";
+import { createSessionSigner, createSignerClient } from "@left-curve/dango";
 import { Secp256k1 } from "@left-curve/dango/crypto";
 import { createStorage } from "@left-curve/store";
 
@@ -17,8 +17,6 @@ export type UseSessionKeyParameters = {
 export type UseSessionKeyReturnType = {
   client: ReturnType<typeof createSignerClient> | undefined;
   session: SigningSession | null;
-  setSession: (session: SigningSession | null) => void;
-  generateKeyPair: () => Secp256k1;
   deleteSessionkey: () => void;
   createSessionKey: (parameters: { expireAt: number }) => Promise<void>;
 };
@@ -53,24 +51,18 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
     const keyPair = Secp256k1.makeKeyPair();
     const publicKey = keyPair.getPublicKey();
 
-    const { authorization, keyHash, sessionInfo } = await createSessionSignature({
+    const { authorization, keyHash, sessionInfo } = await connectorClient.createSession({
       expireAt,
       pubKey: publicKey,
-      signer: connectorClient.signer,
     });
 
-    const session: SigningSession = {
+    setSession({
       keyHash,
       sessionInfo,
       privateKey: keyPair.privateKey,
-      publicKey: keyPair.getPublicKey(),
+      publicKey,
       authorization,
-    };
-    setSession(session);
-  }
-
-  function generateKeyPair() {
-    return Secp256k1.makeKeyPair();
+    });
   }
 
   function deleteSessionkey() {
@@ -80,8 +72,6 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   return {
     client,
     session,
-    setSession,
-    generateKeyPair,
     deleteSessionkey,
     createSessionKey,
   };

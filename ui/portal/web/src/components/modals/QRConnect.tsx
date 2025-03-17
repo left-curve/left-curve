@@ -1,7 +1,6 @@
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
-import { createSessionSignature } from "@left-curve/dango";
 import { decodeBase64 } from "@left-curve/dango/encoding";
-import { useDataChannel, useSigningClient } from "@left-curve/store-react";
+import { useConnectorClient, useDataChannel } from "@left-curve/store-react";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -11,7 +10,7 @@ import { useToast } from "../Toast";
 export const QRConnect: React.FC = () => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { data: dataChannel } = useDataChannel({ url: import.meta.env.PUBLIC_WEBRTC_URI });
-  const { data: signingClient } = useSigningClient();
+  const { data: signingClient } = useConnectorClient();
   const { hideModal } = useApp();
   const { toast } = useToast();
 
@@ -25,11 +24,12 @@ export const QRConnect: React.FC = () => {
       setIsLoadingCredential(true);
       const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
       if (!signingClient) return;
-      const response = await createSessionSignature({
+
+      const response = await signingClient.createSession({
         expireAt,
         pubKey: decodeBase64(publicKey),
-        signer: signingClient.signer,
       });
+
       dataChannel.sendMessage({ id, message: response });
       toast.success({ title: "connection established" });
       hideModal();
