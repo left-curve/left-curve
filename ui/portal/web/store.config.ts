@@ -1,4 +1,4 @@
-import { createConfig, devnet, graphql, passkey } from "@left-curve/store-react";
+import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store-react";
 
 import type { Config } from "@left-curve/store-react/types";
 
@@ -74,5 +74,5 @@ export const config: Config = createConfig({
       },
     },
   },
-  connectors: [passkey()],
+  connectors: [passkey(), session()],
 });

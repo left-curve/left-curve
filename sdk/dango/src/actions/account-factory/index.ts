@@ -114,6 +114,12 @@ export {
   updateKey,
 } from "./mutations/updateKey.js";
 
+export {
+  type CreateSessionParameters,
+  type CreateSessionReturnType,
+  createSession,
+} from "./mutations/createSession.js";
+
 /* -------------------------------------------------------------------------- */
 /*                               Builder Action                               */
 /* -------------------------------------------------------------------------- */

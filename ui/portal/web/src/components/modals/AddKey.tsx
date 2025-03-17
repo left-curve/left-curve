@@ -1,10 +1,10 @@
-import { IconButton, IconClose, IconKey, useSigningClient } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
-import { useAccount, useConnectors } from "@left-curve/store-react";
+import { useAccount, useConnectors, useSigningClient } from "@left-curve/store-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
-import { AuthOptions } from "../AuthOptions";
+import { AuthOptions } from "../auth/AuthOptions";
 
 import { m } from "~/paraglide/messages";
 
@@ -21,7 +21,7 @@ export const AddKeyModal: React.FC = () => {
       if (!connector) throw new Error("Connector not found");
       if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-      const { keyHash, key } = await connector.createNewKey();
+      const { keyHash, key } = await connector.createNewKey!();
 
       await signingClient?.updateKey({
         keyHash,

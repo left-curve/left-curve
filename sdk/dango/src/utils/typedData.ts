@@ -4,6 +4,7 @@ import type { Coins, Hex, Json, Message } from "@left-curve/sdk/types";
 import type { HashTypedDataParameters } from "viem";
 
 import type {
+  ArbitraryTypedData,
   EIP712Domain,
   EIP712Message,
   TxMessageType,
@@ -26,12 +27,6 @@ export async function hashTypedData(
   return viemHashTypedData(typedData);
 }
 
-export type ArbitraryTypedDataParameters = {
-  message: Json;
-  types: Record<string, TypedDataProperty[]>;
-  primaryType: string;
-};
-
 /**
  * @description Composes arbitrary typed data.
  *
@@ -41,7 +36,7 @@ export type ArbitraryTypedDataParameters = {
  * @params parameters.primaryType The primary type.
  * @returns The composed typed data.
  */
-export function composeArbitraryTypedData(parameters: ArbitraryTypedDataParameters) {
+export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
   const { message, types, primaryType } = parameters;
   return {
     domain: {
@@ -67,7 +62,7 @@ export function composeTxTypedData(
   message: EIP712Message,
   domain: EIP712Domain,
   typeData?: Partial<TypedDataParameter<TxMessageType>>,
-): TypedData {
+): TypedData<TxMessageType> {
   const { type = [], extraTypes = {} } = typeData || {};
   const { messages, metadata, gas_limit } = message;
   const { expiry } = metadata;

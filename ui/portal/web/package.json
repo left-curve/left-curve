@@ -18,6 +18,7 @@
     "@tanstack/react-table": "^8.21.2",
     "@tanstack/router-plugin": "^1.102.1",
     "@tanstack/zod-adapter": "catalog:",
+    "@yudiel/react-qr-scanner": "^2.2.1",
     "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
     "react": "catalog:",

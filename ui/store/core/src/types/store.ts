@@ -40,7 +40,7 @@ export type Config<
   readonly chains: chains;
   readonly coins: Record<ChainId, Record<Denom, coin>>;
   readonly connectors: readonly Connector[];
-  readonly storage: Storage | null;
+  readonly storage: Storage;
   readonly state: State<chains>;
   setState<tchains extends readonly [Chain, ...Chain[]] = chains>(
     value: State<tchains> | ((state: State<tchains>) => State<tchains>),
@@ -73,7 +73,7 @@ export type CreateConfigParameters<
   transports: transports;
   ssr?: boolean;
   batch?: boolean;
-  storage?: Storage | null;
+  storage?: Storage;
   multiInjectedProviderDiscovery?: boolean;
   connectors?: CreateConnectorFn[];
 };

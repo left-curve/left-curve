@@ -1,4 +1,4 @@
-import type { Address, Json, Message } from "@left-curve/sdk/types";
+import type { Address, Json, JsonValue, Message } from "@left-curve/sdk/types";
 
 // biome-ignore format: no formatting
 type MBytes =
@@ -80,4 +80,10 @@ export type EIP712Message = {
 export type EIP712Domain = {
   name: string;
   verifyingContract: Address;
+};
+
+export type ArbitraryTypedData<message extends JsonValue = JsonValue> = {
+  message: message;
+  types: Record<string, TypedDataProperty[]>;
+  primaryType: "Message";
 };

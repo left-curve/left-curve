@@ -1,10 +1,7 @@
+import type { Prettify } from "@left-curve/sdk/types";
 import { withResolvers } from "@left-curve/sdk/utils";
-
-type DataChannelConfig = {
-  rtcConfiguration: RTCConfiguration;
-  channelName: string;
-  logs: boolean;
-};
+import { deserializeJson, serializeJson } from "../encoding.js";
+import type { DataChannelConfig, DataChannelMessage } from "../types/webrtrc.js";
 
 export class DataChannel {
   #ws: WebSocket;
@@ -14,7 +11,7 @@ export class DataChannel {
   #dataChannel: RTCDataChannel;
   #resolver: Map<string, { resolve: (value: unknown) => void; reject: (reason?: unknown) => void }>;
   #metadata: { promiseId: string; socketId: string } | undefined;
-  #listeners: Set<(event: MessageEvent) => void>;
+  #listeners: Set<(message: DataChannelMessage) => void>;
   static async create(url: string, cfg?: Partial<DataChannelConfig>) {
     const { promise, resolve } = withResolvers<string>();
     const ws = new WebSocket(url);
@@ -97,16 +94,16 @@ export class DataChannel {
   }
 
   #onDataChannelMessage(event: MessageEvent) {
-    const { id, message } = event.data;
-    const resolver = this.#resolver.get(id);
+    const data = deserializeJson<DataChannelMessage>(event.data);
+    const resolver = this.#resolver.get(data.id);
 
     if (resolver) {
-      resolver.resolve(message);
-      this.#resolver.delete(id);
+      resolver.resolve(data.message);
+      this.#resolver.delete(data.id);
       return;
     }
 
-    this.#listeners.forEach((listener) => listener(event));
+    this.#listeners.forEach((listener) => listener(data));
   }
 
   async #onOffer(from: string, offer: RTCSessionDescriptionInit) {
@@ -155,28 +152,33 @@ export class DataChannel {
     await promise;
   }
 
-  subscribe(listener: (event: MessageEvent) => void) {
-    this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
-  }
-
-  sendMessage(message: string): void {
+  async sendAsyncMessage<R = unknown>(
+    m: Prettify<Omit<DataChannelMessage, "id"> & { id?: string }>,
+  ): Promise<R> {
     if (this.#dataChannel.readyState !== "open") {
       throw new Error("error: data channel is not open");
     }
-    this.#dataChannel.send(message);
-  }
+    const { id = crypto.randomUUID(), type, message } = m;
 
-  async sendAsyncMessage<R = unknown>(message: string): Promise<R> {
-    if (this.#dataChannel.readyState !== "open") {
-      throw new Error("error: data channel is not open");
-    }
-    const id = crypto.randomUUID();
-
-    this.#dataChannel.send(JSON.stringify({ id, message }));
+    this.#dataChannel.send(serializeJson({ id, type, message }));
     const { promise, resolve, reject } = withResolvers();
     this.#resolver.set(id, { resolve, reject });
     return promise as Promise<R>;
+  }
+
+  sendMessage(m: Partial<DataChannelMessage>): void {
+    if (this.#dataChannel.readyState !== "open") {
+      throw new Error("error: data channel is not open");
+    }
+
+    const { id = crypto.randomUUID(), type = "default", message } = m;
+
+    this.#dataChannel.send(serializeJson({ id, type, message }));
+  }
+
+  subscribe(listener: (message: DataChannelMessage) => void) {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
   }
 
   getSocketId() {

@@ -5,6 +5,7 @@ import {
   IconButton,
   IconChevronLeft,
   IconLogOut,
+  IconMobile,
   IconQR,
 } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
@@ -16,11 +17,12 @@ import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
 import { useNavigate } from "@tanstack/react-router";
+import { Modals } from "../Modal";
 
 export const AccountMenuBody: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"account" | "assets">("assets");
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, showModal } = useApp();
   const { account, connector } = useAccount();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -65,8 +67,8 @@ export const AccountMenuBody: React.FC = () => {
             >
               {m["common.send"]()}
             </Button>
-            <IconButton variant="secondary">
-              <IconQR />
+            <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
+              <IconMobile />
             </IconButton>
             <IconButton
               variant="secondary"

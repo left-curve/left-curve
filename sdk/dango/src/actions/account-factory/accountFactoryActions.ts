@@ -92,6 +92,12 @@ import {
   getUsersByKeyHash,
 } from "./queries/getUsersByKeyHash.js";
 
+import {
+  type CreateSessionParameters,
+  type CreateSessionReturnType,
+  createSession,
+} from "./mutations/createSession.js";
+
 import type { Chain, DangoClient, Signer } from "../../types/index.js";
 
 export type AccountFactoryQueryActions = {
@@ -123,6 +129,7 @@ export type AccountFactoryMutationActions = {
     args: RegisterAccountParameters,
     txArgs: TxParameters,
   ) => RegisterUserReturnType;
+  createSession: (args: CreateSessionParameters) => CreateSessionReturnType;
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
@@ -154,5 +161,6 @@ export function accountFactoryMutationActions<transport extends Transport = Tran
     registerUser: (...args) => registerUser(client, ...args),
     updateKey: (...args) => updateKey(client, ...args),
     registerAccount: (...args) => registerAccount(client, ...args),
+    createSession: (...args) => createSession(client, ...args),
   };
 }
