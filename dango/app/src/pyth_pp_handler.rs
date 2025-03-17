@@ -72,7 +72,7 @@ where
     }
 
     /// Retrieve the Pyth ids from the Oracle contract.
-    pub fn pyth_ids(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
+    pub fn pyth_ids(querier: &QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
         let new_ids = querier
             .query_wasm_smart(oracle, QueryPriceSourcesRequest {
                 start_after: None,
@@ -144,7 +144,7 @@ where
         ));
     }
 
-    pub fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
+    pub fn update_stream(&mut self, querier: &QuerierWrapper, oracle: Addr) -> StdResult<()> {
         // Retrieve the Pyth ids from the Oracle contract.
         let pyth_ids = Self::pyth_ids(querier, oracle)?;
 

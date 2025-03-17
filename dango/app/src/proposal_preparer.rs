@@ -82,7 +82,7 @@ where
         let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
 
         // Update the Pyth stream if the PythIds in the oracle have changed.
-        if let Err(err) = pyth_handler.update_stream(querier, cfg.addresses.oracle) {
+        if let Err(err) = pyth_handler.update_stream(&querier, cfg.addresses.oracle) {
             error!("Failed to update Pyth stream: {:?}", err);
         }
 
