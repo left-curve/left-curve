@@ -8,7 +8,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { useAccount } from "@left-curve/store-react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -31,9 +31,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     isNotificationMenuVisible,
     isSearchBarVisible,
   } = useApp();
+  const { location } = useRouterState();
   const navigate = useNavigate();
   const isLg = useMediaQuery("lg");
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
+
+  const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
 
   return (
     <header
@@ -62,7 +65,14 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           {!isSearchBarVisible ? <HamburgerMenu /> : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
-          <Button as={Link} variant="utility" size="lg" to="/settings">
+          <Button
+            as={Link}
+            variant="utility"
+            size="lg"
+            to="/settings"
+            className=""
+            data-status={linkStatus("/settings")}
+          >
             <IconGear className="w-6 h-6 text-rice-700" />
           </Button>
 
@@ -71,6 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               ref={buttonNotificationsRef}
               variant="utility"
               size="lg"
+              data-status={linkStatus("/notifications")}
               onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
             >
               <IconBell className="w-6 h-6 text-rice-700" />

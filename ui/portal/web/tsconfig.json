@@ -6,7 +6,7 @@
       "~/paraglide/*": ["./.paraglide/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", "paraglide"],
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide"],
   "exclude": ["node_modules"],
   "references": [
     {

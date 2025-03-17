@@ -37,8 +37,10 @@ export const KeyManagment: React.FC = () => {
     <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-1 max-w-lg">
-          <h3 className="text-lg font-bold">{m["settings.keyManagment.title"]()}</h3>
-          <p className="text-gray-500 text-sm">{m["settings.keyManagment.description"]()}</p>
+          <h3 className="h4-bold text-gray-900">{m["settings.keyManagment.title"]()}</h3>
+          <p className="text-gray-500 diatype-sm-regular">
+            {m["settings.keyManagment.description"]()}
+          </p>
         </div>
         <Button size="md" className="min-w-[120px]" onClick={() => showModal(Modals.AddKey)}>
           <IconAddCross className="w-5 h-5" />
@@ -58,11 +60,11 @@ export const KeyManagment: React.FC = () => {
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
                   <div className="flex gap-[6px] items-center">
-                    <TruncateText className="text-gray-700 font-bold" text={keyHash} />
+                    <TruncateText className="text-gray-700 diatype-m-bold" text={keyHash} />
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-gray-500 diatype-sm-medium">
                     {KeyTranslation[Object.keys(key).at(0) as keyof typeof KeyTranslation]}
                   </p>
                 </div>

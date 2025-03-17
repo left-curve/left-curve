@@ -132,7 +132,7 @@ const buttonVariants = tv(
       {
         variant: "utility",
         class:
-          "bg-rice-100 hover:bg-rice-200 text-rice-700 focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-rice-100 hover:bg-rice-200 text-rice-700 focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: "utility",
