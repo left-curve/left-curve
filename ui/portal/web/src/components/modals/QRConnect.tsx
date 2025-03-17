@@ -1,5 +1,6 @@
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
+import { Actions } from "@left-curve/dango/utils";
 import { useConnectorClient, useDataChannel } from "@left-curve/store-react";
 import type React from "react";
 import { useState } from "react";
@@ -9,21 +10,22 @@ import { useToast } from "../Toast";
 
 export const QRConnect: React.FC = () => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const { data: dataChannel } = useDataChannel({ url: import.meta.env.PUBLIC_WEBRTC_URI });
+  const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
+    url: import.meta.env.PUBLIC_WEBRTC_URI,
+  });
   const { data: signingClient } = useConnectorClient();
   const { hideModal } = useApp();
   const { toast } = useToast();
 
-  dataChannel?.subscribe(async (event) => {
-    const { id, message: data } = event;
-    const { type, message } = data as {
-      type: string;
-      message: { expireAt: number; publicKey: string };
-    };
-    if (type === "generate_session" && !isLoadingCredential) {
+  dataChannel?.subscribe(async (m) => {
+    if (!signingClient) return;
+
+    try {
+      const { id, type, message } = m;
+      if (type !== Actions.GenerateSession || isLoadingCredential) return;
       setIsLoadingCredential(true);
+
       const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
-      if (!signingClient) return;
 
       const response = await signingClient.createSession({
         expireAt,
@@ -31,8 +33,10 @@ export const QRConnect: React.FC = () => {
       });
 
       dataChannel.sendMessage({ id, message: response });
-      toast.success({ title: "connection established" });
+      toast.success({ title: "Connection established" });
       hideModal();
+    } catch (error) {
+    } finally {
       setIsLoadingCredential(false);
     }
   });
@@ -57,8 +61,10 @@ export const QRConnect: React.FC = () => {
       </div>
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="flex justify-center items-center p-8">
-        {dataChannel && !isLoadingCredential ? <QRCode data={dataChannel.getSocketId()} /> : null}
-        {isLoadingCredential ? <p>Loading credential</p> : null}
+        <QRCode
+          isLoading={isLoadingDataChannel || isLoadingCredential}
+          data={dataChannel?.getSocketId()}
+        />
       </div>
     </div>
   );

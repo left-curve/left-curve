@@ -4,7 +4,7 @@ import { useAccount, useConnectors, useSigningClient } from "@left-curve/store-r
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
-import { AuthOptions } from "../AuthOptions";
+import { AuthOptions } from "../auth/AuthOptions";
 
 import { m } from "~/paraglide/messages";
 

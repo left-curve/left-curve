@@ -1,7 +1,7 @@
 import { useWizard } from "@left-curve/applets-kit";
 import { useMutation } from "@tanstack/react-query";
 
-import { AuthOptions } from "../AuthOptions";
+import { AuthOptions } from "../auth/AuthOptions";
 
 import {
   createWebAuthnCredential,

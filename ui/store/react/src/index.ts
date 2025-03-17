@@ -112,6 +112,18 @@ export {
   useDataChannel,
 } from "./hooks/useDataChannel.js";
 
+export {
+  type UseLoginWithDesktopParameters,
+  type UseLoginWithDesktopReturnType,
+  useLoginWithDesktop,
+} from "./hooks/useLoginWithDesktop.js";
+
+export {
+  type UseLoginParameters,
+  type UseLoginReturnType,
+  useLogin,
+} from "./hooks/useLogin.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";

@@ -240,7 +240,7 @@ export type {
   SignatureOutcome,
 } from "./signature.js";
 
-export type { DataChannelConfig } from "./webrtrc.js";
+export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
 
 export { AccountType } from "./account.js";
 
