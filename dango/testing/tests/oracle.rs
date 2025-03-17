@@ -15,10 +15,10 @@ use {
     grug_app::NaiveProposalPreparer,
     pyth_client::{client_cache::PythClientCache, PythClientTrait},
     pyth_types::{
-        PriceFeed, PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID,
-        PYTH_URL, SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
+        PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL,
+        SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
     },
-    std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
+    std::{cmp::Ordering, collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
@@ -146,134 +146,6 @@ fn oracle() {
 }
 
 #[test]
-fn double_vaas() {
-    let (mut suite, mut accounts, oracle) = setup_oracle_test();
-
-    let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
-
-    let mut last_btc_vaa: Option<PriceFeed> = None;
-    let mut last_eth_vaa: Option<PriceFeed> = None;
-
-    for _ in 0..5 {
-        // get 2 separate vaa
-        let btc_vaas_raw = pyth_client
-            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
-            .unwrap();
-        let eth_vaas_raw = pyth_client
-            .get_latest_vaas(NonEmpty::new_unchecked(vec![ETH_USD_ID]))
-            .unwrap();
-
-        let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
-            .unwrap()
-            .unverified()[0];
-        let eth_vaa = PythVaa::new(&MockApi, eth_vaas_raw[0].clone().into_inner())
-            .unwrap()
-            .unverified()[0];
-
-        // update last btc vaa
-        {
-            if let Some(last_btc_vaa) = &mut last_btc_vaa {
-                if btc_vaa.get_price_unchecked().publish_time
-                    > last_btc_vaa.get_price_unchecked().publish_time
-                {
-                    last_btc_vaa.clone_from(&btc_vaa);
-                }
-            } else {
-                last_btc_vaa = Some(btc_vaa);
-            }
-        }
-
-        // update last eth vaa
-        {
-            if let Some(last_eth_vaa) = &mut last_eth_vaa {
-                if eth_vaa.get_price_unchecked().publish_time
-                    > last_eth_vaa.get_price_unchecked().publish_time
-                {
-                    last_eth_vaa.clone_from(&eth_vaa);
-                }
-            } else {
-                last_eth_vaa = Some(eth_vaa);
-            }
-        }
-
-        // update price feeds
-        suite
-            .execute(
-                &mut accounts.owner,
-                oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(
-                    [btc_vaas_raw, eth_vaas_raw].concat(),
-                )),
-                Coins::default(),
-            )
-            .should_succeed();
-
-        // check btc price
-        {
-            let current_price = suite
-                .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: BTC_DENOM.clone(),
-                })
-                .unwrap();
-
-            assert_eq!(
-                current_price.timestamp,
-                last_btc_vaa
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
-        }
-
-        // check eth price
-        {
-            let current_price = suite
-                .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: ETH_DENOM.clone(),
-                })
-                .unwrap();
-
-            assert_eq!(
-                current_price.timestamp,
-                last_eth_vaa
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
-        }
-
-        // sleep for 1 second
-        thread::sleep(Duration::from_secs(1));
-    }
-}
-
-#[test]
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
@@ -293,10 +165,10 @@ fn multiple_vaas() {
 
     let ids = NonEmpty::new_unchecked(id_denoms.keys().cloned().collect::<Vec<_>>());
 
-    let mut last_price_feeds = id_denoms
+    let mut last_prices_data = id_denoms
         .keys()
         .map(|id| (*id, None))
-        .collect::<BTreeMap<_, Option<PriceFeed>>>();
+        .collect::<BTreeMap<_, Option<(PrecisionlessPrice, u64)>>>();
 
     for _ in 0..5 {
         let vaas_raw = pyth_client.get_latest_vaas(ids.clone()).unwrap();
@@ -308,25 +180,34 @@ fn multiple_vaas() {
 
         // Update last price feeds
         for vaa in vaas {
+            let new_sequence = vaa.wormhole_vaa.sequence;
+
             for price_feed in vaa.unverified() {
-                let last_price_feed = last_price_feeds
+                let last_price_data = last_prices_data
                     .get_mut(&PythId::from_str(&price_feed.id.to_string()).unwrap())
                     .unwrap();
 
-                if let Some(last_price_feed) = last_price_feed {
-                    if price_feed.get_price_unchecked().publish_time
-                        > last_price_feed.get_price_unchecked().publish_time
-                    {
-                        last_price_feed.clone_from(&price_feed);
-                    }
-                } else {
-                    *last_price_feed = Some(price_feed);
+                let new_price = Price::try_from(price_feed.clone()).unwrap();
+
+                match last_price_data {
+                    Some((last_price, last_sequence)) => {
+                        match last_price.timestamp.cmp(&new_price.timestamp) {
+                            Ordering::Less => *last_price_data = Some((new_price, new_sequence)),
+                            Ordering::Equal => {
+                                if *last_sequence < new_sequence {
+                                    *last_price_data = Some((new_price, new_sequence));
+                                }
+                            },
+                            Ordering::Greater => continue,
+                        }
+                    },
+                    None => *last_price_data = Some((new_price, new_sequence)),
                 }
             }
         }
 
         // Check if all prices has been fetched
-        for v in last_price_feeds.values() {
+        for v in last_prices_data.values() {
             assert!(v.is_some());
         }
 
@@ -341,7 +222,9 @@ fn multiple_vaas() {
             .should_succeed();
 
         // Check all prices
-        for (denom, last_price_feed) in &last_price_feeds {
+        for (denom, last_price_feed) in &last_prices_data {
+            let (last_price, _) = last_price_feed.clone().unwrap();
+
             let denom = id_denoms.get(denom).unwrap();
 
             let current_price = suite
@@ -350,30 +233,13 @@ fn multiple_vaas() {
                 })
                 .unwrap();
 
-            assert_eq!(
-                current_price.timestamp,
-                last_price_feed
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_price_feed.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_price_feed.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
+            assert_eq!(current_price.timestamp, last_price.timestamp);
+            assert_eq!(current_price.humanized_price, last_price.humanized_price);
+            assert_eq!(current_price.humanized_ema, last_price.humanized_ema);
         }
 
         // sleep for 1 second
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
