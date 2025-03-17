@@ -5,10 +5,10 @@ use {
     byteorder::BigEndian,
     grug::{Api, BlockInfo, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
-    pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
     pythnet_sdk::{
         accumulators::merkle::MerkleRoot,
         hashers::keccak256_160::Keccak160,
+        legacy::{BatchPriceAttestation, PriceStatus},
         messages::Message,
         wire::{
             from_slice,
