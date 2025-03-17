@@ -1,4 +1,5 @@
 use {
+    assert_json_diff::assert_json_include,
     assertor::*,
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
@@ -141,6 +142,54 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
                 let response = call_graphql::<Block>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_last_block_transactions() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let graphql_query = r#"
+      query Block {
+        block {
+          blockHeight
+          transactions {
+            blockHeight
+          }
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "block",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let response = call_graphql::<serde_json::Value>(app, request_body).await?;
+
+                let expected = json!({
+                    "blockHeight": 1,
+                    "transactions": [
+                        {
+                            "blockHeight": 1,
+                        }
+                    ]
+                });
+
+                assert_json_include!(actual: response.data, expected: expected);
 
                 Ok::<(), anyhow::Error>(())
             })
