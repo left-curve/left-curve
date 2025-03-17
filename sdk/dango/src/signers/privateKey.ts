@@ -3,7 +3,6 @@ import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import { createKeyHash } from "../account/key.js";
 
 import type { KeyPair } from "@left-curve/sdk/crypto";
-import type { JsonValue } from "@left-curve/sdk/types";
 import type { ArbitraryTypedData, KeyHash, SignDoc, Signer } from "../types/index.js";
 
 export class PrivateKeySigner implements Signer {
@@ -40,7 +39,7 @@ export class PrivateKeySigner implements Signer {
         messages,
         data: {
           username: metadata.username,
-          chainId: metadata.chainId,
+          chainId: metadata.chain_id,
           nonce: metadata.nonce,
           expiry: metadata.expiry,
         },

@@ -21,7 +21,7 @@ export const AddKeyModal: React.FC = () => {
       if (!connector) throw new Error("Connector not found");
       if (!account || !signingClient) throw new Error("We couldn't process the request");
 
-      const { keyHash, key } = await connector.createNewKey();
+      const { keyHash, key } = await connector.createNewKey!();
 
       await signingClient?.updateKey({
         keyHash,

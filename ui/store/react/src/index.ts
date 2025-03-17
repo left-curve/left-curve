@@ -18,7 +18,7 @@ export { createStorage, createMemoryStorage } from "@left-curve/store";
 /*                                 Connectors                                 */
 /* -------------------------------------------------------------------------- */
 
-export { eip1193, passkey, eip6963 } from "@left-curve/store";
+export { eip1193, passkey, eip6963, session } from "@left-curve/store";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Hooks                                   */

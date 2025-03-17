@@ -1,8 +1,6 @@
 import { Secp256k1, sha256 } from "@left-curve/sdk/crypto";
 import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 
-import type { JsonValue } from "@left-curve/sdk/types";
-
 import type { SessionCredential, SignDoc, Signer, SigningSession } from "../types/index.js";
 import type { ArbitraryDoc } from "../types/signature.js";
 
@@ -18,6 +16,7 @@ export const createSessionSigner = (session: SigningSession): Signer => {
     const { message, domain } = signDoc;
     const sender = domain.verifyingContract;
     const { messages, metadata, gas_limit: gasLimit } = message;
+
     const tx = sha256(
       serialize({
         sender,
@@ -25,7 +24,7 @@ export const createSessionSigner = (session: SigningSession): Signer => {
         messages,
         data: {
           username: metadata.username,
-          chainId: metadata.chainId,
+          chainId: metadata.chain_id,
           nonce: metadata.nonce,
           expiry: metadata.expiry,
         },

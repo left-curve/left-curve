@@ -16,8 +16,12 @@ export const QRConnect: React.FC = () => {
   const { toast } = useToast();
 
   dataChannel?.subscribe(async (event) => {
-    const { id, type, message } = event;
-    if (type === "generate_session") {
+    const { id, message: data } = event;
+    const { type, message } = data as {
+      type: string;
+      message: { expireAt: number; publicKey: string };
+    };
+    if (type === "generate_session" && !isLoadingCredential) {
       setIsLoadingCredential(true);
       const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
       if (!signingClient) return;
@@ -30,7 +34,7 @@ export const QRConnect: React.FC = () => {
       toast.success({ title: "connection established" });
       hideModal();
       setIsLoadingCredential(false);
-    } else console.log("Unknown event", event);
+    }
   });
 
   return (

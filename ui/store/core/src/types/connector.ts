@@ -10,6 +10,7 @@ import type {
 import type { Emitter, EventData } from "./emitter.js";
 
 import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";
+import type { Storage } from "./storage.js";
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 
@@ -25,6 +26,7 @@ export type ConnectorType = (typeof ConnectorTypes)[keyof typeof ConnectorTypes]
 export const ConnectorTypes = {
   EIP1193: "eip1193",
   Passkey: "passkey",
+  Session: "session",
 } as const;
 
 export type Connection = {
@@ -82,6 +84,7 @@ export type CreateConnectorFn<
   chains: readonly [Chain, ...Chain[]];
   emitter: Emitter<ConnectorEventMap>;
   transports: Record<string, Transport>;
+  storage: Storage;
 }) => Prettify<
   properties &
     Signer & {
@@ -105,7 +108,7 @@ export type CreateConnectorFn<
         >,
       ): Promise<void>;
       disconnect(): Promise<void>;
-      createNewKey(challenge?: string): Promise<{ keyHash: KeyHash; key: Key }>;
+      createNewKey?(challenge?: string): Promise<{ keyHash: KeyHash; key: Key }>;
       getAccounts(): Promise<readonly Account[]>;
       getClient(): Promise<SignerClient<transport>>;
       isAuthorized(): Promise<boolean>;

@@ -5,7 +5,7 @@ import { createMemoryStorage } from "./memoryStorage.js";
 import type { CreateStorageParameters, Storage } from "../types/storage.js";
 
 export function createStorage<inner extends Record<string, unknown> = Record<string, unknown>>(
-  parameters: CreateStorageParameters,
+  parameters: CreateStorageParameters = {},
 ): Storage<inner> {
   const {
     deserialize = deserializeJson,
@@ -34,7 +34,7 @@ export function createStorage<inner extends Record<string, unknown> = Record<str
 }
 
 export function createAsyncStorage<inner extends Record<string, unknown> = Record<string, unknown>>(
-  parameters: CreateStorageParameters,
+  parameters: CreateStorageParameters = {},
 ): Storage<inner> {
   const {
     deserialize = deserializeJson,

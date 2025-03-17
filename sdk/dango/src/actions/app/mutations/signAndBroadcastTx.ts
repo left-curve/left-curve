@@ -42,21 +42,19 @@ export async function signAndBroadcastTx<transport extends Transport>(
 
   const [nonce] = await getAccountSeenNonces(client, { address: sender });
 
-  const data = { username, nonce, chainId };
-
-  const { gasUsed } = gas
-    ? { gasUsed: gas }
-    : await simulate(client, { simulate: { sender, msgs: messages, data } });
-
-  const domain = {
-    name: "dango",
-    verifyingContract: sender,
-  };
-
   const metadata = {
     chainId,
     username,
     nonce,
+  };
+
+  const { gasUsed } = gas
+    ? { gasUsed: gas }
+    : await simulate(client, { simulate: { sender, msgs: messages, data: metadata } });
+
+  const domain = {
+    name: "dango",
+    verifyingContract: sender,
   };
 
   const signDoc = composeTxTypedData({ messages, gas_limit: gasUsed, metadata }, domain, typedData);
@@ -66,7 +64,7 @@ export async function signAndBroadcastTx<transport extends Transport>(
   const tx = {
     sender,
     credential,
-    data,
+    data: metadata,
     msgs: messages,
     gasLimit: gasUsed,
   };
