@@ -3,6 +3,7 @@ export * from "@left-curve/sdk/utils";
 export {
   getNavigatorOS,
   getRootDomain,
+  isMobileOrTable,
 } from "./browser.js";
 
 export {
