@@ -31,6 +31,8 @@ export const QRScan: React.FC<Props> = ({ onScan, onClose, isVisisble }) => {
           </div>
           <Scanner
             onScan={([{ rawValue }]) => onScan(rawValue)}
+            allowMultiple={false}
+            components={{ audio: false }}
             formats={["qr_code"]}
             classNames={{ container: "qr-container", video: "bg-white-100" }}
           />
