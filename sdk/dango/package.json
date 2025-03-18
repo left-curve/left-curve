@@ -20,7 +20,9 @@
   "types": "./build/index.d.ts",
   "typings": "./build/index.d.ts",
   "sideEffects": false,
-  "files": ["build"],
+  "files": [
+    "build"
+  ],
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
@@ -32,7 +34,7 @@
       "import": "./build/actions/index.js",
       "default": "./build/actions/index.cjs"
     },
-     "./types": {
+    "./types": {
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
@@ -42,12 +44,12 @@
       "import": "./build/crypto.js",
       "default": "./build/crypto.cjs"
     },
-     "./encoding": {
+    "./encoding": {
       "types": "./build/encoding.d.ts",
       "import": "./build/encoding.js",
       "default": "./build/encoding.cjs"
     },
-     "./hyperlane": {
+    "./hyperlane": {
       "types": "./build/hyperlane.d.ts",
       "import": "./build/hyperlane.js",
       "default": "./build/hyperlane.cjs"
@@ -60,12 +62,24 @@
   },
   "typesVersions": {
     "*": {
-      "types": ["./build/types/index.d.ts"],
-      "actions": ["./build/actions/index.d.ts"],
-      "crypto": ["./build/crypto.d.ts"],
-      "encoding": ["./build/encoding.d.ts"],
-      "hyperlane": ["./build/hyperlane.d.ts"],
-      "utils": ["./build/utils/index.d.ts"]
+      "types": [
+        "./build/types/index.d.ts"
+      ],
+      "actions": [
+        "./build/actions/index.d.ts"
+      ],
+      "crypto": [
+        "./build/crypto.d.ts"
+      ],
+      "encoding": [
+        "./build/encoding.d.ts"
+      ],
+      "hyperlane": [
+        "./build/hyperlane.d.ts"
+      ],
+      "utils": [
+        "./build/utils/index.d.ts"
+      ]
     }
   },
   "devDependencies": {
@@ -73,11 +87,18 @@
     "vitest": "catalog:"
   },
   "dependencies": {
-    "viem": "^2.21.34",
-    "@left-curve/sdk": "workspace:^"
+    "@left-curve/sdk": "workspace:^",
+    "ox": "^0.6.10"
   },
   "license": "TBD",
   "homepage": "https://grug.build",
   "repository": "left-curve/left-curve",
-  "keywords": ["grug", "smart-contracts", "blockchain", "cryptocurrency", "web3", "typescript"]
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
 }

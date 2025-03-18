@@ -1,7 +1,7 @@
 import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 
 import type { Coins, Hex, Json, Message } from "@left-curve/sdk/types";
-import type { HashTypedDataParameters } from "viem";
+import type { Definition } from "ox/TypedData";
 
 import type {
   ArbitraryTypedData,
@@ -20,11 +20,11 @@ import type {
  * @returns The hashed typed data.
  */
 export async function hashTypedData(
-  typedData: HashTypedDataParameters<Record<string, unknown>, string>,
+  typedData: Definition<Record<string, unknown>, string>,
 ): Promise<Hex> {
-  const { hashTypedData: viemHashTypedData } = await import("viem");
+  const { encode } = await import("ox/TypedData");
 
-  return viemHashTypedData(typedData);
+  return encode(typedData);
 }
 
 /**
