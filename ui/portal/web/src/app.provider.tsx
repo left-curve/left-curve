@@ -38,7 +38,7 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
     "formatNumber",
     {
       initialValue: {
-        language: navigator.language,
+        language: "en-US",
         maxFractionDigits: 2,
         minFractionDigits: 2,
         notation: "standard",

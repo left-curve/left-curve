@@ -10,6 +10,7 @@ export interface TabsProps {
   keys?: string[];
   selectedTab?: string;
   fullWidth?: boolean;
+  layoutId: string;
 }
 
 export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
@@ -19,6 +20,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
   selectedTab,
   defaultKey,
   fullWidth,
+  layoutId,
 }) => {
   const tabs = keys ? keys : Children.toArray(children);
   const [activeTab, setActiveTab] = useControlledState(selectedTab, onTabChange, () => {
@@ -32,8 +34,9 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
 
   return (
     <motion.div
+      layoutId={layoutId}
       className={twMerge(
-        "flex text-base relative  items-center w-fit bg-green-bean-200 p-1 rounded-md",
+        "flex text-base relative items-center w-fit bg-green-bean-200 p-1 rounded-md",
         { "w-full": fullWidth },
       )}
     >

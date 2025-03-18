@@ -4,9 +4,13 @@
     "paths": {
       "~/*": ["./src/*"],
       "~/paraglide/*": ["./.paraglide/*"]
-    }
+    },
+    "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide"],
+  "buildOptions": {
+    "incremental": false
+  },
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide/**/*.js"],
   "exclude": ["node_modules"],
   "references": [
     {

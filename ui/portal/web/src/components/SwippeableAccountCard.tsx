@@ -1,8 +1,9 @@
-import { AccountCard, twMerge, useMediaQuery } from "@left-curve/applets-kit";
+import { twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
+import { AccountCard } from "./AccountCard/AccountCard";
 import { AssetsPreview } from "./AssetsPreview";
 
 const variants = {
@@ -32,27 +33,16 @@ export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVis
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { formatNumberOptions } = useApp();
   const { calculateBalance } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const totalBalance = calculateBalance(balances, { format: true });
-  const isLg = useMediaQuery("lg");
+  const totalBalance = calculateBalance(balances, {
+    format: true,
+    formatOptions: {
+      ...formatNumberOptions,
+      currency: "USD",
+    },
+  });
+  const { isLg } = useMediaQuery();
 
-  const FilledAccountCard = isConnected ? (
-    <AccountCard account={account!} balance={totalBalance} />
-  ) : (
-    <AccountCard
-      account={{
-        address: "0x000000",
-        index: 0,
-        type: "spot",
-        username: "username",
-        params: {
-          spot: { owner: "username" },
-        },
-      }}
-      balance=""
-    />
-  );
-
-  if (isLg) return FilledAccountCard;
+  if (isLg) return <AccountCard account={account!} balance={totalBalance} />;
 
   return (
     <AnimatePresence initial={false} mode="wait" custom={direction}>
@@ -78,7 +68,7 @@ export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVis
         }}
       >
         {cardVisible === 0 ? (
-          FilledAccountCard
+          <AccountCard account={account!} balance={totalBalance} />
         ) : (
           <div className="flex lg:hidden w-full max-w-[20.5rem] h-[9.75rem]">
             <AssetsPreview

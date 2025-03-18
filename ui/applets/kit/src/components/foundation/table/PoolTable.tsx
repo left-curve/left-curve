@@ -76,7 +76,7 @@ export const PoolTable: React.FC<PoolTableProps> = ({ data }) => {
           ),
         },
       ]}
-      topContent={<Tabs defaultKey="Tokens" keys={["Tokens", "Earn", "Pool"]} />}
+      topContent={<Tabs layoutId="tabs" defaultKey="Tokens" keys={["Tokens", "Earn", "Pool"]} />}
       bottomContent={
         <Button variant="secondary" className="self-center">
           View All

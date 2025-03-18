@@ -50,7 +50,8 @@
       "description": "Scan the QR code with your mobile to connect to your account."
     }
   },
-  "login": {
+  "signin": {
+    "continueWithoutLogin": "Continue without login",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
     "placeholder": "Enter your ",
     "noAccount": "Don't have an account?",
@@ -233,6 +234,14 @@
     "accounts": {
       "otherAccounts": "Other Accounts",
       "addAccount": "Add Account"
+    }
+  },
+  "validations": {
+    "errors": {
+      "amountIsRequired": "Amount is required",
+      "amountIsZero": "Amount must be greater than 0",
+      "insufficientFunds": "Insufficient funds",
+      "invalidAddress": "Invalid address"
     }
   }
 }

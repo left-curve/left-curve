@@ -1,41 +1,41 @@
-import { Table } from "@left-curve/applets-kit";
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { Table } from '@left-curve/applets-kit'
+import { useQuery } from '@tanstack/react-query'
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 const mockData = {
   block: {
     height: 123456,
     timestamp: new Date(),
-    hash: "5AE2D3C26F327C9AB4A5EB1151DF3358988C5AC5899252EC9251271A20CF0148",
+    hash: '5AE2D3C26F327C9AB4A5EB1151DF3358988C5AC5899252EC9251271A20CF0148',
   },
-  proposer: "",
+  proposer: '',
   txCount: 0,
-};
+}
 
-export const Route = createFileRoute("/(app)/_app/block/$block")({
+export const Route = createLazyFileRoute('/(app)/_app/block/$block')({
   component: RouteComponent,
-});
+})
 
 function RouteComponent() {
-  const { block } = Route.useParams();
+  const { block } = Route.useParams()
 
   const { data: blockDetails } = useQuery({
-    queryKey: ["block", block],
+    queryKey: ['block', block],
     queryFn: () => {
       return {
-        proposer: "Faucet",
+        proposer: 'Faucet',
         height: 123456,
         timestamp: new Date(),
         txs: [],
-      };
+      }
     },
-  });
+  })
 
   if (!blockDetails) {
-    return <div>Not found</div>;
+    return <div>Not found</div>
   }
 
-  const { proposer, txs, timestamp, height } = blockDetails;
+  const { proposer, txs, timestamp, height } = blockDetails
 
   return (
     <div className="w-full md:max-w-[76rem] flex flex-col gap-6 p-4 pt-6 mb-16">
@@ -71,5 +71,5 @@ function RouteComponent() {
         {/* <Table /> */}
       </div>
     </div>
-  );
+  )
 }

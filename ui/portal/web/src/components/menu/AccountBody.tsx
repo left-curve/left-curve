@@ -1,18 +1,18 @@
 import {
-  AccountCard,
   Button,
   IconAddCross,
   IconButton,
   IconChevronLeft,
   IconLogOut,
   IconMobile,
-  IconQR,
+  useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { AccountCard } from "../AccountCard/AccountCard";
 import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
@@ -24,13 +24,17 @@ export const AccountMenuBody: React.FC = () => {
   const [tab, setTab] = useState<"account" | "assets">("assets");
   const { setSidebarVisibility, showModal, formatNumberOptions } = useApp();
   const { account, connector } = useAccount();
+  const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
 
   const totalBalance = calculateBalance(balances, {
     format: true,
-    formatOptions: formatNumberOptions,
+    formatOptions: {
+      ...formatNumberOptions,
+      currency: "USD",
+    },
   });
 
   if (!account) return null;
@@ -70,9 +74,11 @@ export const AccountMenuBody: React.FC = () => {
             >
               {m["common.send"]()}
             </Button>
-            <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
-              <IconMobile />
-            </IconButton>
+            {isMd ? (
+              <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
+                <IconMobile />
+              </IconButton>
+            ) : null}
             <IconButton
               variant="secondary"
               onClick={() => {

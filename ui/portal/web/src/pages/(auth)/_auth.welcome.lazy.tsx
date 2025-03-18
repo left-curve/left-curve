@@ -1,10 +1,10 @@
-import { Button } from "@left-curve/applets-kit";
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { Button } from '@left-curve/applets-kit'
+import { Link, createLazyFileRoute } from '@tanstack/react-router'
+import { m } from '~/paraglide/messages'
 
-export const Route = createFileRoute("/(auth)/_auth/welcome")({
+export const Route = createLazyFileRoute('/(auth)/_auth/welcome')({
   component: WelcomeComponent,
-});
+})
 
 function WelcomeComponent() {
   return (
@@ -18,11 +18,13 @@ function WelcomeComponent() {
         />
         <div className="flex flex-col gap-6 items-center">
           <div className="flex flex-col gap-2 items-center justify-center text-center">
-            <h1 className="display-heading-xl">{m["welcome.title"]()}</h1>
-            <p className="text-gray-500 diatype-lg-regular">{m["welcome.description"]()}</p>
+            <h1 className="display-heading-xl">{m['welcome.title']()}</h1>
+            <p className="text-gray-500 diatype-lg-regular">
+              {m['welcome.description']()}
+            </p>
           </div>
           <Button as={Link} className="w-full md:w-[260px]" to="/">
-            {m["common.continue"]()}
+            {m['common.continue']()}
           </Button>
         </div>
       </div>
@@ -32,5 +34,5 @@ function WelcomeComponent() {
         alt="welcome-image"
       />
     </div>
-  );
+  )
 }

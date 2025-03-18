@@ -15,7 +15,7 @@ export const LoginCredentialStep: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data, previousStep } = useWizard<{ username: string }>();
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
 
   const { username } = data;
 
@@ -27,7 +27,7 @@ export const LoginCredentialStep: React.FC = () => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["login.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigingIn"](),
         });
         previousStep();
       },
@@ -47,7 +47,7 @@ export const LoginCredentialStep: React.FC = () => {
             <h1 className="h2-heavy">
               {m["common.hi"]()}, {username}
             </h1>
-            <p className="text-gray-500 diatype-m-medium">{m["login.credential.description"]()}</p>
+            <p className="text-gray-500 diatype-m-medium">{m["signin.credential.description"]()}</p>
           </div>
         </div>
         {isMd ? (

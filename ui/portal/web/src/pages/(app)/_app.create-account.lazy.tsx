@@ -1,15 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute } from '@tanstack/react-router'
 
-import { WizardProvider } from "@left-curve/applets-kit";
+import { WizardProvider } from '@left-curve/applets-kit'
 import {
   CreateAccountDepositStep,
   CreateAccountTypeStep,
   CreateAccountWrapper,
-} from "~/components/create-account";
+} from '~/components/create-account'
 
-export const Route = createFileRoute("/(app)/_app/create-account")({
+export const Route = createLazyFileRoute('/(app)/_app/create-account')({
   component: CreateAccountComponent,
-});
+})
 
 function CreateAccountComponent() {
   return (
@@ -19,5 +19,5 @@ function CreateAccountComponent() {
         <CreateAccountDepositStep />
       </WizardProvider>
     </div>
-  );
+  )
 }

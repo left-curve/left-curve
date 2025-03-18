@@ -34,7 +34,7 @@ const modals = {
 
 export const Modal: React.FC = () => {
   const { activeModal, isModalVisible, hideModal, modalProps } = useApp();
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
   const overlayRef = useRef<HTMLDivElement>(null);

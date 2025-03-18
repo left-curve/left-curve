@@ -1,11 +1,7 @@
 import { type Account, AccountType } from "@left-curve/dango/types";
 import type React from "react";
-import { twMerge } from "../../../utils";
-import { Badge } from "../Badge";
-import { BorrowBar } from "../BorrowBar";
-import TruncateText from "../TruncateText";
-import { IconCopy } from "../icons/IconCopy";
 
+import { Badge, BorrowBar, IconCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
 import { AccountCardOptions } from "./AccountCardOptions";
 
 interface Props {
