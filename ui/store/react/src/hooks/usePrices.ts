@@ -100,11 +100,11 @@ export function usePrices(parameters: UsePricesParameters = {}) {
       const response = await fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(coinsByCoingeckoId).join(",")}&vs_currencies=${currencies.join(",")}`,
       );
-      const parsedResponse: Record<CoinGeckoId, Record<string, number>> = await response.json();
+      const coinPrices: Record<CoinGeckoId, Record<string, number>> = await response.json();
 
-      const prices: Prices = Object.entries(parsedResponse).reduce((acc, [coingeckoId, prices]) => {
-        const coin = coinsByCoingeckoId[coingeckoId];
-        if (coin) acc[coin.denom] = { ...coin, prices: prices };
+      const prices: Prices = Object.entries(coins).reduce((acc, [denom, info]) => {
+        const prices = coinPrices[info.coingeckoId || ""] || { usd: 0, eur: 0 };
+        acc[denom] = { ...info, prices: prices };
         return acc;
       }, Object.create({}));
 

@@ -43,7 +43,7 @@ export const AssetsPreview: React.FC<Props> = ({ balances, showAllAssets }) => {
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
                 <p className="text-gray-500">
-                  {getPrice(balances[denom], denom, { format: true })}
+                  {getPrice(balances[denom] || "0", denom, { format: true })}
                 </p>
               </div>
             </div>
