@@ -109,7 +109,8 @@ pbkdf2                  = "0.12"
 proc-macro2             = "1"
 proptest                = "1"
 prost                   = "0.13"
-pyth-sdk                = "0.8.0"
+pyth-sdk                = "0.8"
+pythnet-sdk             = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                   = "1"
 rand                    = "0.8" # Can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                 = { version = "0.12", features = ["stream"] }
@@ -249,14 +250,6 @@ features = [
   "with-uuid",
 ]
 version = "1"
-
-# The Pyth wormhole attester is moved under pythnet-sdk legacy module.
-# The current pythnet-sdk crate is not up to date with this change yet.
-# Import from GitHub, using the latest commit at this time.
-# TODO: Change this when the crate is updated.
-[workspace.dependencies.pythnet-sdk]
-git = "https://github.com/pyth-network/pyth-crosschain"
-rev = "6077910"
 
 [profile.release]
 codegen-units    = 1
