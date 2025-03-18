@@ -8,7 +8,7 @@
     "noEmit": true
   },
   "buildOptions": {
-    "incremental": true
+    "incremental": false
   },
   "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide/**/*.js"],
   "exclude": ["node_modules"],

@@ -4,9 +4,13 @@ import type { ChangeEvent } from "react";
 
 type UseInputsOptions = {
   initialValues?: Record<string, string>;
+  strategy?: ValidateStrategy;
 };
 
+type ValidateStrategy = "onChange" | "onSubmit";
+
 type InputOptions = {
+  strategy?: ValidateStrategy;
   validate?: (value: string) => boolean | string;
   mask?: (value: string, previousValue: string) => string;
 };
@@ -17,8 +21,8 @@ type InputState = {
   options?: InputOptions;
 };
 
-export function useInputs(options?: UseInputsOptions) {
-  const { initialValues } = options || {};
+export function useInputs(options: UseInputsOptions = {}) {
+  const { initialValues, strategy: defaultStrategy = "onSubmit" } = options;
   const [inputs, setInputs] = useState<Record<string, InputState>>(() =>
     initialValues
       ? Object.fromEntries(Object.entries(initialValues).map(([key, value]) => [key, { value }]))
@@ -39,7 +43,8 @@ export function useInputs(options?: UseInputsOptions) {
 
     setError(name, undefined);
     const validate = inputOptions.current[name]?.validate;
-    if (validate) {
+    const strategy = inputOptions.current[name].strategy;
+    if (validate && strategy === "onChange") {
       const validationResult = validate(newValue);
       setError(
         name,
@@ -67,8 +72,13 @@ export function useInputs(options?: UseInputsOptions) {
   }, []);
 
   const register = useCallback(
-    (name: string, options?: InputOptions) => {
-      inputOptions.current[name] = options || {};
+    (name: string, options: InputOptions = {}) => {
+      const { strategy = defaultStrategy, mask, validate } = options;
+      inputOptions.current[name] = {
+        validate,
+        mask,
+        strategy,
+      };
 
       return {
         ref: (el: HTMLInputElement | null) => {
@@ -77,11 +87,52 @@ export function useInputs(options?: UseInputsOptions) {
         name,
         value: inputs[name]?.value || "",
         errorMessage: inputs[name]?.error,
-        onChange: (event: ChangeEvent<HTMLInputElement>) => setValue(name, event.target.value),
+        onChange: (event: ChangeEvent<HTMLInputElement> | string) =>
+          setValue(name, typeof event === "string" ? event : event.target.value),
       };
     },
     [setValue, inputs],
   );
 
-  return { register, setValue, setError, inputs, reset };
+  const revalidate = useCallback((name?: string) => {
+    const options = inputOptions.current || {};
+    const inputNames = name ? [name] : Object.keys(options);
+
+    inputNames.forEach((key) => {
+      const value = inputRefs.current[key as keyof typeof inputRefs]?.value || "";
+      const { validate } = options[key];
+      if (validate) {
+        const validationResult = validate(value);
+        setError(
+          key,
+          validationResult === true ? undefined : validationResult || "Value is not valid",
+        );
+      }
+    });
+  }, []);
+
+  const handleSubmit = useCallback(<T>(fn: (data: T) => void) => {
+    return (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      let shouldSubmit = true;
+      const options = inputOptions.current || {};
+
+      const formData = Object.entries(options).map(([key, { validate }]) => {
+        const value = inputRefs.current[key as keyof typeof inputRefs]?.value || "";
+        if (validate) {
+          const validationResult = validate(value);
+          if (validationResult !== true) {
+            setError(key, validationResult || "Value is not valid");
+            shouldSubmit = false;
+          }
+        }
+        return [key, value];
+      });
+
+      if (shouldSubmit) fn(Object.fromEntries(formData) as T);
+    };
+  }, []);
+
+  return { register, setValue, setError, inputs, reset, handleSubmit, revalidate };
 }

@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, useState } from "react";
-import { useClickAway, useDebounce } from "react-use";
+import { useClickAway } from "react-use";
 import { forwardRef, twMerge, useDOMRef } from "../../utils";
 
+import { wait } from "@left-curve/dango/utils";
 import { useControlledState } from "../../hooks";
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";
@@ -24,14 +25,12 @@ export const SearchInput = forwardRef<"input", SearchInputProps>(
 
     const OptionComponent = optComponent || <p />;
 
-    const {
-      refetch,
-      data: options,
-      isFetching,
-    } = useQuery({
-      enabled: false,
+    const { data: options, isFetching } = useQuery({
+      enabled: inputValue.length > 0,
       queryKey: ["search_input_opts", inputValue],
-      queryFn: async () => {
+      queryFn: async ({ signal }) => {
+        await wait(300);
+        if (signal.aborted) return [];
         if (!getOptionsFn) return [];
         const options = await getOptionsFn?.(inputValue);
         if (!options.length) return [];
@@ -41,19 +40,18 @@ export const SearchInput = forwardRef<"input", SearchInputProps>(
       initialData: [],
     });
 
-    useDebounce(refetch, 300, [inputValue]);
     useClickAway(menuRef, () => setShowMenu(false));
 
     return (
       <div className="relative">
         <Input
+          {...props}
           ref={ref}
           value={inputValue}
-          disabled={isFetching}
           data-1p-ignore
           onClick={() => setShowMenu(true)}
           onChange={(e) => setInputValue(e.target.value)}
-          endContent={isFetching ? <Spinner size="sm" color="white" /> : null}
+          endContent={isFetching ? <Spinner size="sm" color="gray" /> : null}
           classNames={{
             inputWrapper: showMenu && options.length ? "rounded-b-none" : "",
           }}
