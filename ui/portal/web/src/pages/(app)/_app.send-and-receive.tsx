@@ -1,10 +1,4 @@
-import {
-  capitalize,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  wait,
-} from '@left-curve/dango/utils'
+import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import {
   useAccount,
   useBalances,
@@ -12,14 +6,10 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
-} from '@left-curve/store-react'
-import {
-  createLazyFileRoute,
-  useNavigate,
-  useSearch,
-} from '@tanstack/react-router'
-import { useState } from 'react'
-import { useApp } from '~/hooks/useApp'
+} from "@left-curve/store-react";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -32,80 +22,74 @@ import {
   Tabs,
   TruncateText,
   useInputs,
-} from '@left-curve/applets-kit'
-import { isValidAddress } from '@left-curve/dango'
-import type { Address } from '@left-curve/dango/types'
-import { useMutation } from '@tanstack/react-query'
-import { z } from 'zod'
+} from "@left-curve/applets-kit";
+import { isValidAddress } from "@left-curve/dango";
+import type { Address } from "@left-curve/dango/types";
+import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
 
 const searchParamsSchema = z.object({
-  action: z.enum(['send', 'receive']).catch('send'),
-})
+  action: z.enum(["send", "receive"]).catch("send"),
+});
 
-export const Route = createLazyFileRoute('/(app)/_app/send-and-receive')({
+export const Route = createFileRoute("/(app)/_app/send-and-receive")({
   component: SendAndReceiveComponent,
   validateSearch: searchParamsSchema,
-})
+});
 
 function SendAndReceiveComponent() {
-  const { action } = useSearch({ strict: false })
-  const navigate = useNavigate({ from: '/send-and-receive' })
-  const { formatNumberOptions } = useApp()
+  const { action } = useSearch({ strict: false });
+  const navigate = useNavigate({ from: "/send-and-receive" });
+  const { formatNumberOptions } = useApp();
 
-  const [selectedDenom, setSelectedDenom] = useState('uusdc')
-  const { register, setError, setValue, inputs, reset } = useInputs()
-  const { address, amount } = inputs
+  const [selectedDenom, setSelectedDenom] = useState("uusdc");
+  const { register, setError, setValue, inputs, reset } = useInputs();
+  const { address, amount } = inputs;
 
-  const { account, isConnected } = useAccount()
-  const chainId = useChainId()
-  const config = useConfig()
-  const { data: signingClient } = useSigningClient()
+  const { account, isConnected } = useAccount();
+  const chainId = useChainId();
+  const config = useConfig();
+  const { data: signingClient } = useSigningClient();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
     address: account?.address,
-  })
+  });
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions })
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
-  const coins = config.coins[chainId]
-  const selectedCoin = coins[selectedDenom]
+  const coins = config.coins[chainId];
+  const selectedCoin = coins[selectedDenom];
 
-  const humanAmount = formatUnits(
-    balances[selectedDenom] || 0,
-    selectedCoin.decimals,
-  )
+  const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
 
   const price = getPrice(humanAmount, selectedDenom, {
     format: true,
-    formatOptions: { ...formatNumberOptions, currency: 'USD' },
-  })
+    formatOptions: { ...formatNumberOptions, currency: "USD" },
+  });
 
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
-      if (!amount?.value) return setError('amount', 'Amount is required')
-      if (!address?.value) return setError('address', 'Address is required')
-      if (!signingClient) throw new Error('error: no signing client')
+      if (!amount?.value) return setError("amount", "Amount is required");
+      if (!address?.value) return setError("address", "Address is required");
+      if (!signingClient) throw new Error("error: no signing client");
       if (!isValidAddress(address.value)) {
-        return setError('address', 'Invalid address')
+        return setError("address", "Invalid address");
       }
 
       await signingClient.transfer({
         to: address.value as Address,
         sender: account!.address as Address,
         coins: {
-          [selectedCoin.denom]: parseUnits(
-            amount.value,
-            selectedCoin.decimals,
-          ).toString(),
+          [selectedCoin.denom]: parseUnits(amount.value, selectedCoin.decimals).toString(),
         },
-      })
-      await wait(1000)
+      });
+      await wait(1000);
     },
     onSuccess: () => {
-      reset()
-      refreshBalances()
+      reset();
+      refreshBalances();
     },
-  })
+  });
 
   return (
     <div className="flex w-full justify-center items-center">
@@ -115,46 +99,43 @@ function SendAndReceiveComponent() {
           className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full"
         >
           <Tabs
-            selectedTab={isConnected ? action : 'send'}
-            keys={isConnected ? ['send', 'receive'] : ['send']}
+            selectedTab={isConnected ? action : "send"}
+            keys={isConnected ? ["send", "receive"] : ["send"]}
             fullWidth
-            onTabChange={(v) =>
-              navigate({ search: { action: v }, replace: false })
-            }
+            onTabChange={(v) => navigate({ search: { action: v }, replace: false })}
           />
 
-          {action === 'send' ? (
+          {action === "send" ? (
             <>
               <div className="flex flex-col w-full gap-4">
                 <Input
                   label="You're sending"
                   placeholder="0"
                   classNames={{
-                    base: 'z-20',
-                    inputWrapper: 'pl-0 py-3 flex-col h-auto gap-[6px]',
-                    inputParent: 'h-[34px] h3-bold',
-                    input: '!h3-bold',
+                    base: "z-20",
+                    inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
+                    inputParent: "h-[34px] h3-bold",
+                    input: "!h3-bold",
                   }}
                   isDisabled={isPending}
-                  {...register('amount', {
+                  {...register("amount", {
                     validate: (v) => {
-                      if (!v) return 'Amount is required'
-                      if (Number(v) <= 0) return 'Amount must be greater than 0'
-                      if (Number(v) > Number(humanAmount))
-                        return 'Insufficient funds'
-                      return true
+                      if (!v) return "Amount is required";
+                      if (Number(v) <= 0) return "Amount must be greater than 0";
+                      if (Number(v) > Number(humanAmount)) return "Insufficient funds";
+                      return true;
                     },
                     mask: (v, prev) => {
-                      const regex = /^\d+(\.\d{0,18})?$/
-                      if (v === '' || regex.test(v)) return v
-                      return prev
+                      const regex = /^\d+(\.\d{0,18})?$/;
+                      if (v === "" || regex.test(v)) return v;
+                      return prev;
                     },
                   })}
                   startText="right"
                   startContent={
                     <CoinSelector
                       label="coins"
-                      classNames={{ trigger: 'p-0' }}
+                      classNames={{ trigger: "p-0" }}
                       coins={Object.values(coins)}
                       selectedKey={selectedDenom}
                       isDisabled={isPending}
@@ -167,7 +148,7 @@ function SendAndReceiveComponent() {
                         <span>
                           {formatNumber(humanAmount, {
                             ...formatNumberOptions,
-                            notation: 'compact',
+                            notation: "compact",
                             maxFractionDigits: selectedCoin.decimals / 3,
                           })}
                         </span>
@@ -176,7 +157,7 @@ function SendAndReceiveComponent() {
                           variant="secondary"
                           size="xs"
                           className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                          onClick={() => setValue('amount', humanAmount)}
+                          onClick={() => setValue("amount", humanAmount)}
                         >
                           Max
                         </Button>
@@ -186,10 +167,10 @@ function SendAndReceiveComponent() {
                   }
                 />
                 <AccountSearchInput
-                  {...register('address')}
+                  {...register("address")}
                   label="To"
                   placeholder="Wallet address or name"
-                  onChange={(v) => setValue('address', v)}
+                  onChange={(v) => setValue("address", v)}
                   isDisabled={isPending}
                 />
               </div>
@@ -225,5 +206,5 @@ function SendAndReceiveComponent() {
         </ResizerContainer>
       </div>
     </div>
-  )
+  );
 }
