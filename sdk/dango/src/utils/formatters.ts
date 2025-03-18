@@ -57,12 +57,22 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
     useGrouping = true,
   } = options;
   const amount = typeof _amount_ === "string" ? Number(_amount_) : _amount_;
+
+  const currencyOptions = currency
+    ? ({
+        currency,
+        currencyDisplay: "narrowSymbol",
+        notation: "compact",
+        style: "currency",
+      } as const)
+    : {};
+
   return new Intl.NumberFormat(language, {
-    ...(currency ? { currency, currencyDisplay: "narrowSymbol" } : {}),
     notation,
     minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: maxFractionDigits,
     useGrouping,
+    ...currencyOptions,
   }).format(amount);
 }
 

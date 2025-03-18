@@ -1,5 +1,4 @@
 import {
-  AccountCard,
   Button,
   IconAddCross,
   IconButton,
@@ -13,6 +12,7 @@ import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { AccountCard } from "../AccountCard/AccountCard";
 import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
@@ -31,7 +31,10 @@ export const AccountMenuBody: React.FC = () => {
 
   const totalBalance = calculateBalance(balances, {
     format: true,
-    formatOptions: formatNumberOptions,
+    formatOptions: {
+      ...formatNumberOptions,
+      currency: "USD",
+    },
   });
 
   if (!account) return null;

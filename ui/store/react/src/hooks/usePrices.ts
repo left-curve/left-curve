@@ -90,17 +90,27 @@ export function usePrices(parameters: UsePricesParameters = {}) {
   }
 
   const { data, ...rest } = useQuery<Prices>({
+    enabled: typeof window !== "undefined",
     queryKey: ["prices", coins, currencies],
-    enabled: typeof window !== "undefined" && window.location.protocol === "https:",
     queryFn: async () => {
       const coinsByCoingeckoId = Object.fromEntries(
         Object.values(coins).map((c) => [c.coingeckoId, c]),
       );
 
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(coinsByCoingeckoId).join(",")}&vs_currencies=${currencies.join(",")}`,
-      );
-      const coinPrices: Record<CoinGeckoId, Record<string, number>> = await response.json();
+      const coinPrices = await (async () => {
+        if (window.location.protocol !== "https:") {
+          return Object.keys(coinsByCoingeckoId).reduce((acc, key) => {
+            const usd = Math.random() * 100_000;
+            acc[key] = { usd, eur: usd * 0.95 };
+            return acc;
+          }, Object.create({}));
+        }
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(coinsByCoingeckoId).join(",")}&vs_currencies=${currencies.join(",")}`,
+        );
+        const coinPrices: Record<CoinGeckoId, Record<string, number>> = await response.json();
+        return coinPrices;
+      })();
 
       const prices: Prices = Object.entries(coins).reduce((acc, [denom, info]) => {
         const prices = coinPrices[info.coingeckoId || ""] || { usd: 0, eur: 0 };

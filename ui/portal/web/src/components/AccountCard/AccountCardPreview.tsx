@@ -1,9 +1,7 @@
 import { useBalances, usePrices } from "@left-curve/store-react";
-import { twMerge } from "../../../utils";
 
+import { Badge, TruncateText, twMerge } from "@left-curve/applets-kit";
 import type { Account, AccountTypes } from "@left-curve/dango/types";
-import { Badge } from "../Badge";
-import TruncateText from "../TruncateText";
 import { AccountCardOptions } from "./AccountCardOptions";
 
 export const AccountCardPreview: React.FC<{

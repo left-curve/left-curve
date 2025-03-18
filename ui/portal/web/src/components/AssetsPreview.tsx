@@ -1,6 +1,7 @@
 import { Button } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
-import { useChainId, useConfig, usePrices } from "@left-curve/store-react";
+import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { useChainId, useConfig } from "@left-curve/store-react";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -16,8 +17,6 @@ export const AssetsPreview: React.FC<Props> = ({ balances, showAllAssets }) => {
   const { formatNumberOptions } = useApp();
 
   const coins = config.coins[chainId];
-
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
   const sortedCoinsByBalance = Object.entries(coins).sort(([denomA], [denomB]) => {
     const balanceA = BigInt(balances[denomA] || "0");
@@ -37,13 +36,16 @@ export const AssetsPreview: React.FC<Props> = ({ balances, showAllAssets }) => {
       </div>
       <div className="flex flex-wrap gap-4 items-center justify-between">
         {sortedCoinsByBalance.map(([denom, coin]) => {
+          const amount = balances[denom];
           return (
             <div className="flex gap-2 items-center" key={`preview-asset-${denom}`}>
               <img src={coin.logoURI} alt={coin.name} className="h-7 w-7 drag-none select-none" />
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
                 <p className="text-gray-500">
-                  {getPrice(balances[denom] || "0", denom, { format: true })}
+                  {amount
+                    ? formatNumber(formatUnits(amount, coins[denom].decimals), formatNumberOptions)
+                    : "0"}
                 </p>
               </div>
             </div>
