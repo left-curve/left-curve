@@ -89,6 +89,7 @@ impl StartCmd {
                     indexer.context.clone(),
                     Arc::new(app),
                     cfg.tendermint.rpc_addr.clone(),
+                    indexer.indexer_path.clone(),
                 );
 
                 // NOTE: If the httpd was heavily used, it would be better to

@@ -1,11 +1,12 @@
 use {
     actix_codec::Framed,
     actix_http::ws,
-    actix_test::{Client, TestServer},
+    actix_test::{read_body, Client, TestServer},
     actix_web::{
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
         middleware::{Compress, Logger},
+        test::try_call_service,
         web::ServiceConfig,
         App,
     },
@@ -127,6 +128,33 @@ where
     } else {
         Err(anyhow!("can't find {} in response", request_body.name))
     }
+}
+
+pub async fn call_api<R>(
+    app: App<
+        impl ServiceFactory<
+                ServiceRequest,
+                Response = ServiceResponse<impl MessageBody>,
+                Config = (),
+                InitError = (),
+                Error = actix_web::Error,
+            > + 'static,
+    >,
+    uri: &str,
+) -> anyhow::Result<R>
+where
+    R: DeserializeOwned,
+{
+    let app = actix_web::test::init_service(app).await;
+
+    let request = actix_web::test::TestRequest::get().uri(uri).to_request();
+
+    let res = try_call_service(&app, request)
+        .await
+        .map_err(|_err| anyhow!("Failed to call service"))?;
+    let text_response = read_body(res).await;
+
+    Ok(serde_json::from_slice(&text_response)?)
 }
 
 /// Calls a GraphQL subscription and returns a stream
