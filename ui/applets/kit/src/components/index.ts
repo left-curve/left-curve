@@ -19,7 +19,6 @@ export { Input } from "./foundation/Input";
 export { Stepper } from "./foundation/Stepper";
 export { Carousel } from "./foundation/Carousel";
 export { ResizerContainer } from "./foundation/ResizerContainer";
-export { AssetCard } from "./foundation/AssetCard";
 export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";

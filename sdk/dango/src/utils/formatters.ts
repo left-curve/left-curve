@@ -27,28 +27,42 @@ export function formatCurrency(amount: number | bigint, options: CurrencyFormatt
   }).format(amount);
 }
 
-export type NumberFormatterOptions = {
+export type FormatNumberOptions = {
   language: string;
+  currency?: string;
+  style?: "decimal" | "percent" | "currency";
+  notation?: "standard" | "scientific" | "engineering" | "compact";
   maxFractionDigits?: number;
   minFractionDigits?: number;
+  useGrouping?: boolean;
 };
 
 /**
  * Format a number with the given options.
  * @param amount The number to format.
  * @param options The formatting options.
+ * @param options.currency The currency code. Ex: "USD".
  * @param options.language The language to use. Ex: "en-US".
  * @param options.maxFractionDigits The maximum number of fraction digits.
  * @param options.minFractionDigits The minimum number of fraction digits.
  * @returns The formatted number.
  */
-export function formatNumber(_amount_: number | bigint | string, options: NumberFormatterOptions) {
-  const { language, maxFractionDigits = 2, minFractionDigits = 2 } = options;
+export function formatNumber(_amount_: number | bigint | string, options: FormatNumberOptions) {
+  const {
+    language,
+    currency,
+    maxFractionDigits = 2,
+    minFractionDigits = 2,
+    notation = "standard",
+    useGrouping = true,
+  } = options;
   const amount = typeof _amount_ === "string" ? Number(_amount_) : _amount_;
   return new Intl.NumberFormat(language, {
-    notation: "compact",
+    ...(currency ? { currency, currencyDisplay: "narrowSymbol" } : {}),
+    notation,
     minimumFractionDigits: minFractionDigits,
     maximumFractionDigits: maxFractionDigits,
+    useGrouping,
   }).format(amount);
 }
 

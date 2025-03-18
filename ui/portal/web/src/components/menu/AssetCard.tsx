@@ -2,6 +2,7 @@ import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store-react";
 
 import type { Coin } from "@left-curve/dango/types";
+import { useApp } from "~/hooks/useApp";
 
 interface Props {
   coin: Coin;
@@ -9,10 +10,11 @@ interface Props {
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
   const { coins, state } = useConfig();
+  const { formatNumberOptions } = useApp();
   const coinInfo = coins[state.chainId][coin.denom];
   const humanAmount = formatUnits(coin.amount, coinInfo.decimals);
 
-  const { getPrice } = usePrices();
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
@@ -25,7 +27,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
         )}
         <div className="flex flex-col text-base">
           <p className="text-gray-500">{coinInfo.symbol}</p>
-          <p>{formatNumber(humanAmount, { language: navigator.language })}</p>
+          <p>{formatNumber(humanAmount, formatNumberOptions)}</p>
         </div>
       </div>
       <div className="flex flex-col">

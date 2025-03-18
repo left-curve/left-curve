@@ -27,7 +27,7 @@ function SettingsComponent() {
   const isMd = useMediaQuery("md");
   const { history } = useRouter();
   const { isConnected } = useAccount();
-  const { showModal } = useApp();
+  const { showModal, setFormatNumberOptions, formatNumberOptions } = useApp();
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
       <h2 className="flex gap-2 items-center">
@@ -60,8 +60,22 @@ function SettingsComponent() {
             <IconFormatNumber className="text-gray-500" />
             <span className="diatype-m-bold text-gray-700"> {m["settings.number"]()}</span>
           </p>
-          <Select defaultSelectedKey="en" label="Number Format">
-            <SelectItem key="en">1234.00</SelectItem>
+
+          <Select
+            defaultSelectedKey={formatNumberOptions.language}
+            label="Format Number Options"
+            onSelectionChange={(key) => [
+              setFormatNumberOptions((prev) => ({
+                ...prev,
+                language: key.toString(),
+                useGrouping: key !== "de-DE",
+              })),
+            ]}
+          >
+            <SelectItem key="en-US">1,234.00</SelectItem>
+            <SelectItem key="es-ES">1.234,00</SelectItem>
+            <SelectItem key="de-DE">1234,00</SelectItem>
+            <SelectItem key="fr-FR">1 234,00</SelectItem>
           </Select>
         </div>
         {isConnected ? (

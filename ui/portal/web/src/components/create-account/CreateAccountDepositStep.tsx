@@ -1,5 +1,5 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
-import { formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import {
   useAccount,
   useBalances,
@@ -12,6 +12,7 @@ import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 import { useToast } from "../Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
@@ -24,6 +25,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const chainId = useChainId();
   const { toast } = useToast();
   const { account, refreshAccounts } = useAccount();
+  const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
 
   const { data: balances = {}, refetch: refreshBalances } = useBalances({
@@ -82,7 +84,7 @@ export const CreateAccountDepositStep: React.FC = () => {
             <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
               <span>{usdcInfo.symbol}</span>
-              <span>{humanBalance}</span>
+              <span>{formatNumber(humanBalance, formatNumberOptions)}</span>
             </p>
           </div>
         }

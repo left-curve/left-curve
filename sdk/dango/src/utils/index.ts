@@ -16,7 +16,7 @@ export {
 export {
   type CurrencyFormatterOptions,
   formatCurrency,
-  type NumberFormatterOptions,
+  type FormatNumberOptions,
   formatNumber,
   formatUnits,
   parseUnits,

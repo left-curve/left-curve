@@ -2,6 +2,7 @@ import { Button } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
 import { useChainId, useConfig, usePrices } from "@left-curve/store-react";
 import type React from "react";
+import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 
 interface Props {
@@ -12,10 +13,11 @@ interface Props {
 export const AssetsPreview: React.FC<Props> = ({ balances, showAllAssets }) => {
   const config = useConfig();
   const chainId = useChainId();
+  const { formatNumberOptions } = useApp();
 
   const coins = config.coins[chainId];
 
-  const { calculateBalance } = usePrices();
+  const { calculateBalance } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
   return (
     <div className="flex-col bg-rice-25 [box-shadow:0px_-1px_2px_0px_#F1DBBA80,_0px_2px_4px_0px_#AB9E8A66] rounded-md p-4 gap-4 w-full">
