@@ -4,10 +4,14 @@
     "paths": {
       "~/*": ["./src/*"],
       "~/paraglide/*": ["./.paraglide/*"]
-    }
+    },
+    "noEmit": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide"],
-  "exclude": ["node_modules", ".paraglide"],
+  "buildOptions": {
+    "incremental": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "exclude": ["node_modules"],
   "references": [
     {
       "path": "../../applets/kit"
