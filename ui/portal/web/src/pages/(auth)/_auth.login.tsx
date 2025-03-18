@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { WizardProvider } from '@left-curve/applets-kit'
 import { deserializeJson } from '@left-curve/dango/encoding'
@@ -8,7 +8,7 @@ import {
   LoginWrapper,
 } from '~/components/login'
 
-export const Route = createLazyFileRoute('/(auth)/_auth/login')({
+export const Route = createFileRoute('/(auth)/_auth/login')({
   loader: () => {
     const isFirstVisit = localStorage.getItem('dango.firstVisit')
     return {
