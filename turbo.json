@@ -26,5 +26,5 @@
       "outputs": [".next/**", "!.next/cache/**", "build/**"]
     }
   },
-  "globalEnv": ["NEXT_PUBLIC_FULLPAGE_KEY"]
+  "globalEnv": ["NEXT_PUBLIC_FULLPAGE_KEY", "PUBLIC_WEBRTC_URI"]
 }

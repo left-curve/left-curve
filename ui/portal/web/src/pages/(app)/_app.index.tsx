@@ -1,14 +1,10 @@
-import { useAccount, useBalances } from "@left-curve/store-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconChevronDown, PoolTable, StrategyCard } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
 import { useRef, useState } from "react";
-import { AssetsPreview } from "~/components/AssetsPreview";
-import { ButtonLink } from "~/components/ButtonLink";
 import { FavAppletSection } from "~/components/FavAppletSection";
-import { DotsIndicator, SwippeableAccountCard } from "~/components/SwippeableAccountCard";
-import { m } from "~/paraglide/messages";
+import { DotsIndicator } from "~/components/SwippeableAccountCard";
+import { WelcomeHeader } from "~/components/WelcomeHeader";
 
 const mockDataTable = [
   {
@@ -54,15 +50,17 @@ const mockDataTable = [
 ];
 
 export const Route = createFileRoute("/(app)/_app/")({
+  beforeLoad: async () => {
+    const image = new Image();
+    image.src = "/images/characters/group.svg";
+    await image.decode();
+  },
   component: OverviewComponent,
 });
 
 function OverviewComponent() {
-  const { account, isConnected } = useAccount();
-  const { setSidebarVisibility } = useApp();
   const [cardMobileVisible, setCardMobileVisible] = useState(0);
 
-  const { data: balances = {} } = useBalances({ address: account?.address });
   const topYieldsRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = () => {
@@ -72,43 +70,10 @@ function OverviewComponent() {
   return (
     <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-8 p-4 pb-32">
       <div className="w-full flex flex-col gap-8 min-h-[100dvh] lg:min-h-fit relative">
-        <div className="rounded-3xl bg-rice-50 shadow-card-shadow flex flex-col lg:flex-row gap-4 w-full p-4 items-center lg:items-start">
-          <SwippeableAccountCard
-            cardVisible={cardMobileVisible}
-            setCardVisible={setCardMobileVisible}
-          />
-
-          <div className="w-full flex flex-col lg:gap-4 items-center">
-            <div className="hidden lg:flex w-full">
-              <AssetsPreview
-                balances={balances}
-                showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}
-              />
-            </div>
-
-            {isConnected ? (
-              <div className="lg:self-end flex gap-4 items-center justify-center w-full lg:max-w-[256px]">
-                <ButtonLink
-                  fullWidth
-                  size="md"
-                  to="/send-and-receive"
-                  search={{ action: "receive" }}
-                >
-                  {m["common.funds"]()}
-                </ButtonLink>
-                <ButtonLink
-                  fullWidth
-                  variant="secondary"
-                  size="md"
-                  to="/send-and-receive"
-                  search={{ action: "send" }}
-                >
-                  {m["common.send"]()}
-                </ButtonLink>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <WelcomeHeader
+          cardMobileVisible={cardMobileVisible}
+          setCardMobileVisible={setCardMobileVisible}
+        />
 
         <DotsIndicator cardVisible={cardMobileVisible} setCardVisible={setCardMobileVisible} />
 

@@ -1,7 +1,15 @@
-import { capitalize, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
+import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import {
+  useAccount,
+  useBalances,
+  useChainId,
+  useConfig,
+  usePrices,
+  useSigningClient,
+} from "@left-curve/store-react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -14,7 +22,6 @@ import {
   Tabs,
   TruncateText,
   useInputs,
-  useSigningClient,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
@@ -33,6 +40,7 @@ export const Route = createFileRoute("/(app)/_app/send-and-receive")({
 function SendAndReceiveComponent() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/send-and-receive" });
+  const { formatNumberOptions } = useApp();
 
   const [selectedDenom, setSelectedDenom] = useState("uusdc");
   const { register, setError, setValue, inputs, reset } = useInputs();
@@ -47,10 +55,17 @@ function SendAndReceiveComponent() {
     address: account?.address,
   });
 
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
   const coins = config.coins[chainId];
   const selectedCoin = coins[selectedDenom];
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
+
+  const price = getPrice(humanAmount, selectedDenom, {
+    format: true,
+    formatOptions: { ...formatNumberOptions, currency: "USD" },
+  });
 
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
@@ -130,8 +145,13 @@ function SendAndReceiveComponent() {
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
                       <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
-                        <span>{selectedCoin.symbol}</span>
-                        <span>{humanAmount}</span>
+                        <span>
+                          {formatNumber(humanAmount, {
+                            ...formatNumberOptions,
+                            notation: "compact",
+                            maxFractionDigits: selectedCoin.decimals / 3,
+                          })}
+                        </span>
                         <Button
                           isDisabled={isPending}
                           variant="secondary"
@@ -142,7 +162,7 @@ function SendAndReceiveComponent() {
                           Max
                         </Button>
                       </div>
-                      <p>{humanAmount}</p>
+                      <p>{price}</p>
                     </div>
                   }
                 />

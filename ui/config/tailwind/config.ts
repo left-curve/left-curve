@@ -8,6 +8,9 @@ export const tailwindConfig: Partial<Config> = {
       status: {
         success: "#25B12A",
       },
+      black: {
+        DEFAULT: "#000000",
+      },
       gray: {
         25: "#FAFAFA",
         50: "#F5F4F4",

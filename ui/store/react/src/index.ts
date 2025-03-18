@@ -18,7 +18,7 @@ export { createStorage, createMemoryStorage } from "@left-curve/store";
 /*                                 Connectors                                 */
 /* -------------------------------------------------------------------------- */
 
-export { eip1193, passkey, eip6963 } from "@left-curve/store";
+export { eip1193, passkey, eip6963, session } from "@left-curve/store";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Hooks                                   */
@@ -105,3 +105,25 @@ export {
   type UseAccountInfoReturnType,
   useAccountInfo,
 } from "./hooks/useAccountInfo.js";
+
+export {
+  type UseDataChannelParamaters,
+  type UseDataChannelReturnType,
+  useDataChannel,
+} from "./hooks/useDataChannel.js";
+
+export {
+  type UseLoginWithDesktopParameters,
+  type UseLoginWithDesktopReturnType,
+  useLoginWithDesktop,
+} from "./hooks/useLoginWithDesktop.js";
+
+export {
+  type UseLoginParameters,
+  type UseLoginReturnType,
+  useLogin,
+} from "./hooks/useLogin.js";
+
+export { useSessionKey } from "./hooks/useSessionKey.js";
+
+export { useSigningClient } from "./hooks/useSigningClient.js";

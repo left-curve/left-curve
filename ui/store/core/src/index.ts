@@ -18,6 +18,7 @@ export { createConnector } from "./connectors/createConnector.js";
 export { passkey } from "./connectors/passkey.js";
 export { eip1193 } from "./connectors/eip1193.js";
 export { eip6963 } from "./connectors/eip6963.js";
+export { session } from "./connectors/session.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

@@ -71,7 +71,7 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
                 animate="visible"
               >
                 {connectors.map((connector) => {
-                  if (connector.type === "passkey") return null;
+                  if (["passkey", "session"].includes(connector.type)) return null;
                   return (
                     <motion.div key={connector.id} variants={childVariants}>
                       <Button

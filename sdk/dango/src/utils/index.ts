@@ -16,8 +16,12 @@ export {
 export {
   type CurrencyFormatterOptions,
   formatCurrency,
-  type NumberFormatterOptions,
+  type FormatNumberOptions,
   formatNumber,
   formatUnits,
   parseUnits,
 } from "./formatters.js";
+
+export { Actions } from "./actions.js";
+
+export { DataChannel } from "./webrtc.js";
