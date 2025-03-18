@@ -34,9 +34,8 @@ export const SearchMenu: React.FC = () => {
   useEffect(() => {
     if (!isLg) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isSearchBarVisible && e.key === "k" && e.ctrlKey) {
-        setSearchBarVisibility(true);
-      } else if (isSearchBarVisible && e.key === "Escape") {
+      if (e.metaKey || e.ctrlKey) return;
+      if (isSearchBarVisible && e.key === "Escape") {
         setSearchBarVisibility(false);
         setSearchText("");
         inputRef.current?.blur();
