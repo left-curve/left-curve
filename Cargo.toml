@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "config-parser",
   "dango/account/*",
   "dango/app",
   "dango/auth",
@@ -84,6 +85,7 @@ clru                    = "0.6"
 colored                 = "3"
 colored_json            = "5"
 config                  = "0.15"
+config-parser           = { path = "config-parser" }
 criterion               = "0.5"
 data-encoding           = "2"
 dialoguer               = "0.11"
