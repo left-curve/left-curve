@@ -56,4 +56,5 @@ book/papers/**/*.synctex.gz
 
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
+networks/**/configs/cometbft/config/write-file-atomic-*
 networks/**/data
