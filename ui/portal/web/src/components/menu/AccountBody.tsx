@@ -22,13 +22,16 @@ import { Modals } from "../Modal";
 export const AccountMenuBody: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"account" | "assets">("assets");
-  const { setSidebarVisibility, showModal } = useApp();
+  const { setSidebarVisibility, showModal, formatNumberOptions } = useApp();
   const { account, connector } = useAccount();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
 
-  const totalBalance = calculateBalance(balances, { format: true });
+  const totalBalance = calculateBalance(balances, {
+    format: true,
+    formatOptions: formatNumberOptions,
+  });
 
   if (!account) return null;
 

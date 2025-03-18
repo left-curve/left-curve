@@ -30,7 +30,8 @@ export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVis
   const { setSidebarVisibility } = useApp();
   const [direction, setDirection] = useState(0);
   const { data: balances = {} } = useBalances({ address: account?.address });
-  const { calculateBalance } = usePrices();
+  const { formatNumberOptions } = useApp();
+  const { calculateBalance } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const totalBalance = calculateBalance(balances, { format: true });
   const isLg = useMediaQuery("lg");
 

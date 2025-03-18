@@ -19,7 +19,6 @@ export { Input } from "./foundation/Input";
 export { Stepper } from "./foundation/Stepper";
 export { Carousel } from "./foundation/Carousel";
 export { ResizerContainer } from "./foundation/ResizerContainer";
-export { AssetCard } from "./foundation/AssetCard";
 export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";
@@ -70,6 +69,8 @@ export { IconAlert } from "./foundation/icons/IconAlert";
 export { IconQR } from "./foundation/icons/IconQR";
 export { IconPasskey } from "./foundation/icons/IconPasskey";
 export { IconMobile } from "./foundation/icons/IconMobile";
+export { IconFormatNumber } from "./foundation/icons/IconFormatNumber";
+export { IconLanguage } from "./foundation/icons/IconLanguage";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

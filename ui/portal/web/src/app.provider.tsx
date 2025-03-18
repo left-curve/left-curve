@@ -1,16 +1,13 @@
-import { DangoStoreProvider } from "@left-curve/store-react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { type PropsWithChildren, createContext, useCallback, useState } from "react";
-import { config } from "../store.config";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 0,
-    },
-  },
-});
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import { useStorage } from "@left-curve/store-react";
+import {
+  type Dispatch,
+  type PropsWithChildren,
+  type SetStateAction,
+  createContext,
+  useCallback,
+  useState,
+} from "react";
 
 type AppState = {
   isSidebarVisible: boolean;
@@ -21,6 +18,8 @@ type AppState = {
   setSearchBarVisibility: (visibility: boolean) => void;
   showModal: (modalName: string, modalProps?: any) => void;
   hideModal: () => void;
+  formatNumberOptions: FormatNumberOptions;
+  setFormatNumberOptions: Dispatch<SetStateAction<FormatNumberOptions>>;
   isModalVisible: boolean;
   activeModal?: string;
   modalProps: any;
@@ -35,6 +34,17 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const [activeModal, setSelectedModal] = useState<string>();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [modalProps, setModalProps] = useState<Record<string, any>>({});
+  const [formatNumberOptions, setFormatNumberOptions] = useStorage<FormatNumberOptions>(
+    "formatNumber",
+    {
+      initialValue: {
+        language: navigator.language,
+        maxFractionDigits: 2,
+        minFractionDigits: 2,
+        notation: "standard",
+      },
+    },
+  );
 
   const showModal = useCallback((modalName: string, modalProps?: any) => {
     setModalProps(modalProps || {});
@@ -45,26 +55,24 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const hideModal = useCallback(() => setIsModalVisible(false), [setIsModalVisible]);
 
   return (
-    <DangoStoreProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <AppContext.Provider
-          value={{
-            isSidebarVisible,
-            setSidebarVisibility,
-            isNotificationMenuVisible,
-            setNotificationMenuVisibility,
-            isSearchBarVisible,
-            setSearchBarVisibility,
-            showModal,
-            hideModal,
-            isModalVisible,
-            activeModal,
-            modalProps,
-          }}
-        >
-          {children}
-        </AppContext.Provider>
-      </QueryClientProvider>
-    </DangoStoreProvider>
+    <AppContext.Provider
+      value={{
+        formatNumberOptions,
+        setFormatNumberOptions,
+        isSidebarVisible,
+        setSidebarVisibility,
+        isNotificationMenuVisible,
+        setNotificationMenuVisibility,
+        isSearchBarVisible,
+        setSearchBarVisibility,
+        showModal,
+        hideModal,
+        isModalVisible,
+        activeModal,
+        modalProps,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
   );
 };
