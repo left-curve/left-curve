@@ -1,15 +1,22 @@
-import { Birdo, Button, Carousel, ResizerContainer, twMerge } from "@left-curve/applets-kit";
+import { Button, Carousel, ResizerContainer, twMerge } from "@left-curve/applets-kit";
 import { useAccount, useStorage } from "@left-curve/store-react";
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
-import { useEffect } from "react";
+import { type PropsWithChildren, useEffect } from "react";
 
-export const LoginWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
+interface Props {
+  isFirstVisit: boolean;
+}
+
+export const LoginWrapper: React.FC<PropsWithChildren<Props>> = ({
+  children,
+  isFirstVisit: firstVisit,
+}) => {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
 
   const [isFirstVisit, setIsFirstVisit] = useStorage<boolean>("firstVisit", {
-    initialValue: true,
+    initialValue: firstVisit,
   });
 
   useEffect(() => {
