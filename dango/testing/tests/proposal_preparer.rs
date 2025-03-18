@@ -46,7 +46,7 @@ fn proposal_pyth() {
             })
             .collect::<Vec<_>>();
 
-        // Verify that the there is the cache for the PythIds.
+        // Create cache for ids if not present.
         pyth_ids.push(NOT_USED_ID);
         PythClientCache::new(PYTH_URL)
             .unwrap()
