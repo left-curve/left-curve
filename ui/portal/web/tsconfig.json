@@ -7,7 +7,7 @@
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide"],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", ".paraglide"],
   "references": [
     {
       "path": "../../applets/kit"
