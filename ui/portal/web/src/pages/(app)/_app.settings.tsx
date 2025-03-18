@@ -39,7 +39,7 @@ function SettingsComponent() {
         <span className="h3-bold text-gray-900">{m["settings.title"]()}</span>
       </h2>
       <div className="rounded-xl bg-rice-25 shadow-card-shadow flex flex-col w-full px-2 py-4">
-        <h3 className="h4-bold text-gray-900 px-2 pb-">{m["settings.display"]()}</h3>
+        <h3 className="h4-bold text-gray-900 px-2 pb-4">{m["settings.display"]()}</h3>
         <div className="flex items-center justify-between py-2 rounded-md">
           <p className="flex items-center justify-center gap-2 px-2">
             <IconLanguage className="text-gray-500" />

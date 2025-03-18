@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled ? "lg:bg-white-100 lg:shadow-card-shadow" : "bg-transparent shadow-none",
       )}
     >
-      <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
+      <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
             src="/favicon.svg"
@@ -104,8 +104,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             )}
           </Button>
         </div>
+        <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      <NotificationsMenu buttonRef={buttonNotificationsRef} />
       {isLg ? <AccountDesktopMenu /> : <AccountMobileMenu />}
     </header>
   );
