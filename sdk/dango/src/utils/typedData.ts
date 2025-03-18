@@ -22,9 +22,9 @@ import type {
 export async function hashTypedData(
   typedData: Definition<Record<string, unknown>, string>,
 ): Promise<Hex> {
-  const { encode } = await import("ox/TypedData");
+  const { getSignPayload } = await import("ox/TypedData");
 
-  return encode(typedData);
+  return getSignPayload(typedData);
 }
 
 /**
