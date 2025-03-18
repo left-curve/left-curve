@@ -48,9 +48,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
-            src="/favicon.svg"
+            src={isScrolled ? "/images/dango.svg" : "/favicon.svg"}
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
+            className={twMerge(
+              "h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient",
+              { "h-8 shadow-none rounded-none pl-3": isScrolled },
+            )}
           />
         </Link>
         <div
