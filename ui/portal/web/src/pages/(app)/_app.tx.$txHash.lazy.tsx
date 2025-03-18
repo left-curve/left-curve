@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createLazyFileRoute } from '@tanstack/react-router'
 
 import { AccordionItem, IconCopy } from '@left-curve/applets-kit'
 import { useQuery } from '@tanstack/react-query'
 
-export const Route = createFileRoute('/(app)/_app/tx/$txHash')({
+export const Route = createLazyFileRoute('/(app)/_app/tx/$txHash')({
   component: RouteComponent,
 })
 

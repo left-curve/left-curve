@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createLazyFileRoute, useRouter } from "@tanstack/react-router";
 
 import {
   IconButton,
@@ -19,7 +19,7 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
-export const Route = createFileRoute("/(app)/_app/settings")({
+export const Route = createLazyFileRoute("/(app)/_app/settings")({
   component: SettingsComponent,
 });
 
