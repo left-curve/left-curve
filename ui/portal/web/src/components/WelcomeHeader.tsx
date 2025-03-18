@@ -22,6 +22,7 @@ export const WelcomeHeader: React.FC<Props> = ({ cardMobileVisible, setCardMobil
     return (
       <div className="rounded-3xl relative shadow-card-shadow flex gap-4 w-full p-4 items-center flex-col lg:flex-row justify-end overflow-hidden min-h-[20rem] lg:min-h-[14.5rem] bg-[linear-gradient(236.46deg,_#FFF9F0_21.76%,_#E7D1B9_77.58%)]">
         <img
+          rel="preload"
           src="/images/characters/group.svg"
           alt="group"
           className="absolute left-0 top-[-1rem] lg:top-auto max-h-44 lg:max-h-80 right-0 mx-auto lg:right-auto"

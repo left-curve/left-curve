@@ -50,6 +50,11 @@ const mockDataTable = [
 ];
 
 export const Route = createFileRoute("/(app)/_app/")({
+  beforeLoad: async () => {
+    const image = new Image();
+    image.src = "/images/characters/group.svg";
+    await image.decode();
+  },
   component: OverviewComponent,
 });
 
