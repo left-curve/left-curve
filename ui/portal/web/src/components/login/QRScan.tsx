@@ -26,7 +26,7 @@ export const QRScan: React.FC<Props> = ({ onScan, onClose, isVisisble }) => {
         <Sheet.Content>
           <div className="flex justify-center items-center py-12">
             <p className="diatype-m-medium text-gray-400 p-4 text-center">
-              {m["login.qrInstructions"]({ domain: window.location.hostname })}
+              {m["signin.qrInstructions"]({ domain: window.location.hostname })}
             </p>
           </div>
           <Scanner

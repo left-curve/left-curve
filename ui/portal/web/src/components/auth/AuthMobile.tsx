@@ -27,7 +27,7 @@ export const AuthMobile: React.FC = () => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["login.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigingIn"](),
         });
       },
     },
@@ -42,7 +42,7 @@ export const AuthMobile: React.FC = () => {
         console.error(err);
         toast.error({
           title: m["common.error"](),
-          description: m["login.errors.failedSigingIn"](),
+          description: m["signin.errors.failedSigingIn"](),
         });
       },
     },

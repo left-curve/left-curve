@@ -107,7 +107,7 @@ export const SignupUsernameStep: React.FC = () => {
       <Input
         placeholder={
           <p className="flex gap-1 items-center justify-start">
-            <span>{m["login.placeholder"]()}</span>
+            <span>{m["signin.placeholder"]()}</span>
             <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
               {m["common.username"]().toLowerCase()}
             </span>

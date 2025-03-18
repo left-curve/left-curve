@@ -10,7 +10,7 @@
   "buildOptions": {
     "incremental": true
   },
-  "include": ["**/*.ts", "**/*.tsx", "env.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", ".paraglide/**/*.js"],
   "exclude": ["node_modules"],
   "references": [
     {
