@@ -80,7 +80,7 @@ start:
 stop:
   docker compose down --remove-orphans
 
-# Delete the generate data in order to restarta new localnet from scratch
+# Delete the generate data in order to restart a new localnet from scratch
 reset:
   rm -rfv ./data
 
