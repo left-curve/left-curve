@@ -10,6 +10,7 @@ type CarouselProps = {
   infinite?: boolean;
   autoPlayInterval?: number;
   draggable?: boolean;
+  className?: string;
 };
 
 const variants = {
@@ -32,6 +33,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   infinite = true,
   autoPlayInterval = 0,
   draggable = true,
+  className,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -74,7 +76,12 @@ export const Carousel: React.FC<CarouselProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-center gap-6 overflow-hidden">
+    <div
+      className={twMerge(
+        "relative flex flex-col items-center justify-center gap-6 overflow-hidden",
+        className,
+      )}
+    >
       <AnimatePresence initial={false} mode="wait" custom={direction}>
         <motion.div
           key={currentIndex}
@@ -84,7 +91,7 @@ export const Carousel: React.FC<CarouselProps> = ({
           animate="center"
           exit="exit"
           transition={{ duration: 0.3 }}
-          className="w-full"
+          className="w-full h-full flex items-center justify-center"
           drag={draggable ? "x" : false}
           dragConstraints={{ left: 0, right: 0 }}
           onDragEnd={handleDragEnd}
