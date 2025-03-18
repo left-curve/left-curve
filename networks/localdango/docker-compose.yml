@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:17
+    shm_size: 1gb
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+      # For when we'll need an init script ran at initialization
+      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=grug_dev
+    tty: true
+
+  dango:
+    image: leftcurve/dango:0.0.0-alpha.5
+    depends_on:
+      - db
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - ./configs/dango/config:/root/.dango/config
+      - ./data/dango/data:/root/.dango/data
+      - ./data/dango/indexer:/root/.dango/indexer
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_NAME=grug_dev
+      - INDEXER__DATABASE_URL=postgres://postgres@db:5432/grug_dev
+    tty: true
+
+  cometbft:
+    image: leftcurve/cometbft:0.38.17
+    depends_on:
+      - dango
+    ports:
+      - 127.0.0.1:26657:26657
+    volumes:
+      - ./configs/cometbft/config:/root/.cometbft/config
+      - ./data/cometbft/data:/root/.cometbft/data
+    tty: true

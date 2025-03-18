@@ -2701,6 +2701,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "config-parser"
+version = "0.0.0"
+dependencies = [
+ "assertor",
+ "config",
+ "serde",
+]
+
+[[package]]
 name = "console"
 version = "0.15.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3194,7 +3203,7 @@ dependencies = [
  "clap",
  "colored",
  "colored_json",
- "config",
+ "config-parser",
  "dango-app",
  "dango-client",
  "dango-genesis",

@@ -1,0 +1,17 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "config-parser"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+config = { workspace = true }
+serde  = { workspace = true }
+
+[dev-dependencies]
+assertor = { workspace = true }
