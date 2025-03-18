@@ -18,14 +18,14 @@ import { m } from "~/paraglide/messages";
 import { SearchMenuBody } from "./SearchMenuBody";
 
 export const SearchMenu: React.FC = () => {
-  const isLg = useMediaQuery("lg");
+  const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const [searchText, setSearchText] = useState("");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useClickAway(menuRef, (e) => {
+  useClickAway(menuRef, () => {
     if (!isLg) return;
     setSearchBarVisibility(false);
     setSearchText("");
@@ -69,7 +69,7 @@ export const SearchMenu: React.FC = () => {
           className={twMerge(
             "flex-col bg-rice-25 rounded-md w-full flex items-center lg:absolute relative lg:-top-5 flex-1 lg:[box-shadow:0px_2px_6px_0px_#C7C2B666] transition-all",
             !isLg && isSearchBarVisible
-              ? "h-screen w-screen -left-4 -bottom-4 absolute z-[100] bg-white p-4 gap-4"
+              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-white p-4 gap-4"
               : "",
           )}
         >

@@ -15,7 +15,7 @@ export const LoginCredentialStep: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data, previousStep } = useWizard<{ username: string }>();
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
 
   const { username } = data;
 

@@ -14,7 +14,7 @@ export const Route = createFileRoute("/(app)/_app/notifications")({
 });
 
 function NotificationComponent() {
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
   return (
     <div className="w-full md:max-w-[50rem] mx-auto flex flex-col gap-4 p-4 pt-6 mb-16">
       <div className="flex items-center justify-between">

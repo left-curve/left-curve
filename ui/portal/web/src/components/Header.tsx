@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
-  const isLg = useMediaQuery("lg");
+  const { isLg } = useMediaQuery();
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/(app)/_app/settings")({
 });
 
 function SettingsComponent() {
-  const isMd = useMediaQuery("md");
+  const { isMd, isLg } = useMediaQuery();
   const { history } = useRouter();
   const { isConnected } = useAccount();
   const { showModal, setFormatNumberOptions, formatNumberOptions } = useApp();
@@ -78,7 +78,7 @@ function SettingsComponent() {
             <SelectItem key="fr-FR">1 234,00</SelectItem>
           </Select>
         </div>
-        {isConnected ? (
+        {isConnected && isLg ? (
           <button
             type="button"
             className="flex items-center justify-between py-4 rounded-md hover:bg-rice-50 transition-all cursor-pointer"
