@@ -1,4 +1,5 @@
 use {thiserror::Error, url::ParseError};
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error(transparent)]

@@ -1,5 +1,5 @@
 use {
-    crate::{client::PythClientTrait, error, PythClient},
+    crate::{error, PythClient, PythClientTrait},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
