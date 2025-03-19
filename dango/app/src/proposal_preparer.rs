@@ -5,7 +5,7 @@ use {
     prost::bytes::Bytes,
     pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PYTH_URL,
-    std::sync::Mutex,
+    std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
 
@@ -51,7 +51,7 @@ impl ProposalPreparer<PythClientCache> {
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
     P: PythClientTrait + Send + 'static,
-    P::Error: std::fmt::Debug,
+    P::Error: Debug,
 {
     type Error = StdError;
 

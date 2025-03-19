@@ -6,6 +6,7 @@ use {
     pyth_types::PythId,
     reqwest::IntoUrl,
     std::{
+        fmt::Debug,
         sync::{
             atomic::{AtomicBool, Ordering},
             Arc,
@@ -97,7 +98,7 @@ where
 impl<P> PythHandler<P>
 where
     P: PythClientTrait + Send + 'static,
-    P::Error: std::fmt::Debug,
+    P::Error: Debug,
 {
     fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
     where
