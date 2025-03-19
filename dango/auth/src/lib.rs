@@ -105,6 +105,14 @@ pub fn verify_nonce_and_signature(
         tx.data.deserialize_json()?
     };
 
+    // Ensure the chain ID in metadata matches the context.
+    ensure!(
+        metadata.chain_id == ctx.chain_id,
+        "chain ID mismatch: expecting `{}`, got `{}`",
+        ctx.chain_id,
+        metadata.chain_id
+    );
+
     let sign_doc = SignDoc {
         gas_limit: tx.gas_limit,
         sender: ctx.contract,
