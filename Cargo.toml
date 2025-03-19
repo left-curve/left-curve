@@ -57,6 +57,7 @@ rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
+# Dependencies
 actix                   = "0.13"
 actix-codec             = "0.5"
 actix-cors              = "0.7"
@@ -150,30 +151,7 @@ uuid                    = { version = "1", features = ["serde", "v4"] }
 wasmer                  = "5"
 wasmer-middlewares      = "5"
 
-# Grug packages
-grug              = { path = "grug/std" }
-grug-app          = { path = "grug/app" }
-grug-auth         = { path = "grug/auth" }
-grug-client       = { path = "grug/client" }
-grug-crypto       = { path = "grug/crypto" }
-grug-db-disk      = { path = "grug/db/disk" }
-grug-db-memory    = { path = "grug/db/memory" }
-grug-ffi          = { path = "grug/ffi" }
-grug-jmt          = { path = "grug/jellyfish-merkle" }
-grug-macros       = { path = "grug/macros" }
-grug-math         = { path = "grug/math" }
-grug-mock-account = { path = "grug/mocks/account" }
-grug-mock-bank    = { path = "grug/mocks/bank" }
-grug-mock-taxman  = { path = "grug/mocks/taxman" }
-grug-storage      = { path = "grug/storage" }
-grug-tester       = { path = "grug/tester" }
-grug-testing      = { path = "grug/testing" }
-grug-types        = { path = "grug/types" }
-grug-vm-hybrid    = { path = "grug/vm/hybrid" }
-grug-vm-rust      = { path = "grug/vm/rust" }
-grug-vm-wasm      = { path = "grug/vm/wasm" }
-
-# Dango packages
+# Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
 dango-account-multi         = { path = "dango/account/multi" }
@@ -197,23 +175,38 @@ dango-token-factory         = { path = "dango/token-factory" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
-
-# Indexer packages
-indexer-disk-saver    = { path = "indexer/disk-saver" }
-indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
-indexer-sql           = { path = "indexer/sql" }
-indexer-sql-migration = { path = "indexer/sql-migration" }
-indexer-testing       = { path = "indexer/testing" }
-
-# Pyth packages
-pyth-client = { path = "pyth/client" }
-pyth-types  = { path = "pyth/types" }
-
-# Hyperlane packages
-hyperlane-ism     = { path = "hyperlane/isms/multisig" }
-hyperlane-mailbox = { path = "hyperlane/mailbox" }
-hyperlane-types   = { path = "hyperlane/types" }
-hyperlane-va      = { path = "hyperlane/va" }
+grug                        = { path = "grug/std" }
+grug-app                    = { path = "grug/app" }
+grug-auth                   = { path = "grug/auth" }
+grug-client                 = { path = "grug/client" }
+grug-crypto                 = { path = "grug/crypto" }
+grug-db-disk                = { path = "grug/db/disk" }
+grug-db-memory              = { path = "grug/db/memory" }
+grug-ffi                    = { path = "grug/ffi" }
+grug-jmt                    = { path = "grug/jellyfish-merkle" }
+grug-macros                 = { path = "grug/macros" }
+grug-math                   = { path = "grug/math" }
+grug-mock-account           = { path = "grug/mocks/account" }
+grug-mock-bank              = { path = "grug/mocks/bank" }
+grug-mock-taxman            = { path = "grug/mocks/taxman" }
+grug-storage                = { path = "grug/storage" }
+grug-tester                 = { path = "grug/tester" }
+grug-testing                = { path = "grug/testing" }
+grug-types                  = { path = "grug/types" }
+grug-vm-hybrid              = { path = "grug/vm/hybrid" }
+grug-vm-rust                = { path = "grug/vm/rust" }
+grug-vm-wasm                = { path = "grug/vm/wasm" }
+hyperlane-ism               = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox           = { path = "hyperlane/mailbox" }
+hyperlane-types             = { path = "hyperlane/types" }
+hyperlane-va                = { path = "hyperlane/va" }
+indexer-disk-saver          = { path = "indexer/disk-saver" }
+indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
+indexer-sql                 = { path = "indexer/sql" }
+indexer-sql-migration       = { path = "indexer/sql-migration" }
+indexer-testing             = { path = "indexer/testing" }
+pyth-client                 = { path = "pyth/client" }
+pyth-types                  = { path = "pyth/types" }
 
 [workspace.dependencies.async-graphql]
 features = [
