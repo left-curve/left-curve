@@ -10,8 +10,11 @@ use {
     dango_client::{SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
-    grug_client::{GasOption, RpcSigningClient},
-    grug_types::{json, Addr, Binary, Coins, Hash256, Json, JsonDeExt, Message, NonEmpty, Signer},
+    grug_client::{Client, RpcClient},
+    grug_types::{
+        Addr, BroadcastClientExt, Coins, GasOption, Hash256, Json, JsonDeExt, Message, NonEmpty,
+        Signer, SimulateClient, WithChainId,
+    },
     std::{fs::File, io::Read, path::PathBuf, str::FromStr},
 };
 
@@ -164,10 +167,8 @@ impl TxCmd {
             },
         };
 
-        let client = RpcSigningClient::connect(
-            cfg.transactions.chain_id.clone(),
-            cfg.tendermint.rpc_addr.as_str(),
-        )?;
+        let client = Client::from_inner(RpcClient::new(cfg.tendermint.rpc_addr.as_str())?)
+            .enable_broadcasting(cfg.transactions.chain_id);
 
         let mut signer = {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
@@ -183,8 +184,8 @@ impl TxCmd {
 
         if self.simulate {
             let msgs = NonEmpty::new_unchecked(vec![msg]);
-            let unsigned_tx = signer.unsigned_transaction(msgs, &cfg.transactions.chain_id)?;
-            let outcome = client.simulate(&unsigned_tx).await?;
+            let unsigned_tx = signer.unsigned_transaction(msgs, client.chain_id())?;
+            let outcome = client.simulate(unsigned_tx).await?;
             print_json_pretty(outcome)?;
         } else {
             let gas_opt = if let Some(gas_limit) = self.gas_limit {
@@ -207,12 +208,7 @@ impl TxCmd {
                 .await?;
 
             if let Some(res) = maybe_res {
-                print_json_pretty(json!({
-                    "code": res.code.value(),
-                    "data": Binary::from(res.data.to_vec()),
-                    "log":  res.log,
-                    "hash": res.hash.to_string(),
-                }))?;
+                print_json_pretty(res)?;
             } else {
                 println!("🤷 User aborted");
             }

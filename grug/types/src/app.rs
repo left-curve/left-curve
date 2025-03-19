@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
+    crate::{Addr, CronOutcome, Duration, Hash256, Json, Label, Message, Timestamp, Tx, TxOutcome},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -102,6 +102,15 @@ pub struct BlockInfo {
 pub struct Block {
     pub info: BlockInfo,
     pub txs: Vec<(Tx, Hash256)>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct BlockResult {
+    pub hash: Hash256,
+    pub height: u64,
+    pub txs_results: Vec<TxOutcome>,
+    pub cron_results: Vec<CronOutcome>,
 }
 
 #[skip_serializing_none]

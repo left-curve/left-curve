@@ -4,8 +4,8 @@ use {
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
-        Block, BlockClient, BlockInfo, Duration, Hash256, JsonDeExt, JsonSerExt, Query,
-        QueryClient, QueryResponse,
+        Block, BlockClient, BlockInfo, BlockResult, Duration, Hash256, HexBinary, JsonDeExt,
+        JsonSerExt, Proof, Query, QueryClient, QueryResponse,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -13,12 +13,12 @@ use {
 
 use super::query::Variables;
 
-pub struct GraphqlCLient {
+pub struct HttpClient {
     inner: reqwest::Client,
     endpoint: String,
 }
 
-impl GraphqlCLient {
+impl HttpClient {
     pub fn new(endpoint: &str) -> Self {
         Self {
             inner: reqwest::Client::new(),
@@ -49,7 +49,7 @@ impl GraphqlCLient {
 }
 
 #[async_trait]
-impl QueryClient for GraphqlCLient {
+impl QueryClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn query_chain(
@@ -66,10 +66,19 @@ impl QueryClient for GraphqlCLient {
 
         Ok(response.query_app.deserialize_json()?)
     }
+
+    async fn query_store(
+        &self,
+        key: HexBinary,
+        height: Option<u64>,
+        prove: bool,
+    ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
+        todo!()
+    }
 }
 
 #[async_trait]
-impl BlockClient for GraphqlCLient {
+impl BlockClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
@@ -93,6 +102,10 @@ impl BlockClient for GraphqlCLient {
             txs: vec![],
         })
     }
+
+    async fn query_block_result(&self, height: Option<u64>) -> Result<BlockResult, Self::Error> {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -106,7 +119,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_app() {
-        let client = GraphqlCLient::new(GRAPHQL_URL);
+        let client = HttpClient::new(GRAPHQL_URL);
 
         let response = client.query_chain(Query::config(), None).await.unwrap();
         println!("{:?}", response);

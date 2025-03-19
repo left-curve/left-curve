@@ -1,7 +1,5 @@
 mod client;
-mod graphql;
-mod old_rpc;
-mod options;
+mod http;
 mod rpc;
 
-pub use crate::{client::*, graphql::*, old_rpc::*, options::*, rpc::*};
+pub use crate::{client::*, http::*, rpc::*};

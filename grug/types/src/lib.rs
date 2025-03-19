@@ -28,6 +28,7 @@ mod lengthy;
 mod macros;
 mod non_zero;
 mod outcome;
+mod proof;
 mod query;
 mod response;
 mod result;
@@ -46,6 +47,8 @@ pub use {
     length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
     serializers::*, signer::*, status::*, time::*, tx::*, unique_vec::*, utils::*,
 };
+
+pub use proof::*;
 
 // ---------------------------------- testing ----------------------------------
 #[cfg(not(target_arch = "wasm32"))]
