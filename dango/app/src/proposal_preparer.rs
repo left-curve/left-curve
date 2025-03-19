@@ -12,7 +12,7 @@ use {
 const GAS_LIMIT: u64 = 50_000_000;
 
 pub struct ProposalPreparer<P> {
-    // Option to be able to not clone the PythClientPPHandler.
+    // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
 }
 
