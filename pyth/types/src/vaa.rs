@@ -182,8 +182,8 @@ mod tests {
     use {
         super::PythVaa,
         crate::{
-            constants::{GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
             GuardianSet, GuardianSetIndex,
+            constants::{GUARDIAN_SETS_INDEX, GUARDIANS_ADDRESSES},
         },
         data_encoding::BASE64,
         grug::{

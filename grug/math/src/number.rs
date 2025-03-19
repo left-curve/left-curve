@@ -340,9 +340,8 @@ impl_number! {
 mod int_tests {
     use {
         crate::{
-            dts, int_test,
+            Int, MathError, Number, NumberConst, dts, int_test,
             test_utils::{bt, int},
-            Int, MathError, Number, NumberConst,
         },
         bnum::types::{I256, U256},
     };
@@ -1086,9 +1085,8 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use crate::{
-        dec_test, dts,
+        Dec, FixedPoint, MathError, Number, NumberConst, dec_test, dts,
         test_utils::{bt, dec},
-        Dec, FixedPoint, MathError, Number, NumberConst,
     };
 
     dec_test!( checked_add

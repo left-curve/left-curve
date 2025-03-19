@@ -1,5 +1,5 @@
 use {
-    async_graphql::{dataloader::DataLoader, extensions, Schema},
+    async_graphql::{Schema, dataloader::DataLoader, extensions},
     indexer_httpd::{
         context::Context,
         graphql::{dataloader, mutation::Mutation},

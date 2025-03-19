@@ -4,18 +4,18 @@ use {
         primitives::U160,
     },
     anyhow::{bail, ensure},
-    base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
+    base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
+        DangoQuerier,
         auth::{
             ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
-        DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt,
-        StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, StdResult,
+        Storage, StorageQuerier, Tx, json,
     },
     std::collections::BTreeSet,
 };
@@ -353,7 +353,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, AppConfig},
         },
-        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt},
+        grug::{Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, btree_map},
         std::str::FromStr,
     };
 

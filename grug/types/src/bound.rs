@@ -3,8 +3,9 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Inner, NumberConst, Udec128},
     serde::{
+        Deserialize, Serialize,
         de::{self, Error},
-        ser, Deserialize, Serialize,
+        ser,
     },
     std::{io, marker::PhantomData, ops::Deref},
 };

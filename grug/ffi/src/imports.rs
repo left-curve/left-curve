@@ -1,8 +1,8 @@
 use {
     crate::Region,
     grug_types::{
-        encode_sections, Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, StdError, StdResult, Storage, VerificationError,
+        Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query, QueryResponse,
+        Record, StdError, StdResult, Storage, VerificationError, encode_sections,
     },
 };
 

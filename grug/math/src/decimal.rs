@@ -52,9 +52,9 @@ where
 mod tests {
     use {
         crate::{
+            Dec, Dec128, Dec256, Decimal, FixedPoint, MathError, NumberConst, Udec128, Udec256,
             dec_test, dts,
             test_utils::{bt, dt},
-            Dec, Dec128, Dec256, Decimal, FixedPoint, MathError, NumberConst, Udec128, Udec256,
         },
         std::str::FromStr,
     };

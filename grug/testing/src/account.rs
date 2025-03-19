@@ -1,11 +1,11 @@
 use {
-    grug_crypto::{sha2_256, Identity256},
+    grug_crypto::{Identity256, sha2_256},
     grug_mock_account::{Credential, PublicKey},
     grug_types::{
-        Addr, Addressable, ByteArray, Hash256, Json, JsonSerExt, Message, NonEmpty, Signer,
-        StdResult, Tx, UnsignedTx, GENESIS_SENDER,
+        Addr, Addressable, ByteArray, GENESIS_SENDER, Hash256, Json, JsonSerExt, Message, NonEmpty,
+        Signer, StdResult, Tx, UnsignedTx,
     },
-    k256::ecdsa::{signature::DigestSigner, Signature, SigningKey},
+    k256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
     rand::rngs::OsRng,
     std::{
         collections::HashMap,

@@ -1,5 +1,5 @@
 use {
-    crate::{Config, CONFIG},
+    crate::{CONFIG, Config},
     grug_types::{StdResult, Storage},
 };
 

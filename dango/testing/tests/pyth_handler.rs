@@ -3,8 +3,8 @@ use {
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     grug::{
-        btree_map, Coins, HashExt, NonEmpty, Querier, QuerierExt, QuerierWrapper, ResultExt,
-        StdError,
+        Coins, HashExt, NonEmpty, Querier, QuerierExt, QuerierWrapper, ResultExt, StdError,
+        btree_map,
     },
     grug_app::AppError,
     pyth_client::{PythClientCache, PythClientTrait},

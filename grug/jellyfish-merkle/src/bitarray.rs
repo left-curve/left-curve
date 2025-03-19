@@ -1,7 +1,7 @@
 use {
     grug_math::Inner,
     grug_storage::{PrimaryKey, RawKey},
-    grug_types::{split_one_key, Hash256, Order, StdResult},
+    grug_types::{Hash256, Order, StdResult, split_one_key},
     std::fmt,
 };
 

@@ -1,6 +1,6 @@
 use {
     crate::context::Context,
-    actix_web::{get, web, Error, HttpResponse},
+    actix_web::{Error, HttpResponse, get, web},
     indexer_sql::block_to_index::BlockToIndex,
 };
 

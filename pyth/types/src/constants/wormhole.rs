@@ -1,6 +1,6 @@
 use {
     crate::{GuardianSet, GuardianSetIndex},
-    grug::{btree_map, Binary, Hash160, Inner},
+    grug::{Binary, Hash160, Inner, btree_map},
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock},
 };
 

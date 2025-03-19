@@ -1,4 +1,4 @@
-use grug_types::{concat, increment_last_byte, trim, Order, Record, Storage};
+use grug_types::{Order, Record, Storage, concat, increment_last_byte, trim};
 
 /// Provides access to an account's storage to the VM.
 ///
