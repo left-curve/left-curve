@@ -2,28 +2,14 @@ use {
     crate::pyth_pp_handler::PythPPHandler,
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
-    grug_app::AppError,
     prost::bytes::Bytes,
     pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
     pyth_types::PYTH_URL,
     std::sync::Mutex,
-    thiserror::Error,
     tracing::error,
 };
 
 const GAS_LIMIT: u64 = 50_000_000;
-
-#[derive(Debug, Error)]
-pub enum ProposerError {
-    #[error(transparent)]
-    Std(#[from] StdError),
-}
-
-impl From<ProposerError> for AppError {
-    fn from(value: ProposerError) -> Self {
-        AppError::PrepareProposal(value.to_string())
-    }
-}
 
 pub struct ProposalPreparer<P> {
     // Option to be able to not clone the PythClientPPHandler.
@@ -67,7 +53,7 @@ where
     P: PythClientTrait + Send + 'static,
     P::Error: std::fmt::Debug,
 {
-    type Error = ProposerError;
+    type Error = StdError;
 
     fn prepare_proposal(
         &self,
