@@ -39,8 +39,10 @@ impl PythHandler<PythClient> {
 }
 
 impl PythHandler<PythClientCache> {
-    #[allow(dead_code)]
-    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCache> {
+    pub fn new_with_cache<U>(base_url: U) -> PythHandler<PythClientCache>
+    where
+        U: IntoUrl,
+    {
         let shared_vaas = Shared::new(vec![]);
 
         Self {
