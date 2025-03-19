@@ -151,7 +151,8 @@ where
 
     let res = try_call_service(&app, request)
         .await
-        .map_err(|_err| anyhow!("Failed to call service"))?;
+        .map_err(|err| anyhow!("failed to call service: {err:?}"))?;
+
     let text_response = read_body(res).await;
 
     Ok(serde_json::from_slice(&text_response)?)
