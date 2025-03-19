@@ -107,9 +107,7 @@ where
         self.close_stream();
 
         let shared_vaas = self.shared_vaas.clone();
-
         let keep_running = Arc::new(AtomicBool::new(true));
-
         let mut client = self.client.clone();
 
         self.stoppable_thread = Some((
