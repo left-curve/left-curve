@@ -20,6 +20,10 @@ type Block {
 	createdAt: DateTime!
 	hash: String!
 	appHash: String!
+	"""
+	Transactions order isn't guaranteed, check `transactionIdx`
+	"""
+	transactions: [Transaction!]
 }
 
 type BlockConnection {
@@ -231,7 +235,7 @@ type Query {
 	"""
 	Get a block
 	"""
-	block(height: Int!): Block
+	block(height: Int): Block
 	"""
 	Get a block
 	"""
