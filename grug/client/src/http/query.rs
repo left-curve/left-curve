@@ -12,7 +12,7 @@ macro_rules! generate_queries {
         $(
             #[derive(graphql_client::GraphQLQuery)]
             #[graphql(
-                schema_path = "src/graphql/schemas/schema.graphql",
+                schema_path = "src/http/schemas/schema.graphql",
                 query_path = $path,
                 response_derives = "Debug"
             )]
@@ -50,12 +50,12 @@ macro_rules! generate_queries {
 generate_queries! {
     {
         name: GetBlock,
-        path: "src/graphql/schemas/queries/block.graphql",
+        path: "src/http/schemas/queries/block.graphql",
         test_with: crate::query::get_block::Variables { height: 1 }
     },
     {
         name: QueryApp,
-        path: "src/graphql/schemas/queries/queryApp.graphql",
+        path: "src/http/schemas/queries/queryApp.graphql",
         test_with: crate::query::query_app::Variables {
             request: r#"{"config":{}}"#.to_string(),
             height: 1

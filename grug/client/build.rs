@@ -3,7 +3,7 @@ use {
     indexer_httpd::graphql::{mutation, query, subscription},
 };
 
-const SCHEMA_PATH: &str = "src/graphql/schemas/schema.graphql";
+const SCHEMA_PATH: &str = "src/http/schemas/schema.graphql";
 
 fn main() {
     let schema = Schema::build(
