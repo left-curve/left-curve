@@ -9,9 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 anyhow        = { workspace = true }
 byteorder     = { workspace = true }
@@ -19,5 +16,4 @@ data-encoding = { workspace = true }
 grug          = { workspace = true }
 hex-literal   = { workspace = true }
 pyth-sdk      = { workspace = true }
-# pyth-wormhole-attester-sdk = { workspace = true }
-pythnet-sdk = { workspace = true }
+pythnet-sdk   = { workspace = true }
