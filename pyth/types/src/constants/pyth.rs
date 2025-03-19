@@ -2,8 +2,6 @@ use {crate::PythId, hex_literal::hex};
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
-// ---------------------------- Pyth ids ---------------------------------------
-
 pub const ATOM_USD_ID: PythId = PythId::from_inner(hex!(
     "b00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819"
 ));
