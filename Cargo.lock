@@ -1326,6 +1326,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71938f30533e4d95a6d17aa530939da3842c2ab6f4f84b9dae68447e4129f74a"
 
 [[package]]
+name = "assert-json-diff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4bb138a39b134b69051e53152a66489ecf44769b89f8d4c54d5854cd2d66faa"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "assertor"
 version = "0.0.3"
 source = "git+https://github.com/google/assertor#5c808d318ea0234f7c71a03bd1a731e428bd6388"
@@ -4508,6 +4518,7 @@ name = "grug-testing"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
  "assertor",
  "async-graphql",
  "borsh 1.5.5",
@@ -5332,6 +5343,7 @@ dependencies = [
  "grug-app",
  "grug-types",
  "indexer-sql",
+ "itertools 0.14.0",
  "num_cpus",
  "sea-orm",
  "serde",
