@@ -1,14 +1,14 @@
 use {
     super::GuardianSetIndex,
-    crate::oracle::{GuardianSet, WormholeVaa},
+    crate::{GuardianSet, WormholeVaa},
     anyhow::{anyhow, bail},
     byteorder::BigEndian,
-    grug::{AddrEncoder, Api, BlockInfo, EncodedBytes, Map, Storage},
+    grug::{Api, BlockInfo, Map, Storage},
     pyth_sdk::{Price, PriceFeed, PriceIdentifier},
-    pyth_wormhole_attester_sdk::{BatchPriceAttestation, PriceStatus},
     pythnet_sdk::{
         accumulators::merkle::MerkleRoot,
         hashers::keccak256_160::Keccak160,
+        legacy::{BatchPriceAttestation, PriceStatus},
         messages::Message,
         wire::{
             from_slice,
@@ -35,8 +35,6 @@ macro_rules! uncast_enum {
         }
     };
 }
-
-pub type PythId = EncodedBytes<[u8; 32], AddrEncoder>;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PythVaa {
@@ -182,9 +180,10 @@ impl PythVaa {
 #[cfg(test)]
 mod tests {
     use {
+        super::PythVaa,
         crate::{
             constants::{GUARDIANS_ADDRESSES, GUARDIAN_SETS_INDEX},
-            oracle::{GuardianSet, GuardianSetIndex, PythVaa},
+            GuardianSet, GuardianSetIndex,
         },
         data_encoding::BASE64,
         grug::{

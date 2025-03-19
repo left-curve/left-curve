@@ -1,5 +1,5 @@
 use {
-    crate::oracle::{GuardianSet, GuardianSetIndex},
+    crate::{GuardianSet, GuardianSetIndex},
     grug::{btree_map, Binary, Hash160, Inner},
     std::{collections::BTreeMap, str::FromStr, sync::LazyLock},
 };

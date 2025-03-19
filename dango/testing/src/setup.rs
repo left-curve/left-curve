@@ -7,8 +7,8 @@ use {
     },
     dango_types::{
         constants::{
-            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
-            USDC_DENOM, WBTC_DENOM,
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
+            WBTC_DENOM,
         },
         dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
@@ -27,6 +27,8 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    pyth_client::PythClientCache,
+    pyth_types::GUARDIAN_SETS,
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
@@ -54,11 +56,15 @@ pub const USER8_PRIVATE_KEY: [u8; 32] =
 pub const USER9_PRIVATE_KEY: [u8; 32] =
     hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
 
-pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
-    grug::TestSuite<DB, VM, PP, ID>;
+pub type TestSuite<
+    PP = ProposalPreparer<PythClientCache>,
+    DB = MemDb,
+    VM = RustVm,
+    ID = NullIndexer,
+> = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
-    PP = ProposalPreparer,
+    PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
     ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
@@ -75,7 +81,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         MemDb::new(),
         RustVm::new(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new_with_cache(),
         NullIndexer,
     )
 }
@@ -111,7 +117,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new_with_cache(),
         indexer,
     );
 

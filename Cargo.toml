@@ -39,6 +39,8 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/va",
   "indexer/*",
+  "pyth/client",
+  "pyth/types",
 ]
 resolver = "2"
 
@@ -111,11 +113,12 @@ pbkdf2                  = "0.12"
 proc-macro2             = "1"
 proptest                = "1"
 prost                   = "0.13"
-pyth-sdk                = "0.8.0"
-pythnet-sdk             = "2"
+pyth-sdk                = "0.8"
+pythnet-sdk             = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                   = "1"
 rand                    = "0.8" # Can't use 0.9 because RustCrypto libraries still depend on 0.8
-reqwest                 = "0.12"
+reqwest                 = { version = "0.12", features = ["stream"] }
+reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
 rocksdb                 = "0.23"
 serde                   = "1"
@@ -142,6 +145,7 @@ tower-abci              = "0.19"
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
+url                     = "2.5.4"
 uuid                    = { version = "1", features = ["serde", "v4"] }
 wasmer                  = "5"
 wasmer-middlewares      = "5"
@@ -201,6 +205,10 @@ indexer-sql           = { path = "indexer/sql" }
 indexer-sql-migration = { path = "indexer/sql-migration" }
 indexer-testing       = { path = "indexer/testing" }
 
+# Pyth packages
+pyth-client = { path = "pyth/client" }
+pyth-types  = { path = "pyth/types" }
+
 # Hyperlane packages
 hyperlane-ism     = { path = "hyperlane/isms/multisig" }
 hyperlane-mailbox = { path = "hyperlane/mailbox" }
@@ -246,13 +254,6 @@ features = [
   "with-uuid",
 ]
 version = "1"
-
-# The Pyth attester SDK is not published to crates.io.
-# Import from GitHub, using the latest commit at this time.
-# TODO: Ask pyth team to make a stable release and publish the crate.
-[workspace.dependencies.pyth-wormhole-attester-sdk]
-git = "https://github.com/pyth-network/pyth-crosschain"
-rev = "cd67cd8"
 
 [profile.release]
 codegen-units    = 1

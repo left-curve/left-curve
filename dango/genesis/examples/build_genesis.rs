@@ -3,10 +3,7 @@ use {
     dango_types::{
         account_factory::Username,
         auth::Key,
-        constants::{
-            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
-            USDC_DENOM,
-        },
+        constants::{BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM},
         dex::{CurveInvariant, PairParams, PairUpdate},
         taxman,
     },
@@ -16,6 +13,7 @@ use {
     },
     hex_literal::hex,
     home::home_dir,
+    pyth_types::GUARDIAN_SETS,
     std::{env, fs, str::FromStr},
 };
 

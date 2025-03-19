@@ -1,6 +1,6 @@
 use {
     grug::{Defined, MultiplyFraction, Number, StdResult, Udec128, Uint128, Undefined},
-    pyth_sdk::PriceFeed,
+    pyth_types::PriceFeed,
 };
 
 pub type PrecisionlessPrice = Price<Undefined<u8>>;

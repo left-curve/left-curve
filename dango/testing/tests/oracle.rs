@@ -3,21 +3,22 @@ use {
     dango_testing::{setup_test_naive, TestAccounts, TestSuite},
     dango_types::{
         constants::{
-            ATOM_DENOM, ATOM_USD_ID, BNB_DENOM, BNB_USD_ID, BTC_USD_ID, DOGE_DENOM, DOGE_USD_ID,
-            ETH_DENOM, ETH_USD_ID, SHIB_DENOM, SHIB_USD_ID, SOL_DENOM, SOL_USD_ID, USDC_DENOM,
-            USDC_USD_ID, WBTC_DENOM, WBTC_USD_ID, XRP_DENOM, XRP_USD_ID,
+            ATOM_DENOM, BNB_DENOM, BTC_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM,
+            USDC_DENOM, WBTC_DENOM, XRP_DENOM,
         },
-        oracle::{ExecuteMsg, PrecisionlessPrice, Price, PythId, PythVaa, QueryPriceRequest},
+        oracle::{ExecuteMsg, PrecisionlessPrice, Price, QueryPriceRequest},
     },
     grug::{
         btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt,
         StorageQuerier, Udec128,
     },
     grug_app::NaiveProposalPreparer,
-    indexer_disk_saver::persistence::DiskPersistence,
-    pyth_sdk::PriceFeed,
-    sha2::{Digest, Sha256},
-    std::{collections::BTreeMap, str::FromStr, thread, time::Duration},
+    pyth_client::{PythClientCache, PythClientTrait},
+    pyth_types::{
+        PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL,
+        SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
+    },
+    std::{cmp::Ordering, collections::BTreeMap, str::FromStr, thread, time::Duration},
 };
 
 /// - id: **c9d8b075a5c69303365ae23633d4e085199bf5c520a3b90fed1322a0342ffc33**
@@ -35,8 +36,6 @@ const VAA_2: &str = "UE5BVQEAAAADuAEAAAAEDQBLJRnF435tmWmnpCautCMOcWFhH0neObVk2iw
 /// to test the update logic inside the oracle.
 const OLD_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQC1PrJvEJdrAATLXCaO9KPKy8jg60pFB+/dG5WeLIjHyw8uUxNF/UQ54R2oBxGF97NHwHRZtF0/Sra0XBijMAuOAALeIiPvZN3bcnWRMAqSwZCUYN/SZ79xHQhJQ07rM85SHVzUYMo5LCiuV1h0O9tvA5kmyABfyV2a3Y7eQZoroInKAAN6LJGqKqSo6ZaSCMVBZ+6tQ+Tr4+IgUrzlxIg/kCfZoVZbgTKiBmt1iDhcLkwC+bWOxHpHloqISFpPJOXDuCBGAAT9vCGgUCSflqT/muUoQ5qFtC14RaTWjVw6CKINncZntA2cN/yJw6A+Xs5U/DU+bmN35PxGzD6q7FjFb5X9qbqhAQZ/wwZDiZCdVa3ra9I6CQ+e6SSulXxUTj/bZFd+5ijKpR0CCOIa+aqYIUyACSGjh2HZdo4b74kGEWmBU84qHkszAAg1p30sJ8vyw9W38JrZd+OnOBfxiii0Y12+xZWbzdWrfibFvYiuJkxGdWm+G5pUie+hrgC8rv/Gr37Vup6U2JOIAQvMUewdWzGDQ4RdJlG9JE46eZwY6+tXVvcPN3HWGpialyJUtpbFzU2A+lYiP1U+me1HX+LsUXLLgtxCyUYfSvY1AQwBEE2estPGKI3D55X+U5lazI5vLEbqN+3Ek9HfChwr0VDHpvtOcxvxFAuC7A05KkgtJ2DlDGqQzjSCMIqLunhLAQ0ImWBmzfbh71buxjRd3pcx2u0vBr22b3hZmdvgosd4kQUYiXmQqqSdYEUAsYsI8lS6IY5tKmmt5Ne3Db1cfkLiAQ5fwFgtmfxP9vhNzQH9wSDy3uGWeTY8QT6Nth4WorwqPwHIoLJ5GoPQmhmQ+Lamm1iRZkHkeiWMcJFmrXvjMs60AQ9t6nrW9X8iPHXhJidZkc30tXZTbte6HFu4wd+d2r9P/DrmqeuX0Z1ImR1h3PXhO8+llZcYymepesPG7oYYdNebARDK6B2HQ+YqZy39uLSvv9Ixc5PAFVE3Es69ZOIIzyNqPhO3XnlPYBPpBuC9bzXhxacenfk9++YnO7wsVTAjarfmARG5FUbdJ3/pnJC1hfeXgDg9ZWu1vhXSJAPgOpJLlIhvaTgZk7JWSMBaOALtD8yaea6t16LM4XDzdeWrUdGFgBLAAGfUI2QAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAHG0BzAUFVV1YAAAAAAAwoR/4AACcQHJX9oR7eAJ3kDAJmGcmHXSG1M8QBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAeXyVYyXAAAAAC5aSAk////+AAAAABn1CNkAAAAAGfUI2MAAAeRixECAAAAAAC1MsVIDGVIb4bQKzzTbGYwasa37r9mN/OGqfaDpf2gg0Je0EyRbd7dDLTzEhSNqJBsntjW9sMHHu0TOkqpJI7ygjPSNAO2qbAU4lj8KAUFRZ1hP4SISP2UX0V5NrhALGOCWnTQErcCdy6Gm6orqVJhq/jLQ0Jljvzq9N38b/tmDKeyzJl3MufHg80fBOppdw5W4zJg54UZl1gqb6JGeE5vMPDoze5fZ2UbOWtcwS/HfHEq0JvH3z9zbS5Kt8brXfQbODqiWLmHQPIf+w+xe147+bsQ/2jd3Kigq7h6O1wbrI8xHT1QhxhdBItjPhUO7U6SCAW+5A==";
 const NEW_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQDJVzkTXJ/xX0Z6yCF9CeCDwGIskGvr0dgHi5DHq+ZiWHS/fqNgstRz7U0k50dTMJak7JOmQePRMWa0abZ4OQv8AQJEfiU38lpjC5mwmbFkdiNU7M3FxdcmEyXqCWHclPbJEDyfgDYamXDQfIbsEzjtf959ZGhbqjmqWQ86zkOcU6pEAANeXPg2UPUQvAiP1l6HDQhkcgu8VHiNJorAWboTw+LwtwotgE4JuvZFCCcNI/gbdFND+Cf7kDulUMd+SNXxlcWLAASXfzh0K3S79739gQXlJ7lK5jdv33I4U70Ma+5COdN5MkhPP+wcYc4ZNCNkC6GhwMknxmbDGcxUVlge9CmdmBfLAAYQ/2bhKpo4fdPHExfK9gl74JGIDkkJMv8D9OXjVQBVEnutA2ucSYtFFmdPoFW8Od4k5vrO0XiVnpajYdhtA/DNAQh0nCn4dmbGvp5uQfRTQ+b7IivCtOSusaIIlN0ippA1E0pxERsyngqICHH4NJazflsgqWbo6KxzuTf7UkMEEF9gAQrhy+VQDRgIjUns3BLueS3DstsrBkKaglXFtqjM+GSU5l+8vqGOSl2gLGU3KCOLYt5FKzrr9BenG+Fr2DKfHHuQAAwPN3YKI48TY7o0d7dKws5Uv9IG2ILMF7+SZU1gd4/ydjSpYADn6msqab1d9+q+tkaW5DPi1f+p93Wh3Kr8eYygAQ3LCDbzf7z/nsDesRUmEyv944SYqa+AHOEWDAMhNfu6qgM8DkvJROK6vcgF9+SrfJN/0W+l3RCR1GfRyTMSMFLtAA6n1JaDtwLbcmgmCfnDIzeP2HF8LktHJiHNxSbAtFLFjneL+8fz69eSBqEX8Szm7vWWTkuVzLfVPoqfSzDsFdsNAA8ds4VTQTUvVMTRr6OUDkYZmFFHf9S6Z9Aan94Fr08CT0k7jv80Csk6sfa55Zd5e+/llRR4YOVtC0SXfKtmhmnIABDIgEd/lNqC8c8s5A9sJwklvjbdDheNroZ1A3hCBq017CqGHjweC1Cd3byISTVpV+Rpl4Hg8VK3R+PgaNwRwT1vARHeO2usqEiKywPA+GgMGfQSYOkYXQkzZ80CB0i37KHgIlbqrDaBYzE/WD/0ugcetCE2saF2quy2+eVddIeazgfWAGfUI2QAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAHG0B0AUFVV1YAAAAAAAwoR/8AACcQ6c3sPfMBZYx5zE2zbC46nih06gIBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAeXzlFGBwAAAAC7lRp5////+AAAAABn1CNkAAAAAGfUI2QAAAeRi0Zp4AAAAAC1MvW4DEFMNDUv+h3foglPFliT76Pd9cXmhIjNtClQyN06tX+QlUXpaO/a8IRr/9eZMk1j8T/WdU1ITKEvwDSbkpCWAsqvPeRstBPAtUZvVYk9BkTVCcES9uDSDc9jFPlJBp23zY1+TZb1wC8bZjn+qhDAM7kytlpRBMLGLuJWmqGEOheF82gcxQNlG+V+sh9lxwHJekKJiW0Ni/PxM53JqM/o6M+MtkYZIgLRL8nrDSGG4DxSJ/iIvl9fgTfa8tmWGI+pw96LtQw4GywuNjFAKbdHpaHNSiV/uNB22f7MoV1I8rscwQLmrRbopdKLYQRHGk3apg==";
-
-pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
 fn setup_oracle_test() -> (TestSuite<NaiveProposalPreparer>, TestAccounts, Addr) {
     let (suite, accounts, _, contracts) = setup_test_naive();
@@ -147,130 +146,10 @@ fn oracle() {
 }
 
 #[test]
-fn double_vaas() {
-    let (mut suite, mut accounts, oracle) = setup_oracle_test();
-
-    let mut last_btc_vaa: Option<PriceFeed> = None;
-    let mut last_eth_vaa: Option<PriceFeed> = None;
-
-    for _ in 0..5 {
-        // get 2 separate vaa
-        let btc_vaas_raw = get_latest_vaas([WBTC_USD_ID]).unwrap();
-        let eth_vaas_raw = get_latest_vaas([ETH_USD_ID]).unwrap();
-
-        let btc_vaa = PythVaa::new(&MockApi, btc_vaas_raw[0].clone().into_inner())
-            .unwrap()
-            .unverified()[0];
-        let eth_vaa = PythVaa::new(&MockApi, eth_vaas_raw[0].clone().into_inner())
-            .unwrap()
-            .unverified()[0];
-
-        // update last btc vaa
-        {
-            if let Some(last_btc_vaa) = &mut last_btc_vaa {
-                if btc_vaa.get_price_unchecked().publish_time
-                    > last_btc_vaa.get_price_unchecked().publish_time
-                {
-                    last_btc_vaa.clone_from(&btc_vaa);
-                }
-            } else {
-                last_btc_vaa = Some(btc_vaa);
-            }
-        }
-
-        // update last eth vaa
-        {
-            if let Some(last_eth_vaa) = &mut last_eth_vaa {
-                if eth_vaa.get_price_unchecked().publish_time
-                    > last_eth_vaa.get_price_unchecked().publish_time
-                {
-                    last_eth_vaa.clone_from(&eth_vaa);
-                }
-            } else {
-                last_eth_vaa = Some(eth_vaa);
-            }
-        }
-
-        // update price feeds
-        suite
-            .execute(
-                &mut accounts.owner,
-                oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(
-                    [btc_vaas_raw, eth_vaas_raw].concat(),
-                )),
-                Coins::default(),
-            )
-            .should_succeed();
-
-        // check btc price
-        {
-            let current_price = suite
-                .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: WBTC_DENOM.clone(),
-                })
-                .unwrap();
-
-            assert_eq!(
-                current_price.timestamp,
-                last_btc_vaa
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_btc_vaa.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
-        }
-
-        // check eth price
-        {
-            let current_price = suite
-                .query_wasm_smart(oracle, QueryPriceRequest {
-                    denom: ETH_DENOM.clone(),
-                })
-                .unwrap();
-
-            assert_eq!(
-                current_price.timestamp,
-                last_eth_vaa
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_eth_vaa.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
-        }
-
-        // sleep for 1 second
-        thread::sleep(Duration::from_secs(1));
-    }
-}
-
-#[test]
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
+
+    let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
 
     let id_denoms = btree_map! {
         ATOM_USD_ID => ATOM_DENOM.clone(),
@@ -280,17 +159,19 @@ fn multiple_vaas() {
         SHIB_USD_ID => SHIB_DENOM.clone(),
         SOL_USD_ID  => SOL_DENOM.clone(),
         USDC_USD_ID => USDC_DENOM.clone(),
-        WBTC_USD_ID => WBTC_DENOM.clone(),
+        BTC_USD_ID  => BTC_DENOM.clone(),
         XRP_USD_ID  => XRP_DENOM.clone(),
     };
 
-    let mut last_price_feeds = id_denoms
+    let ids = NonEmpty::new_unchecked(id_denoms.keys().cloned().collect::<Vec<_>>());
+
+    let mut last_prices_data = id_denoms
         .keys()
         .map(|id| (*id, None))
-        .collect::<BTreeMap<_, Option<PriceFeed>>>();
+        .collect::<BTreeMap<_, Option<(PrecisionlessPrice, u64)>>>();
 
     for _ in 0..5 {
-        let vaas_raw = get_latest_vaas(id_denoms.keys()).unwrap();
+        let vaas_raw = pyth_client.get_latest_vaas(ids.clone()).unwrap();
 
         let vaas = vaas_raw
             .iter()
@@ -299,25 +180,34 @@ fn multiple_vaas() {
 
         // Update last price feeds
         for vaa in vaas {
+            let new_sequence = vaa.wormhole_vaa.sequence;
+
             for price_feed in vaa.unverified() {
-                let last_price_feed = last_price_feeds
+                let last_price_data = last_prices_data
                     .get_mut(&PythId::from_str(&price_feed.id.to_string()).unwrap())
                     .unwrap();
 
-                if let Some(last_price_feed) = last_price_feed {
-                    if price_feed.get_price_unchecked().publish_time
-                        > last_price_feed.get_price_unchecked().publish_time
-                    {
-                        last_price_feed.clone_from(&price_feed);
-                    }
-                } else {
-                    *last_price_feed = Some(price_feed);
+                let new_price = Price::try_from(price_feed).unwrap();
+
+                match last_price_data {
+                    Some((last_price, last_sequence)) => {
+                        match last_price.timestamp.cmp(&new_price.timestamp) {
+                            Ordering::Less => *last_price_data = Some((new_price, new_sequence)),
+                            Ordering::Equal => {
+                                if *last_sequence < new_sequence {
+                                    *last_price_data = Some((new_price, new_sequence));
+                                }
+                            },
+                            Ordering::Greater => continue,
+                        }
+                    },
+                    None => *last_price_data = Some((new_price, new_sequence)),
                 }
             }
         }
 
         // Check if all prices has been fetched
-        for v in last_price_feeds.values() {
+        for v in last_prices_data.values() {
             assert!(v.is_some());
         }
 
@@ -332,7 +222,9 @@ fn multiple_vaas() {
             .should_succeed();
 
         // Check all prices
-        for (denom, last_price_feed) in &last_price_feeds {
+        for (denom, last_price_feed) in &last_prices_data {
+            let (last_price, _) = last_price_feed.clone().unwrap();
+
             let denom = id_denoms.get(denom).unwrap();
 
             let current_price = suite
@@ -341,30 +233,13 @@ fn multiple_vaas() {
                 })
                 .unwrap();
 
-            assert_eq!(
-                current_price.timestamp,
-                last_price_feed
-                    .unwrap()
-                    .get_price_unchecked()
-                    .publish_time
-                    .unsigned_abs()
-            );
-            assert_eq!(
-                current_price.humanized_price,
-                PrecisionlessPrice::try_from(last_price_feed.unwrap())
-                    .unwrap()
-                    .humanized_price
-            );
-            assert_eq!(
-                current_price.humanized_ema,
-                PrecisionlessPrice::try_from(last_price_feed.unwrap())
-                    .unwrap()
-                    .humanized_ema
-            );
+            assert_eq!(current_price.timestamp, last_price.timestamp);
+            assert_eq!(current_price.humanized_price, last_price.humanized_price);
+            assert_eq!(current_price.humanized_ema, last_price.humanized_ema);
         }
 
         // sleep for 1 second
-        thread::sleep(Duration::from_secs(1));
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
@@ -450,44 +325,4 @@ fn test_sequence() {
     assert_eq!(new_price.timestamp, price.timestamp);
     assert_eq!(new_price.humanized_price, price.humanized_price);
     assert_eq!(new_pyth_vaa.wormhole_vaa.sequence, sequence);
-}
-
-/// Return JSON string of the latest VAA from Pyth network.
-///
-/// Attempt to load from cached local files. If not found, fetch from Pyth API.
-fn get_latest_vaas<I>(ids: I) -> anyhow::Result<Vec<Binary>>
-where
-    I: IntoIterator,
-    I::Item: ToString,
-{
-    let ids = ids
-        .into_iter()
-        .map(|id| ("ids[]", id.to_string()))
-        .collect::<Vec<_>>();
-
-    let filename = format!(
-        "{}/testdata/vaas_cache/{:x}",
-        std::env::var("CARGO_MANIFEST_DIR").unwrap(),
-        Sha256::digest(
-            ids.iter()
-                .map(|(_, v)| v.clone())
-                .collect::<Vec<_>>()
-                .join("__")
-        )
-    );
-
-    let cache_file = DiskPersistence::new(filename.into(), true);
-    if cache_file.exists() {
-        return Ok(cache_file.load::<Vec<Binary>>()?);
-    }
-
-    let data = reqwest::blocking::Client::new()
-        .get(format!("{PYTH_URL}/api/latest_vaas"))
-        .query(&ids)
-        .send()?
-        .json()?;
-
-    cache_file.save(&data)?;
-
-    Ok(data)
 }

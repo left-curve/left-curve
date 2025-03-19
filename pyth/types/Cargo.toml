@@ -4,24 +4,16 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "dango-oracle"
+name          = "pyth-types"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
-[features]
-# If enabled, Wasm exports won't be created. This allows this contract to be
-# imported into other contracts as a library.
-library = []
-
 [dependencies]
 anyhow        = { workspace = true }
-dango-lending = { workspace = true, features = ["library"] }
-dango-types   = { workspace = true }
+byteorder     = { workspace = true }
+data-encoding = { workspace = true }
 grug          = { workspace = true }
-pyth-types    = { workspace = true }
-
-[dev-dependencies]
+hex-literal   = { workspace = true }
+pyth-sdk      = { workspace = true }
+pythnet-sdk   = { workspace = true }
