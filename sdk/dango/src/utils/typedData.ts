@@ -1,9 +1,10 @@
 import { camelToSnake, recursiveTransform } from "@left-curve/sdk/utils";
 
 import type { Coins, Hex, Json, Message } from "@left-curve/sdk/types";
-import type { HashTypedDataParameters } from "viem";
+import type { Definition } from "ox/TypedData";
 
 import type {
+  ArbitraryTypedData,
   EIP712Domain,
   EIP712Message,
   TxMessageType,
@@ -19,18 +20,12 @@ import type {
  * @returns The hashed typed data.
  */
 export async function hashTypedData(
-  typedData: HashTypedDataParameters<Record<string, unknown>, string>,
+  typedData: Definition<Record<string, unknown>, string>,
 ): Promise<Hex> {
-  const { hashTypedData: viemHashTypedData } = await import("viem");
+  const { getSignPayload } = await import("ox/TypedData");
 
-  return viemHashTypedData(typedData);
+  return getSignPayload(typedData);
 }
-
-export type ArbitraryTypedDataParameters = {
-  message: Json;
-  types: Record<string, TypedDataProperty[]>;
-  primaryType: string;
-};
 
 /**
  * @description Composes arbitrary typed data.
@@ -41,7 +36,7 @@ export type ArbitraryTypedDataParameters = {
  * @params parameters.primaryType The primary type.
  * @returns The composed typed data.
  */
-export function composeArbitraryTypedData(parameters: ArbitraryTypedDataParameters) {
+export function composeArbitraryTypedData(parameters: ArbitraryTypedData) {
   const { message, types, primaryType } = parameters;
   return {
     domain: {
@@ -67,7 +62,7 @@ export function composeTxTypedData(
   message: EIP712Message,
   domain: EIP712Domain,
   typeData?: Partial<TypedDataParameter<TxMessageType>>,
-): TypedData {
+): TypedData<TxMessageType> {
   const { type = [], extraTypes = {} } = typeData || {};
   const { messages, metadata, gas_limit } = message;
   const { expiry } = metadata;

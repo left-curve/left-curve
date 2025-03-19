@@ -1,19 +1,4 @@
-use {
-    config::{Environment, File},
-    serde::{Deserialize, Serialize},
-    std::path::Path,
-};
-
-pub fn parse_config<P>(path: P) -> Result<Config, config::ConfigError>
-where
-    P: AsRef<Path>,
-{
-    config::Config::builder()
-        .add_source(File::from(path.as_ref()))
-        .add_source(Environment::default().separator("__"))
-        .build()?
-        .try_deserialize()
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -42,7 +27,7 @@ impl Default for GrugConfig {
 pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
-    pub postgres_url: String,
+    pub database_url: String,
     pub httpd: IndexerHttpdConfig,
 }
 
@@ -51,7 +36,7 @@ impl Default for IndexerConfig {
         Self {
             enabled: false,
             keep_blocks: false,
-            postgres_url: "postgres://localhost".to_string(),
+            database_url: "postgres://localhost".to_string(),
             httpd: IndexerHttpdConfig::default(),
         }
     }
@@ -103,22 +88,5 @@ impl Default for TransactionsConfig {
             chain_id: "dango-1".to_string(),
             gas_adjustment: 1.4,
         }
-    }
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod tests {
-    use {super::*, assertor::*};
-
-    #[test]
-    fn test_parse_config_file() {
-        std::env::set_var("TENDERMINT__RPC_ADDR", "BAR");
-
-        let cfg = parse_config("testdata/default_config.toml").unwrap();
-
-        assert_that!(cfg.tendermint.abci_addr.as_str()).is_equal_to("http://localhost:26658");
-        assert_that!(cfg.tendermint.rpc_addr.as_str()).is_equal_to("BAR");
     }
 }

@@ -1,6 +1,6 @@
 use {
     grug_app::QueryApp,
-    indexer_sql::pubsub::PubSub,
+    indexer_sql::{indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
 };
@@ -11,6 +11,7 @@ pub struct Context {
     pub pubsub: Arc<dyn PubSub + Send + Sync>,
     pub grug_app: Arc<dyn QueryApp + Send + Sync>,
     pub tendermint_endpoint: String,
+    pub indexer_path: IndexerPath,
 }
 
 impl Context {
@@ -18,6 +19,7 @@ impl Context {
         ctx: indexer_sql::Context,
         grug_app: Arc<dyn QueryApp + Send + Sync>,
         tendermint_endpoint: T,
+        indexer_path: IndexerPath,
     ) -> Self
     where
         T: ToString,
@@ -27,6 +29,7 @@ impl Context {
             pubsub: ctx.pubsub,
             grug_app,
             tendermint_endpoint: tendermint_endpoint.to_string(),
+            indexer_path,
         }
     }
 }

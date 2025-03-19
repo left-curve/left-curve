@@ -1,7 +1,7 @@
 use {
     crate::{
-        utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
         Int,
+        utils::{grow_be_int, grow_be_uint, grow_le_int, grow_le_uint},
     },
     bnum::types::{I256, I512, U256, U512},
 };

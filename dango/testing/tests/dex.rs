@@ -9,9 +9,9 @@ use {
         },
     },
     grug::{
-        btree_map, coins, Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom,
-        Inner, Message, MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer,
-        StdResult, Udec128, Uint128,
+        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, Message,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Signer, StdResult, Udec128,
+        Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
     test_case::test_case,

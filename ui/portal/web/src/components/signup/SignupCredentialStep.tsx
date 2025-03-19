@@ -1,7 +1,7 @@
 import { useWizard } from "@left-curve/applets-kit";
 import { useMutation } from "@tanstack/react-query";
 
-import { AuthOptions } from "../AuthOptions";
+import { AuthOptions } from "../auth/AuthOptions";
 
 import {
   createWebAuthnCredential,
@@ -9,7 +9,6 @@ import {
   secp256k1RecoverPubKey,
 } from "@left-curve/dango/crypto";
 import { encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
-import { KeyAlgo } from "@left-curve/dango/types";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 import { useConnectors } from "@left-curve/store-react";
 
@@ -50,7 +49,7 @@ export const SignupCredentialStep: React.FC = () => {
 
             const publicKey = await getPublicKey();
             const key: Key = { secp256r1: encodeBase64(publicKey) };
-            const keyHash = createKeyHash({ credentialId: id, keyAlgo: KeyAlgo.Secp256r1 });
+            const keyHash = createKeyHash({ credentialId: id });
 
             return { key, keyHash };
           }
@@ -68,7 +67,7 @@ export const SignupCredentialStep: React.FC = () => {
           const pubKey = await secp256k1RecoverPubKey(ethHashMessage(challenge), signature, true);
 
           const key: Key = { secp256k1: encodeBase64(pubKey) };
-          const keyHash = createKeyHash({ pubKey, keyAlgo: KeyAlgo.Secp256k1 });
+          const keyHash = createKeyHash({ pubKey });
 
           return { key, keyHash };
         })();

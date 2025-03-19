@@ -6,22 +6,22 @@ use grug_types::JsonSerExt;
 use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
-        catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
+        APP_CONFIG, AppError, AppResult, Buffer, CHAIN_ID, CODES, CONFIG, Db, EventResult,
+        GasTracker, Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer,
+        NaiveQuerier, NullIndexer, ProposalPreparer, QuerierProviderImpl, Shared, Vm,
+        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
         do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
         do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
         query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart, AppError, AppResult, Buffer, Db,
-        EventResult, GasTracker, Indexer, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
-        ProposalPreparer, QuerierProviderImpl, Shared, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG,
-        LAST_FINALIZED_BLOCK, NEXT_CRONJOBS,
+        query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, CheckTxOutcome, CodeStatus,
-        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GenericResult,
+        CommitmentStatus, CronOutcome, Duration, Event, EventStatus, GENESIS_SENDER, GenericResult,
         GenericResultExt, GenesisState, Hash256, Json, Message, MsgsAndBackrunEvents, Order,
         Permission, QuerierWrapper, Query, QueryResponse, StdResult, Storage, Timestamp, Tx,
-        TxEvents, TxOutcome, UnsignedTx, GENESIS_SENDER,
+        TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
 };
@@ -819,7 +819,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        catch_and_append_event! {
+        catch_and_push_event! {
             process_msg(
                 vm.clone(),
                 Box::new(buffer.clone()),
@@ -829,7 +829,8 @@ where
                 tx.sender,
                 msg.clone(),
             ),
-            evt
+            evt,
+            msgs
         }
     }
 

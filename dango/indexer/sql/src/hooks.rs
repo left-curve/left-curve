@@ -4,7 +4,7 @@ use {
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{
-        block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait, Context,
+        Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
     },
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
     uuid::Uuid,
@@ -72,22 +72,26 @@ impl Hooks {
             .into_iter()
             .flat_map(|(flat_transfer_event, te)| {
                 flat_transfer_event
-                    .coins
-                    .inner()
+                    .transfers
                     .iter()
-                    .map(|(denom, amount)| {
-                        let res = entity::transfers::ActiveModel {
-                            id: Set(Uuid::new_v4()),
-                            idx: Set(idx),
-                            block_height: Set(te.block_height),
-                            created_at: Set(te.created_at),
-                            from_address: Set(flat_transfer_event.sender.to_string()),
-                            to_address: Set(flat_transfer_event.recipient.to_string()),
-                            amount: Set(amount.to_string()),
-                            denom: Set(denom.to_string()),
-                        };
-                        idx += 1;
-                        res
+                    .flat_map(|(recipient, coins)| {
+                        coins
+                            .into_iter()
+                            .map(|coin| {
+                                let res = entity::transfers::ActiveModel {
+                                    id: Set(Uuid::new_v4()),
+                                    idx: Set(idx),
+                                    block_height: Set(te.block_height),
+                                    created_at: Set(te.created_at),
+                                    from_address: Set(flat_transfer_event.sender.to_string()),
+                                    to_address: Set(recipient.to_string()),
+                                    amount: Set(coin.amount.to_string()),
+                                    denom: Set(coin.denom.to_string()),
+                                };
+                                idx += 1;
+                                res
+                            })
+                            .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>()
             })

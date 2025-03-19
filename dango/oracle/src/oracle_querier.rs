@@ -1,5 +1,5 @@
 use {
-    crate::{PRICES, PRICE_SOURCES},
+    crate::{PRICE_SOURCES, PRICES},
     anyhow::anyhow,
     dango_types::{
         config::AppConfig,
@@ -48,7 +48,7 @@ where
                 Ok(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision } => {
-                let price = self.query_wasm_path(oracle, &PRICES.path(id))?;
+                let price = self.query_wasm_path(oracle, &PRICES.path(id))?.0;
                 Ok(price.with_precision(precision))
             },
             PriceSource::LendingLiquidity => {

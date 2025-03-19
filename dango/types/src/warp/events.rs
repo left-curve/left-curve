@@ -1,6 +1,6 @@
 use {
     grug::{Addr, Denom, HexBinary, Uint128},
-    hyperlane_types::{mailbox::Domain, Addr32},
+    hyperlane_types::{Addr32, mailbox::Domain},
 };
 
 #[grug::derive(Serde)]

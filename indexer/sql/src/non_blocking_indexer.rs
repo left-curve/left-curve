@@ -1,13 +1,12 @@
 use {
     crate::{
-        bail,
+        Context, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
         hooks::{Hooks, NullHooks},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
-        Context,
     },
     grug_app::{Indexer, LAST_FINALIZED_BLOCK},
     grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
@@ -229,7 +228,7 @@ pub struct NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
 {
-    indexer_path: IndexerPath,
+    pub indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
     blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
@@ -350,23 +349,6 @@ impl<H> NonBlockingIndexer<H>
 where
     H: Hooks + Clone + Send + Sync + 'static,
 {
-    /// Where will this block be temporarily saved on disk
-    pub fn block_filename(&self, block_height: u64) -> PathBuf {
-        let directory = self.indexer_path.block_path();
-
-        let subdirectories = block_height
-            .to_string()
-            .chars()
-            .rev()
-            .take(3)
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>();
-
-        let filename = block_height.to_string();
-
-        directory.join(subdirectories.join("/")).join(filename)
-    }
-
     /// Index all previous blocks not yet indexed.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
@@ -384,7 +366,7 @@ where
         }
 
         for block_height in next_block_height..=latest_block_height {
-            let block_filename = self.block_filename(block_height);
+            let block_filename = self.indexer_path.block_path(block_height);
 
             let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
@@ -495,7 +477,9 @@ where
         {
             let blocks = self.blocks.lock().expect("Can't lock blocks");
             if !blocks.is_empty() {
-                tracing::warn!("Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?");
+                tracing::warn!(
+                    "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
+                );
             }
         }
 
@@ -518,7 +502,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height = block.info.height, "index_block called");
 
-        let block_filename = self.block_filename(block.info.height);
+        let block_filename = self.indexer_path.block_path(block.info.height);
 
         self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
             #[cfg(feature = "tracing")]
@@ -544,7 +528,9 @@ where
         let block_to_index = self.find_or_fail(block_height)?;
         let blocks = self.blocks.clone();
         let keep_blocks = self.keep_blocks;
-        let block_filename = self.block_filename(block_to_index.block.info.height);
+        let block_filename = self
+            .indexer_path
+            .block_path(block_to_index.block.info.height);
 
         // NOTE: I can't remove the block to index *before* indexing it with DB txn committed, or
         // the shutdown method could be called and see no current block being indexed, and quit.

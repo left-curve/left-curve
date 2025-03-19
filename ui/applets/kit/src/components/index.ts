@@ -10,8 +10,6 @@ export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
-export { AccountCard } from "./foundation/AccountCard/AccountCard";
-export { AccountCardPreview } from "./foundation/AccountCard/AccountCardPreview";
 export { Table } from "./foundation/table/Table";
 export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
@@ -19,12 +17,12 @@ export { Input } from "./foundation/Input";
 export { Stepper } from "./foundation/Stepper";
 export { Carousel } from "./foundation/Carousel";
 export { ResizerContainer } from "./foundation/ResizerContainer";
-export { AssetCard } from "./foundation/AssetCard";
 export { SelectorCreateAccount } from "./foundation/SelectorCreateAccount";
 export { CoinSelector } from "./foundation/CoinSelector";
 export { AccountSearchInput } from "./foundation/AccountSearchInput";
 export { TextLoop } from "./foundation/TextLoop";
 export { AccordionItem } from "./foundation/AccordionItem";
+export { BorrowBar } from "./foundation/BorrowBar";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -69,6 +67,9 @@ export { IconChecked } from "./foundation/icons/IconChecked";
 export { IconAlert } from "./foundation/icons/IconAlert";
 export { IconQR } from "./foundation/icons/IconQR";
 export { IconPasskey } from "./foundation/icons/IconPasskey";
+export { IconMobile } from "./foundation/icons/IconMobile";
+export { IconFormatNumber } from "./foundation/icons/IconFormatNumber";
+export { IconLanguage } from "./foundation/icons/IconLanguage";
 
 /* ---------------------------------- Emojis -------------------------------- */
 

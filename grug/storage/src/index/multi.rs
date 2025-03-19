@@ -1,6 +1,6 @@
 use {
     crate::{
-        split_first_key, Borsh, Codec, Index, Map, Prefix, PrefixBound, Prefixer, PrimaryKey, Set,
+        Borsh, Codec, Index, Map, Prefix, PrefixBound, Prefixer, PrimaryKey, Set, split_first_key,
     },
     grug_types::{Bound, Empty, Order, Record, StdResult, Storage},
     std::marker::PhantomData,

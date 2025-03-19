@@ -1,10 +1,12 @@
 use {
     crate::{
-        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_update_event,
-        catch_event, AppError, EventResult, GasTracker, Vm, CHAIN_ID, CONFIG, CONTRACTS,
+        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, Vm,
+        call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_insert_event,
+        catch_and_update_event, catch_event,
     },
     grug_types::{
-        Addr, BankMsg, BlockInfo, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer, Storage,
+        Addr, BankMsg, BlockInfo, Coins, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer,
+        Storage,
     },
 };
 
@@ -38,8 +40,7 @@ where
         |_| {
             tracing::info!(
                 from = sender.to_string(),
-                to = msg.to.to_string(),
-                coins = msg.coins.to_string(),
+                transfers = ?msg,
                 "Transferred coins"
             );
         },
@@ -67,7 +68,7 @@ where
     VM: Vm + Clone + 'static,
     AppError: From<VM::Error>,
 {
-    let mut evt = EvtTransfer::base(sender, msg.to, msg.coins.clone());
+    let mut evt = EvtTransfer::base(sender, msg.clone());
 
     let (cfg, code_hash, chain_id) = catch_event! {
         {
@@ -91,8 +92,7 @@ where
 
     let msg = BankMsg {
         from: sender,
-        to: msg.to,
-        coins: msg.coins.clone(),
+        transfers: msg,
     };
 
     catch_and_update_event! {
@@ -112,19 +112,25 @@ where
     }
 
     if do_receive {
-        // If recipient does not exist, skip the `_do_receive` call.
-        if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, msg.to) {
-            catch_and_update_event! {
-                _do_receive(
-                    vm,
-                    storage,
-                    gas_tracker,
-                    block,
-                    msg_depth,
-                    msg,
-                    contract_info.code_hash,
-                ),
-                evt => receive_guest
+        for (to, coins) in msg.transfers {
+            // If recipient does not exist, skip the `_do_receive` call.
+            if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, to) {
+                catch_and_insert_event! {
+                    _do_receive(
+                        vm.clone(),
+                        storage.clone(),
+                        gas_tracker.clone(),
+                        block,
+                        msg_depth,
+                        msg.from,
+                        to,
+                        coins,
+                        contract_info.code_hash,
+                    ),
+                    evt,
+                    receive_guests,
+                    key: to
+                }
             }
         }
     };
@@ -138,7 +144,9 @@ fn _do_receive<VM>(
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
-    msg: BankMsg,
+    from: Addr,
+    to: Addr,
+    coins: Coins,
     code_hash: Hash256,
 ) -> EventResult<EvtGuest>
 where
@@ -150,15 +158,15 @@ where
         {
             CHAIN_ID.load(&storage).map_err(Into::into)
         },
-        EvtGuest::base(msg.to, "receive")
+        EvtGuest::base(to, "receive")
     };
 
     let ctx = Context {
         chain_id,
         block,
-        contract: msg.to,
-        sender: Some(msg.from),
-        funds: Some(msg.coins),
+        contract: to,
+        sender: Some(from),
+        funds: Some(coins),
         mode: None,
     };
 

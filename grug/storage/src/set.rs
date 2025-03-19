@@ -159,7 +159,7 @@ mod tests {
     use {
         crate::{Codec, PrefixBound, Prefixer, PrimaryKey, Set},
         grug_math::{Dec128, NumberConst},
-        grug_types::{concat, Bound, Empty, MockStorage, Order, StdResult, Storage},
+        grug_types::{Bound, Empty, MockStorage, Order, StdResult, Storage, concat},
         std::str::FromStr,
     };
 

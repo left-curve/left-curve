@@ -3,8 +3,8 @@ use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Inner, IsZero},
     serde::{
-        de::{self, Error},
         Serialize,
+        de::{self, Error},
     },
     std::{
         fmt::{self, Display},

@@ -44,6 +44,8 @@ jobs:
 
       - name: Build Portal
         run: pnpm build:portal-web
+        env:
+          PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1

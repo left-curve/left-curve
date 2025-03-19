@@ -1,22 +1,22 @@
 use {
     dango_genesis::Contracts,
-    dango_testing::{setup_test_naive, TestAccount, TestAccounts, TestSuite},
+    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{margin::CollateralPower, single},
         account_factory::AccountParams,
         config::AppConfig,
         constants::{ATOM_DENOM, USDC_DENOM},
         lending::{
-            self, InterestRateModel, MarketUpdates, QueryDebtRequest, QueryDebtsRequest,
-            QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, NAMESPACE,
-            SECONDS_PER_YEAR, SUBNAMESPACE,
+            self, InterestRateModel, MarketUpdates, NAMESPACE, QueryDebtRequest, QueryDebtsRequest,
+            QueryMarketRequest, QueryMarketsRequest, QueryPreviewWithdrawRequest, SECONDS_PER_YEAR,
+            SUBNAMESPACE,
         },
         oracle::{self, PriceSource},
     },
     grug::{
-        btree_map, Addressable, Binary, Coins, Denom, Duration, JsonSerExt, Message, MsgConfigure,
-        MsgTransfer, MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Sign, Udec128,
-        Udec256, Uint128,
+        Addressable, Binary, Coins, Denom, Duration, JsonSerExt, Message, MsgConfigure,
+        MultiplyFraction, NonEmpty, NumberConst, QuerierExt, ResultExt, Sign, Udec128, Udec256,
+        Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -59,10 +59,9 @@ fn feed_oracle_usdc_price(
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![Binary::from_str(
-                    USDC_VAA,
-                )
-                .unwrap()])),
+                &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                    Binary::from_str(USDC_VAA).unwrap(),
+                ])),
                 Coins::default(),
             )
             .should_succeed();
@@ -96,10 +95,7 @@ fn cant_transfer_to_lending() {
     suite
         .send_message(
             &mut accounts.user1,
-            Message::Transfer(MsgTransfer {
-                to: contracts.lending,
-                coins: Coins::one(USDC_DENOM.clone(), 123).unwrap(),
-            }),
+            Message::transfer(contracts.lending, coins! { USDC_DENOM.clone() => 123 }).unwrap(),
         )
         .should_fail_with_error(VmError::function_not_found("receive"));
 }

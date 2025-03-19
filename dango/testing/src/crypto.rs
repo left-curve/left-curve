@@ -1,7 +1,7 @@
 use {
     grug::ByteArray,
     k256::{
-        ecdsa::{signature::Signer, Signature, SigningKey},
+        ecdsa::{Signature, SigningKey, signature::Signer},
         elliptic_curve::rand_core::OsRng,
     },
 };

@@ -1,6 +1,7 @@
 import QRCodeStyling, { type Options as QROptions } from "qr-code-styling";
 import { useEffect, useRef } from "react";
 import { twMerge } from "../../utils";
+import { Spinner } from "./Spinner";
 
 const defaultOptions: QROptions = {
   width: 180,
@@ -30,21 +31,28 @@ const defaultOptions: QROptions = {
 };
 
 interface Props extends React.HTMLAttributes<HTMLDivElement> {
-  data: string;
+  data?: string;
   options?: QROptions;
+  isLoading?: boolean;
 }
 
-export const QRCode: React.FC<Props> = ({ data, options = {}, ...props }) => {
+export const QRCode: React.FC<Props> = ({ data, isLoading, options = {}, ...props }) => {
   const qrCode = new QRCodeStyling({ ...defaultOptions, ...options });
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    qrCode.append(ref.current as HTMLDivElement);
-  }, []);
+    if (ref.current) {
+      qrCode.append(ref.current as HTMLDivElement);
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     qrCode.update({ data });
-  }, [data]);
+  }, [data, isLoading]);
 
-  return <div ref={ref} {...props} className={twMerge("bg-rice-25 p-2", props.className)} />;
+  return isLoading || !data ? (
+    <Spinner color="blue" size="xl" />
+  ) : (
+    <div ref={ref} {...props} className={twMerge("bg-rice-25 p-2", props.className)} />
+  );
 };

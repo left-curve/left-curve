@@ -1,15 +1,16 @@
 use {
     dango_bank::ORPHANED_TRANSFERS,
-    dango_testing::{setup_test_naive, Factory, HyperlaneTestSuite, TestAccount},
+    dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
     dango_types::{
         account::single,
         account_factory::{self, Account, AccountParams, NewUserSalt},
         auth::Key,
+        bank,
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt,
-        Message, NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128,
+        Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt, Message,
+        NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128, btree_map, coins,
     },
     test_case::test_case,
 };
@@ -28,10 +29,24 @@ fn user_onboarding() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().recieve_transfer(
+    suite.hyperlane().receive_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
     );
+
+    // The transfer should be an orphaned transfer. The bank contract should be
+    // holding the 10 USDC.
+    suite
+        .query_balance(&contracts.bank, USDC_DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(10_000_000));
+
+    // The orphaned transfer should have been recorded.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryOrphanedTransferRequest {
+            sender: contracts.warp,
+            recipient: user.address(),
+        })
+        .should_succeed_and_equal(coins! { USDC_DENOM.clone() => 10_000_000 });
 
     // User uses account factory as sender to send an empty transaction.
     // Account factory should interpret this action as the user wishes to create
@@ -102,7 +117,7 @@ fn onboarding_existing_user() {
         );
 
         // Make the initial deposit.
-        suite.hyperlane().recieve_transfer(
+        suite.hyperlane().receive_transfer(
             user.address(),
             Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
         );
@@ -111,17 +126,19 @@ fn onboarding_existing_user() {
         let tx = Tx {
             sender: contracts.account_factory,
             gas_limit: 1_000_000,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                    secret: 10,
-                },
-                Coins::new(),
-            )
-            .unwrap()]),
+            msgs: NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: user.username.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        secret: 10,
+                    },
+                    Coins::new(),
+                )
+                .unwrap(),
+            ]),
             data: Json::null(),
             credential: Json::null(),
         };
@@ -156,17 +173,19 @@ fn onboarding_without_deposit() {
     let tx = Tx {
         sender: contracts.account_factory,
         gas_limit: 1_000_000,
-        msgs: NonEmpty::new_unchecked(vec![Message::execute(
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterUser {
-                secret: 3,
-                username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
-            },
-            Coins::new(),
-        )
-        .unwrap()]),
+        msgs: NonEmpty::new_unchecked(vec![
+            Message::execute(
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    secret: 3,
+                    username: user.username.clone(),
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        ]),
         data: Json::null(),
         credential: Json::null(),
     };
@@ -180,7 +199,7 @@ fn onboarding_without_deposit() {
         ));
 
     // Make a deposit but not enough.
-    suite.hyperlane().recieve_transfer(
+    suite.hyperlane().receive_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 7_000_000).unwrap(),
     );
@@ -191,7 +210,7 @@ fn onboarding_without_deposit() {
         .should_fail_with_error("minumum deposit not satisfied");
 
     // Make a deposit of the minimum amount.
-    suite.hyperlane().recieve_transfer(
+    suite.hyperlane().receive_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 3_000_000).unwrap(),
     );
@@ -214,7 +233,7 @@ fn update_key() {
     );
 
     // Make the initial deposit.
-    suite.hyperlane().recieve_transfer(
+    suite.hyperlane().receive_transfer(
         user.address(),
         Coin::new(USDC_DENOM.clone(), 10_000_000).unwrap(),
     );

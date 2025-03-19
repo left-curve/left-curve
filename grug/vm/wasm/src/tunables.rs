@@ -1,11 +1,11 @@
 use {
     std::ptr::NonNull,
     wasmer::{
+        MemoryType, Pages, TableType, Tunables,
         vm::{
             MemoryError, MemoryStyle, TableStyle, VMMemory, VMMemoryDefinition, VMTable,
             VMTableDefinition,
         },
-        MemoryType, Pages, TableType, Tunables,
     },
 };
 
@@ -111,8 +111,11 @@ where
     ) -> Result<VMMemory, MemoryError> {
         let adjusted = self.adjust_memory(ty);
         self.validate_memory(&adjusted)?;
-        self.base
-            .create_vm_memory(&adjusted, style, vm_definition_location)
+
+        unsafe {
+            self.base
+                .create_vm_memory(&adjusted, style, vm_definition_location)
+        }
     }
 
     /// Create a table owned by the host given a [`TableType`] and a [`TableStyle`].
@@ -131,7 +134,7 @@ where
         style: &TableStyle,
         vm_definition_location: NonNull<VMTableDefinition>,
     ) -> Result<VMTable, String> {
-        self.base.create_vm_table(ty, style, vm_definition_location)
+        unsafe { self.base.create_vm_table(ty, style, vm_definition_location) }
     }
 }
 
@@ -142,7 +145,7 @@ mod tests {
     use {
         super::*,
         test_case::test_case,
-        wasmer::{sys::BaseTunables, Target},
+        wasmer::{Target, sys::BaseTunables},
     };
 
     const MOCK_LIMIT: u32 = 12;

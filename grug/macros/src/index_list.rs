@@ -2,10 +2,10 @@ use {
     proc_macro::TokenStream,
     quote::quote,
     syn::{
+        Expr, ItemStruct,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,
-        Expr, ItemStruct,
     },
 };
 
@@ -45,9 +45,9 @@ pub fn process(attrs: TokenStream, item: TokenStream) -> TokenStream {
     quote! {
         #input
 
-        impl grug::IndexList<#pk, #ty> for #struct_ty<'_> {
-            fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn grug::Index<#pk, #ty>> + '_> {
-                let v: Vec<&dyn grug::Index<#pk, #ty>> = vec![#(#names),*];
+        impl ::grug::IndexList<#pk, #ty> for #struct_ty<'_> {
+            fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn ::grug::Index<#pk, #ty>> + '_> {
+                let v: Vec<&dyn ::grug::Index<#pk, #ty>> = vec![#(#names),*];
                 Box::new(v.into_iter())
             }
         }

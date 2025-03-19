@@ -15,14 +15,16 @@ fn index_transfer_events() {
     let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
 
     // Copied from benchmarks.rs
-    let msgs = vec![Message::execute(
-        contracts.account_factory,
-        &account_factory::ExecuteMsg::RegisterAccount {
-            params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
-        },
-        Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
-    )
-    .unwrap()];
+    let msgs = vec![
+        Message::execute(
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::RegisterAccount {
+                params: AccountParams::Spot(single::Params::new(accounts.user1.username.clone())),
+            },
+            Coins::one(USDC_DENOM.clone(), 100_000_000).unwrap(),
+        )
+        .unwrap(),
+    ];
 
     suite
         .send_messages_with_gas(
@@ -52,10 +54,12 @@ fn index_transfer_events() {
 
             assert_that!(transfers).has_length(2);
 
-            assert_that!(transfers
-                .iter()
-                .map(|t| t.amount.as_str())
-                .collect::<Vec<_>>())
+            assert_that!(
+                transfers
+                    .iter()
+                    .map(|t| t.amount.as_str())
+                    .collect::<Vec<_>>()
+            )
             .is_equal_to(vec!["100000000", "100000000"]);
 
             Ok::<_, anyhow::Error>(())
@@ -98,10 +102,12 @@ fn index_transfer_events() {
 
             assert_that!(transfers).has_length(1);
 
-            assert_that!(transfers
-                .iter()
-                .map(|t| t.amount.as_str())
-                .collect::<Vec<_>>())
+            assert_that!(
+                transfers
+                    .iter()
+                    .map(|t| t.amount.as_str())
+                    .collect::<Vec<_>>()
+            )
             .is_equal_to(vec!["123"]);
 
             Ok::<_, anyhow::Error>(())

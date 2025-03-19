@@ -1,5 +1,7 @@
 use {
-    async_graphql::{ComplexObject, SimpleObject},
+    super::transaction::Transaction,
+    crate::graphql::dataloader::transaction::TransactionDataLoader,
+    async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::entity,
     serde::Deserialize,
@@ -28,7 +30,13 @@ impl From<entity::blocks::Model> for Block {
 }
 
 #[ComplexObject]
-impl Block {}
+impl Block {
+    /// Transactions order isn't guaranteed, check `transactionIdx`
+    async fn transactions(&self, ctx: &Context<'_>) -> Result<Option<Vec<Transaction>>> {
+        let loader = ctx.data_unchecked::<DataLoader<TransactionDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?)
+    }
+}
 
 #[derive(SimpleObject)]
 pub struct BlockInfo {

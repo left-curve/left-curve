@@ -3,10 +3,9 @@ use {
     crate::{context::Context, routes},
     actix_cors::Cors,
     actix_web::{
-        http,
+        App, HttpResponse, HttpServer, http,
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
-        App, HttpResponse, HttpServer,
     },
     std::fmt::Display,
 };
@@ -62,6 +61,8 @@ where
 {
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
+            .service(routes::api::blocks::block_by_height)
+            .service(routes::api::blocks::block_results_by_height)
             .service(routes::graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))

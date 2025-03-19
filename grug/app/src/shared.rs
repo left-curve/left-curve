@@ -1,7 +1,8 @@
 use {
-    grug_types::{extend_one_byte, Batch, Order, Record, Storage},
+    grug_types::{Batch, Order, Record, Storage, extend_one_byte},
     std::{
         fmt::Display,
+        mem::replace,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
         vec,
     },
@@ -45,6 +46,12 @@ impl<S> Shared<S> {
         F: FnOnce(RwLockWriteGuard<S>) -> T,
     {
         action(self.write_access())
+    }
+
+    /// Return the value inside and replace it with a new one.
+    pub fn replace(&self, new_value: S) -> S {
+        let mut write = self.write_access();
+        replace(&mut write, new_value)
     }
 
     /// Disassemble the smart pointer and return the inner value.
@@ -296,5 +303,19 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(data, data2);
+    }
+
+    #[test]
+    fn read_and_write() {
+        let old_value = vec![1, 2, 3, 4, 5];
+        let shared = Shared::new(old_value.clone());
+
+        assert!(shared.read_with(|inner| *inner == old_value));
+
+        let new_value = vec![6, 7, 8, 9, 10];
+        let return_value = shared.replace(new_value.clone());
+
+        assert!(shared.read_with(|inner| *inner == new_value));
+        assert_eq!(return_value, old_value);
     }
 }

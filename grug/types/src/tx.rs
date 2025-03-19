@@ -1,11 +1,12 @@
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
-        NonEmpty, StdError, StdResult,
+        NonEmpty, StdError, StdResult, btree_map,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
+    std::collections::BTreeMap,
 };
 
 /// An arbitrary binary data used for deriving address when instantiating a
@@ -82,11 +83,23 @@ impl Message {
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        Ok(MsgTransfer {
-            to,
-            coins: coins.try_into()?,
-        }
-        .into())
+        Ok(Message::Transfer(btree_map! { to => coins.try_into()? }))
+    }
+
+    pub fn batch_transfer<I, C>(transfers: I) -> StdResult<Self>
+    where
+        I: IntoIterator<Item = (Addr, C)>,
+        C: TryInto<Coins>,
+        StdError: From<C::Error>,
+    {
+        transfers
+            .into_iter()
+            .map(|(to, coins)| {
+                let coins = coins.try_into()?;
+                Ok((to, coins))
+            })
+            .collect::<StdResult<_>>()
+            .map(Message::Transfer)
     }
 
     pub fn upload<B>(code: B) -> Self
@@ -156,12 +169,8 @@ pub struct MsgConfigure {
     pub new_app_cfg: Option<Json>,
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct MsgTransfer {
-    pub to: Addr,
-    pub coins: Coins,
-}
+// recipient => coins
+pub type MsgTransfer = BTreeMap<Addr, Coins>;
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

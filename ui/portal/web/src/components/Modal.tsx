@@ -8,11 +8,13 @@ import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
 import { AddKeyModal } from "./modals/AddKey";
+import { QRConnect } from "./modals/QRConnect";
 import { RemoveKey } from "./modals/RemoveKey";
 
 export const Modals = {
   AddKey: "add-key",
   RemoveKey: "remove-key",
+  QRConnect: "qr-connect",
 };
 
 const modals = {
@@ -24,11 +26,15 @@ const modals = {
     component: RemoveKey,
     initialSnap: 0.4,
   },
+  [Modals.QRConnect]: {
+    component: QRConnect,
+    initialSnap: 0.4,
+  },
 };
 
 export const Modal: React.FC = () => {
   const { activeModal, isModalVisible, hideModal, modalProps } = useApp();
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
   const overlayRef = useRef<HTMLDivElement>(null);

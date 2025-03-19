@@ -1,7 +1,7 @@
 use {
     crate::{
-        catch_event, handle_submessages, AppError, AppResult, EventResult, GasTracker, Instance,
-        QuerierProviderImpl, StorageProvider, Vm, CODES, CONTRACT_NAMESPACE,
+        AppError, AppResult, CODES, CONTRACT_NAMESPACE, EventResult, GasTracker, Instance,
+        QuerierProviderImpl, StorageProvider, Vm, catch_event, handle_submessages,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{

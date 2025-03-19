@@ -5,8 +5,8 @@ use {
         PairParams, PairUpdate, QueryMsg, ReservesResponse,
     },
     grug::{
-        Addr, Bound, CoinPair, Denom, ImmutableCtx, Json, JsonSerExt, Order as IterationOrder,
-        StdResult, DEFAULT_PAGE_LIMIT,
+        Addr, Bound, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt,
+        Order as IterationOrder, StdResult,
     },
     std::collections::BTreeMap,
 };

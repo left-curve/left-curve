@@ -11,7 +11,7 @@ import { m } from "~/paraglide/messages";
 
 export const CreateAccountWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const { activeStep } = useWizard();
-  const isMd = useMediaQuery("md");
+  const { isMd } = useMediaQuery();
 
   return (
     <div className="flex items-center justify-start w-full h-full flex-col md:max-w-[360px] text-center gap-8">

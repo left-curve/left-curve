@@ -1,21 +1,21 @@
 use {
     crate::{
-        fill_orders, match_orders, FillingOutcome, MatchingOutcome, Order, PassiveLiquidityPool,
-        INCOMING_ORDERS, NEXT_ORDER_ID, ORDERS, PAIRS, RESERVES,
+        FillingOutcome, INCOMING_ORDERS, MatchingOutcome, NEXT_ORDER_ID, ORDERS, Order, PAIRS,
+        PassiveLiquidityPool, RESERVES, fill_orders, match_orders,
     },
     anyhow::{anyhow, bail, ensure},
     dango_types::{
         bank,
         dex::{
-            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, OrderCanceled,
-            OrderFilled, OrderIds, OrderSubmitted, OrdersMatched, PairUpdate, PairUpdated,
-            SlippageControl, SwapRoute, LP_NAMESPACE, NAMESPACE,
+            CreateLimitOrderRequest, Direction, ExecuteMsg, InstantiateMsg, LP_NAMESPACE,
+            NAMESPACE, OrderCanceled, OrderFilled, OrderIds, OrderSubmitted, OrdersMatched,
+            PairUpdate, PairUpdated, SlippageControl, SwapRoute,
         },
     },
     grug::{
-        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, Message, MultiplyFraction, MutableCtx,
-        Number, Order as IterationOrder, QuerierExt, Response, StdResult, Storage, SudoCtx,
-        Udec128, Uint128, GENESIS_SENDER,
+        Addr, Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Message,
+        MultiplyFraction, MutableCtx, Number, Order as IterationOrder, QuerierExt, Response,
+        StdResult, Storage, SudoCtx, Udec128, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -515,14 +515,7 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
     }
 
     Ok(Response::new()
-        .add_message({
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::BatchTransfer(refunds),
-                Coins::new(),
-            )?
-        })
+        .add_message(Message::batch_transfer(refunds)?)
         .add_events(events))
 }
 

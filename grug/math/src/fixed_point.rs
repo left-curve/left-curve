@@ -55,7 +55,7 @@ impl FixedPoint<I256> for Dec256 {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{dec_test, FixedPoint, Int},
+        crate::{FixedPoint, Int, dec_test},
         bnum::types::{I256, U256},
         std::fmt::Debug,
     };

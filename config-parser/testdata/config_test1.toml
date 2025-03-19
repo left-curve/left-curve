@@ -1,0 +1,4 @@
+tendermint_endpoint = "http://localhost:26657"
+
+[indexer_httpd]
+tendermint_endpoint = "http://localhost:26657"

@@ -274,7 +274,7 @@ impl SubMessage {
     }
 }
 
-/// A [ContractEvent] where the contract address is added by the host.
+/// A [`ContractEvent`] where the contract address is added by the host.
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CheckedContractEvent {
     pub contract: Addr,
@@ -309,7 +309,7 @@ pub struct ContractEvent {
 }
 
 impl ContractEvent {
-    pub fn new<T, U>(ty: T, data: U) -> StdResult<Self>
+    pub fn new<T, U>(ty: T, data: &U) -> StdResult<Self>
     where
         T: Into<String>,
         U: Serialize,

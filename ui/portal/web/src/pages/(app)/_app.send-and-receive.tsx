@@ -1,7 +1,15 @@
-import { capitalize, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useChainId, useConfig } from "@left-curve/store-react";
+import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import {
+  useAccount,
+  useBalances,
+  useChainId,
+  useConfig,
+  usePrices,
+  useSigningClient,
+} from "@left-curve/store-react";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -14,12 +22,14 @@ import {
   Tabs,
   TruncateText,
   useInputs,
-  useSigningClient,
 } from "@left-curve/applets-kit";
 import { isValidAddress } from "@left-curve/dango";
 import type { Address } from "@left-curve/dango/types";
 import { useMutation } from "@tanstack/react-query";
+
 import { z } from "zod";
+import { useToast } from "~/components/Toast";
+import { m } from "~/paraglide/messages";
 
 const searchParamsSchema = z.object({
   action: z.enum(["send", "receive"]).catch("send"),
@@ -33,12 +43,13 @@ export const Route = createFileRoute("/(app)/_app/send-and-receive")({
 function SendAndReceiveComponent() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/send-and-receive" });
+  const { formatNumberOptions } = useApp();
 
   const [selectedDenom, setSelectedDenom] = useState("uusdc");
-  const { register, setError, setValue, inputs, reset } = useInputs();
-  const { address, amount } = inputs;
+  const { register, setValue, reset, handleSubmit } = useInputs({ strategy: "onSubmit" });
 
   const { account, isConnected } = useAccount();
+  const { toast } = useToast();
   const chainId = useChainId();
   const config = useConfig();
   const { data: signingClient } = useSigningClient();
@@ -47,31 +58,44 @@ function SendAndReceiveComponent() {
     address: account?.address,
   });
 
+  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
   const coins = config.coins[chainId];
   const selectedCoin = coins[selectedDenom];
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
 
-  const { mutateAsync: send, isPending } = useMutation({
-    mutationFn: async () => {
-      if (!amount?.value) return setError("amount", "Amount is required");
-      if (!address?.value) return setError("address", "Address is required");
+  const price = getPrice(humanAmount, selectedDenom, {
+    format: true,
+    formatOptions: { ...formatNumberOptions, currency: "USD" },
+  });
+
+  const { mutateAsync: onSubmit, isPending } = useMutation<
+    void,
+    Error,
+    { amount: string; address: string }
+  >({
+    mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
-      if (!isValidAddress(address.value)) {
-        return setError("address", "Invalid address");
-      }
 
       await signingClient.transfer({
-        to: address.value as Address,
+        to: address as Address,
         sender: account!.address as Address,
         coins: {
-          [selectedCoin.denom]: parseUnits(amount.value, selectedCoin.decimals).toString(),
+          [selectedCoin.denom]: parseUnits(amount, selectedCoin.decimals).toString(),
         },
       });
-      await wait(1000);
     },
-    onSuccess: () => {
+
+    onError: (e) => {
+      toast.error({
+        title: m["common.error"](),
+        description: e.message,
+      });
+    },
+    onSuccess: async () => {
       reset();
+      await wait(1000);
       refreshBalances();
     },
   });
@@ -84,6 +108,7 @@ function SendAndReceiveComponent() {
           className="p-6 shadow-card-shadow max-w-[400px] bg-rice-25 flex flex-col gap-8 rounded-3xl w-full"
         >
           <Tabs
+            layoutId="tabs-send-and-receive"
             selectedTab={isConnected ? action : "send"}
             keys={isConnected ? ["send", "receive"] : ["send"]}
             fullWidth
@@ -91,7 +116,7 @@ function SendAndReceiveComponent() {
           />
 
           {action === "send" ? (
-            <>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <div className="flex flex-col w-full gap-4">
                 <Input
                   label="You're sending"
@@ -104,10 +129,12 @@ function SendAndReceiveComponent() {
                   }}
                   isDisabled={isPending}
                   {...register("amount", {
+                    strategy: "onChange",
                     validate: (v) => {
-                      if (!v) return "Amount is required";
-                      if (Number(v) <= 0) return "Amount must be greater than 0";
-                      if (Number(v) > Number(humanAmount)) return "Insufficient funds";
+                      if (!v) return m["validations.errors.amountIsRequired"]();
+                      if (Number(v) <= 0) return m["validations.errors.amountIsZero"]();
+                      if (Number(v) > Number(humanAmount))
+                        return m["validations.errors.insufficientFunds"]();
                       return true;
                     },
                     mask: (v, prev) => {
@@ -124,14 +151,19 @@ function SendAndReceiveComponent() {
                       coins={Object.values(coins)}
                       selectedKey={selectedDenom}
                       isDisabled={isPending}
-                      onSelectionChange={(k) => setSelectedDenom(k.toString())}
+                      onSelectionChange={(k) => [setSelectedDenom(k.toString())]}
                     />
                   }
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
                       <div className="flex gap-1 items-center justify-center diatype-sm-regular text-gray-500">
-                        <span>{selectedCoin.symbol}</span>
-                        <span>{humanAmount}</span>
+                        <span>
+                          {formatNumber(humanAmount, {
+                            ...formatNumberOptions,
+                            notation: "compact",
+                            maxFractionDigits: selectedCoin.decimals / 3,
+                          })}
+                        </span>
                         <Button
                           isDisabled={isPending}
                           variant="secondary"
@@ -139,32 +171,33 @@ function SendAndReceiveComponent() {
                           className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                           onClick={() => setValue("amount", humanAmount)}
                         >
-                          Max
+                          {m["common.max"]()}
                         </Button>
                       </div>
-                      <p>{humanAmount}</p>
+                      <p>{price}</p>
                     </div>
                   }
                 />
                 <AccountSearchInput
-                  {...register("address")}
+                  {...register("address", {
+                    validate: (v) => isValidAddress(v) || m["validations.errors.invalidAddress"](),
+                  })}
                   label="To"
                   placeholder="Wallet address or name"
-                  onChange={(v) => setValue("address", v)}
                   isDisabled={isPending}
                 />
               </div>
 
               <Button
+                type="submit"
                 fullWidth
                 className="mt-5"
-                onClick={() => send()}
                 isLoading={isPending}
                 isDisabled={!isConnected}
               >
-                Send
+                {m["common.send"]()}
               </Button>
-            </>
+            </form>
           ) : (
             <div className="flex flex-col w-full gap-14 items-center justify-center text-center pb-10">
               <div className="flex flex-col gap-1 items-center">

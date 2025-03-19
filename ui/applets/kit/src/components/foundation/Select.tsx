@@ -2,9 +2,10 @@ import { HiddenSelect, useSelect } from "@react-aria/select";
 import { useSelectState } from "@react-stately/select";
 import type { AriaSelectProps } from "@react-types/select";
 import { AnimatePresence, motion } from "framer-motion";
-import { type ReactElement, cloneElement, useMemo, useRef } from "react";
+import { type ReactElement, cloneElement, useId, useMemo, useRef } from "react";
 import { useClickAway } from "react-use";
 
+import { isMobileOrTable } from "@left-curve/dango/utils";
 import { type VariantProps, tv } from "tailwind-variants";
 import { twMerge } from "../../utils";
 import { ListBox } from "./Listbox";
@@ -32,6 +33,8 @@ export interface SelectProps<T extends object = object>
 export function Select<T extends object>(props: SelectProps<T>) {
   const { selectorIcon: Icon = <IconChevronDown />, placeholder, classNames } = props;
   const state = useSelectState(props);
+  const showNativeSelect = isMobileOrTable();
+  const selectId = useId();
 
   const ref = useRef(null);
   const { valueProps, menuProps } = useSelect(props, state, ref);
@@ -49,6 +52,27 @@ export function Select<T extends object>(props: SelectProps<T>) {
     return state.selectedItem.rendered;
   }, [state.selectedItem, placeholder]);
 
+  if (showNativeSelect) {
+    return (
+      <div className={twMerge(base({ className: classNames?.base }), "relative")}>
+        <select
+          id={selectId}
+          className="absolute top-[-20px] right-0 opacity-0 h-full w-full"
+          onChange={(e) => state.setSelectedKey(e.target.value)}
+        >
+          {[...state.collection].map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.rendered}
+            </option>
+          ))}
+        </select>
+        <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
+          <span {...valueProps}>{renderSelectedItem}</span>
+          {renderIndicator}
+        </label>
+      </div>
+    );
+  }
   return (
     <div className={base({ className: classNames?.base })}>
       <HiddenSelect state={state} triggerRef={ref} label={props.label} name={props.name} />

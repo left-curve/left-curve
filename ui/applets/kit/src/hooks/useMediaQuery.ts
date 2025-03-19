@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-type MediaBreakpoints = "sm" | "md" | "lg" | "xl" | "2xl";
-
 const medias = {
   sm: 640,
   md: 768,
@@ -10,17 +8,37 @@ const medias = {
   "2xl": 1536,
 };
 
-export const useMediaQuery = (size: MediaBreakpoints) => {
-  const [matchSize, setMatchSize] = useState<boolean>(false);
+type MediaQueries = {
+  isSm: boolean;
+  isMd: boolean;
+  isLg: boolean;
+  isXl: boolean;
+  is2Xl: boolean;
+};
+
+export const useMediaQuery = () => {
+  const [matchSize, setMatchSize] = useState<MediaQueries>({
+    isSm: window.innerWidth >= medias.sm,
+    isMd: window.innerWidth >= medias.md,
+    isLg: window.innerWidth >= medias.lg,
+    isXl: window.innerWidth >= medias.xl,
+    is2Xl: window.innerWidth >= medias["2xl"],
+  });
 
   useEffect(() => {
     const handleResize = () => {
-      setMatchSize(() => window.innerWidth >= medias[size]);
+      setMatchSize({
+        isSm: window.innerWidth >= medias.sm,
+        isMd: window.innerWidth >= medias.md,
+        isLg: window.innerWidth >= medias.lg,
+        isXl: window.innerWidth >= medias.xl,
+        is2Xl: window.innerWidth >= medias["2xl"],
+      });
     };
     window.addEventListener("resize", handleResize);
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
-  }, [size]);
+  }, []);
 
   return matchSize;
 };

@@ -1,6 +1,6 @@
 use {
     crate::{
-        schedule_cronjob, AppError, AppResult, EventResult, APP_CONFIG, CONFIG, NEXT_CRONJOBS,
+        APP_CONFIG, AppError, AppResult, CONFIG, EventResult, NEXT_CRONJOBS, schedule_cronjob,
     },
     grug_types::{Addr, BlockInfo, EvtConfigure, MsgConfigure, Storage},
 };

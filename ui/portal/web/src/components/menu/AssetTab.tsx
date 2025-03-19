@@ -1,5 +1,6 @@
-import { AssetCard } from "@left-curve/applets-kit";
 import { useAccount, useBalances } from "@left-curve/store-react";
+
+import { AssetCard } from "./AssetCard";
 
 import type React from "react";
 

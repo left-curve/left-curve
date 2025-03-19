@@ -1,0 +1,23 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "dango-proposal-preparer"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+anyhow       = { workspace = true }
+dango-types  = { workspace = true }
+grug         = { workspace = true }
+grug-app     = { workspace = true }
+prost        = { workspace = true }
+pyth-client  = { workspace = true }
+pyth-types   = { workspace = true }
+reqwest      = { workspace = true }
+tokio        = { workspace = true }
+tokio-stream = { workspace = true }
+tracing      = { workspace = true }

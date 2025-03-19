@@ -1,9 +1,9 @@
 use {
     crate::{
-        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, AppError,
-        EventResult, GasTracker, Vm, _do_transfer, CHAIN_ID, CONTRACTS,
+        _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, MsgTransfer, Storage},
+    grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, Storage, btree_map},
 };
 
 pub fn do_execute<VM>(
@@ -74,10 +74,7 @@ where
                 block,
                 msg_depth,
                 sender,
-                MsgTransfer {
-                    to: msg.contract,
-                    coins: msg.funds.clone(),
-                },
+                btree_map! { msg.contract => msg.funds.clone() },
                 false,
             ),
             evt => transfer_event

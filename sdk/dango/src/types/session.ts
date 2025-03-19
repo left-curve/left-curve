@@ -1,5 +1,6 @@
 import type { Base64 } from "@left-curve/sdk/types";
 import type { StandardCredential } from "./credential.js";
+import type { KeyHash } from "./key.js";
 
 export type SigningSessionInfo = {
   /** Public key of the session key. */
@@ -14,4 +15,10 @@ export type SigningSession = {
   keyHash: string;
   sessionInfo: SigningSessionInfo;
   authorization: StandardCredential;
+};
+
+export type SessionResponse = {
+  keyHash: KeyHash;
+  authorization: StandardCredential;
+  sessionInfo: SigningSessionInfo;
 };
