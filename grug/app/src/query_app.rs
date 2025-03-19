@@ -9,6 +9,14 @@ pub trait QueryApp {
     /// Query the app, return a JSON String.
     fn query_app(&self, raw_req: String, height: u64, prove: bool) -> AppResult<String>;
 
+    /// Query the app's underlying key-value store, return `(value, proof)`.
+    fn query_store(
+        &self,
+        key: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)>;
+
     /// Simulate a transaction, return a JSON String.
     fn simulate(&self, raw_unsigned_tx: String, height: u64, prove: bool) -> AppResult<String>;
 
@@ -30,6 +38,15 @@ where
         let res = self.do_query_app(req, height, prove)?;
 
         Ok(res.to_json_string()?)
+    }
+
+    fn query_store(
+        &self,
+        key: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        self.do_query_store(key, height, prove)
     }
 
     fn simulate(&self, raw_unsigned_tx: String, height: u64, prove: bool) -> AppResult<String> {
