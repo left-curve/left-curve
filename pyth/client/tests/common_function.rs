@@ -2,7 +2,7 @@ use {
     grug::{btree_map, Binary, Inner, Lengthy, MockApi, NonEmpty},
     pyth_client::PythClientTrait,
     pyth_types::PythVaa,
-    std::{collections::BTreeMap, thread::sleep, time::Duration},
+    std::{collections::BTreeMap, fmt::Debug, thread::sleep, time::Duration},
     tokio_stream::StreamExt,
 };
 
@@ -18,17 +18,14 @@ impl VaasChecker {
     {
         let mut values = BTreeMap::new();
         for id in ids.into_iter() {
-            values.insert(
-                id.to_string(),
-                btree_map!(
-                    "price" => 0,
-                    "publish_time" => 0,
-                    // Set to -1 since the first iteration will increase the counter
-                    // (price and publish time are 0).
-                    "price_change" => -1,
-                    "publish_time_change" => -1,
-                ),
-            );
+            values.insert(id.to_string(), btree_map! {
+                "price" => 0,
+                "publish_time" => 0,
+                // Set to -1 since the first iteration will increase the counter
+                // (price and publish time are 0).
+                "price_change" => -1,
+                "publish_time_change" => -1,
+            });
         }
         Self { values }
     }
@@ -91,15 +88,14 @@ impl VaasChecker {
 }
 
 // Test the latest vaas.
-pub fn test_latest_vaas<I, P>(pyth_client: P, ids: I)
+pub fn test_latest_vaas<P, I>(pyth_client: P, ids: I)
 where
+    P: PythClientTrait + Debug,
+    P::Error: Debug,
     I: IntoIterator + Clone + Lengthy,
     I::Item: ToString,
-    P: PythClientTrait + std::fmt::Debug,
-    P::Error: std::fmt::Debug,
 {
     let mut vaas_checker = VaasChecker::new(ids.clone());
-
     let ids = NonEmpty::new(ids).unwrap();
 
     for _ in 0..5 {
@@ -119,16 +115,15 @@ where
 // Test for streaming vaas.
 pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
-    P: PythClientTrait + std::fmt::Debug,
-    P::Error: std::fmt::Debug,
+    P: PythClientTrait + Debug,
+    P::Error: Debug,
     I: IntoIterator + Clone + Lengthy + Send + 'static,
     I::Item: ToString,
 {
     let mut vaas_checker = VaasChecker::new(ids1.clone());
-
     let mut stream = client.stream(NonEmpty::new_unchecked(ids1)).await.unwrap();
-
     let mut not_none_vaas = 0;
+
     while not_none_vaas < 5 {
         if let Some(vaas) = stream.next().await {
             not_none_vaas += 1;
@@ -153,10 +148,9 @@ where
 
     // Open a new connection with the second ids.
     let mut vaas_checker = VaasChecker::new(ids2.clone());
-
     let mut stream = client.stream(NonEmpty::new_unchecked(ids2)).await.unwrap();
-
     let mut not_none_vaas = 0;
+
     while not_none_vaas < 5 {
         if let Some(vaas) = stream.next().await {
             not_none_vaas += 1;
