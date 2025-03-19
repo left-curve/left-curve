@@ -1,4 +1,5 @@
 mod common_function;
+
 use {
     common_function::{test_latest_vaas, test_stream},
     pyth_client::PythClient,

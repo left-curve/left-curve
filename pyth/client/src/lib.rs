@@ -1,5 +1,5 @@
 mod client;
-pub mod client_cache;
+mod client_cache;
 mod error;
 
-pub use client::*;
+pub use {client::*, client_cache::*, error::*};

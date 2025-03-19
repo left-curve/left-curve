@@ -1,7 +1,8 @@
 mod common_function;
+
 use {
     common_function::{test_latest_vaas, test_stream},
-    pyth_client::client_cache::PythClientCache,
+    pyth_client::PythClientCache,
     pyth_types::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
 };
 
