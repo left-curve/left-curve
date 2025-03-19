@@ -65,7 +65,7 @@ actix-web               = "4"
 aes-gcm                 = "0.10"
 alloy                   = "0.11"
 anyhow                  = "1"
-assert-json-diff        = "0"
+assert-json-diff        = "2"
 assertor                = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web = "7.0"
 async-std               = { version = "1", features = ["attributes", "tokio1"] }
