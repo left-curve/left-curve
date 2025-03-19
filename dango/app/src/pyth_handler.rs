@@ -82,8 +82,6 @@ where
             })?
             .into_values()
             .filter_map(|price_source| {
-                // For now there is only Pyth as PriceSource, but there could be more.
-                #[allow(irrefutable_let_patterns)]
                 if let PriceSource::Pyth { id, .. } = price_source {
                     Some(id)
                 } else {
