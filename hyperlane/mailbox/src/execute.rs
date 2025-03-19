@@ -3,13 +3,13 @@ use {
     anyhow::{anyhow, ensure},
     grug::{Coins, Hash, HexBinary, MutableCtx, QuerierExt, Response, StdResult},
     hyperlane_types::{
+        Addr32, IncrementalMerkleTree,
         isms::{IsmQuery, QueryIsmRequest},
         mailbox::{
-            Dispatch, DispatchId, Domain, ExecuteMsg, InsertedIntoTree, InstantiateMsg, Message,
-            PostDispatch, Process, ProcessId, MAILBOX_VERSION,
+            Dispatch, DispatchId, Domain, ExecuteMsg, InsertedIntoTree, InstantiateMsg,
+            MAILBOX_VERSION, Message, PostDispatch, Process, ProcessId,
         },
         recipients::{self, QueryRecipientRequest, RecipientMsg, RecipientQuery},
-        Addr32, IncrementalMerkleTree,
     },
 };
 

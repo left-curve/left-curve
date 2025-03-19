@@ -816,11 +816,12 @@ mod tests {
     fn applying_initial_batch() {
         let (storage, root_hash) = build_test_case().unwrap();
         assert_eq!(root_hash, Some(HASH_ROOT));
-        assert!(TREE
-            .orphans
-            .range(&storage, None, None, Order::Ascending)
-            .next()
-            .is_none());
+        assert!(
+            TREE.orphans
+                .range(&storage, None, None, Order::Ascending)
+                .next()
+                .is_none()
+        );
     }
 
     // Delete the leaves 010 and 0110. this should cause the leaf 0111 be moved

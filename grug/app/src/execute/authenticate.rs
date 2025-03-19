@@ -1,7 +1,7 @@
 use {
     crate::{
-        call_in_1_out_1_handle_auth_response, catch_and_update_event, catch_event, AppError,
-        EventResult, GasTracker, Vm, CHAIN_ID, CONTRACTS,
+        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, Vm,
+        call_in_1_out_1_handle_auth_response, catch_and_update_event, catch_event,
     },
     grug_types::{AuthMode, BlockInfo, Context, EvtAuthenticate, Storage, Tx},
 };

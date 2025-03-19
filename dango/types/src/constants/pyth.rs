@@ -8,7 +8,7 @@ use {
         },
         oracle::PriceSource,
     },
-    grug::{btree_map, Denom},
+    grug::{Denom, btree_map},
     pyth_types::{
         ATOM_USD_ID, BCH_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LTC_USD_ID,
         SHIB_USD_ID, SOL_USD_ID, SUI_USD_ID, USDC_USD_ID, WBTC_USD_ID, XRP_USD_ID,

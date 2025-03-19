@@ -1,6 +1,6 @@
 use {
     async_graphql::SimpleObject,
-    base64::{engine::general_purpose::STANDARD, Engine},
+    base64::{Engine, engine::general_purpose::STANDARD},
     tendermint_rpc::endpoint::{
         abci_query,
         broadcast::{tx_async, tx_commit, tx_sync},

@@ -1,7 +1,7 @@
 use {
     dango_types::warp::{RateLimit, Route},
     grug::{Addr, Denom, Item, Map, Uint128},
-    hyperlane_types::{mailbox::Domain, Addr32},
+    hyperlane_types::{Addr32, mailbox::Domain},
     std::collections::BTreeMap,
 };
 

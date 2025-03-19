@@ -1,6 +1,6 @@
 use {
     dango_bank::ORPHANED_TRANSFERS,
-    dango_testing::{setup_test_naive, Factory, HyperlaneTestSuite, TestAccount},
+    dango_testing::{Factory, HyperlaneTestSuite, TestAccount, setup_test_naive},
     dango_types::{
         account::single,
         account_factory::{self, Account, AccountParams, NewUserSalt},
@@ -9,8 +9,8 @@ use {
         constants::USDC_DENOM,
     },
     grug::{
-        btree_map, coins, Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json,
-        JsonSerExt, Message, NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128,
+        Addr, Addressable, ByteArray, Coin, Coins, Hash256, HashExt, Json, JsonSerExt, Message,
+        NonEmpty, Op, QuerierExt, ResultExt, StdError, Tx, Uint128, btree_map, coins,
     },
     test_case::test_case,
 };
@@ -126,17 +126,19 @@ fn onboarding_existing_user() {
         let tx = Tx {
             sender: contracts.account_factory,
             gas_limit: 1_000_000,
-            msgs: NonEmpty::new_unchecked(vec![Message::execute(
-                contracts.account_factory,
-                &account_factory::ExecuteMsg::RegisterUser {
-                    username: user.username.clone(),
-                    key: user.first_key(),
-                    key_hash: user.first_key_hash(),
-                    secret: 10,
-                },
-                Coins::new(),
-            )
-            .unwrap()]),
+            msgs: NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.account_factory,
+                    &account_factory::ExecuteMsg::RegisterUser {
+                        username: user.username.clone(),
+                        key: user.first_key(),
+                        key_hash: user.first_key_hash(),
+                        secret: 10,
+                    },
+                    Coins::new(),
+                )
+                .unwrap(),
+            ]),
             data: Json::null(),
             credential: Json::null(),
         };
@@ -171,17 +173,19 @@ fn onboarding_without_deposit() {
     let tx = Tx {
         sender: contracts.account_factory,
         gas_limit: 1_000_000,
-        msgs: NonEmpty::new_unchecked(vec![Message::execute(
-            contracts.account_factory,
-            &account_factory::ExecuteMsg::RegisterUser {
-                secret: 3,
-                username: user.username.clone(),
-                key: user.first_key(),
-                key_hash: user.first_key_hash(),
-            },
-            Coins::new(),
-        )
-        .unwrap()]),
+        msgs: NonEmpty::new_unchecked(vec![
+            Message::execute(
+                contracts.account_factory,
+                &account_factory::ExecuteMsg::RegisterUser {
+                    secret: 3,
+                    username: user.username.clone(),
+                    key: user.first_key(),
+                    key_hash: user.first_key_hash(),
+                },
+                Coins::new(),
+            )
+            .unwrap(),
+        ]),
         data: Json::null(),
         credential: Json::null(),
     };

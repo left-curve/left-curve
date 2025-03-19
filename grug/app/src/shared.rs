@@ -1,5 +1,5 @@
 use {
-    grug_types::{extend_one_byte, Batch, Order, Record, Storage},
+    grug_types::{Batch, Order, Record, Storage, extend_one_byte},
     std::{
         fmt::Display,
         mem::replace,

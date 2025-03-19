@@ -141,7 +141,7 @@ impl_sign_signed!(i8, i16, i32, i64, i128, I256, I512);
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{int_test, test_utils::bt, Int, MathError, NumberConst, Sign},
+        crate::{Int, MathError, NumberConst, Sign, int_test, test_utils::bt},
         bnum::types::{I256, U256},
     };
 
@@ -201,7 +201,7 @@ mod int_tests {
 
 #[cfg(test)]
 mod dec_tests {
-    use crate::{dec_test, test_utils::dt, Dec, FixedPoint, MathError, NumberConst, Sign};
+    use crate::{Dec, FixedPoint, MathError, NumberConst, Sign, dec_test, test_utils::dt};
 
     dec_test!( sign
         inputs = {

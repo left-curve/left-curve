@@ -9,8 +9,8 @@ use {
         constants::{DANGO_DENOM, USDC_DENOM},
     },
     grug::{
-        addr, btree_map, coins, Addressable, BalanceChange, CheckedContractEvent, JsonDeExt,
-        QuerierExt, ResultExt, SearchEvent,
+        Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
+        SearchEvent, addr, btree_map, coins,
     },
 };
 

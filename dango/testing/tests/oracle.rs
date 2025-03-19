@@ -1,6 +1,6 @@
 use {
     dango_oracle::PRICES,
-    dango_testing::{setup_test_naive, TestAccounts, TestSuite},
+    dango_testing::{TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         constants::{
             ATOM_DENOM, BNB_DENOM, BTC_DENOM, DOGE_DENOM, ETH_DENOM, SHIB_DENOM, SOL_DENOM,
@@ -9,13 +9,13 @@ use {
         oracle::{ExecuteMsg, PrecisionlessPrice, Price, QueryPriceRequest},
     },
     grug::{
-        btree_map, Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt,
-        StorageQuerier, Udec128,
+        Addr, Binary, Coins, Inner, MockApi, NonEmpty, QuerierExt, ResultExt, StorageQuerier,
+        Udec128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL,
+        ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, PythId, PythVaa,
         SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
     },
     std::{cmp::Ordering, collections::BTreeMap, str::FromStr, thread, time::Duration},
@@ -53,7 +53,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_2).unwrap()
+                    Binary::from_str(VAA_2).unwrap(),
                 ])),
                 Coins::default(),
             )
@@ -87,7 +87,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_1).unwrap()
+                    Binary::from_str(VAA_1).unwrap(),
                 ])),
                 Coins::default(),
             )
@@ -119,7 +119,7 @@ fn oracle() {
                 &mut accounts.owner,
                 oracle,
                 &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                    Binary::from_str(VAA_2).unwrap()
+                    Binary::from_str(VAA_2).unwrap(),
                 ])),
                 Coins::default(),
             )

@@ -1,7 +1,7 @@
 use {
     crate::graphql::AppSchema,
-    actix_web::{web, HttpRequest, HttpResponse, Resource},
-    async_graphql::{http::*, Schema},
+    actix_web::{HttpRequest, HttpResponse, Resource, web},
+    async_graphql::{Schema, http::*},
     async_graphql_actix_web::{GraphQLRequest, GraphQLResponse, GraphQLSubscription},
 };
 

@@ -1,14 +1,14 @@
 use {
     crate::{
-        call_in_1_out_1, AppError, AppResult, GasTracker, MeteredItem, MeteredMap, MeteredStorage,
-        StorageProvider, Vm, APP_CONFIG, CHAIN_ID, CODES, CONFIG, CONTRACTS, CONTRACT_NAMESPACE,
+        APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
+        GasTracker, MeteredItem, MeteredMap, MeteredStorage, StorageProvider, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
-        Context, ContractInfo, GenericResult, Hash256, Json, Order, QueryBalanceRequest,
-        QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest, QueryContractRequest,
-        QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest,
-        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage, DEFAULT_PAGE_LIMIT,
+        Context, ContractInfo, DEFAULT_PAGE_LIMIT, GenericResult, Hash256, Json, Order,
+        QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest,
+        QueryContractRequest, QueryContractsRequest, QuerySuppliesRequest, QuerySupplyRequest,
+        QueryWasmRawRequest, QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };

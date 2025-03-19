@@ -3,7 +3,7 @@ use {
     async_trait::async_trait,
     std::pin::Pin,
     tokio::sync::broadcast,
-    tokio_stream::{wrappers::BroadcastStream, Stream, StreamExt},
+    tokio_stream::{Stream, StreamExt, wrappers::BroadcastStream},
 };
 
 /// In-memory pubsub implementation.

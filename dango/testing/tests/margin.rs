@@ -1,7 +1,7 @@
 use {
     dango_genesis::Contracts,
     dango_oracle::OracleQuerier,
-    dango_testing::{setup_test_naive, TestAccount, TestAccounts, TestSuite},
+    dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
         account::{
             self,
@@ -16,10 +16,10 @@ use {
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource},
     },
     grug::{
-        btree_map, coins, Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner,
-        IsZero, JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber,
-        NonEmpty, Number, NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128,
-        Uint128,
+        Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
+        JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, Number,
+        NumberConst, PrevNumber, QuerierExt, ResultExt, SearchEvent, Udec128, Uint128, btree_map,
+        coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -109,7 +109,7 @@ fn feed_oracle_price(
             &mut accounts.owner,
             contracts.oracle,
             &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                Binary::from_str(vaa).unwrap()
+                Binary::from_str(vaa).unwrap(),
             ])),
             Coins::default(),
         )

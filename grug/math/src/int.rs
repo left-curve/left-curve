@@ -1,7 +1,7 @@
 use {
     crate::{
-        utils::{bytes_to_digits, grow_le_int, grow_le_uint},
         Integer, MathError, MathResult, NextNumber, Number,
+        utils::{bytes_to_digits, grow_le_int, grow_le_uint},
     },
     bnum::types::{I256, I512, U256, U512},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -366,9 +366,8 @@ pub mod tests {
     use {
         super::*,
         crate::{
-            dts, int_test,
+            NumberConst, dts, int_test,
             test_utils::{bt, dt},
-            NumberConst,
         },
         bnum::cast::As,
     };

@@ -1,6 +1,6 @@
 use {
     crate::context::Context,
-    async_graphql::{dataloader::DataLoader, extensions, Schema},
+    async_graphql::{Schema, dataloader::DataLoader, extensions},
 };
 
 pub mod dataloader;

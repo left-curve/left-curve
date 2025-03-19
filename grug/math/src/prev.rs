@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec128, Dec256, Inner, Int128, Int256, Int512, Int64, MathError, MathResult, Udec128,
-        Udec256, Uint128, Uint256, Uint512, Uint64,
+        Dec128, Dec256, Inner, Int64, Int128, Int256, Int512, MathError, MathResult, Udec128,
+        Udec256, Uint64, Uint128, Uint256, Uint512,
     },
     bnum::BTryFrom,
 };
@@ -100,7 +100,7 @@ impl_prev_dec! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{int_test, test_utils::bt, Int, MathError, PrevNumber},
+        crate::{Int, MathError, PrevNumber, int_test, test_utils::bt},
         bnum::types::{I256, U256},
     };
 
@@ -160,7 +160,7 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use {
-        crate::{dec_test, test_utils::bt, Dec, Int, MathError, PrevNumber},
+        crate::{Dec, Int, MathError, PrevNumber, dec_test, test_utils::bt},
         bnum::types::{I256, U256},
     };
 

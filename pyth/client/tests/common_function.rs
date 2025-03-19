@@ -1,5 +1,5 @@
 use {
-    grug::{btree_map, Binary, Inner, Lengthy, MockApi, NonEmpty},
+    grug::{Binary, Inner, Lengthy, MockApi, NonEmpty, btree_map},
     pyth_client::PythClientTrait,
     pyth_types::PythVaa,
     std::{collections::BTreeMap, fmt::Debug, thread::sleep, time::Duration},

@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Inner, Int},
     grug_types::{
-        nested_namespaces_with_key, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes,
-        Encoder, LengthBounded, Lengthy, Part, StdError, StdResult,
+        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, LengthBounded,
+        Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
     },
     std::{mem, str, vec},
 };
@@ -702,8 +702,8 @@ mod tests {
         crate::{PrimaryKey, Set},
         bnum::types::I256,
         grug_math::{
-            Bytable, Dec128, Dec256, Int128, Int256, Int64, NumberConst, Udec128, Udec256, Uint128,
-            Uint256, Uint512, Uint64,
+            Bytable, Dec128, Dec256, Int64, Int128, Int256, NumberConst, Udec128, Udec256, Uint64,
+            Uint128, Uint256, Uint512,
         },
         grug_types::{Addr, Duration, Hash, MockStorage, Order, StdResult},
         std::{fmt::Debug, str::FromStr},
