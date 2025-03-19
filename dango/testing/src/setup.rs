@@ -27,7 +27,7 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
-    pyth_client::client_cache::PythClientCache,
+    pyth_client::PythClientCache,
     pyth_types::GUARDIAN_SETS,
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };

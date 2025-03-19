@@ -7,7 +7,7 @@ use {
         StdError,
     },
     grug_app::AppError,
-    pyth_client::{client_cache::PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::PYTH_URL,
     std::{thread::sleep, time::Duration},
 };

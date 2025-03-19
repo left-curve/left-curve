@@ -13,7 +13,7 @@ use {
         StorageQuerier, Udec128,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_client::{client_cache::PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
         PythId, PythVaa, ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL,
         SHIB_USD_ID, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,

@@ -2,7 +2,7 @@ use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, StdResult},
     grug_app::Shared,
-    pyth_client::{client_cache::PythClientCache, PythClient, PythClientTrait},
+    pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::PythId,
     reqwest::IntoUrl,
     std::{

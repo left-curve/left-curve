@@ -7,7 +7,7 @@ use {
         StorageQuerier,
     },
     hex_literal::hex,
-    pyth_client::{client_cache::PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{PythId, PYTH_URL},
     std::{
         collections::{BTreeMap, BTreeSet},
