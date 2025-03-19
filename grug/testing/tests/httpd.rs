@@ -12,7 +12,7 @@ use {
     },
     indexer_sql::{hooks::NullHooks, non_blocking_indexer::NonBlockingIndexer},
     indexer_testing::{
-        build_app_service, call_graphql, call_ws_graphql_stream,
+        build_app_service, call_api, call_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response, GraphQLCustomRequest, PaginatedResponse,
     },
     serde_json::json,
@@ -31,9 +31,11 @@ async fn create_block() -> anyhow::Result<(
 
     let indexer = indexer_sql::non_blocking_indexer::IndexerBuilder::default()
         .with_memory_database()
+        .with_keep_blocks(true)
         .build()?;
 
     let context = indexer.context.clone();
+    let indexer_path = indexer.indexer_path.clone();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -45,6 +47,7 @@ async fn create_block() -> anyhow::Result<(
         context,
         Arc::new(suite.app.clone_without_indexer()),
         "http://localhost:26657",
+        indexer_path,
     );
 
     let to = accounts["owner"].address;
@@ -103,6 +106,43 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
                 let response = call_graphql::<Block>(app, request_body).await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn api_returns_block() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context.clone());
+
+                let block: grug_types::Block = call_api(app, "/api/blocks/1").await?;
+
+                assert_that!(block.info.height).is_equal_to(1);
+
+                let app = build_app_service(httpd_context.clone());
+
+                let block_outcome: grug_types::BlockOutcome =
+                    call_api(app, "/api/block_results/1").await?;
+
+                assert_that!(block_outcome.cron_outcomes).is_empty();
+                assert_that!(block_outcome.tx_outcomes).has_length(1);
+
+                let app = build_app_service(httpd_context);
+
+                let block_outcome: Result<grug_types::BlockOutcome, _> =
+                    call_api(app, "/api/block_results/2").await;
+
+                assert_that!(block_outcome).is_err();
 
                 Ok::<(), anyhow::Error>(())
             })

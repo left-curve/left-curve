@@ -90,6 +90,10 @@ impl BlockToIndex {
         Ok(block_to_index)
     }
 
+    pub fn exists(file_path: PathBuf) -> bool {
+        DiskPersistence::new(file_path, false).exists()
+    }
+
     pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
         Ok(DiskPersistence::new(file_path, false).delete()?)
     }

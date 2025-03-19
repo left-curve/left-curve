@@ -186,6 +186,8 @@ fn no_sql_index_error_after_restart() {
         .build()
         .expect("Can't create indexer");
 
+    let indexer_path = indexer.indexer_path.clone();
+
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000).unwrap())
@@ -234,7 +236,7 @@ fn no_sql_index_error_after_restart() {
         txs: vec![],
     };
 
-    let block_filename = suite.app.indexer.block_filename(block_info.height);
+    let block_filename = indexer_path.block_path(block_info.height);
     let block_to_index = BlockToIndex::new(block_filename, block, block_outcome);
 
     block_to_index

@@ -102,6 +102,7 @@ pub fn setup_test_with_indexer() -> (
         .unwrap();
 
     let indexer_context = indexer.context.clone();
+    let indexer_path = indexer.indexer_path.clone();
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -118,6 +119,7 @@ pub fn setup_test_with_indexer() -> (
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         "http://localhost:26657",
+        indexer_path,
     );
 
     ((suite, accounts, codes, contracts), httpd_context)
