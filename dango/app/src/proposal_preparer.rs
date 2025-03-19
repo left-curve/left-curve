@@ -1,5 +1,5 @@
 use {
-    crate::pyth_pp_handler::PythPPHandler,
+    crate::pyth_handler::PythHandler,
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
@@ -13,7 +13,7 @@ const GAS_LIMIT: u64 = 50_000_000;
 
 pub struct ProposalPreparer<P> {
     // Option to be able to not clone the PythClientPPHandler.
-    pyth_handler: Option<Mutex<PythPPHandler<P>>>,
+    pyth_handler: Option<Mutex<PythHandler<P>>>,
 }
 
 impl<P> Clone for ProposalPreparer<P> {
@@ -24,7 +24,7 @@ impl<P> Clone for ProposalPreparer<P> {
 
 impl ProposalPreparer<PythClient> {
     pub fn new() -> Self {
-        let client = PythPPHandler::new(PYTH_URL);
+        let client = PythHandler::new(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -40,7 +40,7 @@ impl Default for ProposalPreparer<PythClient> {
 
 impl ProposalPreparer<PythClientCache> {
     pub fn new_with_cache() -> Self {
-        let client = PythPPHandler::new_with_cache(PYTH_URL);
+        let client = PythHandler::new_with_cache(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),

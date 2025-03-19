@@ -1,5 +1,5 @@
 use {
-    dango_app::PythPPHandler,
+    dango_app::PythHandler,
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     grug::{
@@ -82,7 +82,7 @@ fn handler() {
     };
     let querier = QuerierWrapper::new(&wrapper_test);
 
-    let mut handler = PythPPHandler::<PythClientCache>::new_with_cache(PYTH_URL);
+    let mut handler = PythHandler::<PythClientCache>::new_with_cache(PYTH_URL);
 
     // Start the handler with oracle.
     handler.update_stream(&querier, oracle).unwrap();
