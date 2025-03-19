@@ -1,10 +1,10 @@
 use {
     crate::{TestAccount, TestAccounts, MOCK_LOCAL_DOMAIN},
-    dango_app::ProposalPreparer,
     dango_genesis::{
         build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisConfig,
         GenesisUser,
     },
+    dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         constants::{
             BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,

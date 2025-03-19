@@ -10,32 +10,32 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-actix-web         = { workspace = true }
-anyhow            = { workspace = true }
-async-graphql     = { workspace = true }
-dango-app         = { workspace = true }
-dango-genesis     = { workspace = true }
-dango-httpd       = { workspace = true }
-dango-indexer-sql = { workspace = true, features = ["tracing"] }
-dango-types       = { workspace = true }
-grug              = { workspace = true }
-grug-app          = { workspace = true }
-grug-crypto       = { workspace = true }
-grug-db-disk      = { workspace = true }
-grug-db-memory    = { workspace = true }
-grug-vm-hybrid    = { workspace = true }
-grug-vm-rust      = { workspace = true }
-grug-vm-wasm      = { workspace = true }
-hex-literal       = { workspace = true }
-hyperlane-types   = { workspace = true }
-indexer-httpd     = { workspace = true }
-indexer-sql       = { workspace = true, features = ["tracing"] }
-k256              = { workspace = true }
-pyth-client       = { workspace = true }
-pyth-types        = { workspace = true }
-sea-orm           = { workspace = true }
-serde             = { workspace = true }
-serde_json        = { workspace = true }
+actix-web               = { workspace = true }
+anyhow                  = { workspace = true }
+async-graphql           = { workspace = true }
+dango-genesis           = { workspace = true }
+dango-httpd             = { workspace = true }
+dango-indexer-sql       = { workspace = true, features = ["tracing"] }
+dango-proposal-preparer = { workspace = true }
+dango-types             = { workspace = true }
+grug                    = { workspace = true }
+grug-app                = { workspace = true }
+grug-crypto             = { workspace = true }
+grug-db-disk            = { workspace = true }
+grug-db-memory          = { workspace = true }
+grug-vm-hybrid          = { workspace = true }
+grug-vm-rust            = { workspace = true }
+grug-vm-wasm            = { workspace = true }
+hex-literal             = { workspace = true }
+hyperlane-types         = { workspace = true }
+indexer-httpd           = { workspace = true }
+indexer-sql             = { workspace = true, features = ["tracing"] }
+k256                    = { workspace = true }
+pyth-client             = { workspace = true }
+pyth-types              = { workspace = true }
+sea-orm                 = { workspace = true }
+serde                   = { workspace = true }
+serde_json              = { workspace = true }
 
 [dev-dependencies]
 anyhow                = { workspace = true }

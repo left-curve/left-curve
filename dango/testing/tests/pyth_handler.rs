@@ -1,5 +1,5 @@
 use {
-    dango_app::PythHandler,
+    dango_proposal_preparer::PythHandler,
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     grug::{

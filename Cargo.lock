@@ -3165,23 +3165,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dango-app"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "dango-types",
- "grug",
- "grug-app",
- "prost",
- "pyth-client",
- "pyth-types",
- "reqwest 0.12.12",
- "tokio",
- "tokio-stream",
- "tracing",
-]
-
-[[package]]
 name = "dango-auth"
 version = "0.0.0"
 dependencies = [
@@ -3213,10 +3196,10 @@ dependencies = [
  "colored",
  "colored_json",
  "config-parser",
- "dango-app",
  "dango-client",
  "dango-genesis",
  "dango-httpd",
+ "dango-proposal-preparer",
  "dango-types",
  "data-encoding",
  "dialoguer",
@@ -3376,6 +3359,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-proposal-preparer"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "prost",
+ "pyth-client",
+ "pyth-types",
+ "reqwest 0.12.12",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "dango-taxman"
 version = "0.0.0"
 dependencies = [
@@ -3394,12 +3394,12 @@ dependencies = [
  "async-graphql",
  "criterion",
  "dango-account-factory",
- "dango-app",
  "dango-bank",
  "dango-genesis",
  "dango-httpd",
  "dango-indexer-sql",
  "dango-oracle",
+ "dango-proposal-preparer",
  "dango-types",
  "dango-warp",
  "grug",
