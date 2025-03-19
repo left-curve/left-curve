@@ -353,7 +353,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, AppConfig},
         },
-        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier},
+        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt},
         std::str::FromStr,
     };
 
@@ -429,7 +429,7 @@ mod tests {
             .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -501,7 +501,7 @@ mod tests {
         }
         "#;
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -565,13 +565,24 @@ mod tests {
                     .unwrap();
             });
 
+        // With the incorrect chain ID. Should fail.
         let mut ctx = MockContext::new()
             .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("not-dev-5")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None)
+            .should_fail_with_error("chain ID mismatch");
+
+        // With the correct chain ID.
+        let mut ctx = MockContext::new()
+            .with_querier(ctx.querier)
             .with_contract(user_address)
             .with_chain_id("dev-5")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -650,7 +661,7 @@ mod tests {
             "gas_limit":2448139
         }"#;
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
 
     #[test]
