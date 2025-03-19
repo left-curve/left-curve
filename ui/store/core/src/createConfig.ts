@@ -70,6 +70,7 @@ export function createConfig<
         emitter,
         chains: chains.getState(),
         transports: rest.transports,
+        storage,
       }),
       emitter,
       uid: emitter.uid,

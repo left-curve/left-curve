@@ -1,12 +1,14 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
     anyhow::{bail, ensure},
-    dango_types::bank::{ExecuteMsg, InstantiateMsg, Metadata},
-    grug::{
-        Addr, BankMsg, Coin, Coins, Denom, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+    dango_types::bank::{
+        Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
-    std::collections::{BTreeMap, HashMap},
+    grug::{
+        coins, Addr, BankMsg, Coin, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst,
+        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+    },
+    std::collections::HashMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -40,7 +42,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         METADATAS.save(ctx.storage, &denom, &metadata)?;
     }
 
-    Ok(Response::new())
+    Ok(Response::new()) // No need to emit events during genesis.
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
@@ -64,7 +66,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             denom,
             amount,
         } => force_transfer(ctx, from, to, denom, amount),
-        ExecuteMsg::BatchTransfer(transfers) => batch_transfer(ctx, transfers),
         ExecuteMsg::RecoverTransfer { sender, recipient } => {
             recover_transfer(ctx, sender, recipient)
         },
@@ -102,19 +103,39 @@ fn set_metadata(ctx: MutableCtx, denom: Denom, metadata: Metadata) -> anyhow::Re
 fn mint(ctx: MutableCtx, to: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
     ensure_namespace_owner(&ctx, &denom)?;
 
-    increase_supply(ctx.storage, &denom, amount)?;
-
-    if ctx.querier.query_contract(to).is_ok() {
-        increase_balance(ctx.storage, &to, &denom, amount)?;
+    // Handle orphaned transfers.
+    // See the comments in `bank_execute` for more details.
+    let recipient_exists = ctx.querier.query_contract(to).is_ok();
+    let recipient = if recipient_exists {
+        to
     } else {
         ORPHANED_TRANSFERS.may_update(ctx.storage, (ctx.sender, to), |coins| {
             let mut coins = coins.unwrap_or_default();
-            coins.insert(Coin::new(denom, amount)?)?;
+            coins.insert(Coin::new(denom.clone(), amount)?)?;
             Ok::<_, StdError>(coins)
         })?;
-    }
 
-    Ok(Response::new())
+        ctx.contract
+    };
+
+    increase_supply(ctx.storage, &denom, amount)?;
+    increase_balance(ctx.storage, &recipient, &denom, amount)?;
+
+    Ok(Response::new()
+        .add_event(Minted {
+            user: recipient,
+            minter: ctx.sender,
+            coins: coins! { denom.clone() => amount },
+        })?
+        .may_add_event(if !recipient_exists {
+            Some(TransferOrphaned {
+                from: ctx.sender,
+                to: recipient,
+                coins: coins! { denom => amount },
+            })
+        } else {
+            None
+        })?)
 }
 
 fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint128) -> anyhow::Result<Response> {
@@ -123,7 +144,11 @@ fn burn(ctx: MutableCtx, from: Addr, denom: Denom, amount: Uint128) -> anyhow::R
     decrease_supply(ctx.storage, &denom, amount)?;
     decrease_balance(ctx.storage, &from, &denom, amount)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(Burned {
+        user: from,
+        burner: ctx.sender,
+        coins: coins! { denom => amount },
+    })?)
 }
 
 fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()> {
@@ -149,6 +174,9 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
     Ok(())
 }
 
+/// Note: we don't handle orphaned transfers here. This function can only be
+/// called by the taxman contract. We assume the taxman is properly programmed
+/// to never force an orphaned transfer.
 fn force_transfer(
     ctx: MutableCtx,
     from: Addr,
@@ -165,18 +193,17 @@ fn force_transfer(
     decrease_balance(ctx.storage, &from, &denom, amount)?;
     increase_balance(ctx.storage, &to, &denom, amount)?;
 
-    Ok(Response::new())
-}
-
-fn batch_transfer(ctx: MutableCtx, transfers: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
-    for (recipient, coins) in transfers {
-        for coin in coins {
-            decrease_balance(ctx.storage, &ctx.sender, &coin.denom, coin.amount)?;
-            increase_balance(ctx.storage, &recipient, &coin.denom, coin.amount)?;
-        }
-    }
-
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_event(Sent {
+            user: from,
+            to,
+            coins: coins! { denom.clone() => amount },
+        })?
+        .add_event(Received {
+            user: to,
+            from,
+            coins: coins! { denom => amount },
+        })?)
 }
 
 fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::Result<Response> {
@@ -185,33 +212,100 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
         "only the sender or the recipient can recover an orphaned transfer"
     );
 
-    for coin in ORPHANED_TRANSFERS.take(ctx.storage, (sender, recipient))? {
-        increase_balance(ctx.storage, &ctx.sender, &coin.denom, coin.amount)?;
+    let coins = ORPHANED_TRANSFERS.take(ctx.storage, (sender, recipient))?;
+
+    for coin in &coins {
+        decrease_balance(ctx.storage, &ctx.contract, coin.denom, *coin.amount)?;
+        increase_balance(ctx.storage, &ctx.sender, coin.denom, *coin.amount)?;
     }
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_event(Sent {
+            user: ctx.contract,
+            to: ctx.sender,
+            coins: coins.clone(),
+        })?
+        .add_event(Received {
+            user: ctx.sender,
+            from: ctx.contract,
+            coins,
+        })?)
 }
 
+/// There are two major problems with existing blockchain systems related to
+/// token transfers:
+///
+/// 1. **It's not possible for the recipient to reject a token transfer.**
+///
+///    For example, a user who wants to unwrap their Wrapped Ether (WETH) tokens
+///    may mistakenly send the tokens to the WETH contract, while the correct
+///    way of doing it is to call the `withdraw` method. Due to how ERC-20 is
+///    designed, it is not possible for the WETH contract to reject this transfer.
+///    A significant amount of money has been lost due to this.
+///
+///    Dango solves this by introducing a `receive` entry point to every contract.
+///    A contract can simply throw an error if it does not wish to accept a
+///    specific transfer of tokens.
+///
+/// 2. **It is possible to send tokens to a non-existent recipient.**
+///
+///    This can happen if the sender makes a typo when inputting the recipient's
+///    address. There will be no way to recover the tokens.
+///
+///    To solve this, the Dango bank contract checks whether the recipient exists
+///    before executing the transfer. If the recipient doesn't exist, we call this
+///    an "**orphaned transfer**". The tokens will be temporarily held in the bank
+///    contract. Either the sender or the recipient (once it exists) can claim
+///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    let recipient_exists = ctx.querier.query_contract(msg.to).is_ok();
+    let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
-    for coin in &msg.coins {
-        decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
-        if recipient_exists {
-            increase_balance(ctx.storage, &msg.to, coin.denom, *coin.amount)?;
+    for (to, coins) in msg.transfers {
+        // If the recipient exists, increase the recipient's balance. Otherwise,
+        // 1. withhold the tokens in the bank contract;
+        // 2. record the transfer in the `ORPHANED_TRANSFERS` map.
+        let recipient_exists = ctx.querier.query_contract(to).is_ok();
+        let recipient = if recipient_exists {
+            to
+        } else {
+            ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, to), |amount| {
+                let mut amount = amount.unwrap_or_default();
+                amount.insert_many(coins.clone())?;
+                Ok::<_, StdError>(amount)
+            })?;
+
+            ctx.contract
+        };
+
+        for coin in &coins {
+            decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
+            increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
         }
+
+        events
+            .may_push(if !recipient_exists {
+                Some(TransferOrphaned {
+                    from: msg.from,
+                    to,
+                    coins: coins.clone(),
+                })
+            } else {
+                None
+            })?
+            .push(Sent {
+                user: msg.from,
+                to: recipient,
+                coins: coins.clone(),
+            })?
+            .push(Received {
+                user: recipient,
+                from: msg.from,
+                coins,
+            })?;
     }
 
-    if !recipient_exists {
-        ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, msg.to), |coins| {
-            let mut coins = coins.unwrap_or_default();
-            coins.insert_many(msg.coins)?;
-            Ok::<_, StdError>(coins)
-        })?;
-    }
-
-    Ok(Response::new())
+    Ok(Response::new().add_events(events))
 }
 
 fn increase_supply(

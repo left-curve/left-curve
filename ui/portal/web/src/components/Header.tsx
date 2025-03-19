@@ -8,7 +8,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { useAccount } from "@left-curve/store-react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
@@ -31,9 +31,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     isNotificationMenuVisible,
     isSearchBarVisible,
   } = useApp();
+  const { location } = useRouterState();
   const navigate = useNavigate();
-  const isLg = useMediaQuery("lg");
+  const { isLg } = useMediaQuery();
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
+
+  const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
 
   return (
     <header
@@ -42,12 +45,15 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled ? "lg:bg-white-100 lg:shadow-card-shadow" : "bg-transparent shadow-none",
       )}
     >
-      <div className="gap-4 flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
+      <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
-            src="/favicon.svg"
+            src={isScrolled ? "/images/dango.svg" : "/favicon.svg"}
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
+            className={twMerge(
+              "h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient",
+              { "h-8 shadow-none rounded-none pl-3": isScrolled },
+            )}
           />
         </Link>
         <div
@@ -62,7 +68,14 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           {!isSearchBarVisible ? <HamburgerMenu /> : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
-          <Button as={Link} variant="utility" size="lg" to="/settings">
+          <Button
+            as={Link}
+            variant="utility"
+            size="lg"
+            to="/settings"
+            className=""
+            data-status={linkStatus("/settings")}
+          >
             <IconGear className="w-6 h-6 text-rice-700" />
           </Button>
 
@@ -71,6 +84,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               ref={buttonNotificationsRef}
               variant="utility"
               size="lg"
+              data-status={linkStatus("/notifications")}
               onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
             >
               <IconBell className="w-6 h-6 text-rice-700" />
@@ -93,8 +107,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             )}
           </Button>
         </div>
+        <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      <NotificationsMenu buttonRef={buttonNotificationsRef} />
       {isLg ? <AccountDesktopMenu /> : <AccountMobileMenu />}
     </header>
   );

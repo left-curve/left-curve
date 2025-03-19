@@ -1,74 +1,47 @@
-import { Ed25519, Secp256k1, sha256 } from "@left-curve/sdk/crypto";
+import { Secp256k1, sha256 } from "@left-curve/sdk/crypto";
 import { encodeBase64, serialize } from "@left-curve/sdk/encoding";
 import { createKeyHash } from "../account/key.js";
-import { KeyAlgo } from "../types/key.js";
 
 import type { KeyPair } from "@left-curve/sdk/crypto";
-import type { JsonValue } from "@left-curve/sdk/types";
-import type { KeyAlgoType, KeyHash, SignDoc, Signer } from "../types/index.js";
+import type { ArbitraryTypedData, KeyHash, SignDoc, Signer } from "../types/index.js";
 
 export class PrivateKeySigner implements Signer {
   #keyPair: KeyPair;
-  #keyAlgo: KeyAlgoType;
 
-  static fromMnemonic(
-    mnemonic: string,
-    keyAlgo: KeyAlgoType = KeyAlgo.Secp256k1,
-  ): PrivateKeySigner {
-    const key = (() => {
-      if (keyAlgo === KeyAlgo.Ed25519) return Ed25519.fromMnemonic(mnemonic);
-      if (keyAlgo === KeyAlgo.Secp256k1) return Secp256k1.fromMnemonic(mnemonic);
-      throw new Error(`unsupported key algorithm: ${keyAlgo}`);
-    })();
-
-    return new PrivateKeySigner(key, keyAlgo);
+  static fromMnemonic(mnemonic: string): PrivateKeySigner {
+    return new PrivateKeySigner(Secp256k1.fromMnemonic(mnemonic));
   }
 
-  static fromPrivateKey(
-    privateKey: Uint8Array,
-    keyAlgo: KeyAlgoType = KeyAlgo.Secp256k1,
-  ): PrivateKeySigner {
-    const key = (() => {
-      if (keyAlgo === KeyAlgo.Ed25519) return new Ed25519(privateKey);
-      if (keyAlgo === KeyAlgo.Secp256k1) return new Secp256k1(privateKey);
-      throw new Error(`unsupported key algorithm: ${keyAlgo}`);
-    })();
-    return new PrivateKeySigner(key, keyAlgo);
+  static fromPrivateKey(privateKey: Uint8Array): PrivateKeySigner {
+    return new PrivateKeySigner(new Secp256k1(privateKey));
   }
 
-  static fromRandomKey(keyAlgo: KeyAlgoType = KeyAlgo.Secp256k1): PrivateKeySigner {
-    const key = (() => {
-      if (keyAlgo === KeyAlgo.Ed25519) return Ed25519.makeKeyPair();
-      if (keyAlgo === KeyAlgo.Secp256k1) return Secp256k1.makeKeyPair();
-      throw new Error(`unsupported key algorithm: ${keyAlgo}`);
-    })();
-    return new PrivateKeySigner(key, keyAlgo);
+  static fromRandomKey(): PrivateKeySigner {
+    return new PrivateKeySigner(Secp256k1.makeKeyPair());
   }
 
-  constructor(keyPair: KeyPair, keyAlgo: KeyAlgoType) {
-    this.#keyAlgo = keyAlgo;
+  constructor(keyPair: KeyPair) {
     this.#keyPair = keyPair;
   }
 
   async getKeyHash(): Promise<KeyHash> {
-    return createKeyHash({
-      pubKey: this.#keyPair.getPublicKey(),
-      keyAlgo: this.#keyAlgo,
-    });
+    return createKeyHash({ pubKey: this.#keyPair.getPublicKey() });
   }
 
   async signTx(signDoc: SignDoc) {
-    const { messages, sender, data, gasLimit } = signDoc;
+    const { message, domain } = signDoc;
+    const sender = domain.verifyingContract;
+    const { messages, metadata, gas_limit: gasLimit } = message;
     const tx = sha256(
       serialize({
         sender,
         gasLimit,
         messages,
         data: {
-          username: data.username,
-          chainId: data.chainId,
-          nonce: data.nonce,
-          expiry: data.expiry,
+          username: metadata.username,
+          chainId: metadata.chain_id,
+          nonce: metadata.nonce,
+          expiry: metadata.expiry,
         },
       }),
     );
@@ -84,11 +57,12 @@ export class PrivateKeySigner implements Signer {
       },
     };
 
-    return { credential, signDoc };
+    return { credential, signed: signDoc };
   }
 
-  async signArbitrary(payload: JsonValue) {
-    const bytes = sha256(serialize(payload));
+  async signArbitrary(payload: ArbitraryTypedData) {
+    const { message } = payload;
+    const bytes = sha256(serialize(message));
     const signedBytes = await this.signBytes(bytes);
 
     const signature = { secp256k1: encodeBase64(signedBytes) };
@@ -96,7 +70,7 @@ export class PrivateKeySigner implements Signer {
 
     return {
       credential: { standard: { keyHash, signature } },
-      payload,
+      signed: payload,
     };
   }
 

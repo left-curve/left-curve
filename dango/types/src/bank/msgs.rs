@@ -58,8 +58,6 @@ pub enum ExecuteMsg {
         denom: Denom,
         amount: Uint128,
     },
-    /// Transfer coins to multiple recipients at once.
-    BatchTransfer(BTreeMap<Addr, Coins>),
     /// Retrieve funds sent to a non-existing recipient.
     RecoverTransfer { sender: Addr, recipient: Addr },
 }

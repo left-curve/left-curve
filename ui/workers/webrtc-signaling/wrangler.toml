@@ -1,0 +1,17 @@
+compatibility_date  = "2024-10-04"
+compatibility_flags = ["nodejs_compat"]
+main                = "src/index.ts"
+name                = "webrtc-signaling"
+
+[build]
+watch_dir = "src"
+
+[observability]
+enabled = true
+
+[durable_objects]
+bindings = [{ name = "WEBSOCKET", class_name = "SignalingServer" }]
+
+[[migrations]]
+new_classes = ["SignalingServer"]
+tag         = "v1"

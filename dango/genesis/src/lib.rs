@@ -6,7 +6,7 @@ use {
         config::{AppAddresses, AppConfig, Hyperlane},
         dex::{self, PairUpdate},
         lending::{self, InterestRateModel},
-        oracle::{self, GuardianSet, GuardianSetIndex, PriceSource},
+        oracle::{self, PriceSource},
         taxman, vesting, warp,
     },
     grug::{
@@ -19,6 +19,7 @@ use {
         mailbox::{self, Domain},
         va, Addr32,
     },
+    pyth_types::{GuardianSet, GuardianSetIndex},
     serde::Serialize,
     std::{collections::BTreeMap, fs, io, path::Path},
 };

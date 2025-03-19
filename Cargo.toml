@@ -1,7 +1,7 @@
 [workspace]
 members = [
+  "config-parser",
   "dango/account/*",
-  "dango/app",
   "dango/auth",
   "dango/bank",
   "dango/cli",
@@ -13,6 +13,7 @@ members = [
   "dango/indexer/sql-migration",
   "dango/lending",
   "dango/oracle",
+  "dango/proposal-preparer",
   "dango/taxman",
   "dango/testing",
   "dango/types",
@@ -38,6 +39,8 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/va",
   "indexer/*",
+  "pyth/client",
+  "pyth/types",
 ]
 resolver = "2"
 
@@ -54,17 +57,18 @@ rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
+# Dependencies
 actix                   = "0.13"
 actix-codec             = "0.5"
 actix-cors              = "0.7"
 actix-files             = "0"
 actix-http              = "3"
-actix-multipart         = "0.10"
 actix-test              = "0.1"
 actix-web               = "4"
 aes-gcm                 = "0.10"
-alloy                   = "0.11"
+alloy                   = "0.12"
 anyhow                  = "1"
+assert-json-diff        = "2"
 assertor                = { version = "0.0", git = "https://github.com/google/assertor" }
 async-graphql-actix-web = "7.0"
 async-std               = { version = "1", features = ["attributes", "tokio1"] }
@@ -75,7 +79,7 @@ base64                  = "0.22"
 bip32                   = "0.5"
 blake2                  = "0.10"
 blake3                  = "1"
-bnum                    = "0.12"
+bnum                    = "0.13"
 borsh                   = "1"
 byteorder               = "1"
 chrono                  = "0.4"
@@ -84,6 +88,7 @@ clru                    = "0.6"
 colored                 = "3"
 colored_json            = "5"
 config                  = "0.15"
+config-parser           = { path = "config-parser" }
 criterion               = "0.5"
 data-encoding           = "2"
 dialoguer               = "0.11"
@@ -96,9 +101,10 @@ futures-util            = "0.3"
 glob                    = "0.3"
 graphql_client          = "0.14"
 hex                     = "0.4"
-hex-literal             = "0.4"
+hex-literal             = "1"
 home                    = "0.5"
 ics23                   = "0.12"
+itertools               = "0"
 k256                    = "0.13"
 lzma-rs                 = "0.3"
 num_cpus                = "1"
@@ -108,11 +114,12 @@ pbkdf2                  = "0.12"
 proc-macro2             = "1"
 proptest                = "1"
 prost                   = "0.13"
-pyth-sdk                = "0.8.0"
-pythnet-sdk             = "2"
+pyth-sdk                = "0.8"
+pythnet-sdk             = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                   = "1"
 rand                    = "0.8" # Can't use 0.9 because RustCrypto libraries still depend on 0.8
-reqwest                 = "0.12"
+reqwest                 = { version = "0.12", features = ["stream"] }
+reqwest-eventsource     = "0.6.0"
 ripemd                  = "0.1"
 rocksdb                 = "0.23"
 serde                   = "1"
@@ -122,8 +129,8 @@ sha2                    = "0.10"
 sha3                    = "0.10"
 signature               = "2"
 sqlx                    = "0"
-strum                   = "0.26"
-strum_macros            = "0.26"
+strum                   = "0.27"
+strum_macros            = "0.27"
 syn                     = "2"
 tempfile                = "3"
 tendermint              = "0.40"
@@ -139,40 +146,17 @@ tower-abci              = "0.19"
 tracing                 = "0.1"
 tracing-actix-web       = "0.7"
 tracing-subscriber      = { version = "0.3", features = ["env-filter", "fmt"] }
+url                     = "2.5.4"
 uuid                    = { version = "1", features = ["serde", "v4"] }
 wasmer                  = "5"
 wasmer-middlewares      = "5"
 
-# Grug packages
-grug              = { path = "grug/std" }
-grug-app          = { path = "grug/app" }
-grug-auth         = { path = "grug/auth" }
-grug-client       = { path = "grug/client" }
-grug-crypto       = { path = "grug/crypto" }
-grug-db-disk      = { path = "grug/db/disk" }
-grug-db-memory    = { path = "grug/db/memory" }
-grug-ffi          = { path = "grug/ffi" }
-grug-jmt          = { path = "grug/jellyfish-merkle" }
-grug-macros       = { path = "grug/macros" }
-grug-math         = { path = "grug/math" }
-grug-mock-account = { path = "grug/mocks/account" }
-grug-mock-bank    = { path = "grug/mocks/bank" }
-grug-mock-taxman  = { path = "grug/mocks/taxman" }
-grug-storage      = { path = "grug/storage" }
-grug-tester       = { path = "grug/tester" }
-grug-testing      = { path = "grug/testing" }
-grug-types        = { path = "grug/types" }
-grug-vm-hybrid    = { path = "grug/vm/hybrid" }
-grug-vm-rust      = { path = "grug/vm/rust" }
-grug-vm-wasm      = { path = "grug/vm/wasm" }
-
-# Dango packages
+# Left curve packages
 dango-account-factory       = { path = "dango/account/factory" }
 dango-account-margin        = { path = "dango/account/margin" }
 dango-account-multi         = { path = "dango/account/multi" }
 dango-account-spot          = { path = "dango/account/spot" }
 dango-amm                   = { path = "dango/amm" }
-dango-app                   = { path = "dango/app" }
 dango-auth                  = { path = "dango/auth" }
 dango-bank                  = { path = "dango/bank" }
 dango-client                = { path = "dango/client" }
@@ -184,25 +168,45 @@ dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
 dango-oracle                = { path = "dango/oracle" }
+dango-proposal-preparer     = { path = "dango/proposal-preparer" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-token-factory         = { path = "dango/token-factory" }
 dango-types                 = { path = "dango/types" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
-
-# Indexer packages
-indexer-disk-saver    = { path = "indexer/disk-saver" }
-indexer-httpd         = { path = "indexer/httpd", features = ["tracing"] }
-indexer-sql           = { path = "indexer/sql" }
-indexer-sql-migration = { path = "indexer/sql-migration" }
-indexer-testing       = { path = "indexer/testing" }
-
-# Hyperlane packages
-hyperlane-ism     = { path = "hyperlane/isms/multisig" }
-hyperlane-mailbox = { path = "hyperlane/mailbox" }
-hyperlane-types   = { path = "hyperlane/types" }
-hyperlane-va      = { path = "hyperlane/va" }
+grug                        = { path = "grug/std" }
+grug-app                    = { path = "grug/app" }
+grug-auth                   = { path = "grug/auth" }
+grug-client                 = { path = "grug/client" }
+grug-crypto                 = { path = "grug/crypto" }
+grug-db-disk                = { path = "grug/db/disk" }
+grug-db-memory              = { path = "grug/db/memory" }
+grug-ffi                    = { path = "grug/ffi" }
+grug-jmt                    = { path = "grug/jellyfish-merkle" }
+grug-macros                 = { path = "grug/macros" }
+grug-math                   = { path = "grug/math" }
+grug-mock-account           = { path = "grug/mocks/account" }
+grug-mock-bank              = { path = "grug/mocks/bank" }
+grug-mock-taxman            = { path = "grug/mocks/taxman" }
+grug-storage                = { path = "grug/storage" }
+grug-tester                 = { path = "grug/tester" }
+grug-testing                = { path = "grug/testing" }
+grug-types                  = { path = "grug/types" }
+grug-vm-hybrid              = { path = "grug/vm/hybrid" }
+grug-vm-rust                = { path = "grug/vm/rust" }
+grug-vm-wasm                = { path = "grug/vm/wasm" }
+hyperlane-ism               = { path = "hyperlane/isms/multisig" }
+hyperlane-mailbox           = { path = "hyperlane/mailbox" }
+hyperlane-types             = { path = "hyperlane/types" }
+hyperlane-va                = { path = "hyperlane/va" }
+indexer-disk-saver          = { path = "indexer/disk-saver" }
+indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
+indexer-sql                 = { path = "indexer/sql" }
+indexer-sql-migration       = { path = "indexer/sql-migration" }
+indexer-testing             = { path = "indexer/testing" }
+pyth-client                 = { path = "pyth/client" }
+pyth-types                  = { path = "pyth/types" }
 
 [workspace.dependencies.async-graphql]
 features = [
@@ -243,13 +247,6 @@ features = [
   "with-uuid",
 ]
 version = "1"
-
-# The Pyth attester SDK is not published to crates.io.
-# Import from GitHub, using the latest commit at this time.
-# TODO: Ask pyth team to make a stable release and publish the crate.
-[workspace.dependencies.pyth-wormhole-attester-sdk]
-git = "https://github.com/pyth-network/pyth-crosschain"
-rev = "cd67cd8"
 
 [profile.release]
 codegen-units    = 1

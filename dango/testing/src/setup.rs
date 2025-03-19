@@ -1,23 +1,22 @@
 use {
     crate::{TestAccount, TestAccounts, MOCK_LOCAL_DOMAIN},
-    dango_app::ProposalPreparer,
     dango_genesis::{
         build_genesis, build_rust_codes, read_wasm_files, Codes, Contracts, GenesisConfig,
         GenesisUser,
     },
+    dango_proposal_preparer::ProposalPreparer,
     dango_types::{
         constants::{
-            BTC_DENOM, DANGO_DENOM, ETH_DENOM, GUARDIAN_SETS, PYTH_PRICE_SOURCES, SOL_DENOM,
-            USDC_DENOM, WBTC_DENOM,
+            BTC_DENOM, DANGO_DENOM, ETH_DENOM, PYTH_PRICE_SOURCES, SOL_DENOM, USDC_DENOM,
+            WBTC_DENOM,
         },
         dex::{CurveInvariant, PairParams, PairUpdate},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
-        btree_map, coins, Binary, BlockInfo, Bounded, Coin, Coins, ContractWrapper, Denom,
-        Duration, HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT,
+        btree_map, coins, Binary, BlockInfo, Bounded, Coin, ContractWrapper, Denom, Duration,
+        HashExt, NumberConst, Timestamp, Udec128, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk::{DiskDb, TempDataDir},
@@ -28,6 +27,8 @@ use {
     hex_literal::hex,
     indexer_httpd::context::Context,
     indexer_sql::non_blocking_indexer::NonBlockingIndexer,
+    pyth_client::PythClientCache,
+    pyth_types::GUARDIAN_SETS,
     std::{path::PathBuf, str::FromStr, sync::Arc},
 };
 
@@ -55,11 +56,15 @@ pub const USER8_PRIVATE_KEY: [u8; 32] =
 pub const USER9_PRIVATE_KEY: [u8; 32] =
     hex!("c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3");
 
-pub type TestSuite<PP = ProposalPreparer, DB = MemDb, VM = RustVm, ID = NullIndexer> =
-    grug::TestSuite<DB, VM, PP, ID>;
+pub type TestSuite<
+    PP = ProposalPreparer<PythClientCache>,
+    DB = MemDb,
+    VM = RustVm,
+    ID = NullIndexer,
+> = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
-    PP = ProposalPreparer,
+    PP = ProposalPreparer<PythClientCache>,
     DB = MemDb,
     VM = RustVm,
     ID = NonBlockingIndexer<dango_indexer_sql::hooks::Hooks>,
@@ -76,7 +81,7 @@ pub fn setup_test() -> (TestSuite, TestAccounts, Codes<ContractWrapper>, Contrac
         MemDb::new(),
         RustVm::new(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new_with_cache(),
         NullIndexer,
     )
 }
@@ -103,6 +108,7 @@ pub fn setup_test_with_indexer() -> (
         .unwrap();
 
     let indexer_context = indexer.context.clone();
+    let indexer_path = indexer.indexer_path.clone();
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -111,7 +117,7 @@ pub fn setup_test_with_indexer() -> (
         db.clone(),
         vm.clone(),
         codes,
-        ProposalPreparer::new(),
+        ProposalPreparer::new_with_cache(),
         indexer,
     );
 
@@ -119,6 +125,7 @@ pub fn setup_test_with_indexer() -> (
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         "http://localhost:26657",
+        indexer_path,
     );
 
     ((suite, accounts, codes, contracts), httpd_context)

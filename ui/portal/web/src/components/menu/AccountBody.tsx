@@ -1,32 +1,41 @@
 import {
-  AccountCard,
   Button,
   IconAddCross,
   IconButton,
   IconChevronLeft,
   IconLogOut,
-  IconQR,
+  IconMobile,
+  useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { AccountCard } from "../AccountCard/AccountCard";
 import { AccountTab } from "./AccountTab";
 import { AssetTab } from "./AssetTab";
 
 import { useNavigate } from "@tanstack/react-router";
+import { Modals } from "../Modal";
 
 export const AccountMenuBody: React.FC = () => {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"account" | "assets">("assets");
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, showModal, formatNumberOptions } = useApp();
   const { account, connector } = useAccount();
+  const { isMd } = useMediaQuery();
 
   const { data: balances = {} } = useBalances({ address: account?.address });
   const { calculateBalance } = usePrices();
 
-  const totalBalance = calculateBalance(balances, { format: true });
+  const totalBalance = calculateBalance(balances, {
+    format: true,
+    formatOptions: {
+      ...formatNumberOptions,
+      currency: "USD",
+    },
+  });
 
   if (!account) return null;
 
@@ -65,9 +74,11 @@ export const AccountMenuBody: React.FC = () => {
             >
               {m["common.send"]()}
             </Button>
-            <IconButton variant="secondary">
-              <IconQR />
-            </IconButton>
+            {isMd ? (
+              <IconButton variant="secondary" onClick={() => showModal(Modals.QRConnect)}>
+                <IconMobile />
+              </IconButton>
+            ) : null}
             <IconButton
               variant="secondary"
               onClick={() => {

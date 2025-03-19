@@ -96,6 +96,10 @@ const spinner = tv({
         circle1: "border-b-red-bean-300",
         circle2: "border-b-red-bean-300",
       },
+      blue: {
+        circle1: "border-b-blue-300",
+        circle2: "border-b-blue-500",
+      },
     },
   },
   defaultVariants: {

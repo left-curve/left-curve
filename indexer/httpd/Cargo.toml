@@ -30,6 +30,7 @@ graphql_client          = { workspace = true }
 grug-app                = { workspace = true }
 grug-types              = { workspace = true }
 indexer-sql             = { workspace = true }
+itertools               = { workspace = true }
 num_cpus                = { workspace = true }
 paste                   = { workspace = true }
 reqwest                 = { workspace = true, features = ["json"] }

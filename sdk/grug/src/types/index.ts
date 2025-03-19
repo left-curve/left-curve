@@ -190,7 +190,6 @@ export {
 } from "./cometbft.js";
 
 export {
-  ArbitrarySignatureOutcome,
   SignatureOutcome,
   RawSignature,
   SignDoc,

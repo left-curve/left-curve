@@ -43,15 +43,22 @@ impl BlockQuery {
     async fn block(
         &self,
         ctx: &async_graphql::Context<'_>,
-        height: u64,
+        height: Option<u64>,
     ) -> Result<Option<types::block::Block>> {
         let app_ctx = ctx.data::<Context>()?;
 
-        Ok(entity::blocks::Entity::find()
-            .filter(entity::blocks::Column::BlockHeight.eq(height as i64))
-            .one(&app_ctx.db)
-            .await?
-            .map(|block| block.into()))
+        let mut query = entity::blocks::Entity::find();
+
+        match height {
+            Some(height) => {
+                query = query.filter(entity::blocks::Column::BlockHeight.eq(height as i64));
+            },
+            None => {
+                query = query.order_by(entity::blocks::Column::BlockHeight, Order::Desc);
+            },
+        }
+
+        Ok(query.one(&app_ctx.db).await?.map(|block| block.into()))
     }
 
     /// Get a block

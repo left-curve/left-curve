@@ -1,13 +1,5 @@
 import type { Base64, Hex } from "@left-curve/sdk/types";
 
-export const KeyAlgo = {
-  Secp256r1: "secp256r1",
-  Secp256k1: "secp256k1",
-  Ed25519: "ed25519",
-} as const;
-
-export type KeyAlgoType = (typeof KeyAlgo)[keyof typeof KeyAlgo];
-
 export type KeyHash = Hex;
 
 export const KeyTag = {

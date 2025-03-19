@@ -1,0 +1,16 @@
+{
+  "name": "webrtc-signaling",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "cf-typegen": "wrangler types"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "typescript": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

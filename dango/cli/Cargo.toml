@@ -14,38 +14,38 @@ name = "dango"
 path = "src/main.rs"
 
 [dependencies]
-anyhow             = { workspace = true }
-bip32              = { workspace = true }
-clap               = { workspace = true, features = ["derive", "wrap_help"] }
-colored            = { workspace = true }
-colored_json       = { workspace = true }
-config             = { workspace = true }
-dango-app          = { workspace = true }
-dango-client       = { workspace = true }
-dango-genesis      = { workspace = true }
-dango-httpd        = { workspace = true }
-dango-types        = { workspace = true }
-data-encoding      = { workspace = true }
-dialoguer          = { workspace = true }
-futures            = { workspace = true }
-grug-app           = { workspace = true, features = ["abci", "tracing"] }
-grug-client        = { workspace = true }
-grug-db-disk       = { workspace = true }
-grug-jmt           = { workspace = true }
-grug-types         = { workspace = true }
-grug-vm-hybrid     = { workspace = true }
-hex                = { workspace = true }
-home               = { workspace = true }
-indexer-httpd      = { workspace = true }
-indexer-sql        = { workspace = true, features = ["tracing"] }
-rand               = { workspace = true }
-serde              = { workspace = true }
-tendermint         = { workspace = true }
-tokio              = { workspace = true }
-tower              = { workspace = true, features = ["full"] }
-tower-abci         = { workspace = true }
-tracing            = { workspace = true }
-tracing-subscriber = { workspace = true }
+anyhow                  = { workspace = true }
+bip32                   = { workspace = true }
+clap                    = { workspace = true, features = ["derive", "wrap_help"] }
+colored                 = { workspace = true }
+colored_json            = { workspace = true }
+config-parser           = { workspace = true }
+dango-client            = { workspace = true }
+dango-genesis           = { workspace = true }
+dango-httpd             = { workspace = true }
+dango-proposal-preparer = { workspace = true }
+dango-types             = { workspace = true }
+data-encoding           = { workspace = true }
+dialoguer               = { workspace = true }
+futures                 = { workspace = true }
+grug-app                = { workspace = true, features = ["abci", "tracing"] }
+grug-client             = { workspace = true }
+grug-db-disk            = { workspace = true }
+grug-jmt                = { workspace = true }
+grug-types              = { workspace = true }
+grug-vm-hybrid          = { workspace = true }
+hex                     = { workspace = true }
+home                    = { workspace = true }
+indexer-httpd           = { workspace = true }
+indexer-sql             = { workspace = true, features = ["tracing"] }
+rand                    = { workspace = true }
+serde                   = { workspace = true }
+tendermint              = { workspace = true }
+tokio                   = { workspace = true }
+tower                   = { workspace = true, features = ["full"] }
+tower-abci              = { workspace = true }
+tracing                 = { workspace = true }
+tracing-subscriber      = { workspace = true }
 
 [dev-dependencies]
 assertor = { workspace = true }

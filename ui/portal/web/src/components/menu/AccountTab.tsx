@@ -1,5 +1,6 @@
-import { AccountCardPreview } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
+
+import { AccountCardPreview } from "../AccountCard/AccountCardPreview";
 
 import type React from "react";
 

@@ -1,7 +1,8 @@
 use {
-    crate::{config::parse_config, home_directory::HomeDirectory},
+    crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
     colored_json::ToColoredJson,
+    config_parser::parse_config,
     data_encoding::BASE64,
     grug_client::RpcClient,
     grug_jmt::Proof,
@@ -135,7 +136,7 @@ enum SubCmd {
 impl QueryCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         // Parse the config file.
-        let cfg = parse_config(app_dir.config_file())?;
+        let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Create Grug client via Tendermint RPC.
         let client = RpcClient::connect(cfg.tendermint.rpc_addr.as_str())?;

@@ -1,6 +1,6 @@
 import { useInputs, useWizard } from "@left-curve/applets-kit";
 import { usePublicClient } from "@left-curve/store-react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { Button, Input } from "@left-curve/applets-kit";
 
@@ -25,7 +25,7 @@ export const LoginUsernameStep: React.FC = () => {
       const { accounts } = await client.getUser({ username });
       const numberOfAccounts = Object.keys(accounts).length;
       if (numberOfAccounts === 0) {
-        setError("username", m["login.errors.usernameNotExist"]());
+        setError("username", m["signin.errors.usernameNotExist"]());
       } else {
         setData({ username });
         nextStep();
@@ -47,7 +47,7 @@ export const LoginUsernameStep: React.FC = () => {
         <Input
           placeholder={
             <p className="flex gap-1 items-center justify-start">
-              <span>{m["login.placeholder"]()}</span>
+              <span>{m["signin.placeholder"]()}</span>
               <span className="text-rice-800 exposure-m-italic group-data-[focus=true]:text-gray-500 group-data-[focus=true]:diatype-m-regular group-data-[focus=true]:not-italic">
                 {m["common.username"]().toLowerCase()}
               </span>
@@ -55,7 +55,7 @@ export const LoginUsernameStep: React.FC = () => {
           }
           {...register("username", {
             validate: (value) => {
-              if (!value) return m["login.errors.usernameRequired"]();
+              if (!value) return m["signin.errors.usernameRequired"]();
               return true;
             },
             mask: (v) => v.toLowerCase(),
@@ -64,9 +64,12 @@ export const LoginUsernameStep: React.FC = () => {
         <Button fullWidth type="submit" isDisabled={!!error} isLoading={isPending}>
           {m["common.signin"]()}
         </Button>
+        <Button as={Link} fullWidth variant="secondary" to="/">
+          {m["signin.continueWithoutLogin"]()}
+        </Button>
       </form>
       <div className="flex items-center">
-        <p>{m["login.noAccount"]()}</p>
+        <p>{m["signin.noAccount"]()}</p>
         <Button variant="link" onClick={() => navigate({ to: "/signup" })}>
           {m["common.signup"]()}
         </Button>

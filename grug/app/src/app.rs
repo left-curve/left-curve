@@ -6,7 +6,7 @@ use grug_types::JsonSerExt;
 use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
-        catch_and_append_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
+        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
         do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
         do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
         query_codes, query_config, query_contract, query_contracts, query_supplies, query_supply,
@@ -829,7 +829,7 @@ where
         #[cfg(feature = "tracing")]
         tracing::debug!(idx = _idx, "Processing message");
 
-        catch_and_append_event! {
+        catch_and_push_event! {
             process_msg(
                 vm.clone(),
                 Box::new(buffer.clone()),
@@ -839,7 +839,8 @@ where
                 tx.sender,
                 msg.clone(),
             ),
-            evt
+            evt,
+            msgs
         }
     }
 
