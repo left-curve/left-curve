@@ -136,13 +136,15 @@ impl PythClientTrait for PythClientCache {
                 }
 
                 let vaas = stored_vaas
-                .iter_mut()
-                .filter_map(|(_, v)| v.get(index).cloned())
-                .flatten()
-                .collect::<Vec<_>>();
+                    .iter_mut()
+                    .filter_map(|(_, v)| v.get(index).cloned())
+                    .flatten()
+                    .collect::<Vec<_>>();
+
                 index += 1;
 
                 yield vaas;
+
                 sleep(Duration::from_millis(500));
             }
         };
