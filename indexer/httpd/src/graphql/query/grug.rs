@@ -31,7 +31,6 @@ impl GrugQuery {
         #[graphql(default = false)] prove: bool,
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-
         let key = HexBinary::from_str(&key)?;
 
         app_ctx
