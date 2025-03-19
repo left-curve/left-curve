@@ -159,7 +159,7 @@ fn multiple_vaas() {
         SHIB_USD_ID => SHIB_DENOM.clone(),
         SOL_USD_ID  => SOL_DENOM.clone(),
         USDC_USD_ID => USDC_DENOM.clone(),
-        BTC_USD_ID => BTC_DENOM.clone(),
+        BTC_USD_ID  => BTC_DENOM.clone(),
         XRP_USD_ID  => XRP_DENOM.clone(),
     };
 
