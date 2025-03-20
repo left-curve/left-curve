@@ -549,12 +549,16 @@ where
             // I'm trying a few extra times if error occurs.
             for _ in 1..=5 {
                 let db = context.db.begin().await?;
+
                 if let Err(_err) = block_to_index.save(&db).await {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, "can't save to db in post_indexing");
+
                     continue;
                 }
+
                 db.commit().await?;
+
                 break;
             }
 
