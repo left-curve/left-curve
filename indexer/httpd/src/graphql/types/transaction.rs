@@ -65,6 +65,16 @@ impl Transaction {
 
         let data = BlockToIndex::load_from_disk(block_filename)?;
 
+        // This is to ensure the current transaction hash is for this transaction
+        // index is right. We should never have that issue but that's a safety.
+        let Some(tx_hash) = data.block.txs.get(tx_idx).map(|tx| tx.1) else {
+            return Err(Error::new("Transaction not found"));
+        };
+
+        if tx_hash.to_string() != self.hash {
+            return Err(Error::new("Transaction hash mismatch"));
+        }
+
         data.block_outcome
             .tx_outcomes
             .get(tx_idx)
