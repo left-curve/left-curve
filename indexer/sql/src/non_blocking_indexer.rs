@@ -541,13 +541,22 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height = block_height, "post_indexing started");
 
-            let db = context.db.begin().await?;
             let block_height = block_to_index.block.info.height;
-            if let Err(_err) = block_to_index.save(&db).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(error = %_err, "can't save to db in post_indexing");
+
+            // NOTE: sqlite in-memory sometimes returns `database is deadlocked` which seems to be
+            // more likely when we have multiple tasks or thread.
+            //
+            // I'm trying a few extra times if error occurs.
+            for _ in 1..=5 {
+                let db = context.db.begin().await?;
+                if let Err(_err) = block_to_index.save(&db).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(error = %_err, "can't save to db in post_indexing");
+                    continue;
+                }
+                db.commit().await?;
+                break;
             }
-            db.commit().await?;
 
             hooks.post_indexing(context.clone(), block_to_index).await.map_err(|e| {
                 #[cfg(feature = "tracing")]
