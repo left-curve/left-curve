@@ -8,6 +8,7 @@ import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
 import { AddKeyModal } from "../modals/AddKey";
+import { ConfirmSend } from "../modals/ConfirmSend";
 import { QRConnect } from "../modals/QRConnect";
 import { RemoveKey } from "../modals/RemoveKey";
 
@@ -15,6 +16,7 @@ export const Modals = {
   AddKey: "add-key",
   RemoveKey: "remove-key",
   QRConnect: "qr-connect",
+  ConfirmSend: "confirm-send",
 };
 
 const modals = {
@@ -28,6 +30,10 @@ const modals = {
   },
   [Modals.QRConnect]: {
     component: QRConnect,
+    initialSnap: 0.4,
+  },
+  [Modals.ConfirmSend]: {
+    component: ConfirmSend,
     initialSnap: 0.4,
   },
 };

@@ -16,6 +16,7 @@
     "username": "Username",
     "accounts": "Accounts",
     "hi": "Hi",
+    "to": "To",
     "error": "Error",
     "signinWithDesktop": "Sign in with Desktop",
     "motto": "Bringing back the good things of the last cycle",
@@ -49,6 +50,12 @@
     "qrconnect": {
       "title": "QR Connect",
       "description": "Scan the QR code with your mobile to connect to your account."
+    },
+    "confirmSend": {
+      "confirmButton": "Confirm Send",
+      "title": "Review",
+      "sending": "Sending",
+      "fee": "Fee"
     }
   },
   "signin": {
