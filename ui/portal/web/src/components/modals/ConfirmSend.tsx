@@ -36,7 +36,7 @@ export function ConfirmSend({ amount, denom, to, confirmSend, rejectSend }: Conf
   const { getPrice } = usePrices();
 
   return (
-    <div className="flex flex-col bg-white-100 border border-gray-100 rounded-3xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-3xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
       <p className="text-gray-900 diatype-lg-medium w-full text-center">
         {m["modals.confirmSend.title"]()}
       </p>
@@ -66,7 +66,7 @@ export function ConfirmSend({ amount, denom, to, confirmSend, rejectSend }: Conf
         </div> */}
       </div>
       <IconButton
-        className="hidden md:block absolute right-2 top-2"
+        className="hidden md:block absolute right-4 top-4"
         variant="link"
         onClick={() => [rejectSend(), hideModal()]}
       >

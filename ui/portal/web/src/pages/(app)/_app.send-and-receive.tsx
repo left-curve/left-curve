@@ -1,4 +1,11 @@
-import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import {
+  capitalize,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  wait,
+  withResolvers,
+} from "@left-curve/dango/utils";
 import {
   useAccount,
   useBalances,
@@ -28,6 +35,7 @@ import type { Address } from "@left-curve/dango/types";
 import { useMutation } from "@tanstack/react-query";
 
 import { z } from "zod";
+import { Modals } from "~/components/foundation/Modal";
 import { useToast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
@@ -43,7 +51,7 @@ export const Route = createFileRoute("/(app)/_app/send-and-receive")({
 function SendAndReceiveComponent() {
   const { action } = useSearch({ strict: false });
   const navigate = useNavigate({ from: "/send-and-receive" });
-  const { formatNumberOptions } = useApp();
+  const { formatNumberOptions, showModal } = useApp();
 
   const [selectedDenom, setSelectedDenom] = useState("uusdc");
   const { register, setValue, reset, handleSubmit } = useInputs({ strategy: "onSubmit" });
@@ -77,13 +85,27 @@ function SendAndReceiveComponent() {
   >({
     mutationFn: async ({ address, amount }) => {
       if (!signingClient) throw new Error("error: no signing client");
+      const parsedAmount = parseUnits(amount, selectedCoin.decimals).toString();
+
+      const { promise, resolve: confirmSend, reject: rejectSend } = withResolvers();
+
+      showModal(Modals.ConfirmSend, {
+        amount: parsedAmount,
+        denom: selectedDenom,
+        to: address as Address,
+        confirmSend,
+        rejectSend,
+      });
+
+      await promise;
 
       await signingClient.transfer({
-        to: address as Address,
-        sender: account!.address as Address,
-        coins: {
-          [selectedCoin.denom]: parseUnits(amount, selectedCoin.decimals).toString(),
+        transfer: {
+          [address]: {
+            [selectedCoin.denom]: parsedAmount,
+          },
         },
+        sender: account!.address as Address,
       });
     },
 
