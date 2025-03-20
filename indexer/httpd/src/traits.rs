@@ -1,5 +1,5 @@
 use {
-    crate::{
+    grug_app::{
         App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
     },
     grug_types::{BlockInfo, JsonDeExt, JsonSerExt},
@@ -20,9 +20,11 @@ pub trait QueryApp {
     /// Simulate a transaction, return a JSON String.
     fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String>;
 
-    fn last_block(&self) -> AppResult<BlockInfo>;
-
+    /// Query the chain ID.
     fn chain_id(&self) -> AppResult<String>;
+
+    /// Query the last finalized block.
+    fn last_finalized_block(&self) -> AppResult<BlockInfo>;
 }
 
 impl<DB, VM, PP, ID> QueryApp for App<DB, VM, PP, ID>
@@ -52,13 +54,8 @@ where
     fn simulate(&self, raw_unsigned_tx: String) -> AppResult<String> {
         let tx = raw_unsigned_tx.as_bytes().deserialize_json()?;
         let res = self.do_simulate(tx, 0, false)?;
+
         Ok(res.to_json_string()?)
-    }
-
-    fn last_block(&self) -> AppResult<BlockInfo> {
-        let storage = self.db.state_storage(None)?;
-
-        Ok(LAST_FINALIZED_BLOCK.load(&storage)?)
     }
 
     fn chain_id(&self) -> AppResult<String> {
@@ -66,5 +63,12 @@ where
         let chain_id = CHAIN_ID.load(&storage)?;
 
         Ok(chain_id)
+    }
+
+    fn last_finalized_block(&self) -> AppResult<BlockInfo> {
+        let storage = self.db.state_storage(None)?;
+        let last_finalized_block = LAST_FINALIZED_BLOCK.load(&storage)?;
+
+        Ok(last_finalized_block)
     }
 }
