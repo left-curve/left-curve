@@ -1,7 +1,7 @@
 export const applets = [
   {
     img: "/images/applets/send-and-receive.svg",
-    title: "Send & Receive",
+    title: "Transfer",
     description: "Lorem ipsum dolor sit amet consectetur.",
     path: "/send-and-receive",
   },
