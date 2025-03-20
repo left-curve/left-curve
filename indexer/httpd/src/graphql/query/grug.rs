@@ -34,16 +34,13 @@ impl GrugQuery {
         let value = if let Some(value) = value {
             Binary::from(value).to_string()
         } else {
-            return Err(Error::new(&format!("Key not found: {}", key)));
+            return Err(Error::new(format!("Key not found: {}", key)));
         };
 
-        let proof = if let Some(proof) = proof {
-            Some(Binary::from(proof).to_string())
-        } else {
-            None
-        };
-
-        Ok(Store { value, proof })
+        Ok(Store {
+            value,
+            proof: proof.map(|proof| Binary::from(proof).to_string()),
+        })
     }
 
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
