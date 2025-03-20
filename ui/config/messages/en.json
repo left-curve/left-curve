@@ -56,6 +56,12 @@
       "title": "Review",
       "sending": "Sending",
       "fee": "Fee"
+    },
+    "accountCreation": {
+      "title": "Account Created",
+      "accountName": "Account Name",
+      "accountBalance": "Account Balance",
+      "getStarted": "Get Started!"
     }
   },
   "signin": {

@@ -1,19 +1,13 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
-import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import {
-  useAccount,
-  useBalances,
-  useChainId,
-  useConfig,
-  useSigningClient,
-} from "@left-curve/store-react";
+import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store-react";
 import { useMutation } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
-import { useToast } from "../foundation/Toast";
+import { Modals } from "../foundation/Modal";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
@@ -21,9 +15,8 @@ export const CreateAccountDepositStep: React.FC = () => {
 
   const { value: fundsAmount } = inputs.amount || {};
 
-  const config = useConfig();
-  const chainId = useChainId();
-  const { toast } = useToast();
+  const { showModal } = useApp();
+  const { coins, state } = useConfig();
   const { account, refreshAccounts } = useAccount();
   const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
@@ -33,13 +26,16 @@ export const CreateAccountDepositStep: React.FC = () => {
   });
 
   const { accountType } = data;
-  const coins = config.coins[chainId];
-  const usdcInfo = coins["hyp/eth/usdc"];
-  const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, usdcInfo.decimals);
+  const coinInfo = coins[state.chainId]["hyp/eth/usdc"];
+  const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
+      const parsedAmount = parseUnits(fundsAmount, coinInfo.decimals).toString();
+
+      const nextIndex = await signingClient.getNextAccountIndex({ username: account!.username });
+
       await signingClient.registerAccount(
         {
           sender: account!.address,
@@ -47,14 +43,20 @@ export const CreateAccountDepositStep: React.FC = () => {
         },
         {
           funds: {
-            "hyp/eth/usdc": parseUnits(fundsAmount, usdcInfo.decimals).toString(),
+            "hyp/eth/usdc": parsedAmount,
           },
         },
       );
       await wait(3000);
+      return {
+        amount: parsedAmount,
+        accountType,
+        accountName: `${account!.username} ${capitalize(accountType)} #${nextIndex}`,
+        denom: "hyp/eth/usdc",
+      };
     },
-    onSuccess: async () => {
-      toast.success({ title: m["accountCreation.accountCreated"]() });
+    onSuccess: async (data) => {
+      showModal(Modals.ConfirmAccount, data);
       await refreshAccounts?.();
       done();
     },
@@ -85,15 +87,15 @@ export const CreateAccountDepositStep: React.FC = () => {
         })}
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
-            <img src={usdcInfo.logoURI} className="w-5 h-5 rounded-full" alt={usdcInfo.name} />
-            <span className="diatype-m-regular text-gray-500 pt-1">{usdcInfo.symbol}</span>
+            <img src={coinInfo.logoURI} className="w-5 h-5 rounded-full" alt={coinInfo.name} />
+            <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
         bottomComponent={
           <div className="w-full flex justify-between">
             <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
-              <span>{usdcInfo.symbol}</span>
+              <span>{coinInfo.symbol}</span>
               <span>{formatNumber(humanBalance, formatNumberOptions)}</span>
             </p>
           </div>

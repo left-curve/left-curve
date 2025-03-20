@@ -44,7 +44,9 @@ export function ConfirmSend({ amount, denom, to, confirmSend, rejectSend }: Conf
         <div className="flex flex-col gap-2 w-full">
           <p className="exposure-sm-italic text-gray-300">{m["modals.confirmSend.sending"]()}</p>
           <div className="flex items-center justify-between text-gray-700 h3-bold">
-            <p>{formatUnits(amount, coin.decimals)}</p>
+            <p>
+              {formatUnits(amount, coin.decimals)} {coin.symbol}
+            </p>
             <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
           </div>
           <p className="text-gray-500 diatype-sm-regular">
