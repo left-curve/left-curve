@@ -9,15 +9,24 @@ import {
   useClickAway,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { Command } from "cmdk";
-import { AnimatePresence, motion } from "framer-motion";
-import type React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
-import { SearchMenuBody } from "./SearchMenuBody";
 
-export const SearchMenu: React.FC = () => {
+import { m } from "~/paraglide/messages";
+import { applets } from "../../../applets";
+
+import { Command } from "cmdk";
+import { AnimatePresence, motion } from "framer-motion";
+import { SearchItem } from "./SearchItem";
+
+const ExportComponent = Object.assign(SearchMenu, {
+  Body,
+});
+
+export { ExportComponent as SearchMenu };
+
+function SearchMenu() {
   const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const [searchText, setSearchText] = useState("");
@@ -123,9 +132,79 @@ export const SearchMenu: React.FC = () => {
             </div>
           </div>
 
-          <SearchMenuBody isVisible={isSearchBarVisible} hideMenu={hideMenu} />
+          <Body isVisible={isSearchBarVisible} hideMenu={hideMenu} />
         </div>
       </ResizerContainer>
     </Command>
   );
+}
+
+type SearchMenuBodyProps = {
+  isVisible: boolean;
+  hideMenu: () => void;
 };
+
+export function Body({ isVisible, hideMenu }: SearchMenuBodyProps) {
+  const navigate = useNavigate();
+  return (
+    <AnimatePresence mode="wait" custom={isVisible}>
+      {isVisible && (
+        <motion.div
+          layout
+          initial={{ height: 0 }}
+          animate={{ height: "auto" }}
+          exit={{ height: 0 }}
+          transition={{ duration: 0.1 }}
+          className="menu w-full overflow-hidden"
+        >
+          <motion.div
+            className="p-1 w-full flex items-center flex-col gap-1"
+            variants={{
+              hidden: {},
+              visible: {
+                transition: {
+                  delayChildren: 0.1,
+                  staggerChildren: 0.05,
+                },
+              },
+            }}
+            initial="hidden"
+            animate="visible"
+          >
+            <Command.List className="w-full">
+              <Command.Empty>
+                <p className="rounded-[20px] py-4 px-5 font-semibold text-[1.25rem]">
+                  {m["commadBar.noResult"]()}
+                </p>
+              </Command.Empty>
+              <Command.Group value="Applets">
+                {applets.map((applet) => (
+                  <Command.Item
+                    key={applet.title}
+                    value={applet.title}
+                    className="group"
+                    onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                  >
+                    <SearchItem.Applet key={applet.title} {...applet} />
+                  </Command.Item>
+                ))}
+              </Command.Group>
+              {/*    <Command.Group value="Assets">
+                {[].map((token) => (
+                  <Command.Item
+                    key={token.title}
+                    value={token.title}
+                    className="group"
+                    onSelect={() => [navigate({ to: token.path }), hideMenu()]}
+                  >
+                    <TokenItem {...token} />
+                  </Command.Item>
+                ))}
+              </Command.Group> */}
+            </Command.List>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

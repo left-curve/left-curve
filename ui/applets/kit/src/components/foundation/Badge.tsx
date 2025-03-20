@@ -11,7 +11,7 @@ export const Badge: React.FC<BadgeProps> = ({ text, ...rest }) => {
 };
 const badgeVariants = tv(
   {
-    base: ["rounded-[4px] diatype-xs-medium"],
+    base: ["rounded-[4px] diatype-xs-medium w-fit h-fit"],
     variants: {
       color: {
         blue: "bg-blue-100 text-blue-800 border-blue-200",

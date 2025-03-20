@@ -1,7 +1,7 @@
 import type React from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "react-hot-toast";
-import { Modal } from "./components/Modal";
+import { Modal } from "./components/foundation/Modal";
 
 import { DangoStoreProvider } from "@left-curve/store-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

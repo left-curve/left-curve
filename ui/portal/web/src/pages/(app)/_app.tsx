@@ -1,7 +1,7 @@
 import { twMerge } from "@left-curve/applets-kit";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Header } from "~/components/Header";
+import { Header } from "~/components/foundation/Header";
 
 export const Route = createFileRoute("/(app)/_app")({
   component: function Layout() {

@@ -3,8 +3,8 @@ import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { AccountCard } from "./AccountCard/AccountCard";
-import { AssetsPreview } from "./AssetsPreview";
+import { AccountCard } from "../foundation/AccountCard";
+import { AssetsSection } from "./AssetsSection";
 
 const variants = {
   enter: (direction: number) => ({
@@ -71,7 +71,7 @@ export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVis
           <AccountCard account={account!} balance={totalBalance} />
         ) : (
           <div className="flex lg:hidden w-full max-w-[20.5rem] h-[9.75rem]">
-            <AssetsPreview
+            <AssetsSection
               balances={balances}
               showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}
             />
