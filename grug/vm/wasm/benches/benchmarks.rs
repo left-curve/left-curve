@@ -1,5 +1,5 @@
 use {
-    criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion},
+    criterion::{BatchSize, BenchmarkId, Criterion, criterion_group, criterion_main},
     grug_app::{GasTracker, Instance, QuerierProviderImpl, StorageProvider, Vm},
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,

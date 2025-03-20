@@ -1,7 +1,7 @@
 use {
-    crate::{read_from_memory, write_to_memory, Environment, Iterator, VmError, VmResult},
+    crate::{Environment, Iterator, VmError, VmResult, read_from_memory, write_to_memory},
     grug_app::GAS_COSTS,
-    grug_types::{decode_sections, Addr, BorshDeExt, BorshSerExt, Query, Record, Storage},
+    grug_types::{Addr, BorshDeExt, BorshSerExt, Query, Record, Storage, decode_sections},
     tracing::info,
     wasmer::FunctionEnvMut,
 };
@@ -411,25 +411,25 @@ fn encode_record((mut k, v): Record) -> Vec<u8> {
 mod tests {
     use {
         crate::{
-            db_read, db_remove, db_remove_range, db_scan, db_write, debug, read_from_memory,
-            write_to_memory, Environment, VmResult, WasmVm, GAS_PER_OPERATION,
+            Environment, GAS_PER_OPERATION, VmResult, WasmVm, db_read, db_remove, db_remove_range,
+            db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
         grug_app::{
-            GasTracker, QuerierProviderImpl, Shared, StorageProvider, APP_CONFIG, GAS_COSTS,
+            APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, Shared, StorageProvider,
         },
         grug_crypto::{Identity256, Identity512},
         grug_types::{
-            encode_sections, json, Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult,
-            Hash256, MockStorage, Order, Query, QueryResponse, ResultExt, Storage, Timestamp,
+            Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
+            Query, QueryResponse, ResultExt, Storage, Timestamp, encode_sections, json,
         },
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,
         wasmer::{
-            imports, CompilerConfig, Engine, Function, FunctionEnv, FunctionEnvMut, Instance,
-            Module, Singlepass, Store,
+            CompilerConfig, Engine, Function, FunctionEnv, FunctionEnvMut, Instance, Module,
+            Singlepass, Store, imports,
         },
-        wasmer_middlewares::{metering::set_remaining_points, Metering},
+        wasmer_middlewares::{Metering, metering::set_remaining_points},
     };
 
     const TESTER_CONTRACT: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
@@ -909,7 +909,7 @@ mod tests {
     }
 
     fn generate_secp256r1_verify_request() -> VerifyTest {
-        use p256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+        use p256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
 
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);
@@ -925,7 +925,7 @@ mod tests {
     }
 
     fn generate_secp256k1_verify_request() -> VerifyTest {
-        use k256::ecdsa::{signature::DigestSigner, Signature, SigningKey, VerifyingKey};
+        use k256::ecdsa::{Signature, SigningKey, VerifyingKey, signature::DigestSigner};
 
         let sk = SigningKey::random(&mut OsRng);
         let vk = VerifyingKey::from(&sk);

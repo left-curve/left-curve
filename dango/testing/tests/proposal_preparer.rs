@@ -3,12 +3,12 @@ use {
     dango_testing::setup_test,
     dango_types::oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
     grug::{
-        btree_map, setup_tracing_subscriber, Coins, Denom, NonEmpty, QuerierExt, ResultExt,
-        StorageQuerier,
+        Coins, Denom, NonEmpty, QuerierExt, ResultExt, StorageQuerier, btree_map,
+        setup_tracing_subscriber,
     },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{PythId, PYTH_URL},
+    pyth_types::{PYTH_URL, PythId},
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,

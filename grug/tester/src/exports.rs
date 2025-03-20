@@ -1,9 +1,9 @@
 use {
     crate::{
-        execute_stack_overflow, force_write_on_query, infinite_loop, query_force_write, query_loop,
-        query_recover_secp256k1, query_stack_overflow, query_verify_ed25519,
-        query_verify_ed25519_batch, query_verify_secp256k1, query_verify_secp256r1, ExecuteMsg,
-        InstantiateMsg, QueryMsg,
+        ExecuteMsg, InstantiateMsg, QueryMsg, execute_stack_overflow, force_write_on_query,
+        infinite_loop, query_force_write, query_loop, query_recover_secp256k1,
+        query_stack_overflow, query_verify_ed25519, query_verify_ed25519_batch,
+        query_verify_secp256k1, query_verify_secp256r1,
     },
     grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };

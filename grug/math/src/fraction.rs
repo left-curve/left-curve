@@ -40,8 +40,8 @@ where
 mod tests {
     use {
         crate::{
-            dec_test, test_utils::dt, Dec, Dec128, Dec256, FixedPoint, Fraction, Int, Int128,
-            Int256, MathError, NumberConst, Udec128, Udec256, Uint128, Uint256,
+            Dec, Dec128, Dec256, FixedPoint, Fraction, Int, Int128, Int256, MathError, NumberConst,
+            Udec128, Udec256, Uint128, Uint256, dec_test, test_utils::dt,
         },
         bnum::types::{I256, U256},
         std::fmt::Debug,

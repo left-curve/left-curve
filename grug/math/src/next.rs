@@ -1,6 +1,6 @@
 use crate::{
-    Bytable, Dec128, Dec256, Inner, Int128, Int256, Int512, Int64, Udec128, Udec256, Uint128,
-    Uint256, Uint512, Uint64,
+    Bytable, Dec128, Dec256, Inner, Int64, Int128, Int256, Int512, Udec128, Udec256, Uint64,
+    Uint128, Uint256, Uint512,
 };
 
 /// Describes a number type can be cast into another type of a bigger word size.
@@ -95,7 +95,7 @@ impl_next_udec! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{int_test, test_utils::bt, Int, NextNumber},
+        crate::{Int, NextNumber, int_test, test_utils::bt},
         bnum::{
             cast::As,
             types::{I256, I512, U256, U512},
@@ -140,8 +140,8 @@ mod int_tests {
 mod dec_tests {
     use {
         crate::{
-            dec_test, test_utils::dt, Dec, Dec128, Dec256, Int256, NextNumber, NumberConst,
-            Udec128, Udec256, Uint256,
+            Dec, Dec128, Dec256, Int256, NextNumber, NumberConst, Udec128, Udec256, Uint256,
+            dec_test, test_utils::dt,
         },
         bnum::cast::As,
     };

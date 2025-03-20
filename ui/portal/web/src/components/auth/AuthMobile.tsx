@@ -2,10 +2,10 @@ import { useWizard } from "@left-curve/applets-kit";
 import { useLogin, useLoginWithDesktop } from "@left-curve/store-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 import { Button, IconPasskey, IconQR } from "@left-curve/applets-kit";
-import { QRScan } from "../login/QRScan";
+import { QRScan } from "./QRScan";
 
 import { m } from "~/paraglide/messages";
 

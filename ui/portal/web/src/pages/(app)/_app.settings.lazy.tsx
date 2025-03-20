@@ -13,8 +13,8 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store-react";
-import { KeyManagment } from "~/components/KeyManagment";
-import { Modals } from "~/components/Modal";
+import { Modals } from "~/components/foundation/Modal";
+import { KeyManagment } from "~/components/settings/KeyManagment";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";

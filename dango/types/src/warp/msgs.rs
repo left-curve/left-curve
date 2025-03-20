@@ -2,9 +2,9 @@ use {
     crate::warp::{RateLimit, Route},
     grug::{Addr, Denom, HexBinary, Uint128},
     hyperlane_types::{
+        Addr32,
         mailbox::Domain,
         recipients::{RecipientMsg, RecipientQuery, RecipientQueryResponse},
-        Addr32,
     },
     std::collections::BTreeMap,
 };

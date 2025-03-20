@@ -949,13 +949,15 @@ mod tests {
                 1 => v1::ROOT_HASH,
                 _ => unreachable!(),
             };
-            assert!(verify_proof(
-                root_hash,
-                key.as_bytes().hash256(),
-                value.map(|v| v.hash256()),
-                &found_proof,
-            )
-            .is_ok());
+            assert!(
+                verify_proof(
+                    root_hash,
+                    key.as_bytes().hash256(),
+                    value.map(|v| v.hash256()),
+                    &found_proof,
+                )
+                .is_ok()
+            );
         }
     }
 

@@ -1,5 +1,5 @@
 use {
-    crate::{Config, CONFIG, WITHHELD_FEE},
+    crate::{CONFIG, Config, WITHHELD_FEE},
     grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Uint128},
     grug_types::{
         AuthCtx, AuthMode, Coins, Message, QuerierExt, Response, StdResult, Storage, Tx, TxOutcome,

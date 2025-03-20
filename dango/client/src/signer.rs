@@ -253,6 +253,7 @@ mod tests {
             .unwrap();
 
         let mut mock_ctx = MockContext::default()
+            .with_chain_id("dango-1")
             .with_querier(mock_querier)
             .with_mode(AuthMode::Finalize);
 

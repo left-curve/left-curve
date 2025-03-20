@@ -16,7 +16,7 @@ import { createKeyHash } from "@left-curve/dango";
 import type { Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store-react/types";
 import type React from "react";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 export const SignupCredentialStep: React.FC = () => {
   const { nextStep, setData } = useWizard();

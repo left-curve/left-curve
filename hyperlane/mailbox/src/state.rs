@@ -1,6 +1,6 @@
 use {
     grug::{Counter, Hash256, Item, Set},
-    hyperlane_types::{mailbox::Config, IncrementalMerkleTree},
+    hyperlane_types::{IncrementalMerkleTree, mailbox::Config},
 };
 
 pub const CONFIG: Item<Config> = Item::new("config");

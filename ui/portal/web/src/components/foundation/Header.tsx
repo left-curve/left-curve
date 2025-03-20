@@ -12,11 +12,10 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { NotificationsMenu } from "../notifications/NotificationsMenu";
+import { AccountMenu } from "./AccountMenu";
 import { HamburgerMenu } from "./HamburguerMenu";
-import { NotificationsMenu } from "./NotificationsMenu";
-import { AccountDesktopMenu } from "./menu/AccountDesktopMenu";
-import { AccountMobileMenu } from "./menu/AccountMobileMenu";
-import { SearchMenu } from "./menu/SearchMenu";
+import { SearchMenu } from "./SearchMenu";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -109,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         </div>
         <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      {isLg ? <AccountDesktopMenu /> : <AccountMobileMenu />}
+      {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
     </header>
   );
 };

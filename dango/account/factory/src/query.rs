@@ -8,8 +8,8 @@ use {
         auth::Key,
     },
     grug::{
-        Addr, Bound, Coins, Hash256, ImmutableCtx, Json, JsonSerExt, Order, StdResult, Storage,
-        DEFAULT_PAGE_LIMIT,
+        Addr, Bound, Coins, DEFAULT_PAGE_LIMIT, Hash256, ImmutableCtx, Json, JsonSerExt, Order,
+        StdResult, Storage,
     },
     std::collections::BTreeMap,
 };

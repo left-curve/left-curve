@@ -35,7 +35,9 @@ mod tests {
 
     #[test]
     fn test_parse_config_file() {
-        std::env::set_var("INDEXER_HTTPD__TENDERMINT_ENDPOINT", "BAR");
+        unsafe {
+            std::env::set_var("INDEXER_HTTPD__TENDERMINT_ENDPOINT", "BAR");
+        }
 
         let config: TestSettings = parse_config(PathBuf::from("testdata/config_test1.toml"))
             .expect("Failed to parse file");

@@ -1,4 +1,10 @@
-use {super::super::types::status::Status, async_graphql::*};
+use {
+    super::super::types::status::Status,
+    async_graphql::*,
+    grug_math::Inner,
+    grug_types::{HexBinary, JsonSerExt},
+    std::str::FromStr,
+};
 
 #[derive(Default, Debug)]
 pub struct GrugQuery {}
@@ -15,6 +21,23 @@ impl GrugQuery {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         Ok(app_ctx.grug_app.query_app(request, height, prove)?)
+    }
+
+    async fn query_store(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Key as Hex string")] key: String,
+        height: u64,
+        #[graphql(default = false)] prove: bool,
+    ) -> Result<String, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let key = HexBinary::from_str(&key)?;
+
+        app_ctx
+            .grug_app
+            .query_store(key.inner(), height, prove)?
+            .to_json_string()
+            .map_err(Into::into)
     }
 
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {

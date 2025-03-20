@@ -1,7 +1,7 @@
 use {
     crate::graphql::types::message::Message,
     async_graphql::{futures_util::stream::Stream, *},
-    futures_util::stream::{once, StreamExt},
+    futures_util::stream::{StreamExt, once},
     indexer_sql::entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
 };

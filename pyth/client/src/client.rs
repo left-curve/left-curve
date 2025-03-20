@@ -1,16 +1,16 @@
 use {
-    crate::{error, PythClientTrait},
+    crate::{PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
     pyth_types::LatestVaaResponse,
     reqwest::{Client, IntoUrl, Url},
-    reqwest_eventsource::{retry::ExponentialBackoff, Event, EventSource},
+    reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
         pin::Pin,
         sync::{
-            atomic::{AtomicBool, Ordering},
             Arc,
+            atomic::{AtomicBool, Ordering},
         },
         time::Duration,
     },

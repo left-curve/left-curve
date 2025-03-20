@@ -1,7 +1,7 @@
 use {
     crate::{
-        Dec128, Dec256, Int128, Int256, Int512, Int64, MathError, MathResult, Sign, Udec128,
-        Udec256, Uint128, Uint256, Uint512, Uint64,
+        Dec128, Dec256, Int64, Int128, Int256, Int512, MathError, MathResult, Sign, Udec128,
+        Udec256, Uint64, Uint128, Uint256, Uint512,
     },
     bnum::cast::As,
 };
@@ -91,7 +91,7 @@ impl_checked_into_unsigned_dec! {
 #[cfg(test)]
 mod int_tests {
     use {
-        crate::{int_test, test_utils::bt, Int, MathError, NumberConst, Signed, Uint128, Uint256},
+        crate::{Int, MathError, NumberConst, Signed, Uint128, Uint256, int_test, test_utils::bt},
         bnum::{cast::As, types::I256},
     };
 
@@ -138,8 +138,8 @@ mod int_tests {
 mod dec_tests {
     use {
         crate::{
-            dec_test, test_utils::dt, Dec, MathError, NumberConst, Signed, Udec128, Udec256,
-            Uint128, Uint256,
+            Dec, MathError, NumberConst, Signed, Udec128, Udec256, Uint128, Uint256, dec_test,
+            test_utils::dt,
         },
         bnum::{cast::As, types::I256},
     };

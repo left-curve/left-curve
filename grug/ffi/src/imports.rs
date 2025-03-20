@@ -1,14 +1,14 @@
 use {
     crate::Region,
     grug_types::{
-        encode_sections, Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query,
-        QueryResponse, Record, StdError, StdResult, Storage, VerificationError,
+        Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query, QueryResponse,
+        Record, StdError, StdResult, Storage, VerificationError, encode_sections,
     },
 };
 
 // These are the method that the host must implement.
 // We use `usize` to denote memory addresses, and `i32` to denote other data.
-extern "C" {
+unsafe extern "C" {
     // Database operations.
     //
     // Note that these methods are not fallible. the reason is that if a DB op
@@ -205,7 +205,7 @@ unsafe fn register_iterator(min: Option<&[u8]>, max: Option<&[u8]>, order: Order
     let max_region = max.map(Region::build);
     let max_ptr = get_optional_region_ptr(max_region.as_ref());
 
-    db_scan(min_ptr, max_ptr, order.into())
+    unsafe { db_scan(min_ptr, max_ptr, order.into()) }
 }
 
 // Clippy has a false positive here. We _have_ to take `Option<&Box<Region>>`,

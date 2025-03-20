@@ -154,7 +154,7 @@ where
 #[cfg(test)]
 mod tests {
     use {
-        crate::{btree_map, Binary, LengthBounded, ResultExt},
+        crate::{Binary, LengthBounded, ResultExt, btree_map},
         paste::paste,
     };
 

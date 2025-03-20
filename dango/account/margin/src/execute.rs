@@ -4,12 +4,13 @@ use {
     dango_auth::authenticate_tx,
     dango_oracle::OracleQuerier,
     dango_types::{
+        DangoQuerier,
         account::{
-            margin::{ExecuteMsg, HealthResponse, Liquidate},
             InstantiateMsg,
+            margin::{ExecuteMsg, HealthResponse, Liquidate},
         },
         config::AppConfig,
-        dex, lending, DangoQuerier,
+        dex, lending,
     },
     grug::{
         AuthCtx, AuthResponse, Coin, Coins, Denom, Fraction, Inner, IsZero, Message, MutableCtx,
