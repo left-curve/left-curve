@@ -7,9 +7,9 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
-import { AddKeyModal } from "./modals/AddKey";
-import { QRConnect } from "./modals/QRConnect";
-import { RemoveKey } from "./modals/RemoveKey";
+import { AddKeyModal } from "../modals/AddKey";
+import { QRConnect } from "../modals/QRConnect";
+import { RemoveKey } from "../modals/RemoveKey";
 
 export const Modals = {
   AddKey: "add-key",

@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { Modals } from "./Modal";
+import { Modals } from "../foundation/Modal";
 
 const KeyTranslation = {
   secp256r1: "Passkey",

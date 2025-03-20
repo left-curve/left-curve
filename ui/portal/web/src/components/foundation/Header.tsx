@@ -12,10 +12,10 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
+import { NotificationsMenu } from "../notifications/NotificationsMenu";
+import { AccountMenu } from "./AccountMenu";
 import { HamburgerMenu } from "./HamburguerMenu";
-import { NotificationsMenu } from "./NotificationsMenu";
-import { AccountMenu } from "./menu/AccountMenu";
-import { SearchMenu } from "./menu/SearchMenu";
+import { SearchMenu } from "./SearchMenu";
 
 interface HeaderProps {
   isScrolled: boolean;

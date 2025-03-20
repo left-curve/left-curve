@@ -6,7 +6,7 @@ import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 export const QRConnect: React.FC = () => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);

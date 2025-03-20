@@ -13,7 +13,7 @@ import { m } from "~/paraglide/messages";
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();

@@ -4,8 +4,8 @@ import { Link } from "@tanstack/react-router";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { AssetsPreview } from "./AssetsPreview";
-import { ButtonLink } from "./ButtonLink";
+import { ButtonLink } from "../foundation/ButtonLink";
+import { AssetsSection } from "./AssetsSection";
 import { SwippeableAccountCard } from "./SwippeableAccountCard";
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
   setCardMobileVisible: (value: number) => void;
 }
 
-export const WelcomeHeader: React.FC<Props> = ({ cardMobileVisible, setCardMobileVisible }) => {
+export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobileVisible }) => {
   const { account, isConnected } = useAccount();
   const { setSidebarVisibility } = useApp();
   const { data: balances = {} } = useBalances({ address: account?.address });
@@ -62,7 +62,7 @@ export const WelcomeHeader: React.FC<Props> = ({ cardMobileVisible, setCardMobil
 
       <div className="w-full flex flex-col lg:gap-4 items-center">
         <div className="hidden lg:flex w-full">
-          <AssetsPreview
+          <AssetsSection
             balances={balances}
             showAllAssets={isConnected ? () => setSidebarVisibility(true) : undefined}
           />

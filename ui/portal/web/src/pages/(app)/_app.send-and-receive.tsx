@@ -28,7 +28,7 @@ import type { Address } from "@left-curve/dango/types";
 import { useMutation } from "@tanstack/react-query";
 
 import { z } from "zod";
-import { useToast } from "~/components/Toast";
+import { useToast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
 const searchParamsSchema = z.object({

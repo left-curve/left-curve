@@ -7,10 +7,9 @@ import { useApp } from "~/hooks/useApp";
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "../Modal";
+import { Modals } from "./Modal";
 
-import { AccountCard } from "../AccountCard";
-import { AssetTab } from "./AssetTab";
+import { AccountCard } from "./AccountCard";
 
 import {
   Button,
@@ -27,11 +26,20 @@ import {
 import { AnimatePresence } from "framer-motion";
 import { AssetCard } from "./AssetCard";
 
-interface Props {
-  backAllowed?: boolean;
-}
+const ExportComponent = Object.assign(AccountMenu, {
+  Desktop,
+  Mobile,
+  Assets,
+  Selector,
+});
 
-function AccountMenu({ backAllowed }: Props) {
+export { ExportComponent as AccountMenu };
+
+type AccountMenuProps = {
+  backAllowed?: boolean;
+};
+
+function AccountMenu({ backAllowed }: AccountMenuProps) {
   const { formatNumberOptions, isSidebarVisible } = useApp();
   const { account } = useAccount();
   const { history } = useRouter();
@@ -94,7 +102,7 @@ function AccountMenu({ backAllowed }: Props) {
             transition={{ duration: 0.2 }}
             exit={{ opacity: 0 }}
           >
-            {isAccountSelectorActive ? <AccountMenu.Selector /> : <AccountMenu.Assets />}
+            {isAccountSelectorActive ? <Selector /> : <Assets />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -234,10 +242,3 @@ function Selector() {
     </div>
   );
 }
-
-AccountMenu.Assets = Assets;
-AccountMenu.Selector = Selector;
-AccountMenu.Desktop = Desktop;
-AccountMenu.Mobile = Mobile;
-
-export { AccountMenu };

@@ -1,11 +1,12 @@
 import { type AppletMetadata, IconAddCross } from "@left-curve/applets-kit";
 import { useStorage } from "@left-curve/store-react";
-import { Link } from "@tanstack/react-router";
-import type React from "react";
 import { useApp } from "~/hooks/useApp";
-import { applets } from "../../applets";
 
-export const FavAppletSection: React.FC = () => {
+import { applets } from "../../../applets";
+
+import { Link } from "@tanstack/react-router";
+
+export function AppletsSection() {
   const [favApplets] = useStorage<AppletMetadata[]>("fav_applets", {
     initialValue: applets.slice(0, 3),
   });
@@ -34,4 +35,4 @@ export const FavAppletSection: React.FC = () => {
       </div>
     </div>
   );
-};
+}
