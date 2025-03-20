@@ -53,7 +53,7 @@ impl VaasChecker {
                 let old_sequence = element.insert("sequence", new_sequence).unwrap();
 
                 assert!(new_publish_time >= old_publish_time, "Time has decreased");
-                assert!(new_sequence > old_sequence, "Sequence has decreased");
+                assert!(new_sequence > old_sequence, "Sequence has not increased");
 
                 // Increase counter if the price has changed.
                 element.entry("price_change").and_modify(|price_change| {

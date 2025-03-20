@@ -17,7 +17,6 @@ use {
     },
 };
 
-// Note that the
 const NOT_USED_ID: PythId = PythId::from_inner(hex!(
     "2b9ab1e972a281585084148ba1389800799bd4be63b957507db1349314e47445"
 ));
