@@ -117,6 +117,9 @@ function SendAndReceiveComponent() {
     },
     onSuccess: async () => {
       reset();
+      toast.success({
+        title: m["sendAndReceive.sendSuccessfully"](),
+      });
       await wait(1000);
       refreshBalances();
     },

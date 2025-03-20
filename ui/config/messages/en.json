@@ -182,6 +182,7 @@
   "sendAndReceive": {
     "to": "To",
     "sending": "You're sending",
+    "sendSuccessfully": "Sent Successfully",
     "inputPlaceholder": "Wallet address or username"
   },
   "settings": {
