@@ -4,7 +4,7 @@ use {
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
     grug_testing::{TestAccounts, TestBuilder, TestSuite, setup_tracing_subscriber},
-    grug_types::{self, Coins, Denom, JsonSerExt, ResultExt},
+    grug_types::{Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
         context::Context,
