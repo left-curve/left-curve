@@ -48,12 +48,12 @@ resolver = "2"
 authors       = ["Left Curve Software Limited (https://grug.build/about.html)"]
 categories    = ["cryptography::cryptocurrencies"]
 documentation = "https://grug.build/whitepaper.html"
-edition       = "2024"
+edition       = "2021"
 homepage      = "https://grug.build"
 keywords      = ["blockchain", "wasm"]
 license       = "TBD"
 repository    = "https://github.com/left-curve/left-curve"
-rust-version  = "1.85"
+rust-version  = "1.80"
 version       = "0.0.0"
 
 [workspace.dependencies]
@@ -100,7 +100,7 @@ futures                 = "0.3"
 futures-util            = "0.3"
 glob                    = "0.3"
 hex                     = "0.4"
-hex-literal             = "1"
+hex-literal             = "0.4"
 home                    = "0.5"
 ics23                   = "0.12"
 itertools               = "0"
