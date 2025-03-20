@@ -21,6 +21,7 @@ impl VaasChecker {
             values.insert(id.to_string(), btree_map! {
                 "price" => 0,
                 "publish_time" => 0,
+                "sequence" => 0,
                 // Set to -1 since the first iteration will increase the counter
                 // (price and publish time are 0).
                 "price_change" => -1,
@@ -36,7 +37,8 @@ impl VaasChecker {
         let mut count_price_feed = 0;
         for vaa in vaas.into_iter() {
             let pyth_vaa = PythVaa::new(&MockApi, vaa.into_inner()).unwrap();
-            // TODO: Check for incrementing sequence when PR on dango-oracle is merged.
+            let new_sequence = pyth_vaa.wormhole_vaa.sequence as i64;
+
             for price_feed in pyth_vaa.unverified() {
                 count_price_feed += 1;
 
@@ -48,8 +50,10 @@ impl VaasChecker {
                 // Update the price and publish time.
                 let old_price = element.insert("price", new_price).unwrap();
                 let old_publish_time = element.insert("publish_time", new_publish_time).unwrap();
+                let old_sequence = element.insert("sequence", new_sequence).unwrap();
 
                 assert!(new_publish_time >= old_publish_time, "Time has decreased");
+                assert!(new_sequence > old_sequence, "Sequence has not increased");
 
                 // Increase counter if the price has changed.
                 element.entry("price_change").and_modify(|price_change| {
