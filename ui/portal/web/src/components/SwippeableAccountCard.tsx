@@ -3,7 +3,7 @@ import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
-import { AccountCard } from "./AccountCard/AccountCard";
+import { AccountCard } from "./AccountCard";
 import { AssetsPreview } from "./AssetsPreview";
 
 const variants = {

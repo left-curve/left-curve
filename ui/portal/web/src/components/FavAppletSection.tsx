@@ -13,7 +13,7 @@ export const FavAppletSection: React.FC = () => {
   const { setSearchBarVisibility } = useApp();
 
   return (
-    <div className="flex gap-4 md:gap-8 items-start flex-wrap md:justify-start w-full">
+    <div className="grid grid-cols-[repeat(auto-fill,_minmax(95px,_1fr))] md:place-items-start place-items-center gap-4 md:gap-8 w-full">
       {favApplets.map((applet) => (
         <div key={applet.title} className="flex flex-col items-center gap-2">
           <Link

@@ -14,8 +14,7 @@ import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { HamburgerMenu } from "./HamburguerMenu";
 import { NotificationsMenu } from "./NotificationsMenu";
-import { AccountDesktopMenu } from "./menu/AccountDesktopMenu";
-import { AccountMobileMenu } from "./menu/AccountMobileMenu";
+import { AccountMenu } from "./menu/AccountMenu";
 import { SearchMenu } from "./menu/SearchMenu";
 
 interface HeaderProps {
@@ -109,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         </div>
         <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      {isLg ? <AccountDesktopMenu /> : <AccountMobileMenu />}
+      {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
     </header>
   );
 };
