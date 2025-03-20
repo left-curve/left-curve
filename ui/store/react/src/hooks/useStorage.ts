@@ -13,7 +13,7 @@ export type UseStorageOptions<T = undefined> = {
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
-): [T, Dispatch<SetStateAction<T>>] {
+): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
   const { initialValue: _initialValue_, storage: _storage_, version: __version__ = 1 } = options;
 
   const storage = (() => {
@@ -30,7 +30,7 @@ export function useStorage<T = undefined>(
     return (_initialValue_ as () => T)();
   })();
 
-  const { data, refetch } = useQuery<T, Error, T, string[]>({
+  const { data, refetch } = useQuery<T | null, Error, T, string[]>({
     queryKey: ["dango", key],
     queryFn: () => {
       const item = storage.getItem(key, {
@@ -45,7 +45,7 @@ export function useStorage<T = undefined>(
         return value as T;
       }
 
-      return value;
+      return value ?? null;
     },
     initialData: initialValue,
   });
@@ -60,7 +60,7 @@ export function useStorage<T = undefined>(
     refetch();
   };
 
-  return [data as T, setValue];
+  return [data as any, setValue];
 }
 
 export default useStorage;

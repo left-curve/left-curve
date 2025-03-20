@@ -36,7 +36,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { z } from "zod";
 import { Modals } from "~/components/foundation/Modal";
-import { useToast } from "~/components/foundation/Toast";
+import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
 const searchParamsSchema = z.object({
@@ -57,7 +57,6 @@ function SendAndReceiveComponent() {
   const { register, setValue, reset, handleSubmit } = useInputs({ strategy: "onSubmit" });
 
   const { account, isConnected } = useAccount();
-  const { toast } = useToast();
   const chainId = useChainId();
   const config = useConfig();
   const { data: signingClient } = useSigningClient();

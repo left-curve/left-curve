@@ -21,6 +21,7 @@
     "@yudiel/react-qr-scanner": "^2.2.1",
     "date-fns": "^4.1.0",
     "framer-motion": "catalog:",
+    "fuzzysort": "^3.1.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "catalog:",

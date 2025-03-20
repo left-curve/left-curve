@@ -1,4 +1,5 @@
 import {
+  type AppletMetadata,
   IconButton,
   IconChevronDown,
   IconClose,
@@ -10,14 +11,14 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
-import { applets } from "../../../applets";
 
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSearchBar } from "~/hooks/useSearchBar";
 import { SearchItem } from "./SearchItem";
 
 const ExportComponent = Object.assign(SearchMenu, {
@@ -29,7 +30,7 @@ export { ExportComponent as SearchMenu };
 function SearchMenu() {
   const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
-  const [searchText, setSearchText] = useState("");
+  const { searchText, setSearchText, isLoading, txs, block, applets } = useSearchBar();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -71,7 +72,7 @@ function SearchMenu() {
   };
 
   return (
-    <Command ref={menuRef} className="flex flex-col gap-4 w-full">
+    <Command ref={menuRef} className="flex flex-col gap-4 w-full" shouldFilter={false}>
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
@@ -132,7 +133,7 @@ function SearchMenu() {
             </div>
           </div>
 
-          <Body isVisible={isSearchBarVisible} hideMenu={hideMenu} />
+          <Body isVisible={isSearchBarVisible} hideMenu={hideMenu} applets={applets} />
         </div>
       </ResizerContainer>
     </Command>
@@ -142,9 +143,10 @@ function SearchMenu() {
 type SearchMenuBodyProps = {
   isVisible: boolean;
   hideMenu: () => void;
+  applets: AppletMetadata[];
 };
 
-export function Body({ isVisible, hideMenu }: SearchMenuBodyProps) {
+export function Body({ isVisible, hideMenu, applets }: SearchMenuBodyProps) {
   const navigate = useNavigate();
   return (
     <AnimatePresence mode="wait" custom={isVisible}>

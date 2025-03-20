@@ -9,7 +9,7 @@ import { registerUser } from "@left-curve/dango/actions";
 import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
 import { ConnectionStatus } from "@left-curve/store-react/types";
-import { useToast } from "../foundation/Toast";
+import { toast } from "../foundation/Toast";
 
 import {
   Button,
@@ -34,7 +34,6 @@ export const SignupUsernameStep: React.FC = () => {
   const { key, keyHash, connectorId } = data;
 
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const client = usePublicClient();
   const { status } = useAccount();

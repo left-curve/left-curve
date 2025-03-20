@@ -15,7 +15,7 @@ export type UseSessionKeyParameters = {
 };
 
 export type UseSessionKeyReturnType = {
-  client: ReturnType<typeof createSignerClient> | undefined;
+  client?: ReturnType<typeof createSignerClient> | null;
   session: SigningSession | null;
   deleteSessionkey: () => void;
   createSessionKey: (parameters: { expireAt: number }) => Promise<void>;
@@ -32,9 +32,10 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
   });
 
   const { data: client } = useQuery({
-    queryKey: ["session_key", session],
+    enabled: Boolean(session) && Boolean(username),
+    queryKey: ["session_key", username, session],
     queryFn: async () => {
-      if (!session || !username) return undefined;
+      if (!session || !username) return null;
       return createSignerClient({
         username,
         signer: createSessionSigner(session),
