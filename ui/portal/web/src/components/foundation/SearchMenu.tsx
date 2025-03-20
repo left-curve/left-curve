@@ -173,7 +173,7 @@ export function Body({ isVisible, hideMenu }: SearchMenuBodyProps) {
           >
             <Command.List className="w-full">
               <Command.Empty>
-                <p className="rounded-[20px] py-4 px-5 font-semibold text-[1.25rem]">
+                <p className="text-gray-500 diatype-m-regular p-2 text-center">
                   {m["commadBar.noResult"]()}
                 </p>
               </Command.Empty>

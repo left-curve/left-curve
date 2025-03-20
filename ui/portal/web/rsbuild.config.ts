@@ -37,7 +37,6 @@ export default defineConfig({
       plugins: [
         paraglideRspackPlugin({
           outdir: "./.paraglide",
-          cleanOutdir: true,
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
