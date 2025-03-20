@@ -23,6 +23,7 @@ export { AccountSearchInput } from "./foundation/AccountSearchInput";
 export { TextLoop } from "./foundation/TextLoop";
 export { AccordionItem } from "./foundation/AccordionItem";
 export { BorrowBar } from "./foundation/BorrowBar";
+export { Skeleton } from "./foundation/Skeleton";
 
 /* ---------------------------------- Icons --------------------------------- */
 

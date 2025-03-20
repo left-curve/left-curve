@@ -1,9 +1,9 @@
 use {
     crate::{CryptoError, CryptoResult},
     digest::{
+        FixedOutput, HashMarker, Output, OutputSizeUser, Update,
         consts::{U32, U64},
         generic_array::GenericArray,
-        FixedOutput, HashMarker, Output, OutputSizeUser, Update,
     },
     std::ops::Deref,
 };

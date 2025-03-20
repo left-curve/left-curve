@@ -2,8 +2,8 @@ use {
     dango_testing::{generate_random_key, setup_test},
     dango_types::constants::{DANGO_DENOM, USDC_DENOM},
     grug::{
-        btree_set, coins, Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray,
-        Inner, JsonDeExt, QuerierExt, ResultExt, SearchEvent, UniqueVec,
+        Addr, Addressable, CheckedContractEvent, Coins, HashExt, HexByteArray, Inner, JsonDeExt,
+        QuerierExt, ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },
     grug_crypto::Identity256,
     hyperlane_types::{

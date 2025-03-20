@@ -1,12 +1,12 @@
 use {
-    crate::{tracing::setup_tracing_subscriber, TestAccount, TestAccounts, TestSuite, TestVm},
+    crate::{TestAccount, TestAccounts, TestSuite, TestVm, tracing::setup_tracing_subscriber},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer},
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
-        Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GenesisState, HashExt,
-        Json, JsonSerExt, MaybeDefined, Message, Permission, Permissions, StdResult, Timestamp,
-        Undefined, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GENESIS_SENDER,
+        Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, GenesisState, HashExt, Json, JsonSerExt,
+        MaybeDefined, Message, Permission, Permissions, StdResult, Timestamp, Undefined,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,

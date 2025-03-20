@@ -2,7 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_math::Inner,
-    serde::{de, Serialize},
+    serde::{Serialize, de},
     std::{collections::HashSet, hash::Hash, io, vec},
 };
 

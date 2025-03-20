@@ -3,7 +3,7 @@ use {
     async_graphql::{dataloader::*, *},
     indexer_sql::entity,
     itertools::Itertools,
-    sea_orm::{entity::prelude::*, DatabaseConnection, Order, QueryOrder},
+    sea_orm::{DatabaseConnection, Order, QueryOrder, entity::prelude::*},
     std::{collections::HashMap, sync::Arc},
 };
 

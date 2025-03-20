@@ -1,7 +1,7 @@
 use {
     super::transaction::Transaction,
     crate::graphql::dataloader::transaction::TransactionDataLoader,
-    async_graphql::{dataloader::DataLoader, ComplexObject, Context, Result, SimpleObject},
+    async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::entity,
     serde::Deserialize,

@@ -1,8 +1,8 @@
 use {
     assertor::*,
     dango_testing::{
-        setup_test, setup_test_with_indexer, HyperlaneTestSuite, TestSuite, MOCK_LOCAL_DOMAIN,
-        MOCK_REMOTE_DOMAIN,
+        HyperlaneTestSuite, MOCK_LOCAL_DOMAIN, MOCK_REMOTE_DOMAIN, TestSuite, setup_test,
+        setup_test_with_indexer,
     },
     dango_types::{
         constants::{DANGO_DENOM, ETH_DENOM, SOL_DENOM},
@@ -10,14 +10,13 @@ use {
     },
     dango_warp::ROUTES,
     grug::{
-        btree_map, setup_tracing_subscriber, Addr, Addressable, BalanceChange, Coin, Coins, Denom,
-        Duration, HashExt, HexBinary, MathError, NumberConst, QuerierExt, ResultExt, StdError,
-        Udec128, Uint128,
+        Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, HashExt, HexBinary,
+        MathError, NumberConst, QuerierExt, ResultExt, StdError, Udec128, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     hyperlane_types::{
-        addr32,
-        mailbox::{self, Message, MAILBOX_VERSION},
-        Addr32, IncrementalMerkleTree,
+        Addr32, IncrementalMerkleTree, addr32,
+        mailbox::{self, MAILBOX_VERSION, Message},
     },
     sea_orm::EntityTrait,
     std::{ops::DerefMut, str::FromStr},
@@ -145,10 +144,12 @@ fn send_escrowing_collateral() {
         // 2. Withdrawal fee from Warp to taxman.
         assert_that!(transfers).has_length(2);
 
-        assert_that!(transfers
-            .iter()
-            .map(|t| t.amount.as_str())
-            .collect::<Vec<_>>())
+        assert_that!(
+            transfers
+                .iter()
+                .map(|t| t.amount.as_str())
+                .collect::<Vec<_>>()
+        )
         .is_equal_to(vec!["100", "25"]);
     });
 }

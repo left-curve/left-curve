@@ -1,5 +1,5 @@
 use {
-    crate::{Credential, InstantiateMsg, PublicKey, PUBLIC_KEY, SEQUENCE},
+    crate::{Credential, InstantiateMsg, PUBLIC_KEY, PublicKey, SEQUENCE},
     anyhow::ensure,
     grug_types::{
         Addr, AuthCtx, AuthMode, AuthResponse, JsonDeExt, JsonSerExt, Message, MutableCtx,

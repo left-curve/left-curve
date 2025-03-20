@@ -3,12 +3,12 @@ use {
     dango_testing::setup_test,
     dango_types::oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
     grug::{
-        btree_map, setup_tracing_subscriber, Coins, Denom, NonEmpty, QuerierExt, ResultExt,
-        StorageQuerier,
+        Coins, Denom, NonEmpty, QuerierExt, ResultExt, StorageQuerier, btree_map,
+        setup_tracing_subscriber,
     },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{PythId, PYTH_URL},
+    pyth_types::{PYTH_URL, PythId},
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -17,7 +17,6 @@ use {
     },
 };
 
-// Note that the
 const NOT_USED_ID: PythId = PythId::from_inner(hex!(
     "2b9ab1e972a281585084148ba1389800799bd4be63b957507db1349314e47445"
 ));

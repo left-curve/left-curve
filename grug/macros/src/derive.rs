@@ -3,10 +3,10 @@ use {
     quote::quote,
     std::panic,
     syn::{
+        Data, DeriveInput, Ident,
         parse::{Parse, ParseStream},
         parse_macro_input,
         token::Comma,
-        Data, DeriveInput, Ident,
     },
 };
 

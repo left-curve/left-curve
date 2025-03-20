@@ -545,9 +545,9 @@ generate_decimal! {
 mod tests {
     use {
         crate::{
-            dec_test, dts,
+            Dec, Dec128, Dec256, FixedPoint, MathError, NumberConst, Udec128, Udec256, dec_test,
+            dts,
             test_utils::{bt, dec, dt, int},
-            Dec, Dec128, Dec256, FixedPoint, MathError, NumberConst, Udec128, Udec256,
         },
         std::{cmp::Ordering, str::FromStr},
     };

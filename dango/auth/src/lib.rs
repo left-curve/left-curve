@@ -4,18 +4,18 @@ use {
         primitives::U160,
     },
     anyhow::{bail, ensure},
-    base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine},
+    base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
     dango_types::{
+        DangoQuerier,
         auth::{
             ClientData, Credential, Key, Metadata, Nonce, SessionInfo, SignDoc, Signature,
             StandardCredential,
         },
-        DangoQuerier,
     },
     grug::{
-        json, Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt,
-        StdResult, Storage, StorageQuerier, Tx,
+        Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, StdResult,
+        Storage, StorageQuerier, Tx, json,
     },
     std::collections::BTreeSet,
 };
@@ -104,6 +104,14 @@ pub fn verify_nonce_and_signature(
     } else {
         tx.data.deserialize_json()?
     };
+
+    // Ensure the chain ID in metadata matches the context.
+    ensure!(
+        metadata.chain_id == ctx.chain_id,
+        "chain ID mismatch: expecting `{}`, got `{}`",
+        ctx.chain_id,
+        metadata.chain_id
+    );
 
     let sign_doc = SignDoc {
         gas_limit: tx.gas_limit,
@@ -345,7 +353,7 @@ mod tests {
             account_factory::Username,
             config::{AppAddresses, AppConfig},
         },
-        grug::{btree_map, Addr, AuthMode, Hash256, MockContext, MockQuerier},
+        grug::{Addr, AuthMode, Hash256, MockContext, MockQuerier, ResultExt, btree_map},
         std::str::FromStr,
     };
 
@@ -421,7 +429,7 @@ mod tests {
             .with_chain_id("dev-6")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -493,7 +501,7 @@ mod tests {
         }
         "#;
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -557,13 +565,24 @@ mod tests {
                     .unwrap();
             });
 
+        // With the incorrect chain ID. Should fail.
         let mut ctx = MockContext::new()
             .with_querier(querier)
+            .with_contract(user_address)
+            .with_chain_id("not-dev-5")
+            .with_mode(AuthMode::Finalize);
+
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None)
+            .should_fail_with_error("chain ID mismatch");
+
+        // With the correct chain ID.
+        let mut ctx = MockContext::new()
+            .with_querier(ctx.querier)
             .with_contract(user_address)
             .with_chain_id("dev-5")
             .with_mode(AuthMode::Finalize);
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json().unwrap(), None).should_succeed();
     }
 
     #[test]
@@ -642,7 +661,7 @@ mod tests {
             "gas_limit":2448139
         }"#;
 
-        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).unwrap();
+        authenticate_tx(ctx.as_auth(), tx.deserialize_json::<Tx>().unwrap(), None).should_succeed();
     }
 
     #[test]

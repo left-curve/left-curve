@@ -36,10 +36,7 @@ export type MsgConfigure<AppConfig = Json> = {
   newAppCfg: Partial<AppConfig>;
 };
 
-export type MsgTransfer = {
-  to: string;
-  coins: Coins;
-};
+export type MsgTransfer = Record<Address, Coins>;
 
 export type MsgStoreCode = {
   code: Base64;

@@ -4,7 +4,7 @@ use {
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::{
-        block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait, Context,
+        Context, block_to_index::BlockToIndex, entity as main_entity, hooks::Hooks as HooksTrait,
     },
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set},
     uuid::Uuid,

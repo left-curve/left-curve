@@ -1,6 +1,6 @@
 use wasmer::{
-    wasmparser::Operator, FunctionMiddleware, LocalFunctionIndex, MiddlewareError,
-    MiddlewareReaderState, ModuleMiddleware,
+    FunctionMiddleware, LocalFunctionIndex, MiddlewareError, MiddlewareReaderState,
+    ModuleMiddleware, wasmparser::Operator,
 };
 
 /// The name used in errors

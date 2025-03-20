@@ -1,11 +1,10 @@
 use {
-    crate::{calculate_deposit, calculate_withdraw, DEBTS, MARKETS},
+    crate::{DEBTS, MARKETS, calculate_deposit, calculate_withdraw},
     anyhow::{anyhow, ensure},
     dango_account_factory::ACCOUNTS,
     dango_types::{
-        bank,
+        DangoQuerier, bank,
         lending::{ExecuteMsg, InstantiateMsg, Market, MarketUpdates, NAMESPACE, SUBNAMESPACE},
-        DangoQuerier,
     },
     grug::{
         Coin, Coins, Denom, Message, MutableCtx, NextNumber, Number, Order, QuerierExt, Response,

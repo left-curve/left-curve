@@ -1,5 +1,5 @@
 use {
-    crate::{error, PythClient, PythClientTrait},
+    crate::{PythClient, PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
@@ -10,8 +10,8 @@ use {
         env,
         path::{Path, PathBuf},
         sync::{
-            atomic::{AtomicBool, AtomicU64, Ordering},
             Arc,
+            atomic::{AtomicBool, AtomicU64, Ordering},
         },
         thread::sleep,
         time::Duration,
