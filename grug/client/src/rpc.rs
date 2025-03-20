@@ -5,15 +5,15 @@ use {
     grug_types::{
         Base64Encoder, Block, BlockClient, BlockInfo, BlockResult, BroadcastClient,
         BroadcastTxOutcome, CheckTxOutcome, CronOutcome, Encoder, GenericResult, Hash256,
-        HexBinary, JsonDeExt, JsonSerExt, Proof, Query, QueryClient, QueryResponse, SearchTxClient,
-        SearchTxOutcome, SimulateClient, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
+        HexBinary, JsonDeExt, JsonSerExt, Proof, Query, QueryAppClient, QueryResponse,
+        SearchTxClient, SearchTxOutcome, StdResult, Timestamp, Tx, TxOutcome, UnsignedTx,
     },
     serde::de::DeserializeOwned,
     std::any::type_name,
     tendermint::{abci::Code, block::Height},
     tendermint_rpc::{
-        endpoint::{abci_query::AbciQuery, status},
         Client, HttpClient,
+        endpoint::{abci_query::AbciQuery, status},
     },
 };
 
@@ -58,7 +58,7 @@ impl RpcClient {
 }
 
 #[async_trait]
-impl QueryClient for RpcClient {
+impl QueryAppClient for RpcClient {
     type Error = anyhow::Error;
 
     async fn query_chain(
@@ -117,6 +117,14 @@ impl QueryClient for RpcClient {
         };
 
         Ok((value, proof))
+    }
+
+    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
+        Ok(self
+            .query("/simulate", tx.to_json_vec()?, None, false)
+            .await?
+            .value
+            .deserialize_json()?)
     }
 }
 
@@ -191,19 +199,6 @@ impl BroadcastClient for RpcClient {
                 events: from_base64_bytes(response.data)?,
             },
         })
-    }
-}
-
-#[async_trait]
-impl SimulateClient for RpcClient {
-    type Error = anyhow::Error;
-
-    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        Ok(self
-            .query("/simulate", tx.to_json_vec()?, None, false)
-            .await?
-            .value
-            .deserialize_json()?)
     }
 }
 

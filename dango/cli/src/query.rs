@@ -6,7 +6,7 @@ use {
     grug_client::RpcClient,
     grug_types::{
         Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, HexBinary, JsonDeExt, JsonSerExt,
-        Proof, Query, QueryClient, QueryWasmSmartRequest, SearchTxClient,
+        Proof, Query, QueryAppClient, QueryWasmSmartRequest, SearchTxClient,
     },
     serde::Serialize,
     std::str::FromStr,

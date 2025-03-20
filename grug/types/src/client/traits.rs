@@ -8,7 +8,7 @@ use {
 };
 
 #[async_trait]
-pub trait QueryClient: Send + Sync
+pub trait QueryAppClient: Send + Sync
 where
     Self::Error: From<StdError>,
 {
@@ -26,6 +26,8 @@ where
         height: Option<u64>,
         prove: bool,
     ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error>;
+
+    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
 
 #[async_trait]
@@ -42,13 +44,6 @@ pub trait BroadcastClient {
     type Error;
 
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error>;
-}
-
-#[async_trait]
-pub trait SimulateClient {
-    type Error;
-
-    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error>;
 }
 
 #[async_trait]

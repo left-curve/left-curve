@@ -8,7 +8,7 @@ use {
     },
     grug::{
         Addr, Addressable, ByteArray, Defined, Hash256, HashExt, Inner, JsonSerExt, MaybeDefined,
-        Message, NonEmpty, QueryClient, QueryClientExt, Signer, StdResult, Tx, Undefined,
+        Message, NonEmpty, QueryAppClient, QueryClientExt, Signer, StdResult, Tx, Undefined,
         UnsignedTx,
     },
     std::str::FromStr,
@@ -37,7 +37,7 @@ where
 {
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
-        C: QueryClient,
+        C: QueryAppClient,
         anyhow::Error: From<C::Error>,
     {
         // If the account hasn't sent any transaction yet, use 0 as nonce.
@@ -100,7 +100,7 @@ impl SingleSigner<Undefined<u32>> {
 
     pub async fn query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
     where
-        C: QueryClient,
+        C: QueryAppClient,
         anyhow::Error: From<C::Error>,
     {
         let nonce = self.query_next_nonce(client).await?;
@@ -119,7 +119,7 @@ impl SingleSigner<Undefined<u32>> {
 impl SingleSigner<Defined<u32>> {
     pub async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
     where
-        C: QueryClient,
+        C: QueryAppClient,
         anyhow::Error: From<C::Error>,
     {
         let nonce = self.query_next_nonce(client).await?;

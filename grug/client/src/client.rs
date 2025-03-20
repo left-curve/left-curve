@@ -3,8 +3,7 @@ use {
     async_trait::async_trait,
     grug_types::{
         BroadcastClient, BroadcastTxOutcome, Defined, HexBinary, MaybeDefined, Proof, Query,
-        QueryClient, QueryResponse, SimulateClient, Tx, TxOutcome, Undefined, UnsignedTx,
-        WithChainId,
+        QueryAppClient, QueryResponse, Tx, TxOutcome, Undefined, UnsignedTx, WithChainId,
     },
     std::ops::Deref,
 };
@@ -57,9 +56,9 @@ where
 }
 
 #[async_trait]
-impl<C, ID> QueryClient for Client<C, ID>
+impl<C, ID> QueryAppClient for Client<C, ID>
 where
-    C: QueryClient,
+    C: QueryAppClient,
     ID: MaybeDefined<String> + Send + Sync,
 {
     type Error = C::Error;
@@ -80,6 +79,10 @@ where
     ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
         self.inner.query_store(key, height, prove).await
     }
+
+    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
+        self.inner.simulate(tx).await
+    }
 }
 
 #[async_trait]
@@ -91,19 +94,6 @@ where
 
     async fn broadcast_tx(&self, tx: Tx) -> Result<BroadcastTxOutcome, Self::Error> {
         self.inner.broadcast_tx(tx).await
-    }
-}
-
-#[async_trait]
-impl<C, ID> SimulateClient for Client<C, ID>
-where
-    C: SimulateClient + Send + Sync,
-    ID: MaybeDefined<String> + Send + Sync,
-{
-    type Error = <C as SimulateClient>::Error;
-
-    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
-        self.inner.simulate(tx).await
     }
 }
 

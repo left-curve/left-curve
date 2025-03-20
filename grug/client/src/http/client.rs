@@ -5,7 +5,7 @@ use {
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
         Block, BlockClient, BlockInfo, BlockResult, Duration, Hash256, HexBinary, JsonDeExt,
-        JsonSerExt, Proof, Query, QueryClient, QueryResponse,
+        JsonSerExt, Proof, Query, QueryAppClient, QueryResponse, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -49,7 +49,7 @@ impl HttpClient {
 }
 
 #[async_trait]
-impl QueryClient for HttpClient {
+impl QueryAppClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn query_chain(
@@ -73,6 +73,10 @@ impl QueryClient for HttpClient {
         height: Option<u64>,
         prove: bool,
     ) -> Result<(Option<Vec<u8>>, Option<Proof>), Self::Error> {
+        todo!()
+    }
+
+    async fn simulate(&self, tx: UnsignedTx) -> Result<TxOutcome, Self::Error> {
         todo!()
     }
 }
@@ -112,7 +116,7 @@ impl BlockClient for HttpClient {
 mod tests {
     use {
         super::*,
-        grug_types::{QueryClient, QueryClientExt},
+        grug_types::{QueryAppClient, QueryClientExt},
     };
 
     const GRAPHQL_URL: &str = "https://devnet-graphql.dango.exchange";

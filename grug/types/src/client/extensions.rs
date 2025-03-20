@@ -1,7 +1,6 @@
 use {
     super::{
-        AdminOption, BroadcastClient, BroadcastTxOutcome, GasOption, QueryClient, SimulateClient,
-        WithChainId,
+        AdminOption, BroadcastClient, BroadcastTxOutcome, GasOption, QueryAppClient, WithChainId,
     },
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, GenericResult, Hash256, HashExt,
@@ -10,14 +9,14 @@ use {
     },
     async_trait::async_trait,
     grug_math::Uint128,
-    serde::{de::DeserializeOwned, Serialize},
+    serde::{Serialize, de::DeserializeOwned},
     std::collections::BTreeMap,
 };
 
 // ----------------------------- Extension traits ------------------------------
 
 #[async_trait]
-pub trait QueryClientExt: QueryClient
+pub trait QueryClientExt: QueryAppClient
 where
     Self::Error: From<StdError>,
 {
@@ -202,7 +201,7 @@ where
 
 impl<C> QueryClientExt for C
 where
-    C: QueryClient,
+    C: QueryAppClient,
     C::Error: From<StdError>,
 {
 }
@@ -214,10 +213,10 @@ pub enum GasEstimateError {
 }
 
 #[async_trait]
-pub trait BroadcastClientExt: BroadcastClient + SimulateClient + WithChainId
+pub trait BroadcastClientExt: BroadcastClient + QueryAppClient + WithChainId
 where
     <Self as BroadcastClient>::Error:
-        From<GasEstimateError> + From<StdError> + From<<Self as SimulateClient>::Error>,
+        From<GasEstimateError> + From<StdError> + From<<Self as QueryAppClient>::Error>,
 {
     async fn broadcast_tx_with_confirmation<F>(
         &self,
@@ -403,7 +402,6 @@ where
         M: Serialize + Send + Sync,
         SA: Into<Binary> + Send,
         C: TryInto<Coins> + Send,
-
         StdError: From<C::Error>,
     {
         let salt = salt.into();
@@ -493,9 +491,9 @@ where
 
 impl<C> BroadcastClientExt for C
 where
-    C: BroadcastClient + SimulateClient + WithChainId + Send + Sync,
+    C: BroadcastClient + QueryAppClient + WithChainId + Send + Sync,
     <C as BroadcastClient>::Error:
-        From<GasEstimateError> + From<StdError> + From<<C as SimulateClient>::Error>,
+        From<GasEstimateError> + From<StdError> + From<<C as QueryAppClient>::Error>,
 {
 }
 
