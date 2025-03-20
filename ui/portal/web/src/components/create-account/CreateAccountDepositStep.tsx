@@ -28,7 +28,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const { formatNumberOptions } = useApp();
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {}, refetch: refreshBalances } = useBalances({
+  const { data: balances = {} } = useBalances({
     address: account?.address,
   });
 
@@ -37,7 +37,7 @@ export const CreateAccountDepositStep: React.FC = () => {
   const usdcInfo = coins["hyp/eth/usdc"];
   const humanBalance = formatUnits(balances["hyp/eth/usdc"] || 0, usdcInfo.decimals);
 
-  const { mutateAsync: send } = useMutation({
+  const { mutateAsync: send, isPending } = useMutation({
     mutationFn: async () => {
       if (!signingClient) throw new Error("error: no signing client");
       await signingClient.registerAccount(
@@ -52,19 +52,29 @@ export const CreateAccountDepositStep: React.FC = () => {
         },
       );
       await wait(3000);
-      toast.success({ title: "Account created" });
-      await refreshAccounts?.();
     },
-    onSuccess: () => [refreshBalances(), done()],
+    onSuccess: async () => {
+      toast.success({ title: m["accountCreation.accountCreated"]() });
+      await refreshAccounts?.();
+      done();
+    },
   });
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <form
+      className="flex flex-col gap-6 w-full"
+      onSubmit={(e) => {
+        e.preventDefault();
+        send();
+      }}
+    >
       <Input
+        isDisabled={isPending}
         placeholder="0"
         {...register("amount", {
           validate: (v) => {
-            if (Number(v) > Number(humanBalance)) return "Insufficient balance";
+            if (Number(v) > Number(humanBalance))
+              return m["validations.errors.insufficientFunds"]();
             return true;
           },
           mask: (v, prev) => {
@@ -90,13 +100,13 @@ export const CreateAccountDepositStep: React.FC = () => {
         }
       />
       <div className="flex gap-4">
-        <Button fullWidth onClick={() => previousStep()}>
+        <Button type="button" fullWidth onClick={() => previousStep()} isDisabled={isPending}>
           {m["common.back"]()}
         </Button>
-        <Button fullWidth onClick={() => send()}>
+        <Button type="submit" fullWidth isLoading={isPending}>
           {m["common.continue"]()}
         </Button>
       </div>
-    </div>
+    </form>
   );
 };

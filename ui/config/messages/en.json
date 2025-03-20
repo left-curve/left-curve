@@ -112,6 +112,7 @@
     }
   },
   "accountCreation": {
+    "accountCreated": "Account Created",
     "title": "Create New Account",
     "stepper": {
       "title": [
