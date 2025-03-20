@@ -12,6 +12,7 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Coin, Coins, Denom, Duration, HashExt, HexBinary,
         MathError, NumberConst, QuerierExt, ResultExt, StdError, Udec128, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     hyperlane_types::{
         Addr32, IncrementalMerkleTree, addr32,
@@ -31,6 +32,8 @@ const MOCK_RECIPIENT: Addr32 =
 
 #[test]
 fn send_escrowing_collateral() {
+    setup_tracing_subscriber(tracing::Level::INFO);
+
     let ((mut suite, mut accounts, _, contracts), _) = setup_test_with_indexer();
 
     let metadata = HexBinary::from_inner(b"hello".to_vec());
