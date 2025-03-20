@@ -1,7 +1,7 @@
 use {
     async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
-    indexer_sql::entity,
+    indexer_sql::{block_to_index::BlockToIndex, entity},
     serde::Deserialize,
 };
 
@@ -57,4 +57,18 @@ impl From<entity::transactions::Model> for Transaction {
 }
 
 #[ComplexObject]
-impl Transaction {}
+impl Transaction {
+    async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let block_filename = app_ctx.indexer_path.block_path(self.block_height);
+        let tx_idx = self.transaction_idx as usize;
+
+        let data = BlockToIndex::load_from_disk(block_filename)?;
+
+        data.block_outcome
+            .tx_outcomes
+            .get(tx_idx)
+            .map(|tx| Ok(serde_json::to_string(&tx.events)?))
+            .transpose()
+    }
+}
