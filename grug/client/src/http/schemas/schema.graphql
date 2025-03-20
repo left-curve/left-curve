@@ -264,6 +264,12 @@ type Query {
 		"""
 		request: String!,		height: Int!,		prove: Boolean! = false
 	): String!
+	queryStore(
+		"""
+		Key as Hex string
+		"""
+		key: String!,		height: Int!,		prove: Boolean! = false
+	): String!
 	queryStatus: Status!
 	simulate(
 		"""
