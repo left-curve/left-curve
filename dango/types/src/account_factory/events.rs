@@ -16,5 +16,5 @@ pub struct UserRegistered {
 #[grug::event("address_registered")]
 pub struct AddressRegistered {
     pub address: Addr,
-    pub account_params: AccountParams,
+    pub params: AccountParams,
 }

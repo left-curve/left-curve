@@ -151,7 +151,7 @@ fn register_user(
 
     let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
 
-    let (msg, events) = onboard_new_user(
+    let (msg, event) = onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
@@ -161,7 +161,7 @@ fn register_user(
         minimum_deposit,
     )?;
 
-    Ok(Response::new().add_message(msg).add_event(events)?)
+    Ok(Response::new().add_message(msg).add_event(event)?)
 }
 
 // Onboarding a new user involves saving an initial key, and intantiate an
@@ -209,6 +209,7 @@ fn onboard_new_user(
         Coins::default(),
     )?;
 
+    // Create the event indicating a new user has registered.
     let event = UserRegistered { username, address };
 
     Ok((msg, event))
@@ -275,7 +276,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         )?)
         .add_event(AddressRegistered {
             address,
-            account_params: account.params,
+            params: account.params,
         })?)
 }
 
