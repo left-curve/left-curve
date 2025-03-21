@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, EventName, Json, JsonSerExt, Message, StdResult},
+    crate::{Addr, EventName, Json, JsonSerExt, Message, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -175,7 +175,7 @@ impl AuthResponse {
     pub fn add_events<I>(mut self, events: I) -> StdResult<Self>
     where
         I: IntoIterator,
-        I::Item: TryInto<ContractEvent, Error = StdError>,
+        I::Item: TryInto<ContractEvent, Error: Into<StdError>>,
     {
         self.response = self.response.add_events(events)?;
         Ok(self)
