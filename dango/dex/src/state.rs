@@ -44,6 +44,8 @@ pub struct Order {
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.
     pub remaining: Uint128,
+    /// The block height at which the order was submitted.
+    pub created_at_block_height: u64,
 }
 
 #[grug::index_list(OrderKey, Order)]

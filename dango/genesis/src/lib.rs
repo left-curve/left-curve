@@ -500,6 +500,7 @@ where
             lending,
             oracle,
             warp,
+            taxman,
         },
         ..Default::default()
     };

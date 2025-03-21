@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use grug::{Addr, Coins, Denom, Udec128};
 
 #[grug::derive(Serde, Borsh)]
@@ -41,7 +43,9 @@ pub enum ExecuteMsg {
     /// Can only be called by the chain's owner.
     Configure { new_cfg: Config },
     /// Forward protocol fee to the taxman.
-    Pay { user: Addr, ty: FeeType },
+    Pay {
+        payments: BTreeMap<Addr, (FeeType, Coins)>,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
