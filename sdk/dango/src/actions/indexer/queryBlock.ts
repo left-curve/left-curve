@@ -20,6 +20,8 @@ export async function queryBlock<transport extends Transport>(
       block(height: $height) {
         createdAt,
         hash,
+        blockHeight,
+        appHash,
         transactions {
           hash
           sender
