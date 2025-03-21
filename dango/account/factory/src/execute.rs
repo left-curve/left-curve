@@ -50,9 +50,9 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
 
     MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
-    Ok(Response::new()
+    Response::new()
         .add_messages(instantiate_msgs)
-        .add_events(instantiate_events)?)
+        .add_events(instantiate_events)
 }
 
 // A new user who wishes to be onboarded must first make an initial deposit,

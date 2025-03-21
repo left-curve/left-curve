@@ -305,7 +305,7 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
             })?;
     }
 
-    Ok(Response::new().add_events(events)?)
+    Response::new().add_events(events)
 }
 
 fn increase_supply(
