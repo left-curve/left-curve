@@ -34,8 +34,8 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     quote::quote! {
         #input
 
-        impl ::grug::ContractEventType for #input_name {
-            const TYPE: &'static str = #name;
+        impl ::grug::EventName for #input_name {
+            const NAME: &'static str = #name;
         }
 
         impl TryFrom<&#input_name> for ::grug::ContractEvent {

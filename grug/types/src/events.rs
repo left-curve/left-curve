@@ -1,6 +1,6 @@
 mod as_variant;
 mod builder;
-mod contract_event_type;
+mod event_name;
 mod filter;
 mod flat;
 mod flatten;
@@ -8,6 +8,5 @@ mod nested;
 mod search;
 
 pub use {
-    as_variant::*, builder::*, contract_event_type::*, filter::*, flat::*, flatten::*, nested::*,
-    search::*,
+    as_variant::*, builder::*, event_name::*, filter::*, flat::*, flatten::*, nested::*, search::*,
 };
