@@ -10,7 +10,7 @@ export { QRCode } from "./foundation/QRCode";
 export { Select, Item as SelectItem } from "./foundation/Select";
 export { Hamburger } from "./foundation/Hamburger";
 export { TruncateText } from "./foundation/TruncateText";
-export { Table } from "./foundation/table/Table";
+export { Table, type TableColumn } from "./foundation/table/Table";
 export { Tabs, Tab } from "./foundation/Tabs";
 export { PoolTable } from "./foundation/table/PoolTable";
 export { Input } from "./foundation/Input";

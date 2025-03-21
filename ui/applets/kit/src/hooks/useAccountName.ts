@@ -1,5 +1,5 @@
 import type { Account } from "@left-curve/dango/types";
-import { useAccount, useStorage } from "@left-curve/store-react";
+import { useAccount, useStorage } from "@left-curve/store";
 
 export type UseAccountNameParameters = {
   account?: Account;

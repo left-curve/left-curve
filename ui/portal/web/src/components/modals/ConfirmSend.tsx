@@ -3,7 +3,7 @@ import { useApp } from "~/hooks/useApp";
 
 import type { Address } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
-import { useConfig, usePrices, usePublicClient } from "@left-curve/store-react";
+import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { m } from "~/paraglide/messages";

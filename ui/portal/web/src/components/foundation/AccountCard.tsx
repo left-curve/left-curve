@@ -1,4 +1,4 @@
-import { useBalances, usePrices } from "@left-curve/store-react";
+import { useBalances, usePrices } from "@left-curve/store";
 
 import { type Account, AccountType, type AccountTypes } from "@left-curve/dango/types";
 

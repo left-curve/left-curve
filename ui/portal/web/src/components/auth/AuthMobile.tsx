@@ -1,8 +1,8 @@
 import { useWizard } from "@left-curve/applets-kit";
-import { useLogin, useLoginWithDesktop } from "@left-curve/store-react";
+import { useLogin, useLoginWithDesktop } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useToast } from "../foundation/Toast";
+import { toast } from "../foundation/Toast";
 
 import { Button, IconPasskey, IconQR } from "@left-curve/applets-kit";
 import { QRScan } from "./QRScan";
@@ -13,7 +13,6 @@ import type React from "react";
 
 export const AuthMobile: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { data } = useWizard<{ username: string }>();
   const [isScannerVisible, setScannerVisibility] = useState(false);
 

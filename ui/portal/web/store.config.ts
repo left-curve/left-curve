@@ -1,6 +1,6 @@
-import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store-react";
+import { createConfig, devnet, graphql, passkey, session } from "@left-curve/store";
 
-import type { Config } from "@left-curve/store-react/types";
+import type { Config } from "@left-curve/store/types";
 
 const dango = devnet;
 

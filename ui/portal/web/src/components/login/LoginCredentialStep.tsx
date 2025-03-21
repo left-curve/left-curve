@@ -1,7 +1,7 @@
 import { useMediaQuery, useWizard } from "@left-curve/applets-kit";
-import { useLogin } from "@left-curve/store-react";
+import { useLogin } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
-import { useToast } from "../foundation/Toast";
+import { toast } from "../foundation/Toast";
 
 import { Button, IconLeft } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
@@ -13,7 +13,6 @@ import { AuthMobile } from "../auth/AuthMobile";
 
 export const LoginCredentialStep: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { data, previousStep } = useWizard<{ username: string }>();
   const { isMd } = useMediaQuery();
 

@@ -1,0 +1,74 @@
+{
+  "name": "@left-curve/store",
+  "version": "0.1.1",
+  "type": "module",
+  "scripts": {
+    "bump": "npm version --no-git-tag-version",
+    "ci": "pnpm lint",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "lint": "pnpm biome check --write src",
+    "lint:fix": "pnpm biome ci ./src",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "build"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    },
+    "./types": {
+      "types": "./build/types/index.d.ts",
+      "import": "./build/types/index.js",
+      "default": "./build/types/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "types": [
+        "./build/types/index.d.ts"
+      ]
+    }
+  },
+  "dependencies": {
+    "@left-curve/dango": "workspace:^",
+    "eventemitter3": "^5.0.1",
+    "use-sync-external-store": "^1.2.2",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@tanstack/query-core": "^5.56.2",
+    "@types/use-sync-external-store": "^0.0.6"
+  },
+  "peerDependencies": {
+    "@tanstack/query-core": ">=5.0.0",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/query-core": {
+      "optional": true
+    }
+  },
+  "license": "TBD",
+  "homepage": "https://grug.build",
+  "repository": "left-curve/left-curve",
+  "keywords": [
+    "grug",
+    "smart-contracts",
+    "blockchain",
+    "cryptocurrency",
+    "web3",
+    "typescript"
+  ]
+}

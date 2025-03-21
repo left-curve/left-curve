@@ -1,23 +1,26 @@
 import {
+  type AppletMetadata,
   IconButton,
   IconChevronDown,
   IconClose,
   IconSearch,
   ResizerContainer,
+  Spinner,
   TextLoop,
   twMerge,
   useClickAway,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
-import { applets } from "../../../applets";
 
+import type { IndexedBlock } from "@left-curve/dango/types";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
+import { useSearchBar } from "~/hooks/useSearchBar";
 import { SearchItem } from "./SearchItem";
 
 const ExportComponent = Object.assign(SearchMenu, {
@@ -29,7 +32,8 @@ export { ExportComponent as SearchMenu };
 function SearchMenu() {
   const { isLg } = useMediaQuery();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
-  const [searchText, setSearchText] = useState("");
+  const { searchText, setSearchText, isLoading, txs, block, applets, isRefetching } =
+    useSearchBar();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -71,7 +75,7 @@ function SearchMenu() {
   };
 
   return (
-    <Command ref={menuRef} className="flex flex-col gap-4 w-full">
+    <Command ref={menuRef} className="flex flex-col gap-4 w-full" shouldFilter={false}>
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
@@ -132,7 +136,13 @@ function SearchMenu() {
             </div>
           </div>
 
-          <Body isVisible={isSearchBarVisible} hideMenu={hideMenu} />
+          <Body
+            isVisible={isSearchBarVisible}
+            hideMenu={hideMenu}
+            applets={applets}
+            block={block}
+            isLoading={isLoading || isRefetching}
+          />
         </div>
       </ResizerContainer>
     </Command>
@@ -142,10 +152,14 @@ function SearchMenu() {
 type SearchMenuBodyProps = {
   isVisible: boolean;
   hideMenu: () => void;
+  applets: AppletMetadata[];
+  block?: IndexedBlock;
+  isLoading: boolean;
 };
 
-export function Body({ isVisible, hideMenu }: SearchMenuBodyProps) {
+export function Body({ isVisible, hideMenu, applets, block, isLoading }: SearchMenuBodyProps) {
   const navigate = useNavigate();
+
   return (
     <AnimatePresence mode="wait" custom={isVisible}>
       {isVisible && (
@@ -173,22 +187,42 @@ export function Body({ isVisible, hideMenu }: SearchMenuBodyProps) {
           >
             <Command.List className="w-full">
               <Command.Empty>
-                <p className="rounded-[20px] py-4 px-5 font-semibold text-[1.25rem]">
-                  {m["commadBar.noResult"]()}
-                </p>
+                {isLoading ? (
+                  <div className="flex items-center justify-center w-full p-2">
+                    <Spinner color="pink" size="lg" />
+                  </div>
+                ) : (
+                  <p className="text-gray-500 diatype-m-regular p-2 text-center">
+                    {m["commadBar.noResult"]()}
+                  </p>
+                )}
               </Command.Empty>
-              <Command.Group value="Applets">
-                {applets.map((applet) => (
+              {applets.length ? (
+                <Command.Group heading="Applets">
+                  {applets.map((applet) => (
+                    <Command.Item
+                      key={applet.title}
+                      value={applet.title}
+                      className="group"
+                      onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                    >
+                      <SearchItem.Applet key={applet.title} {...applet} />
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {block ? (
+                <Command.Group heading="Block">
                   <Command.Item
-                    key={applet.title}
-                    value={applet.title}
+                    key={block.hash}
+                    value={block.hash}
                     className="group"
-                    onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                    onSelect={() => [navigate({ to: `/block/${block.blockHeight}` }), hideMenu()]}
                   >
-                    <SearchItem.Applet key={applet.title} {...applet} />
+                    <SearchItem.Block height={block.blockHeight} hash={block.hash} />
                   </Command.Item>
-                ))}
-              </Command.Group>
+                </Command.Group>
+              ) : null}
               {/*    <Command.Group value="Assets">
                 {[].map((token) => (
                   <Command.Item

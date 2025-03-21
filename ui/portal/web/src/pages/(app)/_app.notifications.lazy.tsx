@@ -26,7 +26,6 @@ function NotificationComponent() {
           )}
           <span className="h3-bold">Notifcations</span>
         </h2>
-        <IconGear className="w-[22px] h-[22px] text-rice-700" />
       </div>
       <div className={twMerge("bg-rice-25 w-full shadow-card-shadow rounded-3xl")}>
         <NotificationsList notifications={[]} />

@@ -51,80 +51,70 @@ export const Toast: React.FC<Props> = ({ title, description, type, close }) => {
   );
 };
 
-export const useToast = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+const success = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom((t) => {
+    const msg = Object.assign({ title: "Operation Sucessful" }, toastMsg);
+    return (
+      <Toast
+        close={() => hotToast.dismiss(t.id)}
+        title={msg.title}
+        description={msg.description}
+        type="success"
+      />
+    );
+  }, options);
 
-  const success = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
-      const msg = Object.assign({ title: "Operation Sucessful" }, toastMsg);
-      return (
-        <Toast
-          close={() => hotToast.dismiss(t.id)}
-          title={msg.title}
-          description={msg.description}
-          type="success"
-        />
-      );
-    }, options);
+const error = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom((t) => {
+    const msg = Object.assign(
+      { title: "Error", description: "Something went wrong. Please try again later." },
+      toastMsg,
+    );
+    return (
+      <Toast
+        close={() => hotToast.dismiss(t.id)}
+        title={msg.title}
+        description={msg.description}
+        type="error"
+      />
+    );
+  }, options);
 
-  const error = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
-      const msg = Object.assign(
-        { title: "Error", description: "Something went wrong. Please try again later." },
-        toastMsg,
-      );
-      return (
-        <Toast
-          close={() => hotToast.dismiss(t.id)}
-          title={msg.title}
-          description={msg.description}
-          type="error"
-        />
-      );
-    }, options);
+const loading = (toastMsg?: ToastMsg, options?: ToastOptions) =>
+  hotToast.custom((t) => {
+    const msg = Object.assign({ title: "Loading..." }, toastMsg);
+    return (
+      <Toast
+        close={() => hotToast.dismiss(t.id)}
+        title={msg.title}
+        description={msg.description}
+        type="loading"
+      />
+    );
+  }, options);
 
-  const loading = (toastMsg?: ToastMsg, options?: ToastOptions) =>
-    hotToast.custom((t) => {
-      const msg = Object.assign({ title: "Loading..." }, toastMsg);
-      return (
-        <Toast
-          close={() => hotToast.dismiss(t.id)}
-          title={msg.title}
-          description={msg.description}
-          type="loading"
-        />
-      );
-    }, options);
+const promise = async <T,>(
+  promise: Promise<T>,
+  toastMsgs?: { loading?: ToastMsg; success?: ToastMsg; error?: ToastMsg },
+  delay?: number,
+) => {
+  const id = loading(toastMsgs?.loading, { duration: Number.POSITIVE_INFINITY });
 
-  const promise = async <T,>(
-    promise: Promise<T>,
-    toastMsgs?: { loading?: ToastMsg; success?: ToastMsg; error?: ToastMsg },
-    delay?: number,
-  ) => {
-    const id = loading(toastMsgs?.loading, { duration: Number.POSITIVE_INFINITY });
+  return promise
+    .then(async (result) => {
+      if (delay) await wait(delay);
+      success(toastMsgs?.success, { id, duration: 2000 });
+      return result;
+    })
+    .catch((e) => {
+      error(toastMsgs?.error, { id, duration: 2000 });
+      console.log(e);
+    });
+};
 
-    return promise
-      .then(async (result) => {
-        if (delay) await wait(delay);
-        success(toastMsgs?.success, { id, duration: 2000 });
-        return result;
-      })
-      .catch((e) => {
-        error(toastMsgs?.error, { id, duration: 2000 });
-        console.log(e);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  };
-
-  return {
-    isLoading,
-    toast: {
-      promise,
-      success,
-      error,
-      loading,
-    },
-  };
+export const toast = {
+  promise,
+  success,
+  error,
+  loading,
 };

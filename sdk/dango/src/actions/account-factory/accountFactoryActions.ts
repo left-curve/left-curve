@@ -1,4 +1,4 @@
-import type { Client, Transport, TxParameters } from "@left-curve/sdk/types";
+import type { Transport, TxParameters } from "@left-curve/sdk/types";
 
 import {
   type RegisterUserParameters,
@@ -133,7 +133,7 @@ export type AccountFactoryMutationActions = {
 };
 
 export function accountFactoryQueryActions<transport extends Transport = Transport>(
-  client: Client<transport, Chain, Signer>,
+  client: DangoClient<transport>,
 ): AccountFactoryQueryActions {
   return {
     getAccountInfo: (args) => getAccountInfo(client, args),

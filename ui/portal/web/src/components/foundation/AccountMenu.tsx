@@ -1,4 +1,4 @@
-import { useAccount, useBalances, usePrices } from "@left-curve/store-react";
+import { useAccount, useBalances, usePrices } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";

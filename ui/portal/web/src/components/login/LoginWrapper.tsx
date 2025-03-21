@@ -1,5 +1,5 @@
 import { Button, Carousel, ResizerContainer, twMerge } from "@left-curve/applets-kit";
-import { useAccount, useStorage } from "@left-curve/store-react";
+import { useAccount, useStorage } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { type PropsWithChildren, useEffect } from "react";

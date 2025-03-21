@@ -13,7 +13,7 @@ const { publicVars } = loadEnv();
 export default defineConfig({
   source: {
     entry: {
-      index: "./src/app.tsx",
+      index: "./src/index.tsx",
     },
     alias: {
       "~": "./src",
@@ -37,7 +37,6 @@ export default defineConfig({
       plugins: [
         paraglideRspackPlugin({
           outdir: "./.paraglide",
-          cleanOutdir: true,
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
