@@ -13,7 +13,7 @@ use {
     },
     grug::{
         Coin, Coins, Denom, HexBinary, Inner, IsZero, Message, MultiplyFraction, MutableCtx,
-        Number, QuerierExt, Response, StdResult, SudoCtx, coins,
+        Number, QuerierExt, Response, StdResult, SudoCtx, btree_map, coins,
     },
     hyperlane_types::{
         Addr32,
@@ -201,8 +201,9 @@ fn transfer_remote(
             Some(Message::execute(
                 cfg.taxman,
                 &taxman::ExecuteMsg::Pay {
-                    user: ctx.sender,
-                    ty: FeeType::Withdraw,
+                    payments: btree_map! {
+                        ctx.sender => (FeeType::Withdraw, coins! { token.denom.clone() => route.fee })
+                    },
                 },
                 coins! { token.denom.clone() => route.fee },
             )?)
