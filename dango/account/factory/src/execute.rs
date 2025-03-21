@@ -4,7 +4,7 @@ use {
     dango_types::{
         account::{self, single},
         account_factory::{
-            Account, AccountParamUpdates, AccountParams, AccountType, AddressRegistered,
+            Account, AccountParamUpdates, AccountParams, AccountRegistered, AccountType,
             ExecuteMsg, InstantiateMsg, NewUserSalt, Salt, UserRegistered, Username,
         },
         auth::Key,
@@ -274,7 +274,7 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
             Some(ctx.contract),
             ctx.funds,
         )?)
-        .add_event(AddressRegistered {
+        .add_event(AccountRegistered {
             address,
             params: account.params,
         })?)

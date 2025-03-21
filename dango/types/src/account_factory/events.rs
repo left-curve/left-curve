@@ -13,8 +13,8 @@ pub struct UserRegistered {
 
 /// An event indicating a new address has been created.
 #[grug::derive(Serde)]
-#[grug::event("address_registered")]
-pub struct AddressRegistered {
+#[grug::event("account_registered")]
+pub struct AccountRegistered {
     pub address: Addr,
     pub params: AccountParams,
 }
