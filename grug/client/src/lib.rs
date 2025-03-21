@@ -1,4 +1,5 @@
 mod client;
-mod options;
+mod http;
+mod rpc;
 
-pub use crate::{client::*, options::*};
+pub use crate::{client::*, http::*, rpc::*};

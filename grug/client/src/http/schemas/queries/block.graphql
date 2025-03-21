@@ -1,0 +1,8 @@
+query GetBlock($height: Int!) {
+  block(height: $height) {
+    blockHeight
+    createdAt
+    hash
+    appHash
+  }
+}

@@ -19,10 +19,35 @@ use {
 #[serde(deny_unknown_fields)]
 #[must_use = "`Outcome` must be checked for success or error with `should_succeed`, `should_fail`, or similar methods."]
 pub struct CheckTxOutcome {
-    // `None` means the call was done with unlimited gas, such as cronjobs.
-    pub gas_limit: Option<u64>,
+    pub gas_limit: u64,
     pub gas_used: u64,
     pub result: GenericResult<()>,
+    pub events: CheckTxEvents,
+}
+
+/// The success case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct CheckTxSuccess {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub events: CheckTxEvents,
+}
+
+/// The error case of [`TxOutcome`](crate::TxOutcome).
+#[derive(Debug, PartialEq, Eq)]
+pub struct CheckTxError {
+    pub gas_limit: u64,
+    pub gas_used: u64,
+    pub error: String,
+    pub events: CheckTxEvents,
+}
+
+// `TxError` must implement `ToString`, such that it satisfies that trait bound
+// required by `ResultExt::should_fail_with_error`.
+impl Display for CheckTxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self:?}",)
+    }
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -141,6 +166,20 @@ impl TxEvents {
     }
 }
 
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CheckTxEvents {
+    pub withhold: CommitmentStatus<EventStatus<EvtWithhold>>,
+    pub authenticate: CommitmentStatus<EventStatus<EvtAuthenticate>>,
+}
+
+impl CheckTxEvents {
+    pub fn new(withhold: CommitmentStatus<EventStatus<EvtWithhold>>) -> Self {
+        Self {
+            withhold,
+            authenticate: CommitmentStatus::NotReached,
+        }
+    }
+}
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MsgsAndBackrunEvents {
     pub msgs: Vec<EventStatus<Event>>, // len of the messages in this transaction
