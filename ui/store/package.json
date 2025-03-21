@@ -26,7 +26,7 @@
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     },
-      "./types": {
+    "./types": {
       "types": "./build/types/index.d.ts",
       "import": "./build/types/index.js",
       "default": "./build/types/index.cjs"
@@ -42,14 +42,18 @@
   "dependencies": {
     "@left-curve/dango": "workspace:^",
     "eventemitter3": "^5.0.1",
+    "use-sync-external-store": "^1.2.2",
     "zustand": "catalog:"
   },
   "devDependencies": {
+    "@left-curve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
-    "@left-curve/config": "workspace:^"
+    "@types/use-sync-external-store": "^0.0.6"
   },
-   "peerDependencies": {
-    "@tanstack/query-core": ">=5.0.0"
+  "peerDependencies": {
+    "@tanstack/query-core": ">=5.0.0",
+    "react": "^18",
+    "react-dom": "^18"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {

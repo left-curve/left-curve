@@ -1,8 +1,8 @@
 "use client";
 
-import type { Config, State } from "@left-curve/store/types";
 import { type PropsWithChildren, createContext, createElement } from "react";
 import { Hydrate } from "./hydrate.js";
+import type { Config, State } from "./types/store.js";
 
 export const DangoStoreContext = createContext<Config | undefined>(undefined);
 

@@ -1,5 +1,5 @@
 import { type AppletMetadata, IconAddCross } from "@left-curve/applets-kit";
-import { useStorage } from "@left-curve/store-react";
+import { useStorage } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
 import { applets } from "../../../applets";

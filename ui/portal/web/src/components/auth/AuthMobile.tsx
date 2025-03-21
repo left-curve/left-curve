@@ -1,5 +1,5 @@
 import { useWizard } from "@left-curve/applets-kit";
-import { useLogin, useLoginWithDesktop } from "@left-curve/store-react";
+import { useLogin, useLoginWithDesktop } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "../foundation/Toast";

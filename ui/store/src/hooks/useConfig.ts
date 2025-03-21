@@ -3,7 +3,7 @@
 import { useContext } from "react";
 import { DangoStoreContext } from "../context.js";
 
-import type { Config } from "@left-curve/store/types";
+import type { Config } from "../types/store.js";
 
 export type UseConfigParameters<config extends Config = Config> = { config?: Config | config };
 

@@ -3,8 +3,8 @@ import { type FormatNumberOptions, formatNumber, formatUnits } from "@left-curve
 import { useQuery } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
 
-import { createStorage } from "@left-curve/store";
-import type { Storage } from "@left-curve/store/types";
+import { createStorage } from "../storages/createStorage.js";
+import type { Storage } from "../types/storage.js";
 
 export type UsePricesParameters = {
   refetchInterval?: number;

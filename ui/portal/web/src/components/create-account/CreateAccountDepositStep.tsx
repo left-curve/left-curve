@@ -1,6 +1,6 @@
 import { Button, Input, useInputs, useWizard } from "@left-curve/applets-kit";
 import { capitalize, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store-react";
+import { useAccount, useBalances, useConfig, useSigningClient } from "@left-curve/store";
 import { useMutation } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";
 

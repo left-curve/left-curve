@@ -5,14 +5,11 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "buildOptions": {
-    "incremental": false
-  },
   "include": ["src"],
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/dango"
+      "path": "../../sdk/dango"
     }
   ]
 }

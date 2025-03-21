@@ -1,8 +1,8 @@
 "use client";
 
-import { hydrate } from "@left-curve/store";
-import type { Config, State } from "@left-curve/store/types";
 import { type ReactElement, useEffect, useRef } from "react";
+import { rehydrate } from "./rehydrate.js";
+import type { Config, State } from "./types/store.js";
 
 export type HydrateProps = {
   config: Config;
@@ -13,7 +13,7 @@ export type HydrateProps = {
 export function Hydrate(parameters: React.PropsWithChildren<HydrateProps>) {
   const { children, config, initialState, reconnectOnMount = true } = parameters;
 
-  const { onMount } = hydrate(config, {
+  const { onMount } = rehydrate(config, {
     initialState,
     reconnectOnMount,
   });

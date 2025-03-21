@@ -1,5 +1,5 @@
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
-import { useStorage } from "@left-curve/store-react";
+import { useStorage } from "@left-curve/store";
 import {
   type Dispatch,
   type PropsWithChildren,

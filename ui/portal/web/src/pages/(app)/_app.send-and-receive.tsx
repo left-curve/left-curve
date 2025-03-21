@@ -13,7 +13,7 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
-} from "@left-curve/store-react";
+} from "@left-curve/store";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";

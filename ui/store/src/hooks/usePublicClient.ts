@@ -9,7 +9,7 @@ import { useSyncExternalStoreWithSelector } from "use-sync-external-store/shim/w
 import { useConfig } from "./useConfig.js";
 
 import type { Prettify } from "@left-curve/dango/types";
-import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Config, ConfigParameter } from "../types/store.js";
 
 export type UsePublicClientParameters<config extends Config = Config> = Prettify<
   GetPublicClientParameters & ConfigParameter<config>

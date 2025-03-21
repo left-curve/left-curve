@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useAccount, useChainId, useConnectors, usePublicClient } from "@left-curve/store-react";
+import { useAccount, useChainId, useConnectors, usePublicClient } from "@left-curve/store";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -8,7 +8,7 @@ import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { registerUser } from "@left-curve/dango/actions";
 import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
-import { ConnectionStatus } from "@left-curve/store-react/types";
+import { ConnectionStatus } from "@left-curve/store/types";
 import { toast } from "../foundation/Toast";
 
 import {

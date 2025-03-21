@@ -5,13 +5,13 @@ import {
   type GetBlockQueryFnData,
   type GetBlockQueryKey,
   getBlockQueryOptions,
-} from "@left-curve/store";
+} from "../handlers/getBlock.js";
 
 import { type QueryParameter, type UseQueryReturnType, useQuery } from "../query.js";
 import { useConfig } from "./useConfig.js";
 
 import type { Prettify } from "@left-curve/dango/types";
-import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Config, ConfigParameter } from "../types/store.js";
 
 export type UseBlockParameters<
   config extends Config = Config,

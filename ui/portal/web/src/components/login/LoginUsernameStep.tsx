@@ -1,5 +1,5 @@
 import { useInputs, useWizard } from "@left-curve/applets-kit";
-import { usePublicClient } from "@left-curve/store-react";
+import { usePublicClient } from "@left-curve/store";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { Button, Input } from "@left-curve/applets-kit";

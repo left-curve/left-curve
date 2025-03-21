@@ -9,7 +9,7 @@ type HydrateParameters = {
   reconnectOnMount?: boolean;
 };
 
-export function hydrate(config: Config, parameters: HydrateParameters) {
+export function rehydrate(config: Config, parameters: HydrateParameters) {
   const { initialState, reconnectOnMount } = parameters;
 
   if (initialState && !config._internal.store.persist.hasHydrated())
@@ -25,7 +25,7 @@ export function hydrate(config: Config, parameters: HydrateParameters) {
   return {
     async onMount() {
       if (config._internal.ssr) {
-        await config._internal.store.persist.rehydrate();
+        // await config._internal.store.persist.rehydrate();
         if (config._internal.mipd) {
           config._internal.connectors.setState((connectors) => {
             const rdnsSet = new Set<string>();

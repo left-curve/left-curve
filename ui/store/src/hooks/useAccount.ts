@@ -2,11 +2,12 @@
 
 import { useSyncExternalStoreWithTracked } from "./useSyncExternalStoreWithTRacked.js";
 
-import { type GetAccountReturnType, getAccount, watchAccount } from "@left-curve/store";
+import { type GetAccountReturnType, getAccount } from "../actions/getAccount.js";
+import { watchAccount } from "../actions/watchAccount.js";
 import { useConfig } from "./useConfig.js";
 
 import type { AccountTypes } from "@left-curve/dango/types";
-import type { Config, ConfigParameter } from "@left-curve/store/types";
+import type { Config, ConfigParameter } from "../types/store.js";
 
 export type UseAccountParameters<config extends Config = Config> = ConfigParameter<config>;
 

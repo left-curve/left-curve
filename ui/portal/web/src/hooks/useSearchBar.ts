@@ -1,6 +1,6 @@
 import { isValidAddress } from "@left-curve/dango";
 import { wait } from "@left-curve/dango/utils";
-import { usePublicClient } from "@left-curve/store-react";
+import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
 import { useState } from "react";

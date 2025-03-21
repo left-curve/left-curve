@@ -1,7 +1,7 @@
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
-import { useConnectorClient, useDataChannel } from "@left-curve/store-react";
+import { useConnectorClient, useDataChannel } from "@left-curve/store";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
