@@ -85,12 +85,18 @@ impl Response {
         Ok(self)
     }
 
-    pub fn add_events<I>(mut self, events: I) -> Self
+    pub fn add_events<I>(mut self, events: I) -> StdResult<Self>
     where
-        I: IntoIterator<Item = ContractEvent>,
+        I: IntoIterator,
+        I::Item: TryInto<ContractEvent, Error: Into<StdError>>,
     {
+        let events = events
+            .into_iter()
+            .map(|e| e.try_into().map_err(Into::into))
+            .collect::<StdResult<Vec<_>>>()?;
+
         self.subevents.extend(events);
-        self
+        Ok(self)
     }
 }
 
@@ -170,12 +176,13 @@ impl AuthResponse {
         Ok(self)
     }
 
-    pub fn add_events<I>(mut self, events: I) -> Self
+    pub fn add_events<I>(mut self, events: I) -> StdResult<Self>
     where
-        I: IntoIterator<Item = ContractEvent>,
+        I: IntoIterator,
+        I::Item: TryInto<ContractEvent, Error = StdError>,
     {
-        self.response = self.response.add_events(events);
-        self
+        self.response = self.response.add_events(events)?;
+        Ok(self)
     }
 }
 
