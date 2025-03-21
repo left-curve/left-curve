@@ -8,7 +8,7 @@ import { useState } from "react";
 import { applets as AppletsMetadata } from "../../applets";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
-import type { BlockInfo } from "@left-curve/dango/types";
+import type { IndexedBlock } from "@left-curve/dango/types";
 
 type UseSearchBarParameters = {
   debounceMs?: number;
@@ -17,7 +17,7 @@ type UseSearchBarParameters = {
 export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const { debounceMs = 100 } = parameters;
   const [searchText, setSearchText] = useState("");
-  const [block, setBlock] = useState<BlockInfo>();
+  const [block, setBlock] = useState<IndexedBlock>();
   const [txs, setTxs] = useState<[]>();
   const [applets, setApplets] = useState<AppletMetadata[]>(AppletsMetadata.slice(0, 4));
 
@@ -51,9 +51,13 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
       if (isValidAddress(searchText)) {
         // search for contract
         promises.push((async () => {})());
-        // search for block
       } else if (!Number.isNaN(Number(searchText))) {
-        promises.push((async () => {})());
+        promises.push(
+          (async () => {
+            const block = await client.queryBlock({ height: +searchText });
+            setBlock(block);
+          })(),
+        );
       } else {
         // search for username
         promises.push((async () => {})());

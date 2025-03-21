@@ -10,7 +10,6 @@ import type {
   ChainStatusResponse,
   HttpRpcClientOptions,
   IndexerSchema,
-  QueryResponse,
   RequestFn,
   Transport,
 } from "../types/index.js";
@@ -159,6 +158,10 @@ export function graphql(
           throw new Error(
             `failed to broadcast tx! codespace: ${broadcastTxSync.codespace}, code: ${code}, log: ${broadcastTxSync.log}`,
           );
+        }
+        case "query": {
+          const { document, variables } = params as IndexerSchema[4]["Parameters"];
+          return await client.request(document, variables);
         }
         default:
           throw new Error(`Method ${method} not supported`);
