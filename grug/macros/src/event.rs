@@ -32,7 +32,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
         #input
 
         impl ::grug::EventName for #input_name {
-            const NAME: &'static str = #name;
+            const EVENT_NAME: &'static str = #name;
         }
     }
     .into()

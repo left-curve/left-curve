@@ -310,7 +310,7 @@ impl ContractEvent {
         E: Serialize + EventName,
     {
         Ok(Self {
-            ty: E::NAME.to_string(),
+            ty: E::EVENT_NAME.to_string(),
             data: event.to_json_value()?,
         })
     }
