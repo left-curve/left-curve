@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Json, JsonSerExt, Message, StdError, StdResult},
+    crate::{Addr, EventName, Json, JsonSerExt, Message, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
 };
@@ -67,20 +67,18 @@ impl Response {
 
     pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        E: TryInto<ContractEvent>,
-        StdError: From<E::Error>,
+        E: EventName + Serialize,
     {
-        self.subevents.push(event.try_into()?);
+        self.subevents.push(ContractEvent::new(&event)?);
         Ok(self)
     }
 
     pub fn may_add_event<E>(mut self, maybe_event: Option<E>) -> StdResult<Self>
     where
-        E: TryInto<ContractEvent>,
-        StdError: From<E::Error>,
+        E: EventName + Serialize,
     {
         if let Some(event) = maybe_event {
-            self.subevents.push(event.try_into()?);
+            self.subevents.push(ContractEvent::new(&event)?);
         }
         Ok(self)
     }
@@ -160,8 +158,7 @@ impl AuthResponse {
 
     pub fn add_event<E>(mut self, event: E) -> StdResult<Self>
     where
-        E: TryInto<ContractEvent>,
-        StdError: From<E::Error>,
+        E: EventName + Serialize,
     {
         self.response = self.response.add_event(event)?;
         Ok(self)
@@ -169,8 +166,7 @@ impl AuthResponse {
 
     pub fn may_add_event<E>(mut self, maybe_event: Option<E>) -> StdResult<Self>
     where
-        E: TryInto<ContractEvent>,
-        StdError: From<E::Error>,
+        E: EventName + Serialize,
     {
         self.response = self.response.may_add_event(maybe_event)?;
         Ok(self)
@@ -316,14 +312,13 @@ pub struct ContractEvent {
 }
 
 impl ContractEvent {
-    pub fn new<T, U>(ty: T, data: &U) -> StdResult<Self>
+    pub fn new<E>(event: &E) -> StdResult<Self>
     where
-        T: Into<String>,
-        U: Serialize,
+        E: Serialize + EventName,
     {
         Ok(Self {
-            ty: ty.into(),
-            data: data.to_json_value()?,
+            ty: E::EVENT_NAME.to_string(),
+            data: event.to_json_value()?,
         })
     }
 }
