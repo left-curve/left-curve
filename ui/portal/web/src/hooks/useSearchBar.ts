@@ -1,7 +1,7 @@
 import { isValidAddress } from "@left-curve/dango";
 import { wait } from "@left-curve/dango/utils";
 import { usePublicClient } from "@left-curve/store";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
 import { useState } from "react";
 
@@ -15,12 +15,13 @@ type UseSearchBarParameters = {
 };
 
 export function useSearchBar(parameters: UseSearchBarParameters = {}) {
-  const { debounceMs = 100 } = parameters;
+  const { debounceMs = 300 } = parameters;
   const [searchText, setSearchText] = useState("");
   const [block, setBlock] = useState<IndexedBlock>();
   const [txs, setTxs] = useState<[]>();
   const [applets, setApplets] = useState<AppletMetadata[]>(AppletsMetadata.slice(0, 4));
 
+  const queryClient = useQueryClient();
   const client = usePublicClient();
 
   const { data, ...query } = useQuery({
@@ -56,6 +57,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
           (async () => {
             const block = await client.queryBlock({ height: +searchText });
             setBlock(block);
+            queryClient.setQueryData(["block", searchText], block);
           })(),
         );
       } else {
@@ -64,7 +66,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
         // search for tokens
       }
 
-      return Promise.allSettled(promises);
+      return await Promise.allSettled(promises);
     },
   });
 
