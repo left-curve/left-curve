@@ -28,11 +28,36 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     let name = attrs.0;
     let input_name = input.ident.clone();
 
+    // Note: Ideally, we do a blanket implementation of
+    //
+    // ```rust
+    // impl TryFrom<E> for ContractEvent
+    // where
+    //     E: EventName + Serialize,
+    // {
+    //     // ...
+    // }
+    // ```
+    //
+    // However, this doesn't work because it's possible that a type implements
+    // both `EventName + Serialize` and `Into<ContractEvent>`, so there're two
+    // conflicting implementations of `TryInto<ContractEvent>`.
+    //
+    // As a workaround, we implement `TryInto<ContractEvent>` individually for
+    // each event type instead of a blanket implementation.
     quote::quote! {
         #input
 
         impl ::grug::EventName for #input_name {
             const EVENT_NAME: &'static str = #name;
+        }
+
+        impl TryFrom<#input_name> for ::grug::ContractEvent {
+            type Error = ::grug::StdError;
+
+            fn try_from(event: #input_name) -> ::grug::StdResult<Self> {
+                Self::new(&event)
+            }
         }
     }
     .into()
