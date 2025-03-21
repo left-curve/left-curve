@@ -3283,6 +3283,8 @@ name = "dango-dex"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "dango-account-factory",
+ "dango-oracle",
  "dango-types",
  "grug",
  "test-case",
