@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { Modals } from "./Modal";
+import { Modals } from "../foundation/Modal";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -71,7 +71,7 @@ export const KeyManagment: React.FC = () => {
                 <div className="flex gap-1">
                   <IconCopy className="w-5 h-5 cursor-pointer" copyText={keyHash} />
                   <IconTrash
-                    onClick={() => showModal(Modals.RemoveKey, { keyHash })}
+                    onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
                     className={twMerge("w-5 h-5 cursor-pointer", {
                       "text-gray-300 cursor-default": isActive,
                     })}

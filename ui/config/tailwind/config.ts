@@ -134,7 +134,6 @@ export const tailwindConfig: Partial<Config> = {
       "5xl": "24px",
       full: "9999px",
     },
-
     backgroundImage: {
       "account-card-red":
         "linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%)",
@@ -168,6 +167,7 @@ export const tailwindConfig: Partial<Config> = {
       "dash-4": "dash 2s ease-in-out infinite",
       "spinner-ease-spin": "spinner-spin 0.8s ease infinite",
       "spinner-linear-spin": "spinner-spin 0.8s linear infinite",
+      pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
     },
     keyframes: {
       "spinner-spin": {
@@ -187,6 +187,9 @@ export const tailwindConfig: Partial<Config> = {
         "0%": { "stroke-dasharray": "1, 200", "stroke-dashoffset": "0" },
         "50%": { "stroke-dasharray": "90, 200", "stroke-dashoffset": "-35px" },
         "100%": { "stroke-dashoffset": "-125px" },
+      },
+      pulse: {
+        "50%": { opacity: "0.5" },
       },
     },
   },

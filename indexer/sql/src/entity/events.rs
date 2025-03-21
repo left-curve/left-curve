@@ -49,7 +49,7 @@ impl From<FlatEventStatus> for EventStatus {
 }
 
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, PartialEq, Eq)]
-#[sea_orm(rs_type = "i16", db_type = "Integer")]
+#[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum TransactionType {
     #[sea_orm(num_value = 0)]
     Cron,
@@ -79,7 +79,7 @@ pub struct Model {
     pub method: Option<String>,
     pub event_status: EventStatus,
     pub commitment_status: CommitmentStatus,
-    pub transaction_type: i16,
+    pub transaction_type: i32,
     pub transaction_idx: i32,
     pub message_idx: Option<i32>,
     pub event_idx: i32,

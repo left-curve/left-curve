@@ -1,5 +1,5 @@
 use {
-    grug_app::QueryApp,
+    crate::traits::QueryApp,
     indexer_sql::{indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,

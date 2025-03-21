@@ -1,9 +1,6 @@
 use {
-    super::super::types::status::Status,
-    async_graphql::*,
-    grug_math::Inner,
-    grug_types::{HexBinary, JsonSerExt},
-    std::str::FromStr,
+    super::super::types::status::Status, crate::graphql::types::store::Store, async_graphql::*,
+    grug_math::Inner, grug_types::Binary, std::str::FromStr,
 };
 
 #[derive(Default, Debug)]
@@ -15,36 +12,42 @@ impl GrugQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Request as JSON string")] request: String,
-        height: u64,
-        #[graphql(default = false)] prove: bool,
+        height: Option<u64>,
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.query_app(request, height, prove)?)
+        Ok(app_ctx.grug_app.query_app(request, height)?)
     }
 
     async fn query_store(
         &self,
         ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Key as Hex string")] key: String,
-        height: u64,
+        #[graphql(desc = "Key as B64 string")] key: String,
+        height: Option<u64>,
         #[graphql(default = false)] prove: bool,
-    ) -> Result<String, Error> {
+    ) -> Result<Store, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-        let key = HexBinary::from_str(&key)?;
+        let key = Binary::from_str(&key)?;
 
-        app_ctx
-            .grug_app
-            .query_store(key.inner(), height, prove)?
-            .to_json_string()
-            .map_err(Into::into)
+        let (value, proof) = app_ctx.grug_app.query_store(key.inner(), height, prove)?;
+
+        let value = if let Some(value) = value {
+            Binary::from(value).to_string()
+        } else {
+            return Err(Error::new(format!("Key not found: {}", key)));
+        };
+
+        Ok(Store {
+            value,
+            proof: proof.map(|proof| Binary::from(proof).to_string()),
+        })
     }
 
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let status = Status {
-            block: app_ctx.grug_app.last_block()?.into(),
+            block: app_ctx.grug_app.last_finalized_block()?.into(),
             chain_id: app_ctx.grug_app.chain_id()?,
         };
 
@@ -55,11 +58,9 @@ impl GrugQuery {
         &self,
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Transaction as Json string")] tx: String,
-        height: u64,
-        #[graphql(default = false)] prove: bool,
     ) -> Result<String, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.simulate(tx, height, prove)?)
+        Ok(app_ctx.grug_app.simulate(tx)?)
     }
 }

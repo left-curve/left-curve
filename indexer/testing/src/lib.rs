@@ -1,14 +1,14 @@
 use {
     actix_codec::Framed,
     actix_http::ws,
-    actix_test::{read_body, Client, TestServer},
+    actix_test::{Client, TestServer, read_body},
     actix_web::{
+        App,
         body::MessageBody,
         dev::{ServiceFactory, ServiceRequest, ServiceResponse},
         middleware::{Compress, Logger},
         test::try_call_service,
         web::ServiceConfig,
-        App,
     },
     anyhow::{anyhow, bail, ensure},
     awc::BoxedSocket,
@@ -16,7 +16,7 @@ use {
     futures_util::{sink::SinkExt, stream::StreamExt},
     indexer_httpd::{context::Context, graphql::build_schema, server::config_app},
     sea_orm::sqlx::types::uuid,
-    serde::{de::DeserializeOwned, Deserialize, Serialize},
+    serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
     std::collections::HashMap,
 };
@@ -91,12 +91,12 @@ pub struct PageInfo {
 pub async fn call_graphql<R>(
     app: App<
         impl ServiceFactory<
-                ServiceRequest,
-                Response = ServiceResponse<impl MessageBody>,
-                Config = (),
-                InitError = (),
-                Error = actix_web::Error,
-            > + 'static,
+            ServiceRequest,
+            Response = ServiceResponse<impl MessageBody>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
     >,
     request_body: GraphQLCustomRequest<'_>,
 ) -> anyhow::Result<GraphQLCustomResponse<R>>
@@ -133,12 +133,12 @@ where
 pub async fn call_api<R>(
     app: App<
         impl ServiceFactory<
-                ServiceRequest,
-                Response = ServiceResponse<impl MessageBody>,
-                Config = (),
-                InitError = (),
-                Error = actix_web::Error,
-            > + 'static,
+            ServiceRequest,
+            Response = ServiceResponse<impl MessageBody>,
+            Config = (),
+            InitError = (),
+            Error = actix_web::Error,
+        > + 'static,
     >,
     uri: &str,
 ) -> anyhow::Result<R>

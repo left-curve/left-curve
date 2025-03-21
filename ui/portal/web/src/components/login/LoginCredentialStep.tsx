@@ -1,7 +1,7 @@
 import { useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import { useLogin } from "@left-curve/store-react";
 import { useNavigate } from "@tanstack/react-router";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 import { Button, IconLeft } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";

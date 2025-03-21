@@ -293,7 +293,7 @@ fn build_event_active_model(
         event_status: Set(index_event.event_status.clone().into()),
         commitment_status: Set(index_event.commitment_status.clone().into()),
         transaction_idx: Set(index_event.id.category_index as i32),
-        transaction_type: Set(index_event.id.category as i16),
+        transaction_type: Set(index_event.id.category as i32),
         message_idx: Set(index_event.id.message_index.map(|i| i as i32)),
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),

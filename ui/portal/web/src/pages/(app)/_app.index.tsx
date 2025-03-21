@@ -2,9 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
 import { useRef, useState } from "react";
-import { FavAppletSection } from "~/components/FavAppletSection";
-import { DotsIndicator } from "~/components/SwippeableAccountCard";
-import { WelcomeHeader } from "~/components/WelcomeHeader";
+import { AppletsSection } from "~/components/overview/AppletsSection";
+import { DotsIndicator } from "~/components/overview/SwippeableAccountCard";
+import { WelcomeSection } from "~/components/overview/WelcomeSection";
 
 const mockDataTable = [
   {
@@ -70,14 +70,14 @@ function OverviewComponent() {
   return (
     <div className="w-full lg:max-w-[76rem] mx-auto flex flex-col gap-8 p-4 pb-32">
       <div className="w-full flex flex-col gap-8 min-h-[100dvh] lg:min-h-fit relative">
-        <WelcomeHeader
+        <WelcomeSection
           cardMobileVisible={cardMobileVisible}
           setCardMobileVisible={setCardMobileVisible}
         />
 
         <DotsIndicator cardVisible={cardMobileVisible} setCardVisible={setCardMobileVisible} />
 
-        <FavAppletSection />
+        <AppletsSection />
         <IconButton
           onClick={scrollToSection}
           variant="link"

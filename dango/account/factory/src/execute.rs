@@ -4,8 +4,8 @@ use {
     dango_types::{
         account::{self, single},
         account_factory::{
-            Account, AccountParamUpdates, AccountParams, AccountType, ExecuteMsg, InstantiateMsg,
-            NewUserSalt, Salt, Username,
+            Account, AccountParamUpdates, AccountParams, AccountRegistered, AccountType,
+            ExecuteMsg, InstantiateMsg, NewUserSalt, Salt, UserRegistered, Username,
         },
         auth::Key,
     },
@@ -26,7 +26,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
     // 1. We use an incremental number, which should equal the account's index,
     //    as the secret.
     // 2. Minimum deposit is not required.
-    let instantiate_msgs = msg
+    let instantiate_data = msg
         .users
         .into_iter()
         .enumerate()
@@ -45,9 +45,14 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
         })
         .collect::<StdResult<Vec<_>>>()?;
 
+    let (instantiate_msgs, instantiate_events): (Vec<_>, Vec<_>) =
+        instantiate_data.into_iter().unzip();
+
     MINIMUM_DEPOSIT.save(ctx.storage, &msg.minimum_deposit)?;
 
-    Ok(Response::new().add_messages(instantiate_msgs))
+    Response::new()
+        .add_messages(instantiate_msgs)
+        .add_events(instantiate_events)
 }
 
 // A new user who wishes to be onboarded must first make an initial deposit,
@@ -146,7 +151,7 @@ fn register_user(
 
     let minimum_deposit = MINIMUM_DEPOSIT.load(ctx.storage)?;
 
-    Ok(Response::new().add_message(onboard_new_user(
+    let (msg, event) = onboard_new_user(
         ctx.storage,
         ctx.contract,
         username,
@@ -154,7 +159,9 @@ fn register_user(
         key,
         key_hash,
         minimum_deposit,
-    )?))
+    )?;
+
+    Ok(Response::new().add_message(msg).add_event(event)?)
 }
 
 // Onboarding a new user involves saving an initial key, and intantiate an
@@ -167,7 +174,7 @@ fn onboard_new_user(
     key: Key,
     key_hash: Hash256,
     minimum_deposit: Coins,
-) -> StdResult<Message> {
+) -> StdResult<(Message, UserRegistered)> {
     // A new user's 1st account is always a spot account.
     let code_hash = CODE_HASHES.load(storage, AccountType::Spot)?;
 
@@ -193,14 +200,19 @@ fn onboard_new_user(
     ACCOUNTS_BY_USER.insert(storage, (&username, address))?;
 
     // Create the message to instantiate this account.
-    Message::instantiate(
+    let msg = Message::instantiate(
         code_hash,
         &account::spot::InstantiateMsg { minimum_deposit },
         salt,
         Some(format!("dango/account/{}/{}", AccountType::Spot, index)),
         Some(factory),
         Coins::default(),
-    )
+    )?;
+
+    // Create the event indicating a new user has registered.
+    let event = UserRegistered { username, address };
+
+    Ok((msg, event))
 }
 
 fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Response> {
@@ -251,16 +263,21 @@ fn register_account(ctx: MutableCtx, params: AccountParams) -> anyhow::Result<Re
         },
     }
 
-    Ok(Response::new().add_message(Message::instantiate(
-        code_hash,
-        &account::spot::InstantiateMsg {
-            minimum_deposit: Coins::default(),
-        },
-        salt,
-        Some(format!("dango/account/{}/{}", account.params.ty(), index)),
-        Some(ctx.contract),
-        ctx.funds,
-    )?))
+    Ok(Response::new()
+        .add_message(Message::instantiate(
+            code_hash,
+            &account::spot::InstantiateMsg {
+                minimum_deposit: Coins::default(),
+            },
+            salt,
+            Some(format!("dango/account/{}/{}", account.params.ty(), index)),
+            Some(ctx.contract),
+            ctx.funds,
+        )?)
+        .add_event(AccountRegistered {
+            address,
+            params: account.params,
+        })?)
 }
 
 fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Result<Response> {

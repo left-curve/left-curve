@@ -1,7 +1,7 @@
 use {
     async_graphql::*,
     chrono::{DateTime, TimeZone, Utc},
-    indexer_sql::entity,
+    indexer_sql::{block_to_index::BlockToIndex, entity},
     serde::Deserialize,
 };
 
@@ -57,4 +57,28 @@ impl From<entity::transactions::Model> for Transaction {
 }
 
 #[ComplexObject]
-impl Transaction {}
+impl Transaction {
+    async fn nested_events(&self, ctx: &Context<'_>) -> Result<Option<String>> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+        let block_filename = app_ctx.indexer_path.block_path(self.block_height);
+        let tx_idx = self.transaction_idx as usize;
+
+        let data = BlockToIndex::load_from_disk(block_filename)?;
+
+        // This is to ensure the current transaction hash is for this transaction
+        // index is right. We should never have that issue but that's a safety.
+        let Some(tx_hash) = data.block.txs.get(tx_idx).map(|tx| tx.1) else {
+            return Err(Error::new("Transaction not found"));
+        };
+
+        if tx_hash.to_string() != self.hash {
+            return Err(Error::new("Transaction hash mismatch"));
+        }
+
+        data.block_outcome
+            .tx_outcomes
+            .get(tx_idx)
+            .map(|tx| Ok(serde_json::to_string(&tx.events)?))
+            .transpose()
+    }
+}

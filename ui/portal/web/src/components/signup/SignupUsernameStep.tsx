@@ -9,7 +9,7 @@ import { registerUser } from "@left-curve/dango/actions";
 import { AccountType } from "@left-curve/dango/types";
 import { wait } from "@left-curve/dango/utils";
 import { ConnectionStatus } from "@left-curve/store-react/types";
-import { useToast } from "../Toast";
+import { useToast } from "../foundation/Toast";
 
 import {
   Button,

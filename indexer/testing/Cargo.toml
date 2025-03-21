@@ -16,3 +16,16 @@ indexer-httpd = { workspace = true }
 sea-orm       = { workspace = true }
 serde         = { workspace = true }
 serde_json    = { workspace = true }
+
+[dev-dependencies]
+assert-json-diff = { workspace = true }
+assertor         = { workspace = true }
+grug-app         = { workspace = true }
+grug-db-memory   = { workspace = true }
+grug-storage     = { workspace = true }
+grug-testing     = { workspace = true }
+grug-types       = { workspace = true }
+grug-vm-rust     = { workspace = true }
+indexer-sql      = { workspace = true, features = ["tracing"] }
+tokio            = { workspace = true }
+tracing          = { workspace = true }

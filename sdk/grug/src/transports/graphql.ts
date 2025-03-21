@@ -86,8 +86,8 @@ export function graphql(
         case "query_app": {
           const { query, height, prove } = params as IndexerSchema[0]["Parameters"];
           const document = gql`
-            query queryApp($request: String!, $height: Int!, $prove: Boolean!) {
-              queryApp(request: $request, height: $height, prove: $prove)
+            query queryApp($request: String!, $height: Int!) {
+              queryApp(request: $request, height: $height)
             }
           `;
 
@@ -120,17 +120,15 @@ export function graphql(
           return queryStatus as IndexerSchema[1]["ReturnType"];
         }
         case "simulate": {
-          const { tx, height, prove } = params as IndexerSchema[2]["Parameters"];
+          const { tx } = params as IndexerSchema[2]["Parameters"];
           const document = gql`
-            query simulate($tx: String!, $height: Int!, $prove: Boolean! = false)  {
-              simulate(tx: $tx, height: $height, prove: $prove)
+            query simulate($tx: String!)  {
+              simulate(tx: $tx)
             }
           `;
 
           const { simulate } = await client.request<{ simulate: string }>(document, {
             tx: JSON.stringify(recursiveTransform(tx, camelToSnake)),
-            height,
-            prove,
           });
 
           return recursiveTransform<IndexerSchema[2]["ReturnType"]>(
