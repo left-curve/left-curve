@@ -23,7 +23,6 @@ export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof Connec
 
 export type State<chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]]> = {
   chainId: chains[number]["id"];
-  isMipdLoaded: boolean;
   connections: Map<UID, Connection>;
   connectors: Map<chains[number]["id"], UID>;
   status: ConnectionStatusType;

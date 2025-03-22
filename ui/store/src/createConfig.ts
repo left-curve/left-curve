@@ -4,10 +4,10 @@ import { createStore } from "zustand/vanilla";
 import { createPublicClient } from "@left-curve/dango";
 import { uid } from "@left-curve/dango/utils";
 
+import { createStore as createMipdStore } from "mipd";
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
-import { createMipdStore } from "./mipd.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
@@ -140,7 +140,6 @@ export function createConfig<
 
   function getInitialState(): State {
     return {
-      isMipdLoaded: !multiInjectedProviderDiscovery,
       chainId: chains.getState()[0].id,
       connections: new Map(),
       connectors: new Map(),
@@ -198,10 +197,8 @@ export function createConfig<
   const store = createStore(subscribeWithSelector(stateCreator));
 
   if (multiInjectedProviderDiscovery) {
-    const timeout = setTimeout(() => store.setState((x) => ({ ...x, isMipdLoaded: true })), 500);
     // EIP-6963 subscribe for new wallet providers
     mipd?.subscribe((providerDetails) => {
-      clearTimeout(timeout);
       const connectorIdSet = new Set();
       const connectorRdnsSet = new Set();
       for (const connector of connectors.getState()) {
@@ -219,7 +216,6 @@ export function createConfig<
 
       if (storage && !store.persist.hasHydrated()) return;
       connectors.setState((x) => [...x, ...newConnectors], true);
-      store.setState((x) => ({ ...x, isMipdLoaded: true }));
     });
   }
 

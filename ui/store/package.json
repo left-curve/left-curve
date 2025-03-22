@@ -42,6 +42,7 @@
   "dependencies": {
     "@left-curve/dango": "workspace:^",
     "eventemitter3": "^5.0.1",
+    "mipd": "^0.0.7",
     "use-sync-external-store": "^1.2.2",
     "zustand": "catalog:"
   },
