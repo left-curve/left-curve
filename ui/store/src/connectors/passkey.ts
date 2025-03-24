@@ -162,13 +162,14 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const { domain, message } = signDoc;
         const sender = domain.verifyingContract;
         const { messages, gas_limit, metadata } = message;
-        const { username, chainId, nonce, expiry } = metadata;
+        const { username, chain_id, nonce } = metadata;
+
         const tx = sha256(
           serialize({
             sender,
             gasLimit: gas_limit,
             messages,
-            data: { username, chainId, nonce, expiry },
+            data: { username, chainId: chain_id, nonce },
           }),
         );
 
