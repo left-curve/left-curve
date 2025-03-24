@@ -21,6 +21,7 @@ pub struct Model {
     pub block_height: i64,
     pub hash: String,
     pub app_hash: String,
+    pub transactions_count: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
