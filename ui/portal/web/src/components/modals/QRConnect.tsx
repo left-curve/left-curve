@@ -61,6 +61,7 @@ export const QRConnect: React.FC = () => {
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
+          className="bg-white-100"
           isLoading={isLoadingDataChannel || isLoadingCredential}
           data={dataChannel?.getSocketId()}
         />
