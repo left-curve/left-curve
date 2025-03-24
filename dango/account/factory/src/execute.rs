@@ -5,7 +5,7 @@ use {
         account::{self, single},
         account_factory::{
             Account, AccountParamUpdates, AccountParams, AccountRegistered, AccountType,
-            ExecuteMsg, InstantiateMsg, NewUserSalt, Salt, UserRegistered, Username,
+            ExecuteMsg, InstantiateMsg, KeyUpdated, NewUserSalt, Salt, UserRegistered, Username,
         },
         auth::Key,
     },
@@ -210,7 +210,11 @@ fn onboard_new_user(
     )?;
 
     // Create the event indicating a new user has registered.
-    let event = UserRegistered { username, address };
+    let event = UserRegistered {
+        username,
+        address,
+        key,
+    };
 
     Ok((msg, event))
 }
@@ -310,7 +314,7 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
         },
     }
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(KeyUpdated { username, key })?)
 }
 
 fn update_account(ctx: MutableCtx, updates: AccountParamUpdates) -> anyhow::Result<Response> {
