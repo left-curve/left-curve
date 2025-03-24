@@ -27,7 +27,7 @@ export async function connect<config extends Config>(
   } catch (error) {
     config.setState((x) => ({
       ...x,
-      status: x.connections.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
+      status: x.connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
     }));
     throw error;
   }

@@ -39,7 +39,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
       return createSignerClient({
         username,
         signer: createSessionSigner(session),
-        transport: config._internal.transports[config.state.chainId],
+        transport: config._internal.transport,
       });
     },
   });

@@ -1,8 +1,8 @@
 import { createBaseClient } from "@left-curve/sdk";
 import { publicActions } from "../actions/index.js";
 
-import type { Transport } from "@left-curve/sdk/types";
-import type { DangoClient, PublicClient, PublicClientConfig } from "../types/clients.js";
+import type { Client, Transport } from "@left-curve/sdk/types";
+import type { PublicClient, PublicClientConfig } from "../types/clients.js";
 
 export function createPublicClient<transport extends Transport>(
   parameters: PublicClientConfig<transport>,
@@ -13,7 +13,7 @@ export function createPublicClient<transport extends Transport>(
     ...parameters,
     name,
     type: "dango",
-  }) as DangoClient<transport>;
+  }) as Client<transport>;
 
   return client.extend(publicActions) as PublicClient<transport>;
 }

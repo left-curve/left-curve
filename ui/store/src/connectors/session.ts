@@ -5,7 +5,7 @@ import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/enc
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, SignerClient, SigningSession } from "@left-curve/dango/types";
-import type { Address, Transport } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/dango/types";
 
 import { createStorage } from "../storages/createStorage.js";
 import type { Storage } from "../types/storage.js";
@@ -21,7 +21,6 @@ type SessionConnectorParameters = {
 };
 
 export function session(parameters: SessionConnectorParameters = {}) {
-  let _transport: Transport;
   let _username: string;
   let _client: SignerClient;
   let _isAuthorized = false;
@@ -31,7 +30,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
-  return createConnector<SigningSession>(({ transports, emitter }) => {
+  return createConnector<SigningSession>(({ transport, emitter }) => {
     return {
       id,
       name,
@@ -42,7 +41,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
       },
       async connect({ username, chainId, challenge }) {
         _username = username;
-        _transport = transports[chainId];
 
         const client = await this.getClient();
 
@@ -69,7 +67,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
             signer: this,
             type: "session",
             username: _username,
-            transport: _transport,
+            transport: transport,
           });
         }
         return _client;
@@ -118,9 +116,8 @@ export function session(parameters: SessionConnectorParameters = {}) {
           throw error;
         }
       },
-      onConnect({ chainId, username }) {
+      onConnect({ username }) {
         _username = username;
-        _transport = transports[chainId];
       },
     };
   });

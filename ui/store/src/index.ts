@@ -182,7 +182,6 @@ export {
 } from "./actions/getBlock.js";
 
 export {
-  type GetPublicClientParameters,
   type GetPublicClientReturnType,
   type GetPublicClientErrorType,
   getPublicClient,

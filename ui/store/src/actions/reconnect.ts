@@ -14,10 +14,9 @@ export async function reconnect<config extends Config>(
 
   config.setState((x) => ({
     ...x,
-    status: x.connections.size > 0 ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
+    status: x.connectors.size > 0 ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
   }));
 
-  const connections = new Map();
   const connectors = new Map();
   for (const {
     chainId,
@@ -26,9 +25,9 @@ export async function reconnect<config extends Config>(
     accounts,
     account,
     keyHash,
-  } of config.state.connections.values()) {
+  } of config.state.connectors.values()) {
     const connector = config.connectors.find(({ id }) => id === _connector_.id);
-    const chain = config.chains.find(({ id }) => id === chainId);
+    const chain = chainId !== config.state.chainId ? config.chain : undefined;
     if (!connector || !chain) continue;
 
     try {
@@ -36,8 +35,7 @@ export async function reconnect<config extends Config>(
       connector.emitter.off("connect", config._internal.events.connect);
       connector.emitter.on("change", config._internal.events.change);
       connector.emitter.on("disconnect", config._internal.events.disconnect);
-      connectors.set(chainId, connector.uid);
-      connections.set(connector.uid, {
+      connectors.set(connector.uid, {
         keyHash,
         account,
         chainId,
@@ -50,9 +48,8 @@ export async function reconnect<config extends Config>(
 
   config.setState((x) => ({
     ...x,
-    connections,
     connectors,
-    status: connections.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
+    status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 
   isReconnecting = false;

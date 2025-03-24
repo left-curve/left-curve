@@ -5,7 +5,7 @@ import type { Config } from "../types/store.js";
 
 export type ChangeAccountParameters = {
   account: Account;
-  connectorUId: UID;
+  connectorUId?: UID;
 };
 
 export type ChangeAccountReturnType = void;
@@ -17,11 +17,12 @@ export function changeAccount<config extends Config>(
   const { account, connectorUId } = parameters;
 
   config.setState((x) => {
-    const connection = x.connections.get(connectorUId);
+    const Uid = connectorUId || config.state.current;
+    const connection = x.connectors.get(Uid || "");
     if (!connection) return x;
     return {
       ...x,
-      connections: new Map(x.connections).set(connectorUId, {
+      connections: new Map(x.connectors).set(Uid as string, {
         ...connection,
         account,
       }),

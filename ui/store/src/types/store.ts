@@ -4,6 +4,7 @@ import type {
   ChainId,
   Client,
   Denom,
+  Signer,
   Transport,
   UID,
 } from "@left-curve/dango/types";
@@ -21,31 +22,22 @@ export const ConnectionStatus = {
 
 export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof ConnectionStatus];
 
-export type State<chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]]> = {
-  chainId: chains[number]["id"];
-  connections: Map<UID, Connection>;
-  connectors: Map<chains[number]["id"], UID>;
+export type State = {
+  chainId: ChainId;
+  current: UID | null;
+  connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };
 
-export type Config<
-  chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
-  transports extends Record<chains[number]["id"], Transport> = Record<
-    chains[number]["id"],
-    Transport
-  >,
-  coin extends AnyCoin = AnyCoin,
-> = {
-  readonly chains: chains;
+export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
+  readonly chain: Chain;
   readonly coins: Record<ChainId, Record<Denom, coin>>;
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
-  readonly state: State<chains>;
-  setState<tchains extends readonly [Chain, ...Chain[]] = chains>(
-    value: State<tchains> | ((state: State<tchains>) => State<tchains>),
-  ): void;
+  readonly state: State;
+  setState(value: State | ((state: State) => State)): void;
   subscribe<state>(
-    selector: (state: State<chains>) => state,
+    selector: (state: State) => state,
     listener: (state: state, previousState: state) => void,
     options?: {
       emitImmediately?: boolean;
@@ -53,23 +45,16 @@ export type Config<
     },
   ): () => void;
 
-  getClient<chainId extends chains[number]["id"]>(parameters?: {
-    chainId?: chainId | chains[number]["id"] | undefined;
-  }): Client<transports[chainId], chains[number], undefined>;
-  _internal: Internal<chains, transports>;
+  getClient(): Client<transport>;
+  _internal: Internal<transport>;
 };
-
 export type CreateConfigParameters<
-  chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
-  transports extends Record<chains[number]["id"], Transport> = Record<
-    chains[number]["id"],
-    Transport
-  >,
+  transport extends Transport = Transport,
   coin extends AnyCoin = AnyCoin,
 > = {
-  chains: chains;
+  chain: Chain;
   coins?: Record<ChainId, Record<Denom, coin>>;
-  transports: transports;
+  transport: transport;
   ssr?: boolean;
   batch?: boolean;
   storage?: Storage;
@@ -92,17 +77,11 @@ export type StoreApi = {
   };
 };
 
-type Internal<
-  chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
-  transports extends Record<chains[number]["id"], Transport> = Record<
-    chains[number]["id"],
-    Transport
-  >,
-> = {
+type Internal<transport extends Transport = Transport> = {
   readonly ssr: boolean;
   readonly mipd: MipdStore | undefined;
   readonly store: StoreApi;
-  readonly transports: transports;
+  readonly transport: transport;
   readonly events: ConnectorEvents;
   connectors: {
     setup: (connectorFn: CreateConnectorFn) => Connector;

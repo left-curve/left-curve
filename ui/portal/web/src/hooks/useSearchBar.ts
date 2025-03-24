@@ -8,7 +8,8 @@ import { useState } from "react";
 import { applets as AppletsMetadata } from "../../applets";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
-import type { IndexedBlock } from "@left-curve/dango/types";
+import { getAppConfig } from "@left-curve/dango/actions";
+import type { Address, AppConfig, ContractInfo, IndexedBlock } from "@left-curve/dango/types";
 
 type UseSearchBarParameters = {
   debounceMs?: number;
@@ -20,6 +21,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const [block, setBlock] = useState<IndexedBlock>();
   const [txs, setTxs] = useState<[]>();
   const [applets, setApplets] = useState<AppletMetadata[]>(AppletsMetadata.slice(0, 4));
+  const [contractInfo, setContractInfo] = useState();
 
   const queryClient = useQueryClient();
   const client = usePublicClient();
@@ -48,10 +50,19 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
       if (signal.aborted) return;
 
       const promises: Promise<unknown>[] = [];
+      const { addresses } = await getAppConfig<AppConfig>(client);
+      const response = await client.queryWasmSmart({
+        contract: addresses.accountFactory,
+        msg: { codeHashes: {} },
+      });
 
       if (isValidAddress(searchText)) {
         // search for contract
-        promises.push((async () => {})());
+        promises.push(
+          (async () => {
+            const contractInfo = await client.getContractInfo({ address: searchText as Address });
+          })(),
+        );
       } else if (!Number.isNaN(Number(searchText))) {
         promises.push(
           (async () => {

@@ -15,10 +15,8 @@ export function rehydrate(config: Config, parameters: HydrateParameters) {
   if (initialState && !config._internal.store.persist.hasHydrated())
     config.setState({
       ...initialState,
-      chainId: config.chains.some((x) => x.id === initialState.chainId)
-        ? initialState.chainId
-        : config.chains[0].id,
-      connections: reconnectOnMount ? initialState.connections : new Map(),
+      chainId: config.chain.id,
+      connectors: reconnectOnMount ? initialState.connectors : new Map(),
       status: reconnectOnMount ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
     });
 
@@ -51,7 +49,6 @@ export function rehydrate(config: Config, parameters: HydrateParameters) {
         // Reset connections that may have been hydrated from storage.
         config.setState((x) => ({
           ...x,
-          connections: new Map(),
           connectors: new Map(),
           status: ConnectionStatus.Disconnected,
         }));

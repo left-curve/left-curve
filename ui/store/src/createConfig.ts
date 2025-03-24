@@ -11,20 +11,16 @@ import { type EventData, createEmitter } from "./createEmitter.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { AnyCoin, Chain, Client, Transport } from "@left-curve/dango/types";
+import type { AnyCoin, Client, DangoClient, Transport } from "@left-curve/dango/types";
 
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
 import type { Config, CreateConfigParameters, State, StoreApi } from "./types/store.js";
 
 export function createConfig<
-  const chains extends readonly [Chain, ...Chain[]] = readonly [Chain, ...Chain[]],
-  transports extends Record<chains[number]["id"], Transport> = Record<
-    chains[number]["id"],
-    Transport
-  >,
+  transport extends Transport = Transport,
   coin extends AnyCoin = AnyCoin,
->(parameters: CreateConfigParameters<chains, transports, coin>): Config<chains, transports, coin> {
+>(parameters: CreateConfigParameters<transport, coin>): Config<transport, coin> {
   const {
     multiInjectedProviderDiscovery = true,
     storage = createStorage({
@@ -42,7 +38,6 @@ export function createConfig<
   const mipd =
     typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
-  const chains = createStore(() => rest.chains);
   const coins = createStore(() => rest.coins);
   const connectors = createStore(() => {
     const collection = [];
@@ -68,8 +63,8 @@ export function createConfig<
     const connector = {
       ...connectorFn({
         emitter,
-        chains: chains.getState(),
-        transports: rest.transports,
+        chain: rest.chain,
+        transport: rest.transport,
         storage,
       }),
       emitter,
@@ -85,53 +80,18 @@ export function createConfig<
     return connector;
   }
 
-  const clients = new Map<string, Client<Transport, chains[number]>>();
+  let _client: Client<transport> | undefined;
 
-  function getClient(
-    config: { chainId?: string | undefined } = {},
-  ): Client<Transport, chains[number]> {
-    const chainId = config.chainId ?? store.getState().chainId;
+  function getClient(): Client<transport> {
+    if (_client) return _client;
 
-    if (!chainId) throw new Error("Chain id not provided");
+    const client = createPublicClient({
+      chain: rest.chain,
+      transport: (parameters) => rest.transport({ ...parameters }),
+    });
 
-    {
-      const client = clients.get(chainId);
-      if (client) return client;
-    }
-
-    const chain = chains.getState().find((x) => x.id === chainId);
-
-    // chainId specified and not configured
-    if (config.chainId && !chain) throw new Error("Chain not configured");
-
-    {
-      const client = clients.get(store.getState().chainId);
-      if (client) return client;
-    }
-
-    if (!chain) throw new Error("Chain not configured");
-
-    {
-      const chainId = chain.id as chains[number]["id"];
-
-      const client = createPublicClient({
-        chain,
-        transport: (parameters) => rest.transports[chainId]({ ...parameters }),
-      });
-
-      clients.set(chainId, client);
-      return client;
-    }
-  }
-
-  function validatePersistedChainId(persistedState: unknown, defaultChainId: string) {
-    return persistedState &&
-      typeof persistedState === "object" &&
-      "chainId" in persistedState &&
-      typeof persistedState.chainId === "string" &&
-      chains.getState().some((x) => x.id === persistedState.chainId)
-      ? persistedState.chainId
-      : defaultChainId;
+    _client = client;
+    return client;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -140,9 +100,9 @@ export function createConfig<
 
   function getInitialState(): State {
     return {
-      chainId: chains.getState()[0].id,
-      connections: new Map(),
+      chainId: rest.chain.id,
       connectors: new Map(),
+      current: null,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -158,17 +118,16 @@ export function createConfig<
           if (version === currentVersion) return persistedState;
 
           const initialState = getInitialState();
-          const chainId = validatePersistedChainId(persistedState, initialState.chainId);
-          return { ...initialState, chainId };
+          return { ...initialState };
         },
         partialize(state) {
-          const { chainId, connections, connectors, status } = state;
+          const { chainId, connectors, status, current } = state;
           return {
             chainId,
             status,
-            connectors,
-            connections: new Map(
-              Array.from(connections.entries()).map(([key, connection]) => {
+            current,
+            connectors: new Map(
+              Array.from(connectors.entries()).map(([key, connection]) => {
                 const { id, name, type, uid } = connection.connector;
                 const connector = { id, name, type, uid };
                 return [key, { ...connection, connector }];
@@ -183,12 +142,10 @@ export function createConfig<
             delete persistedState.status;
           }
 
-          const chainId = validatePersistedChainId(persistedState, currentState.chainId);
-
           return {
             ...currentState,
             ...persistedState,
-            chainId,
+            chainId: rest.chain.id,
           };
         },
       })
@@ -225,14 +182,13 @@ export function createConfig<
 
   function change(data: EventData<ConnectorEventMap, "change">) {
     store.setState((x) => {
-      const connection = x.connections.get(data.uid);
+      const connection = x.connectors.get(data.uid);
       if (!connection) return x;
       const { chainId, uid } = data;
-      if (chainId) x.connectors.set(chainId, uid);
 
       return {
         ...x,
-        connections: new Map(x.connections).set(uid, {
+        connectors: new Map(x.connectors).set(uid, {
           keyHash: data.keyHash,
           accounts: data.accounts ?? connection.accounts,
           account: connection.account,
@@ -261,7 +217,8 @@ export function createConfig<
 
       return {
         ...x,
-        connections: new Map(x.connections).set(data.uid, {
+        current: data.uid,
+        connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
           account: data.accounts[0],
           accounts: data.accounts,
@@ -270,14 +227,13 @@ export function createConfig<
           connector: connector,
         }),
         chainId: data.chainId,
-        connectors: new Map(x.connectors).set(data.chainId, data.uid),
         status: ConnectionStatus.Connected,
       };
     });
   }
   function disconnect(data: EventData<ConnectorEventMap, "disconnect">) {
     store.setState((x) => {
-      const connection = x.connections.get(data.uid);
+      const connection = x.connectors.get(data.uid);
       if (connection) {
         const connector = connection.connector;
         if (connector.emitter.listenerCount("change")) {
@@ -291,24 +247,24 @@ export function createConfig<
         }
       }
 
-      x.connections.delete(data.uid);
+      x.connectors.delete(data.uid);
 
-      for (const [chainId, uid] of x.connectors.entries()) {
-        if (uid === data.uid) x.connectors.delete(chainId);
+      for (const [uid] of x.connectors.entries()) {
+        if (uid === data.uid) x.connectors.delete(uid);
       }
 
-      if (x.connections.size === 0) {
+      if (x.connectors.size === 0) {
         return {
           ...x,
-          connections: new Map(),
-          chainIdToConnection: new Map(),
+          connectors: new Map(),
+          current: null,
           status: ConnectionStatus.Disconnected,
         };
       }
 
       return {
         ...x,
-        connections: new Map(x.connections),
+        connectors: new Map(x.connectors),
       };
     });
   }
@@ -317,8 +273,8 @@ export function createConfig<
     get coins() {
       return coins.getState() ?? {};
     },
-    get chains() {
-      return chains.getState();
+    get chain() {
+      return rest.chain;
     },
     get connectors() {
       return connectors.getState();
@@ -326,11 +282,11 @@ export function createConfig<
     storage,
     getClient,
     get state() {
-      return store.getState() as unknown as State<chains>;
+      return store.getState();
     },
     setState(value) {
       let newState: State;
-      if (typeof value === "function") newState = value(store.getState() as any);
+      if (typeof value === "function") newState = value(store.getState());
       else newState = value;
 
       // Reset state if it got set to something not matching the base state
@@ -361,8 +317,8 @@ export function createConfig<
       get store() {
         return store as StoreApi;
       },
-      get transports() {
-        return rest.transports;
+      get transport() {
+        return rest.transport;
       },
       get events() {
         return { change, connect, disconnect };

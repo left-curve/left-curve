@@ -14,21 +14,20 @@ import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, SignerClient } from "@left-curve/dango/types";
-import type { Address, Transport } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/dango/types";
 
 type PasskeyConnectorParameters = {
   icon?: string;
 };
 
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
-  let _transport: Transport;
   let _username: string;
   let _client: SignerClient;
   let _isAuthorized = false;
 
   const { icon } = parameters;
 
-  return createConnector<undefined>(({ transports, emitter }) => {
+  return createConnector<undefined>(({ transport, emitter }) => {
     return {
       id: "passkey",
       name: "Passkey",
@@ -36,7 +35,6 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       icon,
       async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
         _username = username;
-        _transport = transports[chainId];
 
         const client = await this.getClient();
 
@@ -69,7 +67,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
           _client = createSignerClient({
             signer: this,
             username: _username,
-            transport: _transport,
+            transport,
           });
         }
         return _client;
@@ -192,9 +190,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
 
         return { credential: { standard }, signed: signDoc };
       },
-      onConnect({ chainId, username }) {
+      onConnect({ username }) {
         _username = username;
-        _transport = transports[chainId];
       },
     };
   });

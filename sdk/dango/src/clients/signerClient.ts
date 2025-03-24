@@ -1,7 +1,7 @@
 import { createBaseClient } from "@left-curve/sdk";
 import { publicActions, signerActions } from "../actions/index.js";
 
-import type { Transport } from "@left-curve/sdk/types";
+import type { Client, Transport } from "@left-curve/sdk/types";
 
 import type { SignerClient, SignerClientConfig } from "../types/clients.js";
 
@@ -15,7 +15,8 @@ export function createSignerClient<transport extends Transport = Transport>(
     name,
     type,
     username,
-  }) as SignerClient<transport>;
+  }) as unknown as Client<transport>;
 
-  return client.extend(publicActions).extend(signerActions);
+  const publicClient = client.extend(publicActions) as unknown as SignerClient<transport>;
+  return publicClient.extend(signerActions) as SignerClient<transport>;
 }

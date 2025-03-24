@@ -18,12 +18,12 @@ export function getConnector<config extends Config>(
   const { connectorUId } = parameters;
   const connection = (() => {
     if (connectorUId) {
-      return config.state.connections.get(connectorUId);
+      return config.state.connectors.get(connectorUId);
     }
 
-    const UId = config.state.connectors.get(config.state.chainId);
+    const UId = config.state.current;
     if (!UId) throw new Error("No connector found for current chain");
-    return config.state.connections.get(UId);
+    return config.state.connectors.get(UId);
   })();
 
   if (!connection) throw new Error("No connection found");

@@ -94,15 +94,15 @@ export function getAccount<
   accountType extends AccountTypes = AccountTypes,
   config extends Config = Config,
 >(config: config): GetAccountReturnType<accountType> {
-  const { chainId, connections, connectors, status } = config.state;
-  const connectorUId = connectors.get(chainId);
-  const connection = connections.get(connectorUId!);
+  const { chainId, connectors, status } = config.state;
+  const connectorUId = config.state.current!;
+  const connection = connectors.get(connectorUId);
 
   if (!connection) {
     return disconnected;
   }
 
-  const chain = config.chains.find((chain) => chain.id === chainId);
+  const chain = config.chain;
 
   const changeAccount = (account: Account) => {
     changeAccountAction(config, { account, connectorUId: connectorUId! });

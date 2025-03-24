@@ -34,12 +34,12 @@ export async function refreshAccounts<config extends Config>(
   const accounts = await client.getAccountsByUsername({ username });
 
   config.setState((x) => {
-    const connection = x.connections.get(connectorUId);
-    if (!connection) return x;
+    const connector = x.connectors.get(connectorUId);
+    if (!connector) return x;
     return {
       ...x,
-      connections: new Map(x.connections).set(connectorUId, {
-        ...connection,
+      connectors: new Map(x.connectors).set(connectorUId, {
+        ...connector,
         accounts: Object.entries(accounts).map(([address, accountInfo]) => {
           const { index, params } = accountInfo;
           const type = Object.keys(params)[0] as AccountTypes;

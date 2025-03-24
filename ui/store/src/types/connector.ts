@@ -81,9 +81,9 @@ export type CreateConnectorFn<
   transport extends Transport = Transport,
   properties extends Record<string, unknown> = Record<string, unknown>,
 > = (config: {
-  chains: readonly [Chain, ...Chain[]];
+  chain: Chain;
   emitter: Emitter<ConnectorEventMap>;
-  transports: Record<string, Transport>;
+  transport: transport;
   storage: Storage;
 }) => Prettify<
   properties &

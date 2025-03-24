@@ -1,8 +1,7 @@
 import { gql } from "graphql-request";
 import { queryIndexer } from "./queryIndexer.js";
 
-import type { Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "../../types/clients.js";
+import type { Client, Transport } from "@left-curve/sdk/types";
 import type { IndexedBlock } from "../../types/indexer.js";
 
 export type QueryBlockParameters = {
@@ -12,7 +11,7 @@ export type QueryBlockParameters = {
 export type QueryBlockReturnType = Promise<IndexedBlock>;
 
 export async function queryBlock<transport extends Transport>(
-  client: DangoClient<transport>,
+  client: Client<transport>,
   parameters: QueryBlockParameters,
 ): QueryBlockReturnType {
   const document = gql`
