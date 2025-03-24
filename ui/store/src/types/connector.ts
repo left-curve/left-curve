@@ -85,6 +85,7 @@ export type CreateConnectorFn<
   emitter: Emitter<ConnectorEventMap>;
   transport: transport;
   storage: Storage;
+  getUsername: () => Username | null;
 }) => Prettify<
   properties &
     Signer & {
@@ -115,7 +116,7 @@ export type CreateConnectorFn<
       switchChain?(parameters: { chainId: string }): Promise<Chain>;
       onAccountsChanged?(accounts: string[]): void;
       onChainChanged?(chainId: string): void;
-      onConnect(connectInfo: { chainId: string; username: Username }): void;
+      onConnect?(connectInfo: { chainId: string }): void;
       onDisconnect?(error?: Error | undefined): void;
       onMessage?(message: { type: string; data?: unknown }): void;
     } & (provider extends undefined

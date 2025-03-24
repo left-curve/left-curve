@@ -25,6 +25,7 @@ export type ConnectionStatusType = (typeof ConnectionStatus)[keyof typeof Connec
 export type State = {
   chainId: ChainId;
   current: UID | null;
+  username: string | null;
   connectors: Map<UID, Connection>;
   status: ConnectionStatusType;
 };

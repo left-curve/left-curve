@@ -13,7 +13,7 @@ import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
 import { createConnector } from "./createConnector.js";
 
-import type { AccountTypes, SignerClient } from "@left-curve/dango/types";
+import type { AccountTypes } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
 
 type PasskeyConnectorParameters = {
@@ -21,21 +21,17 @@ type PasskeyConnectorParameters = {
 };
 
 export function passkey(parameters: PasskeyConnectorParameters = {}) {
-  let _username: string;
-  let _client: SignerClient;
   let _isAuthorized = false;
 
   const { icon } = parameters;
 
-  return createConnector<undefined>(({ transport, emitter }) => {
+  return createConnector<undefined>(({ transport, emitter, getUsername }) => {
     return {
       id: "passkey",
       name: "Passkey",
       type: "passkey",
       icon,
       async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
-        _username = username;
-
         const client = await this.getClient();
 
         const keyHash = await (async () => {
@@ -63,14 +59,13 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        if (!_client) {
-          _client = createSignerClient({
-            signer: this,
-            username: _username,
-            transport,
-          });
-        }
-        return _client;
+        const username = getUsername();
+        if (!username) throw new Error("passkey: username not found");
+        return createSignerClient({
+          signer: this,
+          username,
+          transport,
+        });
       },
       async createNewKey(challenge = "Please sign this message to confirm your identity.") {
         const { id, getPublicKey } = await createWebAuthnCredential({
@@ -105,7 +100,9 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const accounts = await getAccountsByUsername(client, { username: _username });
+        const username = getUsername();
+        if (!username) throw new Error("passkey: username not found");
+        const accounts = await getAccountsByUsername(client, { username });
         return Object.entries(accounts).map(([address, accountInfo]) => {
           const { index, params } = accountInfo;
           const type = Object.keys(params)[0] as AccountTypes;
@@ -113,7 +110,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
             index,
             params,
             address: address as Address,
-            username: _username,
+            username,
             type: type,
           };
         });
@@ -189,9 +186,6 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         const standard = { signature: { passkey }, keyHash };
 
         return { credential: { standard }, signed: signDoc };
-      },
-      onConnect({ username }) {
-        _username = username;
       },
     };
   });

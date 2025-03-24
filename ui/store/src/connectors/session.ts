@@ -4,7 +4,7 @@ import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/enc
 
 import { createConnector } from "./createConnector.js";
 
-import type { AccountTypes, SignerClient, SigningSession } from "@left-curve/dango/types";
+import type { AccountTypes, SigningSession } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
 
 import { createStorage } from "../storages/createStorage.js";
@@ -21,8 +21,6 @@ type SessionConnectorParameters = {
 };
 
 export function session(parameters: SessionConnectorParameters = {}) {
-  let _username: string;
-  let _client: SignerClient;
   let _isAuthorized = false;
   let _provider_ = async (): Promise<SigningSession | null> => await storage.getItem("session");
 
@@ -30,7 +28,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
-  return createConnector<SigningSession>(({ transport, emitter }) => {
+  return createConnector<SigningSession>(({ transport, emitter, getUsername }) => {
     return {
       id,
       name,
@@ -40,8 +38,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
         _provider_ = parameters.target?.provider || (async () => await storage.getItem("session"));
       },
       async connect({ username, chainId, challenge }) {
-        _username = username;
-
         const client = await this.getClient();
 
         if (!challenge) throw new Error("challenge is requiered to recover the session");
@@ -62,15 +58,14 @@ export function session(parameters: SessionConnectorParameters = {}) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        if (!_client) {
-          _client = createSignerClient({
-            signer: this,
-            type: "session",
-            username: _username,
-            transport: transport,
-          });
-        }
-        return _client;
+        const username = getUsername();
+        if (!username) throw new Error("session: username not found");
+        return createSignerClient({
+          signer: this,
+          type: "session",
+          username,
+          transport: transport,
+        });
       },
       async getKeyHash() {
         const provider = await this.getProvider();
@@ -83,7 +78,9 @@ export function session(parameters: SessionConnectorParameters = {}) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const accounts = await getAccountsByUsername(client, { username: _username });
+        const username = getUsername();
+        if (!username) throw new Error("session: username not found");
+        const accounts = await getAccountsByUsername(client, { username });
         return Object.entries(accounts).map(([address, accountInfo]) => {
           const { index, params } = accountInfo;
           const type = Object.keys(params)[0] as AccountTypes;
@@ -91,7 +88,7 @@ export function session(parameters: SessionConnectorParameters = {}) {
             index,
             params,
             address: address as Address,
-            username: _username,
+            username,
             type: type,
           };
         });
@@ -115,9 +112,6 @@ export function session(parameters: SessionConnectorParameters = {}) {
           console.error(error);
           throw error;
         }
-      },
-      onConnect({ username }) {
-        _username = username;
       },
     };
   });

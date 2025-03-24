@@ -11,7 +11,7 @@ import { type EventData, createEmitter } from "./createEmitter.js";
 import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
-import type { AnyCoin, Client, DangoClient, Transport } from "@left-curve/dango/types";
+import type { AnyCoin, Client, Transport } from "@left-curve/dango/types";
 
 import type { Connector, ConnectorEventMap, CreateConnectorFn } from "./types/connector.js";
 import type { EIP6963ProviderDetail } from "./types/eip6963.js";
@@ -66,6 +66,7 @@ export function createConfig<
         chain: rest.chain,
         transport: rest.transport,
         storage,
+        getUsername: () => store.getState().username,
       }),
       emitter,
       uid: emitter.uid,
@@ -103,6 +104,7 @@ export function createConfig<
       chainId: rest.chain.id,
       connectors: new Map(),
       current: null,
+      username: null,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -121,11 +123,12 @@ export function createConfig<
           return { ...initialState };
         },
         partialize(state) {
-          const { chainId, connectors, status, current } = state;
+          const { chainId, connectors, status, current, username } = state;
           return {
             chainId,
             status,
             current,
+            username,
             connectors: new Map(
               Array.from(connectors.entries()).map(([key, connection]) => {
                 const { id, name, type, uid } = connection.connector;
@@ -218,6 +221,7 @@ export function createConfig<
       return {
         ...x,
         current: data.uid,
+        username: data.username,
         connectors: new Map(x.connectors).set(data.uid, {
           keyHash: data.keyHash,
           account: data.accounts[0],
@@ -256,6 +260,7 @@ export function createConfig<
       if (x.connectors.size === 0) {
         return {
           ...x,
+          username: null,
           connectors: new Map(),
           current: null,
           status: ConnectionStatus.Disconnected,

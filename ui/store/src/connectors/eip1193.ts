@@ -7,7 +7,7 @@ import { composeArbitraryTypedData, hashTypedData } from "@left-curve/dango/util
 import { createConnector } from "./createConnector.js";
 
 import type { AccountTypes, Eip712Signature, SignerClient } from "@left-curve/dango/types";
-import type { Address, Transport } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/dango/types";
 
 import type { ConnectorId } from "../types/connector.js";
 import type { EIP1193Provider } from "../types/eip1193.js";
@@ -20,9 +20,6 @@ type EIP1193ConnectorParameters = {
 };
 
 export function eip1193(parameters: EIP1193ConnectorParameters) {
-  let _transport: Transport;
-  let _username: string;
-  let _client: SignerClient;
   let _isAuthorized = false;
 
   const {
@@ -32,16 +29,13 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
     icon,
   } = parameters;
 
-  return createConnector<EIP1193Provider>(({ transports, emitter }) => {
+  return createConnector<EIP1193Provider>(({ transport, getUsername, emitter }) => {
     return {
       id,
       name,
       icon,
       type: "eip1193",
       async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
-        _username = username;
-        _transport = transports[chainId];
-
         const client = await this.getClient();
         const provider = await this.getProvider();
         const accounts = await this.getAccounts();
@@ -73,15 +67,15 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         emitter.emit("disconnect");
       },
       async getClient() {
-        if (!_client) {
-          _client = createSignerClient({
-            signer: this,
-            type: "eip1193",
-            username: _username,
-            transport: _transport,
-          });
-        }
-        return _client;
+        const username = getUsername();
+        if (!username) throw new Error("eip1193: username not found");
+
+        return createSignerClient({
+          signer: this,
+          type: "eip1193",
+          username,
+          transport,
+        });
       },
       async createNewKey(challenge = "Please sign this message to confirm your identity.") {
         const provider = await this.getProvider();
@@ -120,7 +114,10 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       },
       async getAccounts() {
         const client = await this.getClient();
-        const accounts = await getAccountsByUsername(client, { username: _username });
+        const username = getUsername();
+        if (!username) throw new Error("eip1193: username not found");
+
+        const accounts = await getAccountsByUsername(client, { username });
         return Object.entries(accounts).map(([address, accountInfo]) => {
           const { index, params } = accountInfo;
           const type = Object.keys(params)[0] as AccountTypes;
@@ -128,7 +125,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
             index,
             params,
             address: address as Address,
-            username: _username,
+            username,
             type: type,
           };
         });
@@ -194,10 +191,6 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           console.error(error);
           throw error;
         }
-      },
-      onConnect({ chainId, username }) {
-        _username = username;
-        _transport = transports[chainId];
       },
     };
   });
