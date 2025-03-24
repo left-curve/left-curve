@@ -56,10 +56,10 @@ function RouteComponent() {
     {
       header: "Result",
       cell: ({ row }) => {
-        const isFailed = row.original.hasSucceeded;
+        const { hasSucceeded } = row.original;
         return (
-          <p className={isFailed ? "text-status-fail" : "text-status-success"}>
-            {isFailed ? "Fail" : "Success"}
+          <p className={hasSucceeded ? "text-status-success" : "text-status-fail"}>
+            {hasSucceeded ? "Success" : "Fail"}
           </p>
         );
       },
