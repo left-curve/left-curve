@@ -1,12 +1,12 @@
 import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { Actions } from "@left-curve/dango/utils";
-import { useConnectorClient, useDataChannel } from "@left-curve/store-react";
+import { useConnectorClient, useDataChannel } from "@left-curve/store";
 import type React from "react";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { useToast } from "../foundation/Toast";
+import { toast } from "../foundation/Toast";
 
 export const QRConnect: React.FC = () => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
@@ -15,7 +15,6 @@ export const QRConnect: React.FC = () => {
   });
   const { data: signingClient } = useConnectorClient();
   const { hideModal } = useApp();
-  const { toast } = useToast();
 
   dataChannel?.subscribe(async (m) => {
     if (!signingClient) return;
@@ -62,6 +61,7 @@ export const QRConnect: React.FC = () => {
       <span className="w-full h-[1px] bg-gray-100 my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
+          className="bg-white-100"
           isLoading={isLoadingDataChannel || isLoadingCredential}
           data={dataChannel?.getSocketId()}
         />

@@ -7,8 +7,8 @@ import {
   TruncateText,
   twMerge,
 } from "@left-curve/applets-kit";
-import { useAccount, useSigningClient } from "@left-curve/store-react";
-import { ConnectionStatus } from "@left-curve/store-react/types";
+import { useAccount, useSigningClient } from "@left-curve/store";
+import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";

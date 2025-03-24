@@ -1,7 +1,7 @@
 import { Button } from "@left-curve/applets-kit";
 import type { Coins } from "@left-curve/dango/types";
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useChainId, useConfig } from "@left-curve/store-react";
+import { useChainId, useConfig } from "@left-curve/store";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";

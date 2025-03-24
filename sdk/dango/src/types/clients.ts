@@ -1,10 +1,4 @@
-import type {
-  Client,
-  ClientConfig,
-  ClientExtend,
-  RequiredBy,
-  Transport,
-} from "@left-curve/sdk/types";
+import type { Client, ClientConfig, ClientExtend, Transport } from "@left-curve/sdk/types";
 
 import type { PublicActions } from "../actions/publicActions.js";
 import type { SignerActions } from "../actions/signerActions.js";
@@ -26,7 +20,7 @@ export type PublicClientConfig<transport extends Transport = Transport> = Client
 export type PublicClient<transport extends Transport = Transport> = DangoClient<
   transport,
   undefined,
-  PublicActions<transport>
+  PublicActions
 >;
 
 export type SignerClientConfig<transport extends Transport = Transport> = ClientConfig<
@@ -39,5 +33,5 @@ export type SignerClientConfig<transport extends Transport = Transport> = Client
 export type SignerClient<transport extends Transport = Transport> = DangoClient<
   transport,
   Signer,
-  PublicActions<transport> & SignerActions
+  PublicActions & SignerActions
 >;

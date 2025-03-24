@@ -33,4 +33,9 @@ export type IndexerSchema = [
     Parameters: { tx: Tx | UnsignedTx; mode: "sync" | "async" | "commit" };
     ReturnType: Prettify<TxData & { hash: Uint8Array }>;
   },
+  {
+    Method: "query";
+    Parameters: { document: string; variables: Record<string, unknown> };
+    ReturnType: unknown;
+  },
 ];

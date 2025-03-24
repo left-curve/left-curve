@@ -7,7 +7,7 @@ import {
   Stepper,
   useWizard,
 } from "@left-curve/applets-kit";
-import { useAccount } from "@left-curve/store-react";
+import { useAccount } from "@left-curve/store";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useEffect } from "react";

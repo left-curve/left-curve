@@ -235,7 +235,7 @@
     }
   },
   "commadBar": {
-    "noResult": "No results found",
+    "noResult": "No results found.",
     "placeholder": {
       "title": "Search for",
       "transactions": "transactions",

@@ -13,7 +13,7 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
-} from "@left-curve/store-react";
+} from "@left-curve/store";
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -36,7 +36,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { z } from "zod";
 import { Modals } from "~/components/foundation/Modal";
-import { useToast } from "~/components/foundation/Toast";
+import { toast } from "~/components/foundation/Toast";
 import { m } from "~/paraglide/messages";
 
 const searchParamsSchema = z.object({
@@ -57,7 +57,6 @@ function SendAndReceiveComponent() {
   const { register, setValue, reset, handleSubmit } = useInputs({ strategy: "onSubmit" });
 
   const { account, isConnected } = useAccount();
-  const { toast } = useToast();
   const chainId = useChainId();
   const config = useConfig();
   const { data: signingClient } = useSigningClient();
@@ -97,7 +96,9 @@ function SendAndReceiveComponent() {
         rejectSend,
       });
 
-      await promise;
+      const response = await promise.then(() => true).catch(() => false);
+
+      if (!response) return undefined;
 
       await signingClient.transfer({
         transfer: {
@@ -107,6 +108,11 @@ function SendAndReceiveComponent() {
         },
         sender: account!.address as Address,
       });
+
+      await wait(1000);
+      reset();
+      toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+      refreshBalances();
     },
 
     onError: (e) => {
@@ -114,14 +120,6 @@ function SendAndReceiveComponent() {
         title: m["common.error"](),
         description: e.message,
       });
-    },
-    onSuccess: async () => {
-      reset();
-      toast.success({
-        title: m["sendAndReceive.sendSuccessfully"](),
-      });
-      await wait(1000);
-      refreshBalances();
     },
   });
 

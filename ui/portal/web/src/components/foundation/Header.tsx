@@ -7,7 +7,7 @@ import {
   useMediaQuery,
 } from "@left-curve/applets-kit";
 
-import { useAccount } from "@left-curve/store-react";
+import { useAccount } from "@left-curve/store";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";

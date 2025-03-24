@@ -1,6 +1,6 @@
 import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
-import { useAccount, useConnectors, useSigningClient } from "@left-curve/store-react";
+import { useAccount, useConnectors, useSigningClient } from "@left-curve/store";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useApp } from "~/hooks/useApp";

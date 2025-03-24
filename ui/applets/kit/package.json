@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
-    "@left-curve/store-react": "workspace:^",
+    "@left-curve/store": "workspace:^",
     "@left-curve/ui-config": "workspace:^",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",

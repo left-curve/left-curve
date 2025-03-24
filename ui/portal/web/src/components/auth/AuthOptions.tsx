@@ -1,5 +1,5 @@
 import { Button, IconChevronDown, IconPasskey, twMerge } from "@left-curve/applets-kit";
-import { useConnectors } from "@left-curve/store-react";
+import { useConnectors } from "@left-curve/store";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { useState } from "react";
