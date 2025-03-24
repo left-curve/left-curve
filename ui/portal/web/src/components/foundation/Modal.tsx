@@ -50,9 +50,15 @@ export const Modal: React.FC = () => {
 
   const sheetRef = useRef<SheetRef>();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<{ triggerOnClose: () => void }>();
 
   const { component: ModalContainer, initialSnap } =
     useMemo(() => modals[activeModal as keyof typeof modals], [activeModal, sheetRef]) || {};
+
+  const closeModal = () => {
+    hideModal();
+    modalRef.current?.triggerOnClose();
+  };
 
   if (!isModalVisible || !activeModal)
     return <AnimatePresence initial={false} mode="wait" onExitComplete={() => null} />;
@@ -62,17 +68,17 @@ export const Modal: React.FC = () => {
       <Sheet
         ref={sheetRef}
         isOpen={isModalVisible}
-        onClose={() => hideModal()}
+        onClose={closeModal}
         initialSnap={0}
         snapPoints={[initialSnap]}
       >
         <Sheet.Container className="!bg-white-100 !rounded-t-2xl !shadow-none">
           <Sheet.Header />
           <Sheet.Content>
-            <ModalContainer {...modalProps} />
+            <ModalContainer ref={modalRef} {...modalProps} />
           </Sheet.Content>
         </Sheet.Container>
-        <Sheet.Backdrop onTap={() => hideModal()} />
+        <Sheet.Backdrop onTap={closeModal} />
       </Sheet>
     );
   }
@@ -82,14 +88,14 @@ export const Modal: React.FC = () => {
       <motion.div
         ref={overlayRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current) hideModal();
+          if (e.target === overlayRef.current) closeModal();
         }}
         className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        <ModalContainer {...modalProps} />
+        <ModalContainer ref={modalRef} {...modalProps} />
       </motion.div>
     </AnimatePresence>
   );

@@ -96,7 +96,9 @@ function SendAndReceiveComponent() {
         rejectSend,
       });
 
-      await promise;
+      const response = await promise.then(() => true).catch(() => false);
+
+      if (!response) return undefined;
 
       await signingClient.transfer({
         transfer: {
@@ -106,6 +108,11 @@ function SendAndReceiveComponent() {
         },
         sender: account!.address as Address,
       });
+
+      await wait(1000);
+      reset();
+      toast.success({ title: m["sendAndReceive.sendSuccessfully"]() });
+      refreshBalances();
     },
 
     onError: (e) => {
@@ -113,14 +120,6 @@ function SendAndReceiveComponent() {
         title: m["common.error"](),
         description: e.message,
       });
-    },
-    onSuccess: async () => {
-      reset();
-      toast.success({
-        title: m["sendAndReceive.sendSuccessfully"](),
-      });
-      await wait(1000);
-      refreshBalances();
     },
   });
 
