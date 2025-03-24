@@ -32,7 +32,6 @@ export const ConnectorTypes = {
 export type Connection = {
   chainId: ChainId;
   account: Account;
-  username: Username;
   keyHash: KeyHash;
   accounts: readonly Account[];
   connector: Connector;

@@ -1,4 +1,4 @@
-import { createSessionSigner, createSignerClient } from "@left-curve/dango";
+import { createSessionSigner, createSignerClient, toAccount } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/encoding";
 
@@ -38,7 +38,12 @@ export function session(parameters: SessionConnectorParameters = {}) {
         _provider_ = parameters.target?.provider || (async () => await storage.getItem("session"));
       },
       async connect({ username, chainId, challenge }) {
-        const client = await this.getClient();
+        const client = createSignerClient({
+          signer: this,
+          type: "session",
+          username,
+          transport,
+        });
 
         if (!challenge) throw new Error("challenge is requiered to recover the session");
 
@@ -48,7 +53,10 @@ export function session(parameters: SessionConnectorParameters = {}) {
         if (!keys[session.keyHash]) throw new Error("Not authorized");
         _isAuthorized = true;
         storage.setItem("session", session);
-        const accounts = await this.getAccounts();
+        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ username, address: address as Address, info: accountInfo }),
+        );
 
         emitter.emit("connect", { accounts, chainId, username, keyHash: session.keyHash });
       },

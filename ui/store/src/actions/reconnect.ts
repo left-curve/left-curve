@@ -17,18 +17,20 @@ export async function reconnect<config extends Config>(
     status: x.connectors.size > 0 ? ConnectionStatus.Reconnecting : ConnectionStatus.Disconnected,
   }));
 
+  let current = config.state.current;
+
   const connectors = new Map();
   for (const {
     chainId,
     connector: _connector_,
-    username,
     accounts,
     account,
     keyHash,
   } of config.state.connectors.values()) {
     const connector = config.connectors.find(({ id }) => id === _connector_.id);
-    const chain = chainId !== config.state.chainId ? config.chain : undefined;
+    const chain = chainId === config.state.chainId ? config.chain : undefined;
     if (!connector || !chain) continue;
+    if (_connector_.uid === config.state.current) current = connector.uid;
 
     try {
       connector.emitter.off("connect", config._internal.events.connect);
@@ -40,7 +42,6 @@ export async function reconnect<config extends Config>(
         chainId,
         accounts,
         connector,
-        username,
       });
     } catch (_) {}
   }
@@ -48,6 +49,8 @@ export async function reconnect<config extends Config>(
   config.setState((x) => ({
     ...x,
     connectors,
+    current,
+    username: config.state.username,
     status: connectors.size > 0 ? ConnectionStatus.Connected : ConnectionStatus.Disconnected,
   }));
 

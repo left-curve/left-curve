@@ -1,4 +1,4 @@
-import { createKeyHash, createSignerClient } from "@left-curve/dango";
+import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { ethHashMessage, secp256k1RecoverPubKey } from "@left-curve/dango/crypto";
 import { decodeHex, encodeBase64, encodeHex, encodeUtf8 } from "@left-curve/dango/encoding";
@@ -36,9 +36,18 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
       icon,
       type: "eip1193",
       async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
-        const client = await this.getClient();
+        const client = createSignerClient({
+          signer: this,
+          type: "eip1193",
+          username,
+          transport,
+        });
+
         const provider = await this.getProvider();
-        const accounts = await this.getAccounts();
+        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ username, address: address as Address, info: accountInfo }),
+        );
 
         const keyHash = await (async () => {
           if (_keyHash_) return _keyHash_;
@@ -118,17 +127,9 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         if (!username) throw new Error("eip1193: username not found");
 
         const accounts = await getAccountsByUsername(client, { username });
-        return Object.entries(accounts).map(([address, accountInfo]) => {
-          const { index, params } = accountInfo;
-          const type = Object.keys(params)[0] as AccountTypes;
-          return {
-            index,
-            params,
-            address: address as Address,
-            username,
-            type: type,
-          };
-        });
+        return Object.entries(accounts).map(([address, accountInfo]) =>
+          toAccount({ username, address: address as Address, info: accountInfo }),
+        );
       },
       async isAuthorized() {
         return _isAuthorized;

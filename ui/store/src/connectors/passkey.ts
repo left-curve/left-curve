@@ -7,7 +7,7 @@ import {
 
 import { encodeBase64, encodeUtf8, serialize } from "@left-curve/dango/encoding";
 
-import { createKeyHash, createSignerClient } from "@left-curve/dango";
+import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 import { getNavigatorOS, getRootDomain } from "@left-curve/dango/utils";
 
@@ -32,7 +32,12 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
       type: "passkey",
       icon,
       async connect({ username, chainId, challenge, keyHash: _keyHash_ }) {
-        const client = await this.getClient();
+        const client = createSignerClient({
+          signer: this,
+          type: "passkey",
+          username,
+          transport,
+        });
 
         const keyHash = await (async () => {
           if (_keyHash_) return _keyHash_;
@@ -51,7 +56,11 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         if (!Object.keys(keys).includes(keyHash)) throw new Error("Not authorized");
         _isAuthorized = true;
 
-        const accounts = await this.getAccounts();
+        const accountsInfo = await getAccountsByUsername(client, { username });
+        const accounts = Object.entries(accountsInfo).map(([address, accountInfo]) =>
+          toAccount({ username, address: address as Address, info: accountInfo }),
+        );
+
         emitter.emit("connect", { accounts, chainId, username, keyHash });
       },
       async disconnect() {
@@ -63,6 +72,7 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         if (!username) throw new Error("passkey: username not found");
         return createSignerClient({
           signer: this,
+          type: "passkey",
           username,
           transport,
         });

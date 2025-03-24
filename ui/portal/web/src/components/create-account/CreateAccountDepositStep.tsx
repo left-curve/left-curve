@@ -11,7 +11,7 @@ import { Modals } from "../foundation/Modal";
 
 export const CreateAccountDepositStep: React.FC = () => {
   const { done, previousStep, data } = useWizard<{ accountType: AccountTypes }>();
-  const { register, inputs } = useInputs();
+  const { register, inputs } = useInputs({ initialValues: { amount: "0" } });
 
   const { value: fundsAmount } = inputs.amount || {};
 

@@ -14,6 +14,7 @@ export {
   createKeyHash,
   createSignBytes,
   isValidAddress,
+  toAccount,
 } from "./account/index.js";
 
 /* -------------------------------------------------------------------------- */
