@@ -1,4 +1,7 @@
-use crate::ContractEvent;
+use {
+    crate::{ContractEvent, EventName, StdResult},
+    serde::Serialize,
+};
 
 /// A helper that provides better looking syntax for building a list of events.
 #[derive(Default)]
@@ -17,20 +20,20 @@ impl EventBuilder {
         }
     }
 
-    pub fn push<T>(&mut self, event: T) -> Result<&mut Self, T::Error>
+    pub fn push<E>(&mut self, event: E) -> StdResult<&mut Self>
     where
-        T: TryInto<ContractEvent>,
+        E: EventName + Serialize,
     {
-        self.events.push(event.try_into()?);
+        self.events.push(ContractEvent::new(&event)?);
         Ok(self)
     }
 
-    pub fn may_push<T>(&mut self, maybe_event: Option<T>) -> Result<&mut Self, T::Error>
+    pub fn may_push<E>(&mut self, maybe_event: Option<E>) -> StdResult<&mut Self>
     where
-        T: TryInto<ContractEvent>,
+        E: EventName + Serialize,
     {
         if let Some(event) = maybe_event {
-            self.events.push(event.try_into()?);
+            self.events.push(ContractEvent::new(&event)?);
         }
 
         Ok(self)

@@ -74,6 +74,7 @@ where
         self.client.close();
     }
 
+    //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
     pub fn pyth_ids(querier: &QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
         let new_ids = querier

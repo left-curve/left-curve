@@ -47,7 +47,7 @@ impl GrugQuery {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         let status = Status {
-            block: app_ctx.grug_app.last_block()?.into(),
+            block: app_ctx.grug_app.last_finalized_block()?.into(),
             chain_id: app_ctx.grug_app.chain_id()?,
         };
 

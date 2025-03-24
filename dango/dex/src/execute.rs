@@ -77,7 +77,7 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
         })?;
     }
 
-    Ok(Response::new().add_events(events))
+    Ok(Response::new().add_events(events)?)
 }
 
 #[inline]
@@ -239,7 +239,7 @@ fn batch_update_orders(
 
     Ok(Response::new()
         .add_message(Message::transfer(ctx.sender, ctx.funds)?)
-        .add_events(events))
+        .add_events(events)?)
 }
 
 #[inline]
@@ -384,9 +384,13 @@ pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         )?;
     }
 
-    Ok(Response::new()
-        .add_message(Message::batch_transfer(refunds)?)
-        .add_events(events))
+    Response::new()
+        .may_add_message(if !refunds.is_empty() {
+            Some(Message::batch_transfer(refunds)?)
+        } else {
+            None
+        })
+        .add_events(events)
 }
 
 #[inline]

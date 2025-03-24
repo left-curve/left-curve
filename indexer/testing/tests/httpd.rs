@@ -4,7 +4,7 @@ use {
     grug_app::NaiveProposalPreparer,
     grug_db_memory::MemDb,
     grug_testing::{TestAccounts, TestBuilder, TestSuite, setup_tracing_subscriber},
-    grug_types::{self, Coins, Denom, JsonSerExt, ResultExt},
+    grug_types::{Coins, Denom, JsonSerExt, ResultExt},
     grug_vm_rust::RustVm,
     indexer_httpd::{
         context::Context,
@@ -321,6 +321,57 @@ async fn graphql_returns_transactions() -> anyhow::Result<()> {
 
                 assert_that!(response.data.edges[0].node.sender)
                     .is_equal_to(accounts["sender"].address.to_string());
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn graphql_returns_nested_events() -> anyhow::Result<()> {
+    let (httpd_context, ..) = create_block().await?;
+
+    let graphql_query = r#"
+      query Transactions {
+        transactions {
+          nodes {
+            blockHeight
+            sender
+            hash
+            hasSucceeded
+            nestedEvents
+          }
+          edges { node { blockHeight sender hash hasSucceeded nestedEvents } cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "transactions",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let app = build_app_service(httpd_context);
+
+                let response =
+                    call_graphql::<PaginatedResponse<serde_json::Value>>(app, request_body).await?;
+
+                let nested_events: &str = response.data.edges[0]
+                    .node
+                    .get("nestedEvents")
+                    .and_then(|s| s.as_str())
+                    .expect("Can't get nestedEvents");
+
+                assert_that!(nested_events.len()).is_at_least(10);
 
                 Ok::<(), anyhow::Error>(())
             })
