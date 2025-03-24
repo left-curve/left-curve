@@ -35,9 +35,9 @@ impl TransferSubscription {
         &self,
         ctx: &Context<'a>,
         // The from address of the transfer
-        from_address: Option<String>,
+        _from_address: Option<String>,
         // The to address of the transfer
-        to_address: Option<String>,
+        _to_address: Option<String>,
     ) -> Result<impl Stream<Item = Vec<Transfer>> + 'a> {
         let app_ctx = ctx.data::<indexer_httpd::context::Context>()?;
 
