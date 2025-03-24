@@ -13,7 +13,28 @@ pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscriptio
 
 pub fn build_schema(app_ctx: Context) -> AppSchema {
     let block_transactions_loader = DataLoader::new(
-        dataloader::transaction::TransactionDataLoader {
+        dataloader::block_transactions::BlockTransactionsDataLoader {
+            db: app_ctx.db.clone(),
+        },
+        tokio::spawn,
+    );
+
+    let block_events_loader = DataLoader::new(
+        dataloader::block_events::BlockEventsDataLoader {
+            db: app_ctx.db.clone(),
+        },
+        tokio::spawn,
+    );
+
+    let transaction_messages_loader = DataLoader::new(
+        dataloader::transaction_messages::TransactionMessagesDataLoader {
+            db: app_ctx.db.clone(),
+        },
+        tokio::spawn,
+    );
+
+    let transaction_events_loader = DataLoader::new(
+        dataloader::transaction_events::TransactionEventsDataLoader {
             db: app_ctx.db.clone(),
         },
         tokio::spawn,
@@ -27,5 +48,8 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     .extension(extensions::Logger)
     .data(app_ctx)
     .data(block_transactions_loader)
+    .data(block_events_loader)
+    .data(transaction_messages_loader)
+    .data(transaction_events_loader)
     .finish()
 }

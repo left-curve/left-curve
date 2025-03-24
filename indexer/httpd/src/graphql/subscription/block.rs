@@ -27,8 +27,9 @@ impl BlockSubscription {
                         .filter(entity::blocks::Column::BlockHeight.eq(block_height as i64))
                         .one(&app_ctx.db)
                         .await
+                        .inspect_err(|e| tracing::error!("block error: {:?}", e))
                         .ok()
-                        .flatten()
+                        .unwrap_or_default()
                         .map(Into::into)
                 },
             ))

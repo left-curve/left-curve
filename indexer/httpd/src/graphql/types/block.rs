@@ -1,6 +1,8 @@
 use {
-    super::transaction::Transaction,
-    crate::graphql::dataloader::transaction::TransactionDataLoader,
+    super::{event::Event, transaction::Transaction},
+    crate::graphql::dataloader::{
+        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+    },
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     chrono::{DateTime, TimeZone, Utc},
     indexer_sql::entity,
@@ -32,9 +34,14 @@ impl From<entity::blocks::Model> for Block {
 #[ComplexObject]
 impl Block {
     /// Transactions order isn't guaranteed, check `transactionIdx`
-    async fn transactions(&self, ctx: &Context<'_>) -> Result<Option<Vec<Transaction>>> {
-        let loader = ctx.data_unchecked::<DataLoader<TransactionDataLoader>>();
-        Ok(loader.load_one(self.clone()).await?)
+    async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<Transaction>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<Event>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockEventsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
 }
 
