@@ -112,12 +112,13 @@ export function getAccount<
     refreshAccountsAction(config, { connectorUId });
   };
 
-  const { accounts, connector, username, account: acc, keyHash } = connection;
+  const { accounts, connector, account: acc, keyHash } = connection;
+  const username = config.state.username;
   const account = acc as Account<accountType>;
   switch (status) {
     case "connected":
       return {
-        username,
+        username: username as string,
         keyHash,
         account,
         accounts,

@@ -104,7 +104,7 @@ export function createConfig<
       chainId: rest.chain.id,
       connectors: new Map(),
       current: null,
-      username: null,
+      username: undefined,
       status: ConnectionStatus.Disconnected,
     };
   }
@@ -258,7 +258,7 @@ export function createConfig<
       if (x.connectors.size === 0) {
         return {
           ...x,
-          username: null,
+          username: undefined,
           connectors: new Map(),
           current: null,
           status: ConnectionStatus.Disconnected,

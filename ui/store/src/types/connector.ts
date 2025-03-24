@@ -84,7 +84,7 @@ export type CreateConnectorFn<
   emitter: Emitter<ConnectorEventMap>;
   transport: transport;
   storage: Storage;
-  getUsername: () => Username | null;
+  getUsername: () => Username | undefined;
 }) => Prettify<
   properties &
     Signer & {
