@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               <>
                 <ProfileIcon className="w-6 h-6" />
                 <span className="italic font-exposure font-bold capitalize">
-                  {account?.type} #{account?.index}
+                  {account?.username}
                 </span>
               </>
             ) : (
