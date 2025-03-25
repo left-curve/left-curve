@@ -167,6 +167,7 @@ impl Signer for SingleSigner<Defined<u32>> {
             messages: msgs.clone(),
             data: metadata.clone(),
         }
+        .to_json_value()? // convert to JSON value first, so that the fields are sorted alphabetically
         .to_json_vec()?
         .hash256()
         .into_inner();
