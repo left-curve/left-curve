@@ -60,7 +60,7 @@ export const SearchInput = forwardRef<"input", SearchInputProps>(
         <div
           ref={menuRef}
           className={twMerge(
-            "absolute bottom-[-3.8rem] shadow-card-shadow bg-rice-25 rounded-lg p-1 z-30 w-full",
+            "absolute top-[4.8rem] shadow-card-shadow bg-rice-25 rounded-lg p-1 z-30 w-full",
             showMenu ? "block" : "hidden",
             options.length ? "scale-100" : "scale-0",
           )}
