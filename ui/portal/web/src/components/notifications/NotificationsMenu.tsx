@@ -27,8 +27,10 @@ export const NotificationsMenu: React.FC<Props> = ({ buttonRef }) => {
     <div
       ref={menuRef}
       className={twMerge(
-        "hidden lg:block transition-all absolute top-[75px] bg-rice-50 shadow-card-shadow z-50 right-0 rounded-3xl w-[27rem]",
-        isNotificationMenuVisible ? "scale-1" : "scale-0",
+        "hidden lg:block transition-all absolute top-[75px] bg-rice-50 shadow-card-shadow z-50 right-0 rounded-3xl w-[27rem] duration-200",
+        isNotificationMenuVisible
+          ? "scale-1 translate-y-0 translate-x-0"
+          : "scale-0 -translate-y-1/2 translate-x-16",
       )}
     >
       <div className="p-4 flex items-center justify-between border-b border-b-gray-100">
