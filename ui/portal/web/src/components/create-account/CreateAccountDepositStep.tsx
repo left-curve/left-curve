@@ -74,6 +74,7 @@ export const CreateAccountDepositStep: React.FC = () => {
         isDisabled={isPending}
         placeholder="0"
         {...register("amount", {
+          strategy: "onChange",
           validate: (v) => {
             if (Number(v) > Number(humanBalance))
               return m["validations.errors.insufficientFunds"]();
